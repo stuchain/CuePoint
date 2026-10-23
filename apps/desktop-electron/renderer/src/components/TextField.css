@@ -28,7 +28,8 @@
 .cp-field__input {
   min-height: var(--control-height);
   padding: 0 var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
+  /* P48: sunken, no frame until hover or focus; the frame is transparent so nothing moves. */
+  border: var(--control-border-width) solid transparent;
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-control);
@@ -36,10 +37,14 @@
   font-weight: var(--control-font-weight);
 }
 
-/* One hover for every control (area 79): a firmer border and a shade. */
+/* One hover for every control (area 79): a firmer border (P48: the sunken box adds no shade). */
 .cp-field__input:hover:not(:disabled):not([aria-disabled="true"]):not(:read-only):not(:focus-visible) {
   border-color: var(--hover-border);
-  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
+}
+
+/* The token ring stays on :focus-visible; the line under it turns violet too (P48). */
+.cp-field__input:focus:not(:disabled):not([aria-disabled="true"]):not(.cp-field__input--error) {
+  border-color: var(--accent-primary);
 }
 
 .cp-field__input:focus-visible {
@@ -107,8 +112,14 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--fg-muted);
+  /* P48: muted until the box is hovered (a colour mix, not opacity). */
+  color: color-mix(in srgb, var(--fg-muted) 70%, transparent);
   cursor: pointer;
+}
+
+.cp-field__number:hover .cp-field__step:not(:disabled),
+.cp-field__step:hover:not(:disabled) {
+  color: var(--fg-muted);
 }
 
 .cp-field__step:hover:not(:disabled) {

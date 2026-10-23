@@ -23,8 +23,10 @@
   padding: var(--space-xs);
   overflow-y: auto;
   list-style: none;
+  /* P50: the popover chrome. */
   background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--popover-border);
+  box-shadow: var(--shadow-popover);
 }
 
 /* No room below (a panel that scrolls clips it): open upward from the field instead. */
@@ -49,8 +51,13 @@
   min-height: var(--row-height);
   padding: 0 var(--space-sm);
   color: var(--fg-primary);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
   cursor: pointer;
+}
+
+.cp-suggest__option:hover {
+  background: var(--row-hover);
 }
 
 .cp-suggest__text {
@@ -69,5 +76,10 @@
 
 /* The option ↑/↓ is on, which Enter chooses. */
 .cp-suggest__option--active {
+  background: var(--selected-row-background);
+}
+
+/* The active option wins over the hover that lands on it too. */
+.cp-suggest__option--active:hover {
   background: var(--selected-row-background);
 }

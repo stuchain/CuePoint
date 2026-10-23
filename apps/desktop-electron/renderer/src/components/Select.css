@@ -30,7 +30,8 @@
 .cp-select__control {
   min-height: var(--control-height);
   padding: 0 var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
+  /* P49: the same sunken field as TextField; the frame is transparent until hover or focus. */
+  border: var(--control-border-width) solid transparent;
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-control);
@@ -57,10 +58,9 @@
   height: var(--icon-size-sm);
 }
 
-/* One hover for every control (area 79): a firmer border and a shade. */
+/* One hover for every control (area 79): a firmer border (P49: no shade on the sunken box). */
 .cp-select__control:hover:not(:disabled):not([aria-disabled="true"]):not(:focus-visible) {
   border-color: var(--hover-border);
-  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
 .cp-select__control--error,
@@ -71,6 +71,10 @@
 .cp-select__control:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
+}
+
+.cp-select__control:focus-visible:not(.cp-select__control--error) {
+  border-color: var(--accent-primary);
 }
 
 .cp-select__control:disabled,
@@ -92,8 +96,12 @@
  */
 .cp-select--inline .cp-select__field {
   align-items: center;
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--control-border-width) solid transparent;
   background: var(--bg-input);
+}
+
+.cp-select--inline .cp-select__field:where(:has(> .cp-select__control:not(:disabled):not([aria-disabled="true"]))):hover {
+  border-color: var(--hover-border);
 }
 
 .cp-select--inline .cp-select__field:has(> .cp-select__control:is(:disabled, [aria-disabled="true"])) {
@@ -102,6 +110,7 @@
 }
 
 .cp-select--inline .cp-select__field:has(> .cp-select__control:focus-visible) {
+  border-color: var(--accent-primary);
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }

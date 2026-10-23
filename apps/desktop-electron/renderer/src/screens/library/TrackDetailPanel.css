@@ -485,12 +485,21 @@
   font-size: var(--font-size-xs);
 }
 
-/* The field and its button wrap when the panel is narrow (C241). */
+/* The field and its button stay on one line (P48): the field gives way, the button never wraps under it. */
 .cp-track-yours__add {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-end;
   gap: var(--space-md);
+}
+
+.cp-track-yours__add > .cp-field {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.cp-track-yours__add > .cp-btn {
+  flex: none;
 }
 
 /*

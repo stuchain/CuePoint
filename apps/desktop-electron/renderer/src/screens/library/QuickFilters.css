@@ -30,8 +30,10 @@
   max-height: calc(340px * var(--scale));
   padding: var(--space-md);
   overflow-y: auto;
+  /* P50: the popover chrome. */
   background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--popover-border);
+  box-shadow: var(--shadow-popover);
 }
 
 .cp-quick__list {
@@ -40,12 +42,20 @@
   gap: var(--space-xs);
 }
 
+/* P50: a list row is the one row height, in Inter, with the one hover. */
 .cp-quick__choice {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  font-size: var(--font-size-xs);
+  min-height: var(--row-height);
+  padding-inline: var(--space-xs);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
   cursor: pointer;
+}
+
+.cp-quick__choice:hover {
+  background: var(--row-hover);
 }
 
 .cp-quick__name {

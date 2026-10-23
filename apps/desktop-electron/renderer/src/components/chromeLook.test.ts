@@ -48,8 +48,20 @@ const SHEETS: Record<string, string> = {
   prepare,
 };
 
-/** The sheets that hold a floating surface: the menus, the wheel popover, the hint tip, the first-steps popover and the toast. */
-const POPOVER_SHEETS: string[] = ["TrackContextMenu", "WheelPopover", "FirstSteps", "Toast", "Hint"];
+/**
+ * The sheets that hold a floating surface: the menus, the wheel popover, the hint tip, the first-steps popover and the toast.
+ * P50 adds the lists under a field: the suggestion list, the quick-filter panels and the filter builder.
+ */
+const POPOVER_SHEETS: string[] = [
+  "TrackContextMenu",
+  "WheelPopover",
+  "FirstSteps",
+  "Toast",
+  "Hint",
+  "SuggestInput",
+  "QuickFilters",
+  "FilterBar",
+];
 
 const HEAVY = /--shadow-(panel|badge|bevel[a-z-]*|modal|inset-deep)\b/;
 

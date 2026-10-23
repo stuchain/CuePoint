@@ -13,7 +13,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-xs) 0;
+  /* P50: a list row is the one row height, in Inter, with the one hover. */
+  min-height: var(--row-height);
+  padding: 0 var(--space-xs);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
+}
+
+.cp-column-picker__row:hover {
+  background: var(--row-hover);
 }
 
 .cp-column-picker__label {
@@ -21,7 +29,7 @@
   align-items: center;
   gap: var(--space-sm);
   min-width: 0;
-  font-size: var(--text-body);
+  font-size: inherit;
   cursor: pointer;
 }
 
