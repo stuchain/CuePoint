@@ -130,7 +130,8 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     await win.reload();
     await expect(win.getByRole("group", { name: "Keys" })).toBeVisible({ timeout: 30_000 });
     // Two panes (D12): the list's toolbar sits to the right of the wheel, on the wheel's top line.
-    const wheelBox = await win.getByRole("group", { name: "Keys" }).boundingBox();
+    // P7: the wheel sits in its own padded pane, so the pane (not the SVG) shares the toolbar's top.
+    const wheelBox = await win.locator(".keys-page__view").boundingBox();
     const barBox = await trackBar.boundingBox();
     expect(barBox!.x, "toolbar is right of the wheel").toBeGreaterThanOrEqual(wheelBox!.x + wheelBox!.width);
     expect(Math.abs(barBox!.y - wheelBox!.y), "toolbar and wheel share their top").toBeLessThanOrEqual(1);

@@ -10,7 +10,8 @@
      size, and never more than 9. It follows the text size, never the window's width. */
   --keys-cell: min(round(nearest, calc(6px * var(--scale)), 1px), calc(9px * var(--scale)));
   --keys-wheel: calc(48 * var(--keys-cell));
-  flex: none;
+  /* The page column grows down to the player bar (P7) and still scrolls when its content is taller. */
+  flex: 1 0 auto;
   gap: 0;
   width: 100%;
   min-height: auto;
@@ -28,8 +29,10 @@
    row adds no space above itself, and nothing here draws a second divider under it (C35). */
 .keys-page__top {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
-  align-items: flex-start;
+  /* One stage (P7): Sources, the wheel and the list share one top edge and one bottom edge. */
+  align-items: stretch;
   gap: var(--space-lg);
   padding: 0 0 var(--space-lg);
 }
@@ -39,15 +42,18 @@
   align-self: center;
 }
 
-/* The wheel and its list take the same box, so switching between them moves nothing. */
+/* The wheel and its list take the same box, so switching between them moves nothing. The box is the
+   wheel's own pane (P7): panel tone, 12 inside, the caption centred under the wheel. */
 .keys-page__view {
   display: flex;
-  flex: 0 0 var(--keys-wheel);
+  flex: 0 0 calc(var(--keys-wheel) + 2 * var(--space-lg));
   flex-direction: column;
   gap: var(--space-md);
-  width: var(--keys-wheel);
+  width: calc(var(--keys-wheel) + 2 * var(--space-lg));
   max-width: 100%;
   min-width: 0;
+  padding: var(--space-lg);
+  background: var(--bg-panel);
 }
 
 .keys-page__panel {
@@ -82,6 +88,7 @@
   color: var(--fg-muted);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
+  text-align: center;
 }
 
 .keys-note {
@@ -107,8 +114,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  /* As tall as the wheel beside it, and starting at the same line; the rows scroll inside. */
-  height: var(--keys-wheel);
+  /* As tall as the row the wheel's pane sets, from the same top line; the rows scroll inside. */
+  flex: 1 1 0;
+  min-height: 0;
   /* A dense side panel: 8 inside. */
   padding: var(--space-md);
   overflow-y: auto;
@@ -302,15 +310,24 @@
   .keys-page__tracks {
     flex-basis: 100%;
   }
+
+  /* The list is under the wheel: the panes stop sharing a bottom edge, and Sources keeps the wheel's height. */
+  .keys-page__top {
+    align-items: flex-start;
+  }
+
+  .keys-sources__body {
+    flex: none;
+    height: var(--keys-wheel);
+  }
 }
 
 .keys-tracks {
   display: flex;
-  flex: none;
+  flex: 1 1 auto;
   flex-direction: column;
-  /* As tall as the wheel, so the two panes share their top and bottom lines. */
-  height: max(var(--keys-wheel), calc(360px * var(--scale)));
-  min-height: 0;
+  /* It fills to the bottom of the stage (P7); this floor is the wheel's height, so a short window scrolls the page. */
+  min-height: max(var(--keys-wheel), calc(360px * var(--scale)));
 }
 
 .keys-tracks__toolbar {

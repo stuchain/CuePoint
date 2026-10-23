@@ -82,7 +82,8 @@ describe("the two panes (D12)", () => {
     const panes = rule(".keys-page__top");
     expect(panes).toContain("display: flex");
     expect(panes).toContain("flex-wrap: wrap");
-    expect(panes).toContain("align-items: flex-start");
+    // P7: one stage, so the panes stretch to share their top and bottom edges.
+    expect(panes).toContain("align-items: stretch");
   });
 
   it("lets the track list take the rest of the row, with a floor under which it drops below the wheel", () => {
@@ -102,13 +103,24 @@ describe("the two panes (D12)", () => {
   });
 
   it("makes the wheel and the list the same box, so switching moves nothing (C249)", () => {
-    expect(rule(".keys-page__view")).toContain("flex: 0 0 var(--keys-wheel)");
+    // P7: the wheel has its own padded pane, so the box is the wheel plus 2 x space-lg.
+    expect(rule(".keys-page__view")).toContain("flex: 0 0 calc(var(--keys-wheel) + 2 * var(--space-lg))");
+    expect(rule(".keys-page__view")).toContain("background: var(--bg-panel)");
+    expect(rule(".keys-page__view")).toContain("padding: var(--space-lg)");
     expect(keysCss).not.toContain('data-view="list"');
   });
 
   it("holds Sources and the track list to the wheel's height, so the panes share their lines", () => {
-    expect(rule(".keys-sources__body")).toContain("height: var(--keys-wheel)");
-    expect(rule(".keys-tracks")).toContain("var(--keys-wheel)");
+    // P7: they stretch with the row instead of a fixed height; the list keeps the wheel's height as its floor,
+    // and the narrow layout gives Sources the wheel's height back.
+    expect(rule(".keys-sources__body")).not.toContain("height: var(--keys-wheel)");
+    expect(rule(".keys-sources__body")).toContain("flex: 1 1 0");
+    expect(rule(".keys-tracks")).toContain("min-height: max(var(--keys-wheel)");
+    expect(rule(".keys-tracks")).toContain("flex: 1 1 auto");
+    const narrow = parseRules(stripComments(keysCss)).find(
+      (r) => r.selector === ".keys-sources__body" && r.context.startsWith("@container content"),
+    );
+    expect(narrow?.body).toContain("height: var(--keys-wheel)");
   });
 
   it("draws no second divider under the header and adds no padding offset of its own (C35, C219)", () => {

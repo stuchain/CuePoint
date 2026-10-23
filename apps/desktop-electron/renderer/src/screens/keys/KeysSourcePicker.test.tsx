@@ -186,10 +186,11 @@ describe("KeysSourcePicker", () => {
     expect(screen.getByRole("searchbox", { name: "Search sources" })).toHaveFocus();
   });
 
-  it("is as tall as the wheel, its rows scrolling inside", () => {
+  it("is as tall as the wheel's pane (it stretches with the row, P7), its rows scrolling inside", () => {
     const start = css.indexOf(".keys-sources__body {");
     const body = css.slice(start, css.indexOf("}", start));
-    expect(body).toContain("height: var(--keys-wheel)");
+    expect(body).toContain("flex: 1 1 0");
+    expect(body).toContain("min-height: 0");
     expect(body).not.toContain("max-height");
   });
 
