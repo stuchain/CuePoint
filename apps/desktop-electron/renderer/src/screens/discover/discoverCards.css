@@ -112,7 +112,8 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: color-mix(in srgb, var(--accent-primary) 22%, var(--bg-panel-alt));
+  /* A slab on the alt tone (P23); violet is for selected and "do this", not for art. */
+  background: var(--bg-panel-alt);
 }
 
 /* No picture: the shared placeholder as a short band, not a card-wide empty square (C254). */

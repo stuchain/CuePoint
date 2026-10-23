@@ -23,3 +23,11 @@ describe("Discover cards (C254)", () => {
     expect(tick).not.toMatch(/padding/);
   });
 });
+
+describe("Discover cards, P23", () => {
+  it("sits the art on the alt slab, not an accent tint", () => {
+    const art = body(".discover-card__art");
+    expect(art).toMatch(/background:\s*var\(--bg-panel-alt\)/);
+    expect(art).not.toMatch(/accent/);
+  });
+});

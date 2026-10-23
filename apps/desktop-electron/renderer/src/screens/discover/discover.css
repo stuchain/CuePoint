@@ -167,7 +167,8 @@
   gap: var(--space-xs);
   width: 100%;
   padding: var(--space-md);
-  border: var(--hairline) solid var(--border-muted);
+  /* No frame (P23): the tone is the edge. */
+  border: 0;
   background: var(--bg-panel);
   color: var(--fg-primary);
   text-align: left;
@@ -183,8 +184,6 @@
 .discover-runs__item--selected {
   background: var(--selected-row-background);
   background-origin: border-box;
-  /* Transparent so the accent bar, drawn from the border edge, shows in full. */
-  border-left-color: transparent;
 }
 
 /* The title takes the whole line and is cut with an ellipsis; the state chip sits below it (C252). */
@@ -261,11 +260,13 @@
 /* ---------------------------------------------------------------- new run */
 
 .discover-new {
-  /* The header leaves 12 under its rule, and the notices 12 under themselves: no padding of its own (C31). */
+  /* The header leaves 12 under its rule, and the notices 12 under themselves: no padding of its own (C31).
+     The dig is one pane on the panel tone, with no frame (P14). */
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  background: var(--bg-panel);
 }
 
 /* What scrolls: the form and the dig bar under it. */
@@ -279,7 +280,7 @@
   overflow-y: auto;
   /* No bottom padding: a sticky bar stops at the scroller's padding edge, so any padding here
      would leave the bar floating above the bottom with the form's text showing beneath it. */
-  padding: 0;
+  padding: var(--space-lg) var(--space-lg) 0;
 }
 
 .discover-new__grid {
@@ -288,10 +289,20 @@
   gap: var(--space-xl);
 }
 
-/* The two form cards (Card): the box and its title row come from the component. */
+/* The form's sections (Card): the title row and the body come from the component; here they sit on the
+   pane with no card of their own (P14). */
 .discover-new__genres,
 .discover-new__scope {
   margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* Artists and Labels: two headed sections, a divider between them with 16 either side (P14). */
+.discover-new__scope + .discover-new__scope {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-xl);
+  border-top: var(--divider);
 }
 
 /* The genre card stretches to the height of the scope column beside it (C53). */
@@ -308,7 +319,7 @@
 .discover-new__column {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: 0;
   min-width: 0;
 }
 
@@ -365,7 +376,7 @@
   min-height: var(--toolbar-height);
   padding: var(--toolbar-padding);
   border-top: var(--divider);
-  background: var(--bg-panel);
+  background: var(--bg-between);
   font-size: var(--text-body);
   /* Stays in view at the foot of the scrolling form. */
   position: sticky;

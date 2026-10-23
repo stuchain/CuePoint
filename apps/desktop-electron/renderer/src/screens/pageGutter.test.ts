@@ -81,7 +81,8 @@ describe("the shared page margin", () => {
       ["discover page header block", discover, ".discover-page__header"],
       ["discover half", discover, ".discover-page__half"],
       ["discover run header", discover, ".discover-run__header"],
-      ["discover new body", discover, ".discover-new__body"],
+      // P14: "discover new body" moved out of this list. New dig is a panel-tone pane now, and the
+      // 12 inside its tone is the pane's own padding (the page margin stays outside the tone); see the next test.
       ["clean playlists", playlists, ".playlists"],
       ["clean match review", match, ".review"],
       ["clean past searches", match, ".match-past"],
@@ -98,6 +99,11 @@ describe("the shared page margin", () => {
       const sides = parts.length === 1 ? [parts[0]] : parts.length === 4 ? [parts[1], parts[3]] : [parts[1]];
       for (const side of sides) expect(side, `${name} side padding`).toBe("0");
     }
+  });
+
+  it("pads New dig's pane inside its own tone, never at the bottom where the sticky bar sits (P14)", () => {
+    expect(decls(discover, ".discover-new")["background"]).toBe("var(--bg-panel)");
+    expect(decls(discover, ".discover-new__body")["padding"]).toBe("var(--space-lg) var(--space-lg) 0");
   });
 
   it("is backed by the sticky header's backdrop", () => {

@@ -174,10 +174,11 @@ describe("the dig bar", () => {
     // Flush with the bottom of the scroller (a sticky bar stops at the scroller's padding edge, so
     // the body has none), and the page's one panel bar: no accent tint, no raw border.
     const body = /\.discover-new__body \{([^}]*)\}/.exec(css)?.[1] ?? "";
-    expect(body).toMatch(/padding: 0;/);
-    expect(body).not.toMatch(/padding-bottom|padding: 0 0 var/);
+    // P14: the pane has 12 at the top and the sides (it is a panel-tone pane now), and still none below.
+    expect(body).toMatch(/padding: var\(--space-lg\) var\(--space-lg\) 0;/);
+    expect(body).not.toMatch(/padding-bottom/);
     const barRule = /\.discover-new__bar \{([^}]*)\}/.exec(css)?.[1] ?? "";
-    expect(barRule).toContain("background: var(--bg-panel)");
+    expect(barRule).toContain("background: var(--bg-between)"); // P14 (was --bg-panel)
     expect(barRule).toContain("min-height: var(--toolbar-height)");
     expect(barRule).not.toMatch(/accent|color-mix|border: 1px/);
     expect(css).toMatch(/\.discover-new__summary \{[^}]*text-overflow: ellipsis[^}]*white-space: nowrap/);
