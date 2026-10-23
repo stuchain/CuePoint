@@ -17,3 +17,15 @@
   flex-direction: column;
   gap: var(--space-md);
 }
+
+/* A row of buttons: the first keeps its frame, the rest are quiet (P63), the look of Button.css's quiet
+   bars: no fill or frame until the pointer is over them. */
+.about-updates__row .cp-btn--secondary ~ .cp-btn--secondary:not(:disabled):not([aria-disabled="true"]) {
+  border-color: transparent;
+  background: transparent;
+}
+
+.about-updates__row .cp-btn--secondary ~ .cp-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--border-control);
+  background: var(--hover-fill);
+}

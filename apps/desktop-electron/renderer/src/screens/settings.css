@@ -227,3 +227,15 @@
   align-items: center;
   gap: var(--space-md);
 }
+
+/* A row of buttons: the first keeps its frame, the rest are quiet (P17), the look of Button.css's quiet
+   bars: no fill or frame until the pointer is over them. */
+.settings-actions .cp-btn--secondary ~ .cp-btn--secondary:not(:disabled):not([aria-disabled="true"]) {
+  border-color: transparent;
+  background: transparent;
+}
+
+.settings-actions .cp-btn--secondary ~ .cp-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--border-control);
+  background: var(--hover-fill);
+}

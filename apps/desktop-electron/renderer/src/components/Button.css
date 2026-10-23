@@ -103,6 +103,48 @@
   border-color: transparent;
 }
 
+/*
+ * Quiet in bars, rows and cards (P3): inside the bars above a list, the selection bars, a pane's head,
+ * Track details' action row, a notice, and the small buttons in a table or a card, a grey secondary
+ * button loses its fill and frame. They come back on hover. It keeps its words. The panel's one action
+ * wears `cp-btn--framed`; a toggle that is on keeps its violet line and tint (D1). Dialogs and the page
+ * header are not in the list, so their buttons stay framed. This is the one rule for all of them.
+ */
+:where(.cp-toolbar, .cp-filter-bar, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons)
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]),
+:where(.track-table, .cp-data-table, .cp-card)
+  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--fg-primary);
+}
+
+:where(.cp-toolbar, .cp-filter-bar, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons)
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):hover:not(:disabled):not([aria-disabled="true"]),
+:where(.track-table, .cp-data-table, .cp-card)
+  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--hover-fill);
+  border-color: var(--border-control);
+}
+
+/* Greyed, the same quiet buttons lose their panel fill and frame too, and keep the greyed words. */
+:where(.cp-toolbar, .cp-filter-bar, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons)
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):is(:disabled, [aria-disabled="true"]):not(.cp-btn--loading),
+:where(.track-table, .cp-data-table, .cp-card)
+  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):is(:disabled, [aria-disabled="true"]):not(.cp-btn--loading) {
+  background: transparent;
+  border-color: transparent;
+}
+
 /* Small (T12): rows and chips. It has no minimum width (C120): it is as wide as its words. */
 .cp-btn--sm {
   min-width: 0;

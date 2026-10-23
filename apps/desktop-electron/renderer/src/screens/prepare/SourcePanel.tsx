@@ -221,6 +221,7 @@ export function SourcePanel(props: SourcePanelProps) {
         >
           <Button
             variant="secondary"
+            className="cp-btn--framed"
             onClick={() => (picked.length === 0 ? pickTracks() : props.onInsert(picked))}
           >
             {insertLabel(picked.length)}

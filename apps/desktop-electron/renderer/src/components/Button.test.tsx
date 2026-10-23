@@ -207,3 +207,34 @@ describe("Button", () => {
     expect(css).not.toMatch(/\.cp-btn--sm\s*\{[^}]*calc\(var\(--control-height\) \* 0\.8\)/);
   });
 });
+
+describe("the quiet secondary button in bars, rows and cards (P3)", () => {
+  const rules = parseRules(stripComments(css)).filter(
+    (r) => r.selector.includes(".cp-toolbar") && r.selector.includes(".cp-btn--secondary"),
+  );
+  const rest = rules.filter((r) => !/:hover|:is\(:disabled/.test(r.selector));
+  const hover = rules.filter((r) => /:hover/.test(r.selector));
+
+  it("has one rule that strips the fill and frame in the bars and, for small buttons, in tables and cards", () => {
+    expect(rest).toHaveLength(1);
+    const selector = rest[0]!.selector;
+    for (const container of [".cp-toolbar", ".cp-filter-bar", ".cp-selection-bar", ".cp-track-actions", ".prepare-row-buttons"]) {
+      expect(selector, container).toContain(container);
+    }
+    expect(selector).toMatch(/:where\(\.track-table, \.cp-data-table, \.cp-card\)\s+\.cp-btn--secondary\.cp-btn--sm/);
+    expect(rest[0]!.body).toMatch(/background:\s*transparent/);
+    expect(rest[0]!.body).toMatch(/border-color:\s*transparent/);
+  });
+
+  it("leaves a framed button and a toggle that is on alone", () => {
+    expect(rest[0]!.selector).toContain(":not(.cp-btn--framed)");
+    expect(rest[0]!.selector).toContain(':not([aria-pressed="true"])');
+  });
+
+  it("brings the fill and frame back on hover, never while disabled", () => {
+    expect(hover).toHaveLength(1);
+    expect(hover[0]!.selector).toContain(":hover:not(:disabled)");
+    expect(hover[0]!.body).toMatch(/background:\s*var\(--hover-fill\)/);
+    expect(hover[0]!.body).toMatch(/border-color:\s*var\(--border-control\)/);
+  });
+});

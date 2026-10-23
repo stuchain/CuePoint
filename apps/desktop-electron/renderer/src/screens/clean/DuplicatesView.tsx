@@ -383,6 +383,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         </label>
         <Button
           variant="secondary"
+          className="cp-btn--framed"
           disabled={jobs.running !== null}
           loading={jobs.running === "scan"}
           onClick={scan}

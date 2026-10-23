@@ -137,6 +137,13 @@ describe("the check button (K4)", () => {
     );
   });
 
+  it("frames its one action, which the quiet bar buttons would otherwise strip (P3)", async () => {
+    renderView(CHECKED);
+    await screen.findByText("Track 1");
+
+    expect(screen.getByRole("button", { name: "Check again" })).toHaveClass("cp-btn--framed");
+  });
+
   it("reads 'Check 12 again' with 12 rows selected, and checks those rows", async () => {
     renderView(CHECKED);
     fireEvent.click(await screen.findByText("Track 1"));

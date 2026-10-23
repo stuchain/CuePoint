@@ -189,6 +189,7 @@ export function MissingFilesView({
   const checkButton = neverChecked ? (
     <Button
       variant="secondary"
+      className="cp-btn--framed"
       disabled={running}
       loading={jobs.running === "check-all"}
       onClick={() => check("check-all", WHOLE_LIBRARY_SELECTION)}
@@ -198,6 +199,7 @@ export function MissingFilesView({
   ) : (
     <Button
       variant="secondary"
+      className="cp-btn--framed"
       disabled={running}
       loading={jobs.running === "check-again"}
       onClick={() =>
