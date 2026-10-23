@@ -23,7 +23,8 @@
   min-width: 0;
   min-height: var(--control-height);
   padding: 0 calc(var(--icon-size-sm) + var(--space-sm) * 2);
-  border: var(--control-border-width) solid var(--border-control);
+  /* P31: sunken, no frame until hover or focus; the frame is transparent so nothing moves. */
+  border: var(--control-border-width) solid transparent;
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-control);
@@ -34,7 +35,11 @@
 /* One hover for every control (area 79). */
 .cp-search-field__input:hover:not(:disabled):not([aria-disabled="true"]):not(:focus-visible) {
   border-color: var(--hover-border);
-  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
+}
+
+/* The token focus ring stays; the line under it turns violet too (P31). */
+.cp-search-field:focus-within .cp-search-field__input:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--accent-primary);
 }
 
 .cp-search-field__input:disabled,

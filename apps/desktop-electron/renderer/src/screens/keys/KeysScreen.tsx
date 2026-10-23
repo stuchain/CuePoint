@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { EntityKind, FilterRuleSet, LibraryPlaylistNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Tabs } from "../../components/Tabs";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
@@ -530,20 +531,17 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
               heading={chosenAny ? `Tracks in ${choiceWords(choice)}` : "Tracks"}
               rules={shownRules}
               viewSwitch={
-                <span className="keys-page__actions" role="group" aria-label="View">
-                  {VIEWS.map((item) => (
-                    <Button
-                      key={item.id}
-                      variant="secondary"
-                      aria-pressed={view === item.id}
-                      onClick={() => {
-                        setView(item.id);
-                        saveView(item.id);
-                      }}
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
+                <span className="keys-page__actions">
+                  <Tabs
+                    tabs={VIEWS}
+                    activeId={view}
+                    variant="sub"
+                    onChange={(id) => {
+                      const next = id as KeysView;
+                      setView(next);
+                      saveView(next);
+                    }}
+                  />
                 </span>
               }
               openInLibrary={{ run: openInLibrary, disabledReason: needChoice ? SELECT_A_KEY : null }}

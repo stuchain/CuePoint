@@ -281,8 +281,8 @@ const countsList = () => screen.getByRole("group", { name: "Keys in these source
 const wheel = () => screen.getByRole("group", { name: "Keys" });
 const rowButton = (code: string) =>
   within(countsList()).getByRole("button", { name: new RegExp(`^${code},`) });
-const showWheel = () => fireEvent.click(screen.getByRole("button", { name: "Wheel" }));
-const showList = () => fireEvent.click(screen.getByRole("button", { name: "List" }));
+const showWheel = () => fireEvent.click(screen.getByRole("tab", { name: "Wheel" }));
+const showList = () => fireEvent.click(screen.getByRole("tab", { name: "List" }));
 const caption = () => document.querySelector(".keys-page__caption") as HTMLElement;
 const trackToolbar = () => screen.getByRole("toolbar", { name: "Track list" });
 const whichTracks = () => within(sourcesPanel()).getByRole("combobox", { name: "Which tracks" });
@@ -564,7 +564,7 @@ describe("the counts", () => {
 });
 
 describe("the Wheel | List switch (K15)", () => {
-  const tab = (name: "Wheel" | "List") => screen.getByRole("button", { name });
+  const tab = (name: "Wheel" | "List") => screen.getByRole("tab", { name });
 
   it("sits in the track list's toolbar, so nothing moves when it is used (D12, C249)", async () => {
     localStorage.clear();
@@ -572,18 +572,19 @@ describe("the Wheel | List switch (K15)", () => {
     await screen.findByRole("group", { name: "Keys" }, LOADED);
     const bar = trackToolbar();
     expect(bar).toHaveClass("cp-toolbar");
-    expect(within(bar).getByRole("button", { name: "Wheel" })).toBeInTheDocument();
-    expect(within(bar).getByRole("button", { name: "List" })).toBeInTheDocument();
-    // The view's own box is not a second place for the switch.
-    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(within(bar).getByRole("tab", { name: "Wheel" })).toBeInTheDocument();
+    expect(within(bar).getByRole("tab", { name: "List" })).toBeInTheDocument();
+    // The view's own box is not a second place for the switch: the one tablist is the toolbar's (P33).
+    expect(screen.getAllByRole("tablist")).toHaveLength(1);
+    expect(within(bar).getByRole("tablist")).toHaveClass("cp-tabs--sub");
   });
 
   it("is visible above the counts, one view at a time, on the wheel at first", async () => {
     localStorage.clear();
     renderKeys();
     await screen.findByRole("group", { name: "Keys" }, LOADED);
-    expect(tab("Wheel")).toHaveAttribute("aria-pressed", "true");
-    expect(tab("List")).toHaveAttribute("aria-pressed", "false");
+    expect(tab("Wheel")).toHaveAttribute("aria-selected", "true");
+    expect(tab("List")).toHaveAttribute("aria-selected", "false");
     expect(wheel()).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Keys in these sources" })).not.toBeInTheDocument();
   });
@@ -594,7 +595,7 @@ describe("the Wheel | List switch (K15)", () => {
     await screen.findByRole("group", { name: "Keys" }, LOADED);
 
     showList();
-    expect(tab("List")).toHaveAttribute("aria-pressed", "true");
+    expect(tab("List")).toHaveAttribute("aria-selected", "true");
     expect(countsList()).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Keys" })).not.toBeInTheDocument();
     expect(rowButton("8A")).toHaveTextContent("12");
@@ -622,7 +623,7 @@ describe("the Wheel | List switch (K15)", () => {
 
     renderKeys();
     await findList();
-    expect(tab("List")).toHaveAttribute("aria-pressed", "true");
+    expect(tab("List")).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByRole("group", { name: "Keys" })).not.toBeInTheDocument();
     showWheel();
     expect(localStorage.getItem("cuepoint-keys-view")).toBe("wheel");

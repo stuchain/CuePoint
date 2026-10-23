@@ -31,12 +31,15 @@
 
 .cp-playlist-pane__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   /* "from Rekordbox" goes under the title in a narrow pane, not past its edge. */
   flex-wrap: wrap;
   gap: 0 var(--space-sm);
-  padding: var(--space-sm);
+  /* P32: every pane head is one toolbar tall, on the pane's tone. */
+  box-sizing: border-box;
+  min-block-size: var(--toolbar-height);
+  padding: var(--space-xs) var(--space-sm);
   border-bottom: var(--divider);
   background: transparent;
 }

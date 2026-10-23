@@ -135,7 +135,7 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     const barBox = await trackBar.boundingBox();
     expect(barBox!.x, "toolbar is right of the wheel").toBeGreaterThanOrEqual(wheelBox!.x + wheelBox!.width);
     expect(Math.abs(barBox!.y - wheelBox!.y), "toolbar and wheel share their top").toBeLessThanOrEqual(1);
-    await trackBar.getByRole("button", { name: "List" }).click();
+    await trackBar.getByRole("tab", { name: "List" }).click();
     const list = win.getByRole("group", { name: "Keys in these sources" });
     // The exact count on a key's row (its count cell, not a substring of the row).
     const countOf = (code: string) =>
