@@ -71,8 +71,10 @@
   --hover-fill: var(--bg-panel-alt);
   /* The one bar (area 68): horizontal for ranked lists (RankBar), vertical for ranges (PixelBars).
      Flat accent, no outline, the same hover; a ranked bar is this thick. */
-  --chart-bar: var(--accent-primary);
-  --chart-bar-hover: var(--accent-primary-hover);
+  --chart-bar: color-mix(in srgb, var(--accent-primary) 75%, transparent);
+  /* P58: the leader of a list and a hovered bar are the full accent; the rest sit at 75%. */
+  --chart-bar-lead: var(--accent-primary);
+  --chart-bar-hover: var(--accent-primary);
   --chart-bar-outline: transparent;
   --chart-bar-thickness: round(nearest, calc(8px * var(--scale)), 1px);
   /* Field widths (area 87): short, standard (the default, at most this), full is the container. */
@@ -235,7 +237,13 @@
   --reading-width: 60ch;
   --tree-indent: calc(12px * var(--scale));
   --gap-box: var(--space-xl);
-  --resizer-hover: var(--accent-primary);
+  /* P60: a thin violet line, centred on an 8px hit that is invisible until hover or drag. */
+  --resizer-hover: linear-gradient(
+    to right,
+    transparent calc(50% - var(--selected-bar-width) / 2),
+    var(--accent-primary) 0 calc(50% + var(--selected-bar-width) / 2),
+    transparent 0
+  );
   --row-end-inset: var(--space-sm);
   --search-width: round(nearest, calc(205px * var(--scale)), 1px);
 

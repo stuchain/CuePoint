@@ -29,7 +29,8 @@
   top: 0;
   left: 0;
   bottom: 0;
-  width: var(--space-sm);
+  /* An 8px hit (P60); the line shows only on hover or drag. */
+  width: var(--space-md);
   z-index: 1;
   cursor: col-resize;
   background: transparent;

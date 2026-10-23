@@ -18,7 +18,8 @@
 }
 
 .log-viewer-dialog__auto {
-  font-size: var(--text-body);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
   color: var(--fg-primary);
 }
 
@@ -28,11 +29,12 @@
 
 .log-viewer-dialog__output {
   margin: 0;
-  padding: var(--space-sm);
-  border: var(--divider);
-  background: var(--bg-app);
+  padding: var(--space-md);
+  /* P59: sunken, no frame; Inter-sized mono at the prose line height. */
+  border: 0;
+  background: var(--bg-input);
   font-family: var(--font-mono);
-  font-size: var(--text-body);
-  line-height: 1.4;
+  font-size: var(--control-font-size);
+  line-height: var(--line-height-prose);
   white-space: pre-wrap;
 }

@@ -70,7 +70,7 @@
   min-height: 1lh;
   color: var(--fg-muted);
   font-family: var(--font-data);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label);
 }
 
 /* The text table for screen readers: in the page, not on it. */

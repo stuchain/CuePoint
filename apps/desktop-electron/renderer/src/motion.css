@@ -81,9 +81,9 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc(50% - var(--motion-step-px) / 2);
-  width: var(--motion-step-px);
-  background: var(--accent-info);
+  left: calc(50% - var(--selected-bar-width) / 2);
+  width: var(--selected-bar-width);
+  background: var(--accent-primary);
   opacity: 0;
   transform: translateY(calc(var(--motion-step-px) * -1));
   transition:

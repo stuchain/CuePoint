@@ -2,7 +2,10 @@
 .cp-release-notes {
   overflow-y: auto;
   overflow-wrap: anywhere;
-  line-height: 1.5;
+  /* P59: Inter at the control size; the headings below stay in the voice. */
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
+  line-height: var(--line-height-prose);
 }
 
 .cp-release-notes h3,
@@ -10,7 +13,7 @@
 .cp-release-notes h5 {
   font-family: var(--font-voice);
   margin: var(--space-md) 0 var(--space-xs);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-section);
 }
 
 .cp-release-notes > :first-child {
@@ -30,8 +33,9 @@
 
 .cp-release-notes code {
   padding: 0 var(--space-xs);
-  background: var(--bg-app);
-  border: var(--divider);
+  /* P59: inline code is sunken, no line. */
+  background: var(--bg-input);
+  border: 0;
   font-family: var(--font-mono);
   font-size: 0.9em;
 }

@@ -6,14 +6,15 @@
 
 .cp-fit-bar {
   display: inline-flex;
-  gap: calc(2px * var(--scale));
+  gap: var(--hairline);
   vertical-align: middle;
 }
 
+/* P58: blocks 4 wide with a hairline gap; an empty block is the muted text colour at 30%. */
 .cp-fit-bar__block {
-  width: calc(6px * var(--scale));
+  inline-size: var(--space-xs);
   height: calc(10px * var(--scale));
-  background: var(--border-muted);
+  background: color-mix(in srgb, var(--fg-muted) 30%, transparent);
 }
 
 .cp-fit-bar__block--filled {

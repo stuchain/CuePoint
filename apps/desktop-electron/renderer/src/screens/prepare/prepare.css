@@ -203,9 +203,18 @@
 }
 
 .prepare-layout__divider {
+  position: relative;
   cursor: col-resize;
   /* Invisible until it is reached (P8): the panes' own tones are the edge. */
   background: transparent;
+}
+
+/* The track is 4 wide; the hit is 8 (P60): the pseudo-element reaches 2 either side. */
+.prepare-layout__divider::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline: calc(-2px * var(--scale));
 }
 
 /* Hidden while Track details are open (C226): the flex display above would show it anyway. */
