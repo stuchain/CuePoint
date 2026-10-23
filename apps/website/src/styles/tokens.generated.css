@@ -40,8 +40,9 @@
   --press-shade: color-mix(in srgb, var(--bevel-shadow) 40%, transparent);
   --hover-border: var(--fg-muted);
   --hover-fill: var(--bg-panel-alt);
-  --chart-bar: var(--accent-primary);
-  --chart-bar-hover: var(--accent-primary-hover);
+  --chart-bar: color-mix(in srgb, var(--accent-primary) 75%, transparent);
+  --chart-bar-lead: var(--accent-primary);
+  --chart-bar-hover: var(--accent-primary);
   --chart-bar-outline: transparent;
   --chart-bar-thickness: 0.625rem;
   --field-width-short: 9.375rem;
@@ -122,7 +123,7 @@
   --reading-width: 60ch;
   --tree-indent: 0.9375rem;
   --gap-box: var(--space-xl);
-  --resizer-hover: var(--accent-primary);
+  --resizer-hover: linear-gradient( to right, transparent calc(50% - var(--selected-bar-width) / 2), var(--accent-primary) 0 calc(50% + var(--selected-bar-width) / 2), transparent 0 );
   --row-end-inset: var(--space-sm);
   --search-width: 16rem;
   --health-ok: var(--fg-disabled);
@@ -377,7 +378,7 @@
   --border-light: #e0fbfc;
   --border-muted: #526a84;
   --row-divider: #2e4360;
-  --hover-fill: #3a5577;
+  --hover-fill: #324c6b;
   --border-control: #98c1d9;
   --tab-underline-color: #b673f0;
   --bevel-highlight: #98c1d9;
