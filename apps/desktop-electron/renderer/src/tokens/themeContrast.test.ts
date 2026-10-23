@@ -223,6 +223,17 @@ describe.each(BUILT_IN)("text pairs in %s", (_name, t) => {
     }
   });
 
+  // P1, P67: the tone/line tokens of tokens.css, computed here from the theme's own values.
+  it("reads --fg-muted-on-slab (muted lifted 20% towards the text) at 4.5:1 on the alt panel", () => {
+    const words = mixHex(t["fg-muted"]!, t["fg-primary"]!, 80);
+    expect(contrastRatio(words, t["bg-panel-alt"]!)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("draws --divider-color (border-muted at 70% over the panel) at 1.3:1 or more on the panel", () => {
+    const line = mixHex(t["border-muted"]!, t["bg-panel"]!, 70);
+    expect(contrastRatio(line, t["bg-panel"]!)).toBeGreaterThanOrEqual(1.3);
+  });
+
   it("reads the accent (the playing track's title, the first-steps chip) at 4.5:1 on the rows", () => {
     expect(contrastRatio(t["accent-primary"]!, t["bg-input"]!)).toBeGreaterThanOrEqual(4.5);
   });

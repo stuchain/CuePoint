@@ -46,6 +46,9 @@ const SHEETS: Record<string, string> = {
   prepare,
 };
 
+/** The sheets that hold a floating surface (WP5 turns the shadow on in each). */
+const POPOVER_SHEETS: string[] = [];
+
 const HEAVY = /--shadow-(panel|badge|bevel[a-z-]*|modal|inset-deep)\b/;
 
 describe.each(Object.entries(SHEETS))("%s stylesheet", (name, css) => {
@@ -57,5 +60,10 @@ describe.each(Object.entries(SHEETS))("%s stylesheet", (name, css) => {
 
   it("uses --shadow-dialog only in Modal", () => {
     expect(text.includes("--shadow-dialog")).toBe(name === "Modal");
+  });
+
+  // P12 (DEC-299 amends C16a): the floating sheets lift with the one popover shadow; no other sheet does.
+  it("uses --shadow-popover only in the floating sheets", () => {
+    expect(text.includes("--shadow-popover")).toBe(POPOVER_SHEETS.includes(name));
   });
 });

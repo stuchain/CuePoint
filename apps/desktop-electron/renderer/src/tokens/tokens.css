@@ -32,7 +32,8 @@
   --focus-ring-width: round(down, calc(2px * var(--scale)), 1px);
 
   /* The pixel shadows and bevels below are the website's (sync-tokens carries them to the web);
-     the app draws no menu, popover, toast or panel shadow (C16a). Dialogs keep --shadow-dialog. */
+     panels and controls draw none. Dialogs and floating surfaces lift with --shadow-dialog and
+     --shadow-popover (P11, P12; DEC-299 amends C16a). */
   --shadow-bevel: inset var(--bevel-size) var(--bevel-size) 0 var(--bevel-highlight),
     inset calc(-1 * var(--bevel-size)) calc(-1 * var(--bevel-size)) 0 var(--bevel-shadow);
   --shadow-bevel-panel: inset var(--bevel-size) var(--bevel-size) 0 var(--border-light),
@@ -79,12 +80,20 @@
     var(--accent-primary) var(--selected-bar-width),
     var(--bg-selected) var(--selected-bar-width)
   );
-  --shadow-dialog: 0 round(calc(4px * var(--scale)), 1px) round(calc(16px * var(--scale)), 1px)
-    rgba(0, 0, 0, 0.45);
+  --shadow-popover: 0 round(nearest, calc(8px * var(--scale)), 1px) round(nearest, calc(24px * var(--scale)), 1px)
+    rgba(0, 0, 0, 0.4);
+  --shadow-dialog: 0 round(nearest, calc(12px * var(--scale)), 1px) round(nearest, calc(40px * var(--scale)), 1px)
+      rgba(0, 0, 0, 0.45),
+    0 0 0 var(--hairline) color-mix(in srgb, var(--border-muted) 50%, transparent);
   --tab-underline: max(2px, round(down, calc(2px * var(--scale)), 1px));
 
   /* One divider and the text roles (G6); the colours are theme tokens. */
-  --divider: var(--hairline) solid var(--border-muted);
+  --divider-color: color-mix(in srgb, var(--border-muted) 70%, var(--bg-panel));
+  --divider: var(--hairline) solid var(--divider-color);
+  --row-line: color-mix(in srgb, var(--row-divider, var(--border-muted)) 60%, var(--bg-input));
+  --bg-between: color-mix(in srgb, var(--bg-panel) 60%, var(--bg-app));
+  --fg-muted-on-slab: color-mix(in srgb, var(--fg-muted) 80%, var(--fg-primary));
+  --popover-border: var(--hairline) solid color-mix(in srgb, var(--border-muted) 70%, transparent);
   --text-body: var(--font-size-xs);
   --text-label: var(--font-size-xs);
   --text-heading: var(--font-size-sm);
