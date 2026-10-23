@@ -27,6 +27,7 @@
   --shadow-bevel-pressed: inset calc(-1 * var(--bevel-size-sm)) calc(-1 * var(--bevel-size-sm)) 0 var(--bevel-highlight), inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-shadow);
   --shadow-panel: 5px 5px 0 var(--border-shadow);
   --shadow-modal: 10px 10px 0 var(--border-shadow);
+  --shadow-raised: 0 var(--hairline) 3px rgba(0, 0, 0, 0.35);
   --shadow-badge: 2px 2px 0 var(--border-shadow);
   --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
   --control-border-width: var(--hairline);
@@ -79,6 +80,7 @@
   --font-size-md: 1.0938rem;
   --font-size-lg: 1.4063rem;
   --font-size-xl: 1.875rem;
+  --font-size-figure: 2.0313rem;
   --font-size-page: var(--font-size-xl);
   --font-size-dialog: var(--font-size-lg);
   --font-size-section: var(--font-size-md);
@@ -103,6 +105,7 @@
   --chip-fill-mix: 16%;
   --notice-fill-mix: 8%;
   --notice-bar-width: 0.25rem;
+  --status-dot: 0.5625rem;
   --chip-text-mix: 35%;
   --modal-width-small: 28.125rem;
   --modal-width-medium: 40.625rem;
