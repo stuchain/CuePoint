@@ -13,11 +13,11 @@
   border-radius: 0;
   background: color-mix(in srgb, var(--chip-tone) var(--chip-fill-mix), transparent);
   color: var(--chip-text, color-mix(in srgb, var(--chip-tone) var(--chip-text-mix), var(--fg-primary)));
-  /* Words in the pixel face, figures in the data face (area 56): "23 left" never reads "28 left". */
-  font-family: var(--font-pixel-digits);
+  /* P2: a chip is the work, so Inter at the chip size, semibold; figures stay tabular. */
+  font-family: var(--font-control);
   font-variant-numeric: tabular-nums;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-chip);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   white-space: nowrap;
 }

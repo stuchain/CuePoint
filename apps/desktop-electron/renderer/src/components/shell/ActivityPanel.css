@@ -73,7 +73,7 @@
   border-bottom: 0;
   color: var(--fg-muted);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-medium);
 }
 
 .cp-activity__rows {

@@ -36,6 +36,7 @@
 }
 
 .settings-page__nav a {
+  font-family: var(--font-voice);
   display: flex;
   align-items: center;
   min-height: var(--row-height);

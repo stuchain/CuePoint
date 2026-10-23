@@ -39,6 +39,7 @@
 }
 
 .discover-cards__row-title {
+  font-family: var(--font-voice);
   margin: 0;
   font-size: var(--font-size-section);
   font-weight: var(--weight-strong);
@@ -156,10 +157,10 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  /* A name is data: the data face, like the tables (area 57). */
+  /* A name is data: Inter semibold, like the tables (area 57, P2). */
   font-family: var(--font-data);
   font-size: var(--font-size-sm);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-semibold);
   overflow-wrap: anywhere;
 }
 

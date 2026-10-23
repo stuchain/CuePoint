@@ -57,8 +57,11 @@
    */
   --control-border-width: var(--hairline);
   --control-height: round(nearest, calc(20px * var(--scale)), 1px);
-  --control-font-size: var(--font-size-xs);
-  --control-font-weight: var(--font-weight-regular);
+  /* P2: Inter 11 medium for every control (the work); the pixel face is the voice. 11 times 1.5 is fractional, so it rounds. */
+  --font-control: var(--font-data);
+  --font-voice: var(--font-pixel-digits);
+  --control-font-size: round(nearest, calc(11px * var(--scale)), 1px);
+  --control-font-weight: var(--font-weight-medium);
   /* Hover for every control (area 79): a shade of the text colour, and a firmer border on fields. */
   --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
   /* A press (DEC-298): the fill darkens under the pointer, drawn on the first frame. */
@@ -163,7 +166,9 @@
   --font-size-page: var(--font-size-xl);
   --font-size-dialog: var(--font-size-lg);
   --font-size-section: var(--font-size-md);
-  --font-size-label: var(--font-size-xs);
+  /* P2/P47: labels, column headers and chips are 10.5 (rounded down so it never grows past the ladder). */
+  --font-size-label: round(down, calc(10.5px * var(--scale)), 1px);
+  --font-size-chip: var(--font-size-label);
   /* The four weights (TY19): a rule names one of these, never a number. */
   --font-weight-regular: 400;
   --font-weight-medium: 500;
@@ -263,8 +268,8 @@ body,
 body {
   background: var(--bg-app);
   color: var(--fg-primary);
-  /* Pixel words, data-face figures (area 56). */
-  font-family: var(--font-pixel-digits);
+  /* P2: Inter is the working face; the pixel face is the voice (--font-voice) and is named per rule. */
+  font-family: var(--font-data);
   font-size: var(--text-body);
   /* The pixel font ships an "fi" ligature that draws "Add filter" as "Add Alter". */
   font-variant-ligatures: none;

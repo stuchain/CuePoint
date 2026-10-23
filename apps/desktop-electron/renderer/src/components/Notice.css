@@ -36,8 +36,8 @@
 }
 
 .cp-notice__title {
-  font-family: var(--font-pixel-digits);
-  font-weight: var(--weight-strong);
+  font-family: var(--font-control);
+  font-weight: var(--font-weight-semibold);
 }
 
 .cp-notice__action {

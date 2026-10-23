@@ -17,7 +17,7 @@
   border-bottom: var(--tab-underline) solid transparent;
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   cursor: pointer;
@@ -69,7 +69,7 @@
   border: 0;
   /* Muted words that stay readable on the slab (4.5:1 in every theme). */
   color: var(--fg-muted-on-slab);
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
 }
 

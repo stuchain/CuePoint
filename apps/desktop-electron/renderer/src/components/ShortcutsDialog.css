@@ -42,7 +42,7 @@
 .cp-data-table tbody th.shortcuts-dialog__group {
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
   text-align: left;
 }

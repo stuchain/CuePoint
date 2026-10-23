@@ -62,8 +62,9 @@
   background: var(--bg-panel-alt);
   border: 0;
   color: var(--fg-primary);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-control);
+  font-size: var(--font-size-chip);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* A chip that names one artist or label opens its page (DISCOVER-11). A word, not a glyph beside
@@ -93,8 +94,9 @@
   /* A transparent line, so a chosen one can draw the violet line without moving (P6). */
   border: var(--hairline) solid transparent;
   color: var(--fg-primary);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-control);
+  font-size: var(--font-size-chip);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
 }
 

@@ -18,13 +18,14 @@
 }
 
 .cp-empty-state__headline {
+  font-family: var(--font-voice);
   margin: 0;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   color: var(--fg-primary);
 }
 
-/* The description is a sentence, so Inter (D5, C55); the headline stays in the pixel face. */
+/* The description is a sentence, so Inter (D5, C55); the headline is the voice (P2). */
 .cp-empty-state__description {
   margin: 0;
   max-width: 60ch;

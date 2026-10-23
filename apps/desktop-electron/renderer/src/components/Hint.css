@@ -24,8 +24,9 @@
   box-shadow: var(--shadow-popover);
   color: var(--fg-primary);
   /* Not inherited: inside the player's meta line that would be the data font. */
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   line-height: var(--line-height-body);
   white-space: normal;
   pointer-events: none;

@@ -186,7 +186,7 @@ fieldset {
 }
 
 /*
- * One legend style: the label role (10, bold, muted). Every <legend> (see components/Fieldset)
+ * One legend style: the label role (10.5, medium, muted; P2). Every <legend> (see components/Fieldset)
  * and every small group title in the app reads like this.
  */
 legend,
@@ -194,16 +194,17 @@ legend,
   padding: 0;
   color: var(--fg-muted);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-medium);
 }
 
 /*
- * Text roles: page 24 / dialog 18 / section 14 / label 10 bold muted. One weight (700), never
- * 600 or "bold". The pixel face is the chrome's; --font-data is for data values (.cp-data), and a
+ * Text roles: page 24 / dialog 18 / section 14 / label 10.5 medium muted (P2). The pixel face is the
+ * voice (--font-voice: titles and headings); controls and labels are Inter (--font-control); --font-data is for data values (.cp-data), and a
  * line of facts, counts or notes under a title takes --font-meta, the data face, so it is one font.
  */
 .cp-text-page {
   margin: 0;
+  font-family: var(--font-voice);
   font-size: var(--font-size-page);
   font-weight: var(--weight-strong);
   color: var(--fg-primary);
@@ -211,6 +212,7 @@ legend,
 
 .cp-text-dialog {
   margin: 0;
+  font-family: var(--font-voice);
   font-size: var(--font-size-dialog);
   font-weight: var(--weight-strong);
   color: var(--fg-primary);
@@ -218,6 +220,7 @@ legend,
 
 .cp-text-section {
   margin: 0;
+  font-family: var(--font-voice);
   font-size: var(--font-size-section);
   font-weight: var(--weight-strong);
   color: var(--fg-primary);
@@ -226,7 +229,7 @@ legend,
 .cp-text-label {
   margin: 0;
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-medium);
   color: var(--fg-muted);
 }
 
@@ -240,6 +243,8 @@ legend,
   background: none;
   color: var(--link);
   font: inherit;
+  /* P37/P2: a link is a control, so the control weight. */
+  font-weight: var(--control-font-weight);
   text-decoration: none;
   cursor: pointer;
 }
@@ -253,6 +258,7 @@ a[href]:where(:not([class])):hover {
 /* A bare <a href> in prose is the one link too. */
 a[href]:where(:not([class])) {
   color: var(--link);
+  font-weight: var(--control-font-weight);
   text-decoration: none;
 }
 
@@ -303,7 +309,7 @@ a[href]:where(:not([class])) {
   color: var(--fg-primary);
   font-family: var(--font-data);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-body);
   white-space: nowrap;
 }
@@ -450,7 +456,7 @@ details > summary:has(.cp-disclosure)::before {
 .cp-facts dt {
   color: var(--fg-muted);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-medium);
 }
 
 .cp-facts dd {
@@ -526,6 +532,7 @@ details > summary:has(.cp-disclosure)::before {
 .cp-panel-header__title {
   min-width: 0;
   margin: 0;
+  font-family: var(--font-voice);
   overflow: hidden;
   font-size: var(--font-size-section);
   font-weight: var(--weight-strong);
@@ -549,7 +556,7 @@ details > summary:has(.cp-disclosure)::before {
   align-items: center;
   gap: var(--space-xs);
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--font-size-sm);
 }
 

@@ -153,6 +153,7 @@
   transform: translate(-50%, -50%);
   color: var(--fg-primary);
   font-family: var(--font-data);
+  font-weight: var(--font-weight-semibold);
   font-size: round(nearest, calc(var(--font-size-xs) * 14 / 15), 1px);
   line-height: 1.05;
   pointer-events: none;

@@ -608,8 +608,8 @@ body.prepare-resizing {
    too long gives way with an ellipsis); a button parked at the far end of a wide cell was
    scrolled to when focused, which moved the table sideways. */
 .prepare-heading__name {
-  /* The pixel face is the label's only (C250). */
-  font-family: var(--font-pixel);
+  /* The pixel face is the voice (P2, C250). */
+  font-family: var(--font-voice);
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -907,8 +907,8 @@ body.prepare-resizing {
 
 .cp-select.prepare-source__select {
   flex: 1;
-  /* Wide enough to read "The whole library" before the Insert button takes the rest. */
-  min-width: calc(112px * var(--scale));
+  /* Wide enough to read "The whole library" in Inter 11 before the Insert button takes the rest (P2). */
+  min-width: calc(124px * var(--scale));
 }
 
 /* Both tabs stay mounted once opened (area 42), stacked in the room the body has; the one not
@@ -1029,7 +1029,7 @@ body.prepare-resizing {
   padding: var(--space-xs) var(--space-sm);
   background: var(--accent-primary);
   color: var(--fg-primary);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--font-size-xs);
 }
 

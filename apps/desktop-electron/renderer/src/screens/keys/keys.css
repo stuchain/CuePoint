@@ -143,6 +143,7 @@
 
 /* A group's name is the label role (.cp-text-label); it sits 4 above its list. */
 .keys-sources__title {
+  font-family: var(--font-voice);
   margin: 0 0 var(--space-xs);
 }
 
@@ -337,6 +338,7 @@
 }
 
 .keys-tracks__heading {
+  font-family: var(--font-voice);
   margin: 0;
   white-space: nowrap;
 }

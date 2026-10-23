@@ -420,8 +420,8 @@ describe("the Statistics page (STATS-04)", () => {
     const rule = /\.rank__columns > \.rank__hash,[^{]*\.plays__columns-head > \.rank__number\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(rule).toMatch(/font-size:\s*inherit/);
     expect(rule).toMatch(/font-family:\s*inherit/);
-    // The header's own size is the shared list look's.
-    expect(grid).toMatch(/\.cp-data-grid__head\s*\{[^}]*font-size:\s*var\(--font-size-xs\)/);
+    // The header's own size is the shared list look's: the label role, 10.5 (P2).
+    expect(grid).toMatch(/\.cp-data-grid__head\s*\{[^}]*font-size:\s*var\(--font-size-label\)/);
   });
 
   it("with no library says the one empty block (Q10, Q8)", async () => {

@@ -28,9 +28,9 @@
   background: var(--bg-panel);
   border-bottom: var(--divider);
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
+  font-family: var(--font-control);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
   text-align: left;
   white-space: nowrap;
 }
@@ -70,7 +70,7 @@
 }
 
 .cp-data-table thead th.num {
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
 }
 
 /*
@@ -101,9 +101,9 @@
   background: var(--bg-panel);
   border-bottom: var(--divider);
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
+  font-family: var(--font-control);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
   text-align: left;
   white-space: nowrap;
 }

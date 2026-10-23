@@ -8,6 +8,7 @@
 .cp-release-notes h3,
 .cp-release-notes h4,
 .cp-release-notes h5 {
+  font-family: var(--font-voice);
   margin: var(--space-md) 0 var(--space-xs);
   font-size: var(--font-size-md);
 }

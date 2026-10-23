@@ -97,16 +97,18 @@ describe("one link (area 5)", () => {
 });
 
 describe("text roles and the one legend (area 4)", () => {
-  it("has page 24, dialog 18, section 14 and label 10 bold muted, and one weight", () => {
+  it("has page 24, dialog 18, section 14 and label 10.5 medium muted (P2)", () => {
     expect(rootDecl(tokens, "--font-size-page")).toBe("var(--font-size-xl)");
     expect(rootDecl(tokens, "--font-size-dialog")).toBe("var(--font-size-lg)");
     expect(rootDecl(tokens, "--font-size-section")).toBe("var(--font-size-md)");
-    expect(rootDecl(tokens, "--font-size-label")).toBe("var(--font-size-xs)");
+    // P2: 10.5 rounded down at the scale (10.5 times 1.5 is fractional).
+    expect(rootDecl(tokens, "--font-size-label")).toBe("round(down, calc(10.5px * var(--scale)), 1px)");
+    expect(rootDecl(tokens, "--font-size-chip")).toBe("var(--font-size-label)");
     expect(rootDecl(tokens, "--weight-strong")).toBe("var(--font-weight-bold)");
     expect(rootDecl(tokens, "--font-weight-bold")).toBe("700");
     const label = parseRules(stripComments(indexCss)).find((r) => r.selector === ".cp-text-label")!;
     expect(Object.fromEntries(declarations(label.body))).toMatchObject({
-      "font-weight": "var(--weight-strong)",
+      "font-weight": "var(--font-weight-medium)", // P2
       color: "var(--fg-muted)",
     });
   });
@@ -115,7 +117,7 @@ describe("text roles and the one legend (area 4)", () => {
     const legend = parseRules(stripComments(indexCss)).find((r) => selectorList(r.selector).includes("legend"))!;
     expect(Object.fromEntries(declarations(legend.body))).toMatchObject({
       "font-size": "var(--font-size-label)",
-      "font-weight": "var(--weight-strong)",
+      "font-weight": "var(--font-weight-medium)", // P2: the label role is medium, not bold
       color: "var(--fg-muted)",
     });
   });

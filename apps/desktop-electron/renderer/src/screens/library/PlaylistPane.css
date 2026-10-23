@@ -50,6 +50,7 @@
 
 /* Both section titles are section headings (C57); both heads share one padding (C43). */
 .cp-playlist-pane__title {
+  font-family: var(--font-voice);
   font-size: var(--font-size-section);
   font-weight: var(--weight-strong);
 }
@@ -135,7 +136,7 @@
   border: none;
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--font-size-xs);
   cursor: pointer;
 }

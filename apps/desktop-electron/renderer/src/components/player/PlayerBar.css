@@ -194,7 +194,9 @@
 }
 
 .cp-player-bar__title {
+  font-family: var(--font-control);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   color: var(--fg-primary);
 }
 

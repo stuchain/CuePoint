@@ -52,7 +52,7 @@ describe("Tabs", () => {
     expect(css).not.toMatch(/:where\(\.cp-tabs__tab \+ \.cp-tabs__tab\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*padding:\s*0 var\(--space-sm\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab--active\s*\{[^}]*background:\s*var\(--bg-panel\)/);
-    expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*font-size:\s*var\(--font-size-xs\)/);
+    expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*font-size:\s*var\(--control-font-size\)/);
   });
 
   it("leaves the main variant underlined", () => {

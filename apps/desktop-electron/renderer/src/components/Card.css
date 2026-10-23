@@ -21,6 +21,7 @@
 }
 
 .cp-card__title {
+  font-family: var(--font-voice);
   margin: 0;
   min-width: 0;
   font-size: var(--font-size-section);

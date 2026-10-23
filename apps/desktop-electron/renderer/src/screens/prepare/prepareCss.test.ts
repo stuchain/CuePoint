@@ -41,7 +41,7 @@ describe("the strips above the Set (C251, C49, C259)", () => {
 });
 
 describe("a chapter's band (C250)", () => {
-  it("is the panel-tone band in the pixel face with no row divider of its own, so it does not read as a data row (P18)", () => {
+  it("is the panel-tone band, its name in the voice face, with no row divider of its own, so it does not read as a data row (P18)", () => {
     const band = rule(".track-table__row.prepare-heading");
     // P18: the band is the panel tone (was panel-alt); its cells draw the row line.
     expect(band).toMatch(/background:\s*var\(--bg-panel\)/);
@@ -49,7 +49,7 @@ describe("a chapter's band (C250)", () => {
     expect(rule(".track-table__row.prepare-heading > .track-table__cell")).toMatch(/var\(--row-line\)/);
     // The pixel face is the chapter's label only, not the whole row.
     expect(band).not.toMatch(/font-family/);
-    expect(rule(".prepare-heading__name")).toMatch(/font-family:\s*var\(--font-pixel\)/);
+    expect(rule(".prepare-heading__name")).toMatch(/font-family:\s*var\(--font-voice\)/); // P2: the voice
   });
 });
 

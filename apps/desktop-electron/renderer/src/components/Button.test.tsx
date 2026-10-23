@@ -138,12 +138,13 @@ describe("Button", () => {
     expect(press.selector).toMatch(/:not\(\[aria-disabled="true"\]\)/);
   });
 
-  it("draws an on toggle (aria-pressed) as the selected fill and a 1px accent line in regular weight (D1)", () => {
+  it("draws an on toggle (aria-pressed) as the selected fill and a 1px accent line in the control weight (D1, P2)", () => {
     const rule = parseRules(stripComments(css)).find((r) => /\[aria-pressed="true"\]/.test(r.selector) && /\.cp-btn/.test(r.selector))!;
     expect(rule.body).toMatch(/background:\s*var\(--bg-selected\)/);
     expect(rule.body).toMatch(/border-color:\s*var\(--accent-primary\)/);
     expect(rule.body).toMatch(/color:\s*var\(--fg-primary\)/);
-    expect(rule.body).toMatch(/font-weight:\s*var\(--font-weight-regular\)/);
+    // P2: the pressed weight is the control weight (medium), so nothing jumps.
+    expect(rule.body).toMatch(/font-weight:\s*var\(--control-font-weight\)/);
   });
 
   it("is at least two control heights wide, except the small button (C7, C120)", () => {

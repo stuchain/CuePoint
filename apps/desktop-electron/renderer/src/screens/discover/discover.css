@@ -70,6 +70,7 @@
 }
 
 .discover-section__title {
+  font-family: var(--font-voice);
   margin: 0;
   font-size: var(--font-size-section);
   font-weight: var(--weight-strong);
@@ -188,6 +189,7 @@
 
 /* The title takes the whole line and is cut with an ellipsis; the state chip sits below it (C252). */
 .discover-runs__when {
+  font-family: var(--font-voice);
   grid-column: 1 / -1;
   min-width: 0;
   font-size: var(--font-size-sm);

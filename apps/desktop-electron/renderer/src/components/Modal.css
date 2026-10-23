@@ -57,6 +57,7 @@
 }
 
 .cp-modal__title {
+  font-family: var(--font-voice);
   margin: 0;
   font-size: var(--font-size-dialog);
   font-weight: var(--font-weight-bold);

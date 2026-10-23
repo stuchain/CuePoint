@@ -9,6 +9,9 @@
   border-radius: 0;
   --key-chip-pad: round(nearest, calc(5px * var(--scale)), 1px);
   padding: 0 var(--key-chip-pad);
+  /* P2: key codes are Inter semibold everywhere. */
+  font-family: var(--font-data);
+  font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

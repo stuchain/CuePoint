@@ -84,8 +84,8 @@
   border: none;
   background: inherit;
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-control);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-medium);
   line-height: 1.2;
   text-align: left;
@@ -417,7 +417,7 @@
   justify-content: center;
   padding: var(--space-lg);
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--font-size-sm);
   text-align: center;
 }
@@ -456,7 +456,7 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   padding: 0 var(--space-xs);
   background: var(--accent-primary);
   color: var(--fg-primary);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--font-size-xs);
   line-height: 1.4;
   pointer-events: none;
@@ -488,7 +488,7 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   padding: var(--space-lg);
   border: round(down, calc(2px * var(--scale)), 1px) dashed var(--accent-primary);
   color: var(--accent-primary);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--font-size-sm);
   text-align: center;
   pointer-events: none;

@@ -45,7 +45,7 @@
 .cp-track-detail__title {
   margin: 0;
   overflow: hidden;
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-voice);
   font-size: var(--font-size-section);
   font-weight: var(--weight-strong);
   line-height: var(--line-height-tight);
@@ -393,7 +393,7 @@
   border: var(--control-border-width) solid transparent;
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   line-height: 1;
@@ -465,7 +465,7 @@
   border: none;
   background: transparent;
   color: var(--fg-muted-on-slab);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--font-size-xs);
   line-height: 1;
   cursor: pointer;

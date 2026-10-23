@@ -148,10 +148,10 @@ describe("one square checkbox and radio (area 80)", () => {
 });
 
 describe("Toast (area 88)", () => {
-  it("is 360 times the scale wide, in the body size", () => {
+  it("is 360 times the scale wide, in the control size (P2)", () => {
     expect(toastCss).toMatch(/width:\s*calc\(360px \* var\(--scale\)\)/);
     const toast = parseRules(stripComments(toastCss)).find((r) => r.selector === ".cp-toast")!;
-    expect(toast.body).toMatch(/font-size:\s*var\(--text-body\)/);
+    expect(toast.body).toMatch(/font-size:\s*var\(--control-font-size\)/);
   });
 });
 

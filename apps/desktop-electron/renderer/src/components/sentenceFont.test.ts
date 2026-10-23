@@ -35,8 +35,9 @@ describe("sentences in the shared pieces are Inter (D5, C55)", () => {
     expect(body(css, selector)).toMatch(INTER);
   });
 
-  it("keeps a notice's short title and an empty state's headline in the pixel face", () => {
-    expect(body(noticeCss, ".cp-notice__title")).toMatch(/font-family:\s*var\(--font-pixel-digits\)/);
+  it("sets a notice's short title in the control face and an empty state's headline in the voice (P2)", () => {
+    expect(body(noticeCss, ".cp-notice__title")).toMatch(/font-family:\s*var\(--font-control\)/);
+    expect(body(emptyCss, ".cp-empty-state__headline")).toMatch(/font-family:\s*var\(--font-voice\)/);
     expect(body(emptyCss, ".cp-empty-state__headline")).not.toMatch(INTER);
   });
 });

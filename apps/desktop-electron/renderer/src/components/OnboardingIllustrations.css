@@ -4,7 +4,7 @@
   width: 100%;
   height: auto;
   font-size: 10px;
-  font-family: var(--font-pixel);
+  font-family: var(--font-voice);
 }
 
 .ob-win { fill: var(--bg-panel); stroke: var(--border-muted); }

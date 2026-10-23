@@ -1195,7 +1195,8 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(rule).toContain("min-height: var(--row-height);");
       // P1: a table header is the panel tone with the divider under it, no longer the toolbar tone.
       expect(rule).toContain("background: var(--bg-panel);");
-      expect(rule).toContain("font-family: var(--font-pixel-digits);");
+      // P2: a column header is the label role in the control face.
+      expect(rule).toContain("font-family: var(--font-control);");
       // Neither page sheet draws a header look of its own any more.
       for (const sheet of [css, playsCss]) expect(sheet).not.toContain("var(--bg-toolbar)");
     });

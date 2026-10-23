@@ -221,7 +221,7 @@
 
 .library-figures__note {
   color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
 

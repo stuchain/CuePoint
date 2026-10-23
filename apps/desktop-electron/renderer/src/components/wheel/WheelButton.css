@@ -8,8 +8,9 @@
 /* The chip as a button: the same chip, with a hand and a lit state while its wheel is open. */
 .key-chip--button {
   border: 0;
-  font: inherit;
+  /* Not `font: inherit`: the chip's face and weight (KeyChip.css, P2) must stay. */
   font-size: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 

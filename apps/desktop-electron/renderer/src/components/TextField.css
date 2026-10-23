@@ -31,7 +31,7 @@
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
 }

@@ -9,7 +9,7 @@
   padding: 0 var(--space-sm);
   border: var(--control-border-width) solid var(--border-control);
   box-shadow: none;
-  font-family: var(--font-pixel-digits);
+  font-family: var(--font-control);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   cursor: pointer;
@@ -80,12 +80,12 @@
 }
 
 /* A toggle that is on (D1, C4): the selected fill, a 1px accent line and the text colour, in
-   regular weight; the line is what says it is on, so nothing shifts or goes bold. */
+   the control weight; the line is what says it is on, so nothing shifts or goes bold (P2). */
 .cp-btn[aria-pressed="true"] {
   border-color: var(--accent-primary);
   background: var(--bg-selected);
   color: var(--fg-primary);
-  font-weight: var(--font-weight-regular);
+  font-weight: var(--control-font-weight);
 }
 
 /* Greyed by colour, not by opacity (T6): the same panel look for every variant (C2). */

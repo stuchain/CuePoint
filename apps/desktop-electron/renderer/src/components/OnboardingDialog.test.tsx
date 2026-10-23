@@ -180,9 +180,9 @@ describe("the four screens", () => {
     }
   });
 
-  it("draws the pictures in the app's pixel font and lets step 1's line wrap", () => {
+  it("draws the pictures in the voice (pixel) face and lets step 1's line wrap", () => {
     const css = illustrationsCss;
-    expect(css).toMatch(/\.ob-art\s*{[^}]*font-family:\s*var\(--font-pixel\)/);
+    expect(css).toMatch(/\.ob-art\s*{[^}]*font-family:\s*var\(--font-voice\)/); // P2: an illustration is the voice; Inter is wider than its fixed boxes
     mount();
     const art = screen.getByRole("dialog").querySelector(".onboarding-dialog__single")!;
     // Two lines, never one cut one.

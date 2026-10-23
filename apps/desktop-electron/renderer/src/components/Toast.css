@@ -27,10 +27,10 @@
   background: var(--bg-panel);
   box-shadow: var(--shadow-popover);
   color: var(--fg-primary);
-  /* The body size, like a dialog's words (area 88). */
-  font-size: var(--text-body);
-  font-weight: var(--font-weight-regular);
-  /* A sentence, so Inter (D5, C55); its buttons keep the pixel face. */
+  /* A toast is the work: the control size and weight (P2). */
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+  /* Inter (D5, C55, P2). */
   font-family: var(--font-data);
   display: flex;
   align-items: center;

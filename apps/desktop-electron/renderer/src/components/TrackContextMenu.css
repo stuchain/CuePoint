@@ -39,6 +39,7 @@
   color: var(--fg-primary);
   font: inherit;
   font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
@@ -86,7 +87,7 @@
   padding: var(--space-xs) var(--space-md) var(--space-2xs);
   color: var(--fg-muted);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-medium);
   white-space: nowrap;
 }
 

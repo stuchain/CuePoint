@@ -60,12 +60,13 @@ describe("a line of facts, counts or notes is one font (--font-meta)", () => {
   });
 
   it("leaves the run card's title, the header's title and the chips in the pixel face", () => {
-    expect(ruleBody("../screens/discover/discover.css", ".discover-runs__when")).not.toMatch(/font-family/);
+    // P2: the run card's title and the header's title carry the voice; chips are the work (--font-control).
+    expect(ruleBody("../screens/discover/discover.css", ".discover-runs__when")).toMatch(/font-family:\s*var\(--font-voice\)/);
     const titles = parseRules(stripComments(source("../components/shell/ScreenHeader.css"))).filter((r) =>
       r.selector.includes(".cp-screen-header__title"),
     );
     expect(titles.length).toBeGreaterThan(0);
     for (const rule of titles) expect(rule.body).not.toMatch(/--font-meta|--font-data/);
-    expect(source("../components/Badge.css")).toContain("var(--font-pixel-digits)");
+    expect(source("../components/Badge.css")).toContain("var(--font-control)");
   });
 });

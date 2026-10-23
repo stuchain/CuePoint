@@ -120,6 +120,7 @@
 }
 
 .cp-sidebar__brand-name {
+  font-family: var(--font-voice);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -309,6 +310,7 @@
 }
 
 .cp-sidebar__label {
+  font-family: var(--font-voice);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
