@@ -793,7 +793,10 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(async () => (await order()).length, { timeout: 15_000 }).toBe(4);
     expect(await order()).not.toContain(first[0]);
     // At twice the size the Set pane has no room even for the glyphs: one Actions ▾ opens the entry's menu.
-    await setInnerSize(app, win);
+    // "No room" depends on the window: the cohesion pass (P8/P18) gave the Set pane more room, so at the
+    // Windows inner size the five glyphs can fit at 2x, and glyphs fitting when there is room is the intended
+    // form. A narrower window makes Actions certain on every OS, whichever sans the OS draws.
+    await setInnerSize(app, win, { width: 1100, height: 735 });
     await win.evaluate(() => (localStorage.setItem("cuepoint-ui-lab-scale", "2"), localStorage.removeItem("cuepoint-prepare-set-layout-2")));
     await win.reload();
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
