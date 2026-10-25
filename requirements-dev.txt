@@ -14,7 +14,7 @@ coverage==7.13.1
 
 # Builds the pixel flat/sharp signs (scripts/build_key_signs_font.py)
 fonttools==4.60.2
-brotli==1.2.0
+brotli==1.2.1
 
 # Type stubs for mypy
 types-requests
