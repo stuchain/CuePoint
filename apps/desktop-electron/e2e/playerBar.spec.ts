@@ -231,7 +231,8 @@ test("the waveform is centred and the key chip fits", async () => {
           // The words, not the box: the right edge of the widest line of text,
           // or the box's edge where a line is cut short with an ellipsis (a
           // Range measures the whole text, overflow included).
-          const trackRight = rect(bar.querySelector(".cp-player-bar__track")!).right;
+          const trackRect = rect(bar.querySelector(".cp-player-bar__track")!);
+          const trackRight = trackRect.right;
           const textRight = Math.min(trackRight, Math.max(
             ...[".cp-player-bar__title", ".cp-player-bar__meta"].map((sel) => {
               const range = document.createRange();
@@ -240,6 +241,7 @@ test("the waveform is centred and the key chip fits", async () => {
             }),
           ));
           const sameRow = Math.abs(seek.top - controls.top) < seek.height;
+          const trackOnRow = Math.abs(seek.top - trackRect.top) < seek.height;
 
           // BAR-5: the Wheel button is whole inside the bar, and the line keeps the key as words.
           const key = bar.querySelector<HTMLElement>("[data-wheel-opener]")!;
@@ -250,6 +252,7 @@ test("the waveform is centred and the key chip fits", async () => {
           const metaHasKey = (bar.querySelector(".cp-player-bar__meta")!.textContent ?? "").includes("8A");
           return {
             sameRow,
+            trackOnRow,
             // The left group ends at the track's words (the key chip is one of them).
             gapLeft: seek.left - textRight,
             gapRight: controls.left - seek.right,
@@ -262,7 +265,11 @@ test("the waveform is centred and the key chip fits", async () => {
         // second row from 2x; a short one never does until 3x (from 2x the utility buttons fold into
         // More first).
         if (scale !== 3 && !(scale === 2 && label === "long title")) expect(r.sameRow, `seek and controls share a row, ${at}`).toBe(true);
-        if (r.sameRow) {
+        // The centring is only meaningful with the track group, the seek and the controls on one row. At 2x
+        // a long title wraps the groups (the track takes up to 40% of the bar), and the gap to the left of
+        // the seek is then measured against a track on another row, so the check would fail on layout, not on
+        // centring.
+        if (r.sameRow && r.trackOnRow) {
           expect(Math.abs(r.gapLeft - r.gapRight), `waveform centred, ${at} (left gap ${r.gapLeft}, right gap ${r.gapRight})`).toBeLessThanOrEqual(2);
         }
         expect(r.wheelWhole, `the key chip fits the bar, ${at}`).toBe(true);
