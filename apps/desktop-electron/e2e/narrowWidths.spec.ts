@@ -163,12 +163,31 @@ test.describe("the tightest rows at 1,024 px wide and 1.5x (P2)", () => {
       expect(prepare.cut, "no text in the source toolbar is cut").toEqual([]);
 
       // --- the player's meta line ---------------------------------------------------------
-      await win.evaluate(async (file) => {
-        const player = (window as never as Bridge).cuepoint.player;
-        await player.setVolume(0);
-        await player.playQueue([{ filePath: file, title: "Strobe", artist: "deadmau5", key: "8A", bpm: 128, durationSeconds: 300 }], 0);
-        await player.pause();
-      }, tone);
+      // Start the track and wait until the player really holds it: playQueue answers { ok: false } while
+      // the player is still starting, and the result used to be ignored, so the bar sometimes never named
+      // the track. Poll until playQueue is ok and the current item is the expected track, then pause.
+      await win.evaluate(async () => {
+        await (window as never as Bridge).cuepoint.player.setVolume(0);
+      });
+      await expect
+        .poll(
+          () =>
+            win.evaluate(async (file) => {
+              const player = (window as never as Bridge).cuepoint.player;
+              const result = await player.playQueue(
+                [{ filePath: file, title: "Strobe", artist: "deadmau5", key: "8A", bpm: 128, durationSeconds: 300 }],
+                0,
+              );
+              if (!result?.ok) return `playQueue refused: ${result?.code ?? "no result"}`;
+              const state = await player.getState();
+              return state?.queue?.currentItem?.title ?? null;
+            }, tone),
+          { message: "the player accepts the queue and holds Strobe", timeout: 30_000, intervals: [250, 500, 1_000, 2_000] },
+        )
+        .toBe("Strobe");
+      await win.evaluate(async () => {
+        await (window as never as Bridge).cuepoint.player.pause();
+      });
       await expect(win.locator(".cp-player-bar")).toContainText("Strobe", { timeout: 20_000 });
       const dialog = win.getByRole("dialog", { name: "Getting started" });
       if (await dialog.count()) await dialog.getByRole("button", { name: "Skip" }).click();
