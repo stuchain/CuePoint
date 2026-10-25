@@ -59,6 +59,24 @@ describe("bundled pixel font", () => {
   });
 });
 
+describe("bundled Inter", () => {
+  it("imports every weight the --font-weight-* tokens name, so no OS falls back to its own sans", () => {
+    const tokens = stripComments(sheet("tokens.css"));
+    const weights = [...tokens.matchAll(/--font-weight-[a-z]+:\s*(\d+)/g)].map((m) => m[1]);
+    expect(weights.sort()).toEqual(["400", "500", "600", "700"]);
+    const fontsCss = stripComments(sheet("fonts.css"));
+    for (const weight of weights) {
+      expect(fontsCss).toContain(`@fontsource/inter/latin-${weight}.css`);
+      expect(fontsCss).toContain(`@fontsource/inter/latin-ext-${weight}.css`);
+    }
+  });
+
+  it("the bundled family is the first family of --font-data", () => {
+    const data = /--font-data:\s*"([^"]+)"/.exec(sheet("tokens.css"))?.[1];
+    expect(data).toBe("Inter");
+  });
+});
+
 describe("key signs font", () => {
   it("covers exactly the flat and sharp signs, from files bundled with the app", () => {
     const css = stripComments(sheet("fonts.css"));

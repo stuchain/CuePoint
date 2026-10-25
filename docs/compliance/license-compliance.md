@@ -18,6 +18,7 @@ did not build, which no Python tool can see. Those are covered by
 | --- | --- | --- | --- |
 | mpv (player sidecar) | **GPL-2.0-or-later** | Unmodified binary, run as a separate child process, controlled over mpv's own JSON IPC protocol | `third_party/mpv/NOTICE.md`, `scripts/player_sidecar_manifest.json`, ADR-004 |
 | Pixelify Sans (the app font) | **OFL-1.1** | Font files bundled into the renderer build from the npm package `@fontsource/pixelify-sans`; weights 400, 600 and 700 only; nothing is fetched at run time | `apps/desktop-electron/renderer/package.json`, DEC-232 |
+| Inter (the UI and data face) | **OFL-1.1** (Rasmus Andersson) | Font files bundled into the renderer build from the npm package `@fontsource/inter`; weights 400, 500, 600 and 700, latin and latin-ext subsets; nothing is fetched at run time | `apps/desktop-electron/renderer/package.json`, `renderer/src/tokens/fonts.css` |
 
 **On the copyleft check below.** "Check for copyleft licenses (GPL, AGPL)" does not mean copyleft
 is forbidden; it means it requires a deliberate decision recorded somewhere a future reader will

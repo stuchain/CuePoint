@@ -7,12 +7,29 @@
 @import "@fontsource/pixelify-sans/700.css";
 
 /*
+ * Inter is the face of every control and figure (--font-data, --font-control), so it ships with the
+ * app too: @fontsource/inter, SIL OFL 1.1 (Rasmus Andersson). Windows and macOS do not carry it, and
+ * a fallback (Segoe UI, system-ui) is a different width on each, so controls measured differently per
+ * OS. Weights 400, 500, 600 and 700 (the --font-weight-* tokens), latin and latin-ext only (names,
+ * titles and tags in Western scripts); other scripts fall back to the system through --font-data.
+ * Nothing is requested from a font service.
+ */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-ext-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-ext-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-ext-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/inter/latin-ext-700.css";
+
+/*
  * Figures inside pixel words (area 56). The pixel face draws 2 like 8 and 5 like S, and its dash
  * like a hyphen, so a chip or a tab that says "Match 23" or "-19 LUFS" would misread. This family
  * covers only the digits, the signs, the colon and the brackets numbers sit in (unicode-range), not the comma, hyphen or full stop of ordinary words, and is
+ * drawn by the bundled Inter files (first in each src, so a figure is the same width on every OS),
  * backed by the same system sans the data face uses; --font-pixel-digits puts it in front of the
- * pixel face, so the words stay pixel and every figure is the data face. No font file is loaded:
- * it names fonts already on the machine.
+ * pixel face, so the words stay pixel and every figure is the data face.
  *
  * The two key signs are the exception: Pixelify Sans has no flat (U+266D) or sharp (U+266F), so
  * "A♭ minor" fell back to another font and the sign floated. Two small pixel-drawn files carry just
@@ -23,6 +40,7 @@
   font-family: "CuePoint Digits";
   font-weight: 400;
   src:
+    url("../../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2") format("woff2"),
     local("Inter"),
     local("Inter Regular"),
     local("Segoe UI Variable Text"),
@@ -36,6 +54,7 @@
   font-family: "CuePoint Digits";
   font-weight: 700;
   src:
+    url("../../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2") format("woff2"),
     local("Inter Bold"),
     local("Inter SemiBold"),
     local("Segoe UI Bold"),

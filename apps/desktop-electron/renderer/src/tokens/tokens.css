@@ -139,9 +139,9 @@
    * face at 10px across fourteen columns is where that identity would cost
    * legibility.
    *
-   * A system stack, not a second webfont: the packaged app must render the
-   * same offline, and bundling a second family would add weight for numerals
-   * the system already draws well. It is a token, so a theme or a later decision can
+   * Inter ships with the app (tokens/fonts.css, @fontsource/inter), so it renders the same on
+   * every OS and offline; the system stack after it only covers scripts Inter's bundled subsets
+   * lack. It is a token, so a theme or a later decision can
    * point it back at --font-pixel in one line.
    */
   --font-data: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,
