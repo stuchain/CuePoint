@@ -39,7 +39,8 @@ concurrency:
 
 jobs:
   website:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04 (2026-10), where Playwright 1.56 cannot install Chromium.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/website
@@ -124,7 +125,7 @@ jobs:
   deploy:
     needs: website
     if: github.ref == 'refs/heads/website' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pages: write
@@ -178,7 +179,7 @@ jobs:
   # Fetches the live home, robots.txt and the sitemap over HTTPS and checks the canonical is the address.
   smoke:
     needs: deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/website
