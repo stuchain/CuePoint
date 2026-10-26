@@ -166,6 +166,10 @@ test.describe("the tightest rows at 1,024 px wide and 1.5x (P2)", () => {
       // Start the track and wait until the player really holds it: playQueue answers { ok: false } while
       // the player is still starting, and the result used to be ignored, so the bar sometimes never named
       // the track. Poll until playQueue is ok and the current item is the expected track, then pause.
+      // The tone fixture lasts 0.26 s and Linux CI's PulseAudio null sink plays in real time, so a single
+      // copy ended before the pause landed and the bar fell back to "Nothing playing". The queue holds
+      // the same file 20 times (as waveformPlaces.spec.ts does): each copy is preloaded gaplessly
+      // behind the one playing, so the track is still held when the pause lands.
       await win.evaluate(async () => {
         await (window as never as Bridge).cuepoint.player.setVolume(0);
       });
@@ -174,8 +178,9 @@ test.describe("the tightest rows at 1,024 px wide and 1.5x (P2)", () => {
           () =>
             win.evaluate(async (file) => {
               const player = (window as never as Bridge).cuepoint.player;
+              const item = { filePath: file, title: "Strobe", artist: "deadmau5", key: "8A", bpm: 128, durationSeconds: 300 };
               const result = await player.playQueue(
-                [{ filePath: file, title: "Strobe", artist: "deadmau5", key: "8A", bpm: 128, durationSeconds: 300 }],
+                Array.from({ length: 20 }, () => ({ ...item })),
                 0,
               );
               if (!result?.ok) return `playQueue refused: ${result?.code ?? "no result"}`;
