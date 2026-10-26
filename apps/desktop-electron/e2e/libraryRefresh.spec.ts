@@ -284,27 +284,37 @@ test.describe("Library refresh from the renderer (LIBRARY-10)", () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
-      // Large enough that the strip's two-second discovery poll finds it while
-      // it is still running (`JOB_POLL_MS`). 60,000 was sized on a Windows
-      // machine; an M5 reads that export in well under the poll interval, so
-      // the preview started and finished between two polls and the strip never
-      // saw it. The verb itself is covered deterministically by
-      // `useActiveJob.test.ts` — what only this test shows is that a real
-      // refresh job reaches the strip, which needs it to outlive one poll on
-      // the fastest machine we know of.
+      // The preview reads a 250,000-track export: large enough that the strip's
+      // two-second discovery poll finds it while it is still running
+      // (`JOB_POLL_MS`). 60,000 was sized on a Windows machine; an M5 reads that
+      // export in well under the poll interval, so the preview started and
+      // finished between two polls and the strip never saw it. The verb itself
+      // is covered deterministically by `useActiveJob.test.ts` — what only this
+      // test shows is that a real refresh job reaches the strip, which needs it
+      // to outlive one poll on the fastest machine we know of.
+      //
+      // Only the preview has to be long, so the library it compares against is
+      // one track. Importing the big export too took 70-85 s on the Intel Mac
+      // runner, against `settle`'s 90 s, before the preview had even started.
+      await importLibrary(window, writeExport(workspace, [0]));
       const big = writeExport(
         workspace,
         Array.from({ length: 250_000 }, (_unused, i) => i),
         "big.xml",
       );
-      await importLibrary(window, big);
 
       // `force`, so the preview actually reads the whole export.
       // LIBRARY-12's fast path answers an untouched file in microseconds — long
       // over before the strip's two-second discovery poll could ever see it.
-      await window.evaluate(() =>
-        window.cuepoint!.startLibraryRefreshPreview!({ force: true }),
-      );
+      // The import's follow-up checks may still hold the library for a moment,
+      // and a library job refuses to start beside another, so ask until it starts.
+      await expect(async () => {
+        await window.evaluate(
+          (file) =>
+            window.cuepoint!.startLibraryRefreshPreview!({ xml_path: file, force: true }),
+          big,
+        );
+      }).toPass({ timeout: 30_000 });
 
       // "Checking", not "Refreshing" and not "Working": the half that only
       // reads has to be distinguishable from the half that deletes.
