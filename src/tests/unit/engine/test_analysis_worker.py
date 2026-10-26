@@ -101,6 +101,13 @@ class Worker:
         )
         return self.next()
 
+    def wait(self) -> int:
+        """Its exit code, once its output has been read to the end too."""
+        code = self.process.wait(timeout=PATIENCE)
+        for thread in self._threads:
+            thread.join(timeout=PATIENCE)
+        return code
+
     def close_stdin(self) -> None:
         assert self.process.stdin is not None
         self.process.stdin.close()
@@ -228,7 +235,7 @@ class TestTheLoop:
         worker.send(b'{"cancel": 77}\n')
         assert wire.parse_result(worker.ask(5, song, stub)).outcome == COMPUTED_READY
         worker.close_stdin()
-        assert worker.process.wait(timeout=PATIENCE) == 0
+        assert worker.wait() == 0
         assert worker.errors.count(b"analysis_worker: [analysis-worker] skipped") == 2
 
     def test_nothing_but_protocol_lines_reaches_standard_output(
@@ -238,7 +245,7 @@ class TestTheLoop:
         worker.send(b"junk\n")
         worker.ask(1, song, stub)
         worker.close_stdin()
-        assert worker.process.wait(timeout=PATIENCE) == 0
+        assert worker.wait() == 0
         # The reader thread may put the end of the stream after the exit is seen:
         # wait for it rather than read whatever is queued at this instant.
         rest: List[Optional[bytes]] = []
@@ -281,7 +288,7 @@ class TestTheEngineGoing:
         worker.send(wire.request_line(1, str(song), stub, True, True))
         decoder_pid = int(_wait_for(tmp_path / "pid"))
         worker.close_stdin()
-        assert worker.process.wait(timeout=PATIENCE) == 0
+        assert worker.wait() == 0
         assert _wait_gone(decoder_pid), "the decoder outlived the worker"
 
     def test_a_killed_engine_looks_the_same_to_the_worker(
@@ -334,7 +341,7 @@ class TestAsAProcess:
         worker.ask(1, tmp_path / "nowhere.flac", stub)  # file_gone: quiet
         worker.send(b"junk\n")
         worker.close_stdin()
-        worker.process.wait(timeout=PATIENCE)
+        worker.wait()
         assert worker.errors.startswith(b"WARNING cuepoint.engine.analysis_worker: ")
 
     def test_two_sigterms_still_end_the_decoder_and_exit_cleanly(
@@ -352,7 +359,7 @@ class TestAsAProcess:
         for _ in range(5):
             worker.process.send_signal(signal.SIGTERM)
             time.sleep(0.01)
-        assert worker.process.wait(timeout=PATIENCE) == 0, worker.errors
+        assert worker.wait() == 0, worker.errors
         assert _wait_gone(decoder_pid)
 
     def test_without_a_console_it_exits_at_once(self):
