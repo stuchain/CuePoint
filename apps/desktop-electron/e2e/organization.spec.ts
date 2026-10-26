@@ -690,6 +690,17 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       const window = await ready(app);
       const ids = Array.from({ length: 50_000 }, (_unused, index) => index + 1);
       await importCollection(window, writeExport(workspace, ids, "big.xml"));
+      // The import is followed by a file check and a duplicate scan over the same
+      // 50,000 tracks. While one runs, the strip shows it in its one slot, with its
+      // own Stop, and the batch behind it never gets the slot: let them end first.
+      await expect
+        .poll(
+          async () =>
+            (await window.evaluate(() => window.cuepoint!.listJobs!({ state: "active", limit: 5 })))
+              .active_count,
+          { timeout: 120_000 },
+        )
+        .toBe(0);
 
       await window.getByRole("link", { name: "Library" }).click();
       await expect(window.getByTestId("library-track-count")).toHaveText("50,000 tracks", {
@@ -719,9 +730,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // Stop first: it shows only while the job runs, and a fast runner can get
       // through the batch while the label and the bar are being checked.
       const strip = window.locator(".cp-status");
-      const stop = strip.getByRole("button", { name: /^stop /i });
+      const stop = strip.getByRole("button", { name: /^stop updating/i });
       await expect(stop).toBeVisible({ timeout: 60_000 });
-      await expect(strip.locator(".cp-status__job-label")).toContainText(/Updating/);
+      await expect(strip.locator(".cp-status__job-label")).toContainText(/^Updating/);
       await expect(strip.getByRole("progressbar", { name: /^progress/i })).toBeVisible();
       await stop.click();
 
