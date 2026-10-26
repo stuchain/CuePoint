@@ -716,13 +716,13 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await confirm.getByRole("button", { name: "Change 50,000 tracks" }).click();
 
       // It is a job, it says so from the shell, and it can be stopped there.
+      // Stop first: it shows only while the job runs, and a fast runner can get
+      // through the batch while the label and the bar are being checked.
       const strip = window.locator(".cp-status");
-      await expect(strip.locator(".cp-status__job-label")).toContainText(/Updating/, {
-        timeout: 60_000,
-      });
-      await expect(strip.getByRole("progressbar", { name: /^progress/i })).toBeVisible();
       const stop = strip.getByRole("button", { name: /^stop /i });
-      await expect(stop).toBeVisible({ timeout: 30_000 });
+      await expect(stop).toBeVisible({ timeout: 60_000 });
+      await expect(strip.locator(".cp-status__job-label")).toContainText(/Updating/);
+      await expect(strip.getByRole("progressbar", { name: /^progress/i })).toBeVisible();
       await stop.click();
 
       // Stopped, and what it had already applied stays applied (DEC-063).

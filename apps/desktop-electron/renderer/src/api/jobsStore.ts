@@ -230,6 +230,19 @@ export function subscribeActiveJobs(
 }
 
 /**
+ * Asks what is running now rather than at the next tick. A screen that has just started a
+ * job calls it (through `followJob`), so the strip shows the job and its Stop at once: the
+ * tick can be up to `JOB_POLL_MS` away, which is the whole life of a quick batch. With
+ * nobody listening there is nobody to tell, so it asks nothing.
+ */
+export function pollActiveJobsNow(): void {
+  if (timer === null) return;
+  // The poll already out may have been asked before the job started.
+  if (inFlightSince !== null && Date.now() - inFlightSince < STUCK_MS) again = true;
+  else poll();
+}
+
+/**
  * Follows one job's events, sharing a single bridge stream between everyone who
  * asks for the same job. The stream is closed when the last of them leaves.
  */

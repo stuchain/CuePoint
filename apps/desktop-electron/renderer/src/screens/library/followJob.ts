@@ -11,7 +11,7 @@
  * a browser-lab render or an older preload can still manage.
  */
 import type { EngineJobSummary, JobState } from "../../api/cuepointBridge.types";
-import { subscribeJobEvents } from "../../api/jobsStore";
+import { pollActiveJobsNow, subscribeJobEvents } from "../../api/jobsStore";
 import { reportUnexpected } from "../../reporting/reporting";
 import { NEEDS_DESKTOP, isEngineOutage, userMessage } from "../../api/userMessage";
 
@@ -62,6 +62,8 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
   let timer: number | null = null;
   let safety: number | null = null;
   let stopped = false;
+  // A job being followed has usually just been started: let the strip know now.
+  pollActiveJobsNow();
 
   const finished = new Promise<FinishedJob>((resolve) => {
     settle = resolve;

@@ -4,6 +4,7 @@ import type { EngineJobSummary, JobStatus } from "./cuepointBridge.types";
 import {
   onJobFinished,
   onRevisionsChanged,
+  pollActiveJobsNow,
   resetJobsStoreForTests,
   subscribeActiveJobs,
   subscribeJobEvents,
@@ -160,6 +161,49 @@ describe("subscribeActiveJobs", () => {
     subscribeActiveJobs(seen, 1000);
     await settle();
     expect(seen).toHaveBeenCalledWith(expect.objectContaining({ jobs: [], loaded: true, failed: true }));
+  });
+});
+
+describe("pollActiveJobsNow", () => {
+  it("shows a job just started without waiting for the tick", async () => {
+    let jobs: EngineJobSummary[] = [];
+    install(() => ({ jobs }));
+    const seen: string[][] = [];
+    subscribeActiveJobs((next) => seen.push(next.jobs.map((entry) => entry.id)), 2000);
+    await settle();
+
+    jobs = [job("batch")];
+    pollActiveJobsNow();
+    await settle();
+    expect(seen.at(-1)).toEqual(["batch"]);
+  });
+
+  it("asks again after a poll that went out before the job started", async () => {
+    let jobs: EngineJobSummary[] = [];
+    let answerFirst: () => void = () => {};
+    const listJobs = install(() => {
+      if (listJobs.mock.calls.length > 1) return { jobs };
+      const before = jobs;
+      return new Promise<Answer>((resolve) => (answerFirst = () => resolve({ jobs: before })));
+    });
+    const seen: string[][] = [];
+    subscribeActiveJobs((next) => seen.push(next.jobs.map((entry) => entry.id)), 2000);
+
+    jobs = [job("batch")];
+    pollActiveJobsNow();
+    await settle();
+    expect(listJobs).toHaveBeenCalledTimes(1);
+    answerFirst();
+    await settle();
+    expect(listJobs).toHaveBeenCalledTimes(2);
+    expect(seen).toEqual([[], ["batch"]]);
+  });
+
+  it("asks nothing while nobody is listening", async () => {
+    const listJobs = install(() => ({ jobs: [] }));
+    pollActiveJobsNow();
+    await settle();
+    expect(listJobs).not.toHaveBeenCalled();
   });
 });
 
