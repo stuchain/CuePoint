@@ -202,7 +202,7 @@ export function TrackYours({
               {clearLabel}
             </button>
           )}
-          <Hint text={record.favorite ? "Remove favorite" : "Favorite"}>
+          <Hint text={record.favorite ? "Remove from favorites" : "Add to favorites"}>
             <button
               type="button"
               className={`cp-track-yours__favorite${

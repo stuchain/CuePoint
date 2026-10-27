@@ -53,3 +53,48 @@ describe("Track details chrome (round 3)", () => {
     expect(rule(".cp-track-waveform")).toMatch(/padding-inline:\s*var\(--space-xs\)/);
   });
 });
+
+describe("Track details round 3 gap fixes (P3)", () => {
+  const plain = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  it("draws the Yours labels in the label look: control face, label size, control weight, muted (M1)", () => {
+    const label = rule(".cp-track-yours__label");
+    expect(label).toMatch(/font-family:\s*var\(--font-control\)/);
+    expect(label).toMatch(/font-size:\s*var\(--font-size-label\)/);
+    expect(label).toMatch(/font-weight:\s*var\(--control-font-weight\)/);
+    expect(label).toMatch(/color:\s*var\(--fg-muted\)/);
+  });
+
+  it("scales nothing to a fraction of a pixel: 2 px gaps are --space-2xs, the rest rounded (M80)", () => {
+    const unrounded = plain.replace(/round\([a-z]+, calc\(\d+(?:\.\d+)?px \* var\(--scale\)\), 1px\)/g, "").match(/calc\(\d+(?:\.\d+)?px \* var\(--scale\)\)/g);
+    expect(unrounded).toBeNull();
+  });
+
+  it("draws the history's writes bar in the write accent (M336)", () => {
+    expect(rule(".cp-track-history__writes")).toMatch(/solid var\(--accent-write\)/);
+  });
+
+  it("shows no hand cursor anywhere in the panel (M339)", () => {
+    expect(plain).not.toMatch(/cursor:\s*pointer/);
+  });
+
+  it("keeps a line of room for Saved, so it never moves the fields (M387)", () => {
+    expect(rule(".cp-track-yours__state")).toMatch(/min-height:\s*1lh/);
+  });
+
+  it("makes each star a whole hit target (M477)", () => {
+    const star = rule(".cp-track-yours__star");
+    expect(star).toMatch(/min-inline-size:\s*var\(--hit-target\)/);
+    expect(star).toMatch(/min-block-size:\s*var\(--hit-target\)/);
+  });
+
+  it("names its views for a screen reader and drops the … from a spoken name (M474, M405)", () => {
+    expect(tsx).toMatch(/label="Track details views"/);
+    expect(tsx).not.toMatch(/aria-label=\{`[^`]*…`\}/);
+  });
+
+  it("shows the file's name first and the whole path in its hint (M500)", () => {
+    expect(tsx).toMatch(/displayPathNameFirst\(track\.file_path\)/);
+    expect(tsx).toMatch(/displayPath\(track\.file_path, \{ keepHome: true \}\)/);
+  });
+});

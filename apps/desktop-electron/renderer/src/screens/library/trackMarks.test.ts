@@ -126,7 +126,7 @@ describe("cuesSummary", () => {
   });
 
   it("says a track has none only once the library's marks have been read", () => {
-    expect(cuesSummary(marks())).toBe("none");
+    expect(cuesSummary(marks())).toBe("No cues"); // M126: words, never "none"
     expect(cuesSummary(marks({ read: false }))).toBeNull();
     expect(MARKS_NOT_READ).toBe(
       "Cue points and the beat grid are read from Rekordbox. They appear after you Check for changes.",

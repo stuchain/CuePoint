@@ -275,7 +275,7 @@ describe("the facts grid", () => {
   it("says a track without cues has none, with its grid inside (M126)", () => {
     const detail = detailOf();
     show({}, { ...detail, marks: { ...detail.marks!, cues: [], hot_cues: 0, beat_grid: { ...detail.marks!.beat_grid!, bpm: 124 } } });
-    expect(section("Cue points")).toHaveTextContent("none");
+    expect(section("Cue points")).toHaveTextContent("No cues"); // M126: words, never "none"
     const body = bodyOf("Cue points");
     expect(within(body).getByText("No cues")).toBeInTheDocument();
     expect(within(body).getByText("Beat grid 124 BPM")).toBeInTheDocument();
@@ -475,7 +475,8 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     const onEditValues = vi.fn();
     show({ selectionCount: 4, onEditValues });
     expect(screen.getByRole("status")).toHaveTextContent("4 selected");
-    const link = screen.getByRole("button", { name: "Edit values for 4 tracks…" });
+    // M405: no "…" inside a spoken name.
+    const link = screen.getByRole("button", { name: "Edit values for 4 tracks" });
     expect(link).toHaveAttribute("title", "Edit values for 4 tracks — the fields below change only this one");
     expect(link).toHaveTextContent("Edit values…");
     expect(link.closest("p")).toContainElement(screen.getByRole("status"));

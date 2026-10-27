@@ -209,7 +209,9 @@ describe("what the panel shows", () => {
 
   it("shows the file path", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(within(rowFor("File")).getByText("/music/strobe.mp3")).toBeInTheDocument();
+    // M500: the name first, then its folder; the whole path is the hint.
+    expect(within(rowFor("File")).getByText("strobe.mp3 — /music")).toBeInTheDocument();
+    expect(within(rowFor("File")).getByText("strobe.mp3 — /music").closest("[title]")).toHaveAttribute("title", "/music/strobe.mp3");
   });
 
   it("says what to do before anything is selected", () => {
@@ -570,7 +572,8 @@ describe("with several tracks selected", () => {
     // the worst version of this panel.
     render(<TrackDetailPanel detail={DETAIL} selectionCount={7} onEditValues={vi.fn()} />);
     expect(
-      screen.getByRole("button", { name: "Edit values for 7 tracks…" }),
+      // M405: no "…" inside a spoken name.
+      screen.getByRole("button", { name: "Edit values for 7 tracks" }),
     ).toHaveAttribute("title", "Edit values for 7 tracks — the fields below change only this one");
   });
 

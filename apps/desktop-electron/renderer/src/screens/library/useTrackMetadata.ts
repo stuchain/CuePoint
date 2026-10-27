@@ -32,6 +32,9 @@ import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
 import { needsDesktopApp } from "../../api/userMessage";
 
+/** How long the notes' "Saved" stays (M387), as the rating's tick (TrackYours) and Settings' do. */
+export const NOTES_SAVED_MS = 2000;
+
 /** What one write asks the engine to change. */
 interface MetadataPatch {
   rating?: number | null;
@@ -121,6 +124,15 @@ export function useTrackMetadata({
     setNotes(metadata.notes ?? "");
     setNotesState("idle");
   }, [metadata]);
+
+  // "Saved" says the note stuck, then goes (M387), as the rating's tick does: it is not a lasting state.
+  useEffect(() => {
+    if (notesState !== "saved") return;
+    const clear = setTimeout(() => {
+      if (alive.current) setNotesState((state) => (state === "saved" ? "idle" : state));
+    }, NOTES_SAVED_MS);
+    return () => clearTimeout(clear);
+  }, [notesState]);
 
   useEffect(() => {
     alive.current = true;

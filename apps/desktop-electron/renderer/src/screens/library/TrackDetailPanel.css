@@ -210,7 +210,7 @@
 .cp-track-detail__file {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-2xs);
   min-width: 0;
 }
 
@@ -236,7 +236,7 @@
 .cp-track-detail__playlists ul {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-2xs);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -273,7 +273,7 @@
 }
 
 .cp-track-waveform--seekable {
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-track-waveform__words {
@@ -313,7 +313,7 @@
 .cp-track-detail__cues {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-2xs);
   margin: 0 0 var(--space-xs);
   padding: 0;
   list-style: none;
@@ -331,8 +331,8 @@
 
 .cp-track-detail__cue-colour {
   flex: none;
-  width: calc(6px * var(--scale));
-  height: calc(6px * var(--scale));
+  width: round(nearest, calc(6px * var(--scale)), 1px);
+  height: round(nearest, calc(6px * var(--scale)), 1px);
   border: var(--hairline) solid var(--border-muted);
 }
 
@@ -354,10 +354,11 @@
 }
 
 .cp-track-yours__label {
-  /* The label look (P13). */
-  color: var(--fg-muted);
+  /* The label look (P13, M1): the control face at label size and the control weight, muted. */
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--control-font-weight);
+  color: var(--fg-muted);
 }
 
 /* Every label here is stacked above its field, 4 apart, as Add a tag's is (new K): side labels
@@ -393,7 +394,10 @@
   color: var(--fg-muted);
   font-size: var(--font-size-md);
   line-height: 1;
-  cursor: pointer;
+  cursor: default;
+  /* M477: a star is a whole hit target, not the glyph's width. */
+  min-inline-size: var(--hit-target);
+  min-block-size: var(--hit-target);
 }
 
 .cp-track-yours__star--on {
@@ -442,7 +446,7 @@
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   line-height: 1;
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-track-yours__favorite:hover:not(:disabled) {
@@ -466,12 +470,13 @@
 .cp-track-yours__control {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-2xs);
   min-width: 0;
 }
 
 .cp-track-yours__state {
-  min-height: var(--font-size-xs);
+  /* M387: one line of room, so "Saved" coming and going never moves the fields below. */
+  min-height: 1lh;
   margin: 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
@@ -518,7 +523,7 @@
   font-family: var(--font-control);
   font-size: var(--font-size-xs);
   line-height: 1;
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-track-yours__tag-remove:hover {
@@ -567,8 +572,8 @@
 .cp-track-history__list {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
-  max-height: calc(220px * var(--scale));
+  gap: var(--space-2xs);
+  max-height: round(nearest, calc(220px * var(--scale)), 1px);
   margin: 0;
   padding: 0;
   overflow-y: auto;
@@ -583,7 +588,7 @@
 }
 
 .cp-track-history__entry {
-  padding: calc(2px * var(--scale)) 0;
+  padding: var(--space-2xs) 0;
   border-left: round(down, calc(2px * var(--scale)), 1px) solid transparent;
   padding-left: var(--space-xs);
   font-size: var(--font-size-xs);
@@ -621,8 +626,8 @@
   align-items: center;
   justify-content: center;
   flex: none;
-  width: calc(72px * var(--scale));
-  height: calc(72px * var(--scale));
+  width: round(nearest, calc(72px * var(--scale)), 1px);
+  height: round(nearest, calc(72px * var(--scale)), 1px);
   /* No frame (P13): the picture sits on its slab. */
   border: 0;
   background: var(--bg-panel-alt);
@@ -726,7 +731,7 @@
   gap: var(--space-xs);
   margin-top: var(--space-sm);
   padding: var(--space-xs);
-  border-left: round(down, calc(2px * var(--scale)), 1px) solid var(--accent-info);
+  border-left: round(down, calc(2px * var(--scale)), 1px) solid var(--accent-write);
 }
 
 .cp-track-history__writes--unfinished {

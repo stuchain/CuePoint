@@ -67,7 +67,7 @@ export function cuesInTrackOrder(cues: readonly TrackCue[]): TrackCue[] {
 
 /** What the Cue points heading says beside its name: "3 hot, 5 memory", or that there are none. */
 export function cuesSummary(marks: TrackMarksSummary): string | null {
-  if (marks.cues.length === 0) return marks.read ? "none" : null;
+  if (marks.cues.length === 0) return marks.read ? "No cues" : null;
   const parts = [];
   if (marks.hot_cues) parts.push(`${marks.hot_cues} hot`);
   if (marks.memory_cues) parts.push(`${marks.memory_cues} memory`);

@@ -18,6 +18,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 import type { TrackMetadata } from "../../api/cuepointBridge.types";
 import { NOTES_DEBOUNCE_MS } from "./trackEdits";
+import { NOTES_SAVED_MS } from "./useTrackMetadata";
 import { TrackYours } from "./TrackYours";
 import type { TrackTag } from "./useTrackTags";
 
@@ -307,6 +308,8 @@ describe("the favorite", () => {
     const heart = screen.getByRole("button", { name: "Favorite" });
     expect(heart.querySelector("[data-icon='heart-outline']")).not.toBeNull();
     expect(heart.closest(".cp-hint")?.parentElement).toBe(screen.getByRole("radiogroup").parentElement);
+    // M411: its hint says what a press does.
+    expect(heart).toHaveAttribute("title", "Add to favorites");
   });
 
   it("turns off again", async () => {
@@ -327,7 +330,7 @@ describe("the favorite", () => {
     );
     expect(screen.getByRole("button", { name: "Favorite" })).toHaveAttribute(
       "title",
-      "Remove favorite",
+      "Remove from favorites", // M411: says what it does to the favorites
     );
   });
 
@@ -420,6 +423,20 @@ describe("the note", () => {
     });
 
     expect(screen.getByText("Saved")).toBeInTheDocument();
+  });
+
+  it("lets the Saved go after two seconds, keeping the line's room (M387)", async () => {
+    draw();
+
+    type("intro is long");
+    await act(async () => {
+      vi.advanceTimersByTime(NOTES_DEBOUNCE_MS);
+    });
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+    await act(async () => {
+      vi.advanceTimersByTime(NOTES_SAVED_MS);
+    });
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
   });
 
   it("sends what is waiting when the field is left", async () => {

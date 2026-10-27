@@ -76,6 +76,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { countNoun, formatCount } from "../../format/counts";
 import { NO_VALUE } from "../../words";
+import { displayPath, displayPathNameFirst } from "../../format/paths";
 import { RatingStars } from "./RatingStars";
 
 /** A Collection as the track-detail read names it — enough to show and to open. */
@@ -455,7 +456,7 @@ export function TrackDetailPanel({
                   <Button
                     variant="secondary"
                     size="sm"
-                    aria-label={`Edit values for ${formatCount(selectionCount)} tracks…`}
+                    aria-label={`Edit values for ${formatCount(selectionCount)} tracks`}
                     onClick={onEditValues}
                   >
                     Edit values…
@@ -472,7 +473,14 @@ export function TrackDetailPanel({
           different things could both be "3" and leave a stale zone behind. */}
       <Fragment>{leadZone}</Fragment>
 
-      <Tabs tabs={tabs} activeId={activeTab} onChange={choose} variant="sub" idPrefix={tabsId} />
+      <Tabs
+        tabs={tabs}
+        activeId={activeTab}
+        onChange={choose}
+        variant="sub"
+        idPrefix={tabsId}
+        label="Track details views"
+      />
 
       {panel(
         "overview",
@@ -673,8 +681,9 @@ export function TrackDetailPanel({
                 label="File"
                 value={
                   <span className="cp-track-detail__file">
-                    <Hint text={track.file_path ?? undefined} inline>
-                      <span>{text(track.file_path)}</span>
+                    {/* The name first, then its folder with home as "~" (M500); the hint is the whole path. */}
+                    <Hint text={track.file_path ? displayPath(track.file_path, { keepHome: true }) : undefined} inline>
+                      <span>{text(displayPathNameFirst(track.file_path))}</span>
                     </Hint>
                   </span>
                 }
