@@ -29,7 +29,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { LinkButton } from "../../components/LinkButton";
 import { countNoun, formatCount } from "../../format/counts";
-import { goTo, RETRY } from "../../format/words";
+import { couldNot, goTo, RETRY } from "../../format/words";
 import { Notice } from "../../components/Notice";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
@@ -254,25 +254,42 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
     },
     [push],
   );
+  // A refused player call is a toast, not an unhandled rejection (M383).
   const playFrom = useCallback(
     async (index: number) => {
       if (!player?.playQueue) return;
-      report(await player.playQueue(rows.map(toQueueItem), index));
+      try {
+        report(await player.playQueue(rows.map(toQueueItem), index));
+      } catch {
+        push(couldNot("play this list"), "warning");
+      }
     },
-    [player, report, rows],
+    [player, push, report, rows],
   );
   const playRows = useCallback(
     async (chosen: SimilarRow[]) => {
       if (!player?.playQueue || chosen.length === 0) return;
-      report(await player.playQueue(chosen.map(toQueueItem), 0));
+      try {
+        report(await player.playQueue(chosen.map(toQueueItem), 0));
+      } catch {
+        push(couldNot("play those tracks"), "warning");
+      }
     },
-    [player, report],
+    [player, push, report],
   );
   const append = useCallback(
     async (chosen: SimilarRow[], where: "next" | "end") => {
       const send = where === "next" ? player?.playNext : player?.addToQueue;
       if (!send || chosen.length === 0) return;
-      await send(chosen.map(toQueueItem));
+      try {
+        await send(chosen.map(toQueueItem));
+      } catch {
+        push(
+          couldNot(where === "next" ? "queue those tracks to play next" : "add those tracks to the queue"),
+          "warning",
+        );
+        return;
+      }
       const tracks = countNoun(chosen.length, "track");
       push(where === "next" ? `${tracks} queued to play next` : `${tracks} added to the queue`, "info");
     },

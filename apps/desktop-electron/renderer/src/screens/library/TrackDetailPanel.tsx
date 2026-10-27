@@ -45,7 +45,6 @@ import type {
   EntityKind,
   LibraryPlaylistNode,
   LibraryTrackDetail,
-  LibraryTrackRow,
   TrackCreditLink,
   TrackFieldChange,
   WaveformTrack,
@@ -117,8 +116,6 @@ interface TrackDetailPanelProps {
    * the label are text, as they always were.
    */
   onOpenEntity?: (kind: EntityKind, ref: string) => void;
-  /** Unused since D16 took Play, Queue and Similar off the panel; pages still pass it. */
-  gatherSelectedRows?: (limit?: number) => Promise<LibraryTrackRow[]>;
   /**
    * Opens the page's "Add to Collection" picker for the track shown: the **Add to…** beside the
    * track's Collections on Overview (D16). Absent, it is not offered.

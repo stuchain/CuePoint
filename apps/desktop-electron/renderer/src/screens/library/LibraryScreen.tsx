@@ -709,7 +709,12 @@ export function LibraryScreen({
       loading={detail.loading}
       error={detail.error}
       selectionCount={selection.count}
-      gatherSelectedRows={(limit) => selection.gatherRows(limit ?? QUEUE_ACTION_LIMIT)}
+      // Overview's Add to… beside the track's Collections: the page's picker, for the track shown (D16).
+      onAddToCollection={() => {
+        const shown = detail.detail?.track.id;
+        if (shown == null) return;
+        openPicker("collection", { selection: { track_ids: [shown] }, count: 1, trackId: shown });
+      }}
       // Edit values for the whole selection opens in place (K4), as the Fix ▸ menu does.
       onEditValues={
         // Offered only where editing is (a build whose engine has the override routes).

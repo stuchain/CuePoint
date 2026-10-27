@@ -6,7 +6,7 @@
  * The Library's Key field finds the key in any notation (PAGES-05), so no list of
  * spellings travels with it.
  */
-import { cleanMatchState } from "../../screens/clean/cleanLink";
+import { openClean } from "../../screens/clean/cleanLink";
 import { libraryRulesState } from "../../screens/library/libraryLink";
 
 /** The location state that opens the Library on every track in this key. */
@@ -26,6 +26,5 @@ type Navigate = (to: string, options?: { state?: unknown }) => void;
  * the tracks not looked up yet (PAGES-07B).
  */
 export function openMatching(navigate: Navigate, trackId?: number | string | null): void {
-  const state = typeof trackId === "number" ? cleanMatchState([trackId]) : cleanMatchState();
-  navigate("/clean", { state });
+  openClean(navigate, typeof trackId === "number" ? [trackId] : undefined);
 }

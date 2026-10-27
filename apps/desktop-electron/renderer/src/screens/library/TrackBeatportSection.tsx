@@ -7,7 +7,8 @@
  *
  * A track not looked up yet gets one sentence and one action, not a table of blanks.
  */
-import { cleanMatchState } from "../clean/cleanLink";
+import { useInRouterContext, useNavigate } from "react-router-dom";
+import { openClean } from "../clean/cleanLink";
 import { decisionLine } from "../clean/cleanFormat";
 import type { TrackMatchesState } from "../clean/useTrackMatches";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
@@ -17,7 +18,6 @@ import { openOnBeatport } from "../discover/openOnBeatport";
 import { Hint } from "../../components/Hint";
 import { NO_VALUE } from "../../words";
 import { Loading } from "../../components/Loading";
-import { RouteButton } from "./RouteButton";
 
 interface TrackBeatportSectionProps {
   track: LibraryTrackRow & { id: number };
@@ -38,18 +38,23 @@ const NOT_LOOKED_UP =
 
 const MATCH_ON_BEATPORT = "Match on Beatport";
 
-/** The button that matches this one track, in Clean's match window. */
-export function MatchOnBeatport({ trackId }: { trackId: number }) {
+function MatchInClean({ trackId }: { trackId: number }) {
+  const navigate = useNavigate();
   return (
-    <RouteButton
-      to="/clean"
-      state={cleanMatchState([trackId])}
-      className="cp-link"
-      title="Matches this one track on Beatport"
-    >
-      {MATCH_ON_BEATPORT}
-    </RouteButton>
+    <Hint text="Matches this one track on Beatport">
+      <button type="button" className="cp-link" onClick={() => openClean(navigate, [trackId])}>
+        {MATCH_ON_BEATPORT}
+      </button>
+    </Hint>
   );
+}
+
+/**
+ * The button that matches this one track, on Clean (M505: Clean is where a match starts). Left
+ * out where the panel is drawn without a router, as `RouteButton` is.
+ */
+export function MatchOnBeatport({ trackId }: { trackId: number }) {
+  return useInRouterContext() ? <MatchInClean trackId={trackId} /> : null;
 }
 
 export function TrackBeatportSection({ track, matches, onOpenInClean, onError }: TrackBeatportSectionProps) {

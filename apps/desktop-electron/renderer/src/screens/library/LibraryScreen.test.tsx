@@ -1917,7 +1917,8 @@ describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
     const inspector = await screen.findByRole("region", { name: "Inspector" });
-    await userEvent.click(await within(inspector).findByRole("tab", { name: "Where" }));
+    // Overview lists the Collections a track is in; the Where tab is gone (D16).
+    await userEvent.click(await within(inspector).findByRole("tab", { name: "Overview" }));
     await within(inspector).findByText("Warmups");
 
     await userEvent.click(within(inspector).getByRole("button", { name: /Warmups/ }));
@@ -1928,6 +1929,21 @@ describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
       ),
     );
   });
+
+  it("adds the track shown to a Collection from Overview's Add to… (D16)", async () => {
+    renderWithInspector();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    const inspector = await screen.findByRole("region", { name: "Inspector" });
+    await userEvent.click(await within(inspector).findByRole("tab", { name: "Overview" }));
+
+    await userEvent.click(await within(inspector).findByRole("button", { name: "Add to…" }));
+    await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
+
+    await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+    const calls = bridge.applyBatch.mock.calls;
+    expect(calls[calls.length - 1][0]).toMatchObject({ selection: { track_ids: [1] } });
+  }, 15_000);
 
   it("says so when the engine refuses an edit made in the Inspector (ORG-10)", async () => {
     // The panel is optimistic, so a refusal that went nowhere would leave a

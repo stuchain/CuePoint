@@ -190,6 +190,22 @@ describe("queueing without interrupting (DEC-013)", () => {
     expect(onMessage).toHaveBeenCalledWith("1 track added to the queue");
     expect(onMessage.mock.calls[0]![0]).not.toMatch(/play next/);
   });
+
+  it("says it could not queue when the player call rejects, and never that it did (M383)", async () => {
+    install({
+      playNext: vi.fn().mockRejectedValue(new Error("gone")),
+      addToQueue: vi.fn().mockRejectedValue(new Error("gone")),
+    });
+    const { result, onMessage } = mount();
+
+    await act(() => result.current.playNext([row(1)]));
+    await act(() => result.current.addToQueue([row(1)]));
+
+    expect(onMessage.mock.calls.map(([message]) => message)).toEqual([
+      "Could not queue those tracks to play next.",
+      "Could not add those tracks to the queue.",
+    ]);
+  });
 });
 
 describe("the queue item a row becomes", () => {

@@ -7,6 +7,7 @@
  * would otherwise look like nothing happened.
  */
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
+import { couldNot } from "../../format/words";
 import { queuedMessage, toQueueItem } from "./useLibraryPlayback";
 
 export type QueueAction = "play" | "next" | "end";
@@ -29,14 +30,26 @@ export async function runQueueAction(
   const player = window.cuepoint?.player;
   if (!player || rows.length === 0) return null;
   const items = rows.map(toQueueItem);
-  if (action === "play") {
-    const result = await player.playQueue?.(items, 0);
-    return result && !result.ok ? { message: result.error, failed: true } : null;
+  // A refused call is a failed sentence, not an unhandled rejection (M383).
+  try {
+    if (action === "play") {
+      const result = await player.playQueue?.(items, 0);
+      return result && !result.ok ? { message: result.error, failed: true } : null;
+    }
+    if (action === "next") {
+      await player.playNext?.(items);
+      return { message: queuedMessage(rows.length, "next"), failed: false };
+    }
+    await player.addToQueue?.(items);
+    return { message: queuedMessage(rows.length, "end"), failed: false };
+  } catch {
+    return { message: couldNot(QUEUE_FAILED[action]), failed: true };
   }
-  if (action === "next") {
-    await player.playNext?.(items);
-    return { message: queuedMessage(rows.length, "next"), failed: false };
-  }
-  await player.addToQueue?.(items);
-  return { message: queuedMessage(rows.length, "end"), failed: false };
 }
+
+/** What a refused action could not do, after "Could not". */
+const QUEUE_FAILED: Record<QueueAction, string> = {
+  play: "play those tracks",
+  next: "queue those tracks to play next",
+  end: "add those tracks to the queue",
+};

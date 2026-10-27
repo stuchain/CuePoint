@@ -3,6 +3,7 @@ import type { LibraryTrackRow, QueueItemInput } from "../../api/cuepointBridge.t
 import type { LibraryQuery } from "./libraryQuery";
 import { browseParams } from "./libraryQuery";
 import { countNoun } from "../../format/counts";
+import { couldNot } from "../../format/words";
 
 /**
  * Playing from the Library table (PLAYER-09, DEC-012, DEC-013).
@@ -94,7 +95,13 @@ export function useLibraryPlayback({
     async (rows: LibraryTrackRow[]) => {
       const player = window.cuepoint?.player;
       if (!player?.playNext || rows.length === 0) return;
-      await player.playNext(rows.map(toQueueItem));
+      // A refused call says so rather than rejecting into nothing (M383).
+      try {
+        await player.playNext(rows.map(toQueueItem));
+      } catch {
+        onMessage?.(couldNot("queue those tracks to play next"));
+        return;
+      }
       onMessage?.(queuedMessage(rows.length, "next"));
     },
     [onMessage],
@@ -104,7 +111,12 @@ export function useLibraryPlayback({
     async (rows: LibraryTrackRow[]) => {
       const player = window.cuepoint?.player;
       if (!player?.addToQueue || rows.length === 0) return;
-      await player.addToQueue(rows.map(toQueueItem));
+      try {
+        await player.addToQueue(rows.map(toQueueItem));
+      } catch {
+        onMessage?.(couldNot("add those tracks to the queue"));
+        return;
+      }
       onMessage?.(queuedMessage(rows.length, "end"));
     },
     [onMessage],

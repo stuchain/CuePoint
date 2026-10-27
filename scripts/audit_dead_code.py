@@ -72,12 +72,7 @@ ROOT = Path(__file__).resolve().parent.parent
 #: nothing reaching them, as ``path -> why it is genuinely used``. Only a use the
 #: scan cannot see belongs here; otherwise delete the file or wire it in. An
 #: entry whose file is gone or is now reached fails the guard, so this cannot rot.
-ALLOWLIST: dict[str, str] = {
-    "apps/desktop-electron/renderer/src/format/paths.ts": (
-        "M500 path display helper (polish round 3, P4); its call sites land in P10, P12 and "
-        "P16. Remove this entry when one imports it; the guard says so."
-    ),
-}
+ALLOWLIST: dict[str, str] = {}
 
 SECTIONS = (
     "counts",

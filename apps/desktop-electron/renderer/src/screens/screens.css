@@ -66,8 +66,7 @@
  * as `--side-head-height` (ScreenHeader.tsx: its height plus the page's top margin); the fallback
  * is one toolbar under the margin. A side panel pads `--space-lg`, like the page's main area.
  */
-.cp-panel-header.cp-side-head,
-.cp-queue .cp-queue__header {
+.cp-panel-header.cp-side-head {
   box-sizing: border-box;
   align-items: flex-start;
   min-height: var(--side-head-height, calc(var(--page-gutter-top) + var(--toolbar-height) + var(--hairline)));
@@ -75,18 +74,16 @@
 }
 
 /* The title and the close mark share the page title's row: one toolbar tall, the mark centred in it. */
-.cp-side-head > .cp-panel-header__title,
-.cp-queue .cp-queue__header > .cp-panel-header__title {
+.cp-side-head > .cp-panel-header__title {
   min-height: var(--toolbar-height);
   line-height: var(--toolbar-height);
 }
 
-.cp-queue .cp-queue__header > .cp-queue__title {
+.cp-side-head > .cp-queue__title {
   align-items: center;
 }
 
-.cp-side-head .cp-close,
-.cp-queue .cp-queue__header .cp-close {
+.cp-side-head .cp-close {
   margin-top: calc((var(--toolbar-height) - var(--control-height-sm)) / 2);
 }
 

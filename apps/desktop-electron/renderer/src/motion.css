@@ -122,8 +122,7 @@
 :root[data-motion-hover] .cp-btn:focus-visible,
 :root[data-motion-hover] .cp-sidebar__link:focus-visible,
 :root[data-motion-hover] .settings-page__nav a:focus-visible,
-:root[data-motion-hover] .cp-tabs__tab:focus-visible,
-:root[data-motion-hover] .cp-track-section__toggle:focus-visible {
+:root[data-motion-hover] .cp-tabs__tab:focus-visible {
   animation: cp-focus-step var(--motion-quick) steps(var(--motion-steps-short));
 }
 

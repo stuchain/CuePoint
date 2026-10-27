@@ -81,12 +81,12 @@ import {
 } from "./screens/discover/discoverLinks";
 import {
   cleanMatchOpening,
-  cleanMatchState,
   cleanOpening,
   cleanRedirect,
   cleanSectionOpening,
   cleanSectionState,
   cleanTrackState,
+  openClean,
 } from "./screens/clean/cleanLink";
 import type { CleanTracks } from "./screens/clean/cleanTracks";
 import { MotionProvider } from "./tokens/MotionContext";
@@ -217,7 +217,7 @@ function AppShell() {
   // "No tracks have a Beatport key yet" and the Key is empty list send the user to
   // Clean's match window, with the tracks to match when there are some (FLW-13).
   const openMatching = useCallback(
-    (tracks?: CleanTracks) => navigate("/clean", { state: cleanMatchState(tracks) }),
+    (tracks?: CleanTracks) => openClean(navigate, tracks),
     [navigate],
   );
   const closeNote = useCallback(() => setNoteOpen(false), []);
@@ -427,7 +427,14 @@ function AppShell() {
       <SearchDialogHost />
       <WheelPopoverHost />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+      <PrivacyDialog
+        open={privacyOpen}
+        onClose={() => setPrivacyOpen(false)}
+        onOpenLogViewer={() => {
+          setPrivacyOpen(false);
+          setLogViewerOpen(true);
+        }}
+      />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <GetHelpDialog
         open={getHelpOpen}
