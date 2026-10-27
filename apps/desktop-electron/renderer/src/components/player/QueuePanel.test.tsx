@@ -207,10 +207,15 @@ describe("what it shows", () => {
     render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
 
+    // The playing row shows a speaker where its number would be (M310); the others show theirs.
     const first = rows()[0];
-    expect(within(first).getByText("1")).toBeInTheDocument();
+    expect(within(first).queryByText("1")).toBeNull();
+    expect(first.querySelector(".cp-queue__position .cp-queue__playing-icon")).not.toBeNull();
     expect(within(first).getByText("Track 0")).toBeInTheDocument();
     expect(within(first).getByText("5:00")).toBeInTheDocument();
+    const second = rows()[1];
+    expect(within(second).getByText("2")).toBeInTheDocument();
+    expect(within(second).getByText("Track 1")).toBeInTheDocument();
   });
 
   it("says so plainly when the queue is empty", async () => {
@@ -464,14 +469,59 @@ describe("without a bridge", () => {
 });
 
 describe("managing the queue (BAR-8)", () => {
-  it("says the gestures in a hint on the title, not in a line of its own (C129)", async () => {
+  // D27, M313, M467: the gestures are one muted line under the head, and the title is no longer a tab stop.
+  it("says the gestures in one muted line under the head, and the title is not focusable", async () => {
     install(2);
     const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
-    expect(container.querySelector(".cp-queue__hint")).toBeNull();
-    const title = screen.getByRole("heading", { name: /Queue/ }).querySelector("[title]") as HTMLElement;
-    expect(title).toHaveAttribute("title", "Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays");
-    expect(title).toHaveAttribute("tabindex", "0");
+    const line = container.querySelector(".cp-queue__gestures") as HTMLElement;
+    expect(line).toHaveTextContent("Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays");
+    const title = screen.getByRole("heading", { name: /Queue/ }).querySelector(".cp-queue__name") as HTMLElement;
+    expect(title).not.toHaveAttribute("tabindex");
+    expect(title).not.toHaveAttribute("title");
+  });
+
+  it("makes the head a side head, as Track details is (M50)", async () => {
+    install(2);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    expect(container.querySelector("header")).toHaveClass("cp-side-head");
+  });
+
+  it("says how tracks get here, and draws no grip, when the queue is one track (M311)", async () => {
+    install(1);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(1));
+    expect(container.querySelector(".cp-queue__one")).toHaveTextContent("Add more with Play next or Add to queue.");
+    expect(container.querySelector(".cp-queue__grip")).toBeNull();
+  });
+
+  it("takes the remove mark out of the tab order, leaving the row as the one control (M467)", async () => {
+    install(2);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    expect(within(rows()[0]!).getByRole("button", { name: /Remove/ })).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("moves to the next track whose title starts with the typed letters (M481)", async () => {
+    install(4);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(4));
+    rows()[0]!.focus();
+    fireEvent.keyDown(rows()[0]!, { key: "t" });
+    fireEvent.keyDown(rows()[1]!, { key: "r" });
+    fireEvent.keyDown(rows()[1]!, { key: "a" });
+    fireEvent.keyDown(rows()[1]!, { key: "c" });
+    fireEvent.keyDown(rows()[1]!, { key: "k" });
+    fireEvent.keyDown(rows()[1]!, { key: " " });
+    fireEvent.keyDown(rows()[1]!, { key: "3" });
+    await waitFor(() => expect(rows()[3]).toHaveAttribute("aria-selected", "true"));
+  });
+
+  it("dims the tracks above the playing one, as a table's played rows are (M312)", () => {
+    const css = stripComments(queueCss);
+    const rule = parseRules(css).find((r) => r.selector === ".cp-queue__row--played .cp-queue__row-title")!;
+    expect(Object.fromEntries(declarations(rule.body))["color"]).toBe("var(--fg-muted)");
   });
 
   it("asks before clearing, then clears once", async () => {
@@ -482,7 +532,8 @@ describe("managing the queue (BAR-8)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear queue…" }));
     expect(harness.clearQueue).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent("Clear the queue? The playing track keeps playing.");
+    // The body no longer repeats the title (M312).
+    expect(dialog).toHaveTextContent("Clear queue?The playing track keeps playing.");
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Clear queue" }));
 
@@ -732,9 +783,22 @@ describe("its header (C29, C129)", () => {
     expect(screen.getByRole("heading", { name: "Queue" }).classList.contains("cp-panel-header__title")).toBe(true);
   });
 
-  it("does not make the key chip bold", () => {
-    const rule = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue__row .key-chip")!;
-    expect(Object.fromEntries(declarations(rule.body))["font-weight"]).toBe("var(--font-weight-regular)");
+  // M3: the queue's key chip is the tables' chip (Inter semibold); no rule here makes it regular.
+  it("leaves the key chip at the shared chip weight", () => {
+    const rule = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue__row .key-chip");
+    expect(rule).toBeUndefined();
+  });
+
+  // M309: the key chip, BPM and year keep their room; the artist gives way.
+  it("keeps the key chip, BPM and year at their size while the artist is cut", () => {
+    const facts = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue__row-facts")!;
+    expect(Object.fromEntries(declarations(facts.body))["flex"]).toBe("none");
+  });
+
+  // M66: one inset both sides, the head's, so the two × columns line up (M309).
+  it("pads its rows by the page's inset, like its head", () => {
+    const row = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue__row")!;
+    expect(Object.fromEntries(declarations(row.body))["padding"]).toBe("0 var(--space-lg)");
   });
 });
 

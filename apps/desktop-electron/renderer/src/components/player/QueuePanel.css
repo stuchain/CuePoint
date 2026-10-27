@@ -58,11 +58,10 @@ body.cp-queue-resizing {
   user-select: none;
 }
 
-/* The title bar is the shared panel header (.cp-panel-header, C29); only its height is a toolbar's. */
+/* The title bar is a side head (.cp-side-head, screens.css; M50, M66): as tall as the page's header,
+   padded --space-lg like the page's own area, so its × and the rows' × share one column (M309). */
 .cp-queue__header {
   box-sizing: border-box;
-  min-height: var(--toolbar-height);
-  padding-inline: var(--space-md);
 }
 
 .cp-queue__title {
@@ -72,12 +71,6 @@ body.cp-queue-resizing {
   gap: var(--space-sm);
 }
 
-/* The title carries the gestures as its hint, so it can be reached from the keyboard. */
-.cp-queue__name:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
-}
-
 /* The count after the name, grey and in the data face. */
 .cp-queue__count {
   color: var(--fg-muted);
@@ -85,6 +78,24 @@ body.cp-queue-resizing {
   font-variant-numeric: tabular-nums;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-regular);
+}
+
+/* The gestures (D27, M313): one muted line under the head, not a hint a key press has to find. */
+.cp-queue__gestures {
+  margin: 0;
+  padding: var(--space-xs) var(--space-lg) var(--space-sm);
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-label);
+}
+
+/* A queue of one (M311): what to do next, under its row, muted and on the same edge. */
+.cp-queue__one {
+  margin: 0;
+  padding: var(--space-md) var(--space-lg);
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-label);
 }
 
 /* The drop position while a row is dragged (BAR-8): a 2px line at 1x, scaled
@@ -136,7 +147,8 @@ body.cp-queue-resizing {
   align-items: center;
   gap: var(--space-sm);
   width: 100%;
-  padding: 0 var(--space-sm);
+  /* The panel's one inset, both sides (M66): the head's, so the × columns line up. */
+  padding: 0 var(--space-lg);
   /* A track row (P56): the one row height, the row line drawn inside it (no hairline border). */
   block-size: var(--row-height);
   box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--row-line);
@@ -160,19 +172,21 @@ body.cp-queue-resizing {
   box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--row-line);
 }
 
-/* The playing row is marked with its volume icon and a bold title, not colour alone. */
+/* The playing row wears the table's look (M310): the speaker in its number's place and the title in the
+   link colour at the normal weight; the accent bar means selected and nothing else. */
 .cp-queue__row--playing .cp-queue__row-title {
-  font-weight: var(--font-weight-bold);
+  color: var(--link);
 }
 
-/* The key chip is never bold, on any row (C129). */
-.cp-queue__row .key-chip {
-  font-weight: var(--font-weight-regular);
+/* A track already played is dimmer than the ones to come, as a table's played rows are (M312). */
+.cp-queue__row--played .cp-queue__row-title {
+  color: var(--fg-muted);
 }
 
 .cp-queue__playing-icon {
   flex: none;
   align-self: center;
+  color: var(--accent-primary);
 }
 
 .cp-queue__row--failed .cp-queue__row-title {
@@ -202,15 +216,18 @@ body.cp-queue-resizing {
 }
 
 .cp-queue__position {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
   min-width: 3ch;
-  text-align: right;
 }
 
-/* One line: the title, then its facts muted after it. Each ends in "..." when cut (full text in the app hint). */
+/* One line: the title, then its facts muted after it. The title and the artist end in "..." when cut
+   (full text in the app hint); the key chip, BPM and year keep their room (M309). */
 .cp-queue__text {
   display: flex;
   align-items: baseline;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   min-width: 0;
   flex: 1 1 auto;
 }
@@ -223,12 +240,21 @@ body.cp-queue-resizing {
   white-space: nowrap;
 }
 
-/* Names are data, in Inter like the tables'. */
+/* Names are data, in Inter like the tables' (D1, M16): the data size, not the pixel control's. */
 .cp-queue__row-title {
   flex: 0 1 auto;
   /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
   font-family: var(--font-data);
-  font-size: var(--control-font-size);
+  font-size: var(--font-size-sm);
+}
+
+/* The key chip, BPM and year do not give way: the chip is never cut off the row's end (M309). */
+.cp-queue__row-facts {
+  flex: none;
+  align-self: center;
+  color: var(--fg-muted);
+  font-size: var(--font-size-label);
+  white-space: nowrap;
 }
 
 .cp-queue__row-meta {

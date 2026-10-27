@@ -1,23 +1,25 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import type { QueueItem, QueueItemInput } from "../../api/cuepointBridge.types";
 import { KEYS } from "../../api/keyboardShortcuts";
 import { formatLength } from "../../format/durations";
+import { FACTS_SEPARATOR } from "../../format/trackFacts";
 import { formatCount } from "../../format/counts";
 import { couldNot, quoted, UNDO } from "../../format/words";
 import { NO_VALUE } from "../../words";
 import { Button } from "../Button";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { CloseButton, RemoveButton } from "../CloseButton";
 import { EmptyState } from "../EmptyState";
 import { escapeClosesPanel } from "../shell/shellKeyboard";
-import { Hint } from "../Hint";
-import { Modal } from "../Modal";
 import { PixelIcon } from "../PixelIcon";
 import { useRowHeight } from "../table/trackTableLayout";
 import { useToast } from "../Toast";
 import { TrackContextMenu, type TrackContextMenuItem } from "../TrackContextMenu";
-import { TrackFactsLine } from "../TrackFactsLine";
+import { formatBpm } from "../format/bpm";
+import { KeyChip } from "../wheel/KeyChip";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import {
+  QUEUE_DEFAULT_WIDTH,
   QUEUE_MIN_WIDTH,
   queueMaxPx,
   queueWidthPx,
@@ -25,6 +27,7 @@ import {
   useQueueWidth,
   useWindowWidth,
 } from "./queueWidth";
+import { usePlayerValue } from "./playerStore";
 import { useQueueWindow } from "./useQueueWindow";
 import "./QueuePanel.css";
 
@@ -65,8 +68,14 @@ const NUDGE_PX = 16;
 /** What the queue says when a drag that did not start in it is held over it. */
 const REFUSAL = "Use Play next or Add to queue";
 
-/** The gestures, said once on the title (C129). */
+/** The gestures, in one muted line under the head (D27, M313): a title hint made them reachable only by Tab. */
 const GESTURES = "Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays";
+
+/** What a queue of one says, under its row (M311). Dragging from a table is refused, so it names the menus. */
+const ONE_TRACK = "Add more with Play next or Add to queue.";
+
+/** How long letters typed in the list build one word for type-ahead (M481), in ms. */
+const TYPE_AHEAD_MS = 700;
 
 interface QueuePanelProps {
   onClose: () => void;
@@ -97,6 +106,38 @@ function failureLine(failure: string | undefined): string {
   return `${couldNot("play")} ${/[.!?]$/.test(sentence) ? sentence : `${sentence}.`}`;
 }
 
+/**
+ * A row's facts after its title (M309): artist and label first, which give way to an ellipsis, then the
+ * key chip, BPM and year, which keep their room, so the chip is never cut off the row's end.
+ */
+function QueueFacts({ item }: { item: QueueItem }) {
+  const lead = [item.artist, item.label ?? ""].map((part) => part.trim()).filter((part) => part !== "");
+  const bpm = formatBpm(item.bpm ?? null);
+  const year = item.year ? String(item.year) : "";
+  const key = (item.key ?? "").trim();
+  const tail: ReactNode[] = [];
+  if (key) tail.push(<KeyChip value={key} />);
+  if (bpm) tail.push(`${bpm} BPM`);
+  if (year) tail.push(year);
+  return (
+    <>
+      <span className="cp-queue__row-meta cp-data" data-cut-hint="">
+        {lead.join(FACTS_SEPARATOR)}
+      </span>
+      {tail.length > 0 && (
+        <span className="cp-queue__row-facts cp-data">
+          {tail.map((part, index) => (
+            <Fragment key={index}>
+              {index > 0 ? FACTS_SEPARATOR : null}
+              {part}
+            </Fragment>
+          ))}
+        </span>
+      )}
+    </>
+  );
+}
+
 interface QueueMenu {
   x: number;
   y: number;
@@ -111,6 +152,8 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
   // tables do (R4-1); measured from the stylesheet, so geometry and drawing agree.
   const rowHeight = useRowHeight() * TABLE_ROWS_PER_ENTRY;
   const [visible, setVisible] = useState({ start: 0, end: 30 });
+  // Rows above the playing one were played: they read dimmer, as a table's played rows do (M312).
+  const playingIndex = usePlayerValue((state) => (state?.queue.currentItem ? state.queue.currentIndex : -1));
 
   // The width is kept in 1x units and drawn times the text size (C204).
   const scale = useScaleFactor();
@@ -151,9 +194,14 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
         label: UNDO,
         onClick: () => {
           void (async () => {
-            await bridge()?.addToQueue([toInput(item)]);
-            // Appended last; the queue was one shorter, so it sits at the old length - 1.
-            if (index < lengthBefore - 1) await bridge()?.moveInQueue(lengthBefore - 1, index);
+            // A refusal is said, not left as an unhandled rejection (M383).
+            try {
+              await bridge()?.addToQueue([toInput(item)]);
+              // Appended last; the queue was one shorter, so it sits at the old length - 1.
+              if (index < lengthBefore - 1) await bridge()?.moveInQueue(lengthBefore - 1, index);
+            } catch {
+              push(`${couldNot("put the track back")}`, "error");
+            }
             refresh();
           })();
         },
@@ -234,6 +282,30 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
     ];
   }, [menu, move, play, remove, total]);
 
+  // Type-ahead (D33, M481): letters build a word that moves to the next loaded row whose title starts with it.
+  const typed = useRef({ text: "", timer: 0 });
+  const typeAhead = useCallback(
+    (letter: string, from: number) => {
+      window.clearTimeout(typed.current.timer);
+      typed.current.text += letter.toLowerCase();
+      typed.current.timer = window.setTimeout(() => {
+        typed.current.text = "";
+      }, TYPE_AHEAD_MS);
+      const word = typed.current.text;
+      // One repeated letter cycles through the titles that start with it.
+      const key = /^(.)\1+$/.test(word) ? word[0]! : word;
+      const start = key.length === 1 ? from + 1 : from;
+      for (let step = 0; step < items.length; step += 1) {
+        const at = (((start - offset + step) % items.length) + items.length) % items.length;
+        if ((items[at]!.title ?? "").toLowerCase().startsWith(key)) {
+          select(offset + at);
+          return;
+        }
+      }
+    },
+    [items, offset, select],
+  );
+
   const onRowKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>, item: QueueItem, index: number) => {
       if (event.key === "Enter") {
@@ -258,9 +330,12 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
         event.preventDefault();
         const box = event.currentTarget.getBoundingClientRect();
         openMenu(item, index, box.left + box.width / 2, box.bottom);
+      } else if (event.key.length === 1 && (event.key !== " " || typed.current.text !== "") && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        typeAhead(event.key, index);
       }
     },
-    [move, openMenu, play, remove, select, total],
+    [move, openMenu, play, remove, select, total, typeAhead],
   );
 
   const dragFrom = useRef<number | null>(null);
@@ -337,40 +412,42 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
           } else if (event.key === "ArrowRight") {
             event.preventDefault();
             nudge(-NUDGE_PX);
+          } else if (event.key === "Enter") {
+            // Enter puts the width back, as it does on Track details (M359).
+            event.preventDefault();
+            setQueueWidth1x(QUEUE_DEFAULT_WIDTH);
           }
         }}
       />
 
-      <header className="cp-panel-header cp-queue__header">
+      <header className="cp-panel-header cp-side-head cp-queue__header">
         <h2 className="cp-panel-header__title cp-queue__title">
-          {/* The gestures are this title's hint: no tip line of their own (C129). */}
-          <Hint text={GESTURES}>
-            <span className="cp-queue__name" tabIndex={0}>
-              Queue
-            </span>
-          </Hint>
+          <span className="cp-queue__name">Queue</span>
           {/* The name, then its count in grey (area 58): never joined to it with a dot. */}
           {total > 0 && <span className="cp-queue__count cp-data">{formatCount(total)}</span>}
         </h2>
+        {/* Quiet (M312): Clear queue is not the loudest control in the panel; it asks before it clears. */}
         {total > 1 && (
-          <Button variant="danger" size="sm" onClick={() => setConfirmingClear(true)}>
+          <Button variant="secondary" size="sm" onClick={() => setConfirmingClear(true)}>
             Clear queue…
           </Button>
         )}
         <CloseButton onClick={onClose} aria-label="Close the queue" />
       </header>
 
-      <Modal
+      <ConfirmDialog
         open={confirmingClear}
         title="Clear queue?"
-        size="small"
-        variant="danger"
-        onClose={() => setConfirmingClear(false)}
-        primaryAction={{ label: "Clear queue", onClick: () => void clear() }}
-        secondaryAction={{ label: "Cancel", onClick: () => setConfirmingClear(false) }}
+        confirmLabel="Clear queue"
+        danger
+        onConfirm={() => void clear()}
+        onCancel={() => setConfirmingClear(false)}
       >
-        <p>Clear the queue? The playing track keeps playing.</p>
-      </Modal>
+        The playing track keeps playing.
+      </ConfirmDialog>
+
+      {/* The gestures, once and muted, under the head (D27, M313). */}
+      {total > 0 && <p className="cp-queue__gestures">{GESTURES}</p>}
 
       {total === 0 ? (
         <EmptyState
@@ -408,6 +485,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
               // gives the scrollbar the whole queue's height.
               if (index < visible.start - 30 || index > visible.end + 30) return null;
               const playing = item.status === "playing";
+              const played = !playing && playingIndex >= 0 && index < playingIndex;
               const selected = item.id === selectedId;
               return (
                 <div
@@ -422,7 +500,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                   tabIndex={item.id === activeId ? 0 : -1}
                   data-index={index}
                   data-status={item.status}
-                  className={`cp-queue__row${playing ? " cp-queue__row--playing" : ""}${
+                  className={`cp-queue__row${playing ? " cp-queue__row--playing" : ""}${played ? " cp-queue__row--played" : ""}${
                     selected ? " cp-queue__row--selected" : ""
                   }${item.status === "failed" ? " cp-queue__row--failed" : ""}`}
                   style={{ position: "absolute", top: index * rowHeight, height: rowHeight }}
@@ -456,18 +534,18 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                   onDoubleClick={() => void play(index)}
                   onKeyDown={(event) => onRowKeyDown(event, item, index)}
                 >
-                  {/* The one drag handle (C187): the grip, as in every list that reorders. */}
-                  <span className="cp-queue__grip" aria-hidden="true">
-                    <PixelIcon name="grip" size="sm" />
+                  {/* The one drag handle (C187): the grip, as in every list that reorders; none on a lone row (M311). */}
+                  {total > 1 && (
+                    <span className="cp-queue__grip" aria-hidden="true">
+                      <PixelIcon name="grip" size="sm" />
+                    </span>
+                  )}
+                  {/* The playing row shows the speaker in place of its number, as a table's mark column does (M310). */}
+                  <span className="cp-queue__position">
+                    {playing ? <PixelIcon name="volume" size="sm" className="cp-queue__playing-icon" /> : index + 1}
                   </span>
-                  <span className="cp-queue__position">{index + 1}</span>
                   <span className="cp-queue__text">
-                    {playing && (
-                      <>
-                        <PixelIcon name="volume" size="sm" className="cp-queue__playing-icon" />
-                        <span className="cp-visually-hidden">Now playing: </span>
-                      </>
-                    )}
+                    {playing && <span className="cp-visually-hidden">Now playing: </span>}
                     <span className="cp-queue__row-title" data-cut-hint="">
                       {item.title || NO_VALUE}
                     </span>
@@ -477,19 +555,13 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                       // takes the meta line's place so the row keeps its height.
                       <span className="cp-queue__row-meta cp-queue__failed">{failureLine(item.failure)}</span>
                     ) : (
-                      <span className="cp-queue__row-meta" data-cut-hint="">
-                        <TrackFactsLine
-                          artist={item.artist}
-                          label={item.label}
-                          keyValue={item.key}
-                          bpm={item.bpm}
-                          year={item.year}
-                        />
-                      </span>
+                      <QueueFacts item={item} />
                     )}
                   </span>
                   <span className="cp-queue__duration">{formatLength(item.durationSeconds)}</span>
+                  {/* Not a tab stop (M467): the row is the one control, and Delete removes it. */}
                   <RemoveButton
+                    tabIndex={-1}
                     className="cp-queue__remove"
                     onClick={(event) => {
                       event.stopPropagation();
@@ -510,6 +582,8 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
               />
             )}
           </div>
+          {/* A queue of one has nothing to reorder: it says how tracks get here (M311). */}
+          {total === 1 && <p className="cp-queue__one">{ONE_TRACK}</p>}
           {refusing && (
             <div className="cp-queue__refusal" aria-hidden="true">
               {REFUSAL}
