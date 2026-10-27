@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import illustrationsCss from "./OnboardingIllustrations.css?raw";
 
 import { OnboardingDialog } from "./OnboardingDialog";
+import { TAGLINE } from "./AboutDialog";
 
 const DONE = "cuepoint-onboarding-complete";
 const NOTE = "cuepoint-phase14-note-seen";
@@ -94,7 +95,7 @@ describe("the four screens", () => {
     mount();
     const titles: string[] = [];
     for (let step = 1; step <= 4; step += 1) {
-      expect(screen.getByRole("img", { name: `Step ${step} of 4` })).toBeInTheDocument();
+      expect(screen.getByRole("img", { name: new RegExp(`^Step ${step} of 4`) })).toBeInTheDocument();
       titles.push(heading().textContent ?? "");
       if (step < 4) await next();
     }
@@ -108,11 +109,8 @@ describe("the four screens", () => {
 
   it("says in one line each what the screen is for", async () => {
     mount();
-    expect(
-      screen.getByText(
-        "Tidies your Rekordbox library, finds new music, plans sets. Rekordbox is never changed until you export.",
-      ),
-    ).toBeInTheDocument();
+    // The one tagline About uses too (M445).
+    expect(screen.getByText(`${TAGLINE} Rekordbox is never changed until you export.`)).toBeInTheDocument();
     await next();
     expect(
       screen.getByText("Export your collection from Rekordbox, then import that file here. Nothing in Rekordbox is changed."),
@@ -143,7 +141,7 @@ describe("the four screens", () => {
     const drawings = screen.getByRole("list", { name: "How to export from Rekordbox" });
     expect(drawings.querySelectorAll("li")).toHaveLength(4);
     expect(drawings.querySelectorAll("svg.ob-art")).toHaveLength(4);
-    expect(drawings).toHaveTextContent("Export Collection in xml format");
+    expect(drawings).toHaveTextContent("Export Collection in XML format");
     expect(drawings).toHaveTextContent("Import a Rekordbox file");
     // 3 and 4: one drawing each, never a pixel icon.
     for (let step = 3; step <= 4; step += 1) {
@@ -187,20 +185,29 @@ describe("the four screens", () => {
     const art = screen.getByRole("dialog").querySelector(".onboarding-dialog__single")!;
     // Two lines, never one cut one.
     expect(art).toHaveTextContent("Clean · Discover");
-    expect(art).toHaveTextContent("Prepare");
+    expect(art).toHaveTextContent("Keys · Prepare");
     expect(art.textContent).not.toContain("Clean · Discover · Prepare");
   });
 
-  it("is as tall as its tallest step and no taller, and its sentences are Inter (C108, C55)", async () => {
+  it("is at least as tall as its tallest step, rounded, and its sentences are Inter at the body size (C108, C55, M251)", async () => {
     const css = (await import("./OnboardingDialog.css?raw")).default;
-    // Step 2, the tallest, measures 235 at 1x with its done line beside its buttons; 352 left
-    // every step half empty.
-    expect(css).toMatch(/\.onboarding-dialog\s*\{[^}]*height:\s*calc\(240px \* var\(--scale\)\)/);
+    // Step 2, the tallest, measures 235 at 1x with its done line beside its button; a taller step grows it.
+    expect(css).toMatch(/\.onboarding-dialog\s*\{[^}]*min-height:\s*round\(nearest, calc\(240px \* var\(--scale\)\), 1px\)/);
     expect(css).toMatch(/\.onboarding-dialog__row\s*\{[^}]*flex-wrap:\s*wrap/);
-    for (const selector of [".onboarding-dialog__body", ".onboarding-dialog__needs", ".onboarding-dialog__done"]) {
+    for (const selector of [".onboarding-dialog__body", ".onboarding-dialog__done"]) {
       const escaped = selector.replace(/[.]/g, "\\.");
       expect(css).toMatch(new RegExp(`${escaped}\\s*\\{[^}]*font-family:\\s*var\\(--font-data\\)`));
     }
+    // No size of its own: the Modal body's one size, and no About rules left in this sheet.
+    expect(css).not.toMatch(/--text-body/);
+    expect(css).not.toMatch(/\.about-dialog/);
+  });
+
+  it("sets the step title in the pixel face, like the dialog's own title, and the done line muted (M14, M325)", async () => {
+    const css = (await import("./OnboardingDialog.css?raw")).default;
+    expect(css).toMatch(/\.onboarding-dialog__title\s*\{[^}]*font-family:\s*var\(--font-voice\)/);
+    expect(css).toMatch(/\.onboarding-dialog__done\s*\{[^}]*color:\s*var\(--fg-muted\)/);
+    expect(css).not.toMatch(/success-text/);
   });
 
   it("is one dialog size on every step, with one violet button", async () => {
@@ -216,52 +223,61 @@ describe("the four screens", () => {
   it("shows where it is as dots, named for a screen reader", async () => {
     mount();
     await next();
-    const dots = screen.getByRole("img", { name: "Step 2 of 4" });
+    // Each step is named, so "Step 2 of 4" is not mistaken for the drawings' own numbers.
+    const dots = screen.getByRole("img", { name: "Step 2 of 4: Bring in your Rekordbox file" });
     expect(dots.querySelectorAll(".onboarding-dialog__dot")).toHaveLength(4);
     expect(dots.querySelectorAll('[data-current="true"]')).toHaveLength(1);
     expect(screen.queryByText(/Step \d of/)).toBeNull();
   });
 
-  it("keeps Skip, Back and Next in the same place before the last screen", async () => {
+  const footerButtons = () =>
+    [...screen.getByRole("dialog").querySelector(".cp-modal__footer")!.querySelectorAll("button")].map((b) => b.textContent);
+
+  it("has no Skip button and no Back on the first step: the × is Skip (M254, M259)", () => {
     mount();
-    for (let step = 1; step <= 3; step += 1) {
-      const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
-      expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
-        "Skip",
-        "Back",
-        "Next",
-      ]);
-      await next();
-    }
+    expect(screen.queryByRole("button", { name: "Skip" })).toBeNull();
+    expect(footerButtons()).toEqual(["Next"]);
   });
 
-  it("offers Skip before the last screen and Back after the first", async () => {
+  it("makes the step's own action the violet button while it is to do, with Next grey beside it (M261)", async () => {
+    install({ trackCount: 0 });
+    mount();
+    await next();
+    expect(footerButtons()).toEqual(["Back", "Next", "Import a Rekordbox file…"]);
+    expect(screen.getByRole("button", { name: "Import a Rekordbox file…" })).toHaveClass("cp-btn--primary");
+    expect(screen.getByRole("button", { name: "Next" })).toHaveClass("cp-btn--secondary");
+    await next();
+    expect(footerButtons()).toEqual(["Back", "Next", "Match on Beatport…"]);
+    await next();
+    expect(footerButtons()).toEqual(["Back", "Done", "Sign in to Beatport"]);
+    expect(screen.getByRole("button", { name: "Done" })).toHaveClass("cp-btn--secondary");
+  });
+
+  it("goes back to Next being the violet one once the step is done", async () => {
+    install({ trackCount: 306 });
+    mount();
+    await next();
+    await screen.findByText("306 tracks imported");
+    expect(footerButtons()).toEqual(["Back", "Next"]);
+    expect(screen.getByRole("button", { name: "Next" })).toHaveClass("cp-btn--primary");
+  });
+
+  it("offers Back after the first step only", async () => {
     mount();
     for (let step = 1; step <= 3; step += 1) {
-      expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
-      // Back keeps its place on the first screen so Next and Skip never move; it is off there.
-      if (step === 1) expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+      if (step === 1) expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
       else expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
       await next();
     }
   });
 
-  it("keeps Skip on the last screen, dimmed, so Back and Done do not move", async () => {
-    mount();
-    await goTo(4);
-    const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
-    expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Skip", "Back", "Done"]);
-    expect(screen.getByRole("button", { name: "Skip" })).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
-  });
-
-  it("puts the step dots in the footer, between Skip and Back", async () => {
+  it("puts the step dots in the footer, on the dialog's own centre", async () => {
     mount();
     const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
-    const dots = screen.getByRole("img", { name: "Step 1 of 4" });
+    const dots = screen.getByRole("img", { name: /^Step 1 of 4/ });
     expect(footer.contains(dots)).toBe(true);
-    const order = [...footer.querySelectorAll("button, [role='img']")].map((e) => e.textContent || e.getAttribute("aria-label"));
-    expect(order).toEqual(["Skip", "Step 1 of 4", "Back", "Next"]);
+    const css = (await import("./OnboardingDialog.css?raw")).default;
+    expect(css).toMatch(/\.onboarding-dialog__foot \.onboarding-dialog__dots\s*\{[^}]*left:\s*50%/);
   });
 
   it("goes back one screen at a time", async () => {
@@ -304,19 +320,19 @@ describe("ticking what is done", () => {
     expect(screen.queryByText(/imported/)).toBeNull();
   });
 
-  it("says how many are matched, once some are", async () => {
+  it("says how many are confirmed, once some are", async () => {
     install({ trackCount: 300, notMatched: 64 });
     mount();
     await goTo(3);
-    expect(await screen.findByText("236 matched")).toBeInTheDocument();
+    expect(await screen.findByText("236 confirmed")).toBeInTheDocument();
   });
 
-  it("shows no matched line while every track is still not matched", async () => {
+  it("shows no confirmed line while every track is still not matched", async () => {
     install({ trackCount: 10, notMatched: 10 });
     mount();
     await goTo(3);
     await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
-    expect(screen.queryByText(/matched$/)).toBeNull();
+    expect(screen.queryByText(/confirmed$/)).toBeNull();
   });
 
   it("ticks the sign-in and takes its button away, for each way of being signed in", async () => {
@@ -343,33 +359,28 @@ describe("ticking what is done", () => {
 });
 
 describe("marking it done", () => {
-  it("Skip and Done mark the guide done, and the update note as seen", async () => {
-    const skipped = mount();
-    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
-    expect(localStorage.getItem(DONE)).toBe("1");
-    expect(localStorage.getItem(NOTE)).toBe("1");
-    expect(skipped.onComplete).toHaveBeenCalledTimes(1);
-
-    localStorage.clear();
-    // Still mounted: Skip only asked to close.
+  it("Done marks the guide done, and the update note as seen", async () => {
+    const view = mount();
     await goTo(4);
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(localStorage.getItem(DONE)).toBe("1");
+    expect(localStorage.getItem(NOTE)).toBe("1");
+    expect(view.onComplete).toHaveBeenCalledTimes(1);
   });
 
-  it("Escape closes it without marking it done", async () => {
+  it("Escape counts as Skip: it is remembered, so the guide does not come back (M260)", async () => {
     const { onComplete } = mount();
     await userEvent.keyboard("{Escape}");
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem(DONE)).toBeNull();
-    expect(localStorage.getItem(NOTE)).toBeNull();
+    expect(localStorage.getItem(DONE)).toBe("1");
+    expect(localStorage.getItem(NOTE)).toBe("1");
   });
 
-  it("the close button closes it without marking it done", async () => {
+  it("the close button counts as Skip too (M260)", async () => {
     const { onComplete } = mount();
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem(DONE)).toBeNull();
+    expect(localStorage.getItem(DONE)).toBe("1");
   });
 
   it("a click on the backdrop does nothing at all", () => {
@@ -390,7 +401,7 @@ describe("reopening", () => {
     view.rerender({ open: false });
     view.rerender({ open: true });
 
-    expect(screen.getByRole("img", { name: "Step 1 of 4" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /^Step 1 of 4/ })).toBeInTheDocument();
     expect(heading()).toHaveTextContent("Welcome to CuePoint");
   });
 
@@ -400,7 +411,7 @@ describe("reopening", () => {
     view.rerender({ open: true, covered: true });
     expect(screen.queryByRole("dialog")).toBeNull();
     view.rerender({ open: true, covered: false });
-    expect(screen.getByRole("img", { name: "Step 2 of 4" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /^Step 2 of 4/ })).toBeInTheDocument();
   });
 });
 
@@ -414,9 +425,9 @@ describe("storage that throws", () => {
     });
   });
 
-  it("still finishes: Skip closes the guide", async () => {
+  it("still finishes: the × closes the guide", async () => {
     const { onComplete } = mount();
-    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
@@ -449,7 +460,7 @@ describe("the actions on its screens", () => {
   });
 
   it("Match on Beatport… closes the guide and opens Clean's match window once a library is in", async () => {
-    install({ trackCount: 10 });
+    install({ trackCount: 10, notMatched: 10 });
     const { onMatch, onComplete } = mount();
     await goTo(3);
     const button = screen.getByRole("button", { name: "Match on Beatport…" });

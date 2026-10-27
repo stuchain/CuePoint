@@ -13,6 +13,7 @@ import userEvent from "@testing-library/user-event";
 import type { LibraryHealth, PlayerSnapshot } from "../../api/cuepointBridge.types";
 import { resetPlayerStore } from "../../components/player/playerStore";
 import { announceLibraryChange } from "../../api/libraryChanges";
+import { markOnboardingDone } from "../../components/firstRunMemory";
 import { FirstSteps, FirstStepsNote } from "./FirstSteps";
 import firstStepsCss from "./FirstSteps.css?raw";
 
@@ -99,6 +100,8 @@ const done = (name: RegExp | string) => item(name).getAttribute("data-done");
 
 beforeEach(() => {
   localStorage.clear();
+  // First steps wait for Getting started to be finished or skipped (M504); these tests are past it.
+  localStorage.setItem("cuepoint-onboarding-complete", "1");
   resetPlayerStore();
 });
 
@@ -139,7 +142,7 @@ describe("the import step (K16)", () => {
     const { onImport, onHowToExport } = mount();
     const first = item("Import a Rekordbox file");
     expect(first).toHaveTextContent(
-      "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
+      "In Rekordbox choose File → Export Collection in XML format, then import that file. Nothing in Rekordbox is changed.",
     );
     await userEvent.click(within(first).getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(onImport).toHaveBeenCalledTimes(1);
@@ -417,6 +420,57 @@ describe("the chip in the Library header", () => {
     install({ health: health(10, 10) });
     const { container } = mountNote();
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("First steps wait for Getting started (M504)", () => {
+  it("is not shown until the guide has been finished or skipped, then appears", async () => {
+    install({ health: health(10, 10) });
+    localStorage.removeItem("cuepoint-onboarding-complete");
+    mount();
+    expect(screen.queryByRole("list", { name: "First steps" })).toBeNull();
+    act(() => markOnboardingDone());
+    expect(await screen.findByRole("list", { name: "First steps" })).toBeInTheDocument();
+  });
+
+  it("keeps the chip away too until then", () => {
+    install({ health: health(10, 10) });
+    localStorage.removeItem("cuepoint-onboarding-complete");
+    const { container } = render(<FirstStepsNote onMatch={vi.fn()} onAddToken={vi.fn()} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("a step's look (M301, M325)", () => {
+  it("has a check slot on every row, so done and undone labels start at one x, and the tick is muted", async () => {
+    install({ health: health(10, 10) });
+    mount({ imported: true });
+    await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
+    const rows = screen.getAllByRole("listitem");
+    for (const row of rows) expect(row.querySelector(".first-steps__done")).not.toBeNull();
+    expect(item("Import a Rekordbox file").querySelector(".first-steps__done svg")).not.toBeNull();
+    expect(item("Match your tracks").querySelector(".first-steps__done svg")).toBeNull();
+    expect(firstStepsCss).toMatch(/\.first-steps__done \{[^}]*color:\s*var\(--fg-muted\)/);
+    expect(firstStepsCss).not.toMatch(/success-text/);
+  });
+
+  it("makes the chip the quiet small button, with no one-off hover and the popover token", async () => {
+    install({ health: health(10, 10) });
+    render(<FirstStepsNote onMatch={vi.fn()} onAddToken={vi.fn()} />);
+    const chip = await screen.findByRole("button", { name: /First steps/ });
+    expect(chip).toHaveClass("cp-btn--quiet");
+    expect(firstStepsCss).not.toMatch(/brightness/);
+    expect(firstStepsCss).toMatch(/z-index:\s*var\(--z-popover\)/);
+  });
+
+  it("moves focus into the list when it opens, and back to the chip on Escape", async () => {
+    install({ health: health(10, 10) });
+    render(<FirstStepsNote onMatch={vi.fn()} onAddToken={vi.fn()} />);
+    const chip = await screen.findByRole("button", { name: /First steps/ });
+    await userEvent.click(chip);
+    expect(screen.getByRole("dialog", { name: "First steps" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(chip).toHaveFocus();
   });
 });
 

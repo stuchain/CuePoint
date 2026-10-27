@@ -1,5 +1,7 @@
 .onboarding-dialog__title {
   margin: 0 0 var(--space-md);
+  /* The step title is pixel, like the dialog's own title above it (M14). */
+  font-family: var(--font-voice);
   font-size: var(--font-size-section);
   font-weight: var(--weight-strong);
 }
@@ -9,30 +11,13 @@
   margin: 0 0 var(--space-lg);
   color: var(--fg-muted);
   font-family: var(--font-data);
-  font-size: var(--text-body);
   line-height: 1.5;
 }
 
-.about-dialog p {
-  margin: 0 0 var(--space-md);
-  font-family: var(--font-data);
-  font-size: var(--text-body);
-  line-height: 1.5;
-}
-
-.about-dialog ul {
-  margin: 0;
-  padding-left: var(--space-md);
-  font-family: var(--font-data);
-  font-size: var(--text-body);
-  color: var(--fg-muted);
-}
-
-/* Every step is the same size: the dialog's body as tall as the tallest step (2, with its done
-   line) and no taller, so no step is left mostly empty (C108). */
-/* As tall as the tallest step (step 2, its four drawings), which is 235 at 1x. */
+/* Every step is at least as tall as the tallest (step 2, its four drawings, 235 at 1x), so the
+   dialog does not change height from step to step; a taller step grows it (C108, M259). */
 .onboarding-dialog {
-  height: calc(240px * var(--scale));
+  min-height: round(nearest, calc(240px * var(--scale)), 1px);
 }
 
 /* The done line, then the buttons; one row when both fit, the buttons below when they do not. */
@@ -70,20 +55,25 @@
   width: calc(264px * var(--scale));
 }
 
-/* Skip on the left, the dots centred in what is left up to Back and Next. */
+/* Back on the left; the dots sit on the dialog's own centre, not the middle of what is left (M259). */
 .onboarding-dialog__foot {
   display: flex;
   flex: 1;
   align-items: center;
-  gap: var(--space-md);
+}
+
+.cp-modal__footer:has(.onboarding-dialog__foot) {
+  position: relative;
 }
 
 .onboarding-dialog__foot .onboarding-dialog__dots {
-  flex: 1;
-  justify-content: center;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-/* Modal's footer-extra slot hugs its content; this one takes the room up to Back. */
+/* Modal's footer-extra slot hugs its content; this one takes the room up to the buttons. */
 .cp-modal__footer > .cp-modal__footer-extra:has(> .onboarding-dialog__foot) {
   flex: 1;
 }
@@ -99,7 +89,6 @@
 .phase14-note__line p {
   margin: 0;
   font-family: var(--font-data);
-  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -116,9 +105,9 @@
   gap: var(--space-sm);
   min-height: var(--row-height);
   margin: 0 0 var(--space-md);
-  color: var(--success-text);
+  /* All good is quiet (D14, M325): the line and its tick are muted, not green. */
+  color: var(--fg-muted);
   font-family: var(--font-data);
-  font-size: var(--text-body);
 }
 
 .onboarding-dialog__dots {
@@ -162,13 +151,5 @@
   margin: 0;
   /* The body font, whose numerals read as numerals: the pixel font's 2 and 3 look like 8. */
   font-family: var(--font-data);
-  font-size: var(--text-body);
   line-height: 1.4;
-}
-
-.onboarding-dialog__needs {
-  margin: 0 0 var(--space-md);
-  color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--text-body);
 }

@@ -42,10 +42,15 @@
   color: var(--fg-muted);
 }
 
-/* A finished step's drawn check, in the quiet success colour. */
+/* A finished step's drawn check, in the quiet muted colour (M325). Every row has the slot, so done
+   and undone labels start at the same x (M301). */
 .first-steps__done {
+  display: inline-flex;
   flex: none;
-  color: var(--success-text);
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size-sm);
+  color: var(--fg-muted);
 }
 
 .first-steps__text {
@@ -57,7 +62,7 @@
 }
 
 .first-steps__label {
-  font-size: var(--font-size-sm);
+  font-size: var(--control-font-size);
 }
 
 /* A step's hint is a sentence, so Inter (D5, C55). */
@@ -83,21 +88,16 @@
   position: relative;
 }
 
-/* The chip look is the shared badge (cp-badge--accent); this only makes it a button. */
+/* The chip is the shared quiet small button: its hover is the button's own shade (M301). */
 .first-steps-chip {
-  font: inherit;
-  cursor: pointer;
-}
-
-.first-steps-chip:hover {
-  filter: brightness(1.15);
+  white-space: nowrap;
 }
 
 .first-steps-note__popover {
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 20;
+  z-index: var(--z-popover);
   width: min(calc(var(--unit) * 120), calc(100vw - var(--space-lg)));
   max-height: 70vh;
   overflow: auto;
@@ -106,6 +106,10 @@
   background: var(--bg-panel);
   border: var(--popover-border);
   box-shadow: var(--shadow-popover);
+}
+
+.first-steps-note__popover:focus-visible {
+  outline: none;
 }
 
 /* A step with two buttons (Import… and How do I get one?). */

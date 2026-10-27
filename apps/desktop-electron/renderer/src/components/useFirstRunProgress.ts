@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+
+import { onboardingFinished, subscribeOnboardingFinished } from "./firstRunMemory";
 
 import { LIBRARY_HEALTH, useSharedRead } from "../api/sharedReads";
 
@@ -104,4 +106,9 @@ export function useFirstRunProgress(enabled = true): FirstRunProgress {
   const { trackCount, matchedCount } = useLibraryCounts(enabled);
   const signedIn = useSignedIn(enabled);
   return { trackCount, matchedCount, signedIn };
+}
+
+/** Whether Getting started has gone (finished or skipped): First steps waits for it (M504). */
+export function useOnboardingFinished(): boolean {
+  return useSyncExternalStore(subscribeOnboardingFinished, onboardingFinished, () => true);
 }

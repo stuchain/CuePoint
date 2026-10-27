@@ -21,7 +21,7 @@ import {
   markFirstStepsDone,
   markFirstStepsPlayed,
 } from "../../components/firstRunMemory";
-import { useFirstRunProgress } from "../../components/useFirstRunProgress";
+import { useFirstRunProgress, useOnboardingFinished } from "../../components/useFirstRunProgress";
 import { selectHasPlayed } from "../../components/player/playerFormat";
 import { usePlayerValue } from "../../components/player/playerStore";
 import "./FirstSteps.css";
@@ -79,7 +79,7 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken, onImport, onHow
     {
       id: "import",
       label: "Import a Rekordbox file",
-      hint: "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
+      hint: "In Rekordbox choose File → Export Collection in XML format, then import that file. Nothing in Rekordbox is changed.",
       done: imported,
       action: onImport ? { label: "Import a Rekordbox file…", onClick: onImport, primary: true } : undefined,
       secondary: onHowToExport ? { label: "How do I get one?", onClick: onHowToExport } : undefined,
@@ -120,7 +120,9 @@ function StepList({ steps }: { steps: Step[] }) {
         <li key={step.id} className="first-steps__item" data-done={step.done ? "true" : "false"}>
           {/* The number is the list's own (1. 2. 3.). A finished step wears a drawn check; a
               step still to do wears nothing, so there are no empty squares (C146). */}
-          {step.done && <PixelIcon name="check" size="sm" className="first-steps__done" />}
+          <span className="first-steps__done" aria-hidden="true">
+            {step.done && <PixelIcon name="check" size="sm" />}
+          </span>
           <div className="first-steps__text">
             <span className="first-steps__label">{step.label}</span>
             <span className="first-steps__state">{step.done ? " (done)" : " (not yet)"}</span>
@@ -149,10 +151,11 @@ function StepList({ steps }: { steps: Step[] }) {
   );
 }
 
-/** The full list, on the empty Library. Gone for good once all four were done. */
+/** The full list, on the empty Library. Gone for good once all four were done; not shown before Getting started has gone (M504). */
 export function FirstSteps({ imported, ...handlers }: FirstStepsProps) {
   const [hidden] = useState(firstStepsDone);
-  if (hidden) return null;
+  const guideGone = useOnboardingFinished();
+  if (hidden || !guideGone) return null;
   return <FirstStepsSection imported={imported} {...handlers} />;
 }
 
@@ -174,13 +177,15 @@ function FirstStepsSection({ imported, ...handlers }: FirstStepsProps) {
  */
 export function FirstStepsNote(props: Omit<FirstStepsProps, "imported">) {
   const [hidden] = useState(firstStepsDone);
-  if (hidden) return null;
+  const guideGone = useOnboardingFinished();
+  if (hidden || !guideGone) return null;
   return <FirstStepsNoteLine {...props} />;
 }
 
 function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "imported">) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const close = useCallback((restoreFocus: boolean) => {
     setOpen(false);
     if (restoreFocus) rootRef.current?.querySelector<HTMLElement>("button")?.focus();
@@ -195,6 +200,11 @@ function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "impo
       onAddToken();
     },
   });
+
+  // Opening moves focus into the list, so Escape and Tab start where the list is (M301).
+  useEffect(() => {
+    if (open) popoverRef.current?.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -219,18 +229,19 @@ function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "impo
 
   return (
     <div ref={rootRef} className="first-steps-note">
-      <button
-        type="button"
-        className="first-steps-chip cp-badge cp-badge--accent"
+      <Button
+        variant="quiet"
+        size="sm"
+        className="first-steps-chip"
         aria-label={`First steps: ${doneCount} of 4 done`}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((was) => !was)}
       >
         First steps {doneCount}/4
-      </button>
+      </Button>
       {open && (
-        <div className="first-steps-note__popover" role="dialog" aria-label="First steps">
+        <div ref={popoverRef} tabIndex={-1} className="first-steps-note__popover" role="dialog" aria-label="First steps">
           <StepList steps={steps} />
         </div>
       )}

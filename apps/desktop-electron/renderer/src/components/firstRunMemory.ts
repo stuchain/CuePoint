@@ -40,8 +40,29 @@ export function shouldShowOnboarding(): boolean {
   return stored !== undefined && stored !== "1";
 }
 
+const onboardingListeners = new Set<() => void>();
+
 export function markOnboardingDone(): void {
   write(ONBOARDING_KEY);
+  for (const listener of [...onboardingListeners]) listener();
+}
+
+/**
+ * True once Getting started has been finished or skipped, which is when First steps may show
+ * (M504). Storage that cannot be read says true, as it does for the first steps' own flags: the
+ * guide is never shown then, so the list must not wait for it.
+ */
+export function onboardingFinished(): boolean {
+  const stored = read(ONBOARDING_KEY);
+  return stored === undefined || stored === "1";
+}
+
+/** Called when the guide is finished or skipped, so a list waiting for it can show; returns the stop function. */
+export function subscribeOnboardingFinished(listener: () => void): () => void {
+  onboardingListeners.add(listener);
+  return () => {
+    onboardingListeners.delete(listener);
+  };
 }
 
 /**

@@ -70,7 +70,7 @@ function ExportMenu() {
         Export Collection
       </text>
       <text className="ob-on" x="14" y="92">
-        in xml format
+        in XML format
       </text>
       <text className="ob-muted" x="14" y="109">
         Preferences
@@ -139,11 +139,11 @@ function WelcomeArt() {
       <rect className="ob-line" x="12" y="58" width="18" height="4" />
       <rect className="ob-line" x="12" y="70" width="22" height="4" />
       <image className="ob-logo" href={appIcon} x="82" y="24" width="48" height="48" />
-      <text className="ob-fg" x="106" y="86" textAnchor="middle">
+      <text className="ob-fg" x="103.5" y="86" textAnchor="middle">
         Clean · Discover
       </text>
-      <text className="ob-fg" x="106" y="99" textAnchor="middle">
-        Prepare
+      <text className="ob-fg" x="103.5" y="99" textAnchor="middle">
+        Keys · Prepare
       </text>
     </Window>
   );
@@ -197,7 +197,7 @@ export function OnboardingArt({ id }: { id: "welcome" | "match" | "sign-in" }) {
 
 const STEPS: { art: ReactNode; caption: string }[] = [
   { art: <OpenApp />, caption: "Open Rekordbox on your computer." },
-  { art: <ExportMenu />, caption: "File menu: Export Collection in xml format." },
+  { art: <ExportMenu />, caption: "File menu: Export Collection in XML format." },
   { art: <SaveAs />, caption: "Choose where to save, such as Documents, as rekordbox.xml." },
   { art: <BackHere />, caption: "Back here: Import a Rekordbox file…" },
 ];

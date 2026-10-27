@@ -109,7 +109,7 @@ test.describe("The first-run guide (PAGES-11)", () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await firstWindow(app);
-      await window.getByRole("dialog", { name: "Getting started" }).getByRole("button", { name: "Skip" }).click();
+      await window.getByRole("dialog", { name: "Getting started" }).getByRole("button", { name: "Close" }).click();
       const steps = window.getByRole("list", { name: "First steps" });
       await expect(steps.getByRole("listitem")).toHaveCount(4);
       await expect(steps.getByRole("listitem").first()).toHaveAttribute("data-done", "false");

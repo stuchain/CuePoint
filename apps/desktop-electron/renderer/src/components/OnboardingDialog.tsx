@@ -1,10 +1,11 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import { countNoun, formatCount } from "../format/counts";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { PixelIcon } from "./PixelIcon";
 import { MATCH_ON_BEATPORT } from "../format/words";
 import { OnboardingArt, OnboardingDrawings } from "./OnboardingIllustrations";
+import { TAGLINE } from "./AboutDialog";
 import { markOnboardingDone, markPhase14NoteSeen } from "./firstRunMemory";
 import { useFirstRunProgress, type FirstRunProgress } from "./useFirstRunProgress";
 import "./OnboardingDialog.css";
@@ -23,7 +24,10 @@ interface Screen {
   steps?: boolean;
   /** Why the action cannot be used yet, while it cannot. */
   needs?: (progress: FirstRunProgress) => string | null;
-  /** Always grey: the dialog's own Next is the one violet button of a step. */
+  /**
+   * The step's own job: while it is not done it is the dialog's one violet button, and Next goes
+   * grey beside it (M261). Once it is done, Next is the violet one again.
+   */
   action?: { id: Action; label: string };
   /** The line that says this step is already done; null until it is. */
   done?: (progress: FirstRunProgress) => string | null;
@@ -32,7 +36,7 @@ interface Screen {
 const SCREENS: Screen[] = [
   {
     title: "Welcome to CuePoint",
-    body: "Tidies your Rekordbox library, finds new music, plans sets. Rekordbox is never changed until you export.",
+    body: `${TAGLINE} Rekordbox is never changed until you export.`,
     art: "welcome",
   },
   {
@@ -51,7 +55,7 @@ const SCREENS: Screen[] = [
     // Only a library known to be empty holds it back; while the count is unknown the button works.
     needs: ({ trackCount }) => (trackCount === 0 ? "Import a Rekordbox file first (step 2)." : null),
     done: ({ matchedCount }) =>
-      matchedCount !== null && matchedCount > 0 ? `${formatCount(matchedCount)} matched` : null,
+      matchedCount !== null && matchedCount > 0 ? `${formatCount(matchedCount)} confirmed` : null,
   },
   {
     title: "Sign in to Beatport (optional)",
@@ -66,7 +70,7 @@ interface OnboardingDialogProps {
   open: boolean;
   /** Another dialog is shown over the guide (Show me how): hide it but keep its place. */
   covered?: boolean;
-  /** The guide has gone, finished or not. */
+  /** The guide has gone: finished, or skipped with the × or Escape (both are remembered). */
   onComplete: () => void;
   /** Show how to export the collection from Rekordbox. */
   onShowExport: () => void;
@@ -100,15 +104,17 @@ export function OnboardingDialog({
   const screen = SCREENS[step]!;
   const doneLine = screen.done?.(progress) ?? null;
   const needsLine = screen.needs?.(progress) ?? null;
-  const needsId = useId();
   const isLast = step >= SCREENS.length - 1;
 
-  /** Done for good: the guide, and the update note a new user has no use for. */
+  /** Done for good: the guide, and the update note a new user has no use for. The × and Escape count as Skip (M260). */
   const finish = () => {
     markOnboardingDone();
     markPhase14NoteSeen();
     onComplete();
   };
+  const next = () => (isLast ? finish() : setStep((s) => s + 1));
+  // The step's own job is the violet button while it is still to do; Next is then grey beside it.
+  const pending = screen.action && !doneLine ? screen.action : null;
 
   const act = (id: Action) => {
     if (id === "sign-in") {
@@ -125,23 +131,34 @@ export function OnboardingDialog({
       open={open && !covered}
       title="Getting started"
       size="medium"
-      // Escape and the close button leave without marking it done; a click on the
-      // backdrop does nothing (RUN-1, RUN-2).
-      onClose={onComplete}
+      // The × and Escape are Skip: the guide does not come back at the next start (M260). A click
+      // on the backdrop does nothing (RUN-1, RUN-2).
+      onClose={finish}
       closeOnBackdrop={false}
-      primaryAction={{
-        label: isLast ? "Done" : "Next",
-        onClick: () => (isLast ? finish() : setStep((s) => s + 1)),
-      }}
-      backAction={{ label: "Back", onClick: () => setStep((s) => s - 1), disabled: step === 0 }}
-      // Skip stays on every step (dimmed on the last) so Back and Next never move; the dots sit
-      // between it and Back, centred in the space that is left.
+      primaryAction={
+        pending
+          ? {
+              label: pending.label,
+              onClick: () => act(pending.id),
+              disabled: Boolean(needsLine),
+              disabledReason: needsLine ?? undefined,
+            }
+          : { label: isLast ? "Done" : "Next", onClick: next }
+      }
+      secondaryAction={pending ? { label: isLast ? "Done" : "Next", onClick: next } : undefined}
+      // Back is the left of the footer (none on the first step), and the dots sit on the dialog's own centre.
       footerExtra={
         <div className="onboarding-dialog__foot">
-          <Button variant="secondary" disabled={isLast} onClick={finish}>
-            Skip
-          </Button>
-          <div className="onboarding-dialog__dots" role="img" aria-label={`Step ${step + 1} of ${SCREENS.length}`}>
+          {step > 0 ? (
+            <Button variant="secondary" onClick={() => setStep((s) => s - 1)}>
+              Back
+            </Button>
+          ) : null}
+          <div
+            className="onboarding-dialog__dots"
+            role="img"
+            aria-label={`Step ${step + 1} of ${SCREENS.length}: ${screen.title}`}
+          >
             {SCREENS.map((item, index) => (
               <span
                 key={item.title}
@@ -158,8 +175,7 @@ export function OnboardingDialog({
           <h3 className="onboarding-dialog__title">{screen.title}</h3>
           <p className="onboarding-dialog__body">{screen.body}</p>
           {screen.steps && <OnboardingDrawings />}
-          {/* What is done and the step's buttons share one row where it fits, so the tallest step
-              (and with it the dialog) is no taller than it needs to be (C108). */}
+          {/* What is done and the quiet "How do I get one?" share one row where it fits (C108). */}
           <div className="onboarding-dialog__row">
             {/* Steps 2 to 4 keep a line for what is done, so the three read alike (C116). */}
             {screen.done && (
@@ -172,29 +188,12 @@ export function OnboardingDialog({
                 )}
               </p>
             )}
-            {screen.action && !(screen.action.id === "sign-in" && progress.signedIn) && (
-              <div className="onboarding-dialog__actions">
-                <Button
-                  variant="secondary"
-                  disabled={Boolean(needsLine)}
-                  aria-describedby={needsLine ? needsId : undefined}
-                  onClick={() => act(screen.action!.id)}
-                >
-                  {screen.action.label}
-                </Button>
-                {screen.action.id === "import" && (
-                  <Button variant="secondary" size="sm" onClick={onShowExport}>
-                    How do I get one?
-                  </Button>
-                )}
-              </div>
+            {screen.action?.id === "import" && (
+              <Button variant="secondary" size="sm" onClick={onShowExport}>
+                How do I get one?
+              </Button>
             )}
           </div>
-          {needsLine && screen.action && (
-            <p id={needsId} className="onboarding-dialog__needs">
-              {needsLine}
-            </p>
-          )}
         </div>
         {screen.art && <OnboardingArt id={screen.art} />}
       </div>

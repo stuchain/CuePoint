@@ -3,7 +3,7 @@ import "./RekordboxInstructionsDialog.css";
 
 const STEPS = [
   "Open Rekordbox on your computer.",
-  "Use File → Export Collection in xml format.",
+  "Use File → Export Collection in XML format.",
   "Save the XML file somewhere easy to find (Downloads works well).",
   "In CuePoint's Library, choose Import a Rekordbox file… and pick the XML file.",
   "To match on Beatport, open Clean and match a playlist, a Collection or All tracks.",
