@@ -11,7 +11,9 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  /* Clipped, with room for the resize handle's outer half (M359): it straddles the left edge. */
+  overflow: clip;
+  overflow-clip-margin: calc(var(--space-md) / 2);
   /* No padding above: the head carries the page's top margin and is as tall as the page's header,
      so the title and the divider meet the page's (M50, D9). */
   background: var(--bg-toolbar);
@@ -24,8 +26,8 @@
 }
 
 /*
- * The drag handle sits on the panel's left edge, overlapping it slightly so
- * the target is wider than the border it grabs. `--hit-min` would be too wide
+ * The drag handle straddles the panel's left edge (M359, Q6b), so the target is wider than the
+ * border it grabs and the one resizer line (--resizer-hover, centred on the hit) lands on the border. `--hit-min` would be too wide
  * here: it is a divider, not a button, and a 44px column of dead space beside
  * the content reads as a gap rather than an edge.
  */
@@ -34,7 +36,8 @@
   top: 0;
   left: 0;
   bottom: 0;
-  /* An 8px hit (P60); the line shows only on hover or drag. */
+  /* An 8px hit (P60), half each side of the edge (M359); the line shows only on hover or drag. */
+  left: calc(var(--space-md) / -2);
   width: var(--space-md);
   z-index: 1;
   cursor: col-resize;
@@ -43,7 +46,7 @@
 
 .cp-inspector__handle:hover,
 .cp-inspector__handle--active {
-  background: var(--resizer-edge-hover);
+  background: var(--resizer-hover);
 }
 
 /* Q6b: the panel's own border is the line that lights up, so there is one line in its real place. */
@@ -59,16 +62,8 @@ body.cp-inspector-resizing {
 }
 
 /* The title bar is the shared panel header with the side-head rules (screens.css): as tall as the
-   page header, padded --space-lg like the body below it (M50, M66). */
-
-/* M124: the panel's own name is a label, muted and at the control size; the track's name below it
-   is the heading. */
-.cp-inspector__header .cp-panel-header__title {
-  color: var(--fg-muted);
-  font-family: var(--font-control);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-}
+   page header, padded --space-lg like the body below it (M50, M66). Its title is the one side-head
+   title (screens.css, M50, M124): no look of its own here, so Track details and the queue match. */
 
 .cp-inspector__hide {
   flex: none;

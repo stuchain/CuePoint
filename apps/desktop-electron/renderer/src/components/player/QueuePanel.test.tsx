@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerSnapshot, QueueItem, QueueWindow } from "../../api/cuepointBridge.types";
 import { ToastProvider } from "../Toast";
+import { MotionProvider } from "../../tokens/MotionContext";
+import { useLayerStack } from "../../hooks/useLayerStack";
 import { QueuePanel } from "./QueuePanel";
 import { ROW_HEIGHT_FALLBACK } from "../table/trackTableLayout";
 import { resetPlayerStore } from "./playerStore";
@@ -147,6 +149,67 @@ describe("Escape (C29)", () => {
 
     fireEvent.keyDown(screen.getByRole("button", { name: "Close the queue" }), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves Escape to a newer layer open over it (M469)", async () => {
+    install(2);
+    const onClose = vi.fn();
+    render(<ToastProvider><QueuePanel onClose={onClose} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+    function Layer() {
+      useLayerStack(true);
+      return null;
+    }
+    const layer = render(<Layer />);
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close the queue" }), { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+
+    layer.unmount();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close the queue" }), { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("round 3 gap fixes (P3)", () => {
+  it("offers Clear queue as a quiet button (M312)", async () => {
+    install(3);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(3));
+    expect(screen.getByRole("button", { name: "Clear queue…" }).className).toMatch(/cp-btn--quiet/);
+  });
+
+  it("puts a row's artist and facts on a line of their own under the title (M309)", async () => {
+    install(2);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    const text = rows()[0]!.querySelector(".cp-queue__text")!;
+    const line = text.querySelector(":scope > .cp-queue__row-line");
+    expect(line).not.toBeNull();
+    expect(line!.querySelector(".cp-queue__row-meta")).not.toBeNull();
+    expect(text.querySelector(":scope > .cp-queue__row-title")).not.toBeNull();
+  });
+
+  it("leaves as a still copy marked data-leaving when it closes, with motion on (M380)", async () => {
+    install(2);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, width: 300, height: 400, right: 300, bottom: 400, x: 0, y: 0, toJSON: () => ({}),
+    } as DOMRect);
+    try {
+      const view = render(<MotionProvider><ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider></MotionProvider>);
+      await waitFor(() => expect(rows().length).toBe(2));
+      await act(async () => {
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      });
+      view.unmount();
+      const ghost = document.querySelector(".cp-queue[data-ghost]");
+      expect(ghost).not.toBeNull();
+      expect(ghost).toHaveAttribute("data-leaving");
+      expect(ghost).toHaveAttribute("inert");
+      ghost?.remove();
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
 

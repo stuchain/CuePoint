@@ -126,6 +126,30 @@ describe("transport keys", () => {
     expect(player.setVolume).toHaveBeenCalledWith(100);
   });
 
+  it.each(["table", "grid", "tree", "listbox"])(
+    "leaves Ctrl+Up/Down to a focused %s, which moves through it, not the volume (M461)",
+    async (role) => {
+      const player = install(50);
+      render(
+        <>
+          <Probe />
+          <div role={role}>
+            <button type="button">row</button>
+          </div>
+        </>,
+      );
+      screen.getByRole("button", { name: "row" }).focus();
+
+      await userEvent.keyboard("{Control>}{ArrowUp}{/Control}");
+      await userEvent.keyboard("{Control>}{ArrowDown}{/Control}");
+      expect(player.setVolume).not.toHaveBeenCalled();
+
+      // Ctrl+Left/Right still step the queue from there.
+      await userEvent.keyboard("{Control>}{ArrowRight}{/Control}");
+      expect(player.next).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("leaves bare arrows to the table and the queue panel", async () => {
     // They are how a keyboard user moves through a list; taking them would
     // break the two places this app is actually used from the keyboard.

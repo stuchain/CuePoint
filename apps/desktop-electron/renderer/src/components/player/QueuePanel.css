@@ -23,13 +23,14 @@
   background: var(--bg-toolbar);
 }
 
-/* The drag handle on the panel's left edge: a wider target than the border it grabs. */
+/* The drag handle straddles the panel's left edge (M359, Q6b): a wider target than the border it
+   grabs, and the one resizer line (--resizer-hover, centred on the hit) lands on the border. */
 .cp-queue__handle {
   position: absolute;
   top: 0;
-  left: 0;
+  left: calc(var(--space-md) / -2);
   bottom: 0;
-  /* An 8px hit (P60); the line shows only on hover or drag. */
+  /* An 8px hit (P60), half each side of the edge; the line shows only on hover or drag. */
   width: var(--space-md);
   z-index: 1;
   cursor: col-resize;
@@ -38,7 +39,7 @@
 
 .cp-queue__handle:hover,
 .cp-queue__handle--active {
-  background: var(--resizer-edge-hover);
+  background: var(--resizer-hover);
 }
 
 /* Q6b: the panel's own border is the line that lights up, so there is one line in its real place. */
@@ -73,10 +74,10 @@ body.cp-queue-resizing {
   gap: var(--space-sm);
 }
 
-/* The count after the name, grey and in the data face. */
+/* The count after the name, grey and in the pixel digits beside the pixel label (M8). */
 .cp-queue__count {
   color: var(--fg-muted);
-  font-family: var(--font-data);
+  font-family: var(--font-pixel-digits);
   font-variant-numeric: tabular-nums;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-regular);
@@ -106,7 +107,7 @@ body.cp-queue-resizing {
   position: absolute;
   left: 0;
   right: 0;
-  height: calc(2px * var(--scale));
+  height: var(--space-2xs);
   transform: translateY(-50%);
   background: var(--accent-primary);
   pointer-events: none;
@@ -125,17 +126,19 @@ body.cp-queue-resizing {
 /* A drag from somewhere else is held over the list: it is refused, and the list says so. */
 .cp-queue__scroll[data-refusing] {
   box-shadow: inset 0 0 0 var(--control-border-width) var(--accent-danger);
-  cursor: not-allowed;
+  /* M339: no special cursor; the red frame and the line below say it. */
+  cursor: default;
 }
 
+/* The refusal in the field-error look (M347): red Inter xs, on the list's ground, at the rows' inset. */
 .cp-queue__refusal {
   position: sticky;
   bottom: 0;
-  padding: var(--space-xs) var(--space-md);
-  background: var(--bg-panel);
-  border-top: var(--divider);
+  padding-inline: var(--space-lg);
   color: var(--danger-text);
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
   pointer-events: none;
 }
 
@@ -224,14 +227,26 @@ body.cp-queue-resizing {
   min-width: 3ch;
 }
 
-/* One line: the title, then its facts muted after it. The title and the artist end in "..." when cut
-   (full text in the app hint); the key chip, BPM and year keep their room (M309). */
+/* Two lines within the row (M309): the title, then the artist and the facts muted under it, each line
+   half the row. The title and the artist end in "..." when cut (full text in the app hint); the key
+   chip, BPM and year keep their room. A long title no longer squeezes the artist to nothing. */
 .cp-queue__text {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-sm);
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
   flex: 1 1 auto;
+  line-height: calc((var(--row-height) - var(--hairline)) / 2);
+}
+
+/* The second line: the artist and label give way, the facts after them keep their room. Half the row
+   tall whatever the key chip needs, so the row keeps the list's one height. */
+.cp-queue__row-line {
+  display: flex;
+  align-items: center;
+  block-size: calc((var(--row-height) - var(--hairline)) / 2);
+  gap: var(--space-sm);
+  min-width: 0;
 }
 
 .cp-queue__row-title,

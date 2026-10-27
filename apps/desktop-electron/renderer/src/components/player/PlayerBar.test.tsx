@@ -1044,10 +1044,14 @@ describe("the bar's CSS (C7, C9)", () => {
     return at < 0 ? "" : playerBarCss.slice(at, playerBarCss.indexOf("}", at));
   };
 
-  it("gives the track its room first, up to its text", () => {
+  // Moved (CI wave 2 item 6, M81): `max-inline-size: max-content` overrode the 40% cap (the same
+  // property as max-width), so a very long artist wrapped the bar. No grow and the cap give "its text,
+  // up to 40%" as the basis.
+  it("gives the track its room first, up to its text and never over 40%", () => {
     const track = rule(".cp-player-bar__track");
-    expect(track).toMatch(/flex:\s*1 1 auto;/);
-    expect(track).toMatch(/max-inline-size:\s*max-content;/);
+    expect(track).toMatch(/flex:\s*0 1 auto;/);
+    expect(track).toMatch(/max-width:\s*round\(down, 40%, 1px\);/);
+    expect(track).not.toMatch(/max-inline-size/);
   });
 
   it("is not selectable", () => {
@@ -1090,7 +1094,8 @@ describe("a bar too narrow for its timeline (item 2, at 2x in 1264x735)", () => 
   }
 
   it("keeps a floor under the timeline, as wide in the stylesheet as the code folds at", () => {
-    expect(playerBarCss).toMatch(new RegExp(`\\.cp-player-bar__wave\\s*\\{[^}]*min-width:\\s*calc\\(${TIMELINE_MIN_PX}px \\* var\\(--scale\\)\\)`));
+    // M81: the floor is rounded to a whole pixel; the number is still the code's.
+    expect(playerBarCss).toMatch(new RegExp(`\\.cp-player-bar__wave\\s*\\{[^}]*min-width:\\s*round\\(nearest, calc\\(${TIMELINE_MIN_PX}px \\* var\\(--scale\\)\\), 1px\\)`));
     expect(playerBarCss).toMatch(/\.cp-player-bar__seek\s*\{[^}]*min-width:\s*min-content/);
   });
 

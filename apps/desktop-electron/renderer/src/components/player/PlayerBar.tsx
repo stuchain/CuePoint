@@ -635,7 +635,11 @@ export function PlayerBar({
                 glyph rather than the loop with a badge stuck on it. */}
             <PixelIcon name={repeat === "one" ? "repeat-one" : "repeat"} />
             {repeat !== "off" && (
-              <span className="cp-player-bar__repeat-label" aria-hidden="true">
+              <span
+                className="cp-player-bar__repeat-label"
+                aria-hidden="true"
+                style={{ "--chars": (REPEAT_SHORT[repeat] ?? "").length } as CSSProperties}
+              >
                 {REPEAT_SHORT[repeat]}
               </span>
             )}
@@ -653,7 +657,12 @@ export function PlayerBar({
             >
               <PixelIcon name="queue" />
               {queueLength > 0 && (
-                <span className="cp-player-bar__count cp-data" aria-hidden="true" data-pulse={countPulse ? "" : undefined}>
+                <span
+                  className="cp-player-bar__count cp-data"
+                  aria-hidden="true"
+                  data-pulse={countPulse ? "" : undefined}
+                  style={{ "--chars": formatCount(queueLength).length } as CSSProperties}
+                >
                   {formatCount(queueLength)}
                 </span>
               )}

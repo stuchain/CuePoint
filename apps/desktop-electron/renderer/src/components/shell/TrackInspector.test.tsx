@@ -23,6 +23,7 @@ import { INSPECTOR_AUTO_OPEN_DELAY_MS, TrackInspector } from "./TrackInspector";
 import { ScreenHeader } from "./ScreenHeader";
 import { setSelectedTrack } from "./selectedTrack";
 import { INSPECTOR_STORAGE_KEY } from "./inspectorState";
+import { useLayerStack } from "../../hooks/useLayerStack";
 
 // Outside a provider the scale is the default, 1.5×: 213 in 1× units draws as 320px.
 const DEFAULT_PX = 320;
@@ -154,8 +155,11 @@ describe("TrackInspector", () => {
       expect(body).not.toMatch(/box-shadow|blur|radial/);
     });
 
-    it("names the panel as a muted label; the track's name is the heading (M124)", () => {
-      const title = css.match(/\.cp-inspector__header \.cp-panel-header__title\s*\{[^}]*\}/)?.[0] ?? "";
+    // Moved (M50): the muted label look is now the one side-head title in screens.css, which the
+    // queue shares; this sheet keeps no title look of its own.
+    it("names the panel as a muted label; the track's name is the heading (M124, M50)", () => {
+      expect(css.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/cp-panel-header__title/);
+      const title = screens.match(/\.cp-side-head > \.cp-panel-header__title\s*\{[^}]*\}/)?.[0] ?? "";
       expect(title).toMatch(/color:\s*var\(--fg-muted\)/);
       expect(title).toMatch(/font-family:\s*var\(--font-control\)/);
     });
@@ -167,7 +171,8 @@ describe("TrackInspector", () => {
     });
 
     it("lights its handle with the shared resizer colour", () => {
-      expect(css).toMatch(/\.cp-inspector__handle:hover[^{]*\{[^}]*background:\s*var\(--resizer-edge-hover\)/); // Q6b: the edge itself lights up
+      // M359: the one token; the handle straddles the edge, so its centred line is the edge (Q6b).
+      expect(css).toMatch(/\.cp-inspector__handle:hover[^{]*\{[^}]*background:\s*var\(--resizer-hover\)/);
     });
   });
 
@@ -239,6 +244,21 @@ describe("TrackInspector", () => {
       hide().focus();
       await user.keyboard("{Escape}");
       expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    });
+
+    it("leaves Escape to a newer layer open over it (M469)", async () => {
+      const user = userEvent.setup();
+      function Layer() {
+        useLayerStack(true);
+        return null;
+      }
+      render(<TrackInspector />);
+      expect(panel()).toBeInTheDocument();
+      // A menu or dialog opened once the panel shows: the newest layer (the stack is the app's one).
+      rtlRender(<Layer />);
+      hide().focus();
+      await user.keyboard("{Escape}");
+      expect(panel()).toBeInTheDocument();
     });
 
     it("gives the space back to the content when hidden", async () => {
@@ -383,6 +403,13 @@ describe("TrackInspector", () => {
     it("reports its width to assistive technology", () => {
       render(<TrackInspector />);
       expect(handle()).toHaveAttribute("aria-valuenow", String(DEFAULT_PX));
+    });
+
+    it("says the ends of its range, from the clamp (M359)", () => {
+      render(<TrackInspector />);
+      // 147 x 1.5 at the narrow end; 1280 wide at 1.5x leaves 1280 - 840 = 440 at the wide end.
+      expect(handle()).toHaveAttribute("aria-valuemin", "221");
+      expect(handle()).toHaveAttribute("aria-valuemax", "440");
     });
   });
 

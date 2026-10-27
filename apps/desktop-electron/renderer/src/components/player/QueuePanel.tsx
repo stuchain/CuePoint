@@ -27,6 +27,8 @@ import {
   useQueueWidth,
   useWindowWidth,
 } from "./queueWidth";
+import { useLayerStack } from "../../hooks/useLayerStack";
+import { useLeaveGhost } from "../../tokens/useLeaveGhost";
 import { usePlayerValue } from "./playerStore";
 import { useQueueWindow } from "./useQueueWindow";
 import "./QueuePanel.css";
@@ -59,7 +61,7 @@ import "./QueuePanel.css";
  * width is `queueWidth.ts`'s; the panel pushes the page the way Track details does.
  */
 
-/** An entry is one line (title, then its facts muted), one of the table's rows: every track list has the one row height. */
+/** An entry is one of the table's rows (every track list has the one row height): the title, and under it the artist and facts muted (M309). */
 const TABLE_ROWS_PER_ENTRY = 1;
 
 /** A keyboard nudge of the resize handle, in pixels. */
@@ -120,7 +122,7 @@ function QueueFacts({ item }: { item: QueueItem }) {
   if (bpm) tail.push(`${bpm} BPM`);
   if (year) tail.push(year);
   return (
-    <>
+    <span className="cp-queue__row-line">
       <span className="cp-queue__row-meta cp-data" data-cut-hint="">
         {lead.join(FACTS_SEPARATOR)}
       </span>
@@ -134,7 +136,7 @@ function QueueFacts({ item }: { item: QueueItem }) {
           ))}
         </span>
       )}
-    </>
+    </span>
   );
 }
 
@@ -161,6 +163,13 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
   const windowWidth = useWindowWidth();
   const width = queueWidthPx(width1x, scale, windowWidth);
   const [resizing, setResizing] = useState(false);
+
+  // Escape is the newest layer's (M469): a menu or the Clear question opened over the queue answers it first.
+  const isTopLayer = useLayerStack(true);
+  // The queue is unmounted when it closes (RightColumn): it leaves as a still copy marked
+  // `[data-leaving]`, which plays the side panel's exit (M380).
+  const panelRef = useRef<HTMLElement>(null);
+  useLeaveGhost(panelRef);
 
   const onScroll = useCallback(() => {
     const element = scrollRef.current;
@@ -379,13 +388,14 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
 
   return (
     <aside
+      ref={panelRef}
       className="cp-queue"
       aria-label="Playback queue"
       style={{ width: `${width}px` }}
       data-width={width}
       // Escape closes the panel that has focus (C29).
       onKeyDown={(event) => {
-        if (onClose && escapeClosesPanel(event)) {
+        if (onClose && escapeClosesPanel(event) && isTopLayer()) {
           event.preventDefault();
           onClose();
         }
@@ -428,7 +438,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
         </h2>
         {/* Quiet (M312): Clear queue is not the loudest control in the panel; it asks before it clears. */}
         {total > 1 && (
-          <Button variant="secondary" size="sm" onClick={() => setConfirmingClear(true)}>
+          <Button variant="quiet" size="sm" onClick={() => setConfirmingClear(true)}>
             Clear queue…
           </Button>
         )}

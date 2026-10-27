@@ -19,6 +19,7 @@ import { findOwningDestination } from "./navRegistry";
 import { useMotion } from "../../tokens/MotionContext";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { leaveAsGhost } from "../../tokens/useLeaveGhost";
+import { useLayerStack } from "../../hooks/useLayerStack";
 import { useSelectedTrack, type SelectedTrack } from "./selectedTrack";
 import { escapeClosesPanel, isDialogOpen } from "./shellKeyboard";
 import { useShellCommand } from "./shellCommands";
@@ -262,6 +263,9 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     [width, scale, reserve],
   );
 
+  // Escape is the newest layer's (M469): a menu or dialog opened over the panel answers it first.
+  const isTopLayer = useLayerStack(visible);
+
   const nudge = useCallback(
     (delta: number) => {
       setState((prev) => ({
@@ -291,7 +295,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       style={{ width: `${width}px` }}
       // Escape closes the panel that has focus (C29).
       onKeyDown={(event) => {
-        if (escapeClosesPanel(event)) {
+        if (escapeClosesPanel(event) && isTopLayer()) {
           event.preventDefault();
           toggleByButton();
         }
@@ -326,6 +330,9 @@ export function TrackInspector({ children }: TrackInspectorProps) {
         role="separator"
         aria-orientation="vertical"
         aria-label="Resize track details"
+        // The clamp's own ends (M359), as the queue's handle says them.
+        aria-valuemin={Math.round(INSPECTOR_MIN_WIDTH * scale)}
+        aria-valuemax={inspectorWidthPx(Number.MAX_SAFE_INTEGER, scale, windowWidth, reserve)}
         aria-valuenow={width}
         tabIndex={0}
         onMouseDown={(event) => {

@@ -18,8 +18,11 @@
 }
 
 .cp-waveform-settings__label {
-  font-size: var(--font-size-sm);
-  color: var(--fg-primary);
+  /* The label look (M1): the control face at label size and the control weight, muted. */
+  font-family: var(--font-control);
+  font-size: var(--font-size-label);
+  font-weight: var(--control-font-weight);
+  color: var(--fg-muted);
 }
 
 fieldset.cp-waveform-settings__choice > legend {
@@ -50,9 +53,10 @@ fieldset.cp-waveform-settings__choice {
   gap: var(--space-xs);
 }
 
-/* The Inspector's waveform height (WAVE-06): its own height, not two table rows (R4-1). */
+/* The player overview's height (M238): the preview draws at the size the player draws it, so the
+   bands cover each other the same way and the preview shows what the player will. */
 .cp-waveform-settings__canvas {
-  height: round(nearest, calc(66.67px * var(--scale)), 1px);
+  height: var(--player-overview-height);
   max-width: 100%;
   /* No frame (P17): the canvas is its own tone. */
   border: 0;

@@ -121,6 +121,15 @@ export function usePlayerShortcuts(): void {
 
       if (isTypingTarget(event.target)) return;
       if (!hasShortcutModifier(event) || event.shiftKey) return;
+      // Mod+Up/Down in a table, tree or list moves through it (to the first or last row), not the
+      // volume (M461): the list has the focus, so the key is its.
+      if (
+        (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+        event.target instanceof Element &&
+        event.target.closest('[role=table],[role=grid],[role=tree],[role=listbox]') !== null
+      ) {
+        return;
+      }
 
       switch (event.key) {
         case "ArrowRight":

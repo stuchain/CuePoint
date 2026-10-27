@@ -73,10 +73,16 @@
   padding: var(--page-gutter-top) var(--space-lg) 0;
 }
 
-/* The title and the close mark share the page title's row: one toolbar tall, the mark centred in it. */
+/* The title and the close mark share the page title's row: one toolbar tall, the mark centred in it.
+   One title look for every side head (M50): the panel's name is a label, muted at the control size
+   (M124), so Track details and the queue do not change their head when one replaces the other. */
 .cp-side-head > .cp-panel-header__title {
   min-height: var(--toolbar-height);
   line-height: var(--toolbar-height);
+  color: var(--fg-muted);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
 }
 
 .cp-side-head > .cp-queue__title {

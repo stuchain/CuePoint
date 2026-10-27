@@ -17,7 +17,7 @@
      are one line, not two. Nothing but a hairline of the page is covered when there is no table. */
   margin-top: calc(-1 * var(--hairline));
   background: var(--bg-panel);
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-detail-strip__canvas {

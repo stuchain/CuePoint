@@ -5,6 +5,11 @@ import { contrastRatio } from "../../tokens/themeDerivation";
 
 import playerBar from "./PlayerBar.css?raw";
 import tokensCss from "../../tokens/tokens.css?raw";
+import queueCss from "./QueuePanel.css?raw";
+import stripCss from "../waveform/WaveformDetailStrip.css?raw";
+import settingsCss from "../../screens/waveform-settings.css?raw";
+import screensCss from "../../screens/screens.css?raw";
+import inspectorCss from "../shell/TrackInspector.css?raw";
 
 /**
  * C16c: the player bar looks exactly as it did before the quieter-chrome sweep. This does not
@@ -280,5 +285,111 @@ describe("the sliders are drawn (P46)", () => {
   it("leaves the drawn-waveform rules alone: the input stays transparent over the picture", () => {
     expect(body(".cp-player-bar__wave--drawn .cp-player-bar__slider")).toMatch(/opacity:\s*0/);
     expect(body(".cp-player-bar__wave--drawn .cp-player-bar__slider::-webkit-slider-runnable-track")).toMatch(/background:\s*transparent/);
+  });
+});
+
+/** Round 3 gap fixes (P3): the player, the queue, the side heads and the waveform preview. */
+describe("the player and its panels after the round 3 gap fixes (P3)", () => {
+  const rulesOf = (css: string, selector: string) =>
+    parseRules(stripComments(css))
+      .filter((r) => r.context === "" && selectorList(r.selector).includes(selector))
+      .map((r) => Object.fromEntries(declarations(r.body)));
+  const decls = (css: string, selector: string): Record<string, string> => Object.assign({}, ...rulesOf(css, selector));
+  const order = (css: string, selector: string) =>
+    parseRules(stripComments(css)).findIndex((r) => r.context === "" && selectorList(r.selector).includes(selector));
+
+  it("lets the title's own face win on the title button, and the artist button inherit its line (M304)", () => {
+    // The title's own rule (the one that sets its face), not the shared one-line rule above both.
+    const titleRule = parseRules(stripComments(playerBar)).findIndex((r) => r.context === "" && r.selector === ".cp-player-bar__title");
+    expect(order(playerBar, ".cp-player-bar__link")).toBeLessThan(titleRule);
+    expect(decls(playerBar, ".cp-player-bar__title")["font-weight"]).toBe("var(--font-weight-semibold)");
+    expect(decls(playerBar, ".cp-player-bar__title")["font-size"]).toBe("var(--font-size-sm)");
+  });
+
+  it("drops the sliders' UA margin, so the volume ends on the shell inset (M306)", () => {
+    expect(decls(playerBar, ".cp-player-bar__slider")["margin"]).toBe("0");
+  });
+
+  it("stands the ring off the playing Play's fill (M328)", () => {
+    expect(decls(playerBar, '.cp-player-bar__button--play[aria-pressed="true"]:focus-visible')["outline-offset"]).toBe(
+      "var(--focus-ring-offset-filled)",
+    );
+  });
+
+  it("puts whole pixels where the bar sets a width (M81)", () => {
+    expect(decls(playerBar, ".cp-player-bar__track")["max-width"]).toBe("round(down, 40%, 1px)");
+    expect(decls(playerBar, ".cp-player-bar__wave")["min-width"]).toBe("round(nearest, calc(96px * var(--scale)), 1px)");
+    expect(decls(playerBar, ".cp-player-bar__slider--volume")["width"]).toBe("round(nearest, calc(56px * var(--scale)), 1px)");
+    expect(decls(playerBar, ".cp-player-bar__count")["min-inline-size"]).toMatch(/^round\(up,/);
+    expect(decls(playerBar, ".cp-player-bar__repeat-label")["min-inline-size"]).toMatch(/^round\(up,/);
+  });
+
+  it("shows no hand or refusal cursor on the bar, the queue or the strip (M339)", () => {
+    for (const css of [playerBar, queueCss, stripCss]) {
+      expect(stripComments(css)).not.toMatch(/cursor:\s*(pointer|not-allowed)/);
+    }
+  });
+
+  it("previews the waveform at the player overview's height (M238)", () => {
+    expect(decls(playerBar, ":root")["--player-overview-height"]).toBe(
+      "calc(round(nearest, calc(36px * var(--scale)), 1px) - 2 * var(--space-xs))",
+    );
+    expect(decls(settingsCss, ".cp-waveform-settings__canvas")["height"]).toBe("var(--player-overview-height)");
+  });
+
+  it("labels the Settings preview in the label look (M1)", () => {
+    expect(decls(settingsCss, ".cp-waveform-settings__label")).toMatchObject({
+      "font-family": "var(--font-control)",
+      "font-size": "var(--font-size-label)",
+      "font-weight": "var(--control-font-weight)",
+      color: "var(--fg-muted)",
+    });
+  });
+
+  it("counts the queue in the pixel digits, tabular (M8)", () => {
+    expect(decls(queueCss, ".cp-queue__count")).toMatchObject({
+      "font-family": "var(--font-pixel-digits)",
+      "font-variant-numeric": "tabular-nums",
+    });
+  });
+
+  it("draws the drop line whole-pixel (M80)", () => {
+    expect(decls(queueCss, ".cp-queue__drop")["height"]).toBe("var(--space-2xs)");
+  });
+
+  it("says the queue's refusal in the field-error look, with no strip (M347)", () => {
+    const refusal = decls(queueCss, ".cp-queue__refusal");
+    expect(refusal).toMatchObject({ "font-family": "var(--font-data)", "font-size": "var(--font-size-xs)", color: "var(--danger-text)" });
+    expect(refusal).not.toHaveProperty("background");
+    expect(refusal).not.toHaveProperty("border-top");
+    expect(refusal).not.toHaveProperty("padding");
+  });
+
+  it("puts a queue row's artist and facts on a second line under the title (M309)", () => {
+    expect(decls(queueCss, ".cp-queue__text")["flex-direction"]).toBe("column");
+    expect(decls(queueCss, ".cp-queue__row-line")["display"]).toBe("flex");
+  });
+
+  it("gives both side heads one title look, and Track details none of its own (M50)", () => {
+    expect(decls(screensCss, ".cp-side-head > .cp-panel-header__title")).toMatchObject({
+      color: "var(--fg-muted)",
+      "font-family": "var(--font-control)",
+      "font-size": "var(--control-font-size)",
+      "font-weight": "var(--control-font-weight)",
+    });
+    expect(stripComments(inspectorCss)).not.toMatch(/cp-panel-header__title/);
+  });
+
+  it("draws one resizer line on the panel edge, the handles straddling it (M359)", () => {
+    for (const [css, handle] of [
+      [inspectorCss, ".cp-inspector__handle"],
+      [queueCss, ".cp-queue__handle"],
+    ] as const) {
+      expect(decls(css, handle)["left"]).toBe("calc(var(--space-md) / -2)");
+      expect(decls(css, `${handle}:hover`)["background"]).toBe("var(--resizer-hover)");
+      expect(stripComments(css)).not.toMatch(/--resizer-edge-hover/);
+    }
+    // The panel clips, with room for the handle's outer half.
+    expect(decls(inspectorCss, ".cp-inspector")["overflow-clip-margin"]).toBe("calc(var(--space-md) / 2)");
   });
 });

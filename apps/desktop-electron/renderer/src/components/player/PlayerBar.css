@@ -12,6 +12,13 @@
  * shadows. Nothing here introduces a new visual idea.
  */
 
+/* The overview's height in the bar (M238): the transport row less the waveform's xs inset above and
+   below (.cp-player-bar__waveform). On the root, so Settings › Waveforms' preview draws at the same
+   height and shows the bands as the player will. */
+:root {
+  --player-overview-height: calc(round(nearest, calc(36px * var(--scale)), 1px) - 2 * var(--space-xs));
+}
+
 /*
  * Flex with wrapping, not a fixed grid.
  *
@@ -56,18 +63,19 @@
  * the bar only wraps when the *controls* genuinely do not fit, which is 3x.
  * The position bar takes twice the share, being the one that benefits.
  *
- * The track name stops growing at its text's width (`max-inline-size:
- * max-content`), capped at its share as before, so a short title leaves the
- * rest to the position bar: the waveform then sits centred between the
- * transport/track group and the controls, one gap each side (C7). The basis
- * stays zero, so wrapping is decided exactly as above.
+ * The track name does not grow: it is its text's width, capped at 40%, so a
+ * short title leaves the rest to the position bar: the waveform then sits
+ * centred between the transport/track group and the controls, one gap each
+ * side (C7).
  */
 .cp-player-bar__track {
-  /* The track gets its room first: its own text up to 40% of the bar, never less than a readable
-     width, and what is left goes to the position. */
-  flex: 1 1 auto;
-  max-width: 40%;
-  max-inline-size: max-content;
+  /* The track gets its room first: its own text up to 40% of the bar, and what is left goes to the
+     position. No grow, and its basis is its text clamped to 40%: the logical max-content cap that was
+     here is the same property as `max-width` and, written later, replaced the 40% cap, so a very long artist
+     made the track's own line wider than the bar and the bar wrapped onto three lines (CI wave 2,
+     playerBar.spec at 1x). Whole px (M81), so what follows does not land on a fraction. */
+  flex: 0 1 auto;
+  max-width: round(down, 40%, 1px);
 }
 
 .cp-player-bar__meta-lead {
@@ -134,7 +142,7 @@
   border: var(--hairline) solid var(--border-control);
   background: var(--bg-panel);
   color: var(--fg-primary);
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-player-bar__button:hover:not(:disabled) {
@@ -162,6 +170,11 @@
   border-color: var(--accent-fill);
   background: var(--accent-fill);
   color: var(--fg-on-accent);
+}
+
+.cp-player-bar__button--play[aria-pressed="true"]:focus-visible {
+  /* M328: the ring stands off a filled control, as every filled button's does. */
+  outline-offset: var(--focus-ring-offset-filled);
 }
 
 .cp-player-bar__button--play[aria-pressed="true"]:hover:not(:disabled) {
@@ -243,6 +256,26 @@
   white-space: nowrap;
 }
 
+/* The playing track's title and artist open things (BAR-4): buttons that read
+   as the text they replace, underlined on hover and on focus. Before the title's rule (M304): the
+   two are equal in specificity, so the title's own face, size and weight win on the title button,
+   and the artist button takes its line's muted look. */
+.cp-player-bar__link {
+  display: inline;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
 .cp-player-bar__title {
   /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
   font-family: var(--font-data);
@@ -293,10 +326,12 @@
   flex: 1 1 auto;
   min-width: 0;
   block-size: var(--control-height);
+  /* M306: no UA margin, so the volume slider ends on the shell inset like Previous starts on it. */
+  margin: 0;
   appearance: none;
   -webkit-appearance: none;
   background: transparent;
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-player-bar__slider::-webkit-slider-runnable-track {
@@ -338,7 +373,7 @@
   flex: 1 1 auto;
   align-self: stretch;
   /* The timeline's floor: TIMELINE_MIN_PX in PlayerBar.tsx (item 2). */
-  min-width: calc(96px * var(--scale));
+  min-width: round(nearest, calc(96px * var(--scale)), 1px);
 }
 
 .cp-player-bar__waveform {
@@ -419,7 +454,7 @@
 .cp-player-bar__slider--volume {
   flex: 0 0 auto;
   /* Follows the size: not capped to a few pixels at the larger sizes. */
-  width: calc(56px * var(--scale));
+  width: round(nearest, calc(56px * var(--scale)), 1px);
 }
 
 /* The volume thumb is the muted word colour, so only the seek point is violet (P46). */
@@ -472,6 +507,9 @@
   position: static;
   flex: none;
   margin-inline-start: var(--space-xs);
+  /* M81: a whole-px box for its characters (`--chars`, set by PlayerBar), so the right cluster, which
+     sits flush with the bar's end, starts on a whole pixel whatever the count. */
+  min-inline-size: round(up, calc(var(--chars, 1) * 1.2ch), 1px);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
@@ -491,28 +529,12 @@
 /* Repeat's state in words beside its icon (BAR-3). */
 .cp-player-bar__repeat-label {
   margin-left: var(--space-xs);
+  /* M81: a whole-px box, as the queue count's. */
+  min-inline-size: round(up, calc(var(--chars, 1) * 1.2ch), 1px);
   padding-right: var(--space-xs);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   line-height: 1;
-}
-
-/* The playing track's title and artist open things (BAR-4): buttons that read
-   as the text they replace, underlined on hover and on focus. */
-.cp-player-bar__link {
-  display: inline;
-  min-width: 0;
-  max-width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
 }
 
 .cp-player-bar__link:hover,
@@ -538,8 +560,8 @@
 
 /*
  * A short window (area 90, C207, D11): the bar is one compact line, so the page keeps its rows. The
- * window is short under 700 pixels of content height in the text size's own units, the same
- * threshold the zoomed strip uses; `useShortWindowFlag` puts `data-short-window` on the page.
+ * window is short under 700 real pixels of window height, whatever the text size, the same
+ * threshold the zoomed strip's default uses (N2); `useCompactBarFlag` puts `data-short-window` on the page.
  * The transport keeps its size (M76): it is what people aim at, and the right cluster folds into More
  * first (PlayerBar.tsx), so nothing here shrinks a button. The facts line goes (the title stays), and
  * the zoomed waveform strip and its toggle are not drawn; the toggle's gap goes with it, as a hidden
