@@ -212,6 +212,25 @@ describe("the vocabulary is the engine's", () => {
     expect(next.operator).toBe("is");
   });
 
+  it("opens a field with fixed values on its choice list, not on the typed field's contains (M110)", () => {
+    const status = {
+      name: "file_status",
+      type: "text",
+      label: "File status",
+      facetable: true,
+      unit: null,
+      integer: false,
+      operators: ["is", "is_not", "contains", "any_of"],
+      choices: [
+        { value: "missing", label: "Missing" },
+        { value: "present", label: "Present" },
+      ],
+    } as LibraryFilterVocabulary["fields"][number];
+    const vocabulary = { ...VOCABULARY, fields: [...VOCABULARY.fields, status] };
+    expect(withField(vocabulary, draft({ operator: "contains" }), "file_status").operator).toBe("is");
+    expect(withField(vocabulary, draft({ operator: "any_of" }), "file_status").operator).toBe("any_of");
+  });
+
   it("starts a draft on the first field, on contains where it offers it (M110)", () => {
     expect(emptyDraft(VOCABULARY)).toMatchObject({ field: "genre", operator: "contains" });
   });

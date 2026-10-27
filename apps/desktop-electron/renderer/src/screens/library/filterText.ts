@@ -386,11 +386,13 @@ export function withField(
   fieldName: string,
 ): DraftRule {
   const operators = operatorsFor(vocabulary, fieldName);
-  const operator = operators.includes(draft.operator)
-    ? draft.operator
-    : firstOperator(fieldOf(vocabulary, fieldName));
   const before = fieldOf(vocabulary, draft.field);
   const after = fieldOf(vocabulary, fieldName);
+  // A field with fixed values opens on its choice list (M110): the "contains" a typed field starts
+  // on is not carried onto it, or the choices would hide behind a text box.
+  const carried =
+    operators.includes(draft.operator) && (choicesOf(after ?? null).length === 0 || CHOICE_OPERATORS.includes(draft.operator));
+  const operator = carried ? draft.operator : firstOperator(after);
   const keep = before?.type === after?.type;
   return {
     field: fieldName,
