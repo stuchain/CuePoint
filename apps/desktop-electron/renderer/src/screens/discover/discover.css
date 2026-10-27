@@ -619,11 +619,6 @@
   white-space: nowrap;
 }
 
-/* The row whose sample is sounding, tinted. */
-.discover-table .track-table__row:not(.track-table__row--selected):has(.cp-play-btn--playing) {
-  background: var(--bg-selected);
-}
-
 /* The visible caveat over a results table (M520): 8 under the bar above it, 8 above the table. */
 .discover-in-library-note {
   padding: var(--space-md) 0;

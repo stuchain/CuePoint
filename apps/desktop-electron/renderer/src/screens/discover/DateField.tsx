@@ -21,6 +21,9 @@ interface DateFieldProps {
   /** Said where there is no day: "Choose a day". */
   empty?: string;
   className?: string;
+  /** The first and last day the calendar offers, as "2026-09-27". */
+  min?: string;
+  max?: string;
 }
 
 /** A "2026-09-27" read as that day on this computer, not as midnight UTC. */
@@ -38,7 +41,15 @@ function showCalendar(input: HTMLInputElement) {
   }
 }
 
-export function DateField({ value, onChange, label, empty = "Choose a day", className = "" }: DateFieldProps) {
+export function DateField({
+  value,
+  onChange,
+  label,
+  empty = "Choose a day",
+  className = "",
+  min,
+  max,
+}: DateFieldProps) {
   const shown = day(value);
   return (
     <span className={`cp-field__input discover-date ${className}`.trim()}>
@@ -53,6 +64,8 @@ export function DateField({ value, onChange, label, empty = "Choose a day", clas
         className="discover-date__input"
         aria-label={label}
         value={value}
+        min={min}
+        max={max}
         onChange={(event) => onChange(event.target.value)}
         onClick={(event: MouseEvent<HTMLInputElement>) => showCalendar(event.currentTarget)}
         onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {

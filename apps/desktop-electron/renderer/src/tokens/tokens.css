@@ -303,9 +303,6 @@
     var(--accent-primary) 0 calc(50% + var(--selected-bar-width) / 2),
     transparent 0
   );
-  /* The old name of the same token (M359), kept until the Inspector and queue handles read
-     --resizer-hover; then delete it. */
-  --resizer-edge-hover: var(--resizer-hover);
   --row-end-inset: var(--space-sm);
   --search-width: round(nearest, calc(205px * var(--scale)), 1px);
 

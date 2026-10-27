@@ -161,4 +161,10 @@ describe("motion (M373, M380, M381, M387)", () => {
     );
     expect(rule.body).toMatch(/animation:\s*none/);
   });
+
+  it("slides the closing queue out to its edge, as the Inspector, not the generic lift-out (F3)", () => {
+    // The queue's leaving copy is [data-ghost] and [data-leaving]; the generic ghost rule (0,4,0) would win.
+    expect(body(motion, ":root[data-motion-entrance] .cp-queue[data-ghost][data-ghost]")).toMatch(/cp-to-edge/);
+    expect(body(motion, ":root[data-motion-entrance] .cp-inspector[data-ghost][data-ghost]")).toMatch(/cp-to-edge/);
+  });
 });

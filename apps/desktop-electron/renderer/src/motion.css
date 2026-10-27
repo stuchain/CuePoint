@@ -359,7 +359,10 @@
     cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
 }
 
-:root[data-motion-entrance] .cp-inspector[data-ghost][data-ghost] {
+/* The Inspector and the queue leave to their edge, as they came in. The queue's leaving copy is
+   both [data-ghost] and [data-leaving], so it is named here too, or the lift-out above would win. */
+:root[data-motion-entrance] .cp-inspector[data-ghost][data-ghost],
+:root[data-motion-entrance] .cp-queue[data-ghost][data-ghost] {
   animation:
     cp-to-edge var(--motion-quick) var(--motion-ease-in) forwards,
     cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;

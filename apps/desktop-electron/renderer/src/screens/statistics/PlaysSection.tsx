@@ -12,7 +12,7 @@
  * The bar behind a name is a share of the top row, drawn by `RankList`. The one motion is
  * `state`: a row whose rank moved when the list was read again steps once.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type {
@@ -83,22 +83,18 @@ function SinceDate({
   const [draft, setDraft] = useState(saved);
   const today = localDay(new Date());
   const note = sinceDateNote(draft, today);
-  const box = useRef<HTMLSpanElement>(null);
-  // The picker keeps to the range: DateField's input takes no min or max of its own.
-  useLayoutEffect(() => {
-    const input = box.current?.querySelector<HTMLInputElement>('input[type="date"]');
-    input?.setAttribute("min", `${FIRST_YEAR}-01-01`);
-    input?.setAttribute("max", today);
-  });
   useEffect(() => {
     onNote?.(note);
   }, [note, onNote]);
   useEffect(() => () => onNote?.(null), [onNote]);
   return (
-    <span ref={box} className="plays__date">
+    <span className="plays__date">
       <DateField
         label="Since date"
         value={draft}
+        /* The picker keeps to the range. */
+        min={`${FIRST_YEAR}-01-01`}
+        max={today}
         onChange={(next) => {
           setDraft(next);
           if (isValidDay(next)) onDate(next);

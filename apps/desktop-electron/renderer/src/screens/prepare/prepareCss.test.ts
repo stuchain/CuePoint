@@ -53,6 +53,12 @@ describe("a chapter's band (C250)", () => {
     expect(band).not.toMatch(/font-family/);
     expect(rule(".prepare-heading__name")).toMatch(/font-family:\s*var\(--font-voice\)/); // P2: the voice
   });
+
+  it("keeps the band's tone in its pinned cells, which have an opaque fill of their own (N1)", () => {
+    expect(rule(".track-table__row.prepare-heading > .track-table__cell--sticky")).toMatch(
+      /background:\s*var\(--bg-panel\)/,
+    );
+  });
 });
 
 describe("the source panel and its divider (C48, C149, C28)", () => {

@@ -84,3 +84,11 @@ describe("the dig list (P23)", () => {
     expect(body(".discover-runs__item--selected")).toMatch(/background:\s*var\(--selected-row-background\)/);
   });
 });
+
+describe("the sounding row (N1, M99)", () => {
+  it("has no tint of its own: the table's playing mark shows it, so pinned cells need no override", () => {
+    // M99 removed the row's play button, so a rule keyed on `.cp-play-btn--playing` matched nothing,
+    // and with N1's opaque pinned cells a row tint would stop at Title (M366: playing is no tint).
+    expect(stripComments(css)).not.toMatch(/cp-play-btn--playing/);
+  });
+});
