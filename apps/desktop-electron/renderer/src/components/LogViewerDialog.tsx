@@ -1,30 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "./Button";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EmptyState } from "./EmptyState";
 import { Loading } from "./Loading";
 import { Modal } from "./Modal";
 import { Notice } from "./Notice";
 import { SearchField } from "./SearchField";
 import { Select } from "./Select";
+import { useOptionalToast } from "./Toast";
 import { reportUnexpected } from "../reporting/reporting";
 import "./LogViewerDialog.css";
 import { userMessage } from "../api/userMessage";
 import { OPEN_LOG_FOLDER, couldNot } from "../format/words";
+import { displayPathNameFirst } from "../format/paths";
 
 
 const LEVEL_OPTIONS = ["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] as const;
 
-function downloadTextFile(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+/** The level as a word, not a shout: the log itself keeps the engine's own capitals (M264). */
+const LEVEL_WORDS: Record<(typeof LEVEL_OPTIONS)[number], string> = {
+  All: "All",
+  DEBUG: "Debug",
+  INFO: "Info",
+  WARNING: "Warning",
+  ERROR: "Error",
+  CRITICAL: "Critical",
+};
 
 interface LogViewerDialogProps {
   open: boolean;
@@ -38,6 +39,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
   const [loading, setLoading] = useState(false);
   const [logText, setLogText] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const toast = useOptionalToast();
 
   const levelRequest = useMemo(() => (level === "All" ? undefined : level), [level]);
 
@@ -107,10 +109,20 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
     }
   }, []);
 
-  const handleExport = useCallback(() => {
-    const filename = `cuepoint.log${search ? `-search-${search}` : ""}.txt`;
-    downloadTextFile(filename, logText);
-  }, [logText, search]);
+  // The native Save dialog names the file; main makes the label safe (M264).
+  const canSaveText = typeof window !== "undefined" && typeof window.cuepoint?.saveLogTextDialog === "function";
+  const handleSaveAsText = useCallback(async () => {
+    const save = window.cuepoint?.saveLogTextDialog;
+    if (!save) return;
+    try {
+      const label = search.trim() || (level === "All" ? null : LEVEL_WORDS[level].toLowerCase());
+      const result = await save({ text: logText, label });
+      if (!result.canceled) toast?.push(`Log saved: ${displayPathNameFirst(result.filePath)}`, "success");
+    } catch (e) {
+      reportUnexpected(e);
+      setError(userMessage(e, couldNot("save the log")));
+    }
+  }, [level, logText, search, toast]);
 
   // An empty log and a filter that matches nothing are different news.
   const emptyText = search || level !== "All" ? "No lines match" : "Nothing logged yet";
@@ -119,7 +131,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
     () =>
       LEVEL_OPTIONS.map((v) => ({
         value: v,
-        label: v,
+        label: LEVEL_WORDS[v],
       })),
     [],
   );
@@ -158,12 +170,17 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
         </div>
 
         <div className="cp-button-row log-viewer-dialog__actions">
-          <Button variant="secondary" disabled={loading} loading={loading} onClick={() => void refresh()}>
-            Refresh
-          </Button>
-          <Button variant="secondary" disabled={loading} onClick={handleExport}>
-            Export…
-          </Button>
+          {/* Auto-refresh reads the log every two seconds, so a manual Refresh beside it says the same thing twice. */}
+          {autoRefresh ? null : (
+            <Button variant="secondary" disabled={loading} loading={loading} onClick={() => void refresh()}>
+              Refresh
+            </Button>
+          )}
+          {canSaveText ? (
+            <Button variant="secondary" disabled={loading} onClick={() => void handleSaveAsText()}>
+              Save as text file…
+            </Button>
+          ) : null}
           <Button variant="secondary" disabled={loading} onClick={() => void handleOpenLogsFolder()}>
             {OPEN_LOG_FOLDER}
           </Button>
@@ -183,7 +200,10 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
         {loading && logText === "" ? (
           <Loading what="logs" />
         ) : (
-          <pre className="log-viewer-dialog__output">{logText === "" && !error ? emptyText : logText}</pre>
+          <>
+            {logText === "" && !error ? <EmptyState compact headline={emptyText} className="log-viewer-dialog__empty" /> : null}
+            {logText === "" ? null : <pre className="log-viewer-dialog__output">{logText}</pre>}
+          </>
         )}
       </div>
     </Modal>

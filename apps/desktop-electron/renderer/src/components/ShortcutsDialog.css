@@ -32,15 +32,41 @@
   background: var(--bg-input);
 }
 
-/* The body font, not the pixel one, so the letter O and the digit 0 differ. */
+/* The body font, not the pixel one, with a slashed zero, so the letter O and the digit 0 differ (M265). */
 .shortcuts-dialog__key {
   font-family: var(--font-data);
+  font-feature-settings: "zero" 1;
+  font-variant-numeric: slashed-zero;
+}
+
+/* The caps sit in a column of their own beside the action, not at the far edge of a wide row. */
+.cp-data-table tbody td.shortcuts-dialog__keys {
+  width: 1%;
+  max-width: none;
+  overflow: visible;
+}
+
+.cp-kbd-chord {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.cp-kbd-chord__plus,
+.shortcuts-dialog__or {
+  color: var(--fg-muted);
+}
+
+.shortcuts-dialog__or {
+  margin: 0 var(--space-sm);
 }
 
 /* A group's name is a muted label on the list, not a band (P11); the shared table look does the rest. */
 .cp-data-table thead th.shortcuts-dialog__group,
 .cp-data-table tbody th.shortcuts-dialog__group {
   background: transparent;
+  /* The same inset as the Action header and the rows, so the names line up (M266). */
+  padding: 0 var(--space-sm);
   color: var(--fg-muted);
   font-family: var(--font-control);
   font-size: var(--font-size-label);

@@ -13,7 +13,7 @@ import { couldNot } from "../format/words";
 const STAYS_HERE = [
   "Your Rekordbox library, match history, settings and exports stay on your computer.",
   "Your Beatport sign-in is stored on your computer when you sign in.",
-  "Logs and the cache are kept for debugging. You can clear them below.",
+  "Logs and the cache are kept for debugging. You can clear the cache below, and the logs in the log viewer.",
   "CuePoint has no analytics and no usage tracking.",
 ];
 
@@ -46,10 +46,13 @@ function Sentences({ lines }: { lines: readonly string[] }) {
 interface PrivacyDialogProps {
   open: boolean;
   onClose: () => void;
+  /** Close this dialog and open the log viewer, the one home of "Clear logs" (M243). */
+  onOpenLogViewer?: () => void;
 }
 
-export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
-  const [clearing, setClearing] = useState(false);
+export function PrivacyDialog({ open, onClose, onOpenLogViewer }: PrivacyDialogProps) {
+  // One flag per action (M242): clearing the cache never spins another button.
+  const [clearingCache, setClearingCache] = useState(false);
   // What the bridge said about error reports (REPORT-01): nothing yet, on or
   // off, or that it could not be read.
   const [reporting, setReporting] = useState<boolean | "unreadable" | "unconfigured" | null>(null);
@@ -73,13 +76,12 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     };
   }, [open]);
 
-  // Which clear is being asked about: an app dialog, never window.confirm.
-  const [asking, setAsking] = useState<"cache" | "logs" | null>(null);
+  const [askingCache, setAskingCache] = useState(false);
 
   const handleClearCacheNow = async () => {
     if (!window.cuepoint?.clearCuepointCache) return;
-    setAsking(null);
-    setClearing(true);
+    setAskingCache(false);
+    setClearingCache(true);
     try {
       await window.cuepoint.clearCuepointCache();
       push("Cache cleared", "success");
@@ -87,22 +89,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       reportUnexpected(e);
       push(userMessage(e, couldNot("clear the cache")), "warning");
     } finally {
-      setClearing(false);
-    }
-  };
-
-  const handleClearLogsNow = async () => {
-    if (!window.cuepoint?.clearCuepointLogs) return;
-    setAsking(null);
-    setClearing(true);
-    try {
-      await window.cuepoint.clearCuepointLogs();
-      push("Logs cleared", "success");
-    } catch (e) {
-      reportUnexpected(e);
-      push(userMessage(e, couldNot("clear the logs")), "warning");
-    } finally {
-      setClearing(false);
+      setClearingCache(false);
     }
   };
 
@@ -151,35 +138,27 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
           </p>
         </section>
 
-        {/* The cache first, the red logs last (C123). */}
         <div className="cp-button-row">
-          <Button variant="secondary" loading={clearing} disabled={clearing} onClick={() => setAsking("cache")}>
+          <Button variant="secondary" loading={clearingCache} disabled={clearingCache} onClick={() => setAskingCache(true)}>
             Clear cache now…
           </Button>
-          <Button variant="danger" loading={clearing} disabled={clearing} onClick={() => setAsking("logs")}>
-            Clear logs now…
-          </Button>
+          {onOpenLogViewer ? (
+            <Button variant="quiet" onClick={onOpenLogViewer}>
+              Open the log viewer…
+            </Button>
+          ) : null}
         </div>
       </div>
     </Modal>
     <ConfirmDialog
-      open={asking === "cache"}
+      open={askingCache}
       title="Clear cache?"
       confirmLabel="Clear cache"
       onConfirm={() => void handleClearCacheNow()}
-      onCancel={() => setAsking(null)}
+      onCancel={() => setAskingCache(false)}
     >
-      This may improve privacy at the cost of performance.
-    </ConfirmDialog>
-    <ConfirmDialog
-      open={asking === "logs"}
-      title="Clear logs?"
-      danger
-      confirmLabel="Clear logs"
-      onConfirm={() => void handleClearLogsNow()}
-      onCancel={() => setAsking(null)}
-    >
-      Every line in the log is removed. This cannot be undone.
+      Removes the Beatport answers and artwork CuePoint keeps for speed. Your library, history and
+      settings are not touched. The next search or page may be slower.
     </ConfirmDialog>
     </>
   );

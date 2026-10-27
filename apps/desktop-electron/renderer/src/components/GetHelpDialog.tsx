@@ -9,7 +9,7 @@ import type { AppBuildInfo } from "../api/cuepointBridge.types";
 import { OPEN_LOG_FOLDER, couldNot } from "../format/words";
 import { userMessage } from "../api/userMessage";
 import { lastReportId, reportingSetUp, sendProblemReport, setReportingChoice } from "../reporting/reporting";
-import { shortReportId } from "../reporting/ErrorScreen";
+import { shortReportId } from "../reporting/shortReportId";
 import "./GetHelpDialog.css";
 
 interface GetHelpDialogProps {
@@ -184,17 +184,13 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
       }
     >
       <div className="get-help-dialog">
-        <p className="cp-modal__lead">Something not working? Tell us what you were doing.</p>
-        {choice === "off" ? (
-          <Notice kind="warning" className="get-help-dialog__off">
-            Sending is off in Settings: save a help file and attach it to your email or GitHub issue.
-          </Notice>
-        ) : null}
-        {choice === "unavailable" ? (
-          <Notice kind="warning" className="get-help-dialog__off">
-            Sending is off in this version: save a help file and attach it to your email or GitHub issue.
-          </Notice>
-        ) : null}
+        <p className="cp-modal__lead">
+          {choice === "off"
+            ? "Sending is off in Settings. Save a help file and attach it to an email or a GitHub issue."
+            : choice === "unavailable"
+              ? "Sending is off in this version. Save a help file and attach it to an email or a GitHub issue."
+              : "Tell us what went wrong, or save a help file and attach it to an email or a GitHub issue."}
+        </p>
         {canReport ? (
           <>
             <Textarea
@@ -210,11 +206,11 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
             </p>
           </>
         ) : null}
-        <dl className="cp-facts">
+        <dl className="cp-facts cp-facts--dialog">
           <dt>Version</dt>
           <dd data-testid="get-help-version">{versionWords(version, build)}</dd>
           <dt>Last report</dt>
-          <dd className="get-help-dialog__id" data-testid="get-help-last-report">{lastId ? shortReportId(lastId) : "none"}</dd>
+          <dd className="get-help-dialog__id" data-testid="get-help-last-report">{lastId ? shortReportId(lastId) : "—"}</dd>
         </dl>
         {phase === "sent" ? (
           <p className="get-help-dialog__done" role="status">
@@ -231,12 +227,12 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
           <section className="get-help-dialog__file" aria-label="Help file">
             <div className="cp-button-row">
               {canSaveFile ? (
-                <Button variant="secondary" loading={saving} onClick={() => void saveHelpFile()}>
+                <Button variant="quiet" loading={saving} onClick={() => void saveHelpFile()}>
                   Save a help file…
                 </Button>
               ) : null}
               {canOpenFolder ? (
-                <Button variant="secondary" onClick={() => void openLogFolder()}>
+                <Button variant="quiet" onClick={() => void openLogFolder()}>
                   {OPEN_LOG_FOLDER}
                 </Button>
               ) : null}
@@ -269,13 +265,13 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
           <MoreAbout label="Details for support">
             <div className="cp-button-row">
               {onOpenDiagnostics ? (
-                <Button variant="secondary" size="sm" onClick={onOpenDiagnostics}>
-                  Diagnostics…
+                <Button variant="quiet" size="sm" onClick={onOpenDiagnostics}>
+                  Diagnostics
                 </Button>
               ) : null}
               {onOpenLogViewer ? (
-                <Button variant="secondary" size="sm" onClick={onOpenLogViewer}>
-                  Log viewer…
+                <Button variant="quiet" size="sm" onClick={onOpenLogViewer}>
+                  Log viewer
                 </Button>
               ) : null}
             </div>

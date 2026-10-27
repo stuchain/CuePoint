@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OPEN_LOG_FOLDER } from "../format/words";
@@ -42,10 +42,50 @@ describe("LogViewerDialog", () => {
     expect(screen.getByRole("button", { name: OPEN_LOG_FOLDER })).toBeInTheDocument();
   });
 
-  it("keeps the ellipsis on Export, since it opens the native Save dialog", async () => {
+  it("saves as a text file through the native dialog, with a safe label and a toast, never a download (M264)", async () => {
+    const saveLogTextDialog = vi.fn(async () => ({ canceled: false as const, filePath: "/home/dj/Music/cuepoint.log.txt" }));
+    installBridge({ saveLogTextDialog });
+    render(<LogViewerDialog open onClose={() => {}} />);
+    await screen.findByText(/line one/);
+    expect(screen.queryByRole("button", { name: /^Export/ })).toBeNull();
+    await userEvent.type(screen.getByRole("searchbox"), "line");
+    await userEvent.click(screen.getByRole("button", { name: "Save as text file…" }));
+    await waitFor(() => expect(saveLogTextDialog).toHaveBeenCalled());
+    expect(saveLogTextDialog).toHaveBeenCalledWith({ text: expect.stringContaining("line one"), label: "line" });
+  });
+
+  it("has no Save button when the bridge cannot open the dialog", async () => {
     installBridge();
     render(<LogViewerDialog open onClose={() => {}} />);
-    expect(await screen.findByRole("button", { name: "Export…" })).toBeInTheDocument();
+    await screen.findByText(/line one/);
+    expect(screen.queryByRole("button", { name: "Save as text file…" })).toBeNull();
+  });
+
+  it("writes the levels as words, not capitals", async () => {
+    installBridge();
+    render(<LogViewerDialog open onClose={() => {}} />);
+    await screen.findByText(/line one/);
+    const options = within(screen.getByLabelText("Level")).getAllByRole("option").map((o) => o.textContent);
+    expect(options).toEqual(["All", "Debug", "Info", "Warning", "Error", "Critical"]);
+  });
+
+  it("drops Refresh while Auto-refresh is ticked, and brings it back when it is not", async () => {
+    installBridge();
+    render(<LogViewerDialog open onClose={() => {}} />);
+    await screen.findByText(/line one/);
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Auto-refresh" }));
+    expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Auto-refresh" }));
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+  });
+
+  it("says an empty log in the shared compact empty state, in Inter, not in the log face (M264)", async () => {
+    installBridge({ getCuepointLog: vi.fn(async () => ({ cuepoint_log: "" })) });
+    const { container } = render(<LogViewerDialog open onClose={() => {}} />);
+    expect(await screen.findByText("Nothing logged yet")).toBeInTheDocument();
+    expect(container.ownerDocument.querySelector(".cp-empty-state--compact")).not.toBeNull();
+    expect(container.ownerDocument.querySelector("pre")).toBeNull();
   });
 
   it("names the thing in an error, without Failed to", async () => {

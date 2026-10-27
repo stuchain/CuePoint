@@ -18,3 +18,19 @@
   width: round(nearest, calc(32px * var(--scale)), 1px);
   height: round(nearest, calc(32px * var(--scale)), 1px);
 }
+
+/* The tagline sits beside the logo: the title above already says the name (M262). */
+.about-dialog__tagline {
+  margin: 0;
+}
+
+.about-dialog__links {
+  display: flex;
+  gap: var(--space-xl);
+  margin: 0;
+}
+
+/* One label width in About, Get help and Diagnostics, so the values start at the same x (M252). */
+.cp-facts--dialog {
+  grid-template-columns: round(nearest, calc(130px * var(--scale)), 1px) minmax(0, 1fr);
+}

@@ -180,7 +180,9 @@ describe("GetHelpDialog help file", () => {
     await start(true);
     render(<GetHelpDialog open onClose={() => {}} />);
     expect(screen.getByRole("dialog", { name: "Get help" })).toBeInTheDocument();
-    expect(screen.getByText("Something not working? Tell us what you were doing.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Tell us what went wrong, or save a help file and attach it to an email or a GitHub issue."),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("What were you doing?")).toBeInTheDocument();
   });
 
@@ -258,8 +260,8 @@ describe("GetHelpDialog help file", () => {
     const toggle = screen.getByRole("button", { name: "Details for support" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(toggle);
-    await userEvent.click(screen.getByRole("button", { name: "Diagnostics…" }));
-    await userEvent.click(screen.getByRole("button", { name: "Log viewer…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
+    await userEvent.click(screen.getByRole("button", { name: "Log viewer" }));
 
     expect(onOpenDiagnostics).toHaveBeenCalledTimes(1);
     expect(onOpenLogViewer).toHaveBeenCalledTimes(1);
@@ -297,7 +299,8 @@ describe("the look of Get help (C12, C118, C123)", () => {
     });
     render(<GetHelpDialog open onClose={() => {}} />);
     const open = screen.getByRole("button", { name: "Open logs folder" });
-    expect(open).toHaveClass("cp-btn--secondary");
+    // Quiet by its variant, not by an override (M263).
+    expect(open).toHaveClass("cp-btn--quiet");
     expect(open.parentElement).toHaveClass("cp-button-row");
   });
 });

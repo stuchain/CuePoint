@@ -45,15 +45,15 @@ export function DiagnosticsDialog({ open, onClose }: DiagnosticsDialogProps) {
         <p className="cp-modal__lead">{needsDesktopApp("Diagnostics")}</p>
       )}
       {reading.kind === "status" && (
-        <dl className="cp-facts">
+        <dl className="cp-facts cp-facts--dialog">
           <dt>Version</dt>
           <dd data-testid="diagnostics-version">{versionWords(appVersion(build), build)}</dd>
           <dt>Engine connected</dt>
           <dd>{reading.status.connected ? "Yes" : "No"}</dd>
           <dt>Engine version</dt>
-          <dd>{reading.status.version ?? "unknown"}</dd>
+          <dd>{reading.status.version ?? "—"}</dd>
           <dt>Session ID</dt>
-          <dd className="cp-data">{reading.status.sessionId ?? "n/a"}</dd>
+          <dd className="cp-data">{reading.status.sessionId ?? "—"}</dd>
           {reading.status.error ? (
             <>
               <dt>Error</dt>

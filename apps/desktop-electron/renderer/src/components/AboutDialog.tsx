@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import appIcon from "../assets/cuepoint-icon.png";
 import { Modal } from "./index";
+import { NoteLink } from "./updates/NoteLink";
 import type { AppBuildInfo } from "../api/cuepointBridge.types";
 import "./AboutDialog.css";
+
+/** The one sentence that says what CuePoint is: About and Getting started both use it (M445). */
+export const TAGLINE = "Tidy your Rekordbox library, find new music and plan sets.";
 
 export const DESKTOP_ENGINE_VERSION = "1.0.0-test.4";
 
@@ -49,10 +53,9 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
       <div className="about-dialog">
         <div className="about-dialog__brand">
           <img className="about-dialog__logo" src={appIcon} alt="" draggable={false} />
-          <span className="about-dialog__name cp-text-section">CuePoint</span>
+          <p className="cp-modal__lead about-dialog__tagline">{TAGLINE}</p>
         </div>
-        <p className="cp-modal__lead">Match your Rekordbox playlists with Beatport and find new music.</p>
-        <dl className="cp-facts">
+        <dl className="cp-facts cp-facts--dialog">
           <dt>Version</dt>
           <dd data-testid="about-version">{versionWords(appVersion(build), build)}</dd>
           {build?.environment === "development" && (
@@ -62,6 +65,10 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
             </>
           )}
         </dl>
+        <p className="about-dialog__links">
+          <NoteLink href="https://usecuepoint.com">Website</NoteLink>
+          <NoteLink href="https://github.com/stuchain/CuePoint/blob/main/LICENSE">License</NoteLink>
+        </p>
       </div>
     </Modal>
   );

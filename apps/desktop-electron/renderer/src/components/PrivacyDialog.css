@@ -18,7 +18,6 @@
   align-items: center;
   gap: var(--space-md);
   margin: 0;
-  font-size: var(--text-body);
 }
 
 /* A link-looking button: the one link look (index.css .cp-link). */

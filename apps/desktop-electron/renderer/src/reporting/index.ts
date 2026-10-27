@@ -1,5 +1,6 @@
 export { ErrorBoundary } from "./ErrorBoundary";
-export { ErrorScreen, shortReportId } from "./ErrorScreen";
+export { ErrorScreen } from "./ErrorScreen";
+export { shortReportId } from "./shortReportId";
 export {
   lastReportId,
   reportBreadcrumb,

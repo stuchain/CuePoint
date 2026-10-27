@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 
-import { AboutDialog, versionWords } from "./AboutDialog";
+import { AboutDialog, TAGLINE, versionWords } from "./AboutDialog";
 import type { AppBuildInfo, CuePointBridge } from "../api/cuepointBridge.types";
 
 function installBridge(build: AppBuildInfo | null, withEngine = true) {
@@ -57,14 +57,24 @@ describe("the look of About (C134)", () => {
     delete (window as { cuepoint?: unknown }).cuepoint;
   });
 
-  it("has the pixel logo, the name in the heading face and a label-value list without bullets", () => {
+  it("has the pixel logo, the one tagline beside it and a label-value list without bullets (M262, M445)", () => {
     installBridge({ version: "2.0.0", release: "cuepoint@2.0.0", dist: "abc1234", environment: "production" });
     render(<AboutDialog open onClose={() => {}} />);
     const dialog = screen.getByRole("dialog", { name: "About CuePoint" });
     expect(dialog.querySelector("img.about-dialog__logo")).not.toBeNull();
-    expect(within(dialog).getByText("CuePoint", { selector: ".about-dialog__name" })).toHaveClass("cp-text-section");
+    // The title above already says the name, so it is not repeated beside the logo.
+    expect(dialog.querySelector(".about-dialog__name")).toBeNull();
+    expect(within(dialog).getByText(TAGLINE)).toHaveClass("cp-modal__lead");
     expect(dialog.querySelector("dl.cp-facts")).not.toBeNull();
     expect(dialog.querySelector("ul")).toBeNull();
+  });
+
+  it("links to the website and the license, as links that open in the browser", () => {
+    installBridge(null);
+    render(<AboutDialog open onClose={() => {}} />);
+    const dialog = screen.getByRole("dialog", { name: "About CuePoint" });
+    expect(within(dialog).getByRole("link", { name: "Website" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "License" })).toBeInTheDocument();
   });
 
   it("ends in one grey Close", () => {

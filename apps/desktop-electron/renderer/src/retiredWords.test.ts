@@ -36,6 +36,9 @@ const BANNED: Record<string, RegExp> = {
   Please: /\bPlease\b/i,
   "Failed to": /\bFailed to\b/i,
   "e.g.": /\be\.g\./,
+  // M400: a missing value in a table or card is "—" (NO_VALUE), in a sentence "not set"; never "none", "unknown" or "n/a".
+  // Only a ternary drawn as JSX text ({x ? y : "none"}) is read, so a state or a key named "none" is left alone.
+  "none as a value": /(?<![=\w])\{[^{}?]*\?[^{}]*:\s*["'`](?:none|unknown|n\/a)["'`]\s*\}|\?\?\s*["'`]n\/a["'`]/,
 };
 
 function code(source: string): string {
@@ -78,6 +81,10 @@ describe("wording guard (D2, D3)", () => {
       expect(BANNED["contraction"]!.test(text), text).toBe(true);
     }
     expect(BANNED["contraction"]!.test("Could not, will not, it is")).toBe(false);
+    expect(BANNED["none as a value"]!.test('<dd>{lastId ? shortReportId(lastId) : "none"}</dd>')).toBe(true);
+    expect(BANNED["none as a value"]!.test('{status.sessionId ?? "n/a"}')).toBe(true);
+    expect(BANNED["none as a value"]!.test('key={edited.length > 0 ? "edited" : "none"}')).toBe(false);
+    expect(BANNED["none as a value"]!.test('setReading({ kind: "none" })')).toBe(false);
     expect(BANNED["Please"]!.test("please wait")).toBe(true);
     expect(BANNED["Failed to"]!.test("failed to load")).toBe(true);
   });

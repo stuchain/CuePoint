@@ -8,9 +8,12 @@ describe("ShortcutsDialog", () => {
   it("lists the menu's keys and Prepare's", () => {
     render(<ShortcutsDialog open onClose={vi.fn()} />);
     const dialog = screen.getByRole("dialog");
-    for (const key of ["Ctrl+O", "Ctrl+,", "Ctrl+=", "Ctrl+-", "Ctrl+0"]) {
-      expect(within(dialog).getByText(key)).toBeInTheDocument();
+    // One cap per key (M265): "Ctrl" and "O" are two caps, so the row is read by its action.
+    for (const action of ["Import a Rekordbox file…", "Settings", "Bigger", "Smaller", "Default size"]) {
+      expect(within(dialog).getByText(action)).toBeInTheDocument();
     }
+    const row = within(dialog).getByText("Import a Rekordbox file…").closest("tr")!;
+    expect([...row.querySelectorAll("kbd")].map((cap) => cap.textContent)).toEqual(["Ctrl", "O"]);
     expect(within(dialog).getAllByText("Prepare").length).toBeGreaterThan(0);
   });
 
@@ -40,9 +43,26 @@ describe("ShortcutsDialog", () => {
     expect(headings).toContain("Player");
   });
 
-  it("shows key caps in the body font, so Ctrl+O and Ctrl+0 differ", () => {
+  it("shows key caps in the body font with a slashed zero, so O and 0 differ", async () => {
     render(<ShortcutsDialog open onClose={vi.fn()} />);
-    expect(screen.getByText("Ctrl+O")).toHaveClass("shortcuts-dialog__key");
+    const caps = [...screen.getByRole("dialog").querySelectorAll("kbd")];
+    expect(caps.length).toBeGreaterThan(0);
+    for (const cap of caps) expect(cap).toHaveClass("shortcuts-dialog__key");
+    const css = (await import("./ShortcutsDialog.css?raw")).default;
+    expect(css).toMatch(/\.shortcuts-dialog__key\s*\{[^}]*font-family:\s*var\(--font-data\)[^}]*slashed-zero/);
+  });
+
+  it("is a medium dialog, and draws two ways to one thing as separate caps with 'or' between", () => {
+    render(<ShortcutsDialog open onClose={vi.fn()} />);
+    expect(screen.getByRole("dialog")).toHaveClass("cp-modal--medium");
+    const row = screen.getByText("Move the selected track up or down in a Collection").closest("tr")!;
+    expect([...row.querySelectorAll("kbd")].map((cap) => cap.textContent)).toEqual(["Alt", "Up", "Alt", "Down"]);
+    expect(row).toHaveTextContent("or");
+  });
+
+  it("insets a group's heading like the Action header and the rows (M266)", async () => {
+    const css = (await import("./ShortcutsDialog.css?raw")).default;
+    expect(css).toMatch(/th\.shortcuts-dialog__group\s*\{[^}]*padding:\s*0 var\(--space-sm\)/);
   });
 
   it("has no Ctrl-to-Cmd note: each platform's list shows its own keys", () => {
@@ -55,7 +75,8 @@ describe("ShortcutsDialog", () => {
     try {
       render(<ShortcutsDialog open onClose={vi.fn()} />);
       const dialog = screen.getByRole("dialog");
-      expect(within(dialog).getAllByText("\u2318O").length).toBeGreaterThan(0);
+      const row = within(dialog).getByText("Import a Rekordbox file…").closest("tr")!;
+      expect([...row.querySelectorAll("kbd")].map((cap) => cap.textContent)).toEqual(["\u2318", "O"]);
       expect(within(dialog).queryByText(/Ctrl/)).toBeNull();
     } finally {
       platform.mockRestore();

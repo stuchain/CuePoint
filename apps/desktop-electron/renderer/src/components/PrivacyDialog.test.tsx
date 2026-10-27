@@ -100,29 +100,59 @@ describe("PrivacyDialog (REPORT-08, DEC-128)", () => {
     expect(screen.getAllByRole("button", { name: "Close" }).length).toBeGreaterThan(0);
   });
 
-  it("keeps the explanation and the one-off clean-up buttons", () => {
+  it("keeps the explanation and the cache clean-up, and has no Clear logs: that is the Log viewer's (M243)", () => {
     install(async () => ({ enabled: true, configured: true }));
     show();
     expect(screen.getByRole("button", { name: "Clear cache now…" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clear logs now…" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Clear logs/ })).toBeNull();
   });
 
-  it("asks in the app, never with window.confirm, and clears only on the dialog's button", async () => {
+  it("asks in the app, never with window.confirm, saying what the cache holds, and clears only on the dialog's button", async () => {
     const confirm = vi.spyOn(window, "confirm");
-    const clearCuepointLogs = vi.fn().mockResolvedValue(undefined);
+    const clearCuepointCache = vi.fn().mockResolvedValue(undefined);
     install(async () => ({ enabled: true, configured: true }));
-    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.clearCuepointLogs = clearCuepointLogs;
+    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.clearCuepointCache = clearCuepointCache;
     show();
-    await userEvent.click(screen.getByRole("button", { name: "Clear logs now…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Clear cache now…" }));
     expect(confirm).not.toHaveBeenCalled();
-    expect(clearCuepointLogs).not.toHaveBeenCalled();
-    const ask = screen.getByRole("dialog", { name: "Clear logs?" });
+    expect(clearCuepointCache).not.toHaveBeenCalled();
+    const ask = screen.getByRole("dialog", { name: "Clear cache?" });
+    expect(ask).toHaveTextContent(/Beatport answers and artwork/);
+    expect(ask).toHaveTextContent(/library, history and settings are not touched/);
     await userEvent.click(within(ask).getByRole("button", { name: "Cancel" }));
-    expect(clearCuepointLogs).not.toHaveBeenCalled();
+    expect(clearCuepointCache).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole("button", { name: "Clear logs now…" }));
-    await userEvent.click(within(screen.getByRole("dialog", { name: "Clear logs?" })).getByRole("button", { name: "Clear logs" }));
-    await waitFor(() => expect(clearCuepointLogs).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole("button", { name: "Clear cache now…" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Clear cache?" })).getByRole("button", { name: "Clear cache" }));
+    await waitFor(() => expect(clearCuepointCache).toHaveBeenCalledTimes(1));
+  });
+
+  it("offers the log viewer, where logs are cleared, when the app can open it", async () => {
+    install(async () => ({ enabled: true, configured: true }));
+    const onOpenLogViewer = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <ToastProvider>
+          <PrivacyDialog open onClose={() => {}} onOpenLogViewer={onOpenLogViewer} />
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Open the log viewer…" }));
+    expect(onOpenLogViewer).toHaveBeenCalledTimes(1);
+  });
+
+  it("spins only the cache button while the cache clears (M242)", async () => {
+    let finish: () => void = () => {};
+    const clearCuepointCache = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
+    install(async () => ({ enabled: true, configured: true }));
+    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.clearCuepointCache = clearCuepointCache;
+    show();
+    await userEvent.click(screen.getByRole("button", { name: "Clear cache now…" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Clear cache?" })).getByRole("button", { name: "Clear cache" }));
+    await waitFor(() => expect(clearCuepointCache).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Clear cache now…" })).toBeDisabled();
+    finish();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Clear cache now…" })).toBeEnabled());
   });
 });
 
@@ -148,23 +178,21 @@ describe("the words of the dialog (C171)", () => {
     }
   });
 
-  it("puts the clean-up buttons in a row with the red one last", () => {
+  it("puts the clean-up button in a button row", () => {
     install(async () => ({ enabled: true, configured: true }));
     show();
     const row = screen.getByRole("button", { name: "Clear cache now…" }).parentElement!;
     expect(row).toHaveClass("cp-button-row");
-    const names = [...row.querySelectorAll("button")].map((button) => button.textContent);
-    expect(names).toEqual(["Clear cache now…", "Clear logs now…"]);
   });
 
   it("says a clear failed by naming the thing", async () => {
     install(async () => ({ enabled: true, configured: true }));
-    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.clearCuepointLogs = vi
+    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.clearCuepointCache = vi
       .fn()
       .mockRejectedValue(new Error("busy"));
     show();
-    await userEvent.click(screen.getByRole("button", { name: "Clear logs now…" }));
-    await userEvent.click(within(screen.getByRole("dialog", { name: "Clear logs?" })).getByRole("button", { name: "Clear logs" }));
+    await userEvent.click(screen.getByRole("button", { name: "Clear cache now…" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Clear cache?" })).getByRole("button", { name: "Clear cache" }));
     expect(await screen.findByText("busy")).toBeInTheDocument();
   });
 });

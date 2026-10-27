@@ -1,7 +1,7 @@
 /*
- * The error screen (REPORT-06). Built of the same panel and tokens as the rest of
- * the app. `--app` stands alone in the window, outside the shell; `--page` sits in
- * the content area beside the sidebar and the player bar.
+ * The error screen (REPORT-06, M281). A dialog's own chrome (Modal.css: title, body, footer) drawn in
+ * place. `--app` stands alone in the window, outside the shell; `--page` sits in the content area
+ * beside the sidebar and the player bar. Its width is the small dialog's, which scales with the text (M280).
  */
 
 .cp-error-screen {
@@ -22,32 +22,18 @@
   flex: 1;
 }
 
-.cp-error-screen__panel {
-  width: 100%;
-  max-width: 480px;
-}
-
 .cp-error-screen__text {
-  margin: 0 0 var(--space-md);
+  margin: 0;
   color: var(--fg-muted);
-  font-family: var(--font-meta);
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
 }
 
 .cp-error-screen__id {
-  margin: 0 0 var(--space-md);
+  margin: 0;
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
 }
 
+/* The id is a code to read out or paste, so the code face with no tracking: 2, 3 and 8 read apart (M280). */
 .cp-error-screen__id code {
   color: var(--fg-primary);
-  font-family: inherit;
-  letter-spacing: 0.08em;
-}
-
-.cp-error-screen__actions {
-  display: flex;
-  gap: var(--space-sm);
+  font-family: var(--font-mono);
 }
