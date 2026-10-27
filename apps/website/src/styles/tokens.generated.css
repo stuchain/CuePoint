@@ -32,10 +32,10 @@
   --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
   --control-border-width: var(--hairline);
   --control-height: 1.5625rem;
-  --font-control: var(--font-data);
+  --font-control: var(--font-pixel-digits);
   --font-voice: var(--font-pixel-digits);
   --control-font-size: 0.875rem;
-  --control-font-weight: var(--font-weight-medium);
+  --control-font-weight: var(--font-weight-regular);
   --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
   --press-shade: color-mix(in srgb, var(--bevel-shadow) 40%, transparent);
   --hover-border: var(--fg-muted);
@@ -124,6 +124,7 @@
   --tree-indent: 0.9375rem;
   --gap-box: var(--space-xl);
   --resizer-hover: linear-gradient( to right, transparent calc(50% - var(--selected-bar-width) / 2), var(--accent-primary) 0 calc(50% + var(--selected-bar-width) / 2), transparent 0 );
+  --resizer-edge-hover: linear-gradient( to right, var(--accent-primary) 0 0.0625rem, transparent 0 );
   --row-end-inset: var(--space-sm);
   --search-width: 16rem;
   --health-ok: var(--fg-disabled);
