@@ -164,7 +164,7 @@ async function previewed(dialog: ReturnType<typeof exportDialog>) {
 
 /** The tick list, the lists and the notation sit behind Details; it starts closed (DEC-247). */
 async function openDetails(dialog: ReturnType<typeof exportDialog>) {
-  const toggle = dialog.getByRole("button", { name: /^(Details|Less about this)$/ });
+  const toggle = dialog.getByRole("button", { name: /^(What goes in the file|Less about this)$/ });
   if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
 }
 
@@ -258,14 +258,15 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await expect(dialog.getByTestId("export-summary")).toHaveText(
           "3 tracks, 2 with changed values, and no playlists.",
         );
-        await expect(dialog.getByRole("button", { name: "Details" })).toHaveAttribute("aria-expanded", "false");
+        await expect(dialog.getByRole("button", { name: "What goes in the file" })).toHaveAttribute("aria-expanded", "false");
         await openDetails(dialog);
         await expect(dialog.getByTestId("export-track-count")).toHaveText("3 tracks in the exported file");
         await expect(dialog.getByRole("checkbox", { name: /^Saturday/ })).not.toBeChecked();
         await expect(dialog.getByTestId("export-playlist-headline")).toContainText("No playlists are added");
         await expect(dialog.getByText(/1 track has its audio file missing/)).toBeVisible();
-        await expect(dialog.getByText(/Not chosen yet/)).toBeVisible();
-        await expect(dialog.getByRole("button", { name: "Export 3 tracks" })).toBeDisabled();
+        // The one fixed name is shown; Export opens the save dialog itself, so it is ready (M512).
+        await expect(dialog.getByText(/CuePoint Export\.xml/)).toBeVisible();
+        await expect(dialog.getByRole("button", { name: "Export 3 tracks" })).toBeEnabled();
       });
 
       await test.step("tick a Collection and read what it appends", async () => {
@@ -288,8 +289,8 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
       await test.step("try to save over the source, and be refused", async () => {
         const dialog = exportDialog(window);
         await saveDialogAnswers(app, library.xml);
-        await dialog.getByRole("button", { name: "Choose…" }).click();
-        await expect(dialog.getByText(library.xml, { exact: true })).toBeVisible();
+        await dialog.getByRole("button", { name: "Choose file…" }).click();
+        await expect(dialog.getByText(path.basename(library.xml))).toBeVisible();
         await dialog.getByRole("button", { name: "Export 3 tracks and 1 playlist" }).click();
 
         const refused = dialog.getByRole("region", { name: "Refused" });
@@ -384,7 +385,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
           "Smart Collection, as it matches now",
         );
         await saveDialogAnswers(app, path.join(exports, "Techno.xml"));
-        await dialog.getByRole("button", { name: "Choose…" }).click();
+        await dialog.getByRole("button", { name: "Choose file…" }).click();
         await dialog.getByRole("button", { name: "Export 3 tracks and 1 playlist" }).click();
         await expect(dialog.getByText(/^Exported to Techno\.xml/)).toBeVisible({ timeout: 60_000 });
         await dialog.getByRole("button", { name: "Done" }).click();
@@ -418,7 +419,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await saveDialogAnswers(app, path.join(exports, "Stale.xml"));
         await openDetails(dialog);
         await expect(dialog.getByRole("combobox", { name: /Key notation/ })).toHaveValue("camelot");
-        await dialog.getByRole("button", { name: "Choose…" }).click();
+        await dialog.getByRole("button", { name: "Choose file…" }).click();
         await expect(dialog.getByRole("button", { name: "Export 3 tracks" })).toBeEnabled({ timeout: 30_000 });
         await dialog.getByRole("button", { name: "Cancel" }).click();
       });

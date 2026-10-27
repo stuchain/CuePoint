@@ -69,11 +69,11 @@ describe("EditValuesDialog", () => {
     const button = screen.getByRole("button", { name: "Change 3 tracks" });
     expect(button).toBeDisabled();
     expect(button).toHaveAccessibleDescription("Set or clear at least one value.");
-    // In the body, as a Notice, not floating right-aligned over the footer (new C, as Sync and Export).
+    // The Modal's reason line above the footer, not an info box in the body that moves the fields (M274).
     const note = screen.getByText("Set or clear at least one value.");
-    expect(note.closest(".cp-notice")).not.toBeNull();
-    expect(note.closest(".cp-modal__body")).not.toBeNull();
-    expect(document.querySelector(".cp-modal__reason")?.textContent ?? "").toBe("");
+    expect(note).toHaveClass("cp-modal__reason");
+    expect(note.closest(".cp-notice")).toBeNull();
+    expect(note.closest(".cp-modal__body")).toBeNull();
 
     fireEvent.change(screen.getByRole("textbox", { name: "BPM value" }), {
       target: { value: "126" },

@@ -9,7 +9,8 @@
 .cp-picker {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  /* The Modal body sets the rhythm; the filter and the list sit a group apart (M63). */
+  gap: var(--space-md);
 }
 
 /* The search field is the shared SearchField; it only fills the dialog width. */
@@ -45,6 +46,11 @@
   font-size: var(--control-font-size);
   text-align: left;
   cursor: pointer;
+}
+
+/* The ring is drawn inside the row: the list's edge would cut an outer one (M282). */
+.cp-picker__item:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
 .cp-picker__item:hover:not(:disabled) {
@@ -87,9 +93,7 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* An empty list is the shared compact EmptyState inside its row (M349). */
 .cp-picker__empty {
   padding: var(--space-sm);
-  color: var(--fg-muted);
-  font-family: var(--font-meta);
-  font-size: var(--font-size-xs);
 }

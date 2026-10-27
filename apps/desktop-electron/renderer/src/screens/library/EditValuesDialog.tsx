@@ -11,10 +11,10 @@
  * before it touches a track, and its refusal is shown beside the field it
  * names; fields already applied stay applied and say so.
  */
-import { useId, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import type { OverrideField } from "../../api/cuepointBridge.types";
-import { Button, Modal, Notice } from "../../components";
+import { Modal } from "../../components";
 import { countNoun } from "../../format/counts";
 import { BACK } from "../../format/words";
 import { Select } from "../../components/Select";
@@ -125,7 +125,6 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
   // that does not parse is left enabled, so pressing the button names the field.
   const built = editsFromDraft(draft);
   const nothingToChange = built.ok && built.edits.length === 0;
-  const nothingId = useId();
 
   return (
     <Modal
@@ -138,10 +137,13 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
         onClick: () => void save(),
         loading: saving,
         disabled: nothingToChange,
-        // Why it is greyed is about the form, so it is a Notice in the body (new C, as Sync and Export).
-        describedBy: nothingToChange ? nothingId : undefined,
+        // Why it is greyed is the Modal's reason line above the footer, so the fields never move when
+        // typing starts (M274).
+        disabledReason: nothingToChange ? "Set or clear at least one value." : undefined,
       }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
+      // The big-batch question's way back is the Modal's own, between Cancel and the main button.
+      backAction={asking ? { label: BACK, onClick: () => setAsking(false) } : undefined}
     >
       <div className="clean-dialog">
         <p className="cp-modal__lead">
@@ -150,9 +152,6 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
         </p>
         {asking && (
           <div role="alert">
-            <Button variant="quiet" icon="chevron-left" onClick={() => setAsking(false)}>
-              {BACK}
-            </Button>
             <p className="clean-dialog__headline">{`Change ${many}?`}</p>
             <p className="cp-modal__lead">
               {BATCH_RECORDED_NOTE}
@@ -219,11 +218,6 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
           <p className="clean-dialog__note" role="status">
             {general}
           </p>
-        )}
-        {nothingToChange && (
-          <Notice kind="info" id={nothingId}>
-            Set or clear at least one value.
-          </Notice>
         )}
       </div>
     </Modal>

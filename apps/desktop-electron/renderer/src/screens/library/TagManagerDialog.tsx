@@ -14,7 +14,7 @@
  * the History — a way to find out what happened, not a way to undo it
  * (DEC-008).
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "../../components/Button";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -25,6 +25,7 @@ import { deleteLabel, deleteTitle, quoted } from "../../format/words";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
 import type { TagUsage } from "../../api/cuepointBridge.types";
+import { useLastValue } from "../../hooks/useLastValue";
 import {
   TAG_CATEGORY_MAX_LENGTH,
   TAG_COLOURS,
@@ -72,60 +73,78 @@ export function TagManagerDialog({
 }: TagManagerDialogProps) {
   const ordered = useMemo(() => sortedTags(tags), [tags]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [draft, setDraft] = useState<TagDraft | null>(null);
+  // One draft per tag, kept while the dialog is open: choosing another tag does not drop what was
+  // typed (M257). Only a draft that differs from the tag is kept.
+  // `from` is what the tag was when typing began: a tag the engine has since changed takes its draft with it.
+  const [drafts, setDrafts] = useState<Record<number, { from: TagDraft; value: TagDraft }>>({});
   const [mergeInto, setMergeInto] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   // The last question stays drawn while its dialog closes, so the title and body do not blank out.
-  const lastPending = useRef<Pending | null>(null);
-  if (pending) lastPending.current = pending;
-  const shown = pending ?? lastPending.current;
+  const shown = useLastValue(pending);
   const [problem, setProblem] = useState<string | null>(null);
+  const [askingClose, setAskingClose] = useState(false);
 
   const selected = ordered.find((tag) => tag.id === selectedId) ?? null;
 
   useEffect(() => {
     if (!open) return;
     setSelectedId(null);
-    setDraft(null);
+    setDrafts({});
     setMergeInto("");
     setPending(null);
     setProblem(null);
+    setAskingClose(false);
   }, [open]);
 
-  // A tag that was renamed, merged away or deleted takes the editor with it:
-  // the list is re-read after every write, so what is on screen is what the
-  // engine has rather than what was typed at it.
+  // The list is re-read after every write, so what is on screen is what the engine has. A tag that
+  // was merged away or deleted takes the editor with it, and a draft the engine now agrees with
+  // (it was just saved) is no longer a draft.
   useEffect(() => {
-    if (selectedId === null) return;
-    const still = tags.find((tag) => tag.id === selectedId);
-    if (!still) {
+    if (selectedId !== null && !tags.some((tag) => tag.id === selectedId)) {
       setSelectedId(null);
-      setDraft(null);
       setMergeInto("");
-      return;
     }
-    setDraft(draftOf(still));
+    setDrafts((previous) => {
+      const next: typeof previous = {};
+      for (const [key, kept] of Object.entries(previous)) {
+        const tag = tags.find((candidate) => candidate.id === Number(key));
+        const now = tag ? draftOf(tag) : null;
+        const same = now && now.name === kept.from.name && now.category === kept.from.category && now.colour === kept.from.colour;
+        if (tag && same && hasChanges(tagPatch(tag, kept.value))) next[Number(key)] = kept;
+      }
+      return Object.keys(next).length === Object.keys(previous).length ? previous : next;
+    });
   }, [tags, selectedId]);
+
+  const draft = selected ? (drafts[selected.id]?.value ?? draftOf(selected)) : null;
+  const patch = selected && draft ? tagPatch(selected, draft) : null;
+  const changed = patch !== null && hasChanges(patch);
+  const editDraft = (change: Partial<TagDraft>) => {
+    if (!selected || !draft) return;
+    setDrafts((previous) => ({
+      ...previous,
+      [selected.id]: { from: previous[selected.id]?.from ?? draftOf(selected), value: { ...draft, ...change } },
+    }));
+  };
+  // The names of the tags with changes not yet saved, as the engine has them.
+  const unsaved = ordered.filter((tag) => drafts[tag.id] && hasChanges(tagPatch(tag, drafts[tag.id]!.value)));
 
   const choose = (tag: TagUsage) => {
     setSelectedId(tag.id);
-    setDraft(draftOf(tag));
     setMergeInto("");
     setProblem(null);
   };
 
+  const requestClose = () => {
+    if (unsaved.length > 0) setAskingClose(true);
+    else onClose();
+  };
+
   const save = () => {
-    if (!selected || !draft) return;
+    if (!selected || !draft || !patch) return;
     const checked = checkDraft(draft);
     if (!checked.ok) {
       setProblem(checked.reason);
-      return;
-    }
-    const patch = tagPatch(selected, draft);
-    if (!hasChanges(patch)) {
-      // Nothing to write, said rather than written: an update route that was
-      // sent three unchanged columns would still record three history rows.
-      setProblem("Nothing has changed.");
       return;
     }
     setProblem(null);
@@ -151,9 +170,27 @@ export function TagManagerDialog({
     <Modal
       open={open}
       title="Tags"
-      onClose={onClose}
-      closeLabel="Close"
-      size={ordered.length === 0 ? "medium" : "large"}
+      onClose={requestClose}
+      // Only the × closes it (M254): there is nothing to confirm in an empty list, and with tags the
+      // footer is Save and Delete, which apply a change at once.
+      noFooter={ordered.length === 0}
+      size={ordered.length === 0 ? "small" : "large"}
+      primaryAction={
+        ordered.length === 0
+          ? undefined
+          : {
+              label: "Save",
+              onClick: save,
+              disabled: busy || !changed,
+              disabledReason: selected ? (changed ? undefined : "Nothing has changed.") : "Choose a tag to change it.",
+            }
+      }
+      // Delete has one home, the footer's far left, in red (M250).
+      extraAction={
+        selected
+          ? { label: `${deleteLabel("tag")}…`, danger: true, disabled: busy, onClick: () => setPending({ kind: "delete", tag: selected }) }
+          : undefined
+      }
     >
       {ordered.length === 0 ? (
         <EmptyState
@@ -178,7 +215,9 @@ export function TagManagerDialog({
                   className="cp-tag-manager__swatch"
                   style={{ background: colourVariable(tag.colour) ?? "transparent" }}
                 />
-                <span className="cp-tag-manager__name">{tag.name}</span>
+                <span className="cp-tag-manager__name" data-cut-hint="">
+                  {tag.name}
+                </span>
                 <span className="cp-tag-manager__hint">{tagHint(tag)}</span>
               </button>
             </li>
@@ -194,11 +233,7 @@ export function TagManagerDialog({
                 label="Name"
                 value={draft.name}
                 maxLength={TAG_NAME_MAX_LENGTH}
-                onChange={(event) =>
-                  setDraft((previous) =>
-                    previous ? { ...previous, name: event.target.value } : previous,
-                  )
-                }
+                onChange={(event) => editDraft({ name: event.target.value })}
               />
 
               <TextField
@@ -206,11 +241,7 @@ export function TagManagerDialog({
                 value={draft.category}
                 maxLength={TAG_CATEGORY_MAX_LENGTH}
                 placeholder="Energy, Mood, Set position"
-                onChange={(event) =>
-                  setDraft((previous) =>
-                    previous ? { ...previous, category: event.target.value } : previous,
-                  )
-                }
+                onChange={(event) => editDraft({ category: event.target.value })}
               />
 
               <Select
@@ -223,27 +254,8 @@ export function TagManagerDialog({
                     label: colourLabel(colour),
                   })),
                 ]}
-                onChange={(event) =>
-                  setDraft((previous) =>
-                    previous
-                      ? { ...previous, colour: event.target.value || null }
-                      : previous,
-                  )
-                }
+                onChange={(event) => editDraft({ colour: event.target.value || null })}
               />
-
-              <div className="cp-tag-manager__actions">
-                <Button variant="primary" onClick={save} disabled={busy}>
-                  Save
-                </Button>
-                <Button
-                  variant="danger"
-                  disabled={busy}
-                  onClick={() => setPending({ kind: "delete", tag: selected })}
-                >
-                  Delete…
-                </Button>
-              </div>
 
               <div className="cp-tag-manager__merge">
                 <Select
@@ -274,6 +286,20 @@ export function TagManagerDialog({
       )}
 
     </Modal>
+    <ConfirmDialog
+      open={askingClose}
+      title={unsaved.length === 1 ? `Discard changes to ${quoted(unsaved[0]!.name)}?` : "Discard unsaved changes?"}
+      confirmLabel="Discard changes"
+      onConfirm={() => {
+        setAskingClose(false);
+        onClose();
+      }}
+      onCancel={() => setAskingClose(false)}
+    >
+      {unsaved.length === 1
+        ? "Its changes are not saved. Cancel and choose Save to keep them."
+        : `${unsaved.length} tags have changes that are not saved. Cancel and choose Save on each to keep them.`}
+    </ConfirmDialog>
     {/* Delete is a red fill; a merge moves tracks and is a plain one (C16). */}
     <ConfirmDialog
       open={pending?.kind === "delete"}

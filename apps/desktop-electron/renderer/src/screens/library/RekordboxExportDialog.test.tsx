@@ -13,8 +13,9 @@
  * - **"Refresh first"** hands off to the page and starts nothing here.
  * - **A busy library is waited for**, and the preview asked again when it ends.
  */
+import { displayPathNameFirst } from "../../format/paths";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type {
@@ -101,6 +102,11 @@ function started(jobId = "x-1"): RekordboxExportStartAnswer {
 }
 
 beforeEach(() => {
+  try {
+    window.localStorage.clear();
+  } catch {
+    /* storage unavailable: the dialog copes */
+  }
   listeners = new Map();
   jobStates = {};
   results = { "x-1": WRITTEN };
@@ -157,7 +163,7 @@ const confirmButton = () =>
 const box = (name: string) => within(dialog()).getByRole("checkbox", { name: new RegExp(`^${name}`) });
 
 /** The Details toggle: closed on every open, and its button says "Less about this" once open. */
-const detailsButton = () => within(dialog()).getByRole("button", { name: /^(Details|Less about this)$/ });
+const detailsButton = () => within(dialog()).getByRole("button", { name: /^(What goes in the file|Less about this)$/ });
 
 async function openDetails(user = userEvent.setup()) {
   if (detailsButton().getAttribute("aria-expanded") !== "true") await user.click(detailsButton());
@@ -169,8 +175,8 @@ async function previewed() {
 }
 
 async function chooseDestination(user = userEvent.setup()) {
-  await user.click(within(dialog()).getByRole("button", { name: "Choose…" }));
-  await within(dialog()).findByText(CHOSEN_FILE);
+  await user.click(within(dialog()).getByRole("button", { name: "Choose file…" }));
+  await within(dialog()).findByText(displayPathNameFirst(CHOSEN_FILE));
 }
 
 describe("the two ways in (DEC-087)", () => {
@@ -686,9 +692,12 @@ describe("the destination", () => {
     bridge.getRekordboxExportHistory.mockResolvedValue(HISTORY);
     renderDialog();
     await previewed();
-    expect(
-      within(dialog()).getByText(/Not chosen yet — the save dialog opens in C:\\Users\\dj\\Music\\Exports/),
-    ).toBeInTheDocument();
+    // The one fixed name, in the folder the last export used; "Choose file…" is the first thing to reach.
+    const destination = within(dialog()).getByRole("region", { name: "Destination" });
+    expect(destination).toHaveTextContent(/^Save as/);
+    expect(destination).toHaveTextContent(/CuePoint Export\.xml/);
+    expect(destination).toHaveTextContent(/Exports/);
+    expect(within(destination).getByRole("button", { name: "Choose file…" })).toHaveFocus();
   });
 
   it("is chosen in the save dialog, and reopens it at that choice", async () => {
@@ -701,7 +710,7 @@ describe("the destination", () => {
 
     bridge.chooseRekordboxExportDestination.mockResolvedValue({ canceled: false, filePath: OTHER_FILE });
     await user.click(within(dialog()).getByRole("button", { name: "Change…" }));
-    await within(dialog()).findByText(OTHER_FILE);
+    await within(dialog()).findByText(displayPathNameFirst(OTHER_FILE));
     expect(bridge.chooseRekordboxExportDestination).toHaveBeenLastCalledWith({
       currentPath: CHOSEN_FILE,
     });
@@ -713,23 +722,58 @@ describe("the destination", () => {
     renderDialog();
     await previewed();
 
-    await user.click(within(dialog()).getByRole("button", { name: "Choose…" }));
+    await user.click(within(dialog()).getByRole("button", { name: "Choose file…" }));
     await waitFor(() => expect(bridge.chooseRekordboxExportDestination).toHaveBeenCalled());
-    expect(within(dialog()).getByText(/Not chosen yet/)).toBeInTheDocument();
-    expect(confirmButton()).toBeDisabled();
+    expect(within(dialog()).getByRole("button", { name: "Choose file…" })).toBeInTheDocument();
+    expect(bridge.startRekordboxExport).not.toHaveBeenCalled();
   });
 });
 
 describe("confirming", () => {
-  it("says what it will do, and waits for a destination", async () => {
+  it("says what it will do, and opens the save dialog itself when no file is chosen yet (M512)", async () => {
+    const user = userEvent.setup();
     renderDialog({ initialIds: [7] });
     await previewed();
 
     expect(confirmButton()).toHaveTextContent("Export 4 tracks and 4 playlists");
-    expect(confirmButton()).toBeDisabled();
-    // The reason sits under the field it is about, not floating over the footer (C131).
-    const destination = within(dialog()).getByRole("region", { name: "Destination" });
-    expect(within(destination).getByRole("note")).toHaveTextContent("Choose where to save the file.");
+    expect(confirmButton()).toBeEnabled();
+    expect(within(dialog()).queryByRole("note")).toBeNull();
+
+    await user.click(confirmButton());
+    await waitFor(() => expect(bridge.chooseRekordboxExportDestination).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(bridge.startRekordboxExport).toHaveBeenCalledWith(
+        expect.objectContaining({ destination_path: CHOSEN_FILE }),
+      ),
+    );
+  });
+
+  it("starts nothing when the save dialog opened by Export is cancelled", async () => {
+    const user = userEvent.setup();
+    bridge.chooseRekordboxExportDestination.mockResolvedValue({ canceled: true });
+    renderDialog({ initialIds: [7] });
+    await previewed();
+
+    await user.click(confirmButton());
+    await waitFor(() => expect(bridge.chooseRekordboxExportDestination).toHaveBeenCalled());
+    expect(bridge.startRekordboxExport).not.toHaveBeenCalled();
+    expect(confirmButton()).toBeEnabled();
+  });
+
+  it("remembers what was ticked and starts with it next time (M513)", async () => {
+    const user = userEvent.setup();
+    const first = renderDialog({ initialIds: [7] });
+    await previewed();
+    await chooseDestination(user);
+    await user.click(confirmButton());
+    await waitFor(() => expect(bridge.startRekordboxExport).toHaveBeenCalled());
+    expect(first.onClose).not.toHaveBeenCalled();
+    cleanup();
+
+    renderDialog({ initialIds: [] });
+    await previewed();
+    await openDetails();
+    expect(box("Loose")).toBeChecked();
   });
 
   it("writes nothing while choosing, ticking and changing notation", async () => {
@@ -836,7 +880,7 @@ describe("confirming", () => {
 
     bridge.chooseRekordboxExportDestination.mockResolvedValue({ canceled: false, filePath: OTHER_FILE });
     await user.click(within(refused).getByRole("button", { name: "Choose another file…" }));
-    await within(dialog()).findByText(OTHER_FILE);
+    await within(dialog()).findByText(displayPathNameFirst(OTHER_FILE));
     expect(within(dialog()).queryByRole("region", { name: "Refused" })).toBeNull();
     expect(confirmButton()).toBeEnabled();
   });
@@ -959,7 +1003,7 @@ describe("without the desktop app", () => {
       within(dialog()).getByText("This needs the CuePoint desktop app."),
     ).toBeInTheDocument();
     expect(confirmButton()).toBeDisabled();
-    expect(within(dialog()).getByRole("button", { name: "Choose…" })).toBeDisabled();
+    expect(within(dialog()).getByRole("button", { name: "Choose file…" })).toBeDisabled();
   });
 });
 

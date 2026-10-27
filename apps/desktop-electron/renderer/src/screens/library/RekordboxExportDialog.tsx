@@ -33,8 +33,8 @@ import type {
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { exportHistory, useSharedRead } from "../../api/sharedReads";
 import { Button, Modal, MoreAbout } from "../../components";
+import { displayPath, displayPathNameFirst } from "../../format/paths";
 import { Notice } from "../../components/Notice";
-import { ReasonLine } from "../../components/ReasonLine";
 import { Select } from "../../components/Select";
 import type { CollectionTreeNode } from "./collectionTree";
 import { followJob, type FollowHandle } from "./followJob";
@@ -45,7 +45,6 @@ import {
   OPEN_IN_REKORDBOX,
   canConfirm,
   changeLine,
-  CHOOSE_DESTINATION,
   confirmBlocker,
   confirmLabel,
   copyLine,
@@ -98,6 +97,29 @@ type Phase = "choosing" | "exporting" | "done";
 /** How long ticking waits before asking, so three quick ticks are one preview. */
 const PREVIEW_SETTLE_MS = 150;
 
+/** The Collections and Sets last exported, kept so the next opening starts with them ticked (M513). */
+const TICKED_KEY = "cuepoint-export-ticked";
+
+function rememberedTicks(): number[] {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(TICKED_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((id): id is number => typeof id === "number") : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberTicks(ids: readonly number[]): void {
+  try {
+    window.localStorage.setItem(TICKED_KEY, JSON.stringify(ids));
+  } catch {
+    // A convenience: not remembered means ticking again.
+  }
+}
+
+/** The one name every export uses (M512), shown before the folder is chosen. */
+const EXPORT_FILE_NAME = "CuePoint Export.xml";
+
 /** The history read, switched off while the dialog is closed or cannot export. */
 const NOT_OPEN = { ...exportHistory(1), available: () => false };
 
@@ -149,6 +171,10 @@ export function RekordboxExportDialog({
   const seededFormat = useRef<RekordboxKeyFormat | null>(null);
   const alive = useRef(true);
   const following = useRef<FollowHandle[]>([]);
+  // Focus starts on Choose file, the step the dialog is for, not on the brightest button (M258).
+  const chooseRef = useRef<HTMLButtonElement>(null);
+  const treeRef = useRef(tree);
+  treeRef.current = tree;
 
   useEffect(() => {
     alive.current = true;
@@ -166,7 +192,11 @@ export function RekordboxExportDialog({
   const initialKey = initialIds.join(",");
   useEffect(() => {
     if (!open) return;
-    setTicked(new Set(initialKey ? initialKey.split(",").map(Number) : []));
+    // From a Collection's menu that node alone; from the header what was ticked last time, for those still there (M513).
+    const known = new Set(rowsOf(treeRef.current).map(({ node }) => node.id));
+    setTicked(
+      new Set(initialKey ? initialKey.split(",").map(Number) : rememberedTicks().filter((id) => known.has(id))),
+    );
     setKeyFormat(DEFAULT_EXPORT_KEY_FORMAT);
     setReady(false);
     seededFormat.current = null;
@@ -267,21 +297,23 @@ export function RekordboxExportDialog({
   const confirmState = {
     preview: previewing ? null : preview,
     refusal,
-    destination,
     working,
   };
 
-  const choose = async () => {
+  /** The native save dialog; the file chosen, or null when it was cancelled or could not open. */
+  const choose = async (): Promise<string | null> => {
     const pick = bridge?.chooseRekordboxExportDestination;
-    if (!pick) return;
+    if (!pick) return null;
     try {
       const chosen = await pick({ currentPath: destination });
-      if (!alive.current || chosen.canceled) return;
+      if (!alive.current || chosen.canceled) return null;
       setDestination(chosen.filePath);
       setStartRefusal(null);
+      return chosen.filePath;
     } catch (cause) {
       reportUnexpected(cause);
       if (alive.current) setProblem(userMessage(cause));
+      return null;
     }
   };
 
@@ -295,14 +327,18 @@ export function RekordboxExportDialog({
   };
 
   const confirm = async () => {
-    if (!bridge || !destination || !canConfirm(confirmState)) return;
+    if (!bridge || !canConfirm(confirmState)) return;
+    // Export opens the save dialog itself when no file is chosen yet, and goes on with the one chosen (M258).
+    const file = destination ?? (await choose());
+    if (!file || !alive.current) return;
     setProblem(null);
     setPhase("exporting");
+    rememberTicks(Array.from(ticked));
     try {
       const outcome = await bridge.startRekordboxExport({
         collection_ids: choice,
         key_format: keyFormat,
-        destination_path: destination,
+        destination_path: file,
       });
       if (!alive.current) return;
       if (outcome.refusal || !outcome.started) {
@@ -347,6 +383,7 @@ export function RekordboxExportDialog({
 
   const step = refusal ? refusalStep(refusal) : null;
   const blocker = phase === "choosing" ? confirmBlocker(confirmState) : null;
+  const suggested = remembered?.folder && remembered.folder_exists ? displayPathNameFirst(`${remembered.folder}/${EXPORT_FILE_NAME}`) : EXPORT_FILE_NAME;
   const rows = rowsOf(tree);
   const consequence = keyFormatConsequence(keyFormat);
   const staleness = preview ? stalenessWarning(preview.source) : null;
@@ -392,9 +429,9 @@ export function RekordboxExportDialog({
       // The × and Escape wait for the export, and the × says why (C112).
       closeDisabled={phase === "exporting"}
       closeReason="Press Stop first"
-      // Why Export is greyed: one line above the footer. The one about the destination sits under
-      // the destination instead (C131).
-      reason={blocker && blocker !== CHOOSE_DESTINATION && !previewing ? blocker : undefined}
+      // Why Export is greyed: one line above the footer.
+      reason={blocker && !previewing ? blocker : undefined}
+      initialFocus={chooseRef}
       primaryAction={primary}
       secondaryAction={
         phase === "exporting"
@@ -418,9 +455,14 @@ export function RekordboxExportDialog({
             )}
             {result?.outcome === "written" && (
               <>
-                <Hint text={result.destination_path}>
-                  <p className="rekordbox-export__path">{result.destination_path}</p>
+                <Hint text={displayPath(result.destination_path, { keepHome: true })}>
+                  <p className="rekordbox-export__path">{displayPathNameFirst(result.destination_path)}</p>
                 </Hint>
+                {result.backup_path && (
+                  <p className="clean-dialog__note">
+                    The file it replaced is kept as {displayPathNameFirst(result.backup_path)}.
+                  </p>
+                )}
                 <p className="clean-dialog__note">{OPEN_IN_REKORDBOX}</p>
                 {show && (
                   <div className="clean-dialog__actions">
@@ -437,31 +479,24 @@ export function RekordboxExportDialog({
           </section>
         ) : (
           <>
-            {/* 1. Where it goes. */}
+            {/* 1. Where it goes: one row, the name and where it will be, then Choose file… / Change…. */}
             <section className="rekordbox-export__part" aria-label="Destination">
               <h3 className="rekordbox-export__heading cp-text-label">Save as</h3>
               <div className="rekordbox-export__destination">
-                {destination ? (
-                  <Hint text={destination} inline>
-                    <span className="rekordbox-export__path">{destination}</span>
-                  </Hint>
-                ) : (
-                  <span className="clean-dialog__note">
-                    Not chosen yet
-                    {remembered?.folder && remembered.folder_exists
-                      ? ` — the save dialog opens in ${remembered.folder}`
-                      : ""}
+                <Hint text={destination ? displayPath(destination, { keepHome: true }) : undefined} inline>
+                  <span className="rekordbox-export__path">
+                    {destination ? displayPathNameFirst(destination) : suggested}
                   </span>
-                )}
+                </Hint>
                 <Button
+                  ref={chooseRef}
                   variant="secondary"
                   onClick={() => void choose()}
                   disabled={!bridge || phase === "exporting"}
                 >
-                  {destination ? "Change…" : "Choose…"}
+                  {destination ? "Change…" : "Choose file…"}
                 </Button>
               </div>
-              {blocker === CHOOSE_DESTINATION && !previewing && <ReasonLine>{blocker}</ReasonLine>}
             </section>
 
             {/* A refusal stands in the preview's place and says what to do. */}
@@ -524,7 +559,7 @@ export function RekordboxExportDialog({
             )}
 
             {/* 3. Everything else DEC-084 asks to be stated, one click away (DEC-247). */}
-            <MoreAbout label="Details">
+            <MoreAbout label="What goes in the file">
               <div className="rekordbox-export__details">
                 {preview && (
                   <section className="rekordbox-export__part" aria-label="Source">

@@ -76,8 +76,13 @@ describe("the vocabulary", () => {
     ]);
   });
 
-  it("says so when there are none, rather than showing an empty box", () => {
+  it("says so when there are none, in a small dialog with no footer and only the × to close it (M257, M254)", () => {
     show({ tags: [] });
+    const dialog = screen.getByRole("dialog", { name: "Tags" });
+    expect(dialog).toHaveClass("cp-modal--small");
+    expect(dialog.querySelector(".cp-modal__footer")).toBeNull();
+    // The × is the one way out: no grey Close beside it.
+    expect(within(dialog).getAllByRole("button")).toHaveLength(1);
     expect(screen.getByText("No tags yet")).toBeInTheDocument();
     expect(
       screen.getByText("Tag a track under Yours in Track details and it appears here."),
@@ -90,7 +95,15 @@ describe("the vocabulary", () => {
   it("asks for a tag before it offers fields to edit", () => {
     show();
     expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
-    expect(screen.getByText(/Choose a tag/)).toBeInTheDocument();
+    expect(screen.getByText(/Choose a tag to rename/)).toBeInTheDocument();
+  });
+
+  it("has Save and Delete in the footer and no Close button beside the ×", () => {
+    show();
+    choose("Peak-time");
+    const footer = screen.getByRole("dialog", { name: "Tags" }).querySelector(".cp-modal__footer")!;
+    expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Delete tag…", "Save"]);
+    expect(footer.querySelector(".cp-btn--danger")).not.toBeNull();
   });
 });
 
@@ -127,27 +140,44 @@ describe("editing one", () => {
     expect(onSave).toHaveBeenCalledWith(1, { colour: null });
   });
 
-  it("writes nothing when nothing changed, and says why", () => {
+  it("greys Save with the reason until something has changed", () => {
     const { onSave } = show();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByText("Choose a tag to change it.")).toHaveClass("cp-modal__reason");
     choose("Peak-time");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByText("Nothing has changed.")).toHaveClass("cp-modal__reason");
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("Nothing has changed");
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Peak time" } });
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
-  it("refuses a name of nothing before it asks the engine", () => {
-    const { onSave } = show();
+  it("keeps what was typed for a tag when another is chosen and this one comes back (M257)", () => {
+    show();
     choose("Peak-time");
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "  " } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("needs a name");
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Peak time" } });
+    choose("Closer");
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Closer");
+    choose("Peak-time");
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Peak time");
   });
 
-  it("shows what the engine said when it refused", () => {
-    show({ error: "A tag is already called “Closer”" });
+  it("closes at once with the × when nothing is unsaved", () => {
+    const { onClose } = show();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks before closing with changes that are not saved (M257)", () => {
+    const { onClose } = show();
     choose("Peak-time");
-    expect(screen.getByRole("alert")).toHaveTextContent("already called");
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Peak time" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).not.toHaveBeenCalled();
+    const ask = screen.getByRole("dialog", { name: "Discard changes to “Peak-time”?" });
+    fireEvent.click(within(ask).getByRole("button", { name: "Discard changes" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -155,7 +185,7 @@ describe("deleting one", () => {
   it("asks first, with the number of tracks it comes off", () => {
     const { onDelete } = show();
     choose("Peak-time");
-    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete tag…" }));
     expect(onDelete).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "Delete “Peak-time”?" })).toHaveTextContent("comes off 412 tracks");
   });
@@ -163,7 +193,7 @@ describe("deleting one", () => {
   it("deletes once it is confirmed", () => {
     const { onDelete } = show();
     choose("Peak-time");
-    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete tag…" }));
     const red = screen.getByRole("button", { name: "Delete tag" });
     // A delete confirm is a filled red button (C16).
     expect(red).toHaveClass("cp-btn--danger-confirm");
@@ -174,7 +204,7 @@ describe("deleting one", () => {
   it("does nothing when the question is answered no", () => {
     const { onDelete } = show();
     choose("Peak-time");
-    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete tag…" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onDelete).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog", { name: "Delete “Peak-time”?" })).not.toBeInTheDocument();

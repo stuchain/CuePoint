@@ -8,10 +8,9 @@
 .rekordbox-export__part {
   display: flex;
   flex-direction: column;
+  /* Parts are the Modal body's 16 apart with no rule of their own, so no gap is 9 above and 18 below (M63). */
   gap: var(--space-xs);
   min-width: 0;
-  padding-bottom: var(--space-sm);
-  border-bottom: var(--divider);
 }
 
 .rekordbox-export__part p {
@@ -66,7 +65,6 @@
 .rekordbox-export__reason {
   color: var(--fg-muted);
   font-family: var(--font-meta);
-  font-size: var(--text-body);
   white-space: nowrap;
 }
 

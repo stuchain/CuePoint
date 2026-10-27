@@ -8,6 +8,7 @@
  * LIB-11's to move here.
  */
 import { Modal } from "../../components";
+import { useLastValue } from "../../hooks/useLastValue";
 import { countNoun } from "../../format/counts";
 import { batchConsequence } from "./libraryBatch";
 import type { LibraryBatchController } from "./useLibraryBatch";
@@ -17,13 +18,15 @@ interface BatchConfirmDialogProps {
 }
 
 export function BatchConfirmDialog({ batch }: BatchConfirmDialogProps) {
-  const pending = batch.pending;
+  // Its words stay on screen through the exit, when the batch's question is already gone (M248).
+  const asking = batch.pending;
+  const pending = useLastValue(asking) ?? null;
   // Verb + how many: copying Beatport's values says so; every other kind changes tracks.
   const verb = pending?.action.kind === "apply_match" ? "Copy to" : "Change";
   const many = pending ? countNoun(pending.count, "track") : "tracks";
   return (
     <Modal
-      open={pending !== null}
+      open={asking !== null}
       title={pending ? `${verb} ${many}?` : "Change tracks?"}
       onClose={batch.cancel}
       size="small"

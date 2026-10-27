@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
 import { Modal } from "../../components/Modal";
 import { PixelIcon } from "../../components/PixelIcon";
 import type { PixelIconName } from "../../components/pixelIcons";
@@ -166,19 +167,23 @@ export function PickerDialog({
                   className={`cp-picker__item${
                     index >= 0 && index === active ? " cp-picker__item--active" : ""
                   }`}
-                  style={{ paddingLeft: `calc(var(--space-sm) + ${(item.depth ?? 0) * 12}px)` }}
+                  style={{ paddingLeft: `calc(var(--space-sm) + ${item.depth ?? 0} * var(--space-lg))` }}
                   onMouseEnter={() => index >= 0 && setActive(index)}
                   onClick={() => onChoose(item)}
                 >
                   {item.icon && <PixelIcon name={item.icon} className="cp-picker__icon" />}
-                  <span className="cp-picker__label">{item.label}</span>
+                  <span className="cp-picker__label" data-cut-hint="">
+                    {item.label}
+                  </span>
                   {item.hint && <span className="cp-picker__hint">{item.hint}</span>}
                 </button>
               </li>
             );
           })}
           {shown.length === 0 && !canCreate && (
-            <li className="cp-picker__empty">{text.trim() !== "" ? nothingMatches(text.trim()) : emptyText}</li>
+            <li className="cp-picker__empty">
+              <EmptyState compact headline={text.trim() !== "" ? nothingMatches(text.trim()) : emptyText} />
+            </li>
           )}
         </ul>
 

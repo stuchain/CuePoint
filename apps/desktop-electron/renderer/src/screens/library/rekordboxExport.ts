@@ -331,8 +331,6 @@ interface ConfirmState {
   preview: RekordboxExportPreview | null;
   /** A refusal standing in the preview's or the start's place. */
   refusal: RekordboxExportRefusal | null;
-  /** The file the save dialog returned, or null. */
-  destination: string | null;
   /** True while a preview is being asked for or an export is running. */
   working: boolean;
 }
@@ -340,17 +338,13 @@ interface ConfirmState {
 /**
  * Why the confirm button is disabled, or null when it is not.
  *
- * Said rather than only greyed, as the refresh preview does: a button that
- * cannot be pressed and does not say why is a dead end.
+ * The button does not wait for a destination: it opens the save dialog itself and goes on with
+ * the file chosen (M258), so a missing destination is not a reason to grey it.
  */
-/** The blocker that is about the destination, which the dialog draws under it. */
-export const CHOOSE_DESTINATION = "Choose where to save the file.";
-
 export function confirmBlocker(state: ConfirmState): string | null {
   if (state.working) return null;
   if (state.refusal) return "Nothing can be exported until the problem above is dealt with.";
   if (!state.preview) return "The preview has not answered yet.";
-  if (!state.destination) return CHOOSE_DESTINATION;
   return null;
 }
 
@@ -453,7 +447,7 @@ export function resultHeadline(result: RekordboxExportResult): string {
  * sentence that stops someone looking for their playlists in the wrong place.
  */
 export const OPEN_IN_REKORDBOX =
-  "To open it in Rekordbox, choose this file as the Imported Library under Preferences → Advanced → " +
+  "Every export uses this one name, so Rekordbox needs pointing at it only once: choose it as the Imported Library under Preferences → Advanced → " +
   "Database → rekordbox xml. It appears in the tree as “rekordbox xml” (turn that on under Preferences → " +
   "View → Layout if it is hidden), beside your collection rather than merged into it.";
 

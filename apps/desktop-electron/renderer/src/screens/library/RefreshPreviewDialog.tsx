@@ -62,6 +62,9 @@ export function RefreshPreviewDialog({
       open={open}
       title={diff.is_empty ? "Nothing has changed" : "Review this refresh"}
       size="large"
+      // A refresh that removes tracks cannot be undone, so its main button is red (M275); one that
+      // only adds and changes keeps the violet.
+      variant={removed.count > 0 && !diff.is_empty ? "danger" : "default"}
       onClose={onCancel}
       // Nothing changed: an info-only dialog ends in one grey Close. Otherwise this is a decision,
       // and declining it is "Cancel", not "Close": declining changes nothing.
@@ -75,6 +78,7 @@ export function RefreshPreviewDialog({
               onClick: () => onApply({ confirmReferences: acknowledged }),
               loading: applying,
               disabled: blocked,
+              disabledReason: blocked ? "Tick the box above to continue." : undefined,
             }
       }
     >
@@ -144,12 +148,6 @@ export function RefreshPreviewDialog({
                 />
                 <span>I understand this removes my own work on these tracks too</span>
               </label>
-            )}
-
-            {blocked && (
-              <p className="library-preview__blocked">
-                Tick the box above to continue.
-              </p>
             )}
           </>
         )}

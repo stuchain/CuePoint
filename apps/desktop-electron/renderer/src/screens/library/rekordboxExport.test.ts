@@ -395,9 +395,9 @@ describe("confirming", () => {
     expect(confirmLabel(null)).toBe("Export");
   });
 
-  const ready = { preview: CHOSEN, refusal: null, destination: "C:\\x.xml", working: false };
+  const ready = { preview: CHOSEN, refusal: null, working: false };
 
-  it("can be pressed with a preview, a destination and no refusal", () => {
+  it("can be pressed with a preview and no refusal", () => {
     expect(canConfirm(ready)).toBe(true);
     expect(confirmBlocker(ready)).toBeNull();
   });
@@ -410,11 +410,9 @@ describe("confirming", () => {
     }
   });
 
-  it("waits for the preview, and for a destination", () => {
+  it("waits for the preview, but not for a destination: Export opens the save dialog itself (M258)", () => {
     expect(canConfirm({ ...ready, preview: null })).toBe(false);
     expect(confirmBlocker({ ...ready, preview: null })).toBe("The preview has not answered yet.");
-    expect(canConfirm({ ...ready, destination: null })).toBe(false);
-    expect(confirmBlocker({ ...ready, destination: null })).toBe("Choose where to save the file.");
   });
 
   it("cannot be pressed twice while working", () => {

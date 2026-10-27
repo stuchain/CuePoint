@@ -37,6 +37,11 @@
   cursor: pointer;
 }
 
+/* The ring is drawn inside the row: the list's edge would cut an outer one (M282). */
+.cp-tag-manager__row:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
 .cp-tag-manager__row:hover {
   background: var(--row-hover);
 }
@@ -81,13 +86,13 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: var(--space-sm);
+  /* Fields are a block apart, a field and its label an xs, the merge row's pair a group (M257). */
+  gap: var(--space-lg);
   min-width: 0;
 }
 
-.cp-tag-manager__actions,
 .cp-tag-manager__merge {
   display: flex;
   align-items: flex-end;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
