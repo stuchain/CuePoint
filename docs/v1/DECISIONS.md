@@ -8392,3 +8392,42 @@ notation (`camelotOf`), so no engine change is needed.
   glossary's "Key" entry now says "the notation chosen in Settings (Camelot by default)".
 
 **Decided with**: User (K1 to K3, option A each) · **Date**: 2026-10-23
+
+## DEC-301 — Alignment Rules and the Pixel Face for Controls (Amends DEC-299 P2, P3, P32, P60; C208, C231)
+
+**Status**: Accepted · **Related**: DEC-299, `changes/polish/BUILD-SPEC.md` (Q1 to Q6, L1 to L9)
+
+**Context**: Measured on a Windows PC at 1.5x, the cohesion pass still left near misses of 1 to 10
+px: quiet buttons whose words sat their padding in from the edge, the Library pane's lines a few
+pixels off the table's, a deep tree indent, Track details and Prepare's side panel with four or
+five left edges, selects invisible on Settings' ground, and Inter (P2) next to the pixel art.
+
+**Decision**:
+- **L1** One left and one right edge per pane, titles included.
+- **L2 (Q1)** Quiet buttons hang: the first or last quiet button in a row moves out by its padding
+  and border, so its words sit on the edge (amends P3).
+- **L3 (Q2)** Side-by-side panes share lines: a bar is `--toolbar-height` with its line inside, a
+  row, a table header and a pane section head are `--row-height` with the line inside, and pane
+  sections leave no gap (amends P32; `useSharedLines` is gone).
+- **L4 (Q3)** Labels and boxes share an edge, and every box shows on its ground (`--field-fill`).
+- **L5** Being selected never moves text (the Settings link's step-in is gone).
+- **L6** Controls side by side share one height.
+- **L7** A disclosure's arrow hangs in the inset; its title sits on the edge, its summary at the right.
+- **L8** A number column's header ends where its numbers end.
+- **L9** `e2e/alignment.spec.ts` measures L1, L3 and L4 in the running app at 1x and 1.5x and
+  allows half a pixel.
+- **Q4** `--font-control` is the pixel face with data-face figures (amends P2): buttons, tabs,
+  chips, menus, labels, column headers and pane heads. Inter stays for data, typed text and
+  sentences (cells, names, fields, hints, notices). Controls are weight 400, the pixel face's
+  regular.
+- **Q5** Sidebar links are a bar tall; tree rows step in by a small icon plus 4 (12 at 1x) and only
+  folders draw a twisty.
+- **Q6** A chip's tint is mixed over its table's solid ground (`--chip-ground`), so a hovered or
+  selected row never changes it; a panel's own edge turns violet when its resize handle is hovered
+  (amends C208, C231); the activity strip is centred with even padding, a thin bar and a quiet Stop.
+
+**Implications**: Guards that held the old values moved with a note (Button, paneHeads, PaneTree,
+libraryLines, sheetRules, motionRules, motionKinds, Badge, Hint, detailsRound4, dataFont). Pixel
+words are wider than Inter at the same size; the narrow-width e2e (1024 px at 1.5x) still fits.
+
+**Decided with**: User ("Go with all recommended", every ★ of Q1 to Q6) · **Date**: 2026-10-27

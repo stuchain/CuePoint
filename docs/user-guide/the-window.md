@@ -144,7 +144,7 @@ developer tools (and **Diagnostics...** and **Log viewer...**); a released build
 
 The panel on the right shows details for whatever track you have selected. It opens
 when you select a track and folds away when nothing is selected. Drag its left
-edge to resize it, or use the arrow keys once the edge has focus. Close it with
+edge, which lights up when the pointer is on it, to resize it, or use the arrow keys once the edge has focus. Close it with
 the **×** button, the **Details** button or **Ctrl+I**, and open it with the **Details**
 button or **Ctrl+I** even with nothing selected; the page then keeps your choice until you
 change it, and other pages are not affected. **Details** is the last button in every page's
