@@ -1151,7 +1151,7 @@ describe("set lists and the export", () => {
     fireEvent.click(screen.getByRole("button", { name: "Export to Rekordbox…" }));
     const dialog = await screen.findByRole("dialog", { name: "Export to Rekordbox" });
     // The tick list sits behind Details (DEC-247).
-    fireEvent.click(within(dialog).getByRole("button", { name: "Details" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "What goes in the file" }));
     expect(within(dialog).getByRole("checkbox", { name: /Friday/ })).toBeChecked();
     expect(within(dialog).getByRole("checkbox", { name: /Plain/ })).not.toBeChecked();
   });

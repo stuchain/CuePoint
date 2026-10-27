@@ -39,7 +39,7 @@
 
 /* The ring is drawn inside the row: the list's edge would cut an outer one (M282). */
 .cp-tag-manager__row:focus-visible {
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .cp-tag-manager__row:hover {

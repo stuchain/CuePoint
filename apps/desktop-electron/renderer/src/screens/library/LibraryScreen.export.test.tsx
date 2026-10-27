@@ -254,7 +254,7 @@ describe("the Library header's entry (DEC-087)", () => {
     const dialog = await exportDialog();
     await within(dialog).findByTestId("export-summary");
     // The tick list sits behind Details (DEC-247).
-    await user.click(within(dialog).getByRole("button", { name: "Details" }));
+    await user.click(within(dialog).getByRole("button", { name: "What goes in the file" }));
 
     expect(within(dialog).getByRole("checkbox", { name: /^Loose/ })).not.toBeChecked();
     expect(within(dialog).getByRole("checkbox", { name: /^Fast/ })).not.toBeChecked();
@@ -294,7 +294,7 @@ describe("a Collection's context menu (DEC-087)", () => {
 
     const dialog = await exportDialog();
     await within(dialog).findByTestId("export-summary");
-    await user.click(within(dialog).getByRole("button", { name: "Details" }));
+    await user.click(within(dialog).getByRole("button", { name: "What goes in the file" }));
     expect(within(dialog).getByRole("checkbox", { name: new RegExp(`^${name}`) })).toBeChecked();
     expect(mock("previewRekordboxExport")).toHaveBeenLastCalledWith({
       collection_ids: [id],
@@ -319,7 +319,7 @@ describe("a Collection's context menu (DEC-087)", () => {
     await exportFromHeader(user);
     const fromHeader = await exportDialog();
     await within(fromHeader).findByTestId("export-summary");
-    await user.click(within(fromHeader).getByRole("button", { name: "Details" }));
+    await user.click(within(fromHeader).getByRole("button", { name: "What goes in the file" }));
     expect(within(fromHeader).getByRole("checkbox", { name: /^Loose/ })).not.toBeChecked();
     expect(sections[0]).toBe("Destination");
     expect(within(fromHeader).getAllByRole("region")[0]).toHaveAttribute("aria-label", "Destination");

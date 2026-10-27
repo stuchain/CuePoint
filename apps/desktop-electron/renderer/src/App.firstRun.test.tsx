@@ -63,11 +63,13 @@ describe("a fresh install", () => {
   it("shows the guide, and not the update note", async () => {
     render(<App />);
     expect(guide()).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Step 1 of 4" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /^Step 1 of 4/ })).toBeInTheDocument();
     expect(note()).toBeNull();
   });
 
   it("Import a Rekordbox file… reaches the Library's import", async () => {
+    // With a library already imported the step shows its done line instead of the action.
+    bridge.getLibraryHealth = vi.fn().mockResolvedValue({ track_count: 0, counts: [], detections: [], unavailable_roots: [] });
     render(<App />);
     await toScreen(2);
     await userEvent.click(within(guide()!).getByRole("button", { name: "Import a Rekordbox file…" }));
@@ -120,21 +122,21 @@ describe("a fresh install", () => {
     expect(guide()).toBeNull();
     await userEvent.keyboard("{Escape}");
     expect(await screen.findByRole("dialog", { name: "Getting started" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Step 2 of 4" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /^Step 2 of 4/ })).toBeInTheDocument();
   });
 
-  it("Escape closes it for now and it is back on the next start", async () => {
+  it("Escape counts as Skip: it ends the guide for good (D24)", async () => {
     const first = render(<App />);
     await userEvent.keyboard("{Escape}");
     expect(guide()).toBeNull();
     first.unmount();
     render(<App />);
-    expect(guide()).toBeInTheDocument();
+    expect(guide()).toBeNull();
   });
 
-  it("Skip ends it for good, and the next start shows neither the guide nor the note", async () => {
+  it("the × ends it for good too, and the next start shows neither the guide nor the note", async () => {
     const first = render(<App />);
-    await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+    await userEvent.click(within(guide()!).getByRole("button", { name: "Close" }));
     expect(guide()).toBeNull();
     first.unmount();
     render(<App />);
@@ -151,11 +153,11 @@ describe("Help → Getting started", () => {
     render(<App />);
     expect(guide()).toBeNull();
     act(() => send("getting-started"));
-    expect(await screen.findByRole("img", { name: "Step 1 of 4" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: /^Step 1 of 4/ })).toBeInTheDocument();
     await toScreen(3);
     await userEvent.keyboard("{Escape}");
     act(() => send("getting-started"));
-    expect(await screen.findByRole("img", { name: "Step 1 of 4" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: /^Step 1 of 4/ })).toBeInTheDocument();
   });
 });
 

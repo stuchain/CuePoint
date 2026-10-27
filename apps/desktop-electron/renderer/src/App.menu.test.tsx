@@ -130,7 +130,7 @@ describe("pages and dialogs", () => {
     command("get-help");
     await screen.findByRole("dialog", { name: "Get help" });
     await userEvent.click(screen.getByRole("button", { name: "Details for support" }));
-    await userEvent.click(screen.getByRole("button", { name: "Diagnostics…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
     expect(await screen.findByRole("dialog", { name: "Diagnostics" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Get help" })).not.toBeInTheDocument();
   });

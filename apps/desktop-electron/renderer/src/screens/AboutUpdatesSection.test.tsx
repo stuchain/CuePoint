@@ -195,7 +195,8 @@ describe("an update that is ready", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Restart now" }));
     await userEvent.click(await screen.findByRole("button", { name: "Restart when done" }));
     expect(await screen.findByRole("button", { name: "Restarts when importing finishes" })).toBeInTheDocument();
-    expect(screen.getByText("Restarts when importing finishes", { selector: "span" })).toBeInTheDocument();
+    // The strip's button label and this section's own line both say it.
+    expect(screen.getAllByText("Restarts when importing finishes", { selector: "span" })).toHaveLength(2);
     jobs = [];
     await act(async () => {
       await vi.advanceTimersByTimeAsync(4500);

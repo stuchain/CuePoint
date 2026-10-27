@@ -581,6 +581,8 @@ beforeEach(() => {
   // The column layout is persisted (DEC-042), so a test that reordered or
   // hid a column would otherwise decide what the next one opens on.
   localStorage.clear();
+  // The first-steps list waits for the Getting started guide to be finished or closed (M504).
+  localStorage.setItem("cuepoint-onboarding-complete", "1");
 });
 
 afterEach(() => {
@@ -618,7 +620,7 @@ describe("the empty state", () => {
     const steps = screen.getByRole("list", { name: "First steps" });
     const first = within(steps).getAllByRole("listitem")[0];
     expect(first).toHaveTextContent(
-      "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
+      "In Rekordbox choose File → Export Collection in XML format, then import that file. Nothing in Rekordbox is changed.",
     );
     expect(within(first).getByRole("button", { name: "Import a Rekordbox file…" })).toBeInTheDocument();
     expect(within(first).getByRole("button", { name: "How do I get one?" })).toBeInTheDocument();
@@ -3622,7 +3624,7 @@ describe("the tag manager (ORG-12)", () => {
     await tableReady();
     await openManager();
     await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
-    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete tag…" }));
 
     expect(bridge.deleteTag).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "Delete “Peak-time”?" })).toHaveTextContent("comes off 9 tracks");
@@ -3633,7 +3635,7 @@ describe("the tag manager (ORG-12)", () => {
     await tableReady();
     await openManager();
     await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
-    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete tag…" }));
     // The bar under the tree has a Delete of its own; the question's is in the dialog.
     await userEvent.click(within(screen.getByRole("dialog", { name: "Delete “Peak-time”?" })).getByRole("button", { name: "Delete tag" }));
 
