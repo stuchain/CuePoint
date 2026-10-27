@@ -6,11 +6,12 @@
  * under one key, read through one hook so the strip comes and goes the moment
  * Settings or the player bar changes it. The stored value is "on", "off" or
  * nothing (never chosen); nothing means "show it unless the window is short",
- * and that is followed live as the window is resized. Storage that throws
+ * and that is followed live as the window is resized (a short window is the compact bar's, N2). Storage that throws
  * reads as never chosen and forgets the choice rather than breaking the player.
  */
 import { useCallback, useSyncExternalStore } from "react";
 
+import { COMPACT_BAR_QUERY } from "../player/useCompactBar";
 import { DETAIL_SPANS_MS, DETAIL_SPAN_MS } from "./waveformDetailLayout";
 
 export const WAVEFORM_DETAIL_STORAGE_KEY = "cuepoint-waveform-detail";
@@ -19,29 +20,13 @@ export const WAVEFORM_DETAIL_STORAGE_KEY = "cuepoint-waveform-detail";
 export const WAVEFORM_DETAIL_DEFAULT = true;
 
 /**
- * Windows with less than 700 scaled px of content height start without the strip. That is the
- * content, not the outer window, and in the size's own units: at 1x the default 1280x800 window
- * (about 740-775 px of content) keeps the strip and a 1280x720 window (about 660) hides it; at
- * 1.5x or 2x the same rows take 1.5 or 2 times the room, so the window must be that much taller
- * (a 735 px window at 2x is 367 scaled px, and the strip, the bar and the status line left no
- * page). The query is rebuilt when the size changes.
+ * A window too short for the strip: the compact bar's own query (C207), under 700 px of window
+ * height in real pixels whatever the size. N2: this used to be 700 px times the size, so at the
+ * default 1.5x a default 1280x800 window (and any window under 1,050 px) started without the strip
+ * on Library, Prepare and Keys, and D27's strip was simply missing. The compact bar draws no strip
+ * and no toggle, so the one number decides both.
  */
-export const SHORT_WINDOW_SCALED_PX = 700;
-
-/** The media query for a window too short for the strip at this size. */
-export function shortWindowQueryFor(scale: number): string {
-  return `(max-height: ${Number((SHORT_WINDOW_SCALED_PX * scale - 0.02).toFixed(2))}px)`;
-}
-
-/** The query at 1x. */
-export const SHORT_WINDOW_QUERY = shortWindowQueryFor(1);
-
-/** The size the page is drawn at: the document's `data-scale` (set with `--scale`), 1 if none. */
-function currentScale(): number {
-  if (typeof document === "undefined") return 1;
-  const value = Number(document.documentElement.dataset.scale);
-  return Number.isFinite(value) && value > 0 ? value : 1;
-}
+export const SHORT_WINDOW_QUERY = COMPACT_BAR_QUERY;
 
 /** What a stored value means: a choice, or null when none was made (or it is unrecognised). */
 export function parseWaveformDetail(raw: string | null): boolean | null {
@@ -57,16 +42,12 @@ export function loadWaveformChoice(): boolean | null {
   }
 }
 
-/** The query list for the size in force, made on first use and again when the size changes. */
+/** The query list, made on first use. */
 let media: MediaQueryList | null = null;
-let mediaScale = 0;
 
 function shortWindowQuery(): MediaQueryList | null {
-  const scale = currentScale();
-  if (media !== null && mediaScale !== scale) media = null;
   if (media === null && typeof window !== "undefined" && typeof window.matchMedia === "function") {
-    media = window.matchMedia(shortWindowQueryFor(scale));
-    mediaScale = scale;
+    media = window.matchMedia(SHORT_WINDOW_QUERY);
   }
   return media;
 }
@@ -117,24 +98,12 @@ function subscribe(listener: () => void): () => void {
     listener();
   };
   window.addEventListener("storage", onStorage);
-  // The query follows the size: a new size gets a new list, and the listeners move to it.
-  let query = shortWindowQuery();
+  const query = shortWindowQuery();
   query?.addEventListener?.("change", listener);
-  const observer =
-    typeof MutationObserver === "function"
-      ? new MutationObserver(() => {
-          query?.removeEventListener?.("change", listener);
-          query = shortWindowQuery();
-          query?.addEventListener?.("change", listener);
-          listener();
-        })
-      : null;
-  observer?.observe(document.documentElement, { attributes: true, attributeFilter: ["data-scale"] });
   return () => {
     listeners.delete(listener);
     window.removeEventListener("storage", onStorage);
     query?.removeEventListener?.("change", listener);
-    observer?.disconnect();
   };
 }
 
@@ -143,7 +112,6 @@ export function resetWaveformDetailForTests(): void {
   choice = null;
   choiceRead = false;
   media = null;
-  mediaScale = 0;
 }
 
 /** Whether the strip shows, and a way to change it everywhere at once. */

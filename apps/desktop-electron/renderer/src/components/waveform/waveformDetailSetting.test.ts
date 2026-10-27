@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   WAVEFORM_DETAIL_DEFAULT,
   SHORT_WINDOW_QUERY,
-  shortWindowQueryFor,
   WAVEFORM_DETAIL_SPAN_STORAGE_KEY,
   WAVEFORM_DETAIL_STORAGE_KEY,
   loadWaveformDetail,
@@ -19,6 +18,7 @@ import {
   useWaveformDetailSpan,
 } from "./waveformDetailSetting";
 import { DETAIL_SPAN_MS } from "./waveformDetailLayout";
+import { COMPACT_BAR_QUERY } from "../player/useCompactBar";
 
 /** The zoomed waveform is on until switched off, remembered under one key (T4). */
 beforeEach(() => {
@@ -120,33 +120,21 @@ describe("the short-window default", () => {
     expect(media.matchMedia).toHaveBeenCalledWith(SHORT_WINDOW_QUERY);
   });
 
-  it("scales the height it asks about with the size, so a 735 px window at 2x counts as short", () => {
-    expect(shortWindowQueryFor(1)).toBe(SHORT_WINDOW_QUERY);
-    expect(shortWindowQueryFor(1.5)).toBe("(max-height: 1049.98px)");
-    expect(shortWindowQueryFor(2)).toBe("(max-height: 1399.98px)");
-    document.documentElement.dataset.scale = "2";
-    try {
-      const media = fakeMedia(true);
-      expect(loadWaveformDetail()).toBe(false);
-      expect(media.matchMedia).toHaveBeenCalledWith("(max-height: 1399.98px)");
-    } finally {
-      delete document.documentElement.dataset.scale;
-    }
-  });
-
-  it("asks again when the size changes", async () => {
+  // N2: moved. The threshold no longer scales with the size (it was 700 x 1.5 = 1,050 px at the
+  // default size, so a default 1280x800 window had no strip); it is the compact bar's real 700 px.
+  it("asks the compact bar's own question at every size, so a default window keeps the strip at 1.5x", async () => {
+    expect(SHORT_WINDOW_QUERY).toBe(COMPACT_BAR_QUERY);
     const media = fakeMedia(false);
     const { result } = renderHook(() => useWaveformDetailSetting());
-    expect(media.matchMedia).toHaveBeenLastCalledWith(SHORT_WINDOW_QUERY);
     expect(result.current[0]).toBe(true);
     try {
-      media.matches = true;
       await act(async () => {
-        document.documentElement.dataset.scale = "2";
+        document.documentElement.dataset.scale = "1.5";
         await Promise.resolve();
       });
-      expect(media.matchMedia).toHaveBeenLastCalledWith("(max-height: 1399.98px)");
-      expect(result.current[0]).toBe(false);
+      expect(media.matchMedia).toHaveBeenCalledTimes(1);
+      expect(media.matchMedia).toHaveBeenLastCalledWith("(max-height: 699.98px)");
+      expect(result.current[0]).toBe(true);
     } finally {
       delete document.documentElement.dataset.scale;
     }
