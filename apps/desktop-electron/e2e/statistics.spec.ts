@@ -356,10 +356,12 @@ test.describe("The Plays section (STATS-05)", () => {
       await expect(
         list.getByRole("button", { name: "1. Track 2 by Artist 2, 9 plays" }),
       ).toBeVisible();
-      await expect(plays).toContainText("From your Rekordbox play counts");
+      // M431: where the counts come from, in one short line.
+      await expect(plays).toContainText("Rekordbox play counts · ");
 
       // Since the first import (the refresh's own rises), in their own order.
-      await plays.getByLabel("Since").selectOption({ label: "Your last refresh" });
+      // M224: Since sits in the header beside "Which tracks" while Plays is shown.
+      await window.getByRole("combobox", { name: "Since" }).selectOption({ label: "Your last refresh" });
       await expect(list.getByRole("listitem")).toHaveCount(3, { timeout: 30_000 });
       await expect(
         list.getByRole("button", { name: "1. Track 2 by Artist 2, 6 plays" }),
@@ -371,9 +373,12 @@ test.describe("The Plays section (STATS-05)", () => {
         list.getByRole("button", { name: "3. Track 1 by Artist 1, 1 play" }),
       ).toBeVisible();
 
-      // Keep it as a Collection, and it says where it went.
-      await plays.getByRole("button", { name: "Keep as Collection" }).click();
-      await expect(plays.getByText(/Kept 3 tracks in rank order as/)).toBeVisible({
+      // Save it as a Collection (M409: the button opens a dialog to name it), and it says where it went.
+      await plays.getByRole("button", { name: "Save as a Collection…" }).click();
+      const naming = window.getByRole("dialog", { name: "Save as a Collection" });
+      await expect(naming.getByLabel("Name")).toHaveValue(/^Most played since /);
+      await naming.getByRole("button", { name: "Save" }).click();
+      await expect(plays.getByText(/Saved 3 tracks in rank order as/)).toBeVisible({
         timeout: 30_000,
       });
 

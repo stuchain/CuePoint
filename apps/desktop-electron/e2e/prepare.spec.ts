@@ -405,9 +405,14 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       console.log("PREP-11 source panel whole rows:", source.whole);
       expect(source.whole, "the Suggestions the panel shows").toBeGreaterThanOrEqual(SOURCE_ROWS);
 
-      // --- Mix in on the focused row takes a mouse click (option 3A) ----------
-      // Mix in is the last column as the table opens, so the selected row's buttons end just left
-      // of it: a click of the mouse on the focused row's Mix in opens its field.
+      // --- the time columns, and Mix in on the focused row takes a mouse click ----------
+      // M200: this Set has no times yet, so it opens without Time, Mix in and Mix out; Title has the room.
+      const opening = (await table.getByRole("columnheader").allTextContents()).map((text) => text.trim());
+      for (const name of ["Time", "Mix in", "Mix out"]) {
+        expect(opening, `${name} waits until a time is asked for (M200)`).not.toContain(name);
+      }
+      // The View item brings them back.
+      await toggleView(win, "Mix-in and mix-out columns");
       const entryRow = table.locator(".track-table__row").filter({ has: win.getByRole("button", { name: /^Mix in for/ }) }).nth(1);
       // The row by its own Mix in's name: once the cell opens, the button the filter above reads is gone.
       const mixInName = (await entryRow.getByRole("button", { name: /^Mix in for/ }).getAttribute("aria-label"))!;
@@ -415,19 +420,34 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       const focusedRow = table.locator(".track-table__row").filter({ has: win.getByRole("button", { name: mixInName, exact: true }) });
       const buttons = focusedRow.getByRole("group", { name: "Selected tracks" });
       await expect(buttons).toBeVisible();
+      // M192 (replaces option 3A): the buttons sit on a column of their own at the row's end, so no
+      // data cell runs under them. Read at the table's right end, where a sticky cell is in its place.
+      await table.evaluate((element) => {
+        element.scrollLeft = element.scrollWidth;
+      });
+      const ends = await focusedRow.evaluate((row) => {
+        const end = row.querySelector(":scope > .track-table__end")!.getBoundingClientRect();
+        const reserved = row.querySelector(':scope > [data-column="entry_buttons"]')!.getBoundingClientRect();
+        const data = [...row.querySelectorAll<HTMLElement>(":scope > [data-column]")].filter(
+          (cell) => cell.dataset.column !== "entry_buttons",
+        );
+        return {
+          endLeft: end.left,
+          reservedLeft: reserved.left,
+          dataRight: Math.max(...data.map((cell) => cell.getBoundingClientRect().right)),
+        };
+      });
+      expect(Math.abs(ends.endLeft - ends.reservedLeft), "the buttons sit on their own column").toBeLessThan(1);
+      expect(ends.dataRight, "no data cell runs under the buttons").toBeLessThanOrEqual(ends.endLeft + 1);
       const mixInBox = (await focusedRow.getByRole("button", { name: mixInName, exact: true }).boundingBox())!;
-      const buttonsBox = (await buttons.boundingBox())!;
-      expect(buttonsBox.x + buttonsBox.width, "the buttons end left of Mix in").toBeLessThanOrEqual(mixInBox.x + 1);
       await win.waitForTimeout(600); // past a double-click's length, so this is a click of its own
-      // Just inside the cell's left edge, right beside the buttons: the Columns corner holds the
-      // scroll area's far right end.
-      const at = { x: mixInBox.x + 6, y: mixInBox.y + mixInBox.height / 2 };
+      const at = { x: mixInBox.x + mixInBox.width / 2, y: mixInBox.y + mixInBox.height / 2 };
       expect(
         await focusedRow.getByRole("button", { name: mixInName, exact: true }).evaluate(
           (cell, point) => cell.contains(document.elementFromPoint(point.x, point.y)),
           at,
         ),
-        "Mix in is what is drawn beside the buttons",
+        "Mix in is what is drawn at its own centre",
       ).toBe(true);
       await win.mouse.click(at.x, at.y);
       const field = table.getByRole("textbox", { name: mixInName.replace(/: .*$/, ""), exact: true });
@@ -608,9 +628,11 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         .getByRole("table", { name: "Set entries" })
         .getByRole("columnheader")
         .allTextContents();
-      expect(headersShown.map((text) => text.trim()).filter(Boolean)).toEqual(
-        expect.arrayContaining(["#", "Title", "Key", "BPM", "Time", "Mix in"]),
-      );
+      const shownNames = headersShown.map((text) => text.trim()).filter(Boolean);
+      expect(shownNames).toEqual(expect.arrayContaining(["#", "Title", "Key", "BPM"]));
+      // M200: the Set has no times, so after the reload Time and Mix in wait to be asked for again.
+      expect(shownNames).not.toContain("Time");
+      expect(shownNames).not.toContain("Mix in");
       // Back to the scale and the window the rest of this spec measures.
       await win.getByRole("button", { name: "Hide track details" }).click();
       await setInnerSize(app, win, openedAt);
