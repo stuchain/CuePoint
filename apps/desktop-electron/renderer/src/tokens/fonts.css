@@ -7,8 +7,9 @@
 @import "@fontsource/pixelify-sans/700.css";
 
 /*
- * Inter is the face of every control and figure (--font-data, --font-control), so it ships with the
- * app too: @fontsource/inter, SIL OFL 1.1 (Rasmus Andersson). Windows and macOS do not carry it, and
+ * Inter is the data face (figures, values, sentences); controls and labels are the pixel face with
+ * data-face figures (M6). It ships with the app too: @fontsource/inter, SIL OFL 1.1 (Rasmus
+ * Andersson). Windows and macOS do not carry it, and
  * a fallback (Segoe UI, system-ui) is a different width on each, so controls measured differently per
  * OS. Weights 400, 500, 600 and 700 (the --font-weight-* tokens), latin and latin-ext only (names,
  * titles and tags in Western scripts); other scripts fall back to the system through --font-data.

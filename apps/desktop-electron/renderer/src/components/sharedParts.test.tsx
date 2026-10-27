@@ -127,6 +127,11 @@ describe("ArtworkPlaceholder", () => {
     render(<ArtworkPlaceholder />);
     expect(screen.getByRole("img", { name: "No artwork" })).toHaveClass("cp-artwork-placeholder");
   });
+
+  it("draws its waveform at the large size, not the old medium (M28)", () => {
+    render(<ArtworkPlaceholder />);
+    expect(screen.getByRole("img", { name: "No artwork" }).querySelector("svg")).toHaveAttribute("data-size", "lg");
+  });
 });
 
 describe("EmptyState", () => {

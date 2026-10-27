@@ -8,7 +8,7 @@ import "./ArtworkPlaceholder.css";
 export function ArtworkPlaceholder({ className = "", label = "No artwork" }: { className?: string; label?: string }) {
   return (
     <div className={`cp-artwork-placeholder ${className}`.trim()} role="img" aria-label={label}>
-      <PixelIcon name="waveform" size="md" />
+      <PixelIcon name="waveform" size="lg" />
     </div>
   );
 }
