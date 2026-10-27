@@ -9,6 +9,7 @@ import {
   LOUDNESS_TOO_QUIET_WORDS,
   formatLufs,
   formatPeak,
+  peakShort,
   loudnessCell,
   loudnessCopyText,
   loudnessDifference,
@@ -60,6 +61,8 @@ describe("the numbers", () => {
     expect(formatLufs(-8.4)).toBe("−8.4 LUFS");
     expect(formatPeak(-0.3)).toBe("Peak −0.3 dBFS");
     expect(formatPeak(0)).toBe("Peak 0.0 dBFS");
+    // M130: a peak above zero is signed, so it reads as clipping rather than as a typo.
+    expect(formatPeak(0.2)).toBe("Peak +0.2 dBFS");
   });
 });
 
@@ -178,5 +181,13 @@ describe("loudnessUnitsTitle (PRP-8)", () => {
     expect(loudnessUnitsTitle(null)).toBe(
       "Loudness (LUFS): how loud the whole track measures. A difference in LU is how much louder or quieter the next track is.",
     );
+  });
+});
+
+describe("peakShort (M130)", () => {
+  it("is the peak alone, signed above zero, and null without one", () => {
+    expect(peakShort(track(value(-8.4, -2)))).toBe("−2.0 dBFS");
+    expect(peakShort(track(value(-8.4, 0.2)))).toBe("+0.2 dBFS");
+    expect(peakShort(null)).toBeNull();
   });
 });

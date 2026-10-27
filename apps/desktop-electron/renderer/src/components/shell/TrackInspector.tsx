@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useLocation } from "react-router-dom";
 import {
   INSPECTOR_DEFAULT_WIDTH,
+  INSPECTOR_MIN_WIDTH,
   inspectorVisible,
   inspectorWidthFromPx,
   inspectorWidthPx,
@@ -13,6 +14,7 @@ import {
 import { useInspectorAutoOpen, useInspectorHasContent } from "./inspectorSlot";
 import { DETAILS_PANEL_ID, focusDetailsToggle, publishDetails } from "./detailsToggle";
 import { CloseButton } from "../CloseButton";
+import { EmptyState } from "../EmptyState";
 import { findOwningDestination } from "./navRegistry";
 import { useMotion } from "../../tokens/MotionContext";
 import { useScaleFactor } from "../../tokens/ScaleContext";
@@ -52,8 +54,18 @@ interface TrackInspectorProps {
  * DEC-024, because it would have built a panel against a match-result shape
  * that Phase 7 retired.
  */
-/** How long a selection waits before it opens Track details: the double-click window (K1). */
-export const INSPECTOR_AUTO_OPEN_DELAY_MS = 500;
+/**
+ * How long a selection waits before it opens Track details (K1, M379, D16): long enough that a
+ * double-click on an unselected row does not reflow the page between its clicks, short enough to
+ * feel like an answer. The panel enters over the same beat.
+ */
+export const INSPECTOR_AUTO_OPEN_DELAY_MS = 250;
+
+/**
+ * The room the page's table keeps, in 1x units (M71, D11). Below it Track details folds itself
+ * rather than squeeze the table to two columns; the Details toggle still brings it back.
+ */
+export const INSPECTOR_TABLE_MIN_WIDTH = 560;
 
 /** One arrow press on the resize handle, in pixels at the current size. */
 const INSPECTOR_NUDGE = 16;
@@ -82,7 +94,11 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   // A selection that would open the panel by itself waits out the double-click window, so the
   // page does not reflow between the two clicks of a double-click on an unselected row. A
   // cleared selection or a page change cancels the wait; folding is immediate.
-  const autoOpening = !state.choice[page] && selectionHere && autoOpen;
+  // Once a selection has opened the panel on a page it stays open there with no selection
+  // (D16, amending DEC-280), until the person closes it: session-only, so a fresh launch waits
+  // for the first selection again.
+  const [stays, setStays] = useState<Record<string, boolean>>({});
+  const autoOpening = !state.choice[page] && !stays[page] && selectionHere && autoOpen;
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (!autoOpening) {
@@ -92,9 +108,21 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     const timer = setTimeout(() => setArmed(true), INSPECTOR_AUTO_OPEN_DELAY_MS);
     return () => clearTimeout(timer);
   }, [autoOpening]);
-  const visible =
-    hasContent &&
-    (state.choice[page] ? inspectorVisible(state, page, selectionHere, autoOpen) : autoOpening && armed);
+  // M71 (D11): the room left for the page beside the sidebar and this panel.
+  const [sidebarWidth, setSidebarWidth] = useState(0);
+  const [windowWidth, setWindowWidth] = useState(() =>
+    typeof window === "undefined" ? 1280 : window.innerWidth,
+  );
+  const [forced, setForced] = useState<Record<string, boolean>>({});
+  // The table keeps its minimum: the panel is capped to what is left, and folds when even its
+  // narrowest does not fit.
+  const reserve = sidebarWidth + Math.round(INSPECTOR_TABLE_MIN_WIDTH * scale);
+  const tooNarrow = windowWidth - reserve < Math.round(INSPECTOR_MIN_WIDTH * scale);
+  const wanted = state.choice[page]
+    ? inspectorVisible(state, page, selectionHere, autoOpen)
+    : (autoOpening && armed) || (Boolean(stays[page]) && autoOpen);
+  // A narrow window folds the panel unless the person asked for it this session.
+  const visible = hasContent && wanted && (!tooNarrow || Boolean(forced[page]));
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
   const panelRef = useRef<HTMLElement>(null);
@@ -115,16 +143,23 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   // A stored width can outlive the window it was chosen in — a panel sized on a
   // wide monitor, reopened on a laptop. Clamp on mount and on resize, but never
   // write the clamped value back: the user's choice returns when there is room.
-  const [windowWidth, setWindowWidth] = useState(() =>
-    typeof window === "undefined" ? 1280 : window.innerWidth,
-  );
   useEffect(() => {
-    const onResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const sidebar = document.querySelector<HTMLElement>(".app-shell__sidebar");
+    const measure = () => {
+      setWindowWidth(window.innerWidth);
+      setSidebarWidth(sidebar?.offsetWidth ?? 0);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    const observer = typeof ResizeObserver === "undefined" || !sidebar ? null : new ResizeObserver(measure);
+    if (sidebar) observer?.observe(sidebar);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
   }, []);
 
-  const width = inspectorWidthPx(state.width, scale, windowWidth);
+  const width = inspectorWidthPx(state.width, scale, windowWidth, reserve);
 
   // A button asks for focus to follow (the panel's close hands it to the Details toggle). The
   // shortcut and the menu leave it where it was (M472), unless it was inside the panel that closes.
@@ -135,7 +170,11 @@ export function TrackInspector({ children }: TrackInspectorProps) {
         moveFocus || Boolean(panel && document.activeElement && panel.contains(document.activeElement));
       if (panel && moves) leaveAsGhost(panel);
       setEntering(!panel);
-      setState((prev) => withInspectorChoice(prev, page, !visibleRef.current));
+      const opening = !visibleRef.current;
+      // Asked for by hand in a window too narrow for the table: it shows this session (D11).
+      setForced((prev) => ({ ...prev, [page]: opening }));
+      setStays((prev) => ({ ...prev, [page]: false }));
+      setState((prev) => withInspectorChoice(prev, page, opening));
     },
     [moves, page],
   );
@@ -147,11 +186,22 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   useEffect(() => {
     if (!toggled.current) return;
     toggled.current = false;
-    if (visible) hideRef.current?.focus();
-    else focusDetailsToggle();
+    if (visible) {
+      hideRef.current?.focus();
+      return;
+    }
+    // The header's toggle is drawn only while the panel is hidden (M125), so it exists a beat after this.
+    const timer = setTimeout(focusDetailsToggle, 0);
+    return () => clearTimeout(timer);
   }, [visible]);
 
-  // Only a toggle plays the entrance: a panel the selection opens just appears (K1).
+  // A selection that opens the panel plays the same entrance a toggle does (M379), then keeps it open.
+  useEffect(() => {
+    if (!(autoOpening && armed && visible)) return;
+    setEntering(true);
+    setStays((prev) => ({ ...prev, [page]: true }));
+  }, [autoOpening, armed, visible, page]);
+
   useEffect(() => {
     if (!visible) setEntering(false);
   }, [visible]);
@@ -192,6 +242,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
               inspectorWidthFromPx(startWidth + (startX - event.clientX), scale),
               scale,
               window.innerWidth,
+              reserve,
             ),
             scale,
           ),
@@ -208,7 +259,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [width, scale],
+    [width, scale, reserve],
   );
 
   const nudge = useCallback(
@@ -217,15 +268,16 @@ export function TrackInspector({ children }: TrackInspectorProps) {
         ...prev,
         width: inspectorWidthFromPx(
           inspectorWidthPx(
-            inspectorWidthFromPx(inspectorWidthPx(prev.width, scale, window.innerWidth) + delta, scale),
+            inspectorWidthFromPx(inspectorWidthPx(prev.width, scale, window.innerWidth, reserve) + delta, scale),
             scale,
             window.innerWidth,
+            reserve,
           ),
           scale,
         ),
       }));
     },
-    [scale],
+    [scale, reserve],
   );
 
   if (!visible) return null;
@@ -260,11 +312,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       </header>
 
       <div className="cp-inspector__body">
-        {children ?? (
-          <p className="cp-inspector__empty">
-            Nothing selected on this page.
-          </p>
-        )}
+        {children ?? <EmptyState compact headline="Select a track to see its details" />}
       </div>
 
       {/*

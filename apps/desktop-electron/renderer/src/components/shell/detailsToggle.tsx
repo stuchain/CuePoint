@@ -76,7 +76,8 @@ export function focusDetailsToggle(): void {
 /** `divided`: a small divider before the button, when the page has buttons of its own before it. */
 export function DetailsToggle({ divided = false }: { divided?: boolean }) {
   const current = useSyncExternalStore(subscribe, snapshot, snapshot);
-  if (!current) return null;
+  // M125 (D16): the panel has its own x while it shows, so the header offers the toggle only when it is hidden.
+  if (!current || current.open) return null;
   const words = current.open ? "Hide track details" : "Show track details";
   return (
     <>

@@ -41,9 +41,14 @@ export function formatLufs(value: number): string {
   return `${signedTenths(value)} LUFS`;
 }
 
+/** "−0.3 dBFS", and "+0.2 dBFS" for a peak above zero, which is clipping (M130). */
+export function formatPeakValue(value: number): string {
+  return `${signedTenths(value, true)} dBFS`;
+}
+
 /** "Peak −0.3 dBFS". */
 export function formatPeak(value: number): string {
-  return `Peak ${signedTenths(value)} dBFS`;
+  return `Peak ${formatPeakValue(value)}`;
 }
 
 /**
@@ -157,6 +162,14 @@ export function loudnessCopyText(entry: WaveformEntry | null | undefined): strin
   if (!loudness) return "";
   if (typeof loudness.integrated_lufs === "number") return formatLufs(loudness.integrated_lufs);
   return loudnessReasonWords(loudness) ?? "";
+}
+
+/** The peak alone, "−2.0 dBFS", or null without one: the facts' row beside Loudness (M130). */
+export function peakShort(
+  track: Pick<WaveformTrack, "state" | "loudness"> | null | undefined,
+): string | null {
+  const peak = readyLoudness(track)?.peak_dbfs;
+  return typeof peak === "number" ? formatPeakValue(peak) : null;
 }
 
 /** A short form for a strip's title: "−8.4 LUFS", or null without a value. */

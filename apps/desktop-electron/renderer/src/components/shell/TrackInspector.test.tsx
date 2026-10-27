@@ -109,7 +109,7 @@ describe("TrackInspector", () => {
     // DEC-024: the container ships with no track data wired to it, so the
     // empty state is what a user actually sees for the whole of Phase 2.
     render(<TrackInspector />);
-    expect(screen.getByText(/Nothing selected on this page/i)).toBeInTheDocument();
+    expect(screen.getByText(/Select a track to see its details/i)).toBeInTheDocument();
   });
 
   it("renders content a later phase provides instead of the empty state", () => {
@@ -120,7 +120,7 @@ describe("TrackInspector", () => {
     );
 
     expect(screen.getByText("Strobe details")).toBeInTheDocument();
-    expect(screen.queryByText(/Nothing selected/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Select a track/i)).not.toBeInTheDocument();
   });
 
 
@@ -145,6 +145,19 @@ describe("TrackInspector", () => {
       const body = css.match(/\.cp-inspector__body\s*\{[^}]*\}/)?.[0] ?? "";
       expect(body).toMatch(/padding:\s*var\(--space-lg\)/);
       expect(body).toMatch(/scrollbar-gutter:\s*stable/);
+    });
+
+    it("hints that a cut panel scrolls with a hairline at its bottom edge while more is below (M138)", () => {
+      const body = css.match(/\.cp-inspector__body\s*\{[^}]*\}/)?.[0] ?? "";
+      expect(body).toMatch(/var\(--bg-toolbar\)[^;]*local/);
+      expect(body).toMatch(/var\(--row-line\)[^;]*scroll/);
+      expect(body).not.toMatch(/box-shadow|blur|radial/);
+    });
+
+    it("names the panel as a muted label; the track's name is the heading (M124)", () => {
+      const title = css.match(/\.cp-inspector__header \.cp-panel-header__title\s*\{[^}]*\}/)?.[0] ?? "";
+      expect(title).toMatch(/color:\s*var\(--fg-muted\)/);
+      expect(title).toMatch(/font-family:\s*var\(--font-control\)/);
     });
 
     it("leaves the sub-tabs to the strip's own rules: no padding or wrap override (M120)", () => {
@@ -285,8 +298,8 @@ describe("TrackInspector", () => {
       const user = userEvent.setup();
       render(<TrackInspector />);
 
-      await user.tab(); // the header's Details toggle comes first
-      await user.tab(); // then the panel's own close
+      // The header's Details toggle is not drawn while the panel shows (M125).
+      await user.tab(); // the panel's own close
       await user.tab(); // the handle is the panel's last stop, not its first (M359)
 
       expect(handle()).toHaveFocus();
@@ -302,7 +315,6 @@ describe("TrackInspector", () => {
     it("puts the width back on Enter (M359)", async () => {
       const user = userEvent.setup();
       render(<TrackInspector />);
-      await user.tab();
       await user.tab();
       await user.tab();
       await user.keyboard("{ArrowLeft}");
@@ -357,14 +369,15 @@ describe("TrackInspector", () => {
       expect(panel()).toHaveStyle({ width: `${MIN_PX + 16}px` });
     });
 
-    it("will not widen past half the window", async () => {
+    it("will not widen past what leaves the table its minimum (M71, D11)", async () => {
       const user = userEvent.setup();
       render(<TrackInspector />);
       handle().focus();
 
       for (let i = 0; i < 60; i += 1) await user.keyboard("{ArrowLeft}");
 
-      expect(panel()).toHaveStyle({ width: "640px" });
+      // 1280 wide at 1.5x: the table keeps 560 x 1.5 = 840, so the panel stops at 440.
+      expect(panel()).toHaveStyle({ width: "440px" });
     }, 30000);
 
     it("reports its width to assistive technology", () => {
@@ -383,7 +396,7 @@ describe("TrackInspector", () => {
 
       render(<TrackInspector />);
 
-      expect(panel()).toHaveStyle({ width: "640px" });
+      expect(panel()).toHaveStyle({ width: "440px" });
     });
 
     it("keeps the stored width so it returns when there is room", () => {
@@ -402,6 +415,8 @@ describe("TrackInspector", () => {
   describe("width follows the text size (R2-4)", () => {
     const at = (scale: number) => {
       localStorage.setItem("cuepoint-ui-lab-scale", String(scale));
+      // Wide enough that the table's minimum leaves the panel room at every size.
+      window.innerWidth = 3200;
       return render(
         <ScaleProvider>
           <TrackInspector />
@@ -468,17 +483,57 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
     expect(tab()).toHaveAccessibleName("Track details");
   });
 
-  it("opens when a selection appears and folds when it clears", () => {
+  it("opens when a selection appears and stays open when it clears (D16)", () => {
     render(<TrackInspector />);
     select();
     expect(panel()).toBeInTheDocument();
 
     act(() => setSelectedTrack(null));
+    expect(panel()).toBeInTheDocument();
+    expect(screen.getByText(/Select a track to see its details/i)).toBeInTheDocument();
+  });
+
+  describe("a window too narrow for the table (M71, D11)", () => {
+    it("folds itself rather than squeeze the table, and the Details toggle brings it back", async () => {
+      window.innerWidth = 900;
+      const user = userEvent.setup();
+      render(<TrackInspector />);
+      select();
+      noPanel();
+
+      await user.click(tab());
+      expect(panel()).toBeInTheDocument();
+    });
+
+    it("folds an open panel when the window shrinks, and opens it again when there is room", () => {
+      choose({ library: "open" });
+      render(<TrackInspector />);
+      expect(panel()).toBeInTheDocument();
+
+      act(() => {
+        window.innerWidth = 900;
+        window.dispatchEvent(new Event("resize"));
+      });
+      noPanel();
+
+      act(() => {
+        window.innerWidth = 1280;
+        window.dispatchEvent(new Event("resize"));
+      });
+      expect(panel()).toBeInTheDocument();
+    });
+  });
+
+  it("stays open only until the person closes it", async () => {
+    const user = userEvent.setup();
+    render(<TrackInspector />);
+    select();
+    await user.click(hide());
     noPanel();
     expect(tab()).toBeInTheDocument();
   });
 
-  it("opens only after the double-click window, and folds at once", () => {
+  it("opens only after the short wait that spares a double-click", () => {
     render(<TrackInspector />);
     selectNow();
     noPanel();
@@ -490,9 +545,6 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
       vi.advanceTimersByTime(1);
     });
     expect(panel()).toBeInTheDocument();
-
-    act(() => setSelectedTrack(null));
-    noPanel();
   });
 
   it("never opens for a selection cleared within the double-click window", () => {
@@ -558,7 +610,7 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
     render(<TrackInspector />);
     await user.click(tab());
     expect(panel()).toBeInTheDocument();
-    expect(screen.getByText(/Nothing selected on this page/i)).toBeInTheDocument();
+    expect(screen.getByText(/Select a track to see its details/i)).toBeInTheDocument();
 
     select();
     act(() => setSelectedTrack(null));
@@ -604,16 +656,16 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
     expect(elsewhere).toHaveFocus();
 
     act(() => setSelectedTrack(null));
-    noPanel();
+    expect(panel()).toBeInTheDocument();
     expect(elsewhere).toHaveFocus();
-
-    await user.click(tab());
-    expect(hide()).toHaveFocus();
 
     // A toggle's focus move is spent: a later automatic change does not repeat it.
     elsewhere.focus();
     await user.click(hide());
     expect(tab()).toHaveFocus();
+    await user.click(tab());
+    expect(hide()).toHaveFocus();
+    await user.click(hide());
     elsewhere.focus();
     select();
     expect(elsewhere).toHaveFocus();
@@ -759,29 +811,17 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
   });
 
   describe("entrance (K1)", () => {
-    it("plays for a toggle, not for a selection that opens the panel", () => {
+    it("plays for a toggle and for a selection that opens the panel (M379)", () => {
       render(<TrackInspector />);
       select();
-      expect(panel()).not.toHaveAttribute("data-entering");
+      expect(panel()).toHaveAttribute("data-entering");
     });
 
-    it("does not carry a toggle's entrance over to a later automatic open", async () => {
+    it("plays for a toggle", async () => {
       const user = userEvent.setup();
-      render(
-        <>
-          <Links />
-          <TrackInspector />
-        </>,
-      );
+      render(<TrackInspector />);
       await user.click(tab());
       expect(panel()).toHaveAttribute("data-entering");
-
-      // Clean has no choice and nothing selected, so it is folded there; its selection
-      // then opens the panel without the entrance.
-      await user.click(screen.getByRole("button", { name: "to clean" }));
-      noPanel();
-      select();
-      expect(panel()).not.toHaveAttribute("data-entering");
     });
   });
 });

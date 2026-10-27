@@ -51,6 +51,15 @@ describe("inspectorWidthPx (R2-4)", () => {
     expect(inspectorWidthPx(213, 2, 300)).toBe(294);
   });
 
+  it("leaves the page's table its room: a reserve caps the width to what is left, never below the minimum (M71, D11)", () => {
+    // 1280 wide, 840 reserved for the sidebar and the table: 440 for the panel.
+    expect(inspectorWidthPx(5000, 1.5, 1280, 840)).toBe(440);
+    // A reserve bigger than the window still leaves the panel its minimum.
+    expect(inspectorWidthPx(213, 1.5, 1000, 900)).toBe(221);
+    // No reserve, no change.
+    expect(inspectorWidthPx(213, 1.5, 1280)).toBe(320);
+  });
+
   it("rounds a fractional width", () => {
     expect(inspectorWidthPx(213.4, 1, 2560)).toBe(213);
   });

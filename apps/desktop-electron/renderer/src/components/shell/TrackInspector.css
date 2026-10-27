@@ -61,6 +61,15 @@ body.cp-inspector-resizing {
 /* The title bar is the shared panel header with the side-head rules (screens.css): as tall as the
    page header, padded --space-lg like the body below it (M50, M66). */
 
+/* M124: the panel's own name is a label, muted and at the control size; the track's name below it
+   is the heading. */
+.cp-inspector__header .cp-panel-header__title {
+  color: var(--fg-muted);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+}
+
 .cp-inspector__hide {
   flex: none;
 }
@@ -75,6 +84,12 @@ body.cp-inspector-resizing {
      its width and move everything 8 px (M121). */
   scrollbar-gutter: stable;
   padding: var(--space-lg);
+  /* M138: a hairline on the bottom edge while more is below, which tells a panel cut by the player that
+     it scrolls. The line stays put (scroll); a cover in the panel's colour travels with the content (local)
+     and hides it once the end is reached. Hard, like the sticky edge (D4). */
+  background:
+    linear-gradient(var(--bg-toolbar), var(--bg-toolbar)) bottom / 100% var(--hairline) no-repeat local,
+    linear-gradient(var(--row-line), var(--row-line)) bottom / 100% var(--hairline) no-repeat scroll;
 }
 
 .cp-inspector__empty {

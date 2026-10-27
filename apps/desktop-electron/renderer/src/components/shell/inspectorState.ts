@@ -90,12 +90,17 @@ export function inspectorMaxWidth(windowWidth: number, scale = 1): number {
   );
 }
 
-/** The drawn width in real pixels: the 1× width times the scale, clamped to the window. */
-export function inspectorWidthPx(width1x: number, scale: number, windowWidth: number): number {
+/**
+ * The drawn width in real pixels: the 1× width times the scale, clamped to the window and, with
+ * `reserve` (the sidebar plus the room the page's table keeps, M71, D11), to what is left of it.
+ */
+export function inspectorWidthPx(width1x: number, scale: number, windowWidth: number, reserve = 0): number {
   if (!Number.isFinite(width1x)) return Math.round(INSPECTOR_DEFAULT_WIDTH * scale);
+  const min = Math.round(INSPECTOR_MIN_WIDTH * scale);
   return Math.min(
     inspectorMaxWidth(windowWidth, scale),
-    Math.max(Math.round(INSPECTOR_MIN_WIDTH * scale), Math.round(width1x * scale)),
+    Math.max(min, windowWidth - reserve),
+    Math.max(min, Math.round(width1x * scale)),
   );
 }
 
