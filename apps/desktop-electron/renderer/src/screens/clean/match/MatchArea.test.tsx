@@ -111,6 +111,15 @@ describe("the sub-tabs", () => {
     expect(screen.getByRole("tablist")).toHaveClass("cp-tabs--sub");
   });
 
+  it("are named, and wired to the panel they show (M474)", () => {
+    renderArea();
+    expect(screen.getByRole("tablist", { name: "Match views" })).toBeInTheDocument();
+    const tab = screen.getByRole("tab", { name: "Playlists" });
+    const panel = document.getElementById(tab.getAttribute("aria-controls")!);
+    expect(panel).toHaveAttribute("role", "tabpanel");
+    expect(panel).toHaveAttribute("aria-labelledby", tab.id);
+  });
+
   it("are Playlists and Past matches, opening on Playlists", async () => {
     renderArea();
     expect(tabNames()).toEqual(["Playlists", "Past matches"]);
@@ -269,7 +278,7 @@ describe("Past matches", () => {
     world.runs = [run({ job_id: "job-9", label: "Peak time" })];
     renderArea();
     fireEvent.click(screen.getByRole("tab", { name: "Past matches" }));
-    fireEvent.click(await screen.findByRole("row", { name: /^Open/ }, LOADED));
+    fireEvent.click(await screen.findByRole("button", { name: /^Open/ }, LOADED));
     expect(await screen.findByRole("region", { name: "Review Peak time" }, LOADED)).toBeInTheDocument();
     await screen.findByRole("table", { name: /Every track of this playlist/ }, LOADED);
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-9", limit: 2000 });

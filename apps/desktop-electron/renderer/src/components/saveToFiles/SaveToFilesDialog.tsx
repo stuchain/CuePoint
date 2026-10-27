@@ -40,6 +40,7 @@ import { Button } from "../Button";
 import { Loading } from "../Loading";
 import { Modal } from "../Modal";
 import { Notice } from "../Notice";
+import "../table/DataTable.css";
 import { Select } from "../Select";
 import { TextField } from "../TextField";
 import {
@@ -94,6 +95,13 @@ interface SaveToFilesDialogProps {
   onClose: () => void;
   /** Called after a save or a restore touched files. */
   onChanged?: () => void;
+  /**
+   * The opener is still reading which tracks to sync (M277): the window is already open, and says
+   * "Loading <what>…" in its body until the selection comes. Nothing is read from the files yet.
+   */
+  loadingWhat?: string;
+  /** The opener found nothing to sync, or could not read what to: said in the body, with Close. */
+  unavailable?: { text: string; tone: "info" | "danger" };
 }
 
 type Phase = "reading" | "failed" | "ready" | "saving" | "saved" | "restoring" | "restored";
@@ -146,7 +154,11 @@ export function SaveToFilesDialog({
   initialView = "choices",
   onClose,
   onChanged,
+  loadingWhat,
+  unavailable,
 }: SaveToFilesDialogProps) {
+  /** The opener has not handed over a selection yet: one window from the start (M277). */
+  const held = loadingWhat !== undefined || unavailable !== undefined;
   const [choices, setChoices] = useState<SaveChoices>(() => loadSaveChoices(variant));
   const [phase, setPhase] = useState<Phase>("reading");
   const [view, setView] = useState<"choices" | "changes">(initialView);
@@ -233,7 +245,7 @@ export function SaveToFilesDialog({
   };
 
   useEffect(() => {
-    if (!open) {
+    if (!open || held) {
       previewRun.current += 1;
       return;
     }
@@ -246,9 +258,10 @@ export function SaveToFilesDialog({
     setJobId(null);
     setWriteJobId(null);
     void readFiles(remembered);
-    // Opening is the only thing that reads the files again; what is chosen after does not.
+    // Opening (or the opener handing over its selection) is the only thing that reads the files
+    // again; what is chosen after does not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, held]);
 
   // The footer total: a count of files, which no row's count can give, so it is asked of the
   // engine a moment after the last change.
@@ -427,6 +440,32 @@ export function SaveToFilesDialog({
   const sampled = preview ? preview.changes.length < preview.files : false;
   const more = preview && sampled ? Math.max(0, (total ?? preview.files) - rows.length) : 0;
 
+  // Before the selection: the same window, saying what it waits for, or why there is nothing to do.
+  if (held) {
+    return (
+      <Modal
+        open={open}
+        title={title ?? saveTitle(count)}
+        onClose={onClose}
+        size="large"
+        closeLabel={loadingWhat !== undefined ? "Cancel" : "Close"}
+      >
+        <div className="save-dialog">
+          {loadingWhat !== undefined ? (
+            <>
+              <Loading what={loadingWhat} />
+              <p className="cp-modal__lead">Nothing is written to your files.</p>
+            </>
+          ) : unavailable?.tone === "danger" ? (
+            <Notice kind="danger">{unavailable.text}</Notice>
+          ) : (
+            <p role="status">{unavailable?.text}</p>
+          )}
+        </div>
+      </Modal>
+    );
+  }
+
   return (
     <Modal
       open={open}
@@ -542,7 +581,7 @@ export function SaveToFilesDialog({
         {list && (
           <>
             {preview && rows.length > 0 && (
-              <table className="save-dialog__changes">
+              <table className="cp-data-table">
                 <thead>
                   <tr>
                     <th scope="col">Track</th>
@@ -552,8 +591,8 @@ export function SaveToFilesDialog({
                 <tbody>
                   {rows.map((row) => (
                     <tr key={row.id}>
-                      <td>{row.file}</td>
-                      <td>
+                      <td title={row.file}>{row.file}</td>
+                      <td className="save-dialog__what-cell">
                         {row.what.map((entry, index) => (
                           <span key={entry.name} className="save-dialog__what">
                             {index > 0 && " · "}

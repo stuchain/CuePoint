@@ -127,10 +127,9 @@ const ReviewRow = memo(function ReviewRow({
         actions.contextMenu(row, { x: event.clientX, y: event.clientY });
       }}
       aria-current={isCurrent ? "true" : undefined}
-      // One row is in the tab order; the arrows move it, and Space on it ticks it, so the
-      // table is one tab stop and not a checkbox per track.
+      // One row is in the tab order; the arrows move it, and Ctrl+Space on it ticks it, so the
+      // table is one tab stop and not a checkbox per track. Plain Space plays, as everywhere (D34).
       tabIndex={tabbable ? 0 : -1}
-      data-owns-space=""
       // Shift-click selects a range here, never the browser's own text selection.
       onMouseDown={(event) => {
         if (event.shiftKey) event.preventDefault();
@@ -153,9 +152,10 @@ const ReviewRow = memo(function ReviewRow({
         if (event.key === "Enter") {
           event.preventDefault();
           actions.play(row);
-        } else if (event.key === " " && row.tickable && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        } else if (event.key === " " && (event.ctrlKey || event.metaKey) && !event.altKey) {
+          // Ctrl+Space ticks (M465, M482); plain Space goes on to the player.
           event.preventDefault();
-          actions.tick(row, !row.ticked);
+          if (row.tickable) actions.tick(row, !row.ticked);
         }
       }}
     >
@@ -301,10 +301,11 @@ export function ReviewTable({
   );
 
   return (
-    <div className="review__table-frame">
+    // The review table is its own pane for F6 (M459); the candidate panel beside it is the next.
+    <div className="review__table-frame" data-pane="tracks">
       <div className="review__table" ref={tableRef} onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
         <table className="cp-data-table review-table" aria-rowcount={rows.length + 1}>
-          <caption className="match-visually-hidden">
+          <caption className="cp-visually-hidden">
             Every track of this playlist, what Beatport matched it with, and whether it will be synced
           </caption>
           <thead>
@@ -329,7 +330,7 @@ export function ReviewTable({
                 </Hint>
               </th>
               <th scope="col" className="review-col--preview">
-                <span className="match-visually-hidden">Preview</span>
+                <span className="cp-visually-hidden">Preview</span>
               </th>
             </tr>
           </thead>

@@ -26,7 +26,6 @@ import { Activity } from "react";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { ToastProvider } from "../../components";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
-import { libraryRefreshState } from "../library/libraryLink";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { quoted } from "../../format/words";
@@ -376,6 +375,10 @@ describe("the page", () => {
     expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByRole("table", { name: /Your playlists/ })).toBeInTheDocument();
     expect(await screen.findByText("Peak time")).toBeInTheDocument();
+    // The page's strip is named and controls the panel under it (M474).
+    expect(screen.getByRole("tablist", { name: "Clean views" })).toBeInTheDocument();
+    const match = screen.getByRole("tab", { name: "Match" });
+    expect(document.getElementById(match.getAttribute("aria-controls")!)).toHaveAttribute("aria-labelledby", match.id);
   });
 
   it("shows where work waits on the tabs, and nothing for a check never run (CLN-3)", async () => {
@@ -598,7 +601,9 @@ describe("the Match tab", () => {
     });
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
     renderClean();
-    fireEvent.click(await screen.findByRole("button", { name: `Resume ${quoted("All tracks")}` }));
+    // Resume is in the run's one menu (M150).
+    fireEvent.click(await screen.findByRole("button", { name: `More for ${quoted("All tracks")}` }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Resume" }));
 
     await waitFor(() =>
       expect(bridge.resumeCleanMatch).toHaveBeenCalledWith({ job_id: "job-old-2" }),
@@ -665,18 +670,19 @@ describe("missing files", () => {
     expect(lastBrowse().filters).toEqual(fixture.rules.missing_files);
   });
 
-  it("gives the fix in steps, with a link to check Rekordbox for changes (CLN-8)", async () => {
+  it("gives the fix in steps, and checks Rekordbox for changes here, without leaving (CLN-8, M157)", async () => {
     renderClean("missing");
     const steps = await screen.findByRole("list", { name: "How to fix a missing file" });
     const items = within(steps).getAllByRole("listitem");
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent("In Rekordbox, right-click the track, choose Relocate and point it at the file.");
-    expect(items[1]).toHaveTextContent("In Rekordbox, choose File, then Export Collection in xml format, saving over");
-    expect(items[2]).toHaveTextContent("Here, Check for changes in the Library.");
+    expect(items[1]).toHaveTextContent("In Rekordbox, choose File, then Export Collection in XML format, saving over");
+    expect(items[2]).toHaveTextContent("Here, Check for changes.");
 
-    fireEvent.click(within(items[2]!).getByRole("button", { name: "Check for changes in the Library" }));
-    const location = JSON.parse((await screen.findByTestId("location")).textContent ?? "{}");
-    expect(location).toEqual({ pathname: "/library", state: libraryRefreshState() });
+    bridge.startLibraryRefreshPreview = vi.fn().mockResolvedValue({ job_id: "job-preview", id: "job-preview", state: "queued" });
+    fireEvent.click(within(items[2]!).getByRole("button", { name: "Check for changes" }));
+    await waitFor(() => expect(bridge.startLibraryRefreshPreview).toHaveBeenCalledWith({}));
+    expect(screen.getByRole("list", { name: "How to fix a missing file" })).toBeInTheDocument();
   });
 
   it("sets the selected track, with its Camelot key or none (PAGES-03)", async () => {
@@ -741,7 +747,7 @@ describe("missing files", () => {
       fixture.checked.missing_files as LibrarySearchResponse,
     );
     renderClean("missing");
-    expect(await screen.findByText("No missing files")).toBeInTheDocument();
+    expect(await screen.findByText("No missing files at the last check")).toBeInTheDocument();
     expect(screen.getByText(/^All 3 files were where your library says/)).toBeInTheDocument();
   });
 });
@@ -1033,10 +1039,10 @@ describe("matching what is ticked (C22)", () => {
   });
 
   it("opens the whole library's review, to sync every ticked track of the collection", async () => {
-    // The whole library row has a Review once anything is matched.
+    // The whole library row says "4 to check", the way to its review, once anything waits (M146).
     bridge.getCleanPlaylists!.mockResolvedValue({
       ...PLAYLISTS,
-      whole_library: { ...PLAYLISTS.whole_library, not_matched: 0, accepted: 50 },
+      whole_library: { ...PLAYLISTS.whole_library, not_matched: 0, accepted: 46, waiting: 4 },
     });
     renderClean(undefined, "playlists");
     fireEvent.click(await screen.findByRole("button", { name: /^Review All tracks/ }));
@@ -1243,7 +1249,7 @@ describe("a match that finds nothing", () => {
     expect(await screen.findByRole("region", { name: "Review hj" })).toBeInTheDocument();
   });
 
-  it("is not said on the row, which has a Review: where it stands is for Review", async () => {
+  it("is not said on the row, which has a dash with nothing to check: where it stands is for Review", async () => {
     bridge.getCleanPlaylists!.mockResolvedValue({
       ...PLAYLISTS,
       playlists: PLAYLISTS.playlists.map((playlist) =>
@@ -1251,7 +1257,8 @@ describe("a match that finds nothing", () => {
       ),
     });
     renderClean(undefined, "playlists");
-    expect(await screen.findByRole("button", { name: /^Review hj/ })).toBeEnabled();
+    const row = (await screen.findByText("hj")).closest("tr")!;
+    expect(within(row).getAllByRole("cell")[4]).toHaveTextContent("—");
     expect(screen.queryByText("10 not found")).toBeNull();
     // The list says only what is in the files: Closing was synced.
     expect(screen.getByText("Synced Mar 4, 2020")).toBeInTheDocument();
@@ -1330,7 +1337,7 @@ describe("the match window, opened from elsewhere (FLW-13)", () => {
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
         selection: { track_ids: [1, 2] },
         rematch: false,
-        label: "2 chosen tracks",
+        label: "2 selected tracks",
       }),
     );
   });

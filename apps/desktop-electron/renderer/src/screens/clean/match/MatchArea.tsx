@@ -19,7 +19,7 @@ import { Activity, useCallback, useEffect, useRef, useState } from "react";
 import type { CleanPlaylistStatus, MatchRun } from "../../../api/cuepointBridge.types";
 import { Button } from "../../../components/Button";
 import { SearchField } from "../../../components/SearchField";
-import { Tabs } from "../../../components/Tabs";
+import { Tabs, panelId, tabId } from "../../../components/Tabs";
 import { usePageSearch } from "../../../components/usePageSearch";
 import type { CleanOpening } from "../cleanLink";
 import type { CleanMatch } from "../useCleanMatch";
@@ -224,7 +224,14 @@ export function MatchArea({
           its right; a review adds a back line. The search follows the sub-tabs at the left, where
           the Library's search sits (C223). */}
       <div className="cp-toolbar match-area__row">
-        <Tabs tabs={tabs} activeId={review ? "playlists" : tab} onChange={chooseTab} variant="sub" />
+        <Tabs
+          tabs={tabs}
+          activeId={review ? "playlists" : tab}
+          onChange={chooseTab}
+          variant="sub"
+          idPrefix="match"
+          label="Match views"
+        />
         {!review && (tab !== "past" || pastCount !== 0) && (
           <SearchField
             ref={searchRef}
@@ -247,7 +254,12 @@ export function MatchArea({
         </div>
       )}
 
-      <div className="match-area__body">
+      <div
+        className="match-area__body"
+        role="tabpanel"
+        id={panelId("match", review ? "playlists" : tab)}
+        aria-labelledby={tabId("match", review ? "playlists" : tab)}
+      >
         {opened.has("playlists") && (
           <Activity mode={shown(!review && tab === "playlists")}>
             <PlaylistsView
@@ -264,6 +276,10 @@ export function MatchArea({
               onStop={match.stop}
               actionHost={actionHost}
               active={!review && tab === "playlists"}
+              onSynced={() => {
+                playlists.reload();
+                onHealthChanged();
+              }}
             />
           </Activity>
         )}

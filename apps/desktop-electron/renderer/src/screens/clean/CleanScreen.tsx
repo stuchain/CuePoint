@@ -36,7 +36,7 @@ import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState
 import { Loading } from "../../components/Loading";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { Badge } from "../../components/Badge";
-import { Tabs } from "../../components/Tabs";
+import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
 import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
@@ -210,7 +210,7 @@ export function CleanScreen({
       <div className="screen screen--stack clean-screen--waiting">
         {/* The title is there while the library is read, as Discover's and Prepare's are (M149). */}
         <ScreenHeader title="Clean" inset />
-        <Loading what="your library" />
+        <Loading centered what="your library" />
       </div>
     );
   }
@@ -263,7 +263,6 @@ export function CleanScreen({
       });
   };
 
-  const label = CLEAN_SECTIONS.find((entry) => entry.id === section)?.label ?? "";
   const counts = sectionCounts(cleanHealth.health);
   return (
     <div className="screen clean-screen">
@@ -291,6 +290,8 @@ export function CleanScreen({
               })}
               activeId={section}
               onChange={choose}
+              idPrefix="clean"
+              label="Clean views"
             />
           }
         />
@@ -326,7 +327,12 @@ export function CleanScreen({
           onDismiss={() => setNothingFound(null)}
         />
       )}
-      <div className="clean-screen__body" role="tabpanel" aria-label={label}>
+      <div
+        className="clean-screen__body"
+        role="tabpanel"
+        id={panelId("clean", section)}
+        aria-labelledby={tabId("clean", section)}
+      >
         {visited.has("review") && (
           <Activity mode={section === "review" ? "visible" : "hidden"}>
             <MatchArea

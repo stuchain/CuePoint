@@ -2,15 +2,15 @@
  * The Playlists view (C22): where Match opens, step 1 of "tick, match, check and sync".
  *
  * Your Rekordbox playlists, each with a **tick**, its folder path muted before the name, how many
- * tracks, and, under "In your files", a green "Synced <day>" once its values were written to the
- * files (nothing otherwise). The first row is the whole library. The box means one thing: include
+ * tracks, and, under "Synced", a "Synced <day>" once its values were written to the files ("Not
+ * yet" otherwise). The first row is the whole library. The box means one thing: include
  * this playlist in the match. Clicking a row only highlights it (C195); it never ticks. Tick one
  * or more playlists, or all of them from the header, and press **Match ticked playlists**: that is
  * the only way to start a match, and its label never changes, so its width does not (the count of
  * what is ticked is beside it). The whole library is its own choice: ticking it unticks and
- * disables the playlists (they are in it), and matches only the collection. A matched row has a
- * **Review** button in the row's end column. The area's one search narrows the rows by name or
- * folder, because a library has hundreds of playlists.
+ * disables the playlists (they are in it), and matches only the collection. A row with tracks to
+ * check has a "5 to check" button that opens its review; any other row shows a dash (M146). The
+ * area's one search narrows the rows by name or folder, because a library has hundreds of playlists.
  *
  * The view draws and reports: matching and Review belong to the page. Stop and the progress bar
  * are on the status strip while a match runs; the playlist being matched also shows its own bar,
@@ -35,7 +35,10 @@ import { aboutDuration } from "../../../components/shell/useActiveJob";
 import { RETRY, nothingMatches } from "../../../format/words";
 import { displayFolderPath, MATCH_TICKED_LABEL, type MatchChoice } from "./matchPlaylists";
 import { playlistStatus } from "./playlistStatus";
+import { reviewedPlaylists, syncAllLabel, syncAllTitle } from "./syncAll";
+import { SyncPlaylistDialog } from "./SyncPlaylistDialog";
 import { WHOLE_LIBRARY_NAME } from "./useCleanPlaylists";
+import type { ReviewSource } from "./useMatchReview";
 import "./playlists.css";
 
 interface PlaylistsViewProps {
@@ -66,6 +69,8 @@ interface PlaylistsViewProps {
   actionHost?: HTMLElement | null;
   /** Whether this view is the one showing: a hidden view draws no action into the toolbar. */
   active?: boolean;
+  /** Sync all reviewed wrote (or put back) files: the page counts again (M509). */
+  onSynced?: () => void;
 }
 
 /** A running playlist's share of the job's time left: by tracks left in it and in the job. */
@@ -121,6 +126,7 @@ export function PlaylistsView({
   onStop,
   actionHost = null,
   active = true,
+  onSynced,
 }: PlaylistsViewProps) {
   // What is ticked: the whole library, or some playlists by id. Never both.
   const [ticked, setTicked] = useState<ReadonlySet<RowKey>>(new Set());
@@ -144,6 +150,15 @@ export function PlaylistsView({
   useEffect(() => {
     if (headerTick.current) headerTick.current.indeterminate = someTicked && !allTicked;
   }, [allTicked, someTicked]);
+  // Sync all reviewed (M509): the playlists whose review is done, read when the window opens.
+  const reviewed = useMemo(() => reviewedPlaylists(data), [data]);
+  const [syncAll, setSyncAll] = useState(false);
+  // The playlists are taken as the window opens; a re-read while it is open changes nothing in it.
+  const [syncSources, setSyncSources] = useState<readonly ReviewSource[]>([]);
+  const openSyncAll = () => {
+    setSyncSources(reviewed.map((playlist) => ({ playlistId: playlist.id })));
+    setSyncAll(true);
+  };
 
   if (!data) {
     return (
@@ -276,19 +291,18 @@ export function PlaylistsView({
           )}
         </td>
         <td className="playlists__review">
-          {/* What waits in this playlist, and the way to it; a matched one with nothing waiting still
-              opens, as "Review"; a dash where nothing was looked up (M146). */}
-          {status.canReview ? (
+          {/* What waits in this playlist, and the way to it: "5 to check" or a dash (D17 A, M146). A
+              matched playlist with nothing waiting is reached from Past matches, and synced with
+              "Sync all reviewed" (M509). */}
+          {status.canReview && counts.waiting > 0 ? (
             <Button
               size="sm"
               variant="quiet"
               className="playlists__to-check"
-              aria-label={
-                counts.waiting > 0 ? `Review ${name}: ${counts.waiting.toLocaleString()} to check` : `Review ${name}`
-              }
+              aria-label={`Review ${name}: ${counts.waiting.toLocaleString()} to check`}
               onClick={() => onReview(playlist)}
             >
-              {counts.waiting > 0 ? `${formatCount(counts.waiting)} to check` : "Review"}
+              {`${formatCount(counts.waiting)} to check`}
             </Button>
           ) : (
             <MissingValue />
@@ -308,10 +322,11 @@ export function PlaylistsView({
   };
 
   return (
-    <div className="playlists">
+    // The playlists are the Match area's pane for F6 (M459).
+    <div className="playlists" data-pane="playlists">
       <div className="playlists__scroll">
         <table className="cp-data-table playlists__table">
-          <caption className="match-visually-hidden">Your playlists and where each stands with Beatport</caption>
+          <caption className="cp-visually-hidden">Your playlists and where each stands with Beatport</caption>
           <thead>
             <tr>
               <th scope="col" className="playlists__tick">
@@ -328,12 +343,12 @@ export function PlaylistsView({
               <th scope="col" className="num">
                 Tracks
               </th>
-              <th scope="col">In your files</th>
+              <th scope="col">Synced</th>
               <th scope="col" className="playlists__review">
                 To check
               </th>
               <th scope="col" className="playlists__end">
-                <span className="match-visually-hidden">Actions</span>
+                <span className="cp-visually-hidden">Actions</span>
               </th>
             </tr>
           </thead>
@@ -371,9 +386,23 @@ export function PlaylistsView({
                 {MATCH_TICKED_LABEL}
               </Button>
             </Hint>
+            {/* Every reviewed playlist in one Sync: one preview, one job, one undo (M509). */}
+            {reviewed.length > 0 && (
+              <Button variant="secondary" onClick={openSyncAll}>
+                {syncAllLabel(reviewed.length)}
+              </Button>
+            )}
           </>,
           actionHost,
         )}
+      <SyncPlaylistDialog
+        open={syncAll}
+        name=""
+        title={syncAllTitle(syncSources.length)}
+        source={syncSources}
+        onClose={() => setSyncAll(false)}
+        onChanged={() => onSynced?.()}
+      />
     </div>
   );
 }

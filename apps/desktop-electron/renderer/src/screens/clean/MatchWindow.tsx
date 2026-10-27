@@ -128,10 +128,10 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
         .map((place) => sources.find((source) => source.kind === place.kind && source.id === place.id))
         .filter((source): source is CleanSource => source !== undefined);
       if (named.length === 1) return `${PLACE_WORDS[named[0]!.kind]} ${quoted(named[0]!.name)}`;
-      return `${formatCount(places.length)} chosen places`;
+      return `${formatCount(places.length)} selected places`;
     }
     const chosenTracks = tracks ? chosenCount(tracks) : 0;
-    return `${plural(chosenTracks, "track").replace(/^(\S+) /, "$1 chosen ")}`;
+    return `${plural(chosenTracks, "track").replace(/^(\S+) /, "$1 selected ")}`;
   };
 
   const nothingChosen = which === "places" && places.length === 0;
@@ -158,7 +158,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
   if (searched) {
     primaryLabel = `Match ${trackCount(searched)}${lookedUpAgain ? " again" : ""}`;
   } else if (searched === null && total) {
-    primaryLabel = total === 1 ? "Match the chosen track" : `Match the ${formatCount(total)} chosen`;
+    primaryLabel = total === 1 ? "Match the selected track" : `Match the ${formatCount(total)} selected`;
   } else {
     primaryLabel = MATCH_ON_BEATPORT;
   }
@@ -200,7 +200,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
         you; the rest wait in Match.
       </p>
       <fieldset className="clean-match-choice">
-        <legend className="clean-visually-hidden">Which tracks</legend>
+        <legend className="cp-visually-hidden">Which tracks</legend>
         {tracks && (
           <label>
             <input type="radio" name="clean-match-which" checked={which === "given"} onChange={() => setWhich("given")} />

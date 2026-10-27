@@ -407,7 +407,7 @@ export function DuplicatesView({ health, onHealthChanged, onCheckMatch }: Duplic
         label: node.name,
         depth: node.depth,
         icon: iconForKind(node.kind),
-        // "Add to Collection" offers crates only. A Set holds tracks too, but
+        // "Add to a Collection" offers crates only. A Set holds tracks too, but
         // it is not a crate (fact 2), and copies of one track have no place
         // side by side in a running order.
         disabled: !isCollection(node),
@@ -528,7 +528,7 @@ export function DuplicatesView({ health, onHealthChanged, onCheckMatch }: Duplic
 
       <div className="clean-duplicates__list">
         {loading && groups.length === 0 ? (
-          <Loading what="possible duplicates" />
+          <Loading centered what="possible duplicates" />
         ) : groups.length === 0 && error ? (
           // A failed read is a red notice with Try again, the same on every page (C142).
           <Notice
@@ -582,7 +582,7 @@ export function DuplicatesView({ health, onHealthChanged, onCheckMatch }: Duplic
 
       <PickerDialog
         open={picker !== null}
-        title={picker?.kind === "collection" ? "Add to Collection" : "Add a tag"}
+        title={picker?.kind === "collection" ? "Add to a Collection" : "Add a tag"}
         items={pickerItems}
         onChoose={choose}
         onClose={() => setPicker(null)}

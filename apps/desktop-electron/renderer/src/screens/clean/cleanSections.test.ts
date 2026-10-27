@@ -84,7 +84,7 @@ function health(
 describe("the work counts on the tabs (CLN-3)", () => {
   const ran = { files: "2026-10-01T10:00:00Z", duplicates: "2026-10-01T10:00:00Z" };
 
-  it("add what waits for you to what changed since you decided", () => {
+  it("add what waits for you to what changed after you confirmed", () => {
     const counts = sectionCounts(
       health({ needs_review: 40, disputed: 2, missing_files: 3, duplicates: 5 }, ran),
     );
@@ -121,8 +121,8 @@ describe("the parts have no intro lines (C15b)", () => {
 
 describe("the facts line under the title (area 59)", () => {
   it("says the tracks and what waits in each part", () => {
-    expect(factsLine(1204, { review: 42, missing: 3, duplicates: 1 })).toBe(
-      "1,204 tracks · 42 to check · 3 missing · 1 possible duplicate",
+    expect(factsLine(1204, { review: 42, missing: 3, duplicates: 4 })).toBe(
+      "1,204 tracks · 42 to check · 3 missing · 4 tracks in duplicate groups",
     );
   });
 

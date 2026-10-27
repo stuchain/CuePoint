@@ -61,7 +61,7 @@ export function saveCleanSection(section: CleanSection): void {
  * Where work waits, for the tabs (CLN-3), from the Health counts the page
  * already loads. A part with nothing waiting has no number, and neither does one
  * whose check has never run: no count of missing files is not "no missing
- * files". Match counts what waits for you plus what changed since you decided.
+ * files". Match counts what waits for you plus what changed after you confirmed.
  */
 export function sectionCounts(
   health: LibraryHealth | null,
@@ -79,7 +79,7 @@ export function sectionCounts(
 }
 
 /**
- * How many tracks wait for a decision in Match: to check plus changed since you decided. The
+ * How many tracks wait for a decision in Match: to check plus changed after you confirmed. The
  * sidebar's Clean entry shows it (M507) and Match opens on that list when it is above zero (D17),
  * so every place that says "N to check" counts the same tracks. Null before Health is read.
  */
@@ -97,7 +97,9 @@ export function factsLine(
   if (tracks !== null && tracks > 0) parts.push(plural(tracks, "track"));
   if (counts.review) parts.push(`${formatCount(counts.review)} to check`);
   if (counts.missing) parts.push(`${formatCount(counts.missing)} missing`);
-  if (counts.duplicates) parts.push(`${plural(counts.duplicates, "possible duplicate")}`);
+  // Health counts the tracks in a group, so the words say tracks, as the toolbar's "2 duplicate
+  // groups (4 tracks)" does (M155).
+  if (counts.duplicates) parts.push(`${plural(counts.duplicates, "track")} in duplicate groups`);
   if (parts.length === 0) return undefined;
   if (parts.length === 1 && tracks !== null && tracks > 0) parts.push("nothing waiting");
   return parts.join(" · ");

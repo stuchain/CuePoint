@@ -19,12 +19,13 @@
  * from the tab (`ReviewTab.tsx`); Esc closes, here and there. Opening the panel puts the keyboard
  * in it and closing hands it back.
  */
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import type { CandidateDifferences, MatchCandidate, MatchSearchAnswer, ReviewTrack } from "../../../api/cuepointBridge.types";
 import { orderCandidates } from "./candidateOrder";
 import { bridgeErrorFields } from "../../../api/bridgeError";
 import { needsDesktopApp, userMessage } from "../../../api/userMessage";
+import { Art } from "../../../components/Art";
 import { ArtworkPlaceholder } from "../../../components/ArtworkPlaceholder";
 import { Badge } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
@@ -81,6 +82,13 @@ interface CandidatePanelProps {
   /** A search stored a new attempt for this track: the row takes what it found, in place. */
   onSearched?: (trackId: number, answer: MatchSearchAnswer) => void;
   onMessage: (text: string) => void;
+  /**
+   * The panel was closed and is playing its exit (M380, `usePresence` in ReviewTab): it is marked
+   * `data-leaving` for the motion and is inert, so what is behind it takes the click at once.
+   */
+  leaving?: boolean;
+  /** The presence's element, the one that carries the exit animation. */
+  presenceRef?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -133,9 +141,10 @@ function titleParts(candidate: MatchCandidate): Array<{ text: string; differs: b
   return parts.filter((part) => part.text !== "");
 }
 
-function Art({ src }: { src: string | null }) {
+/** Your track's cover: the one artwork component, which fades in once loaded (M385). */
+function CardArt({ src }: { src: string | null }) {
   return src ? (
-    <img className="review-panel__art" src={src} alt="" />
+    <Art className="review-panel__art" src={src} />
   ) : (
     <ArtworkPlaceholder className="review-panel__art" label="No artwork" />
   );
@@ -186,7 +195,7 @@ const CandidateRow = memo(function CandidateRow({
       {/* A fixed box that contains its own layout: a cover arriving changes nothing around it. */}
       <span className="review-candidate__cover-box">
         {cover ? (
-          <img className="review-candidate__cover" src={cover} alt="" decoding="async" />
+          <Art className="review-candidate__cover" src={cover} decoding="async" />
         ) : (
           <ArtworkPlaceholder className="review-candidate__cover" label="No artwork" />
         )}
@@ -278,6 +287,8 @@ export function CandidatePanel({
   onLeaveOut,
   onSearched,
   onMessage,
+  leaving = false,
+  presenceRef,
 }: CandidatePanelProps) {
   const trackId = row.track_id;
   const root = useRef<HTMLElement>(null);
@@ -462,9 +473,16 @@ export function CandidatePanel({
 
   return (
     <aside
-      ref={root}
+      ref={(node) => {
+        root.current = node;
+        if (presenceRef) presenceRef.current = node;
+      }}
       tabIndex={-1}
       className="review-panel cp-side-panel"
+      // Its own pane for F6 (M459): the table, then the candidates.
+      data-pane="candidates"
+      data-leaving={leaving ? "" : undefined}
+      inert={leaving}
       aria-label={`Candidates for ${row.title}`}
       aria-busy={busy || undefined}
       onKeyDown={(event) => {
@@ -527,7 +545,7 @@ export function CandidatePanel({
           </p>
 
           <section className="review-card" aria-label="Your track">
-            <Art src={yourArt} />
+            <CardArt src={yourArt} />
             <div className="review-card__facts">
               <p className="cp-text-label review-card__eyebrow">Your track · from your library</p>
               <p className="review-card__title">{yours?.title ?? row.title}</p>
@@ -641,7 +659,7 @@ export function CandidatePanel({
                     }))}
                   />
                   <table className="review-panel__score-table">
-                    <caption className="match-visually-hidden">How the matcher scored this candidate</caption>
+                    <caption className="cp-visually-hidden">How the matcher scored this candidate</caption>
                     <tbody>
                       {SCORE_ROWS.map((entry) => (
                         <tr key={entry.id}>

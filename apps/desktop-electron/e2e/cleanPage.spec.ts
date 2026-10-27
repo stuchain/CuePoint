@@ -153,6 +153,8 @@ test.describe("The Clean page (CLEAN-12)", () => {
         timeout: 30_000,
       });
       await expect(window.getByRole("checkbox", { name: "Match All tracks" })).toBeEnabled();
+      // The column says what is in the files in one word (M392).
+      await expect(window.getByRole("columnheader", { name: "Synced" })).toBeVisible();
       // There is no Table and no One at a time: the review list opens on a run.
       await expect(window.getByRole("tab", { name: "Table", exact: true })).toHaveCount(0);
       await expect(window.getByRole("tab", { name: /^One at a time/ })).toHaveCount(0);
@@ -165,6 +167,10 @@ test.describe("The Clean page (CLEAN-12)", () => {
       // The tab says how many files are missing, and the one check button is "Check again".
       await expect(window.getByRole("tab", { name: "Missing files, 1" })).toBeVisible();
       await expect(window.getByRole("button", { name: "Check again" })).toBeVisible();
+      // The fix's last step checks for changes here, without leaving for the Library (M157).
+      const steps = window.getByRole("list", { name: "How to fix a missing file" });
+      await expect(steps).toContainText("Export Collection in XML format");
+      await expect(steps.getByRole("button", { name: "Check for changes" })).toBeEnabled();
       await expect(window.getByRole("tab", { name: "Health" })).toHaveCount(0);
     } finally {
       await app.close();

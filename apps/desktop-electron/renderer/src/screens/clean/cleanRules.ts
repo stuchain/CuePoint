@@ -56,7 +56,7 @@ export function isReviewScope(value: string): value is ReviewScope {
 /**
  * The rule set behind a review scope.
  *
- * "Changed since you decided" (stored as disputed) is its own field rather than a state: a disputed track is still
+ * "Changed after you confirmed" (stored as disputed) is its own field rather than a state: a disputed track is still
  * accepted or rejected, by a person, and a newer match disagrees (DEC-067).
  * The same rule Health counts, so a count and this queue agree.
  */

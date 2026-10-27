@@ -161,7 +161,7 @@ describe("which tracks", () => {
 
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Friday" }));
     fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
-    expect(onStart).toHaveBeenLastCalledWith(expect.anything(), false, "2 chosen places");
+    expect(onStart).toHaveBeenLastCalledWith(expect.anything(), false, "2 selected places");
   });
 });
 
@@ -174,7 +174,7 @@ describe("tracks passed in arrive chosen", () => {
     expect(within(dialog).getByRole("radio", { name: /^Tracks not looked up yet/ })).not.toBeChecked();
 
     fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
-    expect(onStart).toHaveBeenCalledWith({ track_ids: [4, 5, 6] }, false, "3 chosen tracks");
+    expect(onStart).toHaveBeenCalledWith({ track_ids: [4, 5, 6] }, false, "3 selected tracks");
   });
 
   it("from a filter, as a described selection with the count the Library showed", async () => {
@@ -194,7 +194,7 @@ describe("tracks passed in arrive chosen", () => {
     expect(onStart).toHaveBeenCalledWith(
       { query: { filters: { match: "all", rules: [{ field: "key", operator: "is_empty" }] } } },
       false,
-      "40 chosen tracks",
+      "40 selected tracks",
     );
   });
 
@@ -232,10 +232,10 @@ describe("the button says what it will do (R3-2)", () => {
 
   it("does not promise a count for handed-in tracks when some may be skipped", () => {
     const { dialog } = show({ ids: [4, 5, 6] });
-    expect(within(dialog).getByRole("button", { name: "Match the 3 chosen" })).toBeEnabled();
+    expect(within(dialog).getByRole("button", { name: "Match the 3 selected" })).toBeEnabled();
     cleanup();
     const one = show({ ids: [4] });
-    expect(within(one.dialog).getByRole("button", { name: "Match the chosen track" })).toBeEnabled();
+    expect(within(one.dialog).getByRole("button", { name: "Match the selected track" })).toBeEnabled();
   });
 
   it("is singular for one track", () => {

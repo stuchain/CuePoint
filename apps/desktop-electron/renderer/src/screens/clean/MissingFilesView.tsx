@@ -10,16 +10,17 @@
  *
  * **Nothing here fixes a file.** Relocation is Rekordbox's (DEC-073), and the
  * page gives the fix in three steps (CLN-8) rather than offering a control that
- * would have to be undone by the next refresh. The last step is a button to the
- * Library's Check for changes. A disconnected drive is one line above the
- * table, not four thousand rows to scroll past.
+ * would have to be undone by the next refresh. The last step is the Library's
+ * Check for changes, run here (M157): the export's changes are shown and applied
+ * in place, the check of every file the engine runs after a refresh is waited
+ * for, and the toolbar says "3 fixed · 1 still missing". A disconnected drive is
+ * one line above the table, not four thousand rows to scroll past.
  *
  * **Nothing missing is one line** (K13): "All 300 files found · checked <time> ·
  * Check again". The steps, the table, its headers, "0 tracks" and Columns show
  * only when something is missing; before any check, the one "Check every file".
  */
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import type {
   BatchSelection,
@@ -28,6 +29,7 @@ import type {
   FileCheckStarted,
   LibraryHealth,
   LibraryTrackRow,
+  RefreshDiff,
 } from "../../api/cuepointBridge.types";
 import { Button, EmptyState, Notice, useToast } from "../../components";
 import { formatCount, plural } from "../../format/counts";
@@ -38,26 +40,56 @@ import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
-import { libraryRefreshState } from "../library/libraryLink";
+import { followJob } from "../library/followJob";
+import { RefreshPreviewDialog } from "../library/RefreshPreviewDialog";
 import { SelectionActions } from "../library/SelectionActions";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { batchSelection } from "../library/libraryBatch";
-import { queryKey, type SortDirection } from "../library/libraryQuery";
+import { browseParams, queryKey, type SortDirection } from "../library/libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "../library/trackClipboard";
 import { onlySelectedId } from "../library/trackSelection";
 import { useTrackDetail } from "../library/useTrackDetail";
 import { useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
 import { MISSING_COLUMNS, MISSING_TABLE_LAYOUT_KEY } from "./cleanColumns";
-import { trackCount } from "./cleanFormat";
+import { fixedLine, trackCount } from "./cleanFormat";
 import { checkedLine, lastRun, missingEmptyState } from "./cleanEmpty";
 import { MISSING_FILES_RULES, WHOLE_LIBRARY, cleanQuery } from "./cleanRules";
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
-import { needsDesktopApp } from "../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../api/userMessage";
+import { reportUnexpected } from "../../reporting/reporting";
 
 /** Every track in the library, as a selection. */
 const WHOLE_LIBRARY_SELECTION: BatchSelection = { query: {} };
+
+/** How long to look for the check the engine starts after a refresh, before going on without it. */
+const FOLLOW_UP_TRIES = 5;
+const FOLLOW_UP_WAIT_MS = 300;
+
+
+/**
+ * Wait for the check of every file that the engine starts once a refresh has been applied
+ * (DEC-073), so the count after it is the new one. It starts a moment after the refresh ends, so it
+ * is looked for a few times; when there is none (a check could not start), there is nothing to wait for.
+ */
+async function followUpCheck(): Promise<void> {
+  const list = window.cuepoint?.listJobs;
+  if (!list) return;
+  for (let attempt = 0; attempt < FOLLOW_UP_TRIES; attempt += 1) {
+    try {
+      const check = (await list({ state: "active" })).jobs.find((job) => job.type === "file_check");
+      if (check) {
+        await followJob(check.id).finished;
+        return;
+      }
+    } catch (cause) {
+      reportUnexpected(cause);
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, FOLLOW_UP_WAIT_MS));
+  }
+}
 
 interface MissingFilesViewProps {
   health: LibraryHealth | null;
@@ -75,7 +107,6 @@ export function MissingFilesView({
   onOpenEntity,
 }: MissingFilesViewProps) {
   const { push } = useToast();
-  const navigate = useNavigate();
   const [order, setOrder] = useState<{ sort: string; dir: SortDirection }>({
     sort: "artist",
     dir: "asc",
@@ -88,6 +119,9 @@ export function MissingFilesView({
   const detail = useTrackDetail(trackId);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  // Check for changes, in place (M157): the export's changes to confirm, and what they fixed.
+  const [refreshDiff, setRefreshDiff] = useState<RefreshDiff | null>(null);
+  const [fixed, setFixed] = useState<string | null>(null);
 
   const message = useCallback(
     (text: string, tone: CleanMessageTone) => push(text, tone),
@@ -136,6 +170,80 @@ export function MissingFilesView({
     [detail, jobs, onHealthChanged, push, window_],
   );
 
+  const checkForChanges = useCallback(async () => {
+    const start = window.cuepoint?.startLibraryRefreshPreview;
+    const results = window.cuepoint?.getJobResults;
+    if (!start || !results) {
+      push(needsDesktopApp(), "warning");
+      return;
+    }
+    setFixed(null);
+    let jobId: string | null = null;
+    const done = await jobs.run("refresh-check", async () => {
+      const answer = await start({});
+      jobId = answer.job_id;
+      return answer;
+    });
+    if (!done || !jobId) return;
+    try {
+      const previewed = (await results(jobId)).result as RefreshDiff | undefined;
+      if (!previewed) {
+        push("The check finished without a result.", "warning");
+        return;
+      }
+      if (previewed.is_empty) {
+        push("Your Rekordbox file has no changes", "info");
+        return;
+      }
+      setRefreshDiff(previewed);
+    } catch (cause) {
+      reportUnexpected(cause);
+      push(userMessage(cause, "Could not read the preview"), "warning");
+    }
+  }, [jobs, push]);
+
+  const missingNow = useCallback(async (): Promise<number | null> => {
+    const browse = window.cuepoint?.browseLibrary;
+    if (!browse) return null;
+    try {
+      return (await browse(browseParams(query, 0, 1))).total;
+    } catch (cause) {
+      reportUnexpected(cause);
+      return null;
+    }
+  }, [query]);
+
+  const applyChanges = useCallback(
+    async ({ confirmReferences }: { confirmReferences: boolean }) => {
+      const apply = window.cuepoint?.startLibraryRefreshApply;
+      const diff = refreshDiff;
+      if (!apply || !diff) return;
+      const before = window_.total;
+      const done = await jobs.run("refresh-apply", () =>
+        apply({ diff_id: diff.diff_id, confirm_references: confirmReferences }),
+      );
+      setRefreshDiff(null);
+      if (!done) return;
+      await followUpCheck();
+      const left = await missingNow();
+      if (left !== null) setFixed(fixedLine(before, left));
+      window_.reload();
+      detail.reload();
+      onHealthChanged();
+    },
+    [detail, jobs, missingNow, onHealthChanged, refreshDiff, window_],
+  );
+
+  const refreshDialog = (
+    <RefreshPreviewDialog
+      open={refreshDiff !== null}
+      diff={refreshDiff}
+      applying={jobs.running === "refresh-apply"}
+      onCancel={() => setRefreshDiff(null)}
+      onApply={(options) => void applyChanges(options)}
+    />
+  );
+
   // M220: the artwork read, moved here from Statistics (which only reads). Every track, as the
   // read is of files and not of Collections.
   const readArtwork = useCallback(() => {
@@ -165,16 +273,19 @@ export function MissingFilesView({
     }
   }, [columns.visible, push, selection]);
 
+  // Nothing missing, nothing to show details of: the slot is left empty, so no Details shows (M490).
   useInspectorSlot(
-    <TrackDetailPanel
-      detail={detail.detail}
-      loading={detail.loading}
-      error={detail.error}
-      selectionCount={selection.count}
-      onReveal={() => reveal(trackId)}
-      onError={(text) => push(text, "warning")}
-      onOpenEntity={onOpenEntity}
-    />,
+    window_.total === 0 ? null : (
+      <TrackDetailPanel
+        detail={detail.detail}
+        loading={detail.loading}
+        error={detail.error}
+        selectionCount={selection.count}
+        onReveal={() => reveal(trackId)}
+        onError={(text) => push(text, "warning")}
+        onOpenEntity={onOpenEntity}
+      />
+    ),
   );
 
   const selectedKeys = useMemo(() => {
@@ -261,10 +372,11 @@ export function MissingFilesView({
     return (
       <div className="clean-missing clean-missing--clear">
         <div className="cp-toolbar" role="toolbar" aria-label="Missing files">
-          {/* Status on the left, the button on the right (C235). */}
-          {window_.answered && checkedBar && (
+          {/* Status on the left, the button on the right (C235). Just after Check for changes, what
+              it fixed (M157). */}
+          {window_.answered && (fixed ?? checkedBar) && (
             <span className="clean-toolbar__status" role="status">
-              {checkedBar}
+              {fixed ?? checkedBar}
             </span>
           )}
           <span className="clean-toolbar__spacer" />
@@ -275,7 +387,8 @@ export function MissingFilesView({
           <EmptyState
             tone="clear"
             icon="clean"
-            headline="No missing files"
+            // The last check's answer, not a statement about today (M156).
+            headline="No missing files at the last check"
             // Said with when it was true: a check from last month is not a statement about today (M156).
             description={
               lastChecked && formatDayTimeInSentence(lastChecked)
@@ -284,6 +397,7 @@ export function MissingFilesView({
             }
           />
         )}
+        {refreshDialog}
       </div>
     );
   }
@@ -305,7 +419,7 @@ export function MissingFilesView({
             In Rekordbox, right-click the track, choose Relocate and point it at the file.
           </li>
           <li>
-            In Rekordbox, choose File, then Export Collection in xml format
+            In Rekordbox, choose File, then Export Collection in XML format
             {sourcePath ? (
               <>
                 , saving over <strong>{displayPathNameFirst(sourcePath)}</strong>{" "}
@@ -320,9 +434,11 @@ export function MissingFilesView({
             Here,{" "}
             <Button
               variant="secondary"
-              onClick={() => navigate("/library", { state: libraryRefreshState() })}
+              disabled={running}
+              loading={jobs.running === "refresh-check" || jobs.running === "refresh-apply"}
+              onClick={() => void checkForChanges()}
             >
-              Check for changes in the Library
+              Check for changes
             </Button>
             .
           </li>
@@ -338,6 +454,11 @@ export function MissingFilesView({
         <span className="cp-count" role="status">
           {plural(window_.total, "file")} missing
         </span>
+        {fixed && (
+          <span className="clean-toolbar__status" role="status">
+            {fixed}
+          </span>
+        )}
         {checkButton}
         {readButton}
       </div>
@@ -387,6 +508,7 @@ export function MissingFilesView({
         onReset={columns.reset}
         onRestore={columns.restore}
       />
+      {refreshDialog}
     </div>
   );
 }

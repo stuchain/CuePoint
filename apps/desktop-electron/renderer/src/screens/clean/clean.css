@@ -38,18 +38,6 @@
 
 /* ------------------------------------------------------------ shared parts */
 
-.clean-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 /* The one bar above and below a list is `.cp-toolbar` (D9, C217): the toolbar fill, no border. Here
    it holds status text on the left and the button on the right (C235). */
 .clean-toolbar__status {
@@ -66,7 +54,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
-  cursor: pointer;
+  cursor: default;
 }
 
 .clean-toolbar__check input[type="checkbox"] {
@@ -109,7 +97,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  cursor: pointer;
+  cursor: default;
 }
 
 /* --------------------------------------------------------------- missing */
@@ -319,7 +307,7 @@
   align-items: center;
   gap: var(--space-xs);
   padding-inline-start: calc(var(--depth, 0) * var(--space-md));
-  cursor: pointer;
+  cursor: default;
 }
 
 .clean-fix__hint,
@@ -345,7 +333,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  cursor: pointer;
+  cursor: default;
 }
 
 .clean-match-again label:has(input:disabled) {

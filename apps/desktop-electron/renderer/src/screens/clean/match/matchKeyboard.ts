@@ -9,8 +9,9 @@
  * shell (SHELL-10's shortcuts are all modified). A key pressed inside a widget that moves with
  * keys of its own, the player's queue list, a tree, a menu, belongs to that widget.
  *
- * Enter plays the row and Space ticks it; both are bound on the table's row (`ReviewTable`), not
- * here. **Space is not here.** It is the player's (`usePlayerShortcuts`) except on a tick.
+ * Enter plays the row and Ctrl+Space ticks it (M482); both are bound on the table's row
+ * (`ReviewTable`), not here. **Space is not here.** Plain Space is the player's
+ * (`usePlayerShortcuts`) everywhere but on a checkbox itself, as D34 has it.
  * A candidate's radio group owns its arrows: they change the pick, not the track.
  */
 
@@ -47,7 +48,7 @@ export const MATCH_KEYS: Record<
   "select-all": "Ctrl+A",
   // Bound on the row (ReviewTable), not by `matchCommand`.
   play: "Enter",
-  tick: "Space",
+  tick: "Ctrl+Space",
 };
 
 /** Inputs that take no typed text: a tick or a radio is not a field. */

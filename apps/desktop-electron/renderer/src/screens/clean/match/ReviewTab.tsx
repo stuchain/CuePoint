@@ -22,7 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LibraryTrackRow, MatchSearchAnswer, ReviewTrack } from "../../../api/cuepointBridge.types";
 import { needsDesktopApp, userMessage } from "../../../api/userMessage";
 import { Button, Hint, Kbd, Notice, useToast } from "../../../components";
-import { Loading } from "../../../components/Loading";
+import { SkeletonTable } from "../SkeletonTable";
 import { SelectionBar } from "../../../components/SelectionBar";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../../components/TrackContextMenu";
 import { countNoun } from "../../../format/counts";
@@ -32,6 +32,7 @@ import { writeClipboard } from "../../library/trackClipboard";
 import { revealTrack } from "../revealTrack";
 import { queryShown } from "../../../components/shell/pageActive";
 import { reportUnexpected } from "../../../reporting/reporting";
+import { usePresence } from "../../../tokens/usePresence";
 import { CandidatePanel } from "./CandidatePanel";
 import { ReviewTable } from "./ReviewTable";
 import { SyncPlaylistDialog } from "./SyncPlaylistDialog";
@@ -108,6 +109,11 @@ export function ReviewTab({
   const found = panel !== null ? rows.find((row) => row.track_id === panel) : undefined;
   if (found) seen.current = found;
   const panelRow = panel !== null ? (found ?? (seen.current?.track_id === panel ? seen.current : null)) : null;
+  // A closed panel plays its exit (M380): the row it last showed stays drawn while it leaves.
+  const panelPresence = usePresence<HTMLElement>(panelRow !== null);
+  const leftRow = useRef<ReviewTrack | null>(null);
+  if (panelRow) leftRow.current = panelRow;
+  const panelShown = panelRow ?? (panelPresence.present ? leftRow.current : null);
   useEffect(() => {
     onPanelChange?.(panel !== null);
   }, [onPanelChange, panel]);
@@ -493,12 +499,13 @@ export function ReviewTab({
   if (!review) {
     return (
       <section className="review" aria-label={`Review ${name}`}>
-        {loading && <Loading what="the tracks" />}
+        {/* The table's shape while it loads, not a spinner (M373). */}
+        {loading && <SkeletonTable what="the tracks" columns={["", "Status", "Your track", "Beatport", ""]} />}
       </section>
     );
   }
 
-  const position = panelRow ? Math.max(1, rows.findIndex((row) => row.track_id === panelRow.track_id) + 1) : 0;
+  const position = panelShown ? Math.max(1, rows.findIndex((row) => row.track_id === panelShown.track_id) + 1) : 0;
   const chosen = rows.filter((entry) => selected.has(entry.track_id));
   const { toTick, toLeaveOut } = offers(chosen);
 
@@ -543,7 +550,7 @@ export function ReviewTab({
         </Button>
       </SelectionBar>
 
-      <div className={`review__body${panelRow ? " review__body--panel" : ""}`} ref={tableArea}>
+      <div className={`review__body${panelShown ? " review__body--panel" : ""}`} ref={tableArea}>
         <ReviewTable
           rows={rows}
           current={current}
@@ -563,18 +570,20 @@ export function ReviewTab({
           someTicked={ticked > 0}
           tickable={tickable}
         />
-        {panelRow && (
+        {panelShown && (
           <CandidatePanel
-            row={panelRow}
+            row={panelShown}
+            leaving={panelRow === null}
+            presenceRef={panelPresence.ref}
             position={position}
             total={rows.length}
             version={version + reads}
             busy={ticks.busy || choosing}
             matching={matching}
             onClose={() => setPanel(null)}
-            onUse={(candidateId, stay) => void chooseCandidate(panelRow, candidateId, stay)}
+            onUse={(candidateId, stay) => void chooseCandidate(panelShown, candidateId, stay)}
             onMove={(step) => move(step, false)}
-            onLeaveOut={() => void tick(panelRow, false)}
+            onLeaveOut={() => void tick(panelShown, false)}
             onSearched={searched}
             onMessage={(text) => push(text, "info")}
           />

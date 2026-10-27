@@ -23,6 +23,7 @@ import {
 import { reviewTrack, run } from "../../../test/matchFixtures";
 import type { CleanMatch } from "../useCleanMatch";
 import { MatchArea } from "./MatchArea";
+import { groupRuns } from "./pastSearchWords";
 import { MATCH_TAB_STORAGE_KEY } from "./matchTab";
 import { quoted } from "../../../format/words";
 import matchCss from "./match.css?raw";
@@ -168,17 +169,65 @@ describe("the list", () => {
     expect(within(rows[2]!).getByText("Running")).toBeInTheDocument();
   });
 
-  it("offers Resume only on a run that stopped, and one More on every row", async () => {
+  it("has one action slot, More, on every row, with Resume in it only for a run that stopped (M150)", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    expect(screen.getAllByRole("button", { name: /^Resume / })).toHaveLength(1);
-    expect(screen.getByRole("button", { name: `Resume ${WHOLE}` })).toBeEnabled();
-    // The row is the way in: no Open button (C230).
-    expect(screen.queryByRole("button", { name: /^Open / })).toBeNull();
-    expect(screen.getAllByRole("row", { name: /^Open / })).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: /^Resume / })).toBeNull();
     expect(screen.getAllByRole("button", { name: /^More for / })).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: `More for ${WHOLE}` }));
+    expect(screen.getByRole("menuitem", { name: "Resume" })).not.toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(screen.getByRole("button", { name: `More for ${WHOLE}` }));
+    fireEvent.click(screen.getByRole("button", { name: `More for ${ALL}` }));
+    expect(screen.queryByRole("menuitem", { name: "Resume" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: `More for ${ALL}` }));
     fireEvent.click(screen.getByRole("button", { name: "More for 1 track" }));
     expect(screen.getByRole("menuitem", { name: "Match again" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("is one stop per row for the keyboard: its name, a link named Open, not the row (M475)", async () => {
+    renderPast();
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+    const rows = screen.getAllByRole("row").slice(1);
+    for (const row of rows) {
+      expect(row).not.toHaveAttribute("tabindex");
+      expect(row).not.toHaveAttribute("aria-label");
+    }
+    const open = screen.getByRole("button", { name: `Open ${ALL}` });
+    expect(open).toHaveClass("cp-link");
+    expect(open).toHaveTextContent('Playlist "all"');
+    expect(screen.getAllByRole("button", { name: /^Open / })).toHaveLength(3);
+  });
+
+  it("folds runs of one source in a row into one, with N× and an arrow to show the earlier ones (M150)", async () => {
+    world.runs = [
+      run({ job_id: "a1", label: "Peak", created_at: "2026-10-12T13:42:00" }),
+      run({ job_id: "a2", label: "Peak", created_at: "2026-10-11T13:42:00" }),
+      run({ job_id: "a3", label: "Peak", created_at: "2026-10-10T13:42:00" }),
+      run({ job_id: "b1", label: "Warm", created_at: "2026-10-09T13:42:00" }),
+    ];
+    renderPast();
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+    expect(screen.getAllByRole("row").slice(1)).toHaveLength(2);
+    const fold = screen.getByRole("button", { name: `Show 2 earlier runs of ${quoted("Peak")}` });
+    expect(fold).toHaveTextContent("3×");
+    expect(fold).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(fold);
+    expect(screen.getAllByRole("row").slice(1)).toHaveLength(4);
+    expect(screen.getByRole("button", { name: `Hide 2 earlier runs of ${quoted("Peak")}` })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.queryByRole("button", { name: /earlier runs? of .*Warm/ })).toBeNull();
+  });
+
+  it("groups only runs next to each other that are named the same", () => {
+    const named = (job_id: string, label: string) => run({ job_id, label });
+    const groups = groupRuns([named("1", "A"), named("2", "A"), named("3", "B"), named("4", "A")]);
+    expect(groups.map((group) => [group.newest.job_id, group.earlier.map((one) => one.job_id)])).toEqual([
+      ["1", ["2"]],
+      ["3", []],
+      ["4", []],
+    ]);
   });
 
   it("says why a run stopped after its Stopped status, on the same row", async () => {
@@ -189,14 +238,15 @@ describe("the list", () => {
     expect(within(row).getAllByText(/Stopped/)).toHaveLength(1);
     expect(within(row).getByText(/Beatport did not answer/)).toHaveClass("match-past__why");
     expect(within(row).getByText(/Beatport did not answer/).textContent).not.toMatch(/\.$/);
-    expect(within(row).getByRole("button", { name: `Resume ${WHOLE}` })).toBeEnabled();
+    expect(within(row).getByRole("button", { name: `More for ${WHOLE}` })).toBeEnabled();
   });
 
   it("offers no Resume in a build that cannot resume", async () => {
     delete bridge.resumeCleanMatch;
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    expect(screen.queryByRole("button", { name: /^Resume / })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: `More for ${WHOLE}` }));
+    expect(screen.queryByRole("menuitem", { name: "Resume" })).toBeNull();
   });
 
   it("says nothing has been matched yet, and that a search found nothing", async () => {
@@ -274,7 +324,7 @@ describe("Opening a run", () => {
     world.review = [reviewTrack(1, "to_check"), reviewTrack(2, "not_found"), reviewTrack(3, "matched")];
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("row", { name: `Open ${ALL}` }));
+    fireEvent.click(screen.getByRole("button", { name: `Open ${ALL}` }));
 
     expect(await screen.findByRole("region", { name: 'Review Playlist "all"' })).toBeInTheDocument();
     // No Review tab: the one row keeps its sub-tabs and offers a way back (D13).
@@ -287,7 +337,7 @@ describe("Opening a run", () => {
   it("names a run with no label by how many tracks it had", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("row", { name: `Open ${WHOLE}` }));
+    fireEvent.click(screen.getByRole("button", { name: `Open ${WHOLE}` }));
     expect(await screen.findByRole("region", { name: "Review All tracks" })).toBeInTheDocument();
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-2", limit: 2000 });
   });
@@ -295,18 +345,18 @@ describe("Opening a run", () => {
   it("marks the run that is open", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("row", { name: `Open ${ALL}` }));
+    fireEvent.click(screen.getByRole("button", { name: `Open ${ALL}` }));
     await screen.findByRole("region", { name: 'Review Playlist "all"' });
     // The list stays mounted behind the review, with the open run marked.
     expect(document.querySelectorAll('tr[data-open="true"]')).toHaveLength(1);
   });
 
-  it("opens on Enter on the row, and not on a click inside one of its buttons", async () => {
+  it("opens on a click on the row, and not on a click inside one of its buttons", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     fireEvent.click(screen.getByRole("button", { name: `More for ${WHOLE}` }));
     expect(screen.queryByRole("region", { name: "Review All tracks" })).toBeNull();
-    fireEvent.keyDown(screen.getByRole("row", { name: `Open ${WHOLE}` }), { key: "Enter" });
+    fireEvent.click(screen.getByText("Stopped").closest("td")!);
     expect(await screen.findByRole("region", { name: "Review All tracks" })).toBeInTheDocument();
   });
 });
@@ -315,7 +365,7 @@ describe("Resume and Match again", () => {
   it("resumes the job the engine named, and nothing else", async () => {
     const { props } = renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: `Resume ${WHOLE}` }));
+    pickMore(WHOLE, "Resume");
     expect(props.match.resume).toHaveBeenCalledWith("job-2b");
     expect(props.match.start).not.toHaveBeenCalled();
   });
@@ -337,7 +387,8 @@ describe("Resume and Match again", () => {
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     pickMore(ALL, "Match again");
     expect(props.match.start).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: `Resume ${WHOLE}` })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: `More for ${WHOLE}` }));
+    expect(screen.getByRole("menuitem", { name: "Resume" })).toHaveAttribute("aria-disabled", "true");
   });
 });
 

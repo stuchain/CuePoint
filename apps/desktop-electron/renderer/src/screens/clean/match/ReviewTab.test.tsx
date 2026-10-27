@@ -266,20 +266,23 @@ describe("ticking", () => {
     expect(facts()).toHaveTextContent("5 tracks · 2 ticked to sync");
   });
 
-  it("keeps the ticks out of the tab order: one tab stop for the table, the row, and Space on it ticks", async () => {
+  it("keeps the ticks out of the tab order: one tab stop for the table, the row, and Ctrl+Space on it ticks (M482)", async () => {
     renderTab();
     await loaded();
     for (const box of screen.getAllByRole("checkbox", { name: /^Sync Track/ })) expect(box).toHaveAttribute("tabindex", "-1");
     // The header tick stays reachable; the rows have one tab stop between them.
     expect(screen.getAllByRole("row").filter((row) => row.getAttribute("tabindex") === "0")).toHaveLength(1);
     rowOf(2).focus();
+    // Plain Space is the player's (D34): it ticks nothing, and the row does not claim it.
     fireEvent.keyDown(rowOf(2), { key: " " });
+    expect(bridge.setMatchTicks).not.toHaveBeenCalled();
+    expect(rowOf(2)).not.toHaveAttribute("data-owns-space");
+    fireEvent.keyDown(rowOf(2), { key: " ", ctrlKey: true });
     await waitFor(() => expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: false, track_ids: [2] }));
     expect(screen.getByRole("checkbox", { name: "Sync Track 2 · Artist 2" })).not.toBeChecked();
-    // A track with no match cannot be ticked, so Space on it does nothing.
-    fireEvent.keyDown(rowOf(3), { key: " " });
+    // A track with no match cannot be ticked, so Ctrl+Space on it does nothing.
+    fireEvent.keyDown(rowOf(3), { key: " ", ctrlKey: true });
     expect(bridge.setMatchTicks).toHaveBeenCalledTimes(1);
-    expect(rowOf(2)).toHaveAttribute("data-owns-space");
   });
 
   it("marks a track a newer search disagrees with, in words, beside Check", async () => {

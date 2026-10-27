@@ -19,6 +19,23 @@ export function whatLine(run: Pick<MatchRun, "label" | "planned">): string {
   return label ? label : tracks(run.planned);
 }
 
+/** Runs of one source one after another: the newest first, then the earlier ones it folds (M150). */
+export interface RunGroup {
+  newest: MatchRun;
+  earlier: MatchRun[];
+}
+
+/** Fold consecutive runs that are named the same into one group each, keeping the list's order. */
+export function groupRuns(runs: readonly MatchRun[]): RunGroup[] {
+  const groups: RunGroup[] = [];
+  for (const run of runs) {
+    const last = groups[groups.length - 1];
+    if (last && whatLine(last.newest) === whatLine(run)) last.earlier.push(run);
+    else groups.push({ newest: run, earlier: [] });
+  }
+  return groups;
+}
+
 /**
  * How a part of the results line is drawn: confirmed and no match are quiet grey, tracks to check
  * are amber, and what went wrong (rejected, a search that failed) is red. The words say it too, so

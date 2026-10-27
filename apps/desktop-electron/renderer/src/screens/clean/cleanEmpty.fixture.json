@@ -69,7 +69,7 @@
         {
           "count": 0,
           "id": "disputed",
-          "label": "Changed since you decided",
+          "label": "Changed after you confirmed",
           "rules": {
             "match": "all",
             "rules": [
@@ -282,7 +282,7 @@
         {
           "count": 0,
           "id": "disputed",
-          "label": "Changed since you decided",
+          "label": "Changed after you confirmed",
           "rules": {
             "match": "all",
             "rules": [
@@ -521,7 +521,7 @@
         {
           "count": 0,
           "id": "disputed",
-          "label": "Changed since you decided",
+          "label": "Changed after you confirmed",
           "rules": {
             "match": "all",
             "rules": [
@@ -701,7 +701,7 @@
         {
           "count": 0,
           "id": "disputed",
-          "label": "Changed since you decided",
+          "label": "Changed after you confirmed",
           "rules": {
             "match": "all",
             "rules": [

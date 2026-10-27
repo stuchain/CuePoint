@@ -110,6 +110,8 @@ describe("the candidates", () => {
     const { unmount } = render(panel());
     const list = await candidates();
     await waitFor(() => expect(list.getAllByRole("listitem")[0]!.querySelector("img.review-candidate__cover")).not.toBeNull());
+    // The one artwork component, which fades the cover in once it has loaded (M385).
+    expect(list.getAllByRole("listitem")[0]!.querySelector("img.review-candidate__cover")).toHaveClass("cp-art");
     expect(get).toHaveBeenCalledWith({ candidateId: 1001, size: "row" });
     // The second candidate has no picture: the placeholder holds its place.
     expect(list.getAllByRole("listitem")[1]!.querySelector(".review-candidate__cover")).not.toBeNull();
@@ -391,6 +393,14 @@ describe("closing", () => {
   it("says where it is in the table", () => {
     renderPanel({ position: 3, total: 24 });
     expect(screen.getByText("3 of 24")).toBeInTheDocument();
+  });
+
+  it("is its own pane for F6 (M459), and a leaving copy is marked and takes no input (M380)", () => {
+    renderPanel({ leaving: true });
+    const panel = screen.getByRole("complementary", { hidden: true });
+    expect(panel).toHaveAttribute("data-pane", "candidates");
+    expect(panel).toHaveAttribute("data-leaving");
+    expect(panel).toHaveAttribute("inert");
   });
 });
 

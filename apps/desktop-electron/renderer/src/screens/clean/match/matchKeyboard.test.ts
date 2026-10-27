@@ -97,7 +97,7 @@ describe("matchCommand", () => {
       close: "Esc",
       "select-all": "Ctrl+A",
       play: "Enter",
-      tick: "Space",
+      tick: "Ctrl+Space",
     });
   });
 });

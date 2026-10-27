@@ -21,6 +21,11 @@ function count(number: number, noun: string): string {
   return plural(number, noun);
 }
 
+/** Missing files' toolbar line after Check for changes (M157): what the refresh fixed, and what is left. */
+export function fixedLine(before: number, left: number): string {
+  return `${formatCount(Math.max(0, before - left))} fixed · ${formatCount(left)} still missing`;
+}
+
 /**
  * Where a track stands, in the words every page uses for it (CLN-4).
  *

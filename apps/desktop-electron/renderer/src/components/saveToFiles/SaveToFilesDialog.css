@@ -49,7 +49,7 @@
 }
 
 .save-dialog__tick {
-  cursor: pointer;
+  cursor: default;
 }
 
 .save-dialog__tick input {
@@ -112,26 +112,14 @@
   white-space: nowrap;
 }
 
-
-.save-dialog__changes {
-  width: 100%;
-  border-collapse: collapse;
+/* The changes list is the shared table (M278). A track's changes are what this list is for, so its
+   cell wraps instead of ending in "…"; the row is still at least the row height. */
+.cp-data-table tbody td.save-dialog__what-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.save-dialog__changes th,
-.save-dialog__changes td {
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: var(--divider);
-  text-align: left;
-  vertical-align: top;
-}
-
-.save-dialog__changes th {
-  color: var(--fg-muted);
-  font-weight: var(--font-weight-regular);
-}
-
-.save-dialog__changes s {
+.save-dialog__what s {
   color: var(--fg-muted);
 }
 

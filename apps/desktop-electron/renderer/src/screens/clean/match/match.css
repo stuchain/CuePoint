@@ -69,18 +69,6 @@
   overflow: hidden;
 }
 
-.match-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 /* ---------------------------------------------------------------- Past searches */
 
 /* The shared table look (D8 A) does the header, rows and hover; only this list's own parts are here.
@@ -114,14 +102,54 @@
   text-overflow: clip;
 }
 
-/* The row opens its review, so it shows a pointer and takes the keyboard. */
+/* The row opens its review on a click; the arrow stays an arrow (M339). The keyboard reaches it
+   through the "Open …" link in its What cell (M475). */
 .match-past__row {
-  cursor: pointer;
+  cursor: default;
 }
 
-.match-past__row:focus-visible {
+/* The name and, for runs of one source in a row, "13×" and its arrow (M150). The name gives way. */
+.match-past__what-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.match-past__what .match-past__open {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* A name, not a blue link: the row is the target; and the arrow stays an arrow (M339). */
+  cursor: default;
+}
+
+.match-past__fold {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-block-size: var(--hit-target);
+  padding: 0 var(--space-xs);
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: inherit;
+  cursor: default;
+}
+
+.match-past__fold:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset-inset);
+}
+
+/* An earlier run of a folded group sits under its newest, its name set in by one step. */
+.match-past__row--earlier .match-past__what-line {
+  padding-inline-start: var(--space-lg);
 }
 
 /* One bar, at the row's left edge: the gradient is the first cell's only. */
@@ -312,7 +340,7 @@
 
 /* The play button is the row's right end: wide enough for it and the cell's padding, never clipped. */
 .cp-data-table .review-col--preview {
-  width: calc(var(--icon-size-md) + 2 * var(--space-md));
+  width: calc(var(--icon-size-lg) + 2 * var(--space-md));
   overflow: visible;
   text-align: right;
 }
@@ -439,7 +467,7 @@
   padding: var(--space-md);
   /* A sunken card without a frame; only the bar on its left says it is yours (M141). */
   border: 0;
-  border-left: calc(4px * var(--scale)) solid var(--accent-primary);
+  border-left: var(--selected-bar-width) solid var(--accent-primary);
   background: var(--bg-input);
 }
 
@@ -503,7 +531,7 @@
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md);
-  border-left: calc(4px * var(--scale)) solid transparent;
+  border-left: var(--selected-bar-width) solid transparent;
   box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
 }
 
@@ -511,9 +539,10 @@
   box-shadow: none;
 }
 
-/* The one in use: the green bar and its "In use" chip, on the card's own fill (item 9b). */
+/* The one in use: a neutral bar and its "In use" chip, on the card's own fill (item 9b). "All good"
+   is never green (M325). */
 .review-candidate--in-use {
-  border-left-color: var(--accent-success);
+  border-left-color: var(--border-control);
 }
 
 /* The one that Use this match would take: the selected look, the tint and the bar. */

@@ -1,9 +1,11 @@
 /**
  * Sync a playlist to files (the Review tab's green button): the ticked tracks, then the Sync window.
  *
- * The Sync window itself is tested with the save window it is a variant of; here it is a stand-in
- * that shows what it was handed. What this holds: opening it reads which tracks are ticked and
- * calls nothing that writes, a close has nothing to take back, and every failure is said in words.
+ * The Sync window itself is tested with the save window it is a variant of; here, once it has its
+ * tracks, it is a stand-in that shows what it was handed. Before that it is the real window, which
+ * is open from the first moment and says what it waits for (M277). What this holds: opening it
+ * reads which tracks are ticked and calls nothing that writes, a close has nothing to take back,
+ * and every failure is said in words.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -19,9 +21,15 @@ interface DialogProps {
   onChanged?: () => void;
 }
 
-vi.mock("../../../components/saveToFiles/SaveToFilesDialog", () => ({
-  SaveToFilesDialog: (props: DialogProps) =>
-    props.open ? (
+vi.mock("../../../components/saveToFiles/SaveToFilesDialog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../components/saveToFiles/SaveToFilesDialog")>();
+  const Real = actual.SaveToFilesDialog;
+  return {
+    SaveToFilesDialog: (props: DialogProps & Parameters<typeof Real>[0]) =>
+      // Before the tracks are known, the real window, saying what it waits for.
+      props.selection === null ? (
+        <Real {...props} />
+      ) : props.open ? (
       <div role="dialog" aria-label="Sync window">
         <p>{props.title ?? "default title"}</p>
         <p>{`${props.count} tracks, ${(props.selection?.track_ids ?? []).join(",")}, ${props.variant}`}</p>
@@ -33,7 +41,8 @@ vi.mock("../../../components/saveToFiles/SaveToFilesDialog", () => ({
         </button>
       </div>
     ) : null,
-}));
+  };
+});
 
 import { SyncPlaylistDialog } from "./SyncPlaylistDialog";
 
@@ -111,6 +120,15 @@ describe("opening it", () => {
     expect(screen.getByText(/Nothing is written to your files/)).toBeInTheDocument();
     finish({ ids: [1], tracks: [], total: 1, ticked: 1 });
     await screen.findByRole("dialog", { name: "Sync window" });
+  });
+
+  it("is one window from the first moment: the Sync window says it is loading, no small one first (M277)", async () => {
+    bridge.getMatchReview.mockImplementation(() => new Promise(() => undefined));
+    dialog();
+    const window_ = await screen.findByRole("dialog", { name: "Sync “hJ” to your files" });
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    // The Sync window's own size, not the small default a loading box had.
+    expect(window_.closest(".cp-modal") ?? window_).toHaveClass("cp-modal--large");
   });
 
   it("says there is nothing to sync when nothing is ticked", async () => {

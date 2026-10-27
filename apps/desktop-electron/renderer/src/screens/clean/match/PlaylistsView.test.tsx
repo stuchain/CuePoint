@@ -103,7 +103,7 @@ describe("the list", () => {
     renderView({
       data: { whole_library: COUNTS, playlists: [{ id: 9, name: "x", path: "", ...COUNTS, synced: true, synced_at: null }] },
     });
-    expect(screen.getByText("Synced")).toHaveClass("cp-badge--success");
+    expect(within(bodyRows()[1]!).getByText("Synced")).toHaveClass("cp-badge--success");
   });
 
   it("has no steps list of its own: the area's caption says the step (D13)", () => {
@@ -111,7 +111,7 @@ describe("the list", () => {
     expect(screen.queryByRole("list", { name: "The steps" })).toBeNull();
   });
 
-  it("draws the whole library's In your files cell as the muted dash (C182)", () => {
+  it("draws the whole library's Synced cell as the muted dash (C182)", () => {
     renderView();
     const cell = within(bodyRows()[0]!).getAllByRole("cell")[3]!;
     expect(cell).toHaveTextContent("\u2014");
@@ -142,13 +142,13 @@ describe("the list", () => {
     expect(screen.getByRole("checkbox", { name: "Match Peak time" })).not.toBeChecked();
   });
 
-  it("has a tick column, and the columns Playlist, Tracks and In your files", () => {
+  it("has a tick column, and the columns Playlist, Tracks and Synced (M392)", () => {
     renderView();
     expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
       "",
       "Playlist",
       "Tracks",
-      "In your files",
+      "Synced",
       "To check",
       "Actions",
     ]);
@@ -283,10 +283,10 @@ describe("To check, per row (M146)", () => {
     expect(screen.getByText("18 to check")).toBeInTheDocument();
   });
 
-  it("still opens a matched playlist with nothing waiting, as Review, and draws a dash where nothing was matched", () => {
-    const { props } = renderView();
-    fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
-    expect(props.onReview).toHaveBeenCalledWith(DATA.playlists[0]);
+  it("draws a dash where nothing waits, matched or not: \"5 to check\" or \"\u2014\" (D17 A)", () => {
+    renderView();
+    expect(screen.queryByRole("button", { name: /^Review Peak time/ })).toBeNull();
+    expect(within(screen.getByText("Peak time").closest("tr")!).getAllByRole("cell")[4]).toHaveTextContent("\u2014");
     expect(screen.queryByRole("button", { name: /Review Warmup/ })).toBeNull();
     expect(within(screen.getByText("Warmup").closest("tr")!).getAllByRole("cell")[4]).toHaveTextContent("\u2014");
   });
@@ -354,5 +354,38 @@ describe("the number column's alignment", () => {
     // The shared table sets the number column once (`.num`); this sheet must not set it again.
     expect(css).not.toMatch(/playlists__number/);
     expect(css).not.toMatch(/\.num\s*\{[^}]*text-align:\s*left/);
+  });
+});
+
+describe("Sync all reviewed (M509)", () => {
+  afterEach(() => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+  });
+
+  it("offers one Sync for every reviewed playlist, in the toolbar, and reads each one's ticked tracks", async () => {
+    const getMatchReview = vi.fn(async ({ playlistId }: { playlistId?: number }) => ({
+      ids: playlistId === 7 ? [4, 5] : [5, 9],
+      tracks: [],
+      total: 2,
+      ticked: 2,
+    }));
+    (window as unknown as { cuepoint?: unknown }).cuepoint = { getMatchReview };
+    const data: CleanPlaylists = {
+      ...DATA,
+      playlists: [...DATA.playlists, { id: 9, name: "Done one", path: "", ...COUNTS, synced: false, synced_at: null }],
+    };
+    renderView({ data });
+    const host = screen.getByTestId("action-host");
+    // "Found nothing" and "Done one" were matched, wait for nothing and are not synced yet.
+    fireEvent.click(within(host).getByRole("button", { name: "Sync all reviewed (2 playlists)…" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(getMatchReview).toHaveBeenCalledWith({ playlistId: 7, tickedIds: true });
+    expect(getMatchReview).toHaveBeenCalledWith({ playlistId: 9, tickedIds: true });
+    expect(getMatchReview).toHaveBeenCalledTimes(2);
+  });
+
+  it("is not offered when no playlist is reviewed", () => {
+    renderView({ data: { ...DATA, playlists: DATA.playlists.filter((playlist) => playlist.id !== 7) } });
+    expect(screen.queryByRole("button", { name: /^Sync all reviewed/ })).toBeNull();
   });
 });
