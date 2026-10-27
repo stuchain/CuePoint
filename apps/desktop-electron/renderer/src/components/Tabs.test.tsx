@@ -12,14 +12,16 @@ const TABS = [
 ];
 
 describe("Tabs", () => {
-  it("writes no ids without a prefix", () => {
-    render(<Tabs tabs={TABS} activeId="a" onChange={() => {}} />);
-    expect(screen.getByRole("tab", { name: "One" })).not.toHaveAttribute("id");
-    expect(screen.getByRole("tab", { name: "One" })).not.toHaveAttribute("aria-controls");
+  // Moved for M474: idPrefix and label are required, so a strip always wires its tabs and is named.
+  it("always wires each tab to its panel and names the strip", () => {
+    render(<Tabs idPrefix="t" label="Views" tabs={TABS} activeId="a" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("id", tabId("t", "a"));
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-controls", panelId("t", "a"));
+    expect(screen.getByRole("tablist", { name: "Views" })).toBeInTheDocument();
   });
 
   it("names each tab and the panel it controls when given a prefix", () => {
-    render(<Tabs tabs={TABS} activeId="a" onChange={() => {}} idPrefix="x" />);
+    render(<Tabs label="Views" tabs={TABS} activeId="a" onChange={() => {}} idPrefix="x" />);
     const two = screen.getByRole("tab", { name: "Two" });
     expect(two).toHaveAttribute("id", tabId("x", "b"));
     expect(two).toHaveAttribute("aria-controls", panelId("x", "b"));
@@ -27,26 +29,26 @@ describe("Tabs", () => {
 
   // M474: the strip can be named, and a disabled tab says so to assistive tech.
   it("names the tablist and marks a disabled tab aria-disabled", () => {
-    render(<Tabs tabs={[...TABS, { id: "c", label: "Three", disabled: true }]} activeId="a" onChange={() => {}} label="Views" />);
+    render(<Tabs idPrefix="t" tabs={[...TABS, { id: "c", label: "Three", disabled: true }]} activeId="a" onChange={() => {}} label="Views" />);
     expect(screen.getByRole("tablist", { name: "Views" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Three" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("marks the active tab and reports a change", async () => {
     const onChange = vi.fn();
-    render(<Tabs tabs={TABS} activeId="a" onChange={onChange} />);
+    render(<Tabs idPrefix="t" label="Views" tabs={TABS} activeId="a" onChange={onChange} />);
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
     await userEvent.click(screen.getByRole("tab", { name: "Two" }));
     expect(onChange).toHaveBeenCalledWith("b");
   });
 
   it("is the page strip by default", () => {
-    render(<Tabs tabs={TABS} activeId="a" onChange={() => {}} />);
+    render(<Tabs idPrefix="t" label="Views" tabs={TABS} activeId="a" onChange={() => {}} />);
     expect(screen.getByRole("tablist")).not.toHaveClass("cp-tabs--sub");
   });
 
   it("draws the sub variant as one segmented slab of equal parts, the picked one raised (P13)", () => {
-    render(<Tabs variant="sub" tabs={TABS} activeId="a" onChange={() => {}} />);
+    render(<Tabs idPrefix="t" label="Views" variant="sub" tabs={TABS} activeId="a" onChange={() => {}} />);
     expect(screen.getByRole("tablist")).toHaveClass("cp-tabs", "cp-tabs--sub");
     const sub = /\.cp-tabs--sub\s*\{([^}]*)\}/.exec(css)![1]!;
     // P13: a slab with no frame (was a framed strip).
@@ -111,17 +113,17 @@ describe("Tabs keyboard (C199)", () => {
   ];
 
   it("puts only the active tab in the tab order", () => {
-    render(<Tabs tabs={THREE} activeId="c" onChange={() => {}} />);
+    render(<Tabs idPrefix="t" label="Views" tabs={THREE} activeId="c" onChange={() => {}} />);
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "-1");
     expect(screen.getByRole("tab", { name: "Three" })).toHaveAttribute("tabindex", "0");
   });
 
   it("puts the first enabled tab in the tab order when the active id matches no enabled tab (S6)", () => {
-    const { rerender } = render(<Tabs tabs={THREE} activeId="gone" onChange={() => {}} />);
+    const { rerender } = render(<Tabs idPrefix="t" label="Views" tabs={THREE} activeId="gone" onChange={() => {}} />);
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "0");
     expect(screen.getByRole("tab", { name: "Three" })).toHaveAttribute("tabindex", "-1");
     // A disabled active tab is no stop either.
-    rerender(<Tabs tabs={THREE} activeId="b" onChange={() => {}} />);
+    rerender(<Tabs idPrefix="t" label="Views" tabs={THREE} activeId="b" onChange={() => {}} />);
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "0");
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("tabindex", "-1");
     expect(screen.getAllByRole("tab").filter((tab) => tab.getAttribute("tabindex") === "0")).toHaveLength(1);
@@ -129,7 +131,7 @@ describe("Tabs keyboard (C199)", () => {
 
   it("moves with the arrow keys, skipping a disabled tab, wrapping round, and picks the tab it lands on", async () => {
     const onChange = vi.fn();
-    render(<Tabs tabs={THREE} activeId="a" onChange={onChange} />);
+    render(<Tabs idPrefix="t" label="Views" tabs={THREE} activeId="a" onChange={onChange} />);
     screen.getByRole("tab", { name: "One" }).focus();
     await userEvent.keyboard("{ArrowRight}");
     expect(onChange).toHaveBeenLastCalledWith("c");
@@ -142,7 +144,7 @@ describe("Tabs keyboard (C199)", () => {
 
   it("goes to the first and the last tab with Home and End", async () => {
     const onChange = vi.fn();
-    render(<Tabs tabs={THREE} activeId="a" onChange={onChange} />);
+    render(<Tabs idPrefix="t" label="Views" tabs={THREE} activeId="a" onChange={onChange} />);
     screen.getByRole("tab", { name: "One" }).focus();
     await userEvent.keyboard("{End}");
     expect(onChange).toHaveBeenLastCalledWith("c");
@@ -152,7 +154,7 @@ describe("Tabs keyboard (C199)", () => {
 
   it("leaves other keys alone", async () => {
     const onChange = vi.fn();
-    render(<Tabs tabs={THREE} activeId="a" onChange={onChange} />);
+    render(<Tabs idPrefix="t" label="Views" tabs={THREE} activeId="a" onChange={onChange} />);
     screen.getByRole("tab", { name: "One" }).focus();
     await userEvent.keyboard("{ArrowDown}x");
     expect(onChange).not.toHaveBeenCalled();
@@ -175,7 +177,7 @@ describe("Tabs overflow (C27)", () => {
     define("clientWidth", 200);
     const scrollBy = vi.fn();
     Element.prototype.scrollBy = scrollBy;
-    const { container } = render(<Tabs variant="sub" tabs={TABS} activeId="a" onChange={() => {}} />);
+    const { container } = render(<Tabs idPrefix="t" label="Views" variant="sub" tabs={TABS} activeId="a" onChange={() => {}} />);
     const more = container.querySelector<HTMLElement>(".cp-tabs__more");
     expect(more).not.toBeNull();
     expect(more).toHaveAttribute("aria-hidden", "true");
@@ -189,14 +191,14 @@ describe("Tabs overflow (C27)", () => {
   it("draws nothing when the tabs fit", () => {
     define("scrollWidth", 200);
     define("clientWidth", 200);
-    const { container } = render(<Tabs variant="sub" tabs={TABS} activeId="a" onChange={() => {}} />);
+    const { container } = render(<Tabs idPrefix="t" label="Views" variant="sub" tabs={TABS} activeId="a" onChange={() => {}} />);
     expect(container.querySelector(".cp-tabs__more")).toBeNull();
   });
 
   it("draws nothing on the main strip", () => {
     define("scrollWidth", 600);
     define("clientWidth", 200);
-    const { container } = render(<Tabs tabs={TABS} activeId="a" onChange={() => {}} />);
+    const { container } = render(<Tabs idPrefix="t" label="Views" tabs={TABS} activeId="a" onChange={() => {}} />);
     expect(container.querySelector(".cp-tabs__more")).toBeNull();
   });
 });

@@ -6,7 +6,7 @@ function TabsDemo() {
   const [active, setActive] = useState("main");
   return (
     <div style={{ width: 420 }}>
-      <Tabs
+      <Tabs idPrefix="t" label="Views"
         tabs={[
           { id: "main", label: "Main" },
           { id: "history", label: "Past searches" },

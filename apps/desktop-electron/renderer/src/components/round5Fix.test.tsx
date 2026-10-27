@@ -159,7 +159,7 @@ describe("B6: the context menu says its groups and why an entry is off", () => {
 
 describe("B7: a tab count follows its name after a comma", () => {
   it("reads Missing files, 3", () => {
-    render(<Tabs tabs={[{ id: "m", label: "Missing files", detail: 3 }]} activeId="m" onChange={() => undefined} />);
+    render(<Tabs idPrefix="t" label="Views" tabs={[{ id: "m", label: "Missing files", detail: 3 }]} activeId="m" onChange={() => undefined} />);
     expect(screen.getByRole("tab")).toHaveAccessibleName("Missing files, 3");
   });
 });

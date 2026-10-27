@@ -23,11 +23,11 @@ interface TabsProps {
   variant?: "main" | "sub";
   /**
    * Wires the tabs to their panels: each tab gets `id` and `aria-controls`, and the page gives
-   * its panels the ids from `tabId` and `panelId`. Absent, no ids are written.
+   * its panels the ids from `tabId` and `panelId`. Required (M474).
    */
-  idPrefix?: string;
-  /** Names the tablist for a screen reader ("Library views"); give one wherever there is more than one strip (M474). */
-  label?: string;
+  idPrefix: string;
+  /** Names the tablist for a screen reader ("Library views"). Required, so every strip is named (M474). */
+  label: string;
 }
 
 /** The id of a tab's button, for a panel's `aria-labelledby`. */
@@ -110,8 +110,8 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix, lab
           key={tab.id}
           type="button"
           role="tab"
-          id={idPrefix ? tabId(idPrefix, tab.id) : undefined}
-          aria-controls={idPrefix ? panelId(idPrefix, tab.id) : undefined}
+          id={tabId(idPrefix, tab.id)}
+          aria-controls={panelId(idPrefix, tab.id)}
           aria-selected={tab.id === activeId}
           aria-disabled={tab.disabled ? true : undefined}
           tabIndex={tab.id === stop ? 0 : -1}

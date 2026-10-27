@@ -243,6 +243,7 @@ export function StatisticsScreen() {
         answered !== null && !libraryEmpty ? (
           <Tabs
             idPrefix="statistics"
+            label="Statistics views"
             activeId={tab}
             onChange={(id) => chooseTab(id as TabId)}
             tabs={[

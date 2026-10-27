@@ -390,7 +390,7 @@ perKind(
   "state",
   "the selected tab's underline",
   () => ({
-    ui: <Tabs tabs={[{ id: "a", label: "A" }, { id: "b", label: "B" }]} activeId="a" onChange={() => {}} />,
+    ui: <Tabs idPrefix="t" label="Views" tabs={[{ id: "a", label: "A" }, { id: "b", label: "B" }]} activeId="a" onChange={() => {}} />,
     target: first(".cp-tabs__tab--active"),
     pseudo: "::after",
   }),
@@ -402,7 +402,7 @@ perKind(
 
 it("state: the newly selected tab itself is drawn at once, never from nothing", () => {
   configure("state", "on");
-  const { container } = mount(<Tabs tabs={[{ id: "a", label: "A" }, { id: "b", label: "B" }]} activeId="a" onChange={() => {}} />);
+  const { container } = mount(<Tabs idPrefix="t" label="Views" tabs={[{ id: "a", label: "A" }, { id: "b", label: "B" }]} activeId="a" onChange={() => {}} />);
   expect(motionOf(container.querySelector(".cp-tabs__tab--active")!, null, "state")).toEqual({ animation: null, transition: null });
 });
 
