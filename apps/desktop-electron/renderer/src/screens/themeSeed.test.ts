@@ -88,9 +88,10 @@ describe("a custom theme started from a built-in one (C95)", () => {
     expect(custom["border-muted"]).toBe(shown["border-muted"]);
   });
 
-  it("falls back to the line colour for a theme that sets no table line", () => {
+  it("copies the table line the theme sets (M319: every theme tunes its own, unmixed)", () => {
     showTheme("neoDark");
-    expect(seedFromPage().tokens["row-divider"]).toBe(seedFromPage().tokens["border-muted"]);
+    expect(seedFromPage().tokens["row-divider"]).toBe("#3b3b41");
+    expect(seedFromPage().tokens["row-divider"]).not.toBe(seedFromPage().tokens["border-muted"]);
   });
 
   it("is kept with a theme made from the one on screen, and not with a re-derived one", () => {

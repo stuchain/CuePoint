@@ -59,29 +59,25 @@
 
 /*
  * Windows high contrast (M463). Forced colours replace every background and tint, so a selected row,
- * the active sub-tab, the playing bar, the chosen wheel wedge and the selection bar, which are all
+ * the active sub-tab, the chosen wheel wedge and the selection bar, which are all
  * drawn as fills, vanish. Each gets a system-colour line instead, which forced colours keep.
  */
 @media (forced-colors: active) {
   .track-table__row--selected,
   .track-table__row--selected:hover {
-    outline: var(--selected-bar-width) solid Highlight;
-    outline-offset: calc(-1 * var(--selected-bar-width));
+    border-inline-start: var(--selected-bar-width) solid Highlight;
   }
 
   .track-table__row--playing:not(.track-table__row--selected) {
-    outline: var(--hairline) solid CanvasText;
-    outline-offset: calc(-1 * var(--hairline));
+    border-inline-start: var(--hairline) solid CanvasText;
   }
 
   .cp-tabs__tab--active,
   .cp-tabs--sub .cp-tabs__tab--active {
     border: var(--tab-underline) solid Highlight;
-    outline: var(--hairline) solid Highlight;
   }
 
-  .cp-selection-bar,
-  .cp-player-bar {
+  .cp-selection-bar {
     border: var(--hairline) solid CanvasText;
   }
 
