@@ -120,7 +120,7 @@ the small Help menu CuePoint used to draw inside the window.
 - **CuePoint** (on a Mac only): **About CuePoint**, **Settings...** (**Cmd+,**) and
   **Quit**.
 - **File**: **Import a Rekordbox file...** (**Ctrl+O**) opens the Library and asks for a
-  Rekordbox XML file (the same as **Import a Rekordbox file…** in Settings →
+  Rekordbox XML file (the same as **Change file…** in Settings →
   Rekordbox); **Check for
   changes** starts the same check. Exporting is not here: it stays on the Library
   and on a Collection's or Set's own bar, because a menu item has no scope.
@@ -315,37 +315,41 @@ on the left when the window is wide) that scroll to each: **Appearance**,
 **Motion**, **Playback**, **Waveforms**, **Beatport**, **Rekordbox**,
 **Privacy** and **About & updates**. A setting that applies the moment you change
 it shows a small **Saved** beside it for a couple of seconds. Every section reads
-the same way: a status line first (what stands now), then its settings, then one
-row of buttons with a quiet **Reset** at the right (**Reset appearance**,
-**Reset motion**, **Reset playback**, **Reset waveforms**, **Reset Beatport**,
-**Reset privacy**); each acts at once and offers **Undo**. Rekordbox and About &
-updates hold no settings, so they have no Reset. A field is as wide as it needs
-to be, with its name above it. The link for the section you chose stays marked
+the same way: a status line first (what stands now, with a small status icon),
+then its settings. While anything in a section differs from its default, a quiet
+**Reset to defaults** shows at the right of the section's title; it acts at once,
+and the message that follows ("Motion reset") offers **Undo**. Rekordbox and
+About & updates hold no settings, so they have no reset. A field is as wide as it
+needs to be, with its name above it. The link for the section you are reading is
+marked by its text and a bar at its edge, and the link you chose stays marked
 until you scroll, even for the last sections that cannot reach the top of the
-page. The line under the title says which version of CuePoint this is. **About &
-updates** shows the version and has **Check for updates**, **What's new** and
-**Getting started**, which opens the first-run walkthrough again; when updates
-cannot be checked, the reason is written above the buttons.
+page. **About & updates** shows the version and has **Check for updates** and
+**What's new**, then **Get help**, **Keyboard shortcuts**, **About CuePoint** and
+**Getting started** (the first-run walkthrough again), the same as the Help menu;
+when updates cannot be checked, the reason is written above the buttons.
 
 ## Motion
 
-**Settings → Motion** is one choice: **On**, **Off** or **Custom**. **On** (the
-default) turns every kind of movement on and **Off** turns every kind off.
-**Custom** is chosen for you when the kinds differ, and choosing it yourself
-changes nothing until you change a kind. **Choose each kind…** opens the list
-(it opens by itself when Custom is the state): a switch for each of ten kinds of
-movement, in three groups. **When you act**: **Button presses**, **Things you
+**Settings → Motion** is one choice: **Follow system**, **On**, **Off** or
+**Custom**. **Follow system** (the default) turns every kind of movement on
+unless your system asks for less; its label says what the system asks now
+("Follow system (now: reduced)"). **On** turns every kind on whatever the system
+asks, and **Off** turns every kind off. **Custom** is chosen for you when the
+kinds differ, and choosing it yourself changes nothing until you change a kind.
+**Custom** shows the list: a switch for each of ten kinds of movement, in three
+groups. **When you act**: **Button presses**, **Things you
 drag and drop** and **Hover and keyboard focus**. **When things change**:
 **Changing state**, **Opening and closing panels and dialogs**, **Changing
 page**, **Moving between views** and **Alerts and confirmations**. **While you
 wait or scroll**: **Loading** and **Scrolling**. Each switch has a line saying
 what moves, and a small square beside it that moves once when you turn the
-switch on. **Reset motion** (which acts at once, and offers **Undo**) turns
-them all back on.
+switch on. **Reset to defaults** (which acts at once, and offers **Undo**) goes
+back to **Follow system** with them all on.
 
-The first line says whether your system's Reduce motion setting is on. While it
-is, nothing moves, even with **On** chosen, and motion works again as soon as you
-turn it off. Turning a kind off never hides anything: you still see the same
+The first line says whether your system is set to reduce animations. While it
+is and **Follow system** is chosen, nothing moves, and motion works again as soon
+as you turn the system setting off or choose **On**. **Custom** keeps whichever
+of the two you chose last. Turning a kind off never hides anything: you still see the same
 words and states, just without the movement.
 
 What opens, closes or changes the page (pages, dialogs, menus, filter lists,
@@ -360,9 +364,9 @@ ever stepped. Here is where each kind shows:
 - **Things you drag and drop**: a row you pick up dims and shifts aside, a row
   you drop settles into its place, the queue's drop marker steps in, and a
   column's resize handle shows a line while you hover or drag it.
-- **Hover and keyboard focus**: buttons lift a notch under the pointer, sidebar and
-  Settings links lean toward it, a row in a track table shows a bar on its edge,
-  and a control steps into its focus ring.
+- **Hover and keyboard focus**: a row in a track table shows a bar on its edge
+  under the pointer, and a control steps into its focus ring. Nothing else moves
+  under the pointer.
 - **Changing state**: a badge that changes kind or words steps once, the tab you
   pick is lit at once while its underline grows out from the middle, and a section
   of Track details slides open when you open it.
@@ -387,12 +391,16 @@ ever stepped. Here is where each kind shows:
 
 ## Size and theme
 
-**Settings → Appearance** has two choices, both remembered. **Active theme** is
+**Settings → Appearance** has two choices, both remembered. **Theme** is
 **Neo dark**, **Retro 16-bit**, **Classic**, **Club neon** or **Muted**, or a
-custom theme you made: **Create custom theme…** asks for nine colors, and the
-borders are made from them. The editor opens on the colors you are using now and
-changes nothing in the app until you change a color, which then previews live;
-**Cancel** puts everything back. **Delete** asks first. **Size of text and
+custom theme you made. **Create custom theme…** opens the editor on the page,
+under your custom themes: nine colors, each with a swatch that opens the color
+picker and a hex code you can type (such as `#7c5cff`), and the borders are made
+from them. The editor opens on the colors you are using now and changes nothing
+in the app until you change a color, which then previews live, undimmed;
+**Cancel** puts everything back. The custom theme in use says **In use** where
+the others have **Apply**, and each has a **⋯** menu with **Edit…** and
+**Delete…** (which asks first). **Size of text and
 controls** is **Extra small (1×)**, **Small (1.25×)**, **Medium (1.5×)** (the default),
 **Large (2×)** or **Extra large (3×)**. Table rows follow the size, so
 the text in them is never cut. A size that would leave too little room for the
@@ -404,15 +412,15 @@ at Medium otherwise (at Extra small if Small would be too big too). If you chose
 before, or you updated from an earlier version, CuePoint keeps it, and opens at
 Medium if you never chose one.
 
-**Tables** holds two more choices. **Row density** is **Compact (26 px)** (the default) or
-**Roomy (32 px)**, at the default size: rows are as tall as the text size times the density, so a Compact
-Library shows many more tracks than before. **Color keys** (on) draws each key
+**Tables** holds more choices. **Row density** is **Compact** (the default) or
+**Roomy**: rows are as tall as the text size times the density, so a Compact
+Library shows many more tracks than before. **Color key chips** (on) draws each key
 as a chip in its Camelot color; off, keys are plain text. **Keys written as** is
 **Camelot (8A)** (the default), **Musical (Am)** or **Both (8A · Am)**: it changes how a key is
 written everywhere it is shown (tables, the wheel, the player bar, Prepare and Statistics) and
 nothing else, so files and exports keep their own notation and a chip keeps its Camelot color.
 
-**Reset appearance** sets Neo dark at the default size, Compact rows, colored keys and Camelot keys at once, and the
+**Reset to defaults** sets Neo dark at the default size, Compact rows, colored keys and Camelot keys at once, and the
 message that follows has **Undo**. Your custom themes are kept.
 
 ## Privacy and error reports

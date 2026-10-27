@@ -14,7 +14,7 @@ import a collection first.
 > its running order, and a set list file carries the times only in its text and
 > CSV forms. See [Taking a Set out of CuePoint](#taking-a-set-out-of-cuepoint).
 >
-> **Playback plays whole tracks.** Playing a Set plays its entries in order
+> **Playback plays whole tracks.** Playing a Set plays its tracks in order
 > through the ordinary player, each from its start to its end. The planned in
 > and out times are your plan, not instructions to the player: nothing starts,
 > stops or crossfades at them.
@@ -32,24 +32,25 @@ twice — and **each time it plays is its own entry**, with its own times and it
 own note. The table marks a track played again with a small repeat mark beside its number, and
 its title says where else it plays.
 
-A Set holds at most 1,000 entries. A Collection holds larger lists.
+A Set holds at most 1,000 tracks, counting each repeat. A Collection holds larger lists.
 
 ### Making a Set
 
-- **New Set…**, in the **Set** menu in Prepare's header (it works with a
-  Set open) or **Set** in the **+ New** menu at the top of the Library's
-  Collections section, opens the **New Set** dialog: name it, choose the folder and
-  press **Create the Set** to make an empty Set there.
-- **New Set from…** copies the tracks of something you already have into a new
-  Set, as its one chapter:
+- **New Set**, in the menu of the Set's name at the top of Prepare, makes an empty
+  Set called "New Set" at once and asks for its name (**Name the Set**, then
+  **Save**). In the Library, **Set** in the **+ New** menu at the top of the
+  Collections section adds a "New Set" row in the tree to name in place, with
+  **Create**.
+- **New Set from…** (on Prepare, **New Set from a list…**) copies the tracks of
+  something you already have into a new Set, as its one chapter:
   - a **Collection**, in its order and with any repeats;
   - a **Smart Collection**, as the tracks it matches right now, in its saved
     order — later matches join the Smart Collection, not the Set;
   - a **Rekordbox playlist**, in its order — refreshing from Rekordbox never
     changes the Set.
 
-  On the Prepare page, **Set → New Set from…** asks what to copy first. Either way
-  the dialog's button is **Create the Set**. In the
+  On the Prepare page, **New Set from a list…** asks what to copy, the name and
+  the folder in one dialog. Either way the dialog's button is **Create**. In the
   Library, right-click a Collection, a Smart Collection or a Rekordbox playlist
   and choose **New Set from…**.
 - **New Set from these…**, in the Library's right-click menu and the selection
@@ -64,9 +65,11 @@ from stays exactly as it was, and nothing links the two afterwards.
 
 ### Opening a Set
 
-The sidebar's **Prepare** opens the Set you had open last. The picker at the
-top of the page opens any other, and a Set in the Library's tree has **Open in
-Prepare** on its right-click menu. The Library's Track details lists the Sets a
+The sidebar's **Prepare** opens the Set you had open last. The Set's name is the
+page's title: click it for a menu that lists your Sets under **Open a Set**, and
+holds **Rename…**, **Notes…**, **New Set**, **New Set from a list…** and
+**Delete…**. A Set in the Library's tree has **Open in Prepare** on its
+right-click menu. The Library's Track details lists the Sets a
 track is in, and each opens there too.
 
 ### Adding tracks
@@ -77,22 +80,22 @@ track is in, and each opens there too.
   counted, as a Collection does.
 - **On the Prepare page**: from the panel beside the Set — see
   [Suggestions and the Library tab](#suggestions-and-the-library-tab).
-- **A repeat**: select an entry and choose **Repeat after**, or right-click it
-  and choose **Insert a repeat after**.
+- **A repeat**: select a track and choose **Repeat** (it plays the track again
+  after itself), on its row or its right-click menu.
 
 ### Changing the running order
 
-- **Drag** an entry to a new place. Dropping on the top half of an entry puts it
-  before that entry, the bottom half after it, and on a chapter's heading at the
+- **Drag** a track to a new place. Dropping on the top half of a row puts it
+  before that track, the bottom half after it, and on a chapter's heading at the
   start of that chapter.
 - **↑** and **↓** (Move up and Move down), on the selected row (also Alt+↑ and
-  Alt+↓ while the table has focus, as in the queue), move the selected entries
-  one place. At the edge of a chapter the entry crosses into the next one first.
+  Alt+↓ while the table has focus, as in the queue), move the selected tracks
+  one place. At the edge of a chapter the track crosses into the next one first.
   With several selected, they move together.
 - **Remove**, among the same buttons (also Delete), or **Remove from Set** on an
-  entry's right-click menu, removes the selected entries and nothing else. No
+  track's right-click menu, removes the selected tracks and nothing else. No
   track is ever deleted. A toast says what was removed and offers **Undo**, which puts
-  the entries back where they were, with their times and notes (a warning you had
+  them back where they were, with their times and notes (a warning you had
   marked OK is not brought back).
 
 Click, Ctrl-click and Shift-click select rows, **Ctrl+A** (Cmd+A on a Mac) selects every
@@ -102,11 +105,10 @@ selects the row first. The menu is the one every track list has (**Play**, **Pla
 Set's own edits under a small **This page** heading.
 
 The buttons are at the right end of the selected row, so they push nothing down.
-With nothing selected there are none; with several entries selected they are on
-the one you clicked last, and act on all of them (hover one: "Move 3 entries
+With nothing selected there are none; with several tracks selected they are on
+the one you clicked last, and act on all of them (hover one: "Move 3 tracks
 up"). One that cannot act says why ("Already first in the Set"). They are
-**↑**, **↓**, **Chapter here** (Start a chapter here), **Repeat after** and
-**Remove**; each is a Tab stop (Tab from the table goes to them) and keeps its
+**↑**, **↓**, **New chapter**, **Repeat** and **Remove**; each is a Tab stop (Tab from the table goes to them) and keeps its
 full name for a screen reader. They never cover the row's number or the first
 six or so characters of the title (the rest of the selected row's title is shortened
 with "…" to make room): in a moderately narrow pane, which includes the default
@@ -124,63 +126,66 @@ running order with its repeats is the Prepare page's.
 
 ## The page
 
-The header is titled **Prepare**, with the Set picker beside the title naming the Set
-open. Its three buttons are **Play Set**, **Set** and **View**. Under them, one line
-says how many tracks the Set has, its planned running time (left out until you type
-a time), and how many warnings its checks found ("32 tracks · 19 warnings"; hover
-the time for how many entries have no time, and the warnings for what they are and
-how many you marked OK), and — when it applies — "Files not checked" with
+The header's title is the Set's name, with a small arrow: it opens the Set's menu
+(see [Opening a Set](#opening-a-set)). Its buttons are **View**, **Export ▾** (the
+main one) and **Play Set**. Under them, one line says how many tracks the Set has,
+its planned running time (left out until you type a time), and how many warnings
+its checks found ("32 tracks · 1:58:40 · 19 warnings"; hover the time for how many
+tracks have no time, and the warnings for what they are and how many you marked
+OK). The warnings count is a link: it selects the first track with a warning you
+have not marked OK, and — when it applies — "Files not checked" with
 **Missing files ›**, which opens the [Clean](clean.md) page's Missing files (Prepare
 no longer runs the file check itself; run **Check every file** there), and "3 without
-key" (hover for the whole sentence). A missing key is not a warning: those entries
+key" (hover for the whole sentence). A missing key is not a warning: those tracks
 are simply not checked for key. The counts shorten to fit (hover them for the whole
-line); the link never does. The buttons for the selected entries are on the selected
+line); the link never does. The buttons for the selected tracks are on the selected
 row, not here.
 
-**Set** holds **New Set…**, **New Set from…**, **Notes…** (notes for the whole Set:
-the venue, the set times, anything you want to remember; it reads **Notes (1)…**
-once the Set has some), and then **Save set list…**, **Copy set list** and
-**Export to Rekordbox…**. **View** has three ticked items, **Tempo lane**,
-**Transition strip** and **Mix in and Mix out**; the label never changes, the tick says
+The Set's menu holds **Notes…** (notes for the whole Set: the venue, the set
+times, anything you want to remember; it reads **Notes (1)…** once the Set has
+some). **Export** holds **Export to Rekordbox…**, **Save set list…** and **Copy
+set list**. **View** has three ticked items, **Tempo and key lane**, **Transition
+strip** and **Mix-in and mix-out columns**; the label never changes, the tick says
 whether it is on, and the menu stays open so you can set several. The small
 **Columns…** button in the table's header corner chooses the table's columns.
 
-The Set's table has one row per entry. It opens with its number, the track
-(**Title** and **Artist**), its **Key** (a coloured chip, the colour of its place on the Camelot wheel), **BPM**
-and how long it **Plays for**. The columns kept out of the way until you want them are
-**Fit**, **Starts at**, the **Mix in** and **Mix out** times you plan, the **Transition**
-into it and its **Note**: **View ▸ Mix in and Mix out** brings both times in at once, and
+The Set's table has one row each time a track plays. It opens with its number, the track
+(**Title** and **Artist**), **BPM**, its **Key** (a coloured chip, the colour of its place on the Camelot wheel),
+how long it plays (**Time**), its **Mix in** and **Fit**. The columns kept out of the way until you want them are
+**Starts at**, the **Mix out** time you plan, the **Transition**
+into it and its **Note**: **View ▸ Mix-in and mix-out columns** brings both times in at once, and
 **Columns…** in the header corner shows or hides the others. **Fit** is a dot for how
 well the track mixes in from the one before: a filled dot means key and tempo both fit, a
 half dot means one of them is off, a ring means both are. Hover the dot for what is off; a
 warning you have marked OK counts as fit, and the first track has no dot, as
 nothing comes before it. Hover a heading for
 what it means. Each chapter has a heading row that states the chapter's facts
-under the same columns (under **Fit** it counts the chapter's open warnings). Nothing sorts: the order is the Set. A chapter's heading
-carries one button, **Edit…**; the chapter's dialog has **Move up**, **Move down**
-and **Delete chapter…**.
+under the same columns (under **Fit** it counts the chapter's open warnings). Nothing sorts: the order is the Set. A chapter's
+name in its heading is the button that opens its dialog, which has **Move up**,
+**Move down** and **Delete chapter…**.
 
 Beside the Set is the panel you add tracks from. Drag the divider between them,
 or move it with the arrow keys; the width you choose is remembered.
 
-Selecting an entry adds **In this Set** to Track details on the right: the
-entry's times, note and chapter, and what the checks found about it.
+Selecting a track adds **In this Set** to Track details on the right: its
+times, note and chapter, and what the checks found about it.
 
 ## Chapters
 
 A chapter is a part of the Set, such as a warm-up, a peak or a close, with its own
-target length and tempo range. Every entry
-belongs to exactly one chapter, and a chapter's entries are always together in
+target length and tempo range. Every track
+belongs to exactly one chapter, and a chapter's tracks are always together in
 the running order.
 
-- **Start a chapter here**, on the line under the header or on an entry's
-  right-click menu, splits the Set there (the first entry, with several
-  selected): that track begins a new chapter.
-- A chapter's heading row has **Edit…**, right after the chapter's name (or double-click the heading, or choose
-  **Edit chapter…** on its right-click menu). The dialog is titled **Edit chapter
+- **New chapter**, on the selected row or a track's right-click menu ("Start a
+  new chapter at this track"), splits the Set there (the first track, with
+  several selected): that track begins a new chapter.
+- A chapter's name in its heading row is a button that opens its dialog (or
+  double-click the heading, or choose **Edit chapter…** on its right-click menu,
+  which also has **Move chapter up**, **Move chapter down** and **Delete chapter…**). The dialog is titled **Edit chapter
   “Name”**, and a time it cannot read is marked on the **Target length** field itself. Its footer has **Move up**
-  and **Move down**, which move the chapter — its entries move with it — and
-  **Delete chapter…** (red, alone on the left), which says which chapter its entries join first. A Set always keeps one chapter, so the last cannot be deleted.
+  and **Move down**, which move the chapter — its tracks move with it — and
+  **Delete chapter…** (red, alone on the left), which says which chapter its tracks join first. A Set always keeps one chapter, so the last cannot be deleted.
 - A Set with a single unnamed chapter shows no heading at all: it is simply a
   list.
 
@@ -194,7 +199,7 @@ range.
 
 Each entry can carry a planned **mix in** time and **mix out** time: where in the
 track you plan to bring it in and take it out. Type them straight into the
-table's **Mix in** and **Mix out** cells (choose **View ▸ Mix in and Mix out** first), or under **In this Set** in Track
+table's **Mix in** and **Mix out** cells (choose **View ▸ Mix-in and mix-out columns** for **Mix out**), or under **In this Set** in Track
 details, as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00`.
 In the table, click the cell (or press Enter or F2 on the selected entry); Enter or
 Tab saves and moves to the next cell (Shift+Tab goes back), Esc drops what you
@@ -207,7 +212,7 @@ under the header says, the reason first and the entry's name last ("Not saved:
 … (Warm One)"), while the cell stays open to correct.
 
 - **An entry is timed when it has an out time.** It plays for its out time less
-  its in time, which the **Plays for** column shows.
+  its in time, which the **Time** column shows.
 - **The running time counts timed entries only**: "9:00 planned", and it says how
   many it did not count ("4 without times") when you hover it. It is left out while
   no time is typed ("No times planned yet", in the track count's hover).
@@ -262,12 +267,12 @@ The panel beside the Set fills it from two places, on two tabs:
   searches.
 
 **The insertion point** is where a track from either tab goes: the gap after
-the entry selected in the Set, between it and the next one — or the end of the
-Set with nothing selected. A line at the top of the panel, above the tabs, names it:
-"Inserting: between “Warm Two” and “Warm One”, in Warm-up" (it wraps to a second line when the panel is narrow). A track inserted there joins the chapter
+the track selected in the Set, between it and the next one — or the end of the
+Set with nothing selected. One line at the top of the panel, above the tabs, names it:
+"Insert between “Warm Two” and “Warm One” · Warm-up". A track inserted there joins the chapter
 of the entry before it.
 
-**From** chooses where both tabs look: your whole library, a Rekordbox playlist
+**From** chooses where both tabs look: all tracks, a Rekordbox playlist
 or folder, a Collection, a Smart Collection or a Set. The page remembers the
 choice.
 
@@ -282,8 +287,9 @@ key's relation on the wheel ("Same key", "Next key", "Relative key"), and a
 shared genre, label or artist. It uses the same rule as the warnings, so a track
 suggested for a gap never has a tempo warning there. Key only adds points, so a
 suggestion can still clash in key, and its reasons say so. A track already in
-the Set is marked with a small repeat icon: "Already in this Set once: inserting
-it plays it again". The same library gives the same list every time. Nothing in
+the Set is marked **In Set** at the end of its title: "Already in this Set once:
+inserting it plays it again". The Library tab marks the tracks the Set holds the
+same way. The same library gives the same list every time. Nothing in
 the panel scrolls sideways.
 
 When nothing fits both sides, the panel says so: "Nothing fits between “Build”
@@ -297,9 +303,13 @@ first track; add that one from the Library tab (the empty state has a button tha
 panel's **Suggestions** and **Library** tabs are the small tabs used inside panels everywhere. Hover anything
 cut short or explained by a tip (a warning, a reason, a lane's column) to see the full words in the app's own tip.
 
+**Searching.** The Library tab's box finds tracks by title or artist, and also
+by a key ("8A") or a BPM ("124"), as its placeholder says. **Ctrl+F** (Cmd+F on a
+Mac) anywhere on the page opens the Library tab and puts the cursor in its box.
+
 **Putting a track in.** Select one or more rows and choose **Insert here**
-(**Insert 3 here** for three; it reads **Pick tracks** until you select
-one, and clicking it takes you to the table), or drag them into the Set. Drop anywhere in the Set table, even in the empty space
+(**Insert 3 here** for three; until you select one it is greyed, and pointing
+at it says "Select tracks below first"), or drag them into the Set. Drop anywhere in the Set table, even in the empty space
 below the last row: while you drag, the Set is outlined and says “Drop here to add to” its
 name, and a line shows where the tracks will land (above a chapter's heading means the end
 of the chapter before, and the line names the chapter). Rows in the Set have a small grip
@@ -313,7 +323,7 @@ Each tab keeps its search, sort, scroll and selection while you look at the othe
 
 ## The tempo and key lanes
 
-**View → Tempo lane** draws the Set's shape above its table:
+**View → Tempo and key lane** draws the Set's shape above its table:
 
 - **Tempo**: each entry's BPM as a mark, stepping from one to the next, so a
   jump is a step you can see.
@@ -381,7 +391,7 @@ to queue** put entries in the queue without interrupting what is playing.
 
 ### Set lists
 
-**Set → Save set list…** writes the Set as a file, to the place you choose
+**Export → Save set list…** writes the Set as a file, to the place you choose
 in the save dialog. The file's extension chooses the form:
 
 - **Text** (`.txt`): the Set's name and running time, then each chapter as a
@@ -394,13 +404,13 @@ in the save dialog. The file's extension chooses the form:
 - **M3U8** (`.m3u8`): a playlist other players open, in running order with
   repeats, with each chapter as a comment line. It carries no times.
 
-**Set → Copy set list** puts the text form on the clipboard, for a message
+**Export → Copy set list** puts the text form on the clipboard, for a message
 or a post. A missing file is listed, and counted, never left out. Each save is
 recorded in **Activity**. The Library's right-click menu on a Set has both too.
 
 ### Rekordbox
 
-**Set → Export to Rekordbox…** opens the export with the Set ticked. The
+**Export → Export to Rekordbox…** opens the export with the Set ticked. The
 Set is written as **one playlist**, in its running order with its repeats, under
 the export's `CuePoint` folder at the folder path it has in CuePoint. Its
 chapters, times, notes and warnings marked OK are not written: the playlist is

@@ -8444,3 +8444,77 @@ player's facts line has no dots beside the key chip, which keeps its own padding
 details leaves `--space-lg` between Edit values and its sections. L9 now measures the Library at
 1,024, 1,366 and 1,920 px from 1x to 3x (3x skipped at 1,024, where the table is 315 px).
 Decided with: User ("go with recommended", Q7 to Q10) · 2026-10-27
+
+## DEC-302 — Round 3 Polish: the Owner's Picks D1 to D36 (Amends DEC-083, DEC-087, DEC-163, DEC-204, DEC-239, DEC-246, DEC-247, DEC-248, DEC-249, DEC-250, DEC-253, DEC-255, DEC-257, DEC-266, DEC-268, DEC-269, DEC-280, DEC-285, DEC-286, DEC-287, DEC-288, DEC-290, DEC-292, DEC-297, DEC-299, DEC-301)
+
+**Status**: Accepted · **Related**: DEC-299, DEC-301, `changes/polish/sweeps/MERGED.md` (523 items, M1 to M523), `changes/polish/round3/` (PICKS.md, BUILD-PLAN.md, handoffs/)
+
+**Context**: Nine review passes (six in the cloud, three on a Windows PC at 1.5x) found 890 problems,
+merged to 523: 328 plain fixes and 195 that needed a call, grouped into decision blocks D1 to D36
+with rendered mockups. 27 were release blockers. Built in three waves of file-disjoint packages.
+
+**Decision** (★ unless noted):
+- **D4** Floating surfaces cast 0-blur offset shadows (2×scale; dialogs 8×scale); sticky and raised
+  edges are a hard hairline, still always on (amends DEC-299 P12).
+- **D6 = B** The Camelot wheel stays smooth with its labels in the pixel face and a legend
+  "Brighter = more tracks"; it is the one smooth data graphic (amends DEC-299 P2).
+- **D5, D12** No play cell in any row: double-click or Enter plays or previews everywhere, Discover
+  too (amends DEC-299's play ring, DEC-269). BPM sits before Key; label, rating, album, release
+  date and sources start hidden (stored orders migrate). Thumbs, dots and the Fit ring are square;
+  radios stay round.
+- **D9, D10** One container per role, panes 20 apart, side heads one header tall, two control
+  sizes, a symmetric gutter, a hairline that stays 1 px at every scale.
+- **D14** The breadcrumb and Set notice sit in the summary line; the source shows only on All
+  tracks, as a file menu (Check for changes, Import a different file…, Copy path) with a check chip
+  (amends DEC-290 and FLW-11's "never a menu": the file is a menu, Export is not).
+- **D15** Select all lives in the selection bar; Manage tags… only in Add filter (amends DEC-297 D7,
+  DEC-286, DEC-301 W1's fold step).
+- **D16** Track details has no action row (the selection bar is the one home), three tabs, opens
+  on first selection and stays open, and folds when the window is too narrow for the table
+  (amends DEC-285, DEC-246, DEC-280; its section heads use the shared disclosure, DEC-301 L7/W4).
+- **D17** Match opens on the To-check list when anything waits; Clean is the one place a match
+  starts (`openClean`); a second match queues (M510); "Past matches"; "All tracks" (amends DEC-292,
+  DEC-297 D13).
+- **D18** Duplicates are grouped by track, with a Keep that is stored as a dismissal and deletes
+  nothing.
+- **D19** Keys has three matching panes; **D20 (as picked)** Discover keeps cards and runs first.
+- **D21** The Set's name is Prepare's title and opens the Set menu; one Export ⌄ main action; Play
+  Set grey; row actions in a fixed end cell; "New chapter" and "Repeat"; one sub-tab slab
+  (amends DEC-288, DEC-249, DEC-299). Sources for New Set from a list are Collections only: the
+  engine refuses a Set as a source. The source panel's head is a row tall, not a page head.
+- **D22** Statistics tabs Overview / Plays / Health; Health is read-only and links to Clean, and
+  Read artwork moves to Clean's Missing files (amends DEC-163).
+- **D23** Every Reset reads "Reset to defaults" and shows only when something differs; Motion has
+  Follow system, On, Off and Custom (Follow system stored apart from the switches).
+- **D24** Exports to Rekordbox use one fixed name, "CuePoint Export.xml", with a dated local-time
+  backup written before the file is replaced and removed if the replace fails; the source-path
+  refusal stays (amends DEC-083, DEC-247). Getting started closes with × or Escape and First steps
+  waits for it (amends DEC-287, DEC-248).
+- **D25** Activity leaves the sidebar for the status strip (amends DEC-266).
+- **D26** Menus use one grey active option; Rate and Favorite are at the context menu's top level
+  (amends DEC-255, DEC-286); popovers draw a bottom hairline while more is below.
+- **D27** Play is framed grey with a violet icon, filled only while playing; the transport is
+  ~36 px; the zoomed strip starts at the content edge and shows on Library, Prepare and Keys only,
+  up to 2× text (amends DEC-299, DEC-297 C16c, DEC-257, DEC-250, DEC-114; ADR-009 note).
+- **D28** The playing title is `--link`; the info hue is distinct per theme, held by a hue-distance
+  test (amends DEC-268, DEC-253).
+- **D29** Filled buttons keep a 2 px ground-coloured focus offset; dividers unmixed, two line roles
+  (amends DEC-253, DEC-299 P67).
+- **D31** The offline page is `inert`; buttons and rows use the arrow cursor, one disabled cursor.
+- **D33** "…" only when the next step asks for input first (menus, openers; `format/words.ts`).
+- **D34** Space always plays; Ctrl+Space ticks; F6 cycles panes (amends DEC-239).
+- **D35** The menu bar auto-hides (Alt shows it) and follows the theme; File gains Export to
+  Rekordbox…, and Edit › Undo (Ctrl+Z) undoes typing in a field or presses the newest toast's Undo
+  (amends DEC-204, DEC-087).
+- **D36** The Library pane and Keys' Sources pane meet the sidebar; their words stay on the title
+  edge (extends DEC-301 L1).
+- **Also decided as picked**: D1, D2, D3, D7 (B: a native date popup behind an app-drawn field),
+  D8, D11, D13 (a hard tab edge replaces the C27 fade), D30 (row hover a 6% shade), D32 (empty
+  states start a third of the free room down), M376 (reduced motion keeps the playhead moving),
+  M501 (the window title names the page or the playing track).
+
+**Implications**: Guards holding old values moved with a note naming the M id or D block; none was
+deleted or skipped. Real-library and Windows display checks are still owed (Clean M139, M140, M152,
+M160, M476, M506; 125% and 150% system scale for M493/M495/M496). Deferred: M42, M316, M515, M521.
+
+**Decided with**: User (picks 27 Oct 2026: "all the other use recommended", D6 B, D20 as now, D36 A) · **Date**: 2026-10-27

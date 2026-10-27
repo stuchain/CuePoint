@@ -25,9 +25,9 @@ Three things hold everywhere on this page:
 - **Tags written to files reach Rekordbox only when Rekordbox re-reads them.**
   Until you choose **Reload Tag** in Rekordbox, it keeps showing the old values.
 
-**Where the old tabs went.** The count of everything that may need you, and
-**Read artwork**, are in **Statistics ▸ Health** (an old link to Clean's Health
-opens it); starting or resuming waveform drawing is in **Settings ▸ Waveforms**. Changing values is done where the tracks are: **Edit values…** and **Copy
+**Where the old tabs went.** The count of everything that may need you is in
+**Statistics ▸ Health** (an old link to Clean's Health opens it); **Read artwork**
+is on **Missing files**; starting or resuming waveform drawing is in **Settings ▸ Waveforms**. Changing values is done where the tracks are: **Edit values…** and **Copy
 Beatport values…** in the Library's menus, in Track details and in Keys open
 their dialogs in place, and an old link to Fix values opens the Library.
 
@@ -304,6 +304,10 @@ is missing.
 
 A drive that is not connected is reported once, not as thousands of missing
 files. Plug it in and check again.
+
+**Read artwork** (beside the check, **Read artwork again** once it has run) reads
+the pictures stored inside your audio files, for the whole library, and tells you
+when it has finished. Statistics' Health tab says when it last ran.
 
 **Missing** means nothing is at that path; **Unreadable** means the file is there
 but CuePoint cannot open it. To fix a missing file, use **Show in folder** to

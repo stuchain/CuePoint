@@ -47,9 +47,8 @@ see [Exporting to Rekordbox](rekordbox-export.md). Their words are never cut:
 in a narrow window or at a large size the badge and the First steps chip
 beside the title go first, and the title row wraps before a button shrinks.
 
-To switch to a different Rekordbox file, use **Import a Rekordbox
-file…** in **Settings → Rekordbox**, or **File → Import a Rekordbox
-file…** (**Ctrl+O**).
+To switch to a different Rekordbox file, use **Change file…** in
+**Settings → Rekordbox**, or **File → Import a Rekordbox file…** (**Ctrl+O**).
 
 **After an import**, a note under the header says CuePoint is checking that your
 music files are where Rekordbox says, reading their artwork and drawing each
@@ -189,7 +188,7 @@ of its confirmed Beatport match, shown in Camelot (8A) as a small colored chip.
 The colors follow the Camelot wheel, one hue for each number, deeper for A and
 lighter for B, as in Mixed In Key; point at a chip for the key's name ("A
 minor"). The same chips are in Keys, Discover, Clean and Prepare. **Settings →
-Appearance → Tables → Color keys** (on to start with) turns them back into
+Appearance → Tables → Color key chips** (on to start with) turns them back into
 plain text, and **Keys written as** (Camelot, Musical or Both) changes the
 words on the chips ("8A", "Am" or "8A · Am") everywhere, the player bar's key
 included; files and exports keep their own notation. Rekordbox's key is never

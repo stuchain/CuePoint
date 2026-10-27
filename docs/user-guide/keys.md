@@ -7,33 +7,38 @@ filter: tick the sources, read the counts, click a key.
 It works on the library you imported on the [Library](library.md) page, so
 import a collection first. A track's key here is its Beatport key (or the one
 you typed yourself); Rekordbox's own key is never used. A track with neither
-counts as **No Beatport key**. See [Clean](clean.md) to match tracks on Beatport.
+counts as **No key**. See [Clean](clean.md) to match tracks on Beatport.
 
 ## Choosing what to count
 
-The list on the left is **Sources**. It starts on your whole library. Tick any
-playlists, Collections or Sets to count only those; a track that is in several
-of them is counted once. The list is as tall as the wheel and uses the Library's tree (the same steps, icons and counts) with a tick box in front of each row. CuePoint remembers your choice for next time.
+The pane on the left is **Sources**, the one place that chooses what is counted.
+With nothing ticked it counts all tracks, and the page header says so: "All
+tracks (tick sources to narrow)". Tick any playlists, Collections or Sets to count
+only those; a track that is in several of them is counted once. Playlists,
+Collections and Sets are groups that fold as the Library's do, each row with a tick
+box in front, and **Search playlists and Collections** narrows the list. CuePoint
+remembers your choice for next time.
 
 ## The layout
 
-The page has two panes. On the left are the **Sources** and, beside them, the
-Camelot wheel or the list of counts. On the right is the track list, in the
-Library's table, with its own toolbar on the same top line as the wheel. The
-toolbar holds the track count, **Select all**, **Open in Library** and the
-**Wheel | List** switch, which shows one of the two views at a time. CuePoint opens
-on the wheel and remembers which you chose. With no key picked the table shows
-every track in your sources and the wheel asks you to pick a key; clicking keys
-narrows the table at once.
+The page has three panes with matching heads: **Sources**, **Keys** and
+**Tracks**. The **Keys** pane holds the **Wheel | List** switch at its top, which
+shows the Camelot wheel or the list of counts; CuePoint opens on the wheel and
+remembers which you chose. **Tracks** is the Library's table, with its own toolbar
+holding **Select all** and **Open in Library**. In a narrow window the wheel sits
+above the tracks. With no key picked the table shows every track in your sources
+and the wheel asks you to pick a key; clicking keys narrows the table at once.
 
 ## Reading the counts
 
 - **The wheel.** The 24 keys as two rings, minor (A) inside and major (B)
-  outside, each with its track count written on it. The key names follow **Keys written as** in Settings: the code ("8A") by default, the musical name ("Am") in **Musical**, and the code with a small musical name under it in **Both**; the middle of the popover's wheel does the same. With **Color keys** on, each key is drawn in its Camelot color, brighter
-  the more tracks it holds (with it off, the wheel is violet, darker for more tracks). Each key's name, such as "8A, A minor, 12 tracks", includes
+  outside, each with its track count written on it. The key names follow **Keys written as** in Settings: the code ("8A") by default, the musical name ("Am") in **Musical**, and the code with a small musical name under it in **Both**; the middle of the popover's wheel does the same. With **Color key chips** on, each key is drawn in its Camelot color, brighter
+  the more tracks it holds (with it off, the wheel is violet, darker for more tracks); the
+  line **Brighter = more tracks** under the wheel says so. Each key's name, such as "8A, A minor, 12 tracks", includes
   its count, for a screen reader.
 - **The list.** The same counts in Camelot order (1A, 1B, 2A, and so on), with a
-  bar for each, drawn as the bars of Statistics' ranked lists are. **No Beatport key** and its count have a line of their own.
+  bar for each, drawn as the bars of Statistics' ranked lists are. **No key** and its count have a line of their own.
+  With the list focused, type a key ("8a") or the first letters of its name to go to it.
 
 Every count is written on the page; nothing waits for you to hover.
 
@@ -41,17 +46,18 @@ Every count is written on the page; nothing waits for you to hover.
 
 Click a key on the wheel or in the list. The track table on the right narrows to
 that key at once. Select tracks and the bar above the table offers
-**Play**; everything else the Library's bar offers is in the right-click menu. Select a
+**Play** and **Add to a Set…**; everything else the Library's bar offers is in the right-click menu. Select a
 track to see it in Track details, or double-click it to play it.
 
 - **Ctrl+Click** (**Cmd+Click** on a Mac) adds a key to the choice or takes it away.
 - **Shift+Click** chooses every key between the last one you clicked and this one.
 
-**Show keys that mix with 8A** lights the keys that go with the one you chose:
-the same number one step either way, and the relative key.
+**Show keys that mix** (in the page header) lights the keys that go with the one you chose:
+the same number one step either way, and the relative key. Until you pick a key it is
+greyed, and pointing at it says "Pick a key on the wheel first" (or "in the list").
 
 **Open in Library** (in the track list's toolbar) shows the same tracks on the Library page, with the same
-key and source filters. **Save as Smart Collection…** saves them as a
+key and source filters. **Save as a Collection…** (in the page header) saves them as a
 [Smart Collection](organization.md) that stays up to date.
 
 From the Library, the Key list's **See these on the Keys page** opens Keys with
@@ -62,10 +68,11 @@ Smart Collection, whose filters, not a place, decide its tracks.
 ## When there is nothing to show
 
 - Before your first import, Keys shows **No library yet**, a line on what the page does with it, and **Import a Rekordbox file…**.
-- If none of the tracks in your sources has a Beatport key, Keys says so and
+- If none of the tracks in your sources has a Beatport key, Keys says
+  **Keys come from Beatport**, with how many tracks are without a key, and
   offers **Match on Beatport**, which opens Clean.
 - A playlist, Collection or Set with no tracks says it is empty.
-- **No Beatport key** is dimmed, with a note, when every track in your sources has a key.
+- **No key** is dimmed, with the note "Every track here has a key", when every track in your sources has one.
 
 ## See also
 

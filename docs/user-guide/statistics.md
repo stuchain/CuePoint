@@ -8,11 +8,11 @@ computer. Nothing is sent anywhere.
 
 ## Choosing what to count
 
-The **Scope** picker at the top, on the title row, starts on **Whole library**. Choose a Rekordbox
+The **Which tracks** picker at the top, on the title row, starts on **All tracks**. Choose a Rekordbox
 playlist, a Collection, a Smart Collection or a Set to count only its tracks.
-Every number on the page, in all three tabs, is for the scope you picked. Under
-the title one line says what is counted ("2,847 tracks · 64 playlists" for the
-whole library).
+Every number on the page, in all three tabs, is for the tracks you picked. Under
+the title one line says what is counted ("2,847 tracks · 64 playlists" for all
+tracks).
 CuePoint remembers your choice for next time; a playlist is remembered by its
 name and place in the tree, so it is found again after a refresh. If that
 playlist or Collection is gone, the page goes back to the whole library (and
@@ -22,9 +22,9 @@ cannot be chosen.
 
 ## The three tabs
 
-The page has three tabs: **Plays**, **Library** and **Health**. **Library**
-shows how many tracks are in the scope, and **Health** shows an amber count
-(such as 83) when something needs doing. Each tab keeps what you set on it, and its own scroll place, while you
+The page has three tabs: **Overview**, **Plays** and **Health**. The track count
+is in the header, so no tab repeats it; **Health** shows an amber count (such as
+83) when something needs doing. Each tab keeps what you set on it, and its own scroll place, while you
 look at another one; a tab you have not opened yet starts at the top. Each reads on its own. While it is reading it says so; if a
 tab cannot be read it says that in plain words and has its own **Try again**
 button, and the other tabs stay as they were. The page reads again by itself
@@ -100,17 +100,21 @@ after an import or a refresh finishes.
   stay and the page says "These plays could not be read, so what is shown is
   the earlier list." with **Try again**.
 
-### Library
+### Overview
 
-**Library** is what is in the scope.
+**Overview** is what is in the tracks you picked.
 
-- **Four numbers** across the top: **Tracks** (with the number of playlists for
-  the whole library), **Total time** (the lengths of the tracks added up, with
-  the average track length), **Average BPM** (the mean of the tracks that have
-  one, with how many have none) and **Added this year**.
+- **Four numbers** across the top: **Rated tracks** (with how many are not
+  rated), **Total time** (the lengths of the tracks added up, with the average
+  track length), **Average BPM** (the mean of the tracks that have one, with how
+  many have none) and **Added this year**.
+- The cards come in pairs of the same height: **Genres** and **Labels**,
+  **Artists** and **Keys**, **BPM** and **Year**, then **Loudness** across the
+  whole row. A card with nothing to show is left out.
 - **Genres**, **Labels** and **Artists** list the five with the most tracks,
-  each with a bar. **See top ...** shows more. Click a row to open exactly those
-  tracks in the Library, within your scope. An artist is counted for the tracks
+  each on one line with a bar after the name and the count at the right edge.
+  **Show all 10** shows more. Click a row to open exactly those tracks in the
+  Library, within the tracks you picked. An artist is counted for the tracks
   it is credited on as artist or as remixer, once per track.
 - **BPM**, **Keys**, **Year** and **Loudness** are the charts. **BPM** has a bar
   for each whole BPM, so 124 holds 123.5 up to just under 124.5; **Year** and
@@ -123,9 +127,9 @@ after an import or a refresh finishes.
   them. Loudness also says how many tracks have no file to measure, and how many
   are not measured yet. Loudness comes from CuePoint's own waveform analysis, not
   from Rekordbox (see [Waveforms](waveforms.md)).
-- **Keys** shows the commonest keys as bars in their Camelot colours, how many
-  tracks have a key and how many have none, counting every notation of a key
-  together. **Open in Keys** shows the same scope on the [Keys](keys.md) page.
+- **Keys** shows the commonest keys, each as its key chip (in its Camelot
+  colour) with a violet bar like every other chart, and "N with a key · N without
+  a key", counting every notation of a key together. **Open in Keys** shows the same scope on the [Keys](keys.md) page.
   Most Smart Collections (any but one saved from a playlist view) are the
   exception: the Keys page counts playlists, Collections and Sets, not rules, so
   for one it opens on your whole library and says so.
@@ -134,9 +138,11 @@ after an import or a refresh finishes.
 
 ### Health
 
-**Health** counts how well kept the library is, in four cards. Each card's list is
-its own legend: a coloured square matching the bar, the name, the count and, when
-the count is above zero, a link such as **Open in Clean** on the same line. A
+**Health** counts how well kept the library is, in four cards. It only reads: a
+line at the top says "Read-only here. To fix these, **Open in Clean**", where the
+jobs are. Each card's list is its own legend: a coloured square matching the bar,
+the name, a link such as **Open in Clean** when the count is above zero, and the
+count at the card's right edge. A
 count is red for what is broken, amber for what waits for you, grey for the rest. The "to fix"
 number on the tab adds up the missing and unreadable files, the matches waiting
 for you, the duplicates, the matches that changed since you decided, and the
@@ -152,19 +158,19 @@ analyses that failed.
 - **Beatport** is where each track stands in matching, as a bar: **Confirmed**,
   **To check** (a match is waiting for your decision), **Rejected**, **No
   match** and **Not looked up yet**, with how many are matched. **To check**,
-  **No match** and **Not looked up yet** open Clean's Match tab. **Not synced to
-  files** counts the tracks whose CuePoint values (key, genre, label, year or
+  **No match** and **Not looked up yet** open Clean's Match tab. **Not synced**
+  counts the tracks whose CuePoint values (key, genre, label, year or
   BPM) are not yet in their files, the same count as the Library's save bar;
   **Open in Library** shows them.
 - **Other** counts **Duplicates** (tracks in a group of likely duplicates you
   have not dismissed; Clean's Duplicates tab shows every group in the library,
-  so it can list more than the count for a scope), **Changed since you decided**
+  so it can list more than the count for a scope), **Changed after you confirmed**
   (a newer Beatport match disagrees with a choice you made) and **No artwork**
   (a file that was read and holds no picture, with no Beatport image to
-  fall back on). **Read artwork** reads the pictures stored inside your audio
-  files, for the whole library, and tells you when it has finished. Beside it, the
-  card says "Artwork last read" with the date, or "Artwork has not been read
-  yet". That date is the library's, whichever scope is picked.
+  fall back on). The card says "Artwork last read" with the date, or "Artwork
+  has not been read yet", and **Read artwork in Clean** opens Clean's Missing
+  files tab, where **Read artwork** reads the pictures stored inside your audio
+  files. That date is the library's, whichever tracks are picked.
 - **Analysis** is how far the waveform analysis has got, as a bar: **Analyzed**,
   **Waiting**, **Failed** and **No file** (a track with no file to analyze).
   **Failed** opens Settings on Waveforms, where the analysis is started, paused

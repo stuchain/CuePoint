@@ -95,7 +95,7 @@ run_summary:
 
 ## Help and privacy
 
-Use **Help > Privacy** to open Settings → Privacy, where the data-handling controls are; its **More about this** button explains what a report carries and has a **Privacy details** link.
+Use **Help > Privacy** to open Settings → Privacy, where the data-handling controls are; its **What a report contains** button explains what a report carries and has a **Privacy details** link.
 
 If something goes wrong, see [Troubleshooting](troubleshooting.md) and the [FAQ](../faq/index.md). You can also [report an issue](https://github.com/stuchain/CuePoint/issues) or ask in [Discussions](https://github.com/stuchain/CuePoint/discussions).
 

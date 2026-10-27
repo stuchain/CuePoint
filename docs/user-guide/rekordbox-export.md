@@ -136,8 +136,9 @@ second library in the tree, called **rekordbox xml**, beside your own:
 
 ## Settings
 
-**Settings → Rekordbox** shows the folder the next save dialog opens in,
-the notation the next export writes keys in (**Key notation**), and your
+**Settings → Rekordbox** shows the folder the next save dialog opens in
+(**Save dialog opens in**), a sentence on the notation the next export writes
+keys in ("Exports write keys as Camelot, like 8A."), and your
 recent exports — when each ran, where it went, and what it wrote (for example
 "4 tracks · 3 with new tags · 4 playlists · Camelot (8A)"). Both remembered
 values come from your last export, and change by exporting; export itself is
