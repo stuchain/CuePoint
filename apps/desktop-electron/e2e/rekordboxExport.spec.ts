@@ -38,6 +38,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { displayPathNameFirst } from "../renderer/src/format/paths";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -304,10 +305,10 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         const dialog = exportDialog(window);
         await saveDialogAnswers(app, destination);
         await dialog.getByRole("button", { name: "Choose another file…" }).click();
-        // M500: a path is shown name first, then its folder ("CuePoint Export.xml — …/Exports").
-        await expect(dialog.locator(".rekordbox-export__path")).toHaveText(
-          `${path.basename(destination)} — ${path.dirname(destination)}`,
-        );
+        // M500: a path is shown name first, then its folder ("CuePoint Export.xml — …/Exports"), with
+        // the home folder as "~" (77fc225a). Windows' temp folder is under home, so the expected text
+        // is made by the same helper the dialog uses, not from the raw path.dirname.
+        await expect(dialog.locator(".rekordbox-export__path")).toHaveText(displayPathNameFirst(destination));
         const confirm = dialog.getByRole("button", { name: "Export 3 tracks and 1 playlist" });
         await expect(confirm).toBeEnabled({ timeout: 30_000 });
         await confirm.click();
@@ -378,7 +379,9 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await expect(dialog.getByRole("checkbox", { name: /^Techno/ })).toBeChecked();
         await expect(dialog.getByRole("checkbox", { name: /^Saturday/ })).not.toBeChecked();
         // M512: the unchosen destination names the one file, name first, in the folder the save dialog opens in.
-        await expect(dialog.locator(".rekordbox-export__path")).toHaveText(`CuePoint Export.xml — ${exports}`);
+        await expect(dialog.locator(".rekordbox-export__path")).toHaveText(
+          displayPathNameFirst(path.join(exports, "CuePoint Export.xml")),
+        );
 
         await dialog.getByRole("combobox", { name: /Key notation/ }).selectOption("camelot");
         await expect(dialog.getByTestId("export-key-consequence")).toContainText("Camelot keys (8A)");
