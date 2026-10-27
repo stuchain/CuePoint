@@ -208,7 +208,9 @@ test.describe("The Library page (LIBRARY-11)", () => {
       const header = window.locator(".library-header");
       const file = header.getByText(path.basename(xmlPath), { exact: true });
       await expect(file).toBeVisible();
-      expect(await header.locator(".library-header__read").getAttribute("title")).toContain(xmlPath);
+      // Where the header is tight the "last read" words go first (CI wave 3) and the hint moves to the name.
+      const hinted = header.locator(".library-header__read, .library-header__file-button[title]").first();
+      expect(await hinted.getAttribute("title")).toContain(xmlPath);
       await expect(header.getByText("Up to date")).toBeVisible();
     } finally {
       await app.close();

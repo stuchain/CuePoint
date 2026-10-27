@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 
 import type { LibraryQuickFacets, LibrarySummary } from "../../api/cuepointBridge.types";
-import { LibraryHeader, fitsOneLine, leanLevel } from "./LibraryHeader";
+import { LibraryHeader, dropsRead, fitsOneLine, leanLevel } from "./LibraryHeader";
 
 const SUMMARY: LibrarySummary = {
   track_count: 3880,
@@ -568,6 +568,15 @@ describe("leanLevel (A1)", () => {
 
   it("moves the file and its state to the facts line when even they do not fit beside the title", () => {
     expect(leanLevel({ ...base, available: 650 })).toBe(2);
+  });
+  it("lets the clock-wide 'last read' words go before the file and its state move (CI wave 3)", () => {
+    // 200 + 90 + 400 + 20 = 710 does not fit 705; without the 30 of "last read …", 680 does.
+    expect(leanLevel({ ...base, available: 705 })).toBe(2);
+    expect(dropsRead({ ...base, available: 705, read: 30 })).toBe(true);
+    // Room for the whole source line: the words stay.
+    expect(dropsRead({ ...base, available: 720, read: 30 })).toBe(false);
+    // Not even the source line without them fits: they are no help, the source moves.
+    expect(dropsRead({ ...base, available: 650, read: 30 })).toBe(false);
   });
 });
 

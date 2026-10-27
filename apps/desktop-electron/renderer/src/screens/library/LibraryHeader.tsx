@@ -157,6 +157,21 @@ export function leanLevel(
 }
 
 /**
+ * Whether the "last read …" words go before the file and its state leave the title's line: at
+ * level 1 without them (`read` is their width with the gap before them), when that is what fits.
+ * When it was last read moves into the check's hint, so nothing is lost. The words are the one
+ * part of the line whose width changes with the clock ("9:05 AM", "11:15 PM"), and they left the
+ * default window's header a pixel short at one time of day and fine at another (CI wave 2 item 5,
+ * wave 3 item 3, and wider still on Windows).
+ */
+export function dropsRead(
+  widths: Omit<HeaderWidths, "beside"> & { whole: number; source: number; read: number },
+): boolean {
+  const { read, ...rest } = widths;
+  return read > 0 && leanLevel(rest) >= 2 && fitsOneLine({ ...rest, beside: Math.max(0, rest.source - read) });
+}
+
+/**
  * The level at which the title, the source line with its chips, and the buttons share one line.
  *
  * Measured, not guessed: the scope's name at its natural width (a cut name still reports the whole
@@ -166,7 +181,8 @@ export function leanLevel(
 function useLean(enabled: boolean) {
   const header = useRef<HTMLDivElement>(null);
   const [level, setLevel] = useState<LeanLevel>(0);
-  const kept = useRef({ whole: 0, source: 0, actions: 0 });
+  const [readGone, setReadGone] = useState(false);
+  const kept = useRef({ whole: 0, source: 0, actions: 0, read: 0 });
 
   useLayoutEffect(() => {
     const box = header.current;
@@ -189,6 +205,11 @@ function useLean(enabled: boolean) {
       } else if (beside && source && kept.current.whole === 0) {
         kept.current = { ...kept.current, whole: beside.offsetWidth, source: source.offsetWidth };
       }
+      // The "last read …" words with the gap before them, while they are drawn.
+      const read = source?.querySelector<HTMLElement>(".library-header__read");
+      if (source && read && read.offsetWidth > 0) {
+        kept.current = { ...kept.current, read: read.offsetWidth + pixels(getComputedStyle(source).columnGap) };
+      }
       // The buttons drawn whole are the width to keep; folded into the menu (M73), the kept width
       // stands, or the header would unfold and fold again on every measure.
       const shownActions = box.querySelector<HTMLElement>(".cp-screen-header__actions");
@@ -198,16 +219,17 @@ function useLean(enabled: boolean) {
           actions: rowWidth(shownActions, pixels(getComputedStyle(shownActions).columnGap)),
         };
       }
-      setLevel(
-        leanLevel({
-          title: display.scrollWidth,
-          whole: kept.current.whole,
-          source: kept.current.source,
-          actions: kept.current.actions,
-          gap,
-          available,
-        }),
-      );
+      const widths = {
+        title: display.scrollWidth,
+        whole: kept.current.whole,
+        source: kept.current.source,
+        actions: kept.current.actions,
+        gap,
+        available,
+      };
+      const lean = dropsRead({ ...widths, read: kept.current.read });
+      setReadGone(lean);
+      setLevel(lean ? 1 : leanLevel(widths));
     };
 
     measure();
@@ -232,7 +254,7 @@ function useLean(enabled: boolean) {
     };
   }, [enabled]);
 
-  return { header, level };
+  return { header, level, readGone };
 }
 
 export function LibraryHeader({
@@ -258,7 +280,7 @@ export function LibraryHeader({
 }: LibraryHeaderProps) {
   const source = summary?.source ?? null;
   const disabled = busy !== null;
-  const { header, level } = useLean(summary !== null && source !== null);
+  const { header, level, readGone } = useLean(summary !== null && source !== null);
 
   const fileMenu = useMenuButton();
   const moreMenu = useMenuButton();
@@ -302,6 +324,8 @@ export function LibraryHeader({
         menu
         className="library-header__file-button"
         aria-label={`${fileName(source.xml_path)}, file menu`}
+        // The whole path is the "last read" words' hint; with the words gone it is the name's.
+        title={readGone ? displayPath(source.xml_path, { keepHome: true }) : undefined}
         {...fileMenu.buttonProps}
       >
         <span className="library-header__file cp-data" data-cut-hint="">
@@ -335,7 +359,13 @@ export function LibraryHeader({
       {needsLook ? (
         <span className={`cp-badge cp-badge--warning library-header__chip`}>{sourceBadge(state)}</span>
       ) : (
-        <Hint text={checking && busyLabel ? busyLabel : `Check ${fileName(source.xml_path)} for changes`}>
+        <Hint
+          text={
+            checking && busyLabel
+              ? busyLabel
+              : `Check ${fileName(source.xml_path)} for changes${readGone ? ` · last read ${formatWhen(source.imported_at)}` : ""}`
+          }
+        >
           <button
             type="button"
             className={`cp-badge cp-badge--${state === "unknown" ? "default" : "success"} library-header__chip library-header__chip--button`}
@@ -349,9 +379,11 @@ export function LibraryHeader({
           </button>
         </Hint>
       )}
-      <span className="library-header__read" title={displayPath(source.xml_path, { keepHome: true })}>
-        last read {formatWhen(source.imported_at)}
-      </span>
+      {!readGone && (
+        <span className="library-header__read" title={displayPath(source.xml_path, { keepHome: true })}>
+          last read {formatWhen(source.imported_at)}
+        </span>
+      )}
     </span>
   );
 
