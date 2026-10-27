@@ -15,6 +15,12 @@ interface UpdateReadyPanelProps {
   flow?: RestartFlow;
 }
 
+/** "CuePoint 1.2.3 is ready"; a build that told no version says "A new version of CuePoint is ready" (no double space). */
+export function updateTitle(version: string | null | undefined, word: "out" | "ready"): string {
+  const named = version?.trim();
+  return named ? `CuePoint ${named} is ${word}` : `A new version of CuePoint is ${word}`;
+}
+
 /**
  * The panel the status strip's update item opens (DIST-07, DEC-171): the release notes, and
  * Restart now or Later (Download or Later when the person has to fetch it).
@@ -22,18 +28,18 @@ interface UpdateReadyPanelProps {
 export function UpdateReadyPanel({ open, state, onClose, flow }: UpdateReadyPanelProps) {
   const body = useRef<HTMLDivElement>(null);
   const confirming = flow?.confirming === true;
-  // The buttons change under the one that was pressed, so focus goes to Cancel: a second Enter
-  // must not pick "Restart when done".
+  // The buttons change under the one that was pressed, so focus goes to the safe one ("Restart when
+  // done", or Later when work cannot be told): a second Enter must not pick "Restart now".
   useEffect(() => {
     if (!confirming) return;
     const dialog = body.current?.closest('[role="dialog"]');
-    const cancel = [...(dialog?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Cancel");
-    cancel?.focus();
+    const buttons = [...(dialog?.querySelectorAll("button") ?? [])];
+    const safe = buttons.find((b) => b.textContent === "Restart when done") ?? buttons.find((b) => b.textContent === "Later");
+    safe?.focus();
   }, [confirming]);
 
   const manual = state.status === "manual";
-  const version = state.version ?? "";
-  const title = `CuePoint ${version} is ${manual ? "out" : "ready"}`;
+  const title = updateTitle(state.version, manual ? "out" : "ready");
 
   if (manual && state.manualReason === "needs-newer-macos") {
     // Downloading it would not help: macOS will not open it on this Mac (DEC-296).
@@ -72,13 +78,14 @@ export function UpdateReadyPanel({ open, state, onClose, flow }: UpdateReadyPane
         open={open}
         title={title}
         onClose={flow.cancel}
-        secondaryAction={{ label: "Cancel", onClick: flow.cancel }}
-        extraAction={flow.unknown ? undefined : { label: "Restart now", onClick: flow.restartNow }}
-        primaryAction={
+        // "Restart now" is the main button wherever it is asked (M279); the careful choice is beside it,
+        // and the × and Escape are Later.
+        secondaryAction={
           flow.unknown
-            ? { label: "Restart now", onClick: flow.restartNow }
+            ? { label: "Later", onClick: flow.cancel }
             : { label: "Restart when done", onClick: flow.restartWhenDone }
         }
+        primaryAction={{ label: "Restart now", onClick: flow.restartNow }}
       >
         <div ref={body}>
           {flow.unknown ? (

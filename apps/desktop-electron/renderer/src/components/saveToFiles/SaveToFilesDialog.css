@@ -31,7 +31,6 @@
   min-height: var(--row-height);
   padding: 0;
   border-bottom: var(--divider);
-  font-size: var(--text-body);
 }
 
 /* The ticks' words take one width, so the Key select and the Comment field start in one column. */
@@ -55,7 +54,6 @@
 
 .save-dialog__tick input {
   margin: 0;
-  accent-color: var(--accent-fill);
 }
 
 .save-dialog__tick input:focus-visible {
@@ -87,10 +85,25 @@
   height: var(--control-height);
 }
 
-/* The comment's text sits on its row, between the tick and the count; never wider than the select. */
+/* The comment's text sits on its row, between the tick and the count; never wider than the select.
+   Its label is for readers of the page, like the key style's. */
 .save-dialog__comment {
   max-width: var(--save-dialog-control-width);
   min-height: 0;
+}
+
+.save-dialog__comment .cp-field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.save-dialog__comment .cp-field__input {
+  width: 100%;
+  height: var(--control-height);
 }
 
 .save-dialog__count {
@@ -99,18 +112,10 @@
   white-space: nowrap;
 }
 
-.save-dialog__keep {
-  font-size: var(--text-body);
-}
-
-.save-dialog__back {
-  align-self: flex-start;
-}
 
 .save-dialog__changes {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--text-body);
 }
 
 .save-dialog__changes th,
@@ -144,7 +149,6 @@
   margin: 0;
   color: var(--fg-muted);
   font-family: var(--font-meta);
-  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -167,7 +171,6 @@
   padding-left: var(--space-lg);
   color: var(--fg-muted);
   font-family: var(--font-meta);
-  font-size: var(--text-body);
 }
 
 .save-dialog__restore {

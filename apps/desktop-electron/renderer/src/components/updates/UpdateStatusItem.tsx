@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 import type { UpdateState } from "../../api/cuepointBridge.types";
-import "../Button.css";
-import { UpdateReadyPanel } from "./UpdateReadyPanel";
+import { Button } from "../Button";
+import { UpdateReadyPanel, updateTitle } from "./UpdateReadyPanel";
 import { whenWorkEnds } from "./restartStore";
 import { useRestartFlow } from "./useRestartFlow";
 import { useUpdateState } from "./useUpdateState";
@@ -12,7 +12,6 @@ import "./UpdateStatusItem.css";
 function ReadyItem({ state }: { state: UpdateState }) {
   const [open, setOpen] = useState(false);
   const flow = useRestartFlow();
-  const version = state.version ?? "";
 
   // Choosing to restart when the work ends closes the panel; the item then says what it waits for.
   useEffect(() => {
@@ -21,9 +20,9 @@ function ReadyItem({ state }: { state: UpdateState }) {
 
   return (
     <>
-      <button type="button" className="cp-btn cp-btn--secondary cp-update-item__button" onClick={() => setOpen(true)}>
-        {flow.waiting ? whenWorkEnds(flow.work) : `CuePoint ${version} is ready`}
-      </button>
+      <Button variant="secondary" className="cp-update-item__button" onClick={() => setOpen(true)}>
+        {flow.waiting ? whenWorkEnds(flow.work) : updateTitle(state.version, "ready")}
+      </Button>
       <UpdateReadyPanel open={open} state={state} flow={flow} onClose={() => setOpen(false)} />
     </>
   );
@@ -34,9 +33,9 @@ function ManualItem({ state }: { state: UpdateState }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="cp-btn cp-btn--secondary cp-update-item__button" onClick={() => setOpen(true)}>
-        {`CuePoint ${state.version ?? ""} is out`}
-      </button>
+      <Button variant="secondary" className="cp-update-item__button" onClick={() => setOpen(true)}>
+        {updateTitle(state.version, "out")}
+      </Button>
       <UpdateReadyPanel open={open} state={state} onClose={() => setOpen(false)} />
     </>
   );

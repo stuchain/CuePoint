@@ -45,11 +45,11 @@ export type SaveFieldId = (typeof SAVE_FIELDS)[number]["id"] | "comment";
 export type SaveVariant = "save" | "sync";
 export type KeyStyle = DialogTagOptions["key_format"];
 
-/** The key styles the window offers, each shown by an example. */
+/** The key styles the window offers, each named and shown by an example (M278). */
 export const KEY_STYLES: ReadonlyArray<{ value: KeyStyle; label: string }> = [
-  { value: "normal", label: "Am" },
-  { value: "camelot", label: "8A" },
-  { value: "short", label: "Amin" },
+  { value: "normal", label: "Am (musical)" },
+  { value: "camelot", label: "8A (Camelot)" },
+  { value: "short", label: "Amin (short)" },
 ];
 
 /** What the comment says when the person has not changed it. */

@@ -41,7 +41,7 @@ import { Loading } from "../Loading";
 import { Modal } from "../Modal";
 import { Notice } from "../Notice";
 import { Select } from "../Select";
-import "../TextField.css";
+import { TextField } from "../TextField";
 import {
   ALL_WAV,
   KEY_STYLES,
@@ -171,7 +171,6 @@ export function SaveToFilesDialog({
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
   const progress = useJobProgress(jobId);
-  const backRef = useRef<HTMLButtonElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLParagraphElement>(null);
   const restoredRef = useRef<HTMLParagraphElement>(null);
@@ -404,6 +403,8 @@ export function SaveToFilesDialog({
   /** A button of the Modal footer, which this dialog does not draw itself. */
   const footerButton = (selector: string) =>
     rootRef.current?.closest(".cp-modal")?.querySelector<HTMLButtonElement>(selector) ?? null;
+  const footerButtons = () =>
+    Array.from(rootRef.current?.closest(".cp-modal")?.querySelectorAll<HTMLButtonElement>(".cp-modal__footer .cp-btn") ?? []);
 
   // Focus follows the view: Back on entering the list, See changes on leaving it, and the result
   // once a save or a restore has answered.
@@ -411,7 +412,7 @@ export function SaveToFilesDialog({
     if (!open) return;
     if (list) {
       cameFromList.current = true;
-      backRef.current?.focus();
+      footerButtons().find((button) => button.textContent === BACK)?.focus();
     } else if (cameFromList.current) {
       cameFromList.current = false;
       footerButton(".cp-modal__extra")?.focus();
@@ -442,6 +443,8 @@ export function SaveToFilesDialog({
           ? { label: variant === "sync" ? "See every change" : "See changes", onClick: () => setView("changes") }
           : undefined
       }
+      // A step back to the choices is the Modal's own, between Cancel and the main button (M278).
+      backAction={list ? { label: BACK, onClick: () => setView("choices") } : undefined}
       secondaryAction={
         finished
           ? undefined
@@ -476,6 +479,11 @@ export function SaveToFilesDialog({
       <div ref={rootRef} className="save-dialog">
         {choosing && !list && (
           <>
+            {/* Sync to files and Export to Rekordbox are two different writes (M514). */}
+            <p className="cp-modal__lead">
+              Writes the ticked values into your music files. It does not change Rekordbox; Export to
+              Rekordbox makes the file Rekordbox imports.
+            </p>
             <ul className="save-dialog__rows">
               {(variant === "sync" ? SYNC_FIELDS : SAVE_FIELDS).map(({ id, label }) => (
                 <li key={id} className="save-dialog__row" data-ticked={choices.fields[id]}>
@@ -499,10 +507,10 @@ export function SaveToFilesDialog({
                     />
                   )}
                   {id === "comment" && (
-                    <input
-                      type="text"
-                      className="cp-field__input save-dialog__comment"
-                      aria-label="Comment text"
+                    <TextField
+                      label="Comment text"
+                      width="full"
+                      className="save-dialog__comment"
                       value={choices.comment_text}
                       maxLength={MAX_COMMENT_LENGTH}
                       disabled={!choices.fields.comment}
@@ -533,15 +541,6 @@ export function SaveToFilesDialog({
 
         {list && (
           <>
-            <Button
-              ref={backRef}
-              variant="quiet"
-              icon="chevron-left"
-              className="save-dialog__back"
-              onClick={() => setView("choices")}
-            >
-              {BACK}
-            </Button>
             {preview && rows.length > 0 && (
               <table className="save-dialog__changes">
                 <thead>
@@ -625,6 +624,9 @@ export function SaveToFilesDialog({
                     {entry.file_path.split(/[\\/]/).pop()}: {entry.message}
                   </li>
                 ))}
+                {written.problems.length > 10 ? (
+                  <li>and {formatCount(written.problems.length - 10)} more (see Activity)</li>
+                ) : null}
               </ul>
             )}
             <p className="save-dialog__note">{RELOAD_TAG_REMINDER}</p>

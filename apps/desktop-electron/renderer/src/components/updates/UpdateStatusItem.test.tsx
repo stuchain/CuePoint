@@ -189,11 +189,13 @@ describe("work that is running (DEC-173)", () => {
     await openWithWork();
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByText(/Importing is still running\./)).toBeInTheDocument();
-    // Focus is on Cancel, so a second Enter cannot pick "Restart when done".
-    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus());
+    // Focus is on the careful choice, so a second Enter cannot pick "Restart now" (M279).
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Restart when done" })).toHaveFocus());
     expect(dialog.textContent).not.toMatch(/\bjobs?\b/i);
     expect(within(dialog).getByRole("button", { name: "Restart when done" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Cancel" })).toBeNull();
+    // "Restart now" is the main button here as everywhere, in the same place (M279).
+    expect(within(dialog).getByRole("button", { name: "Restart now" })).toHaveClass("cp-btn--primary");
     expect(fake.bridge.restart).not.toHaveBeenCalled();
   });
 
@@ -222,9 +224,10 @@ describe("work that is running (DEC-173)", () => {
     expect(await screen.findByRole("button", { name: "Restarts when exporting to Rekordbox finishes" })).toBeInTheDocument();
   });
 
-  it("does nothing on Cancel and goes back to the panel", async () => {
+  it("does nothing on Escape and goes back to the panel", async () => {
     await openWithWork();
-    await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    await screen.findByRole("button", { name: "Restart when done" });
+    await userEvent.keyboard("{Escape}");
     expect(fake.bridge.restart).not.toHaveBeenCalled();
     expect(await screen.findByRole("button", { name: "Later" })).toBeInTheDocument();
   });

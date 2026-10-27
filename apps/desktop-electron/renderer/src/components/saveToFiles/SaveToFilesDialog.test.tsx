@@ -242,11 +242,11 @@ describe("counts that move without a new preview", () => {
     expect(bridge.previewTagWrite).toHaveBeenCalledTimes(1);
   });
 
-  it("offer the three styles as examples", async () => {
+  it("offer the three styles named, each with its example (M278)", async () => {
     open();
     await ready();
     const options = within(screen.getByLabelText("Key notation")).getAllByRole("option").map((o) => o.textContent);
-    expect(options).toEqual(["Am", "8A", "Amin"]);
+    expect(options).toEqual(["Am (musical)", "8A (Camelot)", "Amin (short)"]);
   });
 
   it("dim an unticked row but keep its count", async () => {
@@ -916,11 +916,30 @@ describe("the sync look (C1, C108, C115, C148, C151)", () => {
     await act(async () => finish({ id: "w-1", state: "cancelled" }));
   });
 
-  it("uses a quiet Back button in the list of changes", async () => {
+  it("has Back in the Modal's footer, between Cancel and the main button, in the list of changes (M278)", async () => {
     open();
     await ready();
     await userEvent.click(screen.getByRole("button", { name: "See changes" }));
-    expect(screen.getByRole("button", { name: "Back" })).toHaveClass("cp-btn--quiet");
+    const back = screen.getByRole("button", { name: "Back" });
+    expect(back.closest(".cp-modal__footer")).not.toBeNull();
+    expect(back).toHaveClass("cp-btn--secondary");
+    expect(back.parentElement!.querySelectorAll("button")).toHaveLength(3);
+  });
+
+  it("explains in one line how this differs from Export to Rekordbox (M514)", async () => {
+    open();
+    await ready();
+    expect(screen.getByText(/It does not change Rekordbox; Export to Rekordbox makes the file Rekordbox imports/)).toBeInTheDocument();
+  });
+
+  it("draws the comment as the shared text field, its label kept for a reader and not drawn", async () => {
+    bridge.previewSync = vi.fn().mockResolvedValue({ preview: preview() });
+    bridge.startSync = vi.fn();
+    open({ variant: "sync", title: "Sync hJ to your files", count: 22 });
+    const field = await screen.findByRole("textbox", { name: "Comment text" });
+    expect(field.closest(".cp-field")).not.toBeNull();
+    expect(dialogCss).not.toMatch(/accent-color/);
+    expect(dialogCss).not.toMatch(/--text-body/);
   });
 
   it("gives every row the standard row height and caps the comment field", () => {
