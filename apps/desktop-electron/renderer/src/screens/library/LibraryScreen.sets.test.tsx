@@ -245,7 +245,7 @@ describe("a Set as the table's scope (DEC-104, fact 3)", () => {
     await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
     const note = await screen.findByRole("note");
     expect(note).toHaveTextContent(
-      "“Friday” is a Set of 6 entries. The table lists each of its 5 tracks once, in the order they first play.",
+      "A Set of 6 entries: its 5 tracks once each, in play order.",
     );
     // Nowhere to open it yet, so no link to nowhere.
     expect(within(note).queryByRole("button")).toBeNull();

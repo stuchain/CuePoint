@@ -209,7 +209,7 @@
   background: transparent;
   /* M61 (D9): the panes are one gap apart (20), the same as Keys; the track is that gap and the hover
      colour paints only a 4-wide stripe in its middle. */
-  padding-inline: calc((var(--space-xl) - 4px * var(--scale)) / 2);
+  padding-inline: round(down, calc((var(--space-xl) - 4px * var(--scale)) / 2), 1px);
   background-clip: content-box;
 }
 

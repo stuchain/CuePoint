@@ -165,13 +165,13 @@ describe("a delete that takes Sets", () => {
 describe("the Set scope's note (fact 3)", () => {
   it("gives the numbers when a Set plays a track twice", () => {
     expect(setScopeNote(FRIDAY)).toBe(
-      "“Friday” is a Set of 6 entries. The table lists each of its 5 tracks once, in the order they first play.",
+      "A Set of 6 entries: its 5 tracks once each, in play order.",
     );
   });
 
   it("says less when the two numbers agree", () => {
     expect(setScopeNote(EMPTY_SET)).toBe(
-      "“Empty” is a Set. The table lists each of its tracks once, in the order they first play.",
+      "A Set: each track once, in play order.",
     );
   });
 });
@@ -192,7 +192,7 @@ describe("the table's empty state", () => {
       title: "This Set is empty",
       rules: [],
       hint: "Drop tracks onto it, or use Add to Set from the track menu",
-      action: { id: "show-library", label: "Browse the whole library" },
+      action: { id: "show-library", label: "Show All tracks" },
     });
   });
 

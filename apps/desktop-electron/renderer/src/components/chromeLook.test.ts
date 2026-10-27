@@ -60,7 +60,7 @@ const POPOVER_SHEETS: string[] = [
   "Hint",
   "SuggestInput",
   "QuickFilters",
-  "FilterBar",
+  // FilterBar left (P8, M120): its filter builder is in the flow now, so nothing of it floats.
 ];
 
 const HEAVY = /--shadow-(panel|badge|bevel[a-z-]*|modal|inset-deep)\b/;

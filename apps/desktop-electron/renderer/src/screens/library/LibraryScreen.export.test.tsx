@@ -246,9 +246,9 @@ describe("the Library header's entry (DEC-087)", () => {
       .getAllByRole("button")
       .filter((button) => !button.classList.contains("first-steps-chip"))
       .map((button) => button.textContent);
-    // The check is the refresh icon beside the state while the file is up to date (it has no
-    // words), so the labelled button is Export alone; never a menu (FLW-11, K9).
-    expect(actions).toEqual(["", "Export to Rekordbox…"]);
+    // D14 (M106-M108): the file is a menu button and the state is the check chip, both beside
+    // Export; Export itself is never a menu (FLW-11 amended, K9).
+    expect(actions).toEqual(["collection.xml", "Up to date", "Export to Rekordbox…"]);
 
     await user.click(within(header).getByRole("button", { name: "Export to Rekordbox…" }));
     const dialog = await exportDialog();

@@ -2064,7 +2064,26 @@ export function LibraryScreen({
                 keeps the row that grows. The ready note goes first and the key note
                 takes the line when it is done. */}
             {keyIsEmptyList && (
-              <LibraryNoKeyNote count={window_.total} />
+              <LibraryNoKeyNote
+                count={window_.total}
+                // The tracks the list shows, which are the ones without a key (M503).
+                onMatch={
+                  onOpenMatch
+                    ? () =>
+                        void openInClean(
+                          {
+                            selection: batchSelection(
+                              { all: true, ids: new Set(), excluded: new Set(), anchor: null, lastId: null },
+                              query,
+                            ),
+                            count: window_.total,
+                            trackId: null,
+                          },
+                          (tracks) => onOpenMatch(tracks),
+                        )
+                    : undefined
+                }
+              />
             )}
             {!keyIsEmptyList && !keyFilterFoundNothing && isReadyNoteOpen(importedAt) && (
               <LibraryReadyNote armedAt={importedAt} onShownChange={setReadyShown} />
@@ -2118,7 +2137,7 @@ export function LibraryScreen({
                 void loadTags();
               }}
               problem={window_.error}
-              onRetry={window_.retry}
+              // No "Try again" in the bar: the table says it once, under "Could not load your tracks" (M119).
               onOpenPage={
                 onOpenEntity ? (page) => onOpenEntity(page.kind, page.ref) : undefined
               }

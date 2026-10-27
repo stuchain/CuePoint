@@ -22,6 +22,11 @@ export const NOT_FOCUS_OUTLINES: ReadonlyArray<{ sheet: string; value: string; r
     value: "var(--focus-ring-width) solid var(--accent-primary)",
     reason: "drop target, not focus",
   },
+  {
+    sheet: "/src/screens/library/QuickFilters.css",
+    value: "var(--focus-ring-width) solid var(--accent-primary)",
+    reason: "a ticked key is outlined so colour is never the only sign (M111), not focus",
+  },
 ];
 
 function offsets(): Array<{ sheet: string; value: string }> {
@@ -72,7 +77,7 @@ describe("one focus ring (T16)", () => {
   it("draws every ring at the one offset, or the one inset (C17)", () => {
     // M328 (D29, DEC-302): a filled button's ring stands one ring width off its edge
     // (--focus-ring-offset-filled, index.css), so the ground shows between a fill and a ring of its colour.
-    const allowed = ["var(--focus-ring-offset)", "var(--focus-ring-offset-inset)", "var(--focus-ring-offset-filled)"];
+    const allowed = ["var(--focus-ring-offset)", "var(--focus-ring-offset-inset)", "var(--focus-ring-offset-filled)", "calc(-1 * var(--focus-ring-width))" /* QuickFilters ticked key (M111) */];
     const bad = offsets().filter(({ value }) => !allowed.includes(value));
     expect(bad, JSON.stringify(bad)).toEqual([]);
   });

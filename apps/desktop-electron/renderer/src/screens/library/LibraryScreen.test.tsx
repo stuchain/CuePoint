@@ -897,9 +897,9 @@ describe("an imported library", () => {
         "3,880 tracks \u00b7 3 h 52 min \u00b7 120\u2013128 BPM \u00b7 2 keys",
       ),
     );
-    // The file's name, with the whole path and when it was read in its hint.
-    const name = screen.getByText("collection.xml");
-    expect(name).toHaveAttribute(
+    // The file's name is the menu button; the whole path is in the hint of when it was last read (D14).
+    expect(screen.getByText("collection.xml")).toBeInTheDocument();
+    expect(screen.getByText(/^last read /)).toHaveAttribute(
       "title",
       expect.stringContaining("C:\\Users\\dj\\Downloads\\collection.xml"),
     );
@@ -1501,7 +1501,7 @@ describe("nothing to show (LIBUI-10)", () => {
     await userEvent.click(within(tree).getByText("Warmups"));
     await screen.findByText("This Collection is empty");
 
-    await userEvent.click(screen.getByRole("button", { name: "Browse the whole library" }));
+    await userEvent.click(screen.getByRole("button", { name: "Show All tracks" }));
 
     await waitFor(() => expect(lastBrowse().collectionId ?? null).toBeNull());
     expect(
@@ -3829,8 +3829,12 @@ describe("opened on a Health count's rules (CLEAN-12)", () => {
     await tableReady();
     const note = await screen.findByRole("status", { name: "Tracks with no Beatport key" });
     expect(note).toHaveTextContent("3 tracks have no Beatport key.");
-    expect(note).toHaveTextContent("Beatport's record has none");
-    expect(within(note).queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
+    // M407/M503: one line, the difference in its hint, and Match on exactly these tracks.
+    expect(screen.getByText(/3 tracks have no Beatport key/)).toHaveAttribute(
+      "title",
+      expect.stringContaining("Beatport's record has none"),
+    );
+    expect(within(note).getByRole("button", { name: "Match 3 tracks…" })).toBeInTheDocument();
   });
 
   it("shows no such note for another rule", async () => {

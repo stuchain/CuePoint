@@ -28,10 +28,10 @@ function view(overrides: Partial<EmptyStateInput> = {}) {
 }
 
 describe("a refusal", () => {
-  it("is the sentence, in the engine's words", () => {
-    expect(view({ error: "Tag 'has_tag' names tag 9999" }).title).toBe(
-      "Tag 'has_tag' names tag 9999",
-    );
+  it("is a headline of its own with the engine's words as the reason (M119)", () => {
+    const refused = view({ error: "Tag 'has_tag' names tag 9999" });
+    expect(refused.title).toBe("Could not load your tracks");
+    expect(refused.hint).toBe("Tag 'has_tag' names tag 9999");
   });
 
   it("beats every other reason there could be no rows", () => {
@@ -45,9 +45,9 @@ describe("a refusal", () => {
       rules: ["Tag has Peak-time"],
       emptiedByRefresh: true,
     });
-    expect(refused.title).toBe("That rule cannot be run");
+    expect(refused.title).toBe("Could not load your tracks");
     expect(refused.rules).toEqual([]);
-    expect(refused.hint).toBeNull();
+    expect(refused.hint).toBe("That rule cannot be run");
   });
 
   it("offers a way out: clear what narrows the view, else try again", () => {
@@ -55,7 +55,7 @@ describe("a refusal", () => {
       id: "clear-all",
       label: "Clear search and filters",
     });
-    expect(view({ error: "refused" }).action).toBeUndefined();
+    expect(view({ error: "refused" }).action).toEqual({ id: "retry", label: "Try again" });
   });
 });
 
@@ -210,7 +210,7 @@ describe("an empty Collection", () => {
     const invited = view({ scope: "collection" });
     expect(invited.title).toBe("This Collection is empty");
     expect(invited.hint).toMatch(/Drop tracks onto it/);
-    expect(invited.action).toEqual({ id: "show-library", label: "Browse the whole library" });
+    expect(invited.action).toEqual({ id: "show-library", label: "Show All tracks" });
   });
 
   it("says what happened instead when a refresh emptied it", () => {

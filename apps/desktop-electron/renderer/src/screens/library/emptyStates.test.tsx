@@ -170,7 +170,7 @@ describe("a Collection holding nothing", () => {
 
     expect(view.title).toBe("This Collection is empty");
     expect(view.hint).toMatch(/Drop tracks onto it/);
-    expect(view.action?.label).toBe("Browse the whole library");
+    expect(view.action?.label).toBe("Show All tracks");
   });
 
   it("says what happened when a refresh took its tracks", () => {
@@ -209,9 +209,9 @@ describe("a rule the engine refused", () => {
       emptiedByRefresh: true,
     });
 
-    expect(view.title).toBe(REFUSAL);
+    expect(view.title).toBe("Could not load your tracks");
     expect(view.rules).toEqual([]);
-    expect(view.hint).toBeNull();
+    expect(view.hint).toBe(REFUSAL);
   });
 });
 

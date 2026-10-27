@@ -223,6 +223,7 @@ export function LibraryHeader({
   const disabled = busy !== null;
   const { header, level } = useLean(summary !== null && source !== null);
 
+  const fileMenu = useMenuButton();
   // Before the first import: the title, and the one button.
   if (!summary || !source) {
     return (
@@ -253,7 +254,6 @@ export function LibraryHeader({
   // D14: the file is one menu button ("collection.xml ⌄": Check for changes, Import a different
   // file…, Copy path), its state is the refresh button at chip height, and when it was last read is
   // said in words beside them (M106, M107, M108).
-  const fileMenu = useMenuButton();
   const fileBox = fileMenu.open ? fileMenu.anchor.current?.getBoundingClientRect() : undefined;
   const sourceLine = !showSource ? null : (
     <span className="library-header__source">

@@ -18,7 +18,7 @@
  * two modules to know how (ORG-12).
  */
 import { countNoun } from "../../format/counts";
-import { CLEAR_SEARCH, opensDialog } from "../../format/words";
+import { CLEAR_SEARCH, TRY_AGAIN, opensDialog } from "../../format/words";
 import type { LibraryQuery } from "./libraryQuery";
 
 export interface EmptyStateInput {
@@ -85,6 +85,9 @@ export interface EmptyStateView {
   action?: EmptyAction;
 }
 
+/** The headline of a table that could not be read (M119). */
+const COULD_NOT_LOAD = "Could not load your tracks";
+
 const CLEAR_SEARCH_ACTION: EmptyAction = { id: "clear-search", label: CLEAR_SEARCH };
 const CLEAR_FILTERS: EmptyAction = { id: "clear-filters", label: "Clear all filters" };
 const CLEAR_ALL: EmptyAction = { id: "clear-all", label: "Clear search and filters" };
@@ -103,12 +106,13 @@ function clearing(input: EmptyStateInput): EmptyAction {
 
 export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
   if (input.error) {
-    // The bar above already has "Try again" (C142): the table offers it a second time never.
+    // A failed read is a sentence of its own, with the reason under it (M119): the engine's words
+    // are a reason, not a headline. What narrows the view is cleared first; otherwise try again.
     return {
-      title: input.error,
+      title: COULD_NOT_LOAD,
       rules: [],
-      hint: null,
-      action: input.filtered ? CLEAR_ALL : undefined,
+      hint: input.error,
+      action: input.filtered ? CLEAR_ALL : { id: "retry", label: TRY_AGAIN },
     };
   }
 
@@ -193,7 +197,7 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
 
   if (input.scope === "collection") {
     const kind = input.isSet ? "Set" : "Collection";
-    const action: EmptyAction = { id: "show-library", label: "Browse the whole library" };
+    const action: EmptyAction = { id: "show-library", label: "Show All tracks" };
     // A Collection a refresh emptied is not a Collection nobody has filled,
     // and "drop tracks onto it" would be an invitation to someone who has just
     // lost the tracks they put there (DEC-011). A Set likewise (PREP-02).

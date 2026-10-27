@@ -13,11 +13,9 @@ import { countNoun } from "../../format/counts";
 export function setScopeNote(
   set: Pick<CollectionNode, "name" | "entry_count" | "track_count">,
 ): string {
-  const name = `“${set.name}”`;
-  if (set.entry_count === set.track_count) {
-    return `${name} is a Set. The table lists each of its tracks once, in the order they first play.`;
-  }
+  // One short line (M407): the name is in the title above, the link to Prepare follows the words.
+  if (set.entry_count === set.track_count) return "A Set: each track once, in play order.";
   const entries = `${countNoun(set.entry_count, "entry", "entries")}`;
   const tracks = `${countNoun(set.track_count, "track")}`;
-  return `${name} is a Set of ${entries}. The table lists each of its ${tracks} once, in the order they first play.`;
+  return `A Set of ${entries}: its ${tracks} once each, in play order.`;
 }

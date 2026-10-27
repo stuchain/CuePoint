@@ -47,7 +47,7 @@ describe("the review menu", () => {
     expect(ids.indexOf("tick")).toBeLessThan(ids.indexOf("choose"));
     const last = items[items.length - 1]!;
     expect(last.label).toBe("More");
-    expect(last.items?.some((item) => item.label === "Copy")).toBe(true);
+    expect(last.items?.some((item) => item.label === "Copy as text")).toBe(true);
   });
 
   it("names Choose a match without an ellipsis: it opens a panel, not a dialog", () => {
