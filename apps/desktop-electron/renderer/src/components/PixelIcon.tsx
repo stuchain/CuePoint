@@ -13,12 +13,12 @@ interface PixelIconProps {
   /**
    * One of two sizes (D3): `"sm"` and `"lg"` (the default), each a whole multiple of the 12-unit
    * grid so no art pixel is fractional. sm is 12 up to 1.25x and 24 from 1.5x; lg is 24 at 1x and
-   * 1.25x and 36 from 1.5x. `"md"` is the old medium, now an alias of lg until its last two uses move.
+   * 1.25x and 36 from 1.5x. There is no medium (M28, D3).
    */
   size?: PixelIconSize;
 }
 
-export type PixelIconSize = "sm" | "md" | "lg";
+export type PixelIconSize = "sm" | "lg";
 
 /**
  * Renders pixel artwork as an SVG whose rectangles inherit `currentColor`.

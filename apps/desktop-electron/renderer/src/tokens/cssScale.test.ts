@@ -234,7 +234,11 @@ describe("pixel icon sizes snap on their own (C136)", () => {
     expect(/--hairline:[^;]*--scale/.test(css)).toBe(false);
   });
 
-  it("has no medium: --icon-size-md is lg under its old name until the last two uses move (M28)", () => {
-    expect(/--icon-size-md:\s*var\(--icon-size-lg\);/.test(css)).toBe(true);
+  it("has no medium: --icon-size-md is gone, and no sheet reads it (M28)", () => {
+    // Moved for M28: the alias of lg is deleted now that its last uses moved.
+    expect(/--icon-size-md/.test(css)).toBe(false);
+    for (const [path, sheet] of Object.entries(sheets)) {
+      expect(/--icon-size-md|cp-pixel-icon--md/.test(String(sheet)), path).toBe(false);
+    }
   });
 });

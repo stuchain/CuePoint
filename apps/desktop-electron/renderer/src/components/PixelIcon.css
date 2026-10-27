@@ -2,7 +2,7 @@
   /*
    * A 12-unit viewBox drawn into a multiple of 12px: one grid cell is a whole number of CSS pixels
    * at every scale, so cell edges never land mid-pixel. Two sizes exist (--icon-size-sm and
-   * --icon-size-lg, D3; --icon-size-md is an alias of lg), and they scale pixelated, never smoothed.
+   * --icon-size-lg, D3; there is no medium, M28), and they scale pixelated, never smoothed.
    */
   width: var(--icon-size-lg);
   height: var(--icon-size-lg);
@@ -15,11 +15,6 @@
 .cp-pixel-icon--sm {
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
-}
-
-.cp-pixel-icon--md {
-  width: var(--icon-size-md);
-  height: var(--icon-size-md);
 }
 
 /* An icon standing where a typed symbol was (T10): the small size, in the line of text. */

@@ -45,11 +45,12 @@ describe("the spacing scale (area 'spacing')", () => {
 });
 
 describe("pixel icons come in two sizes (area 10, M28)", () => {
-  it("has sm and lg, each a whole multiple of the 12-unit grid, and md only as an alias of lg", () => {
+  it("has sm and lg, each a whole multiple of the 12-unit grid, and no md (M28)", () => {
     expect(rootDecl(tokens, "--icon-size-sm")).toContain("16px");
     expect(rootDecl(tokens, "--icon-size-lg")).toContain("24px");
     for (const size of ["sm", "lg"]) expect(rootDecl(tokens, `--icon-size-${size}`)).toContain("12px)");
-    expect(rootDecl(tokens, "--icon-size-md")).toBe("var(--icon-size-lg)");
+    // Moved for M28: the md alias is deleted now that nothing reads it.
+    expect(rootDecl(tokens, "--icon-size-md")).toBeUndefined();
     expect(rootDecl(tokens, "--icon-size")).toBe("var(--icon-size-lg)");
   });
 

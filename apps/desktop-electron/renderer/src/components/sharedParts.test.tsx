@@ -245,19 +245,18 @@ describe("Fieldset, DisclosureArrow and LinkButton", () => {
 });
 
 describe("PixelIcon sizes", () => {
-  it("has three sizes and no other: sm, md and the default lg", () => {
+  // Moved for M28: md was an alias of lg and is deleted; two sizes are left.
+  it("has two sizes and no other: sm and the default lg", () => {
     const { container } = render(
       <>
         <PixelIcon name="play" size="sm" />
-        <PixelIcon name="play" size="md" />
         <PixelIcon name="play" />
       </>,
     );
     const icons = [...container.querySelectorAll("svg")];
-    expect(icons.map((icon) => icon.getAttribute("data-size"))).toEqual(["sm", "md", "lg"]);
+    expect(icons.map((icon) => icon.getAttribute("data-size"))).toEqual(["sm", "lg"]);
     expect(icons[0]).toHaveClass("cp-pixel-icon--sm");
-    expect(icons[1]).toHaveClass("cp-pixel-icon--md");
-    expect(icons[2]).not.toHaveClass("cp-pixel-icon--sm", "cp-pixel-icon--md");
+    expect(icons[1]).not.toHaveClass("cp-pixel-icon--sm");
   });
 
   it("has its own remove, move and repeat-after icons, apart from the cross", () => {
