@@ -280,7 +280,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       const bar = window.getByRole("toolbar", { name: "Selection" });
       await bar.getByRole("button", { name: "Beatport", exact: true }).click();
       const beatport = window.getByRole("menu");
-      for (const entry of ["Match on Beatport…", "Review these matches", "Copy Beatport values…"]) {
+      for (const entry of ["Match on Beatport…", "Review these matches", "Use Beatport values…"]) {
         await expect(beatport.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       await window.keyboard.press("Escape");
@@ -333,7 +333,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await openAddFilter(window);
       await window.getByRole("combobox", { name: "Field" }).selectOption({ label: "File status" });
       await window.getByRole("combobox", { name: "File status" }).selectOption({ label: "Missing" });
-      await window.getByRole("button", { name: "Add", exact: true }).click();
+      await window.locator(".cp-filter-bar__builder").getByRole("button", { name: "Add filter", exact: true }).click(); // M110
       await expect(window.getByText("File status is Missing")).toBeVisible();
       await expect(row(window, "Gone")).toBeVisible();
       await expect(row(window, "Tone One")).toHaveCount(0);

@@ -354,12 +354,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // ---------------------------------------------------------------- 6
       await rows.nth(0).click();
       await rows.nth(0).click({ button: "right" });
-      // The submenu opens on the parent's click, not on hover: a menu that
-      // opened a list under the cursor while it was on its way somewhere else
-      // would be a menu that moves when you use it.
-      await window.getByRole("menuitem", { name: "Organize", exact: true }).click();
-      await window.getByRole("menuitem", { name: "Rate" }).click();
-      await window.getByRole("menuitem", { name: "4 stars", exact: true }).click();
+      // M299: Rate is the menu's inline stars row, at the top level, not a submenu of Organize.
+      await window.getByRole("group", { name: "Rate" }).getByRole("menuitemradio", { name: "4 stars", exact: true }).click();
 
       const rated = await window.evaluate(async () => {
         const tree = await window.cuepoint!.getCollections!();
@@ -389,7 +385,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await value.pressSequentially("Hou");
       await window.getByRole("listbox", { name: "Suggestions" }).getByRole("option", { name: /^House/ }).click();
       await expect(value).toHaveValue("House");
-      await window.getByRole("button", { name: "Add", exact: true }).click();
+      await window.locator(".cp-filter-bar__builder").getByRole("button", { name: "Add filter", exact: true }).click(); // M110
       // Said the short way when the row is folded (W1).
       await expect(window.locator(".cp-count")).toContainText("6 of 12 tracks", {
         timeout: 30_000,
@@ -425,7 +421,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await rowAction(window, "House only", "Save as a Collection…");
       const freeze = window.getByRole("dialog");
       await expect(freeze).toContainText(/matches right now/);
-      await freeze.getByRole("button", { name: "Freeze it" }).click();
+      await freeze.getByRole("button", { name: "Save as a Collection" }) /* M409 */.click();
       await expect(
         window.getByText(/Froze 6 tracks from House only/i).first(),
       ).toBeVisible({ timeout: 30_000 });
