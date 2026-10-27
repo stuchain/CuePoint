@@ -2,8 +2,8 @@
  * The Library's header (LIB-3, LIB-4, FLW-11, DEC-208, K9).
  *
  * It names the scope you are in (the h1 stays "Library"), says what the scope
- * holds, and gives the source as a short line. Two buttons, never a menu:
- * **Check for changes** and **Export to Rekordbox…**. Before the
+ * holds, and (on All tracks only, D14) gives the source as a file menu, a state that is the check
+ * and when it was last read. **Export to Rekordbox…** is a button. Before the
  * first import there is one, **Import a Rekordbox file…**. Where the
  * two do not fit the chips beside the title go; the buttons' words are never cut.
  *
@@ -131,16 +131,46 @@ afterEach(() => {
 const PATH = "C:\\Users\\dj\\Downloads\\collection.xml";
 
 describe("after an import", () => {
-  it("has the check as a refresh icon beside the state and Export as a button, and no menu", () => {
+  it("has the state as the check, the file as a menu and Export as a button (D14, M106-M108)", () => {
     renderHeader();
 
     for (const name of ["Check for changes", "Export to Rekordbox…"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
-    expect(screen.queryByRole("button", { name: /Import/ })).toBeNull();
-    expect(screen.queryByText(/Collection file/)).toBeNull();
+    // The file is one menu button; its entries are not on the page until it is opened.
+    const file = screen.getByRole("button", { name: "collection.xml, file menu" });
+    expect(file).toHaveAttribute("aria-haspopup", "menu");
     expect(screen.queryByRole("menu")).toBeNull();
-    expect(document.querySelector("button [data-icon='chevron-down']")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Import/ })).toBeNull();
+    fireEvent.click(file);
+    expect(within(screen.getByRole("menu")).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Check for changes",
+      "Import a different file…",
+      "Copy path",
+    ]);
+  });
+
+  it("runs the file menu's entries, and says when the file was last read", () => {
+    const onCopyPath = vi.fn();
+    const handlers = renderHeader({ onCopyPath });
+    expect(screen.getByText(/^last read /)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "collection.xml, file menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Import a different file…" }));
+    expect(handlers.onImport).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "collection.xml, file menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy path" }));
+    expect(onCopyPath).toHaveBeenCalledWith(PATH);
+    fireEvent.click(screen.getByRole("button", { name: "collection.xml, file menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Check for changes" }));
+    expect(handlers.onCheck).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no file and no state on a Collection or a playlist, only on All tracks (D14, M108)", () => {
+    renderHeader({ showSource: false, scopeName: "Gigs", scopeTrail: ["Collections"] });
+    expect(screen.queryByText("collection.xml")).toBeNull();
+    expect(screen.queryByText("Up to date")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Check for changes" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Export to Rekordbox…" })).toBeInTheDocument();
   });
 
   it("does what each button says", () => {
@@ -154,7 +184,7 @@ describe("after an import", () => {
     expect(handlers.onImport).not.toHaveBeenCalled();
   });
 
-  it("makes Check a quiet icon while the export is up to date, a labelled primary when it changed or went missing", () => {
+  it("makes the state the check while the export is up to date, a labelled primary when it changed or went missing", () => {
     const view = render(
       <LibraryHeader
         summary={summaryWith(false)}
@@ -168,8 +198,9 @@ describe("after an import", () => {
       />,
     );
     const check = () => screen.getByRole("button", { name: "Check for changes" });
-    expect(check()).toHaveClass("cp-btn--quiet");
-    expect(check()).toHaveTextContent("");
+    // The chip is the button, at chip height: "Up to date ⟳" (M106, M107).
+    expect(check()).toHaveClass("cp-badge");
+    expect(check()).toHaveTextContent("Up to date");
     for (const next of [summaryWith(true), summaryWith(false, false)]) {
       view.rerender(
         <LibraryHeader
@@ -297,7 +328,7 @@ describe("the scope (R4-4)", () => {
     expect(screen.queryByTestId("library-trail")).toBeNull();
   });
 
-  it("names a playlist, with the group it is in above it, in the one crumb place (new E)", () => {
+  it("names a playlist, with the group it is in above it, in the facts line (D14)", () => {
     const { container } = render(
       <LibraryHeader
         summary={SUMMARY}
@@ -311,17 +342,16 @@ describe("the scope (R4-4)", () => {
       />,
     );
     expect(container.querySelector(".cp-screen-header__display")).toHaveTextContent("Friday warm-up");
-    // Above the title, where the Artist, Label and Similar pages put theirs; not on the facts line.
-    const crumb = container.querySelector(".cp-screen-header__crumb")!;
-    expect(crumb).toContainElement(screen.getByTestId("library-trail"));
+    // At the start of the facts line, so the title row is the same height on every scope (D14, M102).
+    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
+    expect(container.querySelector(".cp-screen-header__summary")).toContainElement(screen.getByTestId("library-trail"));
     expect(screen.getByTestId("library-trail")).toHaveTextContent("Playlists");
-    expect(container.querySelector(".cp-screen-header__summary")).not.toHaveTextContent("Playlists");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Library");
   });
 });
 
 describe("the path and folders (R7-4, R7-5)", () => {
-  it("shows the full path above the title, a chevron icon between the names (new E)", () => {
+  it("shows the full path in the facts line, a chevron icon between the names (D14)", () => {
     const { container } = render(
       <LibraryHeader
         summary={SUMMARY}
@@ -338,7 +368,7 @@ describe("the path and folders (R7-4, R7-5)", () => {
     expect(trail).toHaveTextContent("PlaylistsGigs 2026Summer");
     expect(trail.textContent).not.toContain("›");
     expect(trail.querySelectorAll("[data-icon='chevron-right-sm']")).toHaveLength(2);
-    expect(container.querySelector(".cp-screen-header__crumb")).toContainElement(trail);
+    expect(container.querySelector(".cp-screen-header__summary")).toContainElement(trail);
   });
 
   it("keeps the trail on one line: the chevron is an in-line icon, not a block that breaks it (C220)", () => {
@@ -395,7 +425,9 @@ describe("what the scope holds (K9)", () => {
     const summary = document.querySelector(".cp-screen-header__summary")!;
     const lead = summary.querySelector(".library-header__sr-only");
     expect(lead).toHaveTextContent("Friday warm-up:");
-    expect(summary.textContent?.startsWith("Friday warm-up: 36 tracks")).toBe(true);
+    // Where this is comes first (D14), then what it holds.
+    expect(summary.textContent?.startsWith("Friday warm-up: Playlists")).toBe(true);
+    expect(summary.textContent).toContain("36 tracks");
   });
 
   it("no longer counts playlists", () => {
@@ -404,17 +436,31 @@ describe("what the scope holds (K9)", () => {
   });
 });
 
+describe("what is not out yet (M511)", () => {
+  it("says what is not in the files and what is not exported, with the export one click away", () => {
+    const handlers = renderHeader({
+      pending: { values_not_in_files: 12, changes_not_exported: 30, last_export_at: null },
+    });
+    const line = screen.getByTestId("library-pending");
+    expect(line).toHaveTextContent("12 values not in files · 30 changes not exported");
+    fireEvent.click(within(line).getByRole("button", { name: "30 changes not exported" }));
+    expect(handlers.onExport).toHaveBeenCalledTimes(1);
+  });
+
+  it("says nothing when nothing is waiting, or before it is known", () => {
+    renderHeader({ pending: { values_not_in_files: 0, changes_not_exported: 0, last_export_at: null } });
+    expect(screen.queryByTestId("library-pending")).toBeNull();
+  });
+});
+
 describe("the source line (K9)", () => {
-  it("is the file name and the state, with the whole path and last read in the hint", () => {
+  it("is the file name as a menu button and the state, with when it was last read said beside them", () => {
     renderHeader();
 
-    const name = screen.getByText("collection.xml");
-    expect(name).toHaveAttribute("title", expect.stringContaining(PATH));
-    expect(name).toHaveAttribute("title", expect.stringContaining("last read"));
-    expect(name).toHaveAttribute("tabindex", "0");
+    expect(screen.getByText("collection.xml")).toBeInTheDocument();
     expect(screen.getByText("Up to date")).toBeInTheDocument();
+    expect(screen.getByText(/^last read /)).toHaveAttribute("title", PATH);
     expect(screen.queryByText(PATH)).toBeNull();
-    expect(screen.queryByText(/^last read /)).toBeNull();
   });
 
   it.each([
@@ -443,10 +489,8 @@ describe("the source line (K9)", () => {
     const note = screen.getByRole("status");
     expect(note).toHaveTextContent(/could not tell whether this Rekordbox file has changed/);
     expect(note).not.toHaveClass("library-header__state--attention");
-    // Check stays the quiet refresh icon: nothing is known to need a look.
-    expect(screen.getByRole("button", { name: "Check for changes" })).toHaveClass(
-      "cp-btn--quiet",
-    );
+    // Check stays the chip: nothing is known to need a look.
+    expect(screen.getByRole("button", { name: "Check for changes" })).toHaveClass("cp-badge");
   });
 
   it("is the one violet Import before the first import, and none while First steps has its own (C146)", () => {

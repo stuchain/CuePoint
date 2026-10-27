@@ -1056,6 +1056,29 @@ describe("the refresh preview (DEC-032)", () => {
     expect(await screen.findByText(/3,881 tracks in your library/)).toBeInTheDocument();
   });
 
+  it("keeps the search and says what changed, with a way to match the new tracks (M516, M517)", async () => {
+    const onOpenMatch = vi.fn();
+    renderScreen({ onOpenMatch });
+    await tableReady();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search" }), { target: { value: "bridge" } });
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
+    const dialog = await screen.findByRole("dialog");
+    // The preview was read; what the apply answers is the receipt.
+    bridge.getJobResults.mockResolvedValue({
+      id: "job-apply",
+      state: "succeeded",
+      result: { ...APPLIED, tracks_inserted: 2, new_track_ids: [901, 902] },
+    });
+    await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks and refresh/i }));
+    await waitFor(() => expect(bridge.startLibraryRefreshApply).toHaveBeenCalled());
+
+    // The view is as it was left, not put back to the whole library.
+    expect(screen.getByRole("searchbox", { name: "Search" })).toHaveValue("bridge");
+    const match = await screen.findByRole("button", { name: "Match the 2 new tracks…" });
+    await userEvent.click(match);
+    expect(onOpenMatch).toHaveBeenCalledWith({ ids: [901, 902] });
+  });
+
   it("empties the waveforms held, since a refresh can move a track to another file", async () => {
     const forget = vi.spyOn(waveformCache, "forget");
     const dialog = await openPreview();

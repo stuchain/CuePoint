@@ -123,9 +123,10 @@ describe("what the pane shows", () => {
     expect(within(rowFor("SETS")).queryByText("0")).not.toBeInTheDocument();
   });
 
-  it("says where the playlists came from", () => {
+  it("says where the playlists came from in the title's hint, with no suffix beside the counts (D33)", () => {
     paneWith();
-    expect(screen.getByText("from Rekordbox")).toBeInTheDocument();
+    expect(screen.queryByText("from Rekordbox")).toBeNull();
+    expect(screen.getByText("Playlists")).toHaveAttribute("title", "Mirrored from your Rekordbox file");
   });
 
   it("says so when the export had no playlists", () => {
@@ -589,11 +590,11 @@ describe("a drop is refused, visibly (DEC-031, ORG-09)", () => {
 });
 
 describe("its heading matches Collections' (Q3)", () => {
-  it("has a fold arrow, the title and the 'from Rekordbox' note", () => {
+  it("has a fold arrow and the title, and no 'from Rekordbox' suffix (D33)", () => {
     paneWith();
     const fold = screen.getByRole("button", { name: "Playlists" });
     expect(fold).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("from Rekordbox")).toBeInTheDocument();
+    expect(screen.queryByText("from Rekordbox")).toBeNull();
   });
 
   it("folds the tree away and back", () => {

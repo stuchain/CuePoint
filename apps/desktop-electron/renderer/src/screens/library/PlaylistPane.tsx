@@ -126,16 +126,11 @@ export function PlaylistPane({
               className="cp-pixel-icon--text"
             />
           </span>
-          {/* W1: the title carries where the list comes from, for a narrow pane that hides the label. */}
+          {/* D33 (M406): the title carries where the list comes from; the heading has no suffix to compete with the counts. */}
           <Hint text="Mirrored from your Rekordbox file" inline>
             <span className="cp-playlist-pane__title">Playlists</span>
           </Hint>
         </button>
-        <span className="cp-playlist-pane__source-hint">
-          <Hint text="Mirrored from your Rekordbox file" inline>
-            <span className="cp-playlist-pane__source">from Rekordbox</span>
-          </Hint>
-        </span>
       </div>
 
       {!collapsed && selectionFellBack && (

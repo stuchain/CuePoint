@@ -22,15 +22,9 @@
   }
 }
 
-/* W1: when a head would not fit on one line ("Playlists from Rekordbox" needs about 17em of the pane's
-   own text size, so the test scales with it), "+ New" becomes "+" and "from Rekordbox" moves into the
-   Playlists title's hint. */
+/* W1: when a head would not fit on one line (about 18em of the pane's own text size, so the test
+   scales with it), "+ New" becomes "+". */
 @container library-pane (max-width: 18em) {
-  /* One step more specific than CollectionsPane.css's rule for the label, which loads later. */
-  .cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head > .cp-playlist-pane__source-hint {
-    display: none;
-  }
-
   /* Out of sight but still read, so the button's name stays "+ New" at every width. */
   .cp-collections__new-word {
     position: absolute;
@@ -68,13 +62,6 @@
   background: transparent;
 }
 
-/* "from Rekordbox" is a label (P20): the muted size-and-weight of .cp-text-label (index.css). */
-.cp-playlist-pane__source {
-  color: var(--fg-muted);
-  font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
-}
-
 /* Both section titles are section headings (C57); both heads share one padding (C43). */
 .cp-playlist-pane__title {
   font-family: var(--font-voice);
@@ -98,12 +85,6 @@
 .cp-playlist-pane__fold:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
-}
-
-.cp-playlist-pane__source {
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  white-space: nowrap;
 }
 
 .cp-playlist-pane__note {

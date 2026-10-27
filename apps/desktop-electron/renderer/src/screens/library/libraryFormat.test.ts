@@ -540,3 +540,14 @@ describe("jobErrorMessage", () => {
     expect(jobErrorMessage({ code: "X" })).toBe("Something went wrong.");
   });
 });
+
+describe("refreshedWords (M516)", () => {
+  const base = { tracks_inserted: 0, tracks_deleted: 0 } as never;
+  it("says what moved, or only that it refreshed", async () => {
+    const { refreshedWords } = await import("./libraryFormat");
+    expect(refreshedWords({ ...(base as object), tracks_inserted: 12, tracks_deleted: 2 } as never)).toBe(
+      "Library refreshed: 12 added · 2 removed",
+    );
+    expect(refreshedWords(base)).toBe("Library refreshed.");
+  });
+});

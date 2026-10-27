@@ -136,9 +136,10 @@ import { goTo } from "../../format/words";
 import { libraryIdentityOf, useScopeFacts } from "./useScopeFacts";
 import { useScopeTotal } from "./useScopeTotal";
 import { followJob } from "./followJob";
-import { appliedLine, fileName, jobErrorMessage } from "./libraryFormat";
+import { appliedLine, fileName, jobErrorMessage, refreshedWords } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "./trackClipboard";
+import { useLibraryPending } from "./useLibraryPending";
 import { isSelected, onlySelectedId, selectedRowIndex } from "./trackSelection";
 import { useFacet, useFilterVocabulary, useQuickFacets } from "./useFilterVocabulary";
 import { keysSources, openSource, withSource } from "./savedScope";
@@ -324,6 +325,8 @@ export function LibraryScreen({
     push(userMessage(error, "Could not read the library"), "warning"),
   );
   const loadSummary = summaryRead.refresh;
+  // What is only in CuePoint, or not exported yet (M511); asked again after a refresh and an export.
+  const pending = useLibraryPending([summary?.source?.imported_at, lastApplied, exporting === null]);
 
   // ---------------------------------------------------------------- browsing
 
@@ -1744,9 +1747,11 @@ export function LibraryScreen({
       if (mounted.current) setDiff(null);
       if (!done) return;
 
+      let applied: RefreshApplied | null = null;
       try {
         const payload = await results(done.jobId);
-        if (mounted.current) setLastApplied((payload.result as RefreshApplied) ?? null);
+        applied = (payload.result as RefreshApplied) ?? null;
+        if (mounted.current) setLastApplied(applied);
       } catch {
         // The refresh succeeded; not being able to read its receipt is not a
         // failure worth reporting as one.
@@ -1756,7 +1761,8 @@ export function LibraryScreen({
       // some of them, so the window is asked again even though the query has
       // not moved.
       playlists.reload();
-      setQuery({ ...DEFAULT_LIBRARY_QUERY });
+      // M516: the search, the filters, the scope and the selection stay as they were; only what
+      // they show is asked for again (a different file, below, is a different library and starts over).
       window_.reload();
       // A refresh can delete tracks a Collection holds (DEC-011), so the
       // counts beside its name are stale the moment it lands.
@@ -1764,9 +1770,18 @@ export function LibraryScreen({
       if (mounted.current) setEmptiedByRefresh(emptied);
       // A refresh can move a track to another file, whose waveform is another.
       forgetWaveforms();
-      push("Library refreshed.", "success");
+      // The toast says what changed, and offers the new tracks a match (M516, M517): keys come from it.
+      const fresh = applied?.new_track_ids ?? [];
+      push(
+        // The counts, without the library's size: the line under the title says that.
+        applied ? refreshedWords(applied) : "Library refreshed.",
+        "success",
+        fresh.length > 0 && onOpenMatch
+          ? { label: `Match the ${countNoun(fresh.length, "new track")}…`, onClick: () => onOpenMatch({ ids: fresh }) }
+          : undefined,
+      );
     },
-    [collections, diff, loadSummary, playlists, push, run, window_],
+    [collections, diff, loadSummary, onOpenMatch, playlists, push, run, window_],
   );
 
   // --------------------------------------------------------- Rekordbox export
@@ -2000,6 +2015,12 @@ export function LibraryScreen({
         scopeName={scopeLabel.name}
         scopeTrail={scopeLabel.group}
         folder={scopeLabel.folder}
+        // The file is All tracks' (D14): a playlist or a Collection is not "from" it.
+        showSource={headerScope.playlistId == null && headerScope.collectionId == null}
+        pending={pending}
+        onCopyPath={(path) => {
+          void writeClipboard(path).then((ok) => push(ok ? "Copied the path." : "Could not copy the path.", ok ? "info" : "warning"));
+        }}
         facts={scopeFacts}
         fallbackCount={
           scopeLabel.count ??

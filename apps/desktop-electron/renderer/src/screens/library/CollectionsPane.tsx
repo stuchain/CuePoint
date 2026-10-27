@@ -556,7 +556,7 @@ export function CollectionsPane({
 
         {/* The three ways to make something, as one menu (FLW-10, K14). Made inside the
             selected folder when one is selected, straight into the new row's name. It sits in
-            the heading, as Playlists' "from Rekordbox" does: one small item on the right. */}
+            the heading: one small item on the right. */}
         {!collapsed && (
           <div className="cp-collections__create" role="group" aria-label="Make something new">
             <Button

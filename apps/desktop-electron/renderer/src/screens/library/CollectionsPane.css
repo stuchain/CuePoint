@@ -173,7 +173,7 @@
 }
 
 /* A heading is one line at every size (W1, replacing zoom spot 1C's wrap): a narrow pane shortens
-   "+ New" and hides "from Rekordbox" (PlaylistPane.css), and the title is never ellipsised. */
+   "+ New" (PlaylistPane.css), and the title is never ellipsised. */
 .cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head {
   box-sizing: border-box;
   flex-wrap: nowrap;
@@ -181,22 +181,6 @@
   /* "+ New" hangs out by its padding and border (L2) so its words end on the counts' edge; its
      border would reach 1px past the pane, so the head clips it rather than the pane scrolling. */
   overflow-x: clip;
-}
-
-/* "from Rekordbox" ends on the counts' edge, and in "..." only if the pane is narrower still. */
-.cp-library-pane .cp-playlist-pane__head > .cp-playlist-pane__source-hint {
-  display: block;
-  flex: 0 1 auto;
-  min-width: 0;
-  margin-inline-start: auto;
-  overflow: hidden;
-}
-
-.cp-library-pane .cp-playlist-pane__source {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* + New is never cut: it wraps under the title instead. */

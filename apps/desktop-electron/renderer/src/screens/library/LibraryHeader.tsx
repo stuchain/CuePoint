@@ -13,7 +13,12 @@
  * `libraryFormat.ts`, because whether a user understands that a refresh's
  * deletions are permanent is decided by those words and not by the layout.
  *
- * **Two buttons, never a menu** (FLW-11). **Check for changes** and
+ * **The file is a menu, the state is the check** (D14, amending FLW-11's "never a menu"): on All tracks the
+ * file's name opens Check for changes, Import a different file… and Copy path, and "Up to date ⟳" is the
+ * check itself; a Collection or a playlist shows neither. Where the trail to the scope is, the facts
+ * line starts with it, so the title row never changes height.
+ *
+ * **Two buttons** (FLW-11). **Check for changes** and
  * **Export to Rekordbox…** are the library's relationship with its file and
  * the look at what moved, and each is one click. Import a Rekordbox file moved to
  * Settings and the File menu (K9). Check is the primary button only when the
@@ -27,11 +32,12 @@
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-import { Badge, Button, Hint } from "../../components";
+import { Button, Hint } from "../../components";
 import { PixelIcon } from "../../components/PixelIcon";
-import { CHECK_FOR_CHANGES } from "../../format/words";
+import { TrackContextMenu, useMenuButton } from "../../components/TrackContextMenu";
+import { CHECK_FOR_CHANGES, opensDialog } from "../../format/words";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
-import type { LibraryQuickFacets, LibrarySummary } from "../../api/cuepointBridge.types";
+import type { LibraryPending, LibraryQuickFacets, LibrarySummary } from "../../api/cuepointBridge.types";
 import {
   fileName,
   formatWhen,
@@ -40,7 +46,7 @@ import {
   sourceState,
   sourceStateMessage,
 } from "./libraryFormat";
-import { countNoun } from "../../format/counts";
+import { countNoun, formatCount } from "../../format/counts";
 import "./LibraryHeader.css";
 
 interface LibraryHeaderProps {
@@ -48,12 +54,21 @@ interface LibraryHeaderProps {
   summary: LibrarySummary | null;
   /** The scope's name: "All tracks", or the playlist's, Collection's or Set's. */
   scopeName?: string;
-  /** The trail to the scope ("Playlists", "Gigs 2026"), the crumb above the title; none on All tracks. */
+  /** The trail to the scope ("Playlists", "Gigs 2026"), at the start of the facts line (D14); none on All tracks. */
   scopeTrail?: readonly string[];
   /** A folder is selected: its facts line says what it holds instead of "0 tracks" (R7-5). */
   folder?: { count: number; noun: "playlist" | "Collection" } | null;
   /** First steps is showing its own violet Import, so the header shows none: one Import, not two (C146). */
   importInFirstSteps?: boolean;
+  /**
+   * The file the library was read from is shown on All tracks only (D14, M108): a Collection or a
+   * playlist is not "from" a file, so its title row has none. Defaults to true.
+   */
+  showSource?: boolean;
+  /** What is not in the files or not exported yet (M511); the line says nothing when both are 0. */
+  pending?: LibraryPending | null;
+  /** Copy the file's path; the header has no toast of its own (the page says "Copied"). */
+  onCopyPath?: (path: string) => void;
   /** What the scope holds; null while it is being read. */
   facts?: LibraryQuickFacets | null;
   /** The scope's track count as far as the page already knows it. */
@@ -190,6 +205,9 @@ export function LibraryHeader({
   scopeName = "All tracks",
   scopeTrail = [],
   folder = null,
+  showSource = true,
+  pending = null,
+  onCopyPath,
   importInFirstSteps = false,
   facts = null,
   fallbackCount = 0,
@@ -224,6 +242,7 @@ export function LibraryHeader({
   }
 
   const state = sourceState(source);
+  const hasPending = !!pending && (pending.values_not_in_files > 0 || pending.changes_not_exported > 0);
   const needsLook = state === "changed" || state === "missing";
   // A button's words never change while it works: it shows the spinner, and the status strip says
   // what is happening (C239).
@@ -231,33 +250,69 @@ export function LibraryHeader({
   const parts = folder
     ? ["Folder", countNoun(folder.count, folder.noun)]
     : scopeFactsLine(facts, fallbackCount);
-  // The file's name, with the whole path in its hint, and the file's state.
-  const sourceLine = (
+  // D14: the file is one menu button ("collection.xml ⌄": Check for changes, Import a different
+  // file…, Copy path), its state is the refresh button at chip height, and when it was last read is
+  // said in words beside them (M106, M107, M108).
+  const fileMenu = useMenuButton();
+  const fileBox = fileMenu.open ? fileMenu.anchor.current?.getBoundingClientRect() : undefined;
+  const sourceLine = !showSource ? null : (
     <span className="library-header__source">
-      <Hint text={`${source.xml_path} · last read ${formatWhen(source.imported_at)}`} inline>
-        <span className="library-header__file cp-data" tabIndex={0}>
+      <Button
+        variant="quiet"
+        size="sm"
+        menu
+        className="library-header__file-button"
+        aria-label={`${fileName(source.xml_path)}, file menu`}
+        {...fileMenu.buttonProps}
+      >
+        <span className="library-header__file cp-data" data-cut-hint="">
           {fileName(source.xml_path)}
         </span>
-      </Hint>
-      <Badge variant={needsLook ? "warning" : state === "unknown" ? "default" : "success"}>
-        {sourceBadge(state)}
-      </Badge>
-      {/* Nothing needs a look: checking is a quiet refresh icon beside the state. When the file
-          changed or went missing, the labelled primary button is in the actions instead. */}
-      {!needsLook && (
-        <Hint text={checking && busyLabel ? busyLabel : CHECK_FOR_CHANGES}>
-          <Button
-            variant="quiet"
-            size="sm"
-            iconOnly
-            icon="refresh"
+      </Button>
+      {fileMenu.open && fileBox && (
+        <TrackContextMenu
+          x={fileBox.left}
+          y={fileBox.bottom}
+          anchor={fileMenu.anchor}
+          onClose={fileMenu.close}
+          label={fileName(source.xml_path)}
+          items={[
+            { id: "check", label: CHECK_FOR_CHANGES, onSelect: onCheck, disabled },
+            { id: "import", label: opensDialog("Import a different file"), onSelect: onImport, disabled },
+            {
+              id: "copy-path",
+              label: "Copy path",
+              title: source.xml_path,
+              onSelect: () => onCopyPath?.(source.xml_path),
+              disabled: !onCopyPath,
+              separatorBefore: true,
+            },
+          ]}
+        />
+      )}
+      {/* Nothing needs a look: the state is the check, one button at the chip's height. When the
+          file changed or went missing, the labelled primary button is in the actions instead and
+          the state is only said here. */}
+      {needsLook ? (
+        <span className={`cp-badge cp-badge--warning library-header__chip`}>{sourceBadge(state)}</span>
+      ) : (
+        <Hint text={checking && busyLabel ? busyLabel : `Check ${fileName(source.xml_path)} for changes`}>
+          <button
+            type="button"
+            className={`cp-badge cp-badge--${state === "unknown" ? "default" : "success"} library-header__chip library-header__chip--button`}
             aria-label={CHECK_FOR_CHANGES}
-            loading={checking}
+            aria-busy={checking || undefined}
             disabled={disabled}
             onClick={onCheck}
-          />
+          >
+            {sourceBadge(state)}
+            <PixelIcon name="refresh" className="cp-pixel-icon--text" />
+          </button>
         </Hint>
       )}
+      <span className="library-header__read" title={`${source.xml_path}`}>
+        last read {formatWhen(source.imported_at)}
+      </span>
     </span>
   );
 
@@ -266,22 +321,8 @@ export function LibraryHeader({
       <ScreenHeader
         title="Library"
         display={scopeName}
-        // The trail to the scope (Playlists, then the folders above it, C44) is the crumb above the
-        // title, the one place every page puts it (new E): Artist, Label and Similar do the same.
-        crumb={
-          scopeTrail.length > 0 ? (
-            <nav className="library-header__trail" aria-label="Where this is" data-testid="library-trail">
-              {scopeTrail.map((name, index) => (
-                <span key={`${index}-${name}`} className="library-header__trail-step">
-                  {index > 0 && <PixelIcon name="chevron-right-sm" className="cp-pixel-icon--text library-header__trail-arrow" />}
-                  {name}
-                </span>
-              ))}
-            </nav>
-          ) : undefined
-        }
         beside={
-          level >= 2 ? undefined : (
+          level >= 2 || !sourceLine ? undefined : (
             <>
               {sourceLine}
               {level === 0 && <span className="library-header__chip-slot">{extra}</span>}
@@ -292,6 +333,19 @@ export function LibraryHeader({
           <span key="scope" className="library-header__sr-only">
             {scopeName}:{" "}
           </span>,
+          // D14 (M102): where this is is the facts line's first words, so the title row is the same
+          // height on every scope and nothing under it moves when a list is opened.
+          scopeTrail.length > 0 ? (
+            <nav key="trail" className="library-header__trail" aria-label="Where this is" data-testid="library-trail">
+              {scopeTrail.map((name, index) => (
+                <span key={`${index}-${name}`} className="library-header__trail-step">
+                  {index > 0 && <PixelIcon name="chevron-right-sm" className="cp-pixel-icon--text library-header__trail-arrow" />}
+                  {name}
+                </span>
+              ))}
+              <span className="library-header__sep"> · </span>
+            </nav>
+          ) : null,
           ...parts.map((part, index) => (
           <span key={index}>
             {index > 0 && <span className="library-header__sep"> · </span>}
@@ -305,7 +359,7 @@ export function LibraryHeader({
           )),
           // Where the title and the buttons leave no room beside the title, the file and its state
           // are here, on the facts line.
-          level >= 2 ? (
+          level >= 2 && sourceLine ? (
             <span key="source">
               <span className="library-header__sep"> · </span>
               {sourceLine}
@@ -331,8 +385,24 @@ export function LibraryHeader({
           </>
         }
         tabs={
-          (state !== "unchanged" || appliedLine) && (
+          (state !== "unchanged" || appliedLine || hasPending) && (
             <div className="library-header__notes">
+              {/* M511: what is only in CuePoint, what is in the files and what has been exported. */}
+              {hasPending && pending && (
+                <p className="library-header__pending" data-testid="library-pending">
+                  {pending.values_not_in_files > 0 && (
+                    <span>{`${formatCount(pending.values_not_in_files)} ${pending.values_not_in_files === 1 ? "value" : "values"} not in files`}</span>
+                  )}
+                  {pending.values_not_in_files > 0 && pending.changes_not_exported > 0 && (
+                    <span className="library-header__sep"> · </span>
+                  )}
+                  {pending.changes_not_exported > 0 && (
+                    <button type="button" className="cp-link" onClick={onExport} disabled={disabled}>
+                      {`${formatCount(pending.changes_not_exported)} ${pending.changes_not_exported === 1 ? "change" : "changes"} not exported`}
+                    </button>
+                  )}
+                </p>
+              )}
               {state !== "unchanged" && (
                 <span
                   className={`library-header__state${needsLook ? " library-header__state--attention" : ""}`}

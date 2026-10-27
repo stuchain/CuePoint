@@ -225,6 +225,14 @@ export function appliedLine(result: RefreshApplied): string {
   return parts.join(" · ");
 }
 
+/** The refresh toast: what moved ("Library refreshed: 12 added · 2 removed"), or just that it did. */
+export function refreshedWords(result: RefreshApplied): string {
+  const parts: string[] = [];
+  if (result.tracks_inserted > 0) parts.push(`${groupCount(result.tracks_inserted)} added`);
+  if (result.tracks_deleted > 0) parts.push(`${groupCount(result.tracks_deleted)} removed`);
+  return parts.length > 0 ? `Library refreshed: ${parts.join(" · ")}` : "Library refreshed.";
+}
+
 /**
  * What a failed job means, in words a user can act on.
  *

@@ -85,6 +85,39 @@
   white-space: nowrap;
 }
 
+/* The state is the check (M106, M107): a chip-height button, "Up to date ⟳". */
+.library-header__chip--button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.library-header__chip--button:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.library-header__chip--button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.library-header__chip--button:disabled {
+  cursor: default;
+}
+
+/* When it was last read, in words, beside the state (M108). */
+.library-header__read {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-family: var(--font-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .library-header__file {
   min-width: 0;
   overflow: hidden;
@@ -135,4 +168,10 @@
 
 .library-header__trail-arrow {
   vertical-align: middle;
+}
+
+/* What is only in CuePoint and what is not exported yet (M511): the notes' first line. */
+.library-header__pending {
+  margin: 0;
+  color: var(--fg-muted);
 }
