@@ -12,6 +12,7 @@
  * have, through the engine's own database.
  */
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { showTrackDetails } from "./rowClick";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -324,10 +325,10 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
       await window.reload();
       await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await window.locator('.track-table__row [data-column="title"]', { hasText: "Track 1" }).click();
-      // M71 (D11): at 1280 and the default size the panel folds to keep the table's room; the
-      // person's own Track details opens it.
-      const showDetails = window.getByRole("button", { name: "Track details", exact: true });
-      if ((await showDetails.getAttribute("aria-pressed")) === "false") await showDetails.click();
+      // M71 (D11): at 1280 and the default size the panel folds to keep the table's room; where there
+      // is room the selection opens it after 250 ms and the header toggle goes. The shared helper waits
+      // out the opening before it reads the toggle (CI wave 2: the toggle was read after it had gone).
+      await showTrackDetails(window);
       await window.getByRole("button", { name: "Camelot wheel" }).click();
       for (const scale of [1.5, 2, 3]) {
         const report = await window.evaluate((s) => {

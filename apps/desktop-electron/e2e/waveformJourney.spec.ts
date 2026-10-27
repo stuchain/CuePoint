@@ -27,6 +27,7 @@
  * launch gets its own `--user-data-dir` and `CUEPOINT_HOME`.
  */
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { showTrackDetails } from "./rowClick";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -293,10 +294,10 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       await window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" }).fill("Bands");
       await window.locator(".track-table__row").filter({ hasText: "Bands" }).first().click();
       const inspector = "[data-testid=inspector-waveform] canvas";
-      // M71 (D11): at the default 1280 window and size the panel folds to keep the table's room;
-      // the person's own Track details opens it.
-      const showDetails = window.getByRole("button", { name: "Track details", exact: true });
-      if ((await showDetails.getAttribute("aria-pressed")) === "false") await showDetails.click();
+      // M71 (D11): at 1280 and the default size the panel folds to keep the table's room; where there
+      // is room the selection opens it after 250 ms and the header toggle goes. The shared helper waits
+      // out the opening before it reads the toggle (CI wave 2: the toggle was read after it had gone).
+      await showTrackDetails(window);
       await expect(window.locator(inspector)).toBeVisible({ timeout: 20_000 });
       let cue: Awaited<ReturnType<typeof columnOf>> = null;
       await expect
