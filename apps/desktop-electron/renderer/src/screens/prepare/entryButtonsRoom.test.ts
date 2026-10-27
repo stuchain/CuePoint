@@ -53,6 +53,9 @@ describe("room for the entry buttons (C15d, DEC-249)", () => {
     // Only the trailing run counts: Mix in before the Note column is not kept clear.
     expect(timesClearWidth(cells(["position", "title", "in", "note"], [0, 40, 300, 400]), 760)).toBe(0);
     expect(timesClearWidth(cells(["position", "title", "in", "note", "out"], [0, 40, 300, 400, 600]), 760)).toBe(160);
+    // Regression (M199 layout): Fit after Mix in still keeps Mix in clear, Fit with it; Fit alone is no time.
+    expect(timesClearWidth(cells(["position", "title", "key", "in", "fit"], [0, 40, 300, 600, 700]), 760)).toBe(160);
+    expect(timesClearWidth(cells(["position", "title", "key", "fit"], [0, 40, 300, 700]), 760)).toBe(0);
     // Scrolled out of view to the right: nothing to keep clear.
     expect(timesClearWidth(cells(["title", "out"], [0, 900]), 760)).toBe(0);
     expect(timesClearWidth([], 760)).toBe(0);

@@ -36,7 +36,7 @@ export function newSetSources(
     .filter((node) => node.kind === "playlist")
     .map((node): NewSetSource => ({ kind: "playlist", id: node.id, name: node.name, parentId: null }));
   return [
-    { label: "CuePoint", sources: collections },
+    { label: "Collections", sources: collections },
     { label: "Rekordbox playlists", sources: rekordbox },
   ].filter((group) => group.sources.length > 0);
 }

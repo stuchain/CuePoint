@@ -1,7 +1,7 @@
 /**
  * The buttons for the selected entries (FLW-17), apart from their drawing.
  *
- * Move up, Move down, Start a chapter here, Repeat after and Remove sit on the
+ * Move up, Move down, New chapter, Repeat and Remove sit on the
  * focused entry's row, in short words (DEC-249, which amends DEC-209), each the shared small grey Button. With no
  * entry selected there is no such row and none is drawn; with several selected
  * they act on all of them, and a button that cannot says why in its hint. Which
@@ -30,7 +30,7 @@ export interface EntryButton {
   id: EntryButtonId;
   /** The full name: the button's accessible name. */
   label: string;
-  /** What the row has room for: the up arrow for Move up, "Chapter here" for Start a chapter here. */
+  /** What the row has room for: the up arrow for Move up, "New chapter" for New chapter. */
   short: EntryMark;
   /** What stands for `short` when the row has no room for the words (DEC-249): "Chapter" for the longest, icons for the rest. */
   glyph: EntryMark;
@@ -113,8 +113,8 @@ export function stepMoves(
 const SHORT: Record<EntryButtonId, EntryMark> = {
   up: { icon: "arrow-up" },
   down: { icon: "arrow-down" },
-  split: { text: "Chapter here" },
-  repeat: { text: "Repeat after" },
+  split: { text: "New chapter" },
+  repeat: { text: "Repeat" },
   remove: { text: "Remove" },
 };
 const GLYPHS: Record<EntryButtonId, EntryMark> = {
@@ -125,12 +125,17 @@ const GLYPHS: Record<EntryButtonId, EntryMark> = {
   remove: { icon: "remove" },
 };
 
-/** What a button does, to the entries it acts on: "Move 3 entries up", "Remove". */
+/** What the two words-only buttons do, in a sentence (M426): the same tips the menu entries carry. */
+export const NEW_CHAPTER_TIP = "Start a new chapter at this track";
+export const REPEAT_TIP = "Play this track again after itself";
+
+/** What a button does, to the tracks it acts on: "Move 3 tracks up", "Remove", the tip of a word. */
 function doing(id: EntryButtonId, label: string, count: number): string {
+  if (id === "split") return NEW_CHAPTER_TIP;
+  if (id === "repeat") return REPEAT_TIP;
   if (count < 2) return label;
-  if (id === "up" || id === "down") return `Move ${countNoun(count, "entry", "entries")} ${id}`;
-  if (id === "remove") return `Remove ${countNoun(count, "entry", "entries")}`;
-  return label;
+  if (id === "up" || id === "down") return `Move ${countNoun(count, "track")} ${id}`;
+  return `Remove ${countNoun(count, "track")}`;
 }
 
 const button = (
@@ -151,9 +156,8 @@ const button = (
 });
 
 /**
- * The five buttons for the entries selected, in the order they are drawn; none
- * when no entry is selected. Start a chapter here uses the first selected
- * entry; Repeat after needs exactly one.
+ * The five buttons for the tracks selected, in the order they are drawn; none
+ * when no track is selected. New chapter uses the first selected track; Repeat needs exactly one.
  */
 export function entryButtons(rows: readonly PrepareRow[], selected: ReadonlySet<number>): EntryButton[] {
   const chosen = rows.filter(isEntryRow).filter((row) => selected.has(row.entry.entry_id));
@@ -163,8 +167,8 @@ export function entryButtons(rows: readonly PrepareRow[], selected: ReadonlySet<
   return [
     button("up", "Move up", n, stepMoves(rows, selected, -1).length > 0 ? null : "Already first in the Set", "Alt+↑"),
     button("down", "Move down", n, stepMoves(rows, selected, 1).length > 0 ? null : "Already last in the Set", "Alt+↓"),
-    button("split", "Start a chapter here", n, canSplitAt(rows, first.entry.entry_id) ? null : "Already starts a chapter"),
-    button("repeat", "Repeat after", n, n === 1 ? null : "Select one entry"),
+    button("split", "New chapter", n, canSplitAt(rows, first.entry.entry_id) ? null : "Already starts a chapter"),
+    button("repeat", "Repeat", n, n === 1 ? null : "Select one track"),
     button("remove", "Remove", n, null, "Delete"),
   ];
 }

@@ -10,8 +10,8 @@
  *
  * **Suggestions** are Title, the normal Key chip column and a right-aligned **BPM Δ** (the
  * tempo step, signed, in tabular figures: C78, C70). The reasons for each side, in playing order
- * (`inPlayOrder`), and the score out of 100 are the BPM Δ cell's hover hint, and a track already
- * in the Set is marked on its title. The engine's order is kept until a heading is clicked:
+ * (`inPlayOrder`), and the score out of 100 are the BPM change cell's hover hint, and a track already
+ * in the Set is marked "In Set" at the end of its title (M196); the Library tab marks them too (M203). The engine's order is kept until a heading is clicked:
  * Key and BPM Δ sort the loaded rows on screen, and the last sort is remembered (C193); the
  * engine is never asked for them.
  *
@@ -19,7 +19,8 @@
  * table does (LIBUI-01).
  */
 import type { LibraryTrackRow, SetSuggestion, SetSuggestionSide, SetSuggestionSideName } from "../../api/cuepointBridge.types";
-import { PixelIcon } from "../../components/PixelIcon";
+import { useContext, type ReactNode } from "react";
+
 import { camelotOf } from "../../components/wheel/keyColour";
 import { parseCode } from "../../components/wheel/camelot";
 import type { TrackColumnDef } from "../../components/table";
@@ -28,6 +29,31 @@ import { reasonsText } from "../discover/similarColumns";
 import { effectiveText } from "../library/libraryClean";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
 import { fitText, inPlayOrder, inSetText } from "./prepareSource";
+import { InSetTracksContext } from "./sourcePanelState";
+
+/** What the mark says: a few muted words at the title's end, in a slot of its own, so titles share one left edge (M196). */
+export const IN_SET_MARK = "In Set";
+
+/** The title, then "In Set" at the end of the cell when the track is already in the Set (M196, M203). */
+function TitleWithMark({ children, hint, label }: { children: ReactNode; hint?: string; label?: string }) {
+  return (
+    <span className="prepare-source__title" data-hint={hint}>
+      <span className="prepare-source__title-text">{children}</span>
+      {label && (
+        <span className="prepare-source__in-set" aria-label={label} data-hint={label}>
+          {IN_SET_MARK}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** A Library row's title cell: its own cell, marked when the Set holds the track. */
+function LibraryTitle({ row, children }: { row: LibraryTrackRow; children: ReactNode }) {
+  const held = useContext(InSetTracksContext);
+  const inSet = row.id != null && held.has(row.id);
+  return <TitleWithMark label={inSet ? "In this Set" : undefined}>{children}</TitleWithMark>;
+}
 
 /** A suggestion: its library row, and what the engine said about it. */
 export type SuggestionRow = LibraryTrackRow & { id: number; suggestion: SetSuggestion };
@@ -35,7 +61,7 @@ export type SuggestionRow = LibraryTrackRow & { id: number; suggestion: SetSugge
 /** A library row with the id every row the engine sends has. */
 type SourceLibraryRow = LibraryTrackRow;
 
-// The third layout: Title, Key and BPM Δ. A layout saved under an earlier key lists a Fit column that is gone.
+// The third layout: Title, Key and BPM change. A layout saved under an earlier key lists a Fit column that is gone.
 export const SUGGESTION_TABLE_LAYOUT_KEY = "cuepoint-prepare-suggestions-layout-3";
 export const SOURCE_LIBRARY_TABLE_LAYOUT_KEY = "cuepoint-prepare-library-layout";
 
@@ -50,7 +76,7 @@ function unsorted<Row extends LibraryTrackRow>(column: TrackColumnDef<LibraryTra
   return rest as TrackColumnDef<Row>;
 }
 
-/** What Suggestions are ranked by: the BPM Δ header's hint, where the one-time note used to be (C203). */
+/** What Suggestions are ranked by: the BPM change header's hint, where the one-time note used to be (C203). */
 export const SUGGESTIONS_RANKING_TITLE =
   "Ranked by how well each track follows the one before and leads into the one after: tempo, key, genre, label and artist.";
 
@@ -84,7 +110,7 @@ function tempoOf(row: SuggestionRow): ReturnType<typeof reasonTokens>["tempo"] {
   return reasonTokens(inPlayOrder(side.reasons, name)).tempo;
 }
 
-/** The tempo step as the BPM Δ cell says it: "+1", "−2", "±0", "0.5×", or "". */
+/** The tempo step as the BPM change cell says it: "+1", "−2", "±0", "0.5×", or "". */
 function tempoStep(row: SuggestionRow): string {
   return tempoDeltaText(tempoOf(row));
 }
@@ -95,7 +121,7 @@ function keyOrder(row: SuggestionRow): number | null {
   return place ? place.number * 2 + (place.letter === "B" ? 1 : 0) : null;
 }
 
-/** The full reason behind the BPM Δ cell: the score and each side's reasons, as its hover hint. */
+/** The full reason behind the BPM change cell: the score and each side's reasons, as its hover hint. */
 function fitHint(row: SuggestionRow): string {
   const { before, after, score } = row.suggestion;
   const lines = [`Fit ${fitText(score)}`];
@@ -106,7 +132,7 @@ function fitHint(row: SuggestionRow): string {
 
 /**
  * Suggestions are Title, the track's own key as the usual key chip, and the tempo step as a
- * right-aligned BPM Δ. The panel is a narrow column, so the reasons live in the hover hint and the
+ * right-aligned BPM change. The panel is a narrow column, so the reasons live in the hover hint and the
  * Title's summary; nothing scrolls sideways.
  */
 export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
@@ -114,21 +140,13 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
     ...unsorted<SuggestionRow>(libraryColumn("title")),
     minWidthPx: 80,
     defaultWidthPx: 150,
-    render: (row) => {
-      const inSet = inSetText(row.suggestion.in_set);
-      return (
-        <span className="prepare-source__title" data-hint={suggestionSummary(row)}>
-          {inSet && (
-            <span className="prepare-source__in-set" data-hint={inSet} aria-label={inSet}>
-              <PixelIcon name="repeat-after" className="cp-pixel-icon--text cp-pixel-icon--before" />
-            </span>
-          )}
-          <span className="track-table__cell-text" data-cut-hint="">
-            {row.title}
-          </span>
+    render: (row) => (
+      <TitleWithMark hint={suggestionSummary(row)} label={inSetText(row.suggestion.in_set) ?? undefined}>
+        <span className="track-table__cell-text" data-cut-hint="">
+          {row.title}
         </span>
-      );
-    },
+      </TitleWithMark>
+    ),
     text: (row) => row.title,
   },
   {
@@ -137,10 +155,10 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
   },
   {
     id: "bpm_delta",
-    header: "BPM Δ",
+    header: "BPM change",
     hint: `The tempo step from the neighbor, in playing order: −2, +3 or ±0, and a mark for half or double. ${SUGGESTIONS_RANKING_TITLE} Hover a row for the reasons and the score out of 100.`,
-    minWidthPx: 56,
-    defaultWidthPx: 64,
+    minWidthPx: 76,
+    defaultWidthPx: 84,
     align: "right",
     accessor: (row) => {
       const tempo = tempoOf(row);
@@ -163,7 +181,11 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
  * on Title, BPM and Key and the rest wait in the Columns list (M85).
  */
 export const SOURCE_LIBRARY_COLUMNS: readonly TrackColumnDef<SourceLibraryRow>[] = [
-  { ...libraryColumn("title"), defaultWidthPx: 170 },
+  {
+    ...libraryColumn("title"),
+    defaultWidthPx: 170,
+    render: (row) => <LibraryTitle row={row}>{libraryColumn("title").render(row)}</LibraryTitle>,
+  },
   { ...libraryColumn("artist"), hiddenByDefault: true },
   libraryColumn("bpm"),
   libraryColumn("key"),

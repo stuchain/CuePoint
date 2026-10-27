@@ -18,6 +18,7 @@ import { FRIDAY, IDS, PLAIN, TREE } from "./prepare.testFixture";
 import {
   bpmRangeText,
   chapterTimeText,
+  chapterTimeTitle,
   deletionLine,
   EMPTY_SET,
   headerFacts,
@@ -39,6 +40,7 @@ import {
   setIdFromRoute,
   setToOpen,
 } from "./prepareLink";
+import { NEW_CHAPTER_TIP } from "./entryActions";
 import { entryMenuItems, headingMenuItems } from "./prepareMenus";
 import {
   buildSetRows,
@@ -47,6 +49,7 @@ import {
   chapterName,
   dropMove,
   entriesOf,
+  firstWarningEntryId,
   repeatAfter,
   rowKey,
   showsHeadings,
@@ -197,10 +200,39 @@ describe("chapter starts and repeats", () => {
   });
 });
 
+describe("the first warning to go to (M199)", () => {
+  it("is the first entry of a chapter over its target when that comes first", () => {
+    // Warm-up runs 9:00 of 8:00: its own warning sends the person to its first entry.
+    expect(firstWarningEntryId(rows)).toBe(FRIDAY.plan.chapters[0].entry_ids[0]);
+  });
+
+  it("is the first entry with a warning of its own or into it when no chapter comes first", () => {
+    const entryRows = rows.filter((row) => row.kind === "entry");
+    const withoutChapterWarnings = rows.map((row) => (row.kind === "heading" ? { ...row, warnings: [] } : row));
+    const expected = entryRows.find(
+      (row) => row.kind === "entry" && [...row.transition, ...row.warnings].some((warning) => !warning.acknowledged),
+    );
+    expect(expected).toBeDefined();
+    expect(firstWarningEntryId(withoutChapterWarnings as typeof rows)).toBe(
+      expected!.kind === "entry" ? expected!.entry.entry_id : null,
+    );
+  });
+
+  it("is null when the Set has no open warning", () => {
+    const quiet = rows.map((row) =>
+      row.kind === "heading"
+        ? { ...row, warnings: [] }
+        : { ...row, transition: [], warnings: [] },
+    );
+    expect(firstWarningEntryId(quiet as typeof rows)).toBeNull();
+  });
+});
+
 describe("the words", () => {
   it("counts the timed entries; how many are not is said apart (DEC-107)", () => {
-    expect(runningTimeLine(FRIDAY.plan.running_time)).toBe("0:09:00 planned");
-    expect(runningTimeLine({ seconds: 5660, timed: 3, untimed: 0 })).toBe("1:34:20 planned");
+    // A bare time: what it is, is said in its title (M199's wording pass).
+    expect(runningTimeLine(FRIDAY.plan.running_time)).toBe("0:09:00");
+    expect(runningTimeLine({ seconds: 5660, timed: 3, untimed: 0 })).toBe("1:34:20");
     expect(withoutTimesLine(FRIDAY.plan.running_time)).toBe("4 without times");
     expect(withoutTimesLine({ seconds: 5660, timed: 3, untimed: 0 })).toBeNull();
     // Nothing planned is nothing to say: no "0:00 planned" to read as a plan (PRP-3).
@@ -219,7 +251,11 @@ describe("the words", () => {
   it("states a chapter's time against its target, and its range", () => {
     const [warmUp, peak] = FRIDAY.plan.chapters;
     expect(chapterTimeText(warmUp)).toBe("9:00 of 8:00");
-    expect(chapterTimeText(peak)).toBe("0:00 · 2 without times");
+    // Nothing timed is nothing to say in the heading; the title says how many have no times.
+    expect(chapterTimeText(peak)).toBe("");
+    expect(chapterTimeTitle(peak)).toBe(
+      "The chapter's planned time, against its target. 2 without times.",
+    );
     expect(bpmRangeText(warmUp)).toBe("120–123");
     expect(bpmRangeText(peak)).toBe("");
     expect(bpmRangeText({ bpm_min: 126, bpm_max: null })).toBe("from 126");
@@ -255,10 +291,10 @@ describe("the words", () => {
     expect(notice.text).toBe("2 without key");
     expect(notice.action).toBeUndefined();
     expect(notice.actionText).toBeUndefined();
-    expect(notice.title).toMatch(/2 entries have no Beatport key, so no key check applies\.$/);
+    expect(notice.title).toMatch(/2 tracks have no Beatport key, so no key check applies\.$/);
     const one = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 1 });
     expect(one[one.length - 1]?.text).toBe("1 without key");
-    expect(one[one.length - 1]?.title).toMatch(/^1 entry has no Beatport key/);
+    expect(one[one.length - 1]?.title).toMatch(/^1 track has no Beatport key/);
     const all = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 0 });
     expect(all.some((fact) => fact.text.endsWith("without key"))).toBe(false);
   });
@@ -270,14 +306,16 @@ describe("the words", () => {
 
   it("puts the header's facts on one line, each longer sentence in its title (C15d)", () => {
     const facts = headerFacts(6, FRIDAY.plan.running_time, FRIDAY.analysis);
-    expect(facts.map((fact) => fact.text)).toEqual(["6 tracks", "0:09:00 planned", "5 warnings", "Files not checked"]);
+    expect(facts.map((fact) => fact.text)).toEqual(["6 tracks", "0:09:00", "5 warnings", "Files not checked"]);
     // What is left out of the line is in a title: the untimed, and the accepted warnings.
-    expect(facts[1].title).toBe("4 without times");
+    expect(facts[1].title).toBe("Planned length of the Set. 4 without times.");
     // Transitions, then entries, then chapters, in words that count.
     expect(facts[2]).toEqual({
       text: "5 warnings",
       title: "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 marked OK",
       strong: true,
+      // The count goes to the first warning when it is pressed (M199).
+      jump: true,
     });
     // The files fact is the one that links: it opens Clean's Missing files.
     expect(facts[3]).toMatchObject({ action: "open_missing", actionText: "Missing files" });
@@ -288,8 +326,8 @@ describe("the words", () => {
     );
     const checked = { ...FRIDAY.analysis.files, never_checked: false, checked: 5, unchecked: 0 };
     const quiet = headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, counts: {}, files: checked });
-    expect(quiet.map((fact) => fact.text)).toEqual(["1 track", "0:09:00 planned", "No warnings"]);
-    expect(quiet[2]).toEqual({ text: "No warnings", title: "1 marked OK", strong: false });
+    expect(quiet.map((fact) => fact.text)).toEqual(["1 track", "0:09:00", "No warnings"]);
+    expect(quiet[2]).toEqual({ text: "No warnings", title: "1 marked OK", strong: false, jump: false });
   });
 
   it("says no times are planned only in the count's title, and that times are optional (PRP-3)", () => {
@@ -301,7 +339,7 @@ describe("the words", () => {
     );
     // One timed entry is a plan; an empty Set has no entries to be untimed.
     const one = headerFacts(6, { seconds: 0, timed: 1, untimed: 5 }, FRIDAY.analysis);
-    expect([one[1].text, one[1].title]).toEqual(["0:00:00 planned", "5 without times"]);
+    expect([one[1].text, one[1].title]).toEqual(["0:00:00", "Planned length of the Set. 5 without times."]);
     expect(headerFacts(0, { seconds: 0, timed: 0, untimed: 0 }, FRIDAY.analysis)[1].text).toBe("5 warnings");
   });
 
@@ -322,7 +360,7 @@ describe("the words", () => {
       "Starts at",
       "Mix in",
       "Mix out",
-      "Plays for",
+      "Time",
     ]);
     expect(PREPARE_COLUMNS.find((column) => column.id === "in")?.hint).toBe(
       "When you plan to bring this track in, as m:ss into the track",
@@ -347,10 +385,10 @@ describe("the words", () => {
   it("says where a deleted chapter's entries go before it is deleted", () => {
     const [warmUp, peak] = FRIDAY.plan.chapters;
     expect(deletionLine(FRIDAY.plan.chapters, peak)).toBe(
-      "Its 2 entries join “Warm-up”, with their times and notes. The chapter's name, notes and targets are deleted with it.",
+      "Its 2 tracks join “Warm-up”, with their times and notes. The chapter's name, notes and targets are deleted with it.",
     );
     expect(deletionLine(FRIDAY.plan.chapters, warmUp)).toContain("join “Peak”");
-    expect(deletionLine(FRIDAY.plan.chapters, { ...peak, entry_ids: [] })).toMatch(/^It holds no entries\./);
+    expect(deletionLine(FRIDAY.plan.chapters, { ...peak, entry_ids: [] })).toMatch(/^It holds no tracks\./);
   });
 });
 
@@ -387,7 +425,7 @@ describe("the menus", () => {
     expect(items.find((item) => item.id === "split")?.disabled).toBe(false);
     // PRP-11: what a chapter is, where the menu starts one.
     expect(items.find((item) => item.id === "split")?.title).toBe(
-      "Splits the Set here; this track begins a new chapter.",
+      NEW_CHAPTER_TIP,
     );
   });
 
@@ -402,9 +440,9 @@ describe("the menus", () => {
       "Play 3 tracks",
       "Play next",
       "Add to queue",
-      "Remove 3 entries from Set",
+      "Remove 3 tracks from Set",
     ]);
-    expect(items.find((item) => item.label === "Remove 3 entries from Set")?.groupTitle).toBe("This page");
+    expect(items.find((item) => item.label === "Remove 3 tracks from Set")?.groupTitle).toBe("This page");
     expect(entryMenuItems({ count: 0, canSplit: true }, handlers)).toEqual([]);
   });
 
@@ -467,7 +505,7 @@ describe("New Set from…'s sources", () => {
     ]);
     const groups = newSetSources(tree, [playlist(10, "folder", "SETS"), playlist(11, "playlist", "Sunday")]);
     expect(groups.map((group) => [group.label, group.sources.map((source) => `${source.kind} ${source.name}`)])).toEqual([
-      ["CuePoint", ["collection Warm-up", "smart Ada"]],
+      ["Collections", ["collection Warm-up", "smart Ada"]],
       ["Rekordbox playlists", ["playlist Sunday"]],
     ]);
     // Filed beside its source, in CuePoint's tree; at the top for a playlist.
@@ -546,7 +584,9 @@ describe("the Set table's default columns fit (C246)", () => {
     // At 1264 x 735 and the 1.25 text size, with the sidebar expanded and the Suggestions pane
     // open, the Set's rows are 717 px wide and the Columns… button takes 30 of them. The defaults
     // stay under that, and grow into whatever is spare.
-    const shown = PREPARE_COLUMNS.filter((column) => !column.hiddenByDefault);
+    // Fit is shown from the start (M199), so Artist, the one column the table drops first when the
+    // pane is short of room (prepareWidthRule.test), is not counted.
+    const shown = PREPARE_COLUMNS.filter((column) => !column.hiddenByDefault && column.id !== "artist");
     const total = shown.reduce((sum, column) => sum + (column.defaultWidthPx ?? 0), 0);
     expect(total * 1.25 + 30).toBeLessThanOrEqual(717);
   });

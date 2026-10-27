@@ -9,13 +9,14 @@
 import type { EntityKind, TrackCreditLinks } from "../../api/cuepointBridge.types";
 import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { countNoun } from "../../format/counts";
+import { NEW_CHAPTER_TIP, REPEAT_TIP } from "./entryActions";
 import { discoverMenuItems } from "../library/libraryDiscover";
 import { groupMenuId, moreItems, moreWithExplore, playItems } from "../library/trackActions";
 
 interface EntryMenuState {
   /** How many entries the menu acts on. */
   count: number;
-  /** "Start a chapter here" can: the entry is not its chapter's first. */
+  /** "New chapter" can: the entry is not its chapter's first. */
   canSplit: boolean;
 }
 
@@ -28,7 +29,7 @@ interface EntryMenuHandlers {
   onRemove: () => void;
 }
 
-/** The one name of the chapter action: the heading button, the menu entry and the dialog it opens. */
+/** The one name of the chapter action: the menu entry and the dialog it opens. The heading's name is its button (M205). */
 export const CHAPTER_ACTION = "Edit chapter…";
 
 /** The heading of the block of entries only this page has (area 38). */
@@ -97,19 +98,19 @@ export function entryMenuItems(
     page.push(
       {
         id: "split",
-        label: "Start a chapter here",
-        title: "Splits the Set here; this track begins a new chapter.",
+        label: "New chapter",
+        title: NEW_CHAPTER_TIP,
         onSelect: handlers.onSplit,
         // At a chapter's first entry a chapter already starts there; the
         // engine would refuse it and say to rename instead.
         disabled: !state.canSplit,
       },
-      { id: "repeat", label: "Insert a repeat after", onSelect: handlers.onRepeat },
+      { id: "repeat", label: "Repeat", title: REPEAT_TIP, onSelect: handlers.onRepeat },
     );
   }
   page.push({
     id: "remove",
-    label: one ? "Remove from Set" : `Remove ${countNoun(count, "entry", "entries")} from Set`,
+    label: one ? "Remove from Set" : `Remove ${countNoun(count, "track")} from Set`,
     onSelect: handlers.onRemove,
   });
   return [

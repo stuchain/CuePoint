@@ -61,16 +61,16 @@ describe("the five buttons", () => {
     expect(list.map((button) => button.label)).toEqual([
       "Move up",
       "Move down",
-      "Start a chapter here",
-      "Repeat after",
+      "New chapter",
+      "Repeat",
       "Remove",
     ]);
     // Move up and Move down are an up arrow and a down arrow, not two copies of one mark (C245).
     expect(list.map((button) => button.short)).toEqual([
       { icon: "arrow-up" },
       { icon: "arrow-down" },
-      { text: "Chapter here" },
-      { text: "Repeat after" },
+      { text: "New chapter" },
+      { text: "Repeat" },
       { text: "Remove" },
     ]);
     // A pane with no room for the words draws these instead (DEC-249).
@@ -92,11 +92,11 @@ describe("the five buttons", () => {
     const one = by(entryButtons(rows, ids(E2)));
     expect(one.up.hint).toBe("Move up (Alt+↑)");
     expect(one.remove.hint).toBe("Remove (Delete)");
-    expect(one.split.hint).toBe("Start a chapter here");
+    expect(one.split.hint).toBe("Start a new chapter at this track");
     const several = by(entryButtons(rows, ids(E2, E3)));
-    expect(several.up.hint).toBe("Move 2 entries up (Alt+↑)");
-    expect(several.down.hint).toBe("Move 2 entries down (Alt+↓)");
-    expect(several.remove.hint).toBe("Remove 2 entries (Delete)");
+    expect(several.up.hint).toBe("Move 2 tracks up (Alt+↑)");
+    expect(several.down.hint).toBe("Move 2 tracks down (Alt+↓)");
+    expect(several.remove.hint).toBe("Remove 2 tracks (Delete)");
     // A reason, when there is one, is the hint.
     expect(by(entryButtons(rows, ids(E1))).up.hint).toBe("Already first in the Set");
   });
@@ -126,7 +126,7 @@ describe("the five buttons", () => {
     const several = by(entryButtons(rows, ids(E2, E3)));
     expect(several.up.disabled).toBe(false);
     expect(several.remove.disabled).toBe(false);
-    expect(several.repeat).toMatchObject({ disabled: true, reason: "Select one entry" });
+    expect(several.repeat).toMatchObject({ disabled: true, reason: "Select one track" });
     // Start a chapter here uses the first selected entry (E2 is not a chapter's first).
     expect(several.split.disabled).toBe(false);
   });

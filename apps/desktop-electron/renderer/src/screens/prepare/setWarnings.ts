@@ -21,11 +21,6 @@ import { formatLength } from "../../format/durations";
 // re-exported so a caller of this module needs one import.
 export type { SetFileCheck, SetNotice, SetWarning };
 
-/** "1 entry", "3 entries". */
-function entries(count: number): string {
-  return `${count} ${count === 1 ? "entry" : "entries"}`;
-}
-
 /** "1 track", "3 tracks". */
 function tracks(count: number): string {
   return `${count} ${count === 1 ? "track" : "tracks"}`;
@@ -77,7 +72,7 @@ export function describeSetWarning(warning: SetWarning): string {
         return `${formatLength(target - planned)} under the ${formatLength(target)} target`;
       }
       const over = `${formatLength(planned - target)} over the ${formatLength(target)} target`;
-      return warning.detail === "partly_timed" ? `${over}, before ${entries(untimed)} still without times` : over;
+      return warning.detail === "partly_timed" ? `${over}, before ${tracks(untimed)} still without times` : over;
     }
     case "bpm_outside_range": {
       // A track is below only a range with a floor, and above only one with a

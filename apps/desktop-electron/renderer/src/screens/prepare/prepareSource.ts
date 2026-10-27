@@ -114,26 +114,26 @@ export function pointWords(point: InsertionPoint, chapters: readonly SetChapterP
   return { kind: "end", before, chapter };
 }
 
-/** The same, as one plain sentence. */
+/** The same, as one plain phrase: "Between “A” and “B” · Peak", the chapter after a middle dot (M198). */
 export function pointText(words: PointWords): string {
-  const where = (chapter: string | null) => (chapter ? `, in ${chapter}` : "");
+  const where = (chapter: string | null) => (chapter ? ` · ${chapter}` : "");
   switch (words.kind) {
     case "empty":
       return "At the start of the empty Set";
     case "between":
       return `Between “${words.before}” and “${words.after}”${where(words.chapter)}`;
     case "end":
-      return `After “${words.before}”, at the end of the Set${where(words.chapter)}`;
+      return `After “${words.before}”${where(words.chapter)}`;
   }
 }
 
 /**
- * The panel's first line: "Inserting: between “A” and “B”, in Peak" (PRP-9).
- * It sits above the tabs so the reason Insert is off is on screen.
+ * The panel's first line: "Insert after “A” · Peak" (PRP-9, M198). One line, the names kept whole;
+ * it sits above the tabs so the reason Insert here is off is on screen.
  */
 export function insertingText(words: PointWords): string {
   const text = pointText(words);
-  return `Inserting: ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+  return `Insert ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
 }
 
 // ------------------------------------------------------------ the pool
@@ -349,17 +349,19 @@ export function inSetText(count: number): string | null {
 export function roomFor(count: number, current: number, limit: number): string | null {
   if (current + count <= limit) return null;
   return (
-    `A Set holds at most ${formatCount(limit)} entries. This one has ` +
+    `A Set holds at most ${formatCount(limit)} tracks. This one has ` +
     `${formatCount(current)}, so ${formatCount(count)} more will not fit.`
   );
 }
 
+/** Why "Insert here" is off while nothing is picked (M428). */
+export const SELECT_TRACKS_FIRST = "Select tracks below first";
+
 /**
- * The panel's one action: "Insert here", or "Insert 3 here" for several.
- * With nothing picked it says what to do instead of sitting off (PRP-9).
+ * The panel's one action: always "Insert here", or "Insert 3 here" for several. With nothing picked
+ * it is off and its hint says why (`SELECT_TRACKS_FIRST`), as every off button does (M428).
  */
 export function insertLabel(count: number): string {
-  if (count <= 0) return "Pick tracks";
   return count > 1 ? `Insert ${formatCount(count)} here` : "Insert here";
 }
 

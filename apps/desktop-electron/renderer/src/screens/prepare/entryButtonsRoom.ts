@@ -28,6 +28,9 @@ export const ENTRY_TITLE_KEEP_PX = 32;
 /** The columns the buttons leave clear when they come last: the times a click edits. */
 export const TIME_COLUMNS: readonly string[] = ["in", "out", "starts_at"];
 
+/** What may sit in the run of times that ends the row: the times and the Fit dot after them. */
+const TRAILING_COLUMNS: readonly string[] = [...TIME_COLUMNS, "fit"];
+
 /** The scroll area's room for the buttons: what is left beside the number and the title's small minimum, less the times kept clear. */
 export function roomBesideTitle(scrollWidth: number, numberWidth: number, titleMin: number, timesClear = 0): number {
   return scrollWidth - (numberWidth + titleMin + timesClear);
@@ -40,7 +43,11 @@ export function roomBesideTitle(scrollWidth: number, numberWidth: number, titleM
  */
 export function timesClearWidth(cells: ReadonlyArray<{ id: string; left: number; width: number }>, viewRight: number): number {
   let first: { id: string; left: number; width: number } | null = null;
-  for (let at = cells.length - 1; at >= 0 && TIME_COLUMNS.includes(cells[at]!.id); at -= 1) first = cells[at]!;
+  // Fit may close the run (M199 opens the table on "… Mix in, Fit"): the run still starts at its
+  // first time, and Fit's dot is left clear with it. Fit alone is not a time to keep clear.
+  for (let at = cells.length - 1; at >= 0 && TRAILING_COLUMNS.includes(cells[at]!.id); at -= 1) {
+    if (TIME_COLUMNS.includes(cells[at]!.id)) first = cells[at]!;
+  }
   // A cell with no width is no layout (a test DOM, a pane not drawn yet): nothing to keep clear.
   if (!first || first.width <= 0) return 0;
   return Math.max(0, Math.ceil(viewRight - first.left));

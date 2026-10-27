@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import {
+  SOURCE_DEFAULT_WIDTH,
   SOURCE_NUDGE,
   clampSourceWidth,
   loadSourceWidth,
@@ -96,7 +97,11 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
   );
 
   if (!source) {
-    return <div className="prepare-layout prepare-layout--single">{set}</div>;
+    return (
+      <div className="prepare-layout prepare-layout--single" data-pane="set">
+        {set}
+      </div>
+    );
   }
   return (
     <div
@@ -104,7 +109,9 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
       className={`prepare-layout${sourceHidden ? " prepare-layout--single" : ""}`}
       style={{ ["--prepare-source-width" as string]: `${width}px` }}
     >
-      <div className="prepare-layout__set">{set}</div>
+      <div className="prepare-layout__set" data-pane="set">
+        {set}
+      </div>
       {/* The same three slots whether the source shows or not, so hiding it keeps its state. */}
       {sourceHidden ? null : (
       <div
@@ -119,6 +126,12 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
           startResize(event.clientX);
         }}
         onKeyDown={(event) => {
+          // Enter puts the width back, as it does on Track details and the queue (M359).
+          if (event.key === "Enter") {
+            event.preventDefault();
+            setStored(clampSourceWidth(SOURCE_DEFAULT_WIDTH * scale, paneWidth, scale));
+            return;
+          }
           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
           event.preventDefault();
           const delta = (event.key === "ArrowLeft" ? SOURCE_NUDGE : -SOURCE_NUDGE) * scale;

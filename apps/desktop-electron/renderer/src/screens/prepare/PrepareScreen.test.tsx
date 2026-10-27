@@ -125,6 +125,10 @@ function install(tree: CollectionNode[] = TREE) {
       ],
       total: 2,
     })),
+    renameCollection: vi.fn(async ({ id, name }: { id: number; name: string }) => ({
+      collection: { ...TREE[1], id, name },
+    })),
+    deleteCollection: vi.fn(async () => ({ removed: { collections: 1, entries: 6 } })),
     insertTrackInCollection: vi.fn().mockResolvedValue(EDITS.repeatInserted),
     removeCollectionEntries: vi.fn().mockResolvedValue(EDITS.removed),
     startFileCheck: vi.fn().mockResolvedValue({ job_id: "check-1", id: "check-1", state: "queued", tracks: 5 }),
@@ -198,7 +202,7 @@ function viewItem(name: string): HTMLElement {
 
 /** Turns the Mix in and Mix out columns on: View, then the ticked Mix in and Mix out. */
 function showTimes() {
-  fireEvent.click(viewItem("Mix in and Mix out"));
+  fireEvent.click(viewItem("Mix-in and mix-out columns"));
 }
 
 /** The names of the columns the table draws, left to right. */
@@ -234,11 +238,8 @@ function showTimesInStorage() {
 }
 
 async function opened(name = "Friday") {
-  await screen.findByRole("heading", { level: 1, name: "Prepare" }, LOADED);
-  await waitFor(() => {
-    const picker = screen.getByLabelText("Set") as HTMLSelectElement;
-    expect(picker.selectedOptions[0]?.text.trim()).toBe(name);
-  }, LOADED);
+  // The Set's name is the page title (D21, M201).
+  await screen.findByRole("heading", { level: 1, name }, LOADED);
   await waitFor(() => expect(rows().length).toBeGreaterThan(0), LOADED);
 }
 
@@ -264,9 +265,14 @@ function drag(type: "dragover" | "drop", row: HTMLElement, dataTransfer: DataTra
   fireEvent(row, event);
 }
 
-/** Opens the header's Set menu. */
-function openSetMenu() {
-  fireEvent.click(screen.getByRole("button", { name: "Set" }));
+/** Opens the menu of the page title, the Set's name: the Sets, rename, notes, new, delete. */
+function openSetMenu(name = "Friday") {
+  fireEvent.click(within(screen.getByRole("heading", { level: 1 })).getByRole("button", { name }));
+}
+
+/** Opens the header's Export menu: the file for Rekordbox, the set list. */
+function openExportMenu() {
+  fireEvent.click(screen.getByRole("button", { name: "Export" }));
 }
 
 /** An entry's menu opens once the track's credits are read, so it is awaited. */
@@ -306,8 +312,8 @@ describe("with no Sets", () => {
     install(noSets);
     renderAt(PREPARE_PATH);
     expect(await screen.findByText(WHAT_A_SET_IS, {}, LOADED)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New Set…" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New Set from…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New Set" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New Set from a list…" })).toBeInTheDocument();
   });
 
   it("is the shared empty state, with no frame and no card title, and one violet button", async () => {
@@ -317,59 +323,42 @@ describe("with no Sets", () => {
     expect(screen.queryByText("Prepare a Set")).toBeNull();
     expect(container.querySelector(".cp-empty-state")).not.toBeNull();
     expect(container.querySelector(".cp-panel")).toBeNull();
-    expect(screen.getByRole("button", { name: "New Set…" }).className).toMatch(/primary/);
-    expect(screen.getByRole("button", { name: "New Set from…" }).className).toMatch(/secondary/);
+    expect(screen.getByRole("button", { name: "New Set" }).className).toMatch(/primary/);
+    expect(screen.getByRole("button", { name: "New Set from a list…" }).className).toMatch(/secondary/);
   });
 
-  it("makes a Set where it is asked, and opens it", async () => {
+  it("makes a Set at once, called New Set, and opens it (one flow with the Library's, M408)", async () => {
     install(noSets);
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
-    const dialog = screen.getByRole("dialog", { name: "New Set" });
-    fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Friday II" } });
-    fireEvent.change(within(dialog).getByLabelText("In"), { target: { value: String(IDS.gigs) } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
-
+    fireEvent.click(await screen.findByRole("button", { name: "New Set" }, LOADED));
     await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
-    expect(sets.create).toHaveBeenCalledWith({ name: "Friday II", parent_id: IDS.gigs });
-    expect(await screen.findByText("Made the Set “Friday II”")).toBeInTheDocument();
+    expect(sets.create).toHaveBeenCalledWith({ name: "New Set", parent_id: null });
+    // No dialog asked for its name before the Set existed.
+    expect(screen.queryByRole("dialog", { name: "New Set" })).toBeNull();
   });
 
-  it("refuses a Set with no name before asking the engine", async () => {
-    install(noSets);
-    renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
-    const dialog = screen.getByRole("dialog", { name: "New Set" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
-    expect(within(dialog).getByText(/Give it a name/)).toBeInTheDocument();
-    expect(sets.create).not.toHaveBeenCalled();
-  });
-
-  it("says why the engine refused a new Set, and stays open", async () => {
+  it("says why the engine refused a new Set, and stays where it was", async () => {
     install(noSets);
     sets.create.mockResolvedValue(refused({ code: "INVALID_REQUEST", message: "Too deep", reason: null, path: null }));
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
-    const dialog = screen.getByRole("dialog", { name: "New Set" });
-    fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "X" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
-    expect(await within(dialog).findByText(/Too deep/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "New Set" }, LOADED));
+    expect(await screen.findByText(/Too deep/)).toBeInTheDocument();
     expect(where()).toBe(PREPARE_PATH);
   });
 
-  it("copies a Set from a source it asks for first, then opens it", async () => {
+  it("copies a Set from a list in one dialog, with the source, the name and Create, then opens it", async () => {
     install(noSets);
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set from…" }, LOADED));
-    const picker = await screen.findByRole("dialog", { name: "New Set from" });
+    fireEvent.click(await screen.findByRole("button", { name: "New Set from a list…" }, LOADED));
+    const dialog = await screen.findByRole("dialog", { name: "New Set from a list" });
     // No Collection in this tree: the Rekordbox playlist, not its folder.
-    const select = within(picker).getByLabelText("Copy the tracks of") as HTMLSelectElement;
+    const select = within(dialog).getByLabelText("Copy the tracks of") as HTMLSelectElement;
     expect([...select.options].map((option) => option.text)).toEqual(["Sunday"]);
-    fireEvent.click(within(picker).getByRole("button", { name: "Continue…" }));
-
-    const dialog = await screen.findByRole("dialog", { name: "New Set from “Sunday”" });
+    // The name starts as the source's, and the sentence says what a copy means.
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("Sunday");
     expect(within(dialog).getByText(/Rekordbox playlist “Sunday”/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
+    expect(within(dialog).queryByRole("button", { name: /Continue/ })).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create" }));
 
     await waitFor(() => expect(where()).toBe(preparePath(51)), LOADED);
     expect(sets.createFrom).toHaveBeenCalledWith({
@@ -377,49 +366,103 @@ describe("with no Sets", () => {
       name: "Sunday",
       parent_id: null,
     });
-    expect(await screen.findByText("Made the Set “Sunday” with 3 entries.")).toBeInTheDocument();
+    expect(await screen.findByText("Made the Set “Sunday” with 3 tracks.")).toBeInTheDocument();
   });
 
   it("says there is nothing to copy when there is nothing", async () => {
     install(noSets);
     (bridge.getLibraryPlaylists as Fn).mockResolvedValue({ playlists: [], total: 0 });
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set from…" }, LOADED));
-    const picker = await screen.findByRole("dialog", { name: "New Set from" });
-    expect(within(picker).getByText(/There is nothing to copy yet/)).toBeInTheDocument();
-    expect(within(picker).getByRole("button", { name: "Continue…" })).toBeDisabled();
+    fireEvent.click(await screen.findByRole("button", { name: "New Set from a list…" }, LOADED));
+    const dialog = await screen.findByRole("dialog", { name: "New Set from a list" });
+    expect(within(dialog).getByRole("button", { name: "Create" })).toBeDisabled();
   });
 });
 
-describe("New Set from the header (PRP-1)", () => {
-  it("opens the New Set dialog with a Set open, and makes the Set", async () => {
+describe("the Set's name, the page title with its menu (D21, M201, M408)", () => {
+  it("is the title, and its menu holds the Sets, Rename, Notes, New Set, New Set from a list and Delete", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    const menuButton = screen.getByRole("button", { name: "Set" });
-    expect(menuButton).toHaveAttribute("aria-haspopup", "menu");
-    fireEvent.click(menuButton);
+    const title = within(screen.getByRole("heading", { level: 1 })).getByRole("button", { name: "Friday" });
+    expect(title).toHaveAttribute("aria-haspopup", "menu");
+    fireEvent.click(title);
     expect(within(screen.getByRole("menu")).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
-      "New Set…",
-      "New Set from…",
+      "Friday",
+      "Scratch",
+      "Plain",
+      "Rename…",
       "Notes (1)…",
-      "Save set list…",
-      "Copy set list",
+      "New Set",
+      "New Set from a list…",
+      "Delete…",
     ]);
-    fireEvent.click(await menuItem("New Set…"));
-    const dialog = await screen.findByRole("dialog", { name: "New Set" });
-    fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Saturday" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
-    await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
-    expect(sets.create).toHaveBeenCalledWith({ name: "Saturday", parent_id: null });
   });
 
-  it("copies a Set from a source, from the same menu", async () => {
+  it("opens another Set from the menu", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     openSetMenu();
-    fireEvent.click(await menuItem("New Set from…"));
-    const picker = await screen.findByRole("dialog", { name: "New Set from" });
-    expect(within(picker).getByText("Copy the tracks of")).toBeInTheDocument();
+    fireEvent.click(await menuItem("Plain"));
+    await waitFor(() => expect(where()).toBe(preparePath(IDS.plain)));
+    await opened("Plain");
+  });
+
+  it("renames the Set in the dialog a new Set shares, and says Save", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    openSetMenu();
+    fireEvent.click(await menuItem("Rename…"));
+    const dialog = await screen.findByRole("dialog", { name: "Rename the Set" });
+    const field = within(dialog).getByLabelText("Name");
+    expect(field).toHaveValue("Friday");
+    fireEvent.change(field, { target: { value: "Friday late" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(bridge.renameCollection).toHaveBeenCalledWith({ id: IDS.friday, name: "Friday late" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("refuses a Set with no name before asking the engine", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    openSetMenu();
+    fireEvent.click(await menuItem("Rename…"));
+    const dialog = await screen.findByRole("dialog", { name: "Rename the Set" });
+    fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "  " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(within(dialog).getByText(/Give it a name/)).toBeInTheDocument();
+    expect(bridge.renameCollection).not.toHaveBeenCalled();
+  });
+
+  it("asks before deleting the Set, in the one wording every delete uses, then leaves it", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    openSetMenu();
+    const item = await menuItem("Delete…");
+    fireEvent.click(item);
+    const dialog = await screen.findByRole("dialog", { name: "Delete “Friday”?" });
+    expect(within(dialog).getByText(/This cannot be undone/)).toBeInTheDocument();
+    expect(bridge.deleteCollection).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete Set" }));
+    await waitFor(() => expect(bridge.deleteCollection).toHaveBeenCalledWith({ id: IDS.friday }));
+    expect(await screen.findByText("Deleted the Set “Friday”")).toBeInTheDocument();
+  });
+
+  it("makes a new Set from its menu, at once", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    openSetMenu();
+    fireEvent.click(await menuItem("New Set"));
+    await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
+    expect(sets.create).toHaveBeenCalledWith({ name: "New Set", parent_id: null });
+  });
+
+  it("copies a Set from a list, from the same menu", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    openSetMenu();
+    fireEvent.click(await menuItem("New Set from a list…"));
+    const dialog = await screen.findByRole("dialog", { name: "New Set from a list" });
+    expect(within(dialog).getByText("Copy the tracks of")).toBeInTheDocument();
   });
 });
 
@@ -447,32 +490,44 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
     );
   });
 
-  it("titles the page Prepare, with the picker beside it, the menus Set and View, then the page actions Play Set and Export (C216)", async () => {
+  it("titles the page with the Set's name, then View, Export as the main action and a grey Play Set (D21, M201, M326)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     const header = screen.getByRole("heading", { level: 1 }).closest("header") as HTMLElement;
-    expect(header).toHaveTextContent(/^Prepare/);
-    expect(within(header).getByLabelText("Set", { selector: "select" })).toHaveValue(String(IDS.friday));
+    // The Set's name is the title and the switcher: one button inside the heading.
+    expect(header).toHaveTextContent(/^Friday/);
+    expect(within(screen.getByRole("heading", { level: 1 })).getAllByRole("button")).toHaveLength(1);
     const buttons = within(header).getAllByRole("button");
     expect(buttons.map((button) => button.textContent)).toEqual([
-      "Set",
+      "Friday",
       "View",
+      "Export",
       "Play Set",
-      "Export to Rekordbox…",
+      "5 warnings",
       "Missing files",
     ]);
-    // Play Set is the one violet button (C5); the page actions are the header's last, left of Details.
+    // Export is the one violet button, the main action; Play Set is grey (M326).
     expect(buttons[2]).toHaveClass("cp-btn--primary");
     expect(header.querySelectorAll(".cp-btn--primary")).toHaveLength(1);
     expect(buttons[3]).toHaveClass("cp-btn--secondary");
     const actions = header.querySelector(".cp-screen-header__actions")!;
     expect(actions).toContainElement(buttons[2]);
     expect(actions).toContainElement(buttons[3]);
-    for (const name of ["Set", "View"]) {
+    for (const name of ["View", "Export"]) {
       const button = within(header).getByRole("button", { name });
-      expect(button).toHaveClass("cp-btn--secondary");
       expect(button).toHaveAttribute("aria-haspopup", "menu");
     }
+  });
+
+  it("holds Export to Rekordbox, Save set list and Copy set list in one Export menu", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    expect(within(screen.getByRole("menu")).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Export to Rekordbox…",
+      "Save set list…",
+      "Copy set list",
+    ]);
   });
 
   it("has no Match tracks… and no Check now, and no Notes or New Set button of its own", async () => {
@@ -485,11 +540,12 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
 });
 
 describe("while a Set is read (PRP-12)", () => {
-  it("says it inside a panel, not as bare text", async () => {
+  it("says it with the shared Loading, not inside a panel of its own", async () => {
     sets.plan.mockImplementation(() => new Promise(() => undefined));
     renderAt(preparePath(IDS.friday));
     const loading = await screen.findByText("Loading the Set…", {}, LOADED);
-    expect(loading.closest(".cp-panel")).not.toBeNull();
+    // The shared Loading, not a Panel of its own (M351).
+    expect(loading.closest(".cp-panel")).toBeNull();
     expect(loading.closest("[role='status']")).not.toBeNull();
   });
 });
@@ -524,21 +580,6 @@ describe("which Set opens", () => {
     localStorage.setItem(LAST_SET_STORAGE_KEY, String(IDS.plain));
     renderAt(PREPARE_PATH);
     await waitFor(() => expect(where()).toBe(preparePath(IDS.plain)), LOADED);
-    await opened("Plain");
-  });
-
-  it("opens another from the header's picker, which offers Sets and their folders", async () => {
-    renderAt(preparePath(IDS.friday));
-    await opened();
-    const picker = screen.getByLabelText("Set") as HTMLSelectElement;
-    expect([...picker.options].map((option) => [option.text.trim(), option.disabled])).toEqual([
-      ["Gigs", true],
-      ["Friday", false],
-      ["Scratch", false],
-      ["Plain", false],
-    ]);
-    fireEvent.change(picker, { target: { value: String(IDS.plain) } });
-    await waitFor(() => expect(where()).toBe(preparePath(IDS.plain)));
     await opened("Plain");
   });
 
@@ -577,14 +618,16 @@ describe("the Set", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     const facts = document.querySelector(".prepare-header__facts") as HTMLElement;
-    expect(facts).toHaveTextContent(
-      "6 tracks · 0:09:00 planned · 5 warnings",
-    );
+    expect(facts).toHaveTextContent("6 tracks · 0:09:00 · 5 warnings");
     // What asks something of the person sits beside the facts, never inside them (they give way).
     expect(facts).toHaveTextContent("Files not checked · Missing files");
     // Each short fact carries its sentence: the untimed and the accepted are in their titles.
-    expect(within(facts).getByText("0:09:00 planned")).toHaveAttribute("title", "4 without times");
-    expect(within(facts).getByText(/5 warnings/)).toHaveAttribute(
+    expect(within(facts).getByText("0:09:00")).toHaveAttribute(
+      "title",
+      "Planned length of the Set. 4 without times.",
+    );
+    // The warnings' count is a button: it goes to the first one (M199).
+    expect(within(facts).getByRole("button", { name: "5 warnings" })).toHaveAttribute(
       "title",
       "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 marked OK",
     );
@@ -594,13 +637,17 @@ describe("the Set", () => {
       "title",
       expect.stringMatching(/^Files in this Set have never been checked/),
     );
-    // The page's title is Prepare; the picker beside it names the Set open.
-    expect(screen.getByLabelText("Set")).toHaveValue(String(IDS.friday));
+    // The page's title is the Set open.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Friday");
     // The lanes, the transition strip and the times share one link, so the line stays one line;
     // the columns are the Set table's corner button (R4-2).
     fireEvent.click(screen.getByRole("button", { name: "View" }));
     const items = within(screen.getByRole("menu")).getAllByRole("menuitemcheckbox");
-    expect(items.map((item) => item.textContent)).toEqual(["Tempo lane", "Transition strip", "Mix in and Mix out"]);
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Tempo and key lane",
+      "Transition strip",
+      "Mix-in and mix-out columns",
+    ]);
     // Ticked on and off, not "Show" and "Hide" (C126); the strips are off in a fresh layout, and the times item stands for both columns (C246).
     expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual(["false", "false", "mixed"]);
   });
@@ -644,7 +691,7 @@ describe("the Set", () => {
   it("says what the notes are for when there are none", async () => {
     renderAt(preparePath(IDS.plain));
     await opened("Plain");
-    openSetMenu();
+    openSetMenu("Plain");
     expect(await menuItem("Notes…")).toHaveAttribute(
       "title",
       expect.stringMatching(/^Notes for the whole Set/),
@@ -818,11 +865,11 @@ describe("an entry's menu", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.contextMenu(rowAt(4));
-    expect(await menuItem("Start a chapter here")).toHaveAttribute("aria-disabled", "true");
+    expect(await menuItem("New chapter")).toHaveAttribute("aria-disabled", "true");
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
 
     fireEvent.contextMenu(rowAt(2));
-    fireEvent.click(await menuItem("Start a chapter here"));
+    fireEvent.click(await menuItem("New chapter"));
     await waitFor(() => expect(sets.splitChapter).toHaveBeenCalledWith({ entry_id: E2 }));
   });
 
@@ -831,7 +878,7 @@ describe("an entry's menu", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.contextMenu(rowAt(5));
-    fireEvent.click(await menuItem("Start a chapter here"));
+    fireEvent.click(await menuItem("New chapter"));
     expect(await screen.findByText(REFUSALS.splitAtStart.message)).toBeInTheDocument();
   });
 
@@ -839,7 +886,7 @@ describe("an entry's menu", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.contextMenu(rowAt(2));
-    fireEvent.click(await menuItem("Insert a repeat after"));
+    fireEvent.click(await menuItem("Repeat"));
     await waitFor(() =>
       expect(bridge.insertTrackInCollection).toHaveBeenCalledWith({
         collection_id: IDS.friday,
@@ -884,7 +931,7 @@ describe("an entry's menu", () => {
     fireEvent.click(rowAt(2), { ctrlKey: true });
     expect(await within(inspector()).findByText(/2 selected/, {}, LOADED)).toBeInTheDocument();
     fireEvent.contextMenu(rowAt(2));
-    fireEvent.click(await menuItem("Remove 2 entries from Set"));
+    fireEvent.click(await menuItem("Remove 2 tracks from Set"));
     expect(await screen.findByText(/^Removed .* from “Friday”$/)).toBeInTheDocument();
     const insert = bridge.insertTrackInCollection as unknown as ReturnType<typeof vi.fn>;
     insert.mockClear();
@@ -919,7 +966,7 @@ describe("an entry's menu", () => {
     fireEvent.click(rowAt(3), { ctrlKey: true });
     expect(await within(inspector()).findByText(/2 selected/, {}, LOADED)).toBeInTheDocument();
     fireEvent.contextMenu(rowAt(2));
-    fireEvent.click(await menuItem("Remove 2 entries from Set"));
+    fireEvent.click(await menuItem("Remove 2 tracks from Set"));
     await waitFor(() =>
       expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [E1, E2] }),
     );
@@ -1013,7 +1060,7 @@ describe("a heading's menu", () => {
     const dialog = await screen.findByRole("dialog", { name: "Delete “Peak”?" });
     // The shared lead says it is permanent, then what happens to the entries (C165).
     expect(within(dialog).getByText("This cannot be undone.")).toBeInTheDocument();
-    expect(within(dialog).getByText(/Its 2 entries join “Warm-up”/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Its 2 tracks join “Warm-up”/)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete chapter" }));
     await waitFor(() => expect(sets.deleteChapter).toHaveBeenCalledWith({ chapter_id: 2 }));
   });
@@ -1035,7 +1082,7 @@ describe("the entry's plan in the Inspector", () => {
     expect(within(zone).getByLabelText("Mix in")).toHaveAttribute("placeholder", "0:00");
     expect(within(zone).getByLabelText("Mix out").getAttribute("placeholder")).toMatch(/^(\d+:\d{2})?$/);
     expect(within(zone).getByLabelText("Note").tagName).toBe("TEXTAREA");
-    expect(within(zone).getByText("Plays for 4:00")).toBeInTheDocument();
+    expect(within(zone).getByText("Time 4:00")).toBeInTheDocument();
     expect(within(zone).getByText(/Entry 1, in Warm-up · starts at 0:00/)).toBeInTheDocument();
     // Above the tabs (Overview, Yours …), which are about the track.
     const yours = within(inspector()).getByRole("tablist");
@@ -1103,7 +1150,7 @@ describe("the entry's plan in the Inspector", () => {
 
   it("says what accepting does, once, above the warnings (PRP-5)", async () => {
     const zone = await select(5);
-    const list = within(zone).getByRole("list", { name: "What the checks found" });
+    const list = within(zone).getByRole("list", { name: "Warnings" });
     const hint = within(zone).getByText(
       "Mark a warning OK once you have heard the mix work. It comes back if either track changes.",
     );
@@ -1134,11 +1181,11 @@ describe("set lists and the export", () => {
   it("copies the set list, and saves one through the dialog", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    openSetMenu();
+    openExportMenu();
     fireEvent.click(await menuItem("Copy set list"));
     await waitFor(() => expect(sets.setListText).toHaveBeenCalledWith({ set_id: IDS.friday }));
 
-    openSetMenu();
+    openExportMenu();
     fireEvent.click(await menuItem("Save set list…"));
     await waitFor(() =>
       expect(sets.chooseSetListDestination).toHaveBeenCalledWith({ setName: "Friday", currentPath: null }),
@@ -1148,7 +1195,8 @@ describe("set lists and the export", () => {
   it("opens the Rekordbox export with the Set ticked, from the header's Export button (C216)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    fireEvent.click(screen.getByRole("button", { name: "Export to Rekordbox…" }));
+    openExportMenu();
+    fireEvent.click(await menuItem("Export to Rekordbox…"));
     const dialog = await screen.findByRole("dialog", { name: "Export to Rekordbox" });
     // The tick list sits behind Details (DEC-247).
     fireEvent.click(within(dialog).getByRole("button", { name: "What goes in the file" }));
@@ -1194,10 +1242,10 @@ describe("selecting in the Set (area 36)", () => {
     }
   });
 
-  it("draws Set and View as menu buttons with a small arrow, the height of Play Set", async () => {
+  it("draws View and Export as menu buttons with a small arrow, the height of Play Set", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    for (const name of ["Set", "View"]) {
+    for (const name of ["View", "Export"]) {
       const trigger = screen.getByRole("button", { name });
       expect(trigger).toHaveAttribute("aria-haspopup", "menu");
       expect(trigger.querySelector('.cp-btn__menu [data-icon="chevron-down"]')).not.toBeNull();
@@ -1206,22 +1254,22 @@ describe("selecting in the Set (area 36)", () => {
 });
 
 describe("the entry buttons (FLW-17, C15d)", () => {
-  const names = ["Move up", "Move down", "Start a chapter here", "Repeat after", "Remove"];
+  const names = ["Move up", "Move down", "New chapter", "Repeat", "Remove"];
 
   it("are drawn only on the selected row, in short words with the full names kept (DEC-249)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     // Nothing selected: nothing drawn, on the row or on the facts line.
     for (const name of names) expect(screen.queryByRole("button", { name })).toBeNull();
-    expect(within(factsLine()).queryByRole("group", { name: "Selected entries" })).toBeNull();
+    expect(within(factsLine()).queryByRole("group", { name: "Selected tracks" })).toBeNull();
 
     fireEvent.click(rowAt(2));
-    const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
+    const group = within(rowAt(2)).getByRole("group", { name: "Selected tracks" });
     expect(within(group).getAllByRole("button").map(markOf)).toEqual([
       "arrow-up",
       "arrow-down",
-      "Chapter here",
-      "Repeat after",
+      "New chapter",
+      "Repeat",
       "Remove",
     ]);
     for (const name of names) expect(button(name)).toBeEnabled();
@@ -1237,16 +1285,10 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.click(rowAt(2));
-    const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
+    const group = within(rowAt(2)).getByRole("group", { name: "Selected tracks" });
     for (const each of within(group).getAllByRole("button")) {
       expect(each).toHaveClass("cp-btn", "cp-btn--sm", "cp-btn--secondary");
     }
-    // The chapter heading's one button is the same.
-    expect(within(rowAt(3)).getByRole("button", { name: "Edit chapter" })).toHaveClass(
-      "cp-btn",
-      "cp-btn--sm",
-      "cp-btn--secondary",
-    );
     expect(css).not.toMatch(/filter:\s*brightness/);
   });
 
@@ -1256,8 +1298,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     fireEvent.click(rowAt(2));
     fireEvent.click(rowAt(4), { ctrlKey: true });
     expect(screen.getAllByRole("button", { name: "Move up" })).toHaveLength(1);
-    expect(button("Move up", 4)).toHaveAttribute("title", "Move 2 entries up (Alt+↑)");
-    expect(button("Remove", 4)).toHaveAttribute("title", "Remove 2 entries (Delete)");
+    expect(button("Move up", 4)).toHaveAttribute("title", "Move 2 tracks up (Alt+↑)");
+    expect(button("Remove", 4)).toHaveAttribute("title", "Remove 2 tracks (Delete)");
   });
 
   it("leave the selection alone when pressed, once they let the pointer through", async () => {
@@ -1267,7 +1309,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     try {
       fireEvent.click(rowAt(2));
       fireEvent.click(rowAt(4), { ctrlKey: true });
-      const group = within(rowAt(4)).getByRole("group", { name: "Selected entries" });
+      const group = within(rowAt(4)).getByRole("group", { name: "Selected tracks" });
       // Not yet: the pointer goes through to the row, so these presses would not be the buttons'.
       expect(getComputedStyle(group).pointerEvents).toBe("none");
       act(() => void vi.advanceTimersByTime(DOUBLE_CLICK_MS));
@@ -1291,7 +1333,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     try {
       fireEvent.click(rowAt(2));
-      const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
+      const group = within(rowAt(2)).getByRole("group", { name: "Selected tracks" });
       expect(DOUBLE_CLICK_MS).toBe(500);
       expect(getComputedStyle(group).pointerEvents).toBe("none");
       act(() => void vi.advanceTimersByTime(DOUBLE_CLICK_MS - 1));
@@ -1376,11 +1418,11 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
-      expect(within(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).getAllByRole("button").map(markOf)).toEqual([
+      expect(within(within(rowAt(2)).getByRole("group", { name: "Selected tracks" })).getAllByRole("button").map(markOf)).toEqual([
         "arrow-up",
         "arrow-down",
-        "Chapter here",
-        "Repeat after",
+        "New chapter",
+        "Repeat",
         "Remove",
       ]);
     });
@@ -1390,8 +1432,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
-      expect(button("Start a chapter here").textContent).toBe("Chapter");
-      expect(markOf(button("Repeat after"))).toBe("repeat-after");
+      expect(button("New chapter").textContent).toBe("Chapter");
+      expect(markOf(button("Repeat"))).toBe("repeat-after");
       expect(markOf(button("Remove"))).toBe("remove");
     });
 
@@ -1400,7 +1442,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
-      const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
+      const group = within(rowAt(2)).getByRole("group", { name: "Selected tracks" });
       expect(within(group).getAllByRole("button")).toHaveLength(1);
       expect(within(group).queryByRole("button", { name: "Remove" })).toBeNull();
       fireEvent.click(within(group).getByRole("button", { name: "Actions" }));
@@ -1424,13 +1466,13 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.click(rowAt(2));
-    expect(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).toBeInTheDocument();
+    expect(within(rowAt(2)).getByRole("group", { name: "Selected tracks" })).toBeInTheDocument();
     tableKey({ key: "F2" });
     await within(rowAt(2)).findByRole("textbox");
-    expect(within(rowAt(2)).queryByRole("group", { name: "Selected entries" })).toBeNull();
+    expect(within(rowAt(2)).queryByRole("group", { name: "Selected tracks" })).toBeNull();
     // Escape drops the typing, and the buttons are back.
     fireEvent.keyDown(within(rowAt(2)).getByRole("textbox"), { key: "Escape" });
-    await waitFor(() => expect(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).toBeInTheDocument());
+    await waitFor(() => expect(within(rowAt(2)).getByRole("group", { name: "Selected tracks" })).toBeInTheDocument());
   });
 
   it("tell their hint with the themed tip on keyboard focus, drawn in the page and not inside the clipped row", async () => {
@@ -1575,7 +1617,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     fireEvent.click(rowAt(1));
     expect(button("Move up", 1)).toBeDisabled();
     expect(button("Move up", 1)).toHaveAttribute("title", "Already first in the Set");
-    expect(button("Start a chapter here", 1)).toBeDisabled();
+    expect(button("New chapter", 1)).toBeDisabled();
     fireEvent.click(rowAt(8));
     expect(button("Move down", 8)).toHaveAttribute("title", "Already last in the Set");
   });
@@ -1586,15 +1628,15 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     fireEvent.click(rowAt(2));
     fireEvent.click(rowAt(5), { ctrlKey: true });
     // The focused row is the last one picked.
-    expect(button("Repeat after", 5)).toBeDisabled();
-    expect(button("Repeat after", 5)).toHaveAttribute("title", "Select one entry");
-    fireEvent.click(button("Start a chapter here", 5));
+    expect(button("Repeat", 5)).toBeDisabled();
+    expect(button("Repeat", 5)).toHaveAttribute("title", "Select one track");
+    fireEvent.click(button("New chapter", 5));
     await waitFor(() => expect(sets.splitChapter).toHaveBeenCalledWith({ entry_id: E2 }));
     fireEvent.click(button("Remove", 5));
     await waitFor(() => expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [E2, E4] }));
 
     fireEvent.click(rowAt(2));
-    fireEvent.click(button("Repeat after"));
+    fireEvent.click(button("Repeat"));
     await waitFor(() =>
       expect(bridge.insertTrackInCollection).toHaveBeenCalledWith({
         collection_id: IDS.friday,
@@ -1627,15 +1669,19 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     expect(bridge.removeCollectionEntries).not.toHaveBeenCalled();
   });
 
-  it("show only Edit… on a chapter's heading, which opens its dialog", async () => {
+  it("make a chapter's name its one button, which opens its dialog (M205)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    for (const index of [0, 3]) {
-      expect(within(rowAt(index)).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
-        "Edit chapter",
-      ]);
+    // No "Edit…" beside the name: the name is the button, and its hint says what it does.
+    for (const [index, name] of [
+      [0, "Warm-up"],
+      [3, "Peak"],
+    ] as const) {
+      const buttons = within(rowAt(index)).getAllByRole("button");
+      expect(buttons.map((button) => button.textContent)).toEqual([name]);
+      expect(buttons[0]).toHaveAttribute("title", "Edit chapter");
     }
-    fireEvent.click(within(rowAt(3)).getByRole("button", { name: "Edit chapter" }));
+    fireEvent.click(within(rowAt(3)).getByRole("button", { name: "Peak" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(player.playQueue).not.toHaveBeenCalled();
   });
@@ -1643,7 +1689,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
   it("let the keyboard reach a chapter's button, and Enter on it press it", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    const edit = within(rowAt(3)).getByRole("button", { name: "Edit chapter" });
+    const edit = within(rowAt(3)).getByRole("button", { name: "Peak" });
     // A Tab stop, not tabindex -1: a keyboard user can land on it.
     expect(edit).not.toHaveAttribute("tabindex", "-1");
     // Enter on the button is the button's, not the table's Enter on the row.
@@ -1660,7 +1706,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
   it("move and delete a chapter from its dialog", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    fireEvent.click(within(rowAt(3)).getByRole("button", { name: "Edit chapter" }));
+    fireEvent.click(within(rowAt(3)).getByRole("button", { name: "Peak" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("button", { name: "Move up" })).toBeEnabled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Move down" }));
@@ -1676,7 +1722,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
   it("keeps what was typed in a chapter's dialog when the chapter is moved", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    fireEvent.click(within(rowAt(3)).getByRole("button", { name: "Edit chapter" }));
+    fireEvent.click(within(rowAt(3)).getByRole("button", { name: "Peak" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByRole("textbox", { name: /^Name/ }), { target: { value: "Drop" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Move up" }));
@@ -1687,7 +1733,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
   it("cannot move the first chapter up from its dialog", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    fireEvent.click(within(rowAt(0)).getByRole("button", { name: "Edit chapter" }));
+    fireEvent.click(within(rowAt(0)).getByRole("button", { name: "Warm-up" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("button", { name: "Move up" })).toBeDisabled();
     expect(within(dialog).getByRole("button", { name: "Move down" })).toBeEnabled();
@@ -1919,12 +1965,12 @@ describe("In and Out in the table (FLW-18)", () => {
 // ------------------------------------------------------------------ FLW-19
 
 describe("the Set table's columns (R4-5)", () => {
-  it("shows #, Title, Artist, BPM, Key, Plays for and Mix in, and keeps the rest out of the way (C246, D12)", async () => {
+  it("shows #, Title, Artist, BPM, Key, Time, Mix in and Fit, and keeps the rest out of the way (C246, D12, M199)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    // Seven columns that fit beside Details at the default size; Fit, Mix out, Starts at, Transition
-    // and Note are in the column picker.
-    expect(headers()).toEqual(["#", "Title", "Artist", "BPM", "Key", "Plays for", "Mix in"]);
+    // Fit shows from the start: it is the one column that marks a warning on a row (M199). Mix out,
+    // Starts at, Transition and Note are in the column picker.
+    expect(headers()).toEqual(["#", "Title", "Artist", "BPM", "Key", "Time", "Mix in", "Fit"]);
   });
 
   it("opens the column picker from the button in the table's header corner, not from View", async () => {
@@ -1951,15 +1997,15 @@ describe("the Set table's columns (R4-5)", () => {
     expect(headers()).toContain("Mix in");
     expect(headers()).not.toContain("Mix out");
     // Mixed, not unticked: one of the two shows. Choosing it from there shows both.
-    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "mixed");
+    expect(viewItem("Mix-in and mix-out columns")).toHaveAttribute("aria-checked", "mixed");
     showTimes();
     expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
     // The menu is still open, and the item is ticked.
-    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(viewItem("Mix in and Mix out"));
+    expect(viewItem("Mix-in and mix-out columns")).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(viewItem("Mix-in and mix-out columns"));
     expect(headers()).not.toContain("Mix in");
     expect(headers()).not.toContain("Mix out");
-    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "false");
+    expect(viewItem("Mix-in and mix-out columns")).toHaveAttribute("aria-checked", "false");
   });
 
   it("shows both when only one is showing, rather than swapping them", async () => {
@@ -1974,8 +2020,8 @@ describe("the Set table's columns (R4-5)", () => {
     await opened();
     expect(headers()).toContain("Mix out");
     expect(headers()).not.toContain("Mix in");
-    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "mixed");
-    fireEvent.click(viewItem("Mix in and Mix out"));
+    expect(viewItem("Mix-in and mix-out columns")).toHaveAttribute("aria-checked", "mixed");
+    fireEvent.click(viewItem("Mix-in and mix-out columns"));
     expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
   });
 
@@ -1987,13 +2033,13 @@ describe("the Set table's columns (R4-5)", () => {
   });
 
   it("starts afresh for a layout saved under the old key", async () => {
-    for (const old of ["cuepoint-prepare-set-layout", "cuepoint-prepare-set-layout-2"]) {
+    for (const old of ["cuepoint-prepare-set-layout", "cuepoint-prepare-set-layout-2", "cuepoint-prepare-set-layout-3"]) {
       localStorage.setItem(old, JSON.stringify([{ id: "note", width: 180, hidden: false }]));
     }
     renderAt(preparePath(IDS.friday));
     await opened();
     expect(headers()).not.toContain("Note");
-    expect(PREPARE_TABLE_LAYOUT_KEY).toBe("cuepoint-prepare-set-layout-3");
+    expect(PREPARE_TABLE_LAYOUT_KEY).toBe("cuepoint-prepare-set-layout-4");
   });
 
   it("draws a dot for how each track mixes in: filled fits, half one side off, a ring both off", async () => {
@@ -2063,7 +2109,7 @@ describe("the key notice (FLW-19)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     const notice = within(factsLine()).getByText(/^2 without key/);
-    expect(notice).toHaveAttribute("title", expect.stringMatching(/^2 entries have no Beatport key/));
+    expect(notice).toHaveAttribute("title", expect.stringMatching(/^2 tracks have no Beatport key/));
     expect(factsLine()).toHaveTextContent("5 warnings");
   });
 

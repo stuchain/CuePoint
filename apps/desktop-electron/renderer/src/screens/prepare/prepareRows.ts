@@ -51,6 +51,25 @@ export function isEntryRow(row: PrepareRow | undefined): row is EntryRow {
   return row?.kind === "entry";
 }
 
+/**
+ * The entry to go to for the first open warning, in the Set's order (M199): the first entry with
+ * a warning of its own or into it that is not accepted, or, for a chapter's own warning (over its
+ * target), the chapter's first entry. Null when nothing is open.
+ */
+export function firstWarningEntryId(rows: readonly PrepareRow[]): number | null {
+  let chapterOpen = false;
+  for (const row of rows) {
+    if (row.kind === "heading") {
+      chapterOpen = row.warnings.some((warning) => !warning.acknowledged);
+      continue;
+    }
+    if (chapterOpen || [...row.transition, ...row.warnings].some((warning) => !warning.acknowledged)) {
+      return row.entry.entry_id;
+    }
+  }
+  return null;
+}
+
 /** DEC-103: one unnamed chapter is a list, and draws no heading. */
 export function showsHeadings(chapters: readonly SetChapterPlan[]): boolean {
   return chapters.length > 1 || (chapters.length === 1 && chapters[0].name !== "");

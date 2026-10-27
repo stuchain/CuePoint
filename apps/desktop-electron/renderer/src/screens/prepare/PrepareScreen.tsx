@@ -3,10 +3,11 @@
  *
  * One Set, with its chapters, planned times, notes and warnings, laid out side
  * by side with the source panel (DEC-112). The shared `ScreenHeader` titles the
- * page "Prepare" with the Set picker beside it (this amends DEC-112, where the
- * picker was the title), has three buttons (Play Set, a Set menu and a View
- * menu), and under them one line of facts: how long the Set is planned to run
- * and what its checks found. The Set table below is a
+ * page with the Set's own name, which is also the switcher (D21, M201; this amends DEC-112 and
+ * DEC-288): its menu lists the Sets and holds Rename, Notes, New Set, New Set from a list and
+ * Delete. Beside it are View, Export (the main action: the file for Rekordbox, the set list) and
+ * Play Set, which is grey, and under them one line of facts: how many tracks, how long the Set is
+ * planned to run and what its checks found. The Set table below is a
  * `TrackTable` over its entries and its chapters' headings; the entry selected
  * is planned in the Inspector's "In this Set" zone. Beside the Set, the source
  * panel fills it from Suggestions and the library; above it, the lanes draw
@@ -21,12 +22,12 @@
  * - **Playing is the queue** (DEC-108): "Play Set" and a double-click hand
  *   the entries, in order and with their repeats, to `playQueue`. The player
  *   is not told it is playing a Set.
- * - **Order, chapter and time without a menu** (FLW-17, FLW-18): the facts line
- *   carries Move up, Move down, Start a chapter here, Repeat after and Remove
- *   for the entries selected (and Alt+Up, Alt+Down and Delete on the table); a
- *   chapter's heading carries one button, Edit…, whose dialog moves and deletes the chapter
- *   (this amends DEC-209 and DEC-249, where the heading had four); Mix in and Mix out are typed in
- *   the table, and a refused time is said on the facts line.
+ * - **Order, chapter and time without a menu** (FLW-17, FLW-18): the selected row
+ *   carries Move up, Move down, New chapter, Repeat and Remove for the tracks selected (and
+ *   Alt+Up, Alt+Down and Delete on the table); a chapter's name is the button that opens its
+ *   dialog, which moves and deletes the chapter (this amends DEC-209 and DEC-249, where the heading
+ *   had four; M205); Mix in and Mix out are typed in the table, and a refused time is said on the
+ *   facts line.
  * - **Nothing blocks** (DEC-017, DEC-106): a warning is drawn, never a reason
  *   a button is greyed.
  * - **One place to insert** (PREP-11): the gap after the selected entry, or the
@@ -50,13 +51,13 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { LIBRARY_PLAYLISTS, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { Modal } from "../../components/Modal";
 import { EmptyState } from "../../components/EmptyState";
-import { Panel } from "../../components/Panel";
-import { Select } from "../../components/Select";
+import { PixelIcon } from "../../components/PixelIcon";
 import { TrackContextMenu, useMenuButton } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
@@ -64,15 +65,15 @@ import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { settingsFocusState } from "../settingsLink";
 import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../../components/table";
 import { useRowHeight } from "../../components/table/trackTableLayout";
+import { useLastValue } from "../../hooks/useLastValue";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { formatLength } from "../../format/durations";
 import { countNoun } from "../../format/counts";
-import { NO_SETS, RETRY, UNDO, couldNot, deleteLead, deleteTitle, opensDialog, quoted, removedFrom } from "../../format/words";
+import { NO_SETS, RETRY, UNDO, couldNot, deleteLabel, deleteLead, deleteTitle, opensDialog, quoted, removedFrom } from "../../format/words";
 import { cleanSectionState } from "../clean/cleanLink";
 import { entityPath, originState, similarPath } from "../discover/discoverLinks";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { useBeatportSelection } from "../discover/useBeatportSelection";
-import { NewSetFromDialog } from "../library/NewSetFromDialog";
 import { RekordboxExportDialog } from "../library/RekordboxExportDialog";
 import type { FolderOption } from "../library/SaveSmartDialog";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
@@ -84,7 +85,7 @@ import { useCollectionTree } from "../library/useCollectionTree";
 import { queuedMessage, toQueueItem } from "../library/useLibraryPlayback";
 import { useTrackDetail } from "../library/useTrackDetail";
 import { ChapterDialog } from "./ChapterDialog";
-import { NewSetDialog, SetSourceDialog } from "./NewSetDialogs";
+import { NewSetFromListDialog, RenameSetDialog } from "./NewSetDialogs";
 import { PrepareLayout } from "./PrepareLayout";
 import { ENTRY_TITLE_KEEP_PX } from "./entryButtonsRoom";
 import { EntryButtons } from "./prepareEditing";
@@ -130,6 +131,7 @@ import {
   dropMove,
   dropPlace,
   entriesOf,
+  firstWarningEntryId,
   isEntryRow,
   repeatAfter,
   rowKey,
@@ -189,17 +191,8 @@ type Menu =
 
 const idOfRow = (row: PrepareRow) => rowKey(row);
 
-/**
- * A page still reading says so inside a panel, not as bare text (PRP-12). The
- * pixel loading motion (DEC-134) is PAGES-12's; this is where it will play.
- */
-function LoadingPanel({ title, what }: { title?: string; what: string }) {
-  return (
-    <Panel title={title}>
-      <Loading what={what} />
-    </Panel>
-  );
-}
+/** What a new Set is called until the person names it, as the Library's row is (M408). */
+const UNTITLED_SET = "New Set";
 
 export function PrepareScreen({
   onOpenInClean,
@@ -249,6 +242,8 @@ export function PrepareScreen({
     [shown],
   );
   const entries = useMemo(() => entriesOf(rows), [rows]);
+  // The tracks the Set holds, which the Library tab marks (M203).
+  const inSetIds = useMemo(() => new Set(entries.map((entry) => entry.track_id)), [entries]);
   const source = useMemo(() => inMemorySource(rows), [rows]);
   // Only entries are ever selected: a chapter heading is no track (Ctrl+A skips it).
   const loadedRows = useCallback(
@@ -375,6 +370,8 @@ export function PrepareScreen({
   const [chapterEditing, setChapterEditing] = useState<SetChapterPlan | null>(null);
   const [chapterError, setChapterError] = useState<string | null>(null);
   const [chapterDeleting, setChapterDeleting] = useState<SetChapterPlan | null>(null);
+  // The delete question keeps its words through the exit, which plays after the state is null (M248).
+  const deletingShown = useLastValue(chapterDeleting);
 
   const saveChapter = useCallback(
     async (update: SetChapterUpdate) => {
@@ -872,10 +869,12 @@ export function PrepareScreen({
   // --- menus
 
   const [menu, setMenu] = useState<Menu | null>(null);
-  // The header holds two menus: "Set" (new, notes, set list, export) and "View" (the lanes, the
-  // transition strip, times and the columns), so the page keeps its rows (DEC-112).
-  // The two menus open from their own button and close from it too (C113, C106).
-  const setMenuButton = useMenuButton();
+  // The header holds three menus, so the page keeps its rows (DEC-112): the Set's name (the Sets,
+  // rename, notes, new, delete), Export (the file, the set list) and "View" (the lanes, the
+  // transition strip, times and the columns). Each opens from its own button and closes from it
+  // too (C113, C106).
+  const titleMenuButton = useMenuButton();
+  const exportMenuButton = useMenuButton();
   const viewMenuButton = useMenuButton();
   const belowButton = (anchor: { current: HTMLElement | null }) => {
     const box = anchor.current?.getBoundingClientRect();
@@ -1037,8 +1036,10 @@ export function PrepareScreen({
         .map((node) => ({ id: node.id, name: node.name, depth: node.depth })),
     [allNodes],
   );
-  const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  // The Set being named: a new one (made at once, as the Library's row is) or "Rename…" (M408).
+  const [naming, setNaming] = useState<{ id: number; fresh: boolean } | null>(null);
+  const [deletingSet, setDeletingSet] = useState(false);
   const [choosingSource, setChoosingSource] = useState(false);
   // The Rekordbox playlists the "copy from" dialog offers: read through the
   // shared cache from the first time the dialog is asked for (not on every
@@ -1047,21 +1048,50 @@ export function PrepareScreen({
   const playlistRead = useSharedRead(wantsPlaylists ? LIBRARY_PLAYLISTS : NOT_WANTED);
   const playlists: LibraryPlaylistNode[] = playlistRead.value?.playlists ?? NO_PLAYLISTS;
   const playlistsSettled = !playlistRead.loading;
-  const [copying, setCopying] = useState<NewSetSource | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const makeSet = useCallback(
-    async (name: string, parentId: number | null) => {
+  // One flow with the Library's: the Set is made at once, then asks for its name (M408).
+  const makeSet = useCallback(async () => {
+    setBusy(true);
+    const made = await tree.create("set", UNTITLED_SET, null);
+    setBusy(false);
+    if (!made.ok || !made.node) {
+      push(made.error ?? "The Set could not be made.", "warning");
+      return;
+    }
+    setCreateError(null);
+    setNaming({ id: made.node.id, fresh: true });
+    navigate(preparePath(made.node.id));
+  }, [navigate, push, tree]);
+
+  const renameSet = useCallback(
+    async (id: number, name: string) => {
       setBusy(true);
-      const made = await tree.create("set", name, parentId);
+      const done = await tree.rename(id, name);
       setBusy(false);
-      if (!made.ok || !made.node) {
-        setCreateError(made.error ?? "The Set could not be made.");
+      if (!done.ok) {
+        setCreateError(done.error ?? "The Set could not be renamed.");
         return;
       }
-      setCreating(false);
-      push(`Made the Set ${quoted(made.node.name)}`, "success");
-      navigate(preparePath(made.node.id));
+      setNaming(null);
+      prepared.reload();
+    },
+    [prepared, tree],
+  );
+
+  const deleteSet = useCallback(
+    async (id: number, name: string) => {
+      setBusy(true);
+      const done = await tree.remove(id);
+      setBusy(false);
+      setDeletingSet(false);
+      if (!done.ok) {
+        push(done.error ?? couldNot("delete", name), "warning");
+        return;
+      }
+      forgetLastSetId();
+      push(`Deleted the Set ${quoted(name)}`, "info");
+      navigate(PREPARE_PATH, { replace: true });
     },
     [navigate, push, tree],
   );
@@ -1074,6 +1104,7 @@ export function PrepareScreen({
     setWantsPlaylists(true);
     setAsking(true);
   }, []);
+  const startNewSet = useCallback(() => void makeSet(), [makeSet]);
   useEffect(() => {
     if (!asking || !wantsPlaylists || !playlistsSettled) return;
     setAsking(false);
@@ -1081,49 +1112,41 @@ export function PrepareScreen({
   }, [asking, wantsPlaylists, playlistsSettled]);
 
   const makeSetFrom = useCallback(
-    async (name: string, parentId: number | null) => {
-      if (!copying) return;
+    async (source: NewSetSource, name: string, parentId: number | null) => {
       setBusy(true);
-      const made = await tree.createSetFrom(setSourceOf(copying), name, parentId);
+      const made = await tree.createSetFrom(setSourceOf(source), name, parentId);
       setBusy(false);
       if (!made.ok || !made.node) {
         setCreateError(made.error ?? "The Set could not be made.");
         return;
       }
-      setCopying(null);
+      setChoosingSource(false);
       push(newSetMadeLine(made.node.name, made.trackCount ?? 0), "success");
       navigate(preparePath(made.node.id));
     },
-    [copying, navigate, push, tree],
+    [navigate, push, tree],
   );
 
+  // The Set being named, as the page has it: a deletion or a move elsewhere closes the dialog.
+  const namingNode = naming ? (allNodes.find((node) => node.id === naming.id) ?? null) : null;
   const dialogs = (
     <>
-      <NewSetDialog
-        open={creating}
-        folders={folders}
+      <RenameSetDialog
+        name={namingNode ? namingNode.name : null}
+        title={naming?.fresh ? "Name the Set" : "Rename the Set"}
         busy={busy}
         error={createError}
-        onCreate={(name, parentId) => void makeSet(name, parentId)}
-        onClose={() => setCreating(false)}
+        onSave={(name) => naming && void renameSet(naming.id, name)}
+        onClose={() => setNaming(null)}
       />
-      <SetSourceDialog
+      <NewSetFromListDialog
         open={choosingSource}
         groups={newSetSources(tree.tree, playlists)}
-        onChoose={(chosen) => {
-          setChoosingSource(false);
-          setCreateError(null);
-          setCopying(chosen);
-        }}
-        onClose={() => setChoosingSource(false)}
-      />
-      <NewSetFromDialog
-        source={copying}
         folders={folders}
         busy={busy}
         error={createError}
-        onCreate={(name, parentId) => void makeSetFrom(name, parentId)}
-        onClose={() => setCopying(null)}
+        onCreate={(source, name, parentId) => void makeSetFrom(source, name, parentId)}
+        onClose={() => setChoosingSource(false)}
       />
     </>
   );
@@ -1134,9 +1157,7 @@ export function PrepareScreen({
     return (
       <div className="screen screen--stack screen--scroll prepare-screen--waiting">
         <ScreenHeader title="Prepare" />
-        <Panel>
-          <p className="prepare-note">{SETS_NEED_DESKTOP}</p>
-        </Panel>
+        <EmptyState compact icon="prepare" headline={SETS_NEED_DESKTOP} />
       </div>
     );
   }
@@ -1156,17 +1177,11 @@ export function PrepareScreen({
               description={WHAT_A_SET_IS}
               action={
                 <div className="cp-button-row">
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      setCreateError(null);
-                      setCreating(true);
-                    }}
-                  >
-                    {opensDialog("New Set")}
+                  <Button variant="primary" onClick={startNewSet} loading={busy}>
+                    New Set
                   </Button>
                   <Button variant="secondary" onClick={() => void chooseSource()}>
-                    {opensDialog("New Set from")}
+                    {opensDialog("New Set from a list")}
                   </Button>
                 </div>
               }
@@ -1183,7 +1198,7 @@ export function PrepareScreen({
             {tree.error}
           </Notice>
         ) : (
-          <LoadingPanel what="your Sets" />
+          <Loading what="your Sets" />
         )}
         {dialogs}
       </div>
@@ -1195,13 +1210,12 @@ export function PrepareScreen({
       <div className="screen screen--stack screen--scroll prepare-screen--waiting">
         <ScreenHeader title="Prepare" />
         {setId === null ? (
-          <Panel>
-            <EmptyState
-              icon="prepare"
-              headline="This address names no Set"
-              action={{ label: "Open your Sets", onClick: () => navigate(PREPARE_PATH) }}
-            />
-          </Panel>
+          <EmptyState
+            compact
+            icon="prepare"
+            headline="This address names no Set"
+            action={{ label: "Open your Sets", onClick: () => navigate(PREPARE_PATH) }}
+          />
         ) : prepared.problem ? (
           <Notice
             title="The Set could not open"
@@ -1214,7 +1228,7 @@ export function PrepareScreen({
             {prepared.problem}
           </Notice>
         ) : (
-          <LoadingPanel what="the Set" />
+          <Loading what="the Set" />
         )}
       </div>
     );
@@ -1223,7 +1237,8 @@ export function PrepareScreen({
   // --- the Set
 
   const { plan, analysis } = shown;
-  const pickerNodes = setPickerNodes(tree.tree);
+  // The Sets the title's menu opens, in the tree's order; folders are not Sets (M201).
+  const setNodes = setPickerNodes(tree.tree).filter((node) => isSet(node));
   const setName = plan.name;
   const titles = new Map(entries.map((entry) => [entry.entry_id, entry.track.title]));
   const target = { id: shown.setId, name: setName };
@@ -1349,37 +1364,32 @@ export function PrepareScreen({
       style={setFloor === null ? undefined : ({ "--prepare-set-floor": `${setFloor}px` } as CSSProperties)}
     >
       <ScreenHeader
-        title="Prepare"
-        beside={
-          <Select
-            label="Set"
-            className="prepare-header__picker"
-            value={String(shown.setId)}
-            onChange={(event) => navigate(preparePath(Number(event.target.value)))}
-            options={pickerNodes.map((node) => ({
-              value: String(node.id),
-              label: `${"　".repeat(node.depth)}${node.name}`,
-              disabled: !isSet(node),
-            }))}
-          />
+        title={setName}
+        dataTitle
+        titleControl={
+          <Hint text={setName} inline>
+            <button
+              type="button"
+              className="prepare-title"
+              {...titleMenuButton.buttonProps}
+            >
+              <span className="prepare-title__name">{setName}</span>
+              <PixelIcon name="chevron-down" size="sm" className="prepare-title__arrow" />
+            </button>
+          </Hint>
         }
         actions={
-          <>
-            <Button variant="secondary" menu {...setMenuButton.buttonProps}>
-              Set
-            </Button>
-            <Button variant="secondary" menu {...viewMenuButton.buttonProps}>
-              View
-            </Button>
-          </>
+          <Button variant="secondary" menu {...viewMenuButton.buttonProps}>
+            View
+          </Button>
         }
         pageActions={
           <>
-            <Button variant="primary" onClick={() => void playFrom(0)} disabled={entries.length === 0 || !player}>
-              Play Set
+            <Button variant="primary" menu {...exportMenuButton.buttonProps}>
+              Export
             </Button>
-            <Button variant="secondary" onClick={() => setExporting(true)}>
-              {opensDialog("Export to Rekordbox")}
+            <Button variant="secondary" onClick={() => void playFrom(0)} disabled={entries.length === 0 || !player}>
+              Play Set
             </Button>
           </>
         }
@@ -1400,7 +1410,21 @@ export function PrepareScreen({
                   <span key={fact.text} className={fact.strong ? "prepare-header__warnings" : undefined}>
                     {index > 0 && <span aria-hidden="true"> · </span>}
                     <Hint text={fact.title} inline>
-                      <span tabIndex={fact.title ? 0 : undefined}>{fact.text}</span>
+                      {fact.jump ? (
+                        // The count is the way in to the first open warning (M199).
+                        <button
+                          type="button"
+                          className="cp-link prepare-header__link"
+                          onClick={() => {
+                            const first = firstWarningEntryId(rows);
+                            if (first !== null) setToSelect(first);
+                          }}
+                        >
+                          {fact.text}
+                        </button>
+                      ) : (
+                        <span tabIndex={fact.title ? 0 : undefined}>{fact.text}</span>
+                      )}
                     </Hint>
                   </span>
                 ))}
@@ -1436,6 +1460,7 @@ export function PrepareScreen({
               chapters={plan.chapters}
               point={point}
               revision={shown}
+              inSetIds={inSetIds}
               collections={allNodes}
               onInsert={insertRows}
               onStale={(refusal) => {
@@ -1462,27 +1487,34 @@ export function PrepareScreen({
             menu.kind === "heading"
               ? `Chapter “${chapterName(menu.row.chapter)}”`
               : menu.rows.length > 1
-                ? `Actions for ${countNoun(menu.rows.length, "entry", "entries")}`
-                : "Entry actions"
+                ? `Actions for ${countNoun(menu.rows.length, "track")}`
+                : "Track actions"
           }
         />
       )}
-      {setMenuButton.open && (
+      {titleMenuButton.open && (
         <TrackContextMenu
-          {...belowButton(setMenuButton.anchor)}
-          anchor={setMenuButton.anchor}
-          label="Set"
-          onClose={setMenuButton.close}
+          {...belowButton(titleMenuButton.anchor)}
+          anchor={titleMenuButton.anchor}
+          label="Sets"
+          onClose={titleMenuButton.close}
           items={[
+            // The Sets, to open one; the one open is the title itself.
+            ...setNodes.map((node, index) => ({
+              id: `open-${node.id}`,
+              label: node.name,
+              groupTitle: index === 0 ? "Open a Set" : undefined,
+              onSelect: () => navigate(preparePath(node.id)),
+            })),
             {
-              id: "new",
-              label: "New Set…",
+              id: "rename",
+              label: opensDialog("Rename"),
               onSelect: () => {
                 setCreateError(null);
-                setCreating(true);
+                setNaming({ id: shown.setId, fresh: false });
               },
+              separatorBefore: true,
             },
-            { id: "new-from", label: "New Set from…", onSelect: () => void chooseSource() },
             {
               id: "notes",
               label: `${notesLinkLabel(plan.notes)}…`,
@@ -1492,7 +1524,22 @@ export function PrepareScreen({
                 setNotesOpen(true);
               },
             },
-            { id: "save", label: "Save set list…", onSelect: () => void setList.save(target), separatorBefore: true },
+            { id: "new", label: "New Set", onSelect: startNewSet, separatorBefore: true },
+            { id: "new-from", label: opensDialog("New Set from a list"), onSelect: () => void chooseSource() },
+            { id: "delete", label: opensDialog("Delete"), danger: true, onSelect: () => setDeletingSet(true) },
+          ]}
+        />
+      )}
+
+      {exportMenuButton.open && (
+        <TrackContextMenu
+          {...belowButton(exportMenuButton.anchor)}
+          anchor={exportMenuButton.anchor}
+          label="Export"
+          onClose={exportMenuButton.close}
+          items={[
+            { id: "rekordbox", label: opensDialog("Export to Rekordbox"), onSelect: () => setExporting(true) },
+            { id: "save", label: opensDialog("Save set list"), onSelect: () => void setList.save(target), separatorBefore: true },
             { id: "copy", label: "Copy set list", onSelect: () => void setList.copy(target) },
           ]}
         />
@@ -1507,9 +1554,9 @@ export function PrepareScreen({
           // Ticked items (C126): the label never flips, the tick says on or off, and the menu stays
           // open so several can be set.
           items={[
-            { id: "lanes", label: "Tempo lane", checked: lanesOpen, onSelect: toggleLanes },
+            { id: "lanes", label: "Tempo and key lane", checked: lanesOpen, onSelect: toggleLanes },
             { id: "transition", label: "Transition strip", checked: transitionOpen, onSelect: toggleTransition },
-            { id: "times", label: "Mix in and Mix out", checked: timesShown ? true : timeEntries.some((entry) => !entry.hidden) ? "mixed" : false, onSelect: toggleTimes },
+            { id: "times", label: "Mix-in and mix-out columns", checked: timesShown ? true : timeEntries.some((entry) => !entry.hidden) ? "mixed" : false, onSelect: toggleTimes },
           ]}
         />
       )}
@@ -1538,7 +1585,7 @@ export function PrepareScreen({
       />
       <Modal
         open={chapterDeleting !== null}
-        title={chapterDeleting ? deleteTitle("chapter", chapterName(chapterDeleting)) : deleteTitle("chapter")}
+        title={deletingShown ? deleteTitle("chapter", chapterName(deletingShown)) : deleteTitle("chapter")}
         onClose={() => setChapterDeleting(null)}
         variant="danger"
         size="small"
@@ -1549,8 +1596,19 @@ export function PrepareScreen({
         secondaryAction={{ label: "Cancel", onClick: () => setChapterDeleting(null) }}
       >
         <p className="prepare-note">{deleteLead}</p>
-        <p className="prepare-note">{chapterDeleting ? deletionLine(plan.chapters, chapterDeleting) : ""}</p>
+        <p className="prepare-note">{deletingShown ? deletionLine(plan.chapters, deletingShown) : ""}</p>
       </Modal>
+      <ConfirmDialog
+        open={deletingSet}
+        title={deleteTitle("Set", setName)}
+        confirmLabel={deleteLabel("Set")}
+        danger
+        loading={busy}
+        onConfirm={() => void deleteSet(shown.setId, setName)}
+        onCancel={() => setDeletingSet(false)}
+      >
+        {deleteLead} The Set, its chapters, times and notes are deleted; the tracks stay in your library.
+      </ConfirmDialog>
       <RekordboxExportDialog
         open={exporting}
         initialIds={[shown.setId]}

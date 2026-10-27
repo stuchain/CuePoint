@@ -8,33 +8,32 @@
  *
  * A heading row puts each fact about its chapter under the column it is about:
  * its name under Title, its start under Starts at, its time against its target
- * under Plays for, its BPM range under BPM, its warning count under Fit, its
+ * under Time, its BPM range under BPM, its warning count under Fit, its
  * own warnings under Transition and its notes under Note. Nothing sorts: the order is the Set.
  *
- * The table opens on #, Title, Artist, BPM, Key, Plays for and Mix in (C246; BPM before Key as
- * on every page, D12). Fit (a dot
- * for whether the track mixes in from the one before), Mix out, Starts at, Transition and
- * Note are hidden until asked for (View, Columns…). The two times sit together; when the
+ * The table opens on #, Title, Artist, BPM, Key, Time, Mix in and Fit (C246; BPM before Key as
+ * on every page, D12; Fit is the one column that shows a warning on a row, so it shows from the
+ * start, M199). Mix out, Starts at, Transition and Note are hidden until asked for (View, Columns…). The two times sit together; when the
  * times end the row, the selected row's buttons end just left of them (option 3A), so a
  * click on a time always reaches it.
  *
- * Mix in and Mix out are typed in place and a heading carries its chapter's
- * buttons (FLW-17, FLW-18): both through `prepareEditing`'s context.
+ * Mix in and Mix out are typed in place and a heading's name is the button that opens its chapter
+ * (FLW-17, FLW-18, M205): both through `prepareEditing`'s context.
  */
 import type { TrackColumnDef } from "../../components/table";
 import { PixelIcon } from "../../components/PixelIcon";
 import { OverriddenValue } from "../library/libraryCells";
 import { effectiveText } from "../library/libraryClean";
 import { describeSetNotice, describeSetWarning, fitOf } from "./setWarnings";
-import { bpmRangeText, chapterTimeText, summarizeWarnings, timeCell } from "./prepareFormat";
-import { ChapterButtons, TimeCell } from "./prepareEditing";
+import { bpmRangeText, chapterTimeText, chapterTimeTitle, summarizeWarnings, timeCell } from "./prepareFormat";
+import { ChapterName, TimeCell } from "./prepareEditing";
 import { FitDot, WarningCell } from "./WarningCell";
 import { chapterName, type PrepareRow } from "./prepareRows";
 
-// The third layout (C246): #, Title, Artist, Key, BPM, Plays for and Mix in, which fit beside
-// Details at the default size; a layout saved under the second key would keep its old order
-// and its columns. Everyone is reset once; nothing reads the old key.
-export const PREPARE_TABLE_LAYOUT_KEY = "cuepoint-prepare-set-layout-3";
+// The fourth layout (C246, M199): #, Title, Artist, BPM, Key, Time, Mix in and Fit, which fit beside
+// Details at the default size; a layout saved under an earlier key would keep Fit hidden. Everyone
+// is reset once; nothing reads the old key.
+export const PREPARE_TABLE_LAYOUT_KEY = "cuepoint-prepare-set-layout-4";
 
 export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
   {
@@ -75,8 +74,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
       if (row.kind === "heading") {
         return (
           <span className="prepare-heading__title">
-            <span className="prepare-heading__name">{chapterName(row.chapter)}</span>
-            <ChapterButtons row={row} />
+            <ChapterName row={row} />
           </span>
         );
       }
@@ -132,16 +130,14 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
   },
   {
     id: "planned",
-    header: "Plays for",
+    header: "Time",
     hint: "How long this track plays in the Set, from its Mix in to its Mix out",
     minWidthPx: 72,
     defaultWidthPx: 72,
     align: "right",
     render: (row) =>
       row.kind === "heading" ? (
-        <span data-hint="The chapter's planned time, against its target">
-          {chapterTimeText(row.chapter)}
-        </span>
+        <span data-hint={chapterTimeTitle(row.chapter)}>{chapterTimeText(row.chapter)}</span>
       ) : (
         timeCell(row.entry.planned_seconds)
       ),
@@ -169,7 +165,6 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
   },
   {
     id: "fit",
-    hiddenByDefault: true,
     header: "Fit",
     hint: "Whether this track mixes in from the one before: key and tempo",
     minWidthPx: 40,

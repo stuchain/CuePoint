@@ -21,12 +21,13 @@ describe("the strips above the Set (C251, C49, C259)", () => {
     expect(rule(".prepare-set")).toMatch(/--prepare-strip-pad:\s*calc\(2px \* var\(--scale\)\)/);
   });
 
-  it("never cuts the top of the BPM name when its two lines are taller than the lane (C251)", () => {
-    // At 1.25 the tempo lane is 20 px and "BPM" over its range is about 28: centred and clipped,
-    // the top half of "BPM" was cut. Safe centring starts it at the top when it does not fit, and
-    // the gap and the Key lane below leave room for the range.
+  it("lays a lane's name on one row in the control face, so it cannot be cut at the top (C251, M197)", () => {
+    // The name and its range sat in a column that was taller than the lane at 1.25 and the top of
+    // "BPM" was cut. On one row, centred, there is no such height to overflow.
     const name = rule(".prepare-lanes__name");
-    expect(name).toMatch(/justify-content:\s*safe center/);
+    expect(name).toMatch(/flex-direction:\s*row/);
+    expect(name).toMatch(/align-items:\s*center/);
+    expect(name).toMatch(/font-family:\s*var\(--font-control\)/);
     expect(name).not.toMatch(/overflow:\s*hidden/);
   });
 
@@ -54,15 +55,19 @@ describe("a chapter's band (C250)", () => {
 });
 
 describe("the source panel and its divider (C48, C149, C28)", () => {
-  it("starts its content one --space-lg down in every state, level with the Set table's first row", () => {
-    // P8: one pane at 12 all round (was 12 8 8), on the panel tone.
-    expect(rule(".prepare-source")).toMatch(/padding:\s*var\(--space-lg\);/);
+  it("has no padding of its own: a head one row high meets its line, the rest keeps --space-lg at the sides (M193)", () => {
+    expect(rule(".prepare-source")).toMatch(/padding:\s*0;/);
     expect(rule(".prepare-source")).toMatch(/background:\s*var\(--bg-panel\)/);
+    const head = rule(".prepare-source__head");
+    expect(head).toMatch(/height:\s*var\(--row-height\)/);
+    expect(head).toMatch(/border-bottom:\s*var\(--divider\)/);
+    expect(rule(".prepare-source > :not(.prepare-source__head)")).toMatch(/margin-inline:\s*var\(--space-lg\)/);
   });
 
   it("keeps the Suggestions toolbar band inside the table's frame, never past it (item 7)", () => {
     const bar = rule(".prepare-source > .prepare-source__controls");
-    expect(bar).toMatch(/margin-inline:\s*0/);
+    // The panel's margin (not the bar's own padding) sets the edge, so the bar adds none.
+    expect(bar).toMatch(/padding-inline:\s*0/);
     expect(bar).not.toMatch(/calc\(-1/);
   });
 
@@ -97,6 +102,5 @@ describe("the source panel and its divider (C48, C149, C28)", () => {
 
   it("puts buttons in a row --space-md apart", () => {
     expect(rule(".prepare-source__sides")).toMatch(/gap:\s*var\(--space-md\)/);
-    expect(rule(".prepare-heading__buttons")).toMatch(/gap:\s*var\(--space-md\)/);
   });
 });

@@ -12,8 +12,8 @@
  *   cell saves it. A refused
  *   time stays in the cell, marked, and is said on the page's facts line. A
  *   double-click is the table's: it plays the row, and the typing is dropped.
- * - **A heading's buttons** are Edit, up, down and delete for its chapter (their
- *   names say "Move chapter up" and so on), so no chapter action is right-click only.
+ * - **A heading's name** is the one button of its chapter (M205): it opens Edit chapter, whose
+ *   dialog and right-click menu move and delete it, so no chapter action is right-click only.
  * - **An entry's buttons** are the five for the selected entries, drawn on the
  *   focused entry's row only (DEC-249): short words, glyphs where the row has no room for
  *   the words, or one "Actions ▾" button where it has no room for those either; the
@@ -32,12 +32,11 @@ import { Button } from "../../components/Button";
 
 import { Hint } from "../../components/Hint";
 import { useDoubleClickGrace } from "../../hooks/useDoubleClickGrace";
-import { opensDialog } from "../../format/words";
 import { entryButtonDomId, type EntryButton, type EntryMark } from "./entryActions";
 import { useEntryButtonsForm } from "./entryButtonsRoom";
 import { DOUBLE_CLICK_MS, PrepareEditingContext, type PrepareEditing } from "./prepareEditingContext";
 import { timeCell } from "./prepareFormat";
-import type { EntryRow, HeadingRow } from "./prepareRows";
+import { chapterName, type EntryRow, type HeadingRow } from "./prepareRows";
 import type { TimeField } from "./timeEditing";
 
 /** The "Actions ▾" button's id: where focus returns to if the row is redrawn under it. */
@@ -78,7 +77,7 @@ function TimeInput({ row, field, editing }: { row: EntryRow; field: TimeField; e
       ref={input}
       className="prepare-time__input"
       value={text}
-      aria-label={`${FIELD_WORDS[field]} for ${row.entry.track.title ?? "the entry"}`}
+      aria-label={`${FIELD_WORDS[field]} for ${row.entry.track.title ?? "the track"}`}
       aria-invalid={editing.invalid}
       placeholder={field === "out" && row.entry.length_seconds != null ? timeCell(row.entry.length_seconds) : "0:00"}
       onChange={(event) => setText(event.target.value)}
@@ -126,7 +125,7 @@ export function TimeCell({ row, field }: { row: EntryRow | HeadingRow; field: Ti
       type="button"
       className="prepare-time"
       tabIndex={-1}
-      aria-label={`${FIELD_WORDS[field]} for ${row.entry.track.title ?? "the entry"}: ${text || "not set"}`}
+      aria-label={`${FIELD_WORDS[field]} for ${row.entry.track.title ?? "the track"}: ${text || "not set"}`}
       data-hint={`Type the ${FIELD_WORDS[field]} for this track`}
       onClick={() => editing.startTimeEdit(row.entry.entry_id, field)}
     >
@@ -179,34 +178,33 @@ function MarkButton({
 }
 
 /**
- * A chapter heading's one button, Edit… (FLW-17, amended). Moving and deleting the chapter are in
- * its dialog and its right-click menu.
+ * A chapter heading's name, which is its one button (FLW-17, M205): it opens Edit chapter, and
+ * moving and deleting the chapter are in that dialog and its right-click menu. Without the page's
+ * context (the column picker, a test of a column) it is only the name.
  */
-export function ChapterButtons({ row }: { row: HeadingRow }) {
+export function ChapterName({ row }: { row: HeadingRow }) {
   const editing = useContext(PrepareEditingContext);
-  if (!editing) return null;
   const { chapter } = row;
+  const name = chapterName(chapter);
+  if (!editing) return <span className="prepare-heading__name">{name}</span>;
   return (
     // A Tab stop. Its keys stay its own: Enter on it presses it, and does not reach the
     // table, where Enter on a heading opens Edit.
-    <span
-      className="prepare-heading__buttons"
-      onClick={quiet}
-      onDoubleClick={quiet}
-      onMouseDown={quiet}
-      onKeyDown={stopTableKeys}
-    >
-      <Hint text="Edit chapter" portal>
-        <Button
-          size="sm"
-          variant="secondary"
-          aria-label="Edit chapter"
-          onClick={() => editing.chapters.edit(chapter)}
-        >
-          {opensDialog("Edit")}
-        </Button>
-      </Hint>
-    </span>
+    <Hint text="Edit chapter" portal>
+      <button
+        type="button"
+        className="prepare-heading__name prepare-heading__name--button"
+        onClick={(event) => {
+          event.stopPropagation();
+          editing.chapters.edit(chapter);
+        }}
+        onDoubleClick={quiet}
+        onMouseDown={quiet}
+        onKeyDown={stopTableKeys}
+      >
+        {name}
+      </button>
+    </Hint>
   );
 }
 
@@ -273,7 +271,7 @@ export function EntryButtons({ row }: { row: EntryRow }) {
       <span
         className="prepare-row-buttons"
         role="group"
-        aria-label="Selected entries"
+        aria-label="Selected tracks"
         style={armed ? undefined : { pointerEvents: "none" }}
         onClick={quiet}
         onDoubleClick={(event) => {
@@ -285,7 +283,7 @@ export function EntryButtons({ row }: { row: EntryRow }) {
         onKeyDown={stopTableKeys}
       >
         {form === "actions" ? (
-          <Hint text="Actions for this entry" portal>
+          <Hint text="Actions for this track" portal>
             <Button
               id={ACTIONS_BUTTON_ID}
               size="sm"

@@ -42,8 +42,8 @@ describe("the default columns at 1264 x 735, scale 1.25, with Details open", () 
   const ids = visibleByDefault.map((column) => column.id);
 
   // Round 3 (M85, D12): BPM sits before Key on every page.
-  it("shows #, Title, Artist, BPM, Key, Plays for and Mix in", () => {
-    expect(ids).toEqual(["position", "title", "artist", "bpm", "key", "planned", "in"]);
+  it("shows #, Title, Artist, BPM, Key, Time, Mix in and Fit", () => {
+    expect(ids).toEqual(["position", "title", "artist", "bpm", "key", "planned", "in", "fit"]);
   });
 
   it("do not fit whole, and fit once Artist is dropped", () => {

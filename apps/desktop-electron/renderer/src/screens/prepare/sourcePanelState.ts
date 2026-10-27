@@ -8,7 +8,12 @@
  * that cannot be read is the default: remembering is a convenience, and a
  * page that will not open because of it would be a poor trade.
  */
+import { createContext } from "react";
+
 import { WHOLE_LIBRARY_POOL, type PoolValue } from "./prepareSource";
+
+/** The tracks the Set already holds (by track id), for the Library tab's "In Set" mark (M203). */
+export const InSetTracksContext = createContext<ReadonlySet<number>>(new Set());
 
 export type SourceTab = "suggestions" | "library";
 

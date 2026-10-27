@@ -30,13 +30,13 @@ const NO_TIMES_YET =
   "No times planned yet. Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional.";
 
 /**
- * "1:34:20 planned"; null while no entry has a time (PRP-3), and for an empty
- * Set, which has nothing to time. How many entries are not timed is
- * `withoutTimesLine`, in the fact's title (DEC-107).
+ * "1:34:20", the Set's planned length, beside the track count (D21, M201); null while no entry has
+ * a time (PRP-3), and for an empty Set, which has nothing to time. What the time is, and how many
+ * tracks are not timed (`withoutTimesLine`), are in the fact's title (DEC-107).
  */
 export function runningTimeLine(running: SetRunningTime): string | null {
   if (running.timed === 0 && running.seconds === 0) return null;
-  return `${formatSetLength(running.seconds)} planned`;
+  return formatSetLength(running.seconds);
 }
 
 /** "3 without times"; null when every entry has one. */
@@ -44,9 +44,14 @@ export function withoutTimesLine(running: SetRunningTime): string | null {
   return running.untimed > 0 ? `${formatCount(running.untimed)} without times` : null;
 }
 
+/** How many warnings are still open (the accepted ones are not counted). */
+export function openWarnings(analysis: SetAnalysis): number {
+  return Object.values(analysis.counts).reduce((sum, count) => sum + (count ?? 0), 0);
+}
+
 /** The header's count of warnings still open; the accepted ones are `acceptedLine`, in its title. */
 export function warningCountLine(analysis: SetAnalysis): string {
-  const open = Object.values(analysis.counts).reduce((sum, count) => sum + (count ?? 0), 0);
+  const open = openWarnings(analysis);
   return open === 0 ? "No warnings" : counted(open, "warning", "warnings");
 }
 
@@ -66,6 +71,8 @@ interface HeaderFact {
    */
   action?: "open_missing";
   actionText?: string;
+  /** The warnings' count is a button that selects the first track with an open warning (M199). */
+  jump?: boolean;
 }
 
 /**
@@ -99,7 +106,10 @@ export function headerFacts(
   const facts: HeaderFact[] = [
     { text: counted(entryCount, "track", "tracks"), title: planned || entryCount === 0 ? undefined : NO_TIMES_YET },
   ];
-  if (planned) facts.push({ text: planned, title: withoutTimesLine(running) ?? undefined });
+  if (planned) {
+    const untimed = withoutTimesLine(running);
+    facts.push({ text: planned, title: untimed ? `Planned length of the Set. ${untimed}.` : "Planned length of the Set" });
+  }
   const kinds = (Object.keys(KIND_WORDS) as SetWarning["kind"][])
     .filter((kind) => (analysis.counts[kind] ?? 0) > 0)
     .map((kind) => counted(analysis.counts[kind] ?? 0, ...KIND_WORDS[kind]));
@@ -108,6 +118,7 @@ export function headerFacts(
     text: warningCountLine(analysis),
     title: title || undefined,
     strong: kinds.length > 0,
+    jump: openWarnings(analysis) > 0,
   });
   const files = describeFileCheck(analysis.files);
   if (files) {
@@ -124,19 +135,29 @@ export function headerFacts(
     const count = analysis.without_key;
     facts.push({
       text: `${formatCount(count)} without key`,
-      title: `${counted(count, "entry", "entries")} ${count === 1 ? "has" : "have"} no Beatport key, so no key check applies.`,
+      title: `${counted(count, "track", "tracks")} ${count === 1 ? "has" : "have"} no Beatport key, so no key check applies.`,
     });
   }
   return facts;
 }
 
-/** A heading's time: "9:00 of 8:00", or "9:00" without a target, and what is untimed. */
+/**
+ * A heading's time: "9:00 of 8:00", or "9:00" without a target; nothing while no entry of the
+ * chapter has a time, so the band never says "without times" in a cell aligned to no column (M195).
+ * How many are untimed is `chapterTimeTitle`.
+ */
 export function chapterTimeText(chapter: Pick<SetChapterPlan, "running_time" | "target_seconds">): string {
+  if (chapter.running_time.timed === 0 && chapter.running_time.seconds === 0) return "";
   const run = formatLength(chapter.running_time.seconds);
-  const planned =
-    chapter.target_seconds == null ? run : `${run} of ${formatLength(chapter.target_seconds)}`;
+  return chapter.target_seconds == null ? run : `${run} of ${formatLength(chapter.target_seconds)}`;
+}
+
+/** The chapter's time cell's hint: what the time is, and how many of its tracks have none. */
+export function chapterTimeTitle(chapter: Pick<SetChapterPlan, "running_time">): string {
   const untimed = chapter.running_time.untimed;
-  return untimed > 0 ? `${planned} · ${formatCount(untimed)} without times` : planned;
+  return untimed > 0
+    ? `The chapter's planned time, against its target. ${formatCount(untimed)} without times.`
+    : "The chapter's planned time, against its target";
 }
 
 /** A chapter's BPM range: "120–123", "from 120", "to 123", or "" with none. */
@@ -245,8 +266,8 @@ export function deletionLine(chapters: readonly SetChapterPlan[], chapter: SetCh
   const count = chapter.entry_ids.length;
   const entries =
     count === 0
-      ? "It holds no entries."
-      : `Its ${count === 1 ? "entry joins" : `${formatCount(count)} entries join`} “${
+      ? "It holds no tracks."
+      : `Its ${count === 1 ? "track joins" : `${formatCount(count)} tracks join`} “${
           joins ? chapterName(joins) : ""
         }”, with ${count === 1 ? "its" : "their"} times and notes.`;
   return `${entries} The chapter's name, notes and targets are deleted with it.`;

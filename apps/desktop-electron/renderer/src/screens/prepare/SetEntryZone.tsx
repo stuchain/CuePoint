@@ -125,7 +125,7 @@ export function SetEntryZone({
         />
         <p className="prepare-entry-zone__planned" role="status">
           {entry.planned_seconds != null
-            ? `Plays for ${timeCell(entry.planned_seconds)}`
+            ? `Time ${timeCell(entry.planned_seconds)}`
             : "No out time yet: type one to count this track in the Set's length."}
         </p>
       </div>
@@ -158,7 +158,7 @@ export function SetEntryZone({
 
       {found.some(isAcknowledgeable) && <p className="prepare-entry-zone__hint">{ACCEPT_HINT}</p>}
       {(found.length > 0 || row.notices.length > 0) && (
-        <ul className="prepare-entry-zone__warnings" aria-label="What the checks found">
+        <ul className="prepare-entry-zone__warnings" aria-label="Warnings">
           {found.map((warning) => (
             <li
               key={`${warning.kind}-${warning.detail}`}

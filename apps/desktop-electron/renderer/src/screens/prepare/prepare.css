@@ -31,8 +31,9 @@
   overflow-y: auto;
 }
 
+/* The one waiting gap (M67). */
 .prepare-screen--waiting {
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 .prepare-note {
@@ -45,40 +46,49 @@
 
 /* ------------------------------------------------------------------ header */
 
-/* The Set picker beside the title: its label is only for assistive tech, and it reads as a
-   control, a control tall (DEC-112). */
-.prepare-header__picker {
-  /* It gives way first on a narrow page: down to a few letters and an ellipsis, never over the
-     title or the buttons. */
-  min-width: 0;
-  width: auto;
-  max-width: min(calc(320px * var(--scale)), 100%);
-}
-
-/* The slot that holds it shrinks too (the title and the buttons keep their room). */
-.prepare-screen .cp-screen-header__beside {
+/* The Set's name is the page title and the switcher (D21, M201): a button in the heading, drawn as
+   the title, with the arrow after it. It shrinks with an ellipsis before the actions give way. */
+.prepare-screen .cp-screen-header__title--control:where(:not(.cp-visually-hidden)) {
   flex: 0 1 auto;
   min-width: 0;
 }
 
-.prepare-screen .cp-screen-header__beside > .prepare-header__picker .cp-select__field,
-.prepare-screen .cp-screen-header__beside > .prepare-header__picker {
+.prepare-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  max-width: 100%;
   min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
 }
 
-.prepare-header__picker .cp-select__control {
+.prepare-title__name {
   min-width: 0;
-  text-overflow: ellipsis;
-}
-
-.prepare-header__picker .cp-select__label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.prepare-title__arrow {
+  flex: none;
+  color: var(--fg-muted);
+}
+
+.prepare-title:hover .prepare-title__arrow,
+.prepare-title:focus-visible .prepare-title__arrow {
+  color: var(--fg-primary);
+}
+
+.prepare-title:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /* The summary slot's one line (DEC-112): the facts give way (ellipsis, the whole in their
@@ -105,15 +115,18 @@
   color: var(--fg-primary);
 }
 
-/* A refused time, first and plain, until it is typed again or dropped (FLW-18):
-   the reason first, the entry's name last and the first to give way. */
+/* A refused time, first, until it is typed again or dropped (FLW-18): the reason first, the
+   entry's name last and the first to give way. It is the one inline-refusal look (M347): red,
+   Inter, extra small, regular, as `cp-field__error`. */
 .prepare-header__refusal {
   display: flex;
   flex: 0 1 auto;
   min-width: 0;
   gap: var(--space-xs);
-  color: var(--fg-primary);
-  font-weight: var(--font-weight-bold);
+  color: var(--danger-text);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
   white-space: nowrap;
 }
 
@@ -218,12 +231,15 @@
   display: none;
 }
 
-/* The resizer's shared hover colour (C149). */
+/* The resizer's shared hover colour (C149) and the one focus look, an inset ring (M359). */
 .prepare-layout__divider:hover,
-.prepare-layout__divider:focus-visible,
 .prepare-layout__divider--active {
   background: var(--resizer-hover);
-  outline: none;
+}
+
+.prepare-layout__divider:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 body.prepare-resizing {
@@ -297,20 +313,26 @@ body.prepare-resizing {
   line-height: 1;
 }
 
+/* One label per lane, one line, centred in its lane (M197): the name in the control face, the
+   range after it in the meta face, so three stacked lines never crowd the first step. */
 .prepare-lanes__name {
   display: flex;
-  flex-direction: column;
-  /* Centred in its lane, or from the top when its lines are taller than the lane (the 20 px
-     tempo lane at 1.25): centred and clipped, the top half of "BPM" was cut off (C251). */
-  justify-content: safe center;
-  gap: calc(2px * var(--scale));
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
   /* The label look (P18): small, medium and muted, like every group label. */
   color: var(--fg-muted);
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-medium);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .prepare-lanes__range {
+  font-family: var(--font-meta);
   font-weight: var(--font-weight-regular);
   white-space: nowrap;
 }
@@ -354,9 +376,9 @@ body.prepare-resizing {
   opacity: 0.6;
 }
 
+/* The selected column is the selected row's ground (M358): --bg-selected, not a made-up 25%. */
 .prepare-lanes__selected {
-  fill: var(--accent-primary);
-  opacity: 0.25;
+  fill: var(--bg-selected);
 }
 
 .prepare-lanes__hit {
@@ -364,9 +386,9 @@ body.prepare-resizing {
   cursor: pointer;
 }
 
+/* ... and the hover is the row hover (M358). */
 .prepare-lanes__hit:hover {
-  fill: var(--fg-primary);
-  fill-opacity: 0.08;
+  fill: var(--row-hover-solid);
 }
 
 /* ---------------------------------------------------- the transition strip */
@@ -593,7 +615,6 @@ body.prepare-resizing {
   /* No row divider on the row itself and the pixel face, so a band is not read as one more data row
      (C250); its cells draw the row line (P18). */
   box-shadow: none;
-  font-weight: var(--font-weight-bold);
   cursor: default;
 }
 
@@ -609,12 +630,11 @@ body.prepare-resizing {
   min-width: 0;
 }
 
-/* The name takes only what it needs, so Edit… follows it and is always in view (a name that is
-   too long gives way with an ellipsis); a button parked at the far end of a wide cell was
-   scrolled to when focused, which moved the table sideways. */
+/* The name takes only what it needs (a name that is too long gives way with an ellipsis). */
 .prepare-heading__name {
   /* The pixel face is the voice (P2, C250). */
   font-family: var(--font-voice);
+  font-weight: var(--font-weight-bold);
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -622,11 +642,25 @@ body.prepare-resizing {
   text-transform: none;
 }
 
-/* A chapter's Edit, Up, Down and Delete, inside the heading's own height. */
-.prepare-heading__buttons {
-  display: inline-flex;
-  flex: none;
-  gap: var(--space-md);
+/* The name is the chapter's one button (M205): it reads as the name, and is underlined by its
+   hover and ringed by its focus; only it is bold (M195). */
+.prepare-heading__name--button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prepare-heading__name--button:hover {
+  text-decoration: underline;
+}
+
+.prepare-heading__name--button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /* The selected entries' buttons, at the right end of the focused row (DEC-249): the shared small
@@ -690,7 +724,7 @@ body.prepare-resizing {
 }
 
 .prepare-time__input {
-  border: var(--hairline) solid var(--accent-info);
+  border: var(--hairline) solid var(--accent-primary);
   background: var(--bg-input);
   font-variant-numeric: tabular-nums;
 }
@@ -720,19 +754,19 @@ body.prepare-resizing {
   line-height: 1;
 }
 
-/* The "both off" dot: a ring, as there is no ring icon. Sized as the pixel dots are (12 units, 1.5 px a unit). */
+/* The "both off" mark: a square ring (the app has no round shapes, M34), as there is no ring icon. Sized as the pixel dots are (12 units, 1.5 px a unit). */
 .prepare-fit__ring {
   display: inline-block;
   box-sizing: border-box;
   width: calc(12px * var(--scale));
   height: calc(12px * var(--scale));
-  border: calc(2px * var(--scale)) solid currentColor;
-  border-radius: 50%;
+  border: round(nearest, calc(2px * var(--scale)), 1px) solid currentColor;
   vertical-align: middle;
 }
 
+/* All good is quiet (M325): a track that mixes in fine is muted, not green. */
 .prepare-fit--fit {
-  color: var(--success-text);
+  color: var(--fg-muted);
 }
 
 .prepare-fit--one {
@@ -847,20 +881,7 @@ body.prepare-resizing {
   gap: var(--space-md);
 }
 
-/* The footer's extras: Delete alone at the left, the chapter's place at the right of the free space. */
-.cp-modal__footer-extra:has(> .prepare-dialog__footer) {
-  flex: 1 1 auto;
-}
-
-.prepare-dialog__footer {
-  display: flex;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-}
-
+/* Move up and Move down, at the head of the chapter's form: they act at once. */
 .prepare-dialog__actions-start {
   display: flex;
   flex-wrap: wrap;
@@ -881,10 +902,26 @@ body.prepare-resizing {
   gap: var(--space-md);
   min-width: 0;
   min-height: 0;
-  /* One pane (P8): the panel tone, 12 all round, level with the Set table's first row (C48). */
-  padding: var(--space-lg);
+  /* One pane (P8): the panel tone. Its head is the Set table's header row high and meets its line;
+     what is below it keeps --space-lg at the sides and the foot (M193, M66). */
+  padding: 0;
   overflow: hidden;
   background: var(--bg-panel);
+}
+
+.prepare-source > :not(.prepare-source__head) {
+  margin-inline: var(--space-lg);
+}
+
+.prepare-source__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  height: var(--row-height);
+  padding-inline: var(--space-lg);
+  border-bottom: var(--divider);
 }
 
 /* Suggestions | Library are the app's one sub-tab slab (D21, M191): it hugs its words, the picked part
@@ -898,21 +935,25 @@ body.prepare-resizing {
 }
 
 /* The bar above the list (C217, .cp-toolbar) is as wide as the table under it, inside the panel's
-   own 8 at the sides, so its band never runs past the table's frame (item 7). */
+   own sides, so its band never runs past the table's frame (item 7). */
 .prepare-source > .prepare-source__controls {
-  margin-inline: 0;
   /* L1, L4: the select and the button are boxes on the panel's one left edge, as the table is. */
   padding-inline: 0;
 }
 
-.prepare-source__search {
+/* The panel's fields stretch to it (M47): one right edge for the search, the pool and the table;
+   only a toolbar keeps --search-width. */
+.cp-search-field.prepare-source__search {
   flex: none;
+  width: auto;
+  max-width: none;
 }
 
 .cp-select.prepare-source__select {
   flex: 1;
   /* Wide enough to read "The whole library" in Inter 11 before the Insert button takes the rest (P2). */
   min-width: calc(124px * var(--scale));
+  max-width: none;
 }
 
 /* Both tabs stay mounted once opened (area 42), stacked in the room the body has; the one not
@@ -924,6 +965,7 @@ body.prepare-resizing {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  margin-bottom: var(--space-lg);
 }
 
 .prepare-source__pane {
@@ -941,7 +983,8 @@ body.prepare-resizing {
   pointer-events: none;
 }
 
-/* The line wraps to two lines, and only a longer one is cut (its full text is the hint). */
+/* The line wraps to two lines at most, the names whole inside it (M198), and only a longer one is cut
+   (its full text is the hint). */
 .prepare-source__point {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -958,15 +1001,27 @@ body.prepare-resizing {
   text-overflow: ellipsis;
 }
 
-/* A Suggestions row's title: the in-Set mark beside a text box that ends in "..." (C64). */
+/* A source row's title: the text, which ends in "...", then "In Set" at the end of the cell in a
+   slot of its own, so every title starts on one edge (C64, M196). */
 .prepare-source__title {
   display: flex;
   align-items: center;
+  gap: var(--space-sm);
   min-width: 0;
+}
+
+.prepare-source__title-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .prepare-source__title > .prepare-source__in-set {
   flex: none;
+  font-family: var(--font-meta);
+  font-size: var(--font-size-xs);
 }
 
 /* The BPM Δ figure: right-aligned by its column, in tabular figures so the signs line up (C78). */
@@ -976,8 +1031,14 @@ body.prepare-resizing {
 }
 
 .prepare-source__point em {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
   font-style: normal;
   font-weight: var(--font-weight-bold);
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
 }
 
 .prepare-source__note {
@@ -1004,14 +1065,6 @@ body.prepare-resizing {
 
 .prepare-source__rows > .track-table {
   flex: 1;
-}
-
-.prepare-source__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
 }
 
 .prepare-source__sides {

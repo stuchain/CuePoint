@@ -5,10 +5,11 @@
  *
  * - **Suggestions**: what fits the gap after the selected entry, scored
  *   against the entries on either side (DEC-105), each side's reasons in words
- *   and a mark on a track already in the Set. A gap nothing bridges says how
+ *   and an "In Set" mark on a track already in the Set. A gap nothing bridges says how
  *   far apart its neighbors are and offers each side's own list; the gate is
  *   never loosened. An empty Set has nothing to fit against, and says so.
- * - **Library**: a search over the one browse query (DEC-023), in the pool.
+ * - **Library**: a search over the one browse query (DEC-023), in the pool, with the same mark
+ *   on a track the Set already holds (M203).
  *
  * The pool is the whole library, a Rekordbox playlist or folder, a Collection,
  * a Smart Collection or a Set, as Clean's scope is; the page remembers it.
@@ -46,6 +47,7 @@ import { useTrackWindow } from "../library/useTrackWindow";
 import {
   emptyAnswerText,
   gapKey,
+  SELECT_TRACKS_FIRST,
   insertLabel,
   insertingText,
   noFitText,
@@ -73,6 +75,7 @@ import {
   type SuggestionRow,
 } from "./sourceColumns";
 import {
+  InSetTracksContext,
   loadSourcePool,
   loadSourceTab,
   saveSourcePool,
@@ -85,6 +88,9 @@ import { useSetSuggestions } from "./useSetSuggestions";
 export const EMPTY_SET_SUGGESTIONS_HEADLINE = "Suggestions need a track to fit against";
 const EMPTY_SET_SUGGESTIONS_HELP = "Add the first one from the Library tab";
 export const EMPTY_SET_SUGGESTIONS = `${EMPTY_SET_SUGGESTIONS_HEADLINE}. ${EMPTY_SET_SUGGESTIONS_HELP}.`;
+
+/** The box takes a key or a tempo as well as words, and says so (M204). */
+export const SEARCH_PLACEHOLDER = "Search tracks, a key (8A) or a BPM (124)…";
 
 /** How long the search box waits for typing to stop. */
 const SEARCH_DELAY_MS = 200;
@@ -100,6 +106,8 @@ interface SourcePanelProps {
   point: InsertionPoint;
   /** Changes with every re-read of the Set. */
   revision: unknown;
+  /** The ids of the tracks the Set holds, for the Library tab's "In Set" mark (M203). */
+  inSetIds?: ReadonlySet<number>;
   /** Every node of CuePoint's tree, flat (folders' children included), for the pool picker. */
   collections: readonly CollectionNode[];
   /** Insert these tracks at the point, in this order. */
@@ -114,22 +122,22 @@ interface SourcePanelProps {
   onPickedChange?: (rows: LibraryTrackRow[]) => void;
 }
 
-/** Where an insert goes, in words, the titles set apart. */
+/** Where an insert goes, in words, the titles set apart and never split across lines (M198). */
 function PointLine({ words, title }: { words: PointWords; title: string }) {
-  const where = (chapter: string | null) => (chapter ? `, in ${chapter}` : "");
+  const where = (chapter: string | null) => (chapter ? ` · ${chapter}` : "");
   return (
     <p className="prepare-source__point" role="status" aria-label={insertingText(words)} data-hint={title}>
-      Inserting:{" "}
-      {words.kind === "empty" && "at the start of the empty Set"}
+      {words.kind === "empty" && "Insert at the start of the empty Set"}
       {words.kind === "between" && (
         <>
-          between <em>{words.before}</em> and <em>{words.after}</em>
+          Insert between <em>“{words.before}”</em> and <em>“{words.after}”</em>
           {where(words.chapter)}
         </>
       )}
       {words.kind === "end" && (
         <>
-          after <em>{words.before}</em>, at the end of the Set{where(words.chapter)}
+          Insert after <em>“{words.before}”</em>
+          {where(words.chapter)}
         </>
       )}
     </p>
@@ -137,6 +145,7 @@ function PointLine({ words, title }: { words: PointWords; title: string }) {
 }
 
 const NO_PLAYLISTS: LibraryPlaylistNode[] = [];
+const NO_TRACKS: ReadonlySet<number> = new Set();
 
 export function SourcePanel(props: SourcePanelProps) {
   const selectId = useId();
@@ -165,6 +174,27 @@ export function SourcePanel(props: SourcePanelProps) {
     setVisited((was) => (was[value] ? was : { ...was, [value]: true }));
     saveSourceTab(value);
   };
+  // Ctrl+F is this page's search too (M480): it opens the Library tab and puts the cursor in its
+  // box. The page's own listener, in the capture phase, because the Library tab may not be mounted
+  // yet for `usePageSearch` to find an input; a dialog open keeps the key for its own fields.
+  const [searchAsk, setSearchAsk] = useState(0);
+  const openLibrarySearch = useRef(() => {});
+  openLibrarySearch.current = () => {
+    chooseTab("library");
+    setSearchAsk((count) => count + 1);
+  };
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "f" || event.altKey || event.shiftKey) return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openLibrarySearch.current();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
   const choosePool = (next: PoolValue) => {
     setChosenPool(next);
     saveSourcePool(next);
@@ -194,12 +224,14 @@ export function SourcePanel(props: SourcePanelProps) {
     .filter(Boolean)
     .join(" ");
   const body = useRef<HTMLDivElement>(null);
-  const pickTracks = () => body.current?.querySelector<HTMLElement>('[data-active="true"] [role="table"]')?.focus();
 
   return (
-    <section className="prepare-source" aria-label="Add to the Set">
+    <section className="prepare-source" aria-label="Add to the Set" data-pane="source">
+      {/* The head is the Set table's header row high, so its line meets the table's (M193). */}
+      <div className="prepare-source__head">
+        <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} variant="sub" />
+      </div>
       <PointLine words={words} title={pointTitle} />
-      <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} variant="sub" />
       <div className="cp-toolbar prepare-source__controls">
         <Hint text="Where Suggestions and the search look: the library, a playlist, a Collection or a Set">
           <Select
@@ -212,17 +244,12 @@ export function SourcePanel(props: SourcePanelProps) {
             options={options.map((option) => ({ value: option.value, label: option.label, disabled: option.disabled }))}
           />
         </Hint>
-        <Hint
-          text={
-            picked.length === 0
-              ? `Select tracks below, then insert them. ${insertingText(words)}`
-              : pointText(words)
-          }
-        >
+        <Hint text={picked.length === 0 ? SELECT_TRACKS_FIRST : pointText(words)}>
           <Button
             variant="secondary"
             className="cp-btn--framed"
-            onClick={() => (picked.length === 0 ? pickTracks() : props.onInsert(picked))}
+            disabled={picked.length === 0}
+            onClick={() => props.onInsert(picked)}
           >
             {insertLabel(picked.length)}
           </Button>
@@ -255,7 +282,9 @@ export function SourcePanel(props: SourcePanelProps) {
             aria-hidden={tab !== "library"}
             data-active={tab === "library"}
           >
-            <LibraryTab {...props} pool={pool} poolWords={poolWords} onPicked={pickLibrary} />
+            <InSetTracksContext.Provider value={props.inSetIds ?? NO_TRACKS}>
+              <LibraryTab {...props} pool={pool} poolWords={poolWords} onPicked={pickLibrary} searchAsk={searchAsk} />
+            </InSetTracksContext.Provider>
           </div>
         )}
       </div>
@@ -386,17 +415,22 @@ function SuggestionsTab({
     empty = <Loading what="what fits" />;
   } else if (answer.no_fit && point.after) {
     empty = (
-      <div className="prepare-source__empty">
-        <EmptyState compact icon="prepare" headline="Nothing bridges this gap" description={noFitText(answer.no_fit, beforeTitle, afterTitle)} />
-        <div className="prepare-source__sides">
-          <Button variant="secondary" onClick={() => setSide({ gap, against: "before" })}>
-            {sideButtonLabel("before", beforeTitle)}
-          </Button>
-          <Button variant="secondary" onClick={() => setSide({ gap, against: "after" })}>
-            {sideButtonLabel("after", afterTitle)}
-          </Button>
-        </div>
-      </div>
+      <EmptyState
+        compact
+        icon="prepare"
+        headline="Nothing bridges this gap"
+        description={noFitText(answer.no_fit, beforeTitle, afterTitle)}
+        action={
+          <div className="prepare-source__sides">
+            <Button variant="secondary" onClick={() => setSide({ gap, against: "before" })}>
+              {sideButtonLabel("before", beforeTitle)}
+            </Button>
+            <Button variant="secondary" onClick={() => setSide({ gap, against: "after" })}>
+              {sideButtonLabel("after", afterTitle)}
+            </Button>
+          </div>
+        }
+      />
     );
   } else {
     empty = <EmptyState compact icon="prepare" headline={headlineOf(emptyAnswerText(answer, poolWords))} />;
@@ -468,8 +502,16 @@ function LibraryTab({
   onMessage,
   onOpenSimilar,
   onOpenEntity,
-}: TabProps) {
+  searchAsk,
+}: TabProps & { searchAsk: number }) {
   const [text, setText] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
+  // Ctrl+F: focus the box, with its text selected, each time it is asked for.
+  useEffect(() => {
+    if (searchAsk === 0) return;
+    searchInput.current?.focus();
+    searchInput.current?.select();
+  }, [searchAsk]);
   const [q, setQ] = useState("");
   const [order, setOrder] = useState<{ sort: string; dir: "asc" | "desc" }>({
     sort: DEFAULT_LIBRARY_QUERY.sort,
@@ -525,7 +567,14 @@ function LibraryTab({
 
   return (
     <>
-      <SearchField className="prepare-source__search" thing="tracks" value={text} onValueChange={setText} />
+      <SearchField
+        ref={searchInput}
+        className="prepare-source__search"
+        thing="tracks"
+        placeholder={SEARCH_PLACEHOLDER}
+        value={text}
+        onValueChange={setText}
+      />
       <SourceTable<LibraryTrackRow>
         ariaLabel="Library tracks to add"
         columns={layout.visible}

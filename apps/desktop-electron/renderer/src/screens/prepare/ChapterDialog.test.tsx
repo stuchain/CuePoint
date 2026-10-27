@@ -78,12 +78,15 @@ describe("ChapterDialog's footer and errors (areas 75, 77, 92)", () => {
     expect(screen.getByRole("dialog", { name: "Edit chapter “Peak”" })).toBeInTheDocument();
   });
 
-  it("keeps the place and delete buttons in the footer, beside Save, not in the body", () => {
+  it("keeps Delete chapter in the footer, beside Save, and the moves in the body (M250)", () => {
     renderDialog();
     const dialog = screen.getByRole("dialog");
     const footer = dialog.querySelector(".cp-modal__footer")!;
-    for (const name of ["Move up", "Move down", "Delete chapter…", "Save"]) {
+    for (const name of ["Delete chapter…", "Save"]) {
       expect(footer).toContainElement(screen.getByRole("button", { name }));
+    }
+    for (const name of ["Move up", "Move down"]) {
+      expect(footer).not.toContainElement(screen.getByRole("button", { name }));
     }
   });
 
@@ -91,7 +94,7 @@ describe("ChapterDialog's footer and errors (areas 75, 77, 92)", () => {
     renderDialog();
     const del = screen.getByRole("button", { name: "Delete chapter…" });
     expect(del).toHaveClass("cp-btn--danger");
-    const moves = screen.getByRole("button", { name: "Move up" }).parentElement!;
+    const moves = screen.getByRole("group", { name: "Place in the Set" });
     expect(moves).not.toContainElement(del);
     expect(moves).toContainElement(screen.getByRole("button", { name: "Move down" }));
     const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;

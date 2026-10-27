@@ -97,30 +97,30 @@ describe("the point in words", () => {
   it("names both neighbours and the chapter", () => {
     const words = pointWords(insertionPoint(BUILD.plan, entries, OPEN_ONE), BUILD.plan.chapters);
     expect(words).toEqual({ kind: "between", before: "Open One", after: "Open Two", chapter: "Open" });
-    expect(pointText(words)).toBe("Between “Open One” and “Open Two”, in Open");
+    expect(pointText(words)).toBe("Between “Open One” and “Open Two” · Open");
   });
 
   it("says the end of the Set", () => {
     const words = pointWords(insertionPoint(BUILD.plan, entries, null), BUILD.plan.chapters);
-    expect(pointText(words)).toBe("After “Peak Two”, at the end of the Set, in Peak");
+    expect(pointText(words)).toBe("After “Peak Two” · Peak");
   });
 
   it("names no chapter in a Set that draws no headings (DEC-103)", () => {
     const words = pointWords(insertionPoint(PLAIN.plan, PLAIN.entries.entries, null), PLAIN.plan.chapters);
     expect(words.kind).toBe("end");
-    expect(pointText(words)).not.toMatch(/, in /);
+    expect(pointText(words)).not.toMatch(/ · /);
   });
 
   it("names an unnamed chapter by its place where headings are drawn", () => {
     const first = SHAPE.entries.entries[0].entry_id;
     const words = pointWords(insertionPoint(SHAPE.plan, SHAPE.entries.entries, first), SHAPE.plan.chapters);
-    expect(pointText(words)).toMatch(/, in Chapter 1$/);
+    expect(pointText(words)).toMatch(/ · Chapter 1$/);
   });
 
   it("says an empty Set", () => {
     const words = pointWords(insertionPoint(BLANK.plan, [], null), BLANK.plan.chapters);
     expect(pointText(words)).toBe("At the start of the empty Set");
-    expect(insertingText(words)).toBe("Inserting: at the start of the empty Set");
+    expect(insertingText(words)).toBe("Insert at the start of the empty Set");
   });
 });
 
@@ -243,12 +243,12 @@ describe("inserting", () => {
   it("fits a gesture whole or refuses it before anything is written", () => {
     expect(roomFor(3, 997, 1000)).toBeNull();
     expect(roomFor(4, 997, 1000)).toBe(
-      "A Set holds at most 1,000 entries. This one has 997, so 4 more will not fit.",
+      "A Set holds at most 1,000 tracks. This one has 997, so 4 more will not fit.",
     );
   });
 
   it("names the button for what is selected", () => {
-    expect(insertLabel(0)).toBe("Pick tracks");
+    expect(insertLabel(0)).toBe("Insert here");
     expect(insertLabel(1)).toBe("Insert here");
     expect(insertLabel(1200)).toBe("Insert 1,200 here");
   });

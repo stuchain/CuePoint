@@ -29,8 +29,8 @@ interface SetLanesProps {
   onSelect: (entryId: number) => void;
 }
 
-/** The gutter's width before scale: room for "146.5" in the smallest font. */
-const GUTTER = 40;
+/** The gutter's width before scale: room for "BPM 118–125" on one line (M197). */
+const GUTTER = 76;
 
 const LINK_CLASS: Record<KeyLinkStyle, string> = {
   same: "prepare-lanes__link",

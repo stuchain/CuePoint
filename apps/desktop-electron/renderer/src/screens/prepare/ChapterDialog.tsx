@@ -17,6 +17,7 @@ import { Textarea } from "../../components/Textarea";
 import { TextField } from "../../components/TextField";
 import { CHAPTER_NAME_MAX_LENGTH, chapterUpdate, readBpm } from "./chapterForm";
 import { dialogTitle } from "../../format/words";
+import { useLastValue } from "../../hooks/useLastValue";
 import { CHAPTER_ACTION } from "./prepareMenus";
 import { chapterName } from "./prepareRows";
 import { formatLength } from "../../format/durations";
@@ -63,6 +64,8 @@ export function ChapterDialog({
   const [notes, setNotes] = useState("");
   const [bpmProblem, setBpmProblem] = useState<string | null>(null);
   const ids = useId();
+  // The title keeps the chapter's name through the exit, which plays after `chapter` is null (M248).
+  const titled = useLastValue(chapter);
 
   useEffect(() => {
     if (!chapter) return;
@@ -113,39 +116,35 @@ export function ChapterDialog({
   return (
     <Modal
       open={chapter !== null}
-      title={chapter ? dialogTitle(CHAPTER_ACTION, chapterName(chapter)) : dialogTitle(CHAPTER_ACTION)}
+      title={titled ? dialogTitle(CHAPTER_ACTION, chapterName(titled)) : dialogTitle(CHAPTER_ACTION)}
       onClose={onClose}
       initialFocus={focusById(`${ids}-name`)}
       primaryAction={{ label: "Save", onClick: submit, loading: busy }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
-      footerExtra={
-        // Delete alone at the far left, in red; the chapter's place (Move up, Move down) sits at the
-        // other end of the extras, next to Cancel and Save's side. Both act at once, apart from the form.
-        <div className="prepare-dialog__footer">
-          <Button variant="danger" disabled={!canDelete} onClick={() => onDelete?.()}>
-            Delete chapter…
-          </Button>
-          <div
-            className="prepare-dialog__actions-start"
-            ref={moves}
-            onFocus={(event) => {
-              const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
-              const at = buttons.findIndex((button) => button.contains(event.target as Node));
-              lastMove.current = at === 0 || at === 1 ? at : null;
-            }}
-          >
-            <Button variant="secondary" disabled={!canMoveUp} onClick={() => onMove?.(-1)}>
-              Move up
-            </Button>
-            <Button variant="secondary" disabled={!canMoveDown} onClick={() => onMove?.(1)}>
-              Move down
-            </Button>
-          </div>
-        </div>
-      }
+      // Delete has one home, the footer's far left, in red (M250). Moving the chapter is in the body:
+      // it acts at once, apart from the form.
+      extraAction={{ label: "Delete chapter…", danger: true, disabled: !canDelete, onClick: () => onDelete?.() }}
     >
       <div className="prepare-dialog">
         <p className="prepare-note">{CHAPTER_LEAD}</p>
+        <div
+          className="prepare-dialog__actions-start"
+          role="group"
+          aria-label="Place in the Set"
+          ref={moves}
+          onFocus={(event) => {
+            const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
+            const at = buttons.findIndex((button) => button.contains(event.target as Node));
+            lastMove.current = at === 0 || at === 1 ? at : null;
+          }}
+        >
+          <Button variant="secondary" disabled={!canMoveUp} onClick={() => onMove?.(-1)}>
+            Move up
+          </Button>
+          <Button variant="secondary" disabled={!canMoveDown} onClick={() => onMove?.(1)}>
+            Move down
+          </Button>
+        </div>
         <TextField
           id={`${ids}-name`}
           label="Name"

@@ -3,7 +3,7 @@
  * Library's tree, PREP-11 on the Prepare page).
  *
  * The saved line says what the engine's `set_list.saved` activity event says,
- * "Saved “Friday” as a CSV set list, 4 entries, 1 file missing, 2 untimed", so
+ * "Saved “Friday” as a CSV set list, 4 tracks, 1 file missing, 2 untimed", so
  * the toast and Activity never tell two stories about one file. An M3U8 holds
  * no times (DEC-110), so it does not count the entries it has none for.
  *
@@ -24,7 +24,7 @@ const FORM_WORDS: Record<SetListFormat, string> = {
 
 /** What a save wrote, for the toast. */
 export function setListSavedLine(setName: string, saved: SetListSaved): string {
-  const parts = [countNoun(saved.entries, "entry", "entries")];
+  const parts = [countNoun(saved.entries, "track")];
   if (saved.missing_files > 0) {
     parts.push(`${countNoun(saved.missing_files, "file")} missing`);
   }

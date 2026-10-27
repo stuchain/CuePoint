@@ -199,11 +199,8 @@ function rowIndexOf(entryId: number): number {
 }
 
 async function opened(name = "Build") {
-  await screen.findByRole("heading", { level: 1, name: "Prepare" }, LOADED);
-  await waitFor(() => {
-    const picker = screen.getByLabelText("Set") as HTMLSelectElement;
-    expect(picker.selectedOptions[0]?.text.trim()).toBe(name);
-  }, LOADED);
+  // The Set's name is the page title (D21, M201).
+  await screen.findByRole("heading", { level: 1, name }, LOADED);
 }
 
 function panel() {
@@ -217,7 +214,7 @@ function toggleView(name: string) {
 }
 
 function point() {
-  return within(panel()).getByRole("status", { name: /^Inserting: / });
+  return within(panel()).getByRole("status", { name: /^Insert / });
 }
 
 async function suggestionRows(): Promise<HTMLElement[]> {
@@ -226,7 +223,9 @@ async function suggestionRows(): Promise<HTMLElement[]> {
 }
 
 function titleOf(row: HTMLElement): string {
-  return row.querySelector('[data-column="title"]')?.textContent?.trim() ?? "";
+  // The title's words, apart from the "In Set" mark that ends a source row's cell (M196).
+  const cell = row.querySelector('[data-column="title"]');
+  return (cell?.querySelector(".prepare-source__title-text") ?? cell)?.textContent?.trim() ?? "";
 }
 
 function lastRequest(): SetSuggestionsRequest {
@@ -280,22 +279,24 @@ afterEach(() => {
 });
 
 describe("the insertion point", () => {
-  it("sits above the tabs, in the panel's first line (PRP-9)", async () => {
+  it("sits under the tabs, which are the panel's head, as one line (PRP-9, M193, M198)", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     const line = point();
     const tabs = within(panel()).getByRole("tablist");
-    expect(line.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(line).toHaveTextContent("Inserting:");
+    // The head is the Set table's header row high, so its line meets the table's.
+    expect(tabs.closest(".prepare-source__head")).not.toBeNull();
+    expect(tabs.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(line).toHaveTextContent("Insert after “Peak Two” · Peak");
     // One line, whichever tab is open.
     fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
-    expect(within(panel()).getAllByRole("status", { name: /^Inserting: / })).toHaveLength(1);
+    expect(within(panel()).getAllByRole("status", { name: /^Insert / })).toHaveLength(1);
   });
 
   it("holds its whole sentence as a title on both tabs", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
-    const sentence = "After “Peak Two”, at the end of the Set, in Peak";
+    const sentence = "After “Peak Two” · Peak";
     expect(point().getAttribute("data-hint")).toContain(sentence);
     fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
     expect(point()).toHaveAttribute("data-hint", sentence);
@@ -304,7 +305,7 @@ describe("the insertion point", () => {
   it("is the end of the Set with nothing selected, and Suggestions asks for exactly that", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
-    expect(point()).toHaveAccessibleName("Inserting: after “Peak Two”, at the end of the Set, in Peak");
+    expect(point()).toHaveAccessibleName("Insert after “Peak Two” · Peak");
     await suggestionRows();
     expect(lastRequest()).toMatchObject({
       set_id: SOURCE_IDS.build,
@@ -320,7 +321,7 @@ describe("the insertion point", () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     fireEvent.click(setRow(OPEN_ONE));
-    expect(point()).toHaveAccessibleName("Inserting: between “Open One” and “Open Two”, in Open");
+    expect(point()).toHaveAccessibleName("Insert between “Open One” and “Open Two” · Open");
     await waitFor(() =>
       expect(lastRequest()).toMatchObject({ before_entry_id: OPEN_ONE, after_entry_id: OPEN_TWO, chapter_id: OPEN }),
     );
@@ -339,7 +340,7 @@ describe("the insertion point", () => {
   });
 });
 
-describe("the ranking, said in the BPM Δ header (C203)", () => {
+describe("the ranking, said in the BPM change header (C203)", () => {
   it("draws no note above the table, on the first visit or any other", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
@@ -349,18 +350,18 @@ describe("the ranking, said in the BPM Δ header (C203)", () => {
     expect(localStorage.getItem("cuepoint-prepare-suggestions-note")).toBeNull();
   });
 
-  it("is the BPM Δ header's hint instead", async () => {
+  it("is the BPM change header's hint instead", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     await suggestionRows();
     const table = screen.getByRole("table", { name: "Suggestions" });
-    const header = within(table).getByText("BPM Δ").closest<HTMLElement>(".track-table__header-cell")!;
+    const header = within(table).getByText("BPM change").closest<HTMLElement>(".track-table__header-cell")!;
     expect(header.getAttribute("title") ?? header.getAttribute("data-hint")).toContain(SUGGESTIONS_RANKING_TITLE);
   });
 });
 
 describe("the source columns put BPM before Key, as on every page (C70, D12)", () => {
-  it("lists Title, Artist, BPM, Key in the Library tab and Title, Key, BPM Δ in Suggestions", () => {
+  it("lists Title, Artist, BPM, Key in the Library tab and Title, Key, BPM change in Suggestions", () => {
     expect(SOURCE_LIBRARY_COLUMNS.map((column) => column.id).slice(0, 4)).toEqual(["title", "artist", "bpm", "key"]);
     // The panel is narrow: it opens on Title, BPM and Key (M85).
     expect(SOURCE_LIBRARY_COLUMNS.filter((column) => !column.hiddenByDefault).map((column) => column.id)).toEqual(["title", "bpm", "key"]);
@@ -384,7 +385,7 @@ describe("Suggestions", () => {
     expect(rows[0].querySelector('[data-column="key"] .key-chip')).toHaveTextContent(/^\d{1,2}[AB]$/);
   });
 
-  it("sorts on screen by Key and by BPM Δ, and remembers the last sort (C193)", async () => {
+  it("sorts on screen by Key and by BPM change, and remembers the last sort (C193)", async () => {
     const first = await between();
     expect(first.map(titleOf)).toEqual(["Bridge Deep", "Deep Spare", "Deep Relative", "Half Time"]);
     const table = screen.getByRole("table", { name: "Suggestions" });
@@ -392,8 +393,8 @@ describe("Suggestions", () => {
     await waitFor(() => expect(rowsOf("Suggestions").map(titleOf)).toEqual(["Bridge Deep", "Deep Relative", "Deep Spare", "Half Time"]));
     // The engine was not asked for a key it does not know.
     expect(lastRequest()).not.toHaveProperty("sort");
-    fireEvent.click(within(table).getByRole("button", { name: "BPM Δ" }));
-    fireEvent.click(within(table).getByRole("button", { name: "BPM Δ" }));
+    fireEvent.click(within(table).getByRole("button", { name: "BPM change" }));
+    fireEvent.click(within(table).getByRole("button", { name: "BPM change" }));
     await waitFor(() => expect(rowsOf("Suggestions").map(titleOf)[0]).toBe("Deep Spare"));
     expect(localStorage.getItem(SUGGESTION_TABLE_LAYOUT_KEY)).toContain("bpm_delta");
   });
@@ -403,13 +404,13 @@ describe("Suggestions", () => {
     expect(rows.map(titleOf)).toEqual(SUGGESTIONS.both.suggestions.map((s) => s.track.title));
     const first = rows[0];
     const [best] = SUGGESTIONS.both.suggestions;
-    // Title, the normal Key column and a right-aligned BPM Δ: no fit text, no dot (C78).
+    // Title, the normal Key column and a right-aligned BPM change: no fit text, no dot (C78).
     const table = screen.getByRole("table", { name: "Suggestions" });
     const headers = Array.from(table.querySelectorAll(".track-table__header-cell")).map((cell) => cell.textContent?.trim());
-    expect(headers).toEqual(["Title", "Key", "BPM Δ"]);
+    expect(headers).toEqual(["Title", "Key", "BPM change"]);
     const header = (name: string) => within(table).getByText(name).closest<HTMLElement>(".track-table__header-cell")!;
-    expect(header("BPM Δ")).toHaveAttribute("title", expect.stringContaining("out of 100"));
-    expect(header("BPM Δ")).toHaveAttribute("title", expect.stringContaining("in playing order"));
+    expect(header("BPM change")).toHaveAttribute("title", expect.stringContaining("out of 100"));
+    expect(header("BPM change")).toHaveAttribute("title", expect.stringContaining("in playing order"));
     for (const gone of ["fit", "before", "after", "score", "bpm", "artist"]) {
       expect(table.querySelector(`[data-column="${gone}"]`)).toBeNull();
     }
@@ -439,7 +440,7 @@ describe("Suggestions", () => {
     );
   });
 
-  it("takes the BPM Δ from the side a list is fitted to, and says nothing in common", () => {
+  it("takes the BPM change from the side a list is fitted to, and says nothing in common", () => {
     const fitColumn = SUGGESTION_COLUMNS.find((column) => column.id === "bpm_delta")!;
     const base = SUGGESTIONS.both.suggestions[0];
     const oneSide = suggestionRow({ ...base, before: null })!;
@@ -621,6 +622,42 @@ describe("the source tabs keep their state", () => {
     expect(rowsOf("Library tracks to add").filter((row) => row.getAttribute("aria-selected") === "true")).toHaveLength(1);
   });
 
+  it("marks a Library track the Set already holds with In Set, and no other (M203)", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
+    await waitFor(() => expect(rowsOf("Library tracks to add").length).toBeGreaterThan(0), LOADED);
+    const held = new Set(BUILD.entries.entries.map((entry) => entry.track_id));
+    const rows = rowsOf("Library tracks to add");
+    const marked = rows.filter((row) => row.querySelector(".prepare-source__in-set"));
+    const expected = rows.filter((row) => held.has(ALL_TRACKS.find((track) => track.title === titleOf(row))!.id!));
+    expect(expected.length).toBeGreaterThan(0);
+    expect(marked).toEqual(expected);
+    expect(marked[0].querySelector(".prepare-source__in-set")).toHaveTextContent("In Set");
+  });
+
+  it("says what the search takes, a title, a key or a BPM (M204)", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
+    const search = await within(panel()).findByRole("searchbox", { name: "Search tracks" });
+    expect(search).toHaveAttribute("placeholder", "Search tracks, a key (8A) or a BPM (124)…");
+  });
+
+  it("goes to the Library tab and its search on Ctrl+F, from either tab (M480)", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    expect(within(panel()).getByRole("tab", { name: "Suggestions" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(document.body, { key: "f", ctrlKey: true });
+    const search = await within(panel()).findByRole("searchbox", { name: "Search tracks" });
+    expect(within(panel()).getByRole("tab", { name: "Library" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(search).toHaveFocus());
+    // Again, from the Suggestions tab it left: back to the same box.
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Suggestions" }));
+    fireEvent.keyDown(document.body, { key: "f", ctrlKey: true });
+    await waitFor(() => expect(within(panel()).getByRole("searchbox", { name: "Search tracks" })).toHaveFocus());
+  });
+
   it("draws no grip on a row that is only copied, and Escape lets go of the picked rows", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
@@ -639,12 +676,10 @@ describe("inserting", () => {
     await opened();
     fireEvent.click(setRow(OPEN_ONE));
     await waitFor(() => expect(titleOf(rowsOf("Suggestions")[1])).toBe("Deep Spare"), LOADED);
-    // With nothing picked the button says what to do, not just that it is off (PRP-9).
-    const insert = within(panel()).getByRole("button", { name: "Pick tracks" });
-    // Not dimmed or disabled: a click takes you to the table to pick from.
-    expect(insert).toBeEnabled();
-    fireEvent.click(insert);
-    expect(within(panel()).getByRole("table", { name: "Suggestions" })).toHaveFocus();
+    // With nothing picked the button is always "Insert here", off, and its hint says why (M428).
+    const insert = within(panel()).getByRole("button", { name: "Insert here" });
+    expect(insert).toBeDisabled();
+    expect(insert).toHaveAttribute("title", "Select tracks below first");
     expect(bridge.insertTrackInCollection).not.toHaveBeenCalled();
     fireEvent.click(rowsOf("Suggestions")[1]);
     expect(insert).toBeEnabled();
@@ -701,7 +736,7 @@ describe("inserting", () => {
       fireEvent.click(rowsOf("Suggestions")[1]);
       fireEvent.click(within(panel()).getByRole("button", { name: "Insert here" }));
       await waitFor(() =>
-        expect(point()).toHaveAccessibleName(/^Inserting: between “Open One” and “Open Two”/),
+        expect(point()).toHaveAccessibleName(/^Insert between “Open One” and “Open Two”/),
       );
       // The new entry is the selection: its row is highlighted and the gap follows it.
       await waitFor(() => expect(lastRequest()).toMatchObject({ before_entry_id: 99, after_entry_id: OPEN_TWO }), LOADED);
@@ -739,7 +774,7 @@ describe("inserting", () => {
       fireEvent.click(rows[0]);
       fireEvent.click(within(panel()).getByRole("button", { name: "Insert here" }));
       expect(
-        await screen.findByText("A Set holds at most 5 entries. This one has 5, so 1 more will not fit.", {}, LOADED),
+        await screen.findByText("A Set holds at most 5 tracks. This one has 5, so 1 more will not fit.", {}, LOADED),
       ).toBeInTheDocument();
       expect(bridge.insertTrackInCollection).not.toHaveBeenCalled();
     } finally {
@@ -1030,7 +1065,7 @@ describe("the Library tab", () => {
 describe("the lanes", () => {
   /** The View menu's ticked items (C126): it stays open when one is chosen. */
   function openLanes() {
-    toggleView("Tempo lane");
+    toggleView("Tempo and key lane");
   }
 
   it("start hidden, open from the View menu, and are remembered", async () => {
@@ -1041,11 +1076,11 @@ describe("the lanes", () => {
     const lanes = screen.getByRole("group", { name: "Tempo and key lanes" });
     expect(within(lanes).getByText("63–145")).toBeInTheDocument();
     expect(localStorage.getItem(LANES_STORAGE_KEY)).toBe("1");
-    expect(within(screen.getByRole("menu")).getByRole("menuitemcheckbox", { name: "Tempo lane" })).toHaveAttribute(
+    expect(within(screen.getByRole("menu")).getByRole("menuitemcheckbox", { name: "Tempo and key lane" })).toHaveAttribute(
       "aria-checked",
       "true",
     );
-    toggleView("Tempo lane");
+    toggleView("Tempo and key lane");
     expect(screen.queryByRole("group", { name: "Tempo and key lanes" })).toBeNull();
     expect(localStorage.getItem(LANES_STORAGE_KEY)).toBe("0");
   });
@@ -1096,7 +1131,7 @@ describe("the lanes", () => {
     const column = container.querySelector(`[data-entry="${OPEN_TWO}"]`) as SVGElement;
     expect(column.getAttribute("data-hint")).toBe("2 · Open Two · 126 BPM · 9A");
     fireEvent.click(column);
-    await waitFor(() => expect(point()).toHaveAccessibleName("Inserting: between “Open Two” and “Bridge Deep”, in Open"));
+    await waitFor(() => expect(point()).toHaveAccessibleName("Insert between “Open Two” and “Bridge Deep” · Open"));
     expect(setRow(OPEN_TWO)).toHaveAttribute("aria-selected", "true");
     const inspector = screen.getByRole("complementary", { name: "Inspector" });
     expect(await within(inspector).findByText(/Entry 2/, {}, LOADED)).toBeInTheDocument();
@@ -1182,7 +1217,7 @@ describe("the transition strip (WAVE-07)", () => {
     expect(screen.getByTestId("transition-from")).toHaveAttribute("data-entry", String(OPEN_TWO));
     expect(screen.getByTestId("transition-to")).toHaveAttribute("data-entry", String(BRIDGE));
     // The insertion point follows the selection, as a lane's column moves it.
-    await waitFor(() => expect(point()).toHaveAccessibleName("Inserting: between “Open Two” and “Bridge Deep”, in Open"));
+    await waitFor(() => expect(point()).toHaveAccessibleName("Insert between “Open Two” and “Bridge Deep” · Open"));
   });
 
   it("reads End of Set for the last entry, across a chapter", async () => {
