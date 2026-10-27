@@ -155,7 +155,7 @@ export function scopeOptions(
   playlists: readonly LibraryPlaylistNode[],
   collections: readonly CollectionNode[],
 ): SelectOption[] {
-  const options: SelectOption[] = [{ value: WHOLE_LIBRARY, label: "The whole library" }];
+  const options: SelectOption[] = [{ value: WHOLE_LIBRARY, label: "All tracks" }];
   for (const node of inTreeOrder(playlists)) {
     options.push({
       value: `playlist:${node.id}`,

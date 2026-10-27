@@ -62,6 +62,17 @@ describe("the player bar keeps its look", () => {
     expect(Object.fromEntries(declarations(hover!.body))["background"]).toBe("var(--hover-fill)");
   });
 
+  it("greys the transport when nothing is loaded, Play in the mixed accent (M302)", () => {
+    const off = ruleDecls(playerBar, ".cp-player-bar__button:disabled");
+    expect(off["color"]).toBe("var(--fg-disabled)");
+    expect(off["border-color"]).toBe("var(--border-disabled)");
+    expect(off["background"]).toBe("transparent");
+    expect(off["cursor"]).toBe("default");
+    const play = ruleDecls(playerBar, ".cp-player-bar__button--play:disabled");
+    expect(play["background"]).toMatch(/^color-mix\(in srgb, var\(--accent-fill\)/);
+    expect(play["color"]).toMatch(/^color-mix\(in srgb, var\(--fg-on-accent\)/);
+  });
+
   it("fills Play with the accent and turns a toggle on with the selected tint and the accent icon (P4, P22)", () => {
     const play = ruleDecls(playerBar, ".cp-player-bar__button--play");
     expect(play["background"]).toBe("var(--accent-fill)");

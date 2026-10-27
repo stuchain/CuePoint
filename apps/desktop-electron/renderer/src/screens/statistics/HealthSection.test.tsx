@@ -138,7 +138,7 @@ describe("the Health tab (STATS-07, K3)", () => {
 
   it("says how many tracks are matched, and when the files were checked", () => {
     renderSection();
-    expect(within(panel("beatport")).getByText("50 of 100 matched")).toBeInTheDocument();
+    expect(within(panel("beatport")).getByText("50 of 100 confirmed")).toBeInTheDocument();
     // Worded as Clean words the same check: "Checked today, 9:19 PM" (C170).
     expect(within(panel("files")).getByText(checkedLine(HEALTH.checked_at!))).toBeInTheDocument();
     expect(within(panel("analysis")).getByText("waveforms and loudness")).toBeInTheDocument();

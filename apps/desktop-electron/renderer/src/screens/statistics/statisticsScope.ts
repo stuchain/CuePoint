@@ -56,7 +56,7 @@ export function statisticsScopeOptions(
 ): SelectOption[] {
   const broken = new Set(collections.filter((node) => node.broken).map((node) => node.id));
   const all = scopeOptions(playlists, collections).map((option): SelectOption => {
-    if (option.value === WHOLE_LIBRARY) return { ...option, label: "Whole library" };
+    if (option.value === WHOLE_LIBRARY) return { ...option, label: "All tracks" };
     if (!option.value.startsWith("smart:")) return option;
     const id = Number(option.value.slice("smart:".length));
     return {

@@ -153,7 +153,7 @@ describe("KeysSourcePicker", () => {
     const select = screen.getByRole("combobox", { name: "Which tracks" });
     expect(select.closest(".cp-select")).toHaveClass("cp-select--inline");
     expect(select).toHaveValue("whole");
-    expect(within(select).getByRole("option", { name: "Whole library · 300" })).toBeInTheDocument();
+    expect(within(select).getByRole("option", { name: "All tracks · 300" })).toBeInTheDocument();
     // With nothing ticked there is nothing else to choose.
     expect(within(select).getByRole("option", { name: "Ticked sources" })).toBeDisabled();
     fireEvent.change(select, { target: { value: "whole" } });

@@ -183,7 +183,7 @@ describe("Review on a row", () => {
 
   it("reads the whole library's matched tracks for its row", async () => {
     renderArea();
-    fireEvent.click(screen.getByRole("button", { name: "Review Whole library" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review All tracks" }));
     await screen.findByRole("table", { name: /Every track of this playlist/ }, LOADED);
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ limit: 2000 });
   });
@@ -259,8 +259,8 @@ describe("a review opened from the page", () => {
   });
 
   it("opens the whole library's review for a whole-library match", async () => {
-    renderArea({ reviewOpening: { token: "w", targets: [{ playlistId: null, name: "Whole library" }] } });
-    expect(await screen.findByRole("region", { name: "Review Whole library" }, LOADED)).toBeInTheDocument();
+    renderArea({ reviewOpening: { token: "w", targets: [{ playlistId: null, name: "All tracks" }] } });
+    expect(await screen.findByRole("region", { name: "Review All tracks" }, LOADED)).toBeInTheDocument();
   });
 });
 
@@ -287,7 +287,7 @@ describe("Past searches", () => {
 describe("the Inspector's link", () => {
   it("opens the library's review with that track's panel", async () => {
     renderArea({ focus: { token: "t", trackId: 3 } });
-    expect(await screen.findByRole("region", { name: "Review Whole library" }, LOADED)).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Review All tracks" }, LOADED)).toBeInTheDocument();
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / }, LOADED);
     expect(within(panel).getByText("3 of 3")).toBeInTheDocument();
   });

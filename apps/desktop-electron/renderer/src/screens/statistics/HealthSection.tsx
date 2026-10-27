@@ -180,7 +180,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
       <HealthCard
         id="beatport"
         title="Beatport"
-        note={`${formatCount(beatport.accepted.count)} of ${formatCount(health.total)} matched`}
+        note={`${formatCount(beatport.accepted.count)} of ${formatCount(health.total)} confirmed`}
         bar
         onOpen={open}
         rows={[

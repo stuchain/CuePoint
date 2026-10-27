@@ -539,7 +539,7 @@ describe("the Statistics page (STATS-04)", () => {
       const picker = await screen.findByRole("combobox", { name: "Which tracks" });
       await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
       const options = within(picker).getAllByRole("option");
-      expect(options[0]).toHaveTextContent("Whole library");
+      expect(options[0]).toHaveTextContent("All tracks");
       expect(options[0]).toHaveValue("library");
       const values = options.map((option) => (option as HTMLOptionElement).value);
       expect(values).toEqual(

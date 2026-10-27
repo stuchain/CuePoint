@@ -56,7 +56,7 @@ describe("the list", () => {
     renderView();
     const rows = bodyRows();
     expect(rows).toHaveLength(8);
-    expect(within(rows[0]!).getByText("Whole library")).toBeInTheDocument();
+    expect(within(rows[0]!).getByText("All tracks")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("1,234")).toBeInTheDocument();
     const peak = rows[1]!;
     expect(peak).toHaveTextContent("Techno / Peak time");
@@ -153,7 +153,7 @@ describe("the list", () => {
     const { rerender, props } = renderView({ filter: "TECHNO" });
     expect(screen.getByText("Peak time")).toBeInTheDocument();
     expect(screen.queryByText("Warmup")).toBeNull();
-    expect(screen.getByText("Whole library")).toBeInTheDocument();
+    expect(screen.getByText("All tracks")).toBeInTheDocument();
     rerender(<PlaylistsView {...props} filter="zzz" />);
     expect(screen.getByText("Nothing matches \u201czzz\u201d")).toBeInTheDocument();
   });
@@ -205,8 +205,8 @@ describe("the bar under the list", () => {
 
   it("counts the whole library by its tracks", () => {
     renderView();
-    tick("Whole library");
-    expect(screen.getByText("Whole library \u00b7 1,234 tracks")).toBeInTheDocument();
+    tick("All tracks");
+    expect(screen.getByText("All tracks \u00b7 1,234 tracks")).toBeInTheDocument();
   });
 });
 
@@ -234,7 +234,7 @@ describe("matching what is ticked", () => {
   it("makes the whole library exclusive: ticking it unticks and disables the playlists", () => {
     const { props } = renderView();
     tick("Peak time");
-    tick("Whole library");
+    tick("All tracks");
     expect(screen.getByRole("checkbox", { name: "Match Peak time" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Match Warmup" })).toBeDisabled();
@@ -244,8 +244,8 @@ describe("matching what is ticked", () => {
 
   it("gives the playlists back when the whole library is unticked", () => {
     renderView();
-    tick("Whole library");
-    tick("Whole library");
+    tick("All tracks");
+    tick("All tracks");
     expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeEnabled();
   });
 
@@ -268,7 +268,7 @@ describe("Review", () => {
 
   it("opens the whole library with null", () => {
     const { props } = renderView();
-    fireEvent.click(screen.getByRole("button", { name: "Review Whole library" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review All tracks" }));
     expect(props.onReview).toHaveBeenCalledWith(null);
   });
 
@@ -281,7 +281,7 @@ describe("Review", () => {
 describe("with nothing to show", () => {
   it("draws the whole library row with a line under it when there are no playlists, and the problem when unread", () => {
     const { unmount } = renderView({ data: { whole_library: COUNTS, playlists: [] } });
-    expect(screen.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Match All tracks" })).toBeEnabled();
     expect(screen.getByText("No playlists yet")).toBeInTheDocument();
     unmount();
     renderView({ data: null, error: "This needs the CuePoint desktop app." });

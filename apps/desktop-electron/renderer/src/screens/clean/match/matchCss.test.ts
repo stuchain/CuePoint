@@ -23,3 +23,9 @@ describe("the Match step's foot bars (P25)", () => {
     expect(bar).toMatch(/border-top:\s*var\(--divider\)/);
   });
 });
+
+describe("Past matches never raise a sideways scrollbar (M142)", () => {
+  it("hides the table's sideways overflow, which is only a pixel or two", () => {
+    expect(bodyOf(matchCss, ".match-past__scroll")).toMatch(/overflow-x:\s*hidden/);
+  });
+});

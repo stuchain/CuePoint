@@ -88,8 +88,10 @@
   overflow-y: auto;
 }
 
+/* The table is as wide as its pane (What was matched gives way), so there is nothing to scroll
+   sideways to: a 1-2 px spill from the end cell's buttons must not raise a bar (M142). */
 .match-past__scroll {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .match-past__table .match-past__when,

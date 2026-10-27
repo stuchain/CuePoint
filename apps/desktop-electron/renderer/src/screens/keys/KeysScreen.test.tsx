@@ -329,7 +329,7 @@ describe("the source picker", () => {
     renderKeys();
     await opened();
     await waitFor(() =>
-      expect(within(whichTracks()).getByRole("option", { name: "Whole library · 1,500" })).toBeInTheDocument(),
+      expect(within(whichTracks()).getByRole("option", { name: "All tracks · 1,500" })).toBeInTheDocument(),
     );
   });
 
@@ -345,7 +345,7 @@ describe("the source picker", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Keys" })).toBeInTheDocument();
     expect(whichTracks()).toHaveValue("whole");
     expect(mock("getKeysPopulation")).toHaveBeenCalledWith({ sources: [{ kind: "all" }] });
-    expect(screen.getByText("1,500 tracks · Whole library")).toBeInTheDocument();
+    expect(screen.getByText("1,500 tracks · All tracks")).toBeInTheDocument();
   });
 
   it("offers Rekordbox's playlists, the Collections and the Sets to tick", async () => {
@@ -414,7 +414,7 @@ describe("the source picker", () => {
     fireEvent.change(whichTracks(), { target: { value: "whole" } });
     // The whole library's counts were read on opening and are still in the shared cache (C19d),
     // so going back to them shows them without asking again.
-    expect(await screen.findByText("1,500 tracks · Whole library")).toBeInTheDocument();
+    expect(await screen.findByText("1,500 tracks · All tracks")).toBeInTheDocument();
     expect(within(panel).getByRole("checkbox", { name: "Warm-up" })).not.toBeChecked();
   });
 
@@ -1160,7 +1160,7 @@ describe("carrying the choice on", () => {
     localStorage.clear();
     renderKeys();
     await screen.findByRole("group", { name: "Keys" }, LOADED);
-    const facts = screen.getByText("1,500 tracks · Whole library");
+    const facts = screen.getByText("1,500 tracks · All tracks");
     expect(facts).toHaveAttribute("role", "status");
     expect(screen.getByRole("button", { name: "No Beatport key: 246" }).querySelector("[data-bar]")).toBeNull();
   });

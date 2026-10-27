@@ -588,9 +588,9 @@ describe("the sentences", () => {
   });
 
   it("offers a lookup for the tracks the engine counted, in plain words (DSC-4)", () => {
-    expect(resolvePrompt(OPTIONS.resolve.to_read)).toBe("2 tracks need artist info");
-    expect(resolvePrompt(1)).toBe("1 track needs artist info");
-    expect(resolvePrompt(283)).toBe("283 tracks need artist info");
+    expect(resolvePrompt(OPTIONS.resolve.to_read)).toBe("2 matched tracks have no Beatport artist yet");
+    expect(resolvePrompt(1)).toBe("1 matched track has no Beatport artist yet");
+    expect(resolvePrompt(283)).toBe("283 matched tracks have no Beatport artist yet");
     expect(lookingUpLine(283)).toBe("Looking up 283…");
     expect(lookingUpLine(0)).toBe("Looking up tracks…");
     for (const words of [resolvePrompt(2), lookingUpLine(2)]) {

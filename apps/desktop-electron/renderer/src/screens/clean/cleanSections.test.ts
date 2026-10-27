@@ -122,7 +122,7 @@ describe("the parts have no intro lines (C15b)", () => {
 describe("the facts line under the title (area 59)", () => {
   it("says the tracks and what waits in each part", () => {
     expect(factsLine(1204, { review: 42, missing: 3, duplicates: 1 })).toBe(
-      "1,204 tracks · 42 to review · 3 missing · 1 possible duplicate",
+      "1,204 tracks · 42 to check · 3 missing · 1 possible duplicate",
     );
   });
 

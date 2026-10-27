@@ -177,7 +177,7 @@ describe("the key summary (STATS-06)", () => {
   it("does not count a Smart Collection Keys cannot take, and says what Open in Keys does", async () => {
     const user = userEvent.setup();
     renderSummary("collection:12");
-    expect(await screen.findByText(/not a Smart Collection's rules, so it opens on your whole library/)).toBeInTheDocument();
+    expect(await screen.findByText(/not a Smart Collection's rules, so it opens on All tracks/)).toBeInTheDocument();
     expect(population).not.toHaveBeenCalled();
     expect(screen.queryByText(/with a key/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Open in Keys" }));

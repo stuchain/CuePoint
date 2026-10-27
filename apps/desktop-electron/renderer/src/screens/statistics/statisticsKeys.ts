@@ -18,7 +18,7 @@ export type KeysScope =
   | { kind: "sources"; picked: PickedSource[] }
   | { kind: "unsupported"; reason: string };
 
-const CANNOT = "Keys cannot count this selection, so it opens on your whole library.";
+const CANNOT = "Keys cannot count this selection, so it opens on All tracks.";
 
 export function keysScopeFor(scope: string, collections: readonly CollectionNode[]): KeysScope {
   if (scope === "library") return { kind: "sources", picked: [] };
@@ -41,7 +41,7 @@ export function keysScopeFor(scope: string, collections: readonly CollectionNode
     return {
       kind: "unsupported",
       reason:
-        "Keys counts playlists, Collections and Sets, not a Smart Collection's rules, so it opens on your whole library.",
+        "Keys counts playlists, Collections and Sets, not a Smart Collection's rules, so it opens on All tracks.",
     };
   }
   return { kind: "unsupported", reason: CANNOT };

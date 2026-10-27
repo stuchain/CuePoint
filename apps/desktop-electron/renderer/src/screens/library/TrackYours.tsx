@@ -218,7 +218,7 @@ export function TrackYours({
           rows={3}
           maxLength={NOTES_MAX_LENGTH}
           value={editor.notes}
-          placeholder="Long intro, vocal at 2:30"
+          placeholder="Add a note…"
           onChange={(event) => editor.editNotes(event.target.value)}
           onBlur={() => editor.flushNotes()}
         />

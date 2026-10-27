@@ -80,13 +80,13 @@ function renderPast(overrides: Partial<Props> = {}) {
 
 // A name someone chose is quoted in every label that names the run (C164).
 const ALL = quoted('Playlist "all"');
-const WHOLE = quoted("Whole library");
+const WHOLE = quoted("All tracks");
 
 const RUNS = [
   run({ job_id: "job-1", label: 'Playlist "all"', created_at: "2026-10-12T13:42:00" }),
   run({
     job_id: "job-2",
-    label: "Whole library",
+    label: "All tracks",
     created_at: "2026-10-10T18:31:00",
     planned: 1200,
     done: 1040,
@@ -281,7 +281,7 @@ describe("Opening a run", () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     fireEvent.click(screen.getByRole("row", { name: `Open ${WHOLE}` }));
-    expect(await screen.findByRole("region", { name: "Review Whole library" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Review All tracks" })).toBeInTheDocument();
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-2", limit: 2000 });
   });
 
@@ -298,9 +298,9 @@ describe("Opening a run", () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     fireEvent.click(screen.getByRole("button", { name: `Save review list of ${WHOLE} as a file…` }));
-    expect(screen.queryByRole("region", { name: "Review Whole library" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Review All tracks" })).toBeNull();
     fireEvent.keyDown(screen.getByRole("row", { name: `Open ${WHOLE}` }), { key: "Enter" });
-    expect(await screen.findByRole("region", { name: "Review Whole library" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Review All tracks" })).toBeInTheDocument();
   });
 });
 

@@ -47,7 +47,7 @@ import { Tabs } from "../../components/Tabs";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
-import { MATCH_ON_BEATPORT, RETRY, STATUS_STRIP } from "../../format/words";
+import { RETRY, STATUS_STRIP } from "../../format/words";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { libraryImportState } from "../library/libraryLink";
 import { NewRunPanel } from "./NewRunPanel";
@@ -79,6 +79,9 @@ import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
 import { userMessage } from "../../api/userMessage";
+
+/** The banner's button: the artist look-up, not the Library's match run (M389, D33). */
+const READ_ARTISTS = "Read artists from Beatport";
 
 /**
  * What the Inspector says on this page. One element for the page's life, so
@@ -420,7 +423,7 @@ export function DiscoverScreen() {
         aria-label="Beatport lookup"
         action={
           <Button variant="secondary" loading={looking} onClick={() => void startResolve()}>
-            {MATCH_ON_BEATPORT}
+            {READ_ARTISTS}
           </Button>
         }
       >

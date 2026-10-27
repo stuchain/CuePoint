@@ -134,7 +134,7 @@ describe("the pool", () => {
 
   it("falls back to the library for a pool the picker no longer offers", () => {
     const options = [
-      { value: WHOLE_LIBRARY, label: "The whole library" },
+      { value: WHOLE_LIBRARY, label: "All tracks" },
       { value: "collection:3", label: "  Crate" },
       { value: "folder:1", label: "  Gigs", disabled: true },
     ];

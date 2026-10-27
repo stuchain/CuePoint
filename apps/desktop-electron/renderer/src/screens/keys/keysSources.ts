@@ -108,7 +108,7 @@ export function requestSources(sources: readonly PickedSource[]): KeySource[] {
 
 /** The sources in words for the summary line: "the whole library", "2 playlists and 1 Set". */
 export function sourcesWords(sources: readonly PickedSource[]): string {
-  if (sources.length === 0) return "Whole library";
+  if (sources.length === 0) return "All tracks";
   const count = (kind: PickedSource["kind"]) => sources.filter((item) => item.kind === kind).length;
   const noun = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const parts = [

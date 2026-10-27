@@ -182,6 +182,25 @@
   color: var(--fg-primary);
 }
 
+/* Nothing loaded (M302): the transport greys by colour, as every disabled button (C2), with no hand
+   cursor. Play keeps the page's one primary reading, the accent mixed into the panel (P38). */
+.cp-player-bar__button:disabled {
+  border-color: var(--border-disabled);
+  background: transparent;
+  color: var(--fg-disabled);
+  cursor: default;
+}
+
+.cp-player-bar__button--play:disabled {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent-fill) 22%, var(--bg-panel));
+  color: color-mix(in srgb, var(--fg-on-accent) 55%, var(--bg-panel));
+}
+
+.cp-player-bar__button--standard:disabled {
+  border-color: transparent;
+}
+
 /* Their icons are the medium size, not the large one the transport uses. */
 .cp-player-bar__button--standard .cp-pixel-icon {
   width: var(--icon-size-md);

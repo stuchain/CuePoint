@@ -23,6 +23,10 @@ const BANNED: Record<string, RegExp> = {
   "Not matched": /Not matched/,
   "Waiting for you": /Waiting for you/,
   "To review": /["'`>]To review["'`<]/,
+  // M388: the Library's All tracks has one name; the scope is never "Whole library" or "The whole library".
+  "Whole library": /["'`>](?:The )?[Ww]hole library(?:\b(?! will)|["'`<])/,
+  // M391: a track in doubt is "to check", never "to review".
+  "to review": /\}\s*to review\b|\bNothing to review\b/,
   "Not found": /["'`>]Not found["'`<]/,
   "Not searched yet": /Not searched yet/,
   "cover art": /\b[Cc]over art\b/,
@@ -65,6 +69,10 @@ describe("wording guard (D2, D3)", () => {
     expect(BANNED["Write N files"]!.test("Write 12 files")).toBe(true);
     expect(BANNED["Matched"]!.test('label: "Matched"')).toBe(true);
     expect(BANNED["Matched"]!.test("Matched tracks are kept")).toBe(false);
+    expect(BANNED["Whole library"]!.test('label: "Whole library"')).toBe(true);
+    expect(BANNED["Whole library"]!.test('label: "The whole library"')).toBe(true);
+    expect(BANNED["Whole library"]!.test("The whole library will be analyzed again")).toBe(false);
+    expect(BANNED["to review"]!.test("`${n} to review`")).toBe(true);
     expect(BANNED["contraction"]!.test("Couldn't")).toBe(true);
     for (const text of ["couldn't", "Don’t", "WON'T", "mustn't", "You’re", "we've", "it'll", "I'm"]) {
       expect(BANNED["contraction"]!.test(text), text).toBe(true);

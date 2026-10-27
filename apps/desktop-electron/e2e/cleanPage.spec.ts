@@ -148,10 +148,10 @@ test.describe("The Clean page (CLEAN-12)", () => {
         "aria-selected",
         "true",
       );
-      await expect(window.getByRole("row").filter({ hasText: "Whole library" })).toHaveAttribute("data-status", "not_matched", {
+      await expect(window.getByRole("row").filter({ hasText: "All tracks" })).toHaveAttribute("data-status", "not_matched", {
         timeout: 30_000,
       });
-      await expect(window.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
+      await expect(window.getByRole("checkbox", { name: "Match All tracks" })).toBeEnabled();
       // There is no Table and no One at a time: the review list opens on a run.
       await expect(window.getByRole("tab", { name: "Table", exact: true })).toHaveCount(0);
       await expect(window.getByRole("tab", { name: /^One at a time/ })).toHaveCount(0);
@@ -186,7 +186,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       // one Match button under the list starts a match, and there is no button in the header (C22).
       await expect(window.locator("p:visible", { hasText: "No playlists yet" })).toBeVisible();
       await expect(window.getByRole("checkbox", { name: /^Match / })).toHaveCount(1);
-      await expect(window.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
+      await expect(window.getByRole("checkbox", { name: "Match All tracks" })).toBeEnabled();
       await expect(window.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
       // The header has only the Details toggle, the last button of the row.
       await expect(window.getByTestId("clean-header").getByRole("button")).toHaveCount(1);

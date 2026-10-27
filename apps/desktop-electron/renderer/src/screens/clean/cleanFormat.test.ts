@@ -17,7 +17,7 @@ import {
 
 describe("a run's name within the engine's limit", () => {
   it("leaves a name of 200 characters or fewer alone", () => {
-    expect(clampLabel("Whole library")).toBe("Whole library");
+    expect(clampLabel("All tracks")).toBe("All tracks");
     expect(clampLabel("x".repeat(200))).toBe("x".repeat(200));
   });
 

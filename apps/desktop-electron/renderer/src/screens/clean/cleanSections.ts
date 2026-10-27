@@ -85,7 +85,7 @@ export function factsLine(
 ): string | undefined {
   const parts: string[] = [];
   if (tracks !== null && tracks > 0) parts.push(plural(tracks, "track"));
-  if (counts.review) parts.push(`${formatCount(counts.review)} to review`);
+  if (counts.review) parts.push(`${formatCount(counts.review)} to check`);
   if (counts.missing) parts.push(`${formatCount(counts.missing)} missing`);
   if (counts.duplicates) parts.push(`${plural(counts.duplicates, "possible duplicate")}`);
   if (parts.length === 0) return undefined;

@@ -141,7 +141,7 @@ export function KeysSourcePicker({
   const everything = picked.length === 0;
   const any = hasSearch;
   const wholeLabel =
-    libraryTrackCount != null ? `Whole library · ${formatCount(libraryTrackCount)}` : "Whole library";
+    libraryTrackCount != null ? `All tracks · ${formatCount(libraryTrackCount)}` : "All tracks";
 
   return (
     <section className="keys-sources" aria-labelledby="keys-sources-title">

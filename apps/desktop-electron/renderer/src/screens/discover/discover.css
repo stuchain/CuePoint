@@ -283,6 +283,9 @@
   /* No bottom padding: a sticky bar stops at the scroller's padding edge, so any padding here
      would leave the bar floating above the bottom with the form's text showing beneath it. */
   padding: var(--space-lg) var(--space-lg) 0;
+  /* Focus and scroll-into-view stop above the dig bar, so it never sits on the control or hint
+     being reached (M180); the bar is taller than one row when its line wraps at 1.5x. */
+  scroll-padding-bottom: calc(var(--toolbar-height) * 2 + var(--space-md));
 }
 
 .discover-new__grid {
@@ -380,10 +383,15 @@
   border-top: var(--divider);
   background: var(--bg-between);
   font-size: var(--text-body);
-  /* Stays in view at the foot of the scrolling form. */
+  /* Stays in view at the foot of the scrolling form, lifted off it by the sticky shadow mirrored
+     upward, as the selection bar over a table (M180). */
   position: sticky;
   bottom: 0;
   z-index: 1;
+  box-shadow:
+    0 calc(-1 * var(--hairline)) 0 var(--row-line),
+    0 calc(-1 * round(nearest, calc(6px * var(--scale)), 1px)) round(nearest, calc(10px * var(--scale)), 1px)
+      round(nearest, calc(-6px * var(--scale)), 1px) rgba(0, 0, 0, 0.6);
 }
 
 .discover-new__bar-main {

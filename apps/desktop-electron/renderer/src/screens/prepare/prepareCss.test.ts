@@ -72,6 +72,17 @@ describe("the source panel and its divider (C48, C149, C28)", () => {
     );
   });
 
+  it("gives the entry buttons an end cell with a gap and a hairline edge, so the data they cover is cut cleanly (D21, M192)", () => {
+    const end = rule(".track-table__row > .track-table__end:has(> .prepare-row-buttons)");
+    expect(end).toMatch(/padding-inline-start:\s*var\(--space-lg\)/);
+    expect(end).toMatch(/box-shadow:\s*inset var\(--hairline\) 0 0 0 var\(--row-line\)/);
+    expect(end).not.toMatch(/background:\s*transparent/);
+  });
+
+  it("leaves the source panel's sub-tab slab as the shared one (D21, M191)", () => {
+    expect(css).not.toMatch(/\.prepare-source\s+\.cp-tabs/);
+  });
+
   it("colours the divider's hover with the shared resizer token", () => {
     const hover = /\.prepare-layout__divider:hover,[^{]*\{([^}]*)\}/.exec(css)![1]!;
     expect(hover).toMatch(/background:\s*var\(--resizer-hover\)/);

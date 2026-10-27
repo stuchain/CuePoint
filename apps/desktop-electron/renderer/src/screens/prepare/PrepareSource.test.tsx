@@ -916,7 +916,7 @@ describe("the pool", () => {
     await waitFor(() => expect(within(pool()).getByRole("option", { name: /Warmers/ })).toBeInTheDocument());
     const options = within(pool()).getAllByRole("option").map((option) => option.textContent?.trim());
     expect(options).toEqual(
-      expect.arrayContaining(["The whole library", "CRATES", "Warmers", "Crate", "House", "Build (Set)", "Scratch (Set)"]),
+      expect.arrayContaining(["All tracks", "CRATES", "Warmers", "Crate", "House", "Build (Set)", "Scratch (Set)"]),
     );
     expect(within(pool()).getByRole("option", { name: /Gigs/ })).toBeDisabled();
   });

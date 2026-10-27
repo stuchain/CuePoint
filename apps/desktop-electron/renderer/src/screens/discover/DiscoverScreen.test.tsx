@@ -462,10 +462,10 @@ describe("the lookup prompt (DSC-4)", () => {
   it("says how many matched tracks still need looking up, and starts the lookup", async () => {
     renderDiscover();
     const prompt = await screen.findByRole("status", { name: "Beatport lookup" });
-    expect(prompt).toHaveTextContent("2 tracks need artist info");
+    expect(prompt).toHaveTextContent("2 matched tracks have no Beatport artist yet");
     expect(prompt).not.toHaveTextContent("more accurate");
     install({ ...bridge, getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_resolved)) });
-    fireEvent.click(within(prompt).getByRole("button", { name: "Match on Beatport" }));
+    fireEvent.click(within(prompt).getByRole("button", { name: "Read artists from Beatport" }));
     await waitFor(() => expect(bridge.startBeatportResolve).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Looked up 2 tracks on Beatport.")).toBeInTheDocument();
     // Options read again: nothing left to look up, so no prompt.
@@ -476,7 +476,7 @@ describe("the lookup prompt (DSC-4)", () => {
     install({ getJob: vi.fn(async (id: string) => ({ id, state: "running" })) });
     renderDiscover();
     const prompt = await screen.findByRole("status", { name: "Beatport lookup" });
-    fireEvent.click(within(prompt).getByRole("button", { name: "Match on Beatport" }));
+    fireEvent.click(within(prompt).getByRole("button", { name: "Read artists from Beatport" }));
     await waitFor(() => expect(bridge.startBeatportResolve).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(screen.getByRole("status", { name: "Beatport lookup" })).toHaveTextContent(

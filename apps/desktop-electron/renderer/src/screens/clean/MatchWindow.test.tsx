@@ -122,7 +122,7 @@ describe("which tracks", () => {
     fireEvent.click(again);
     expect(dialog).toHaveTextContent("CuePoint will match 3,880 tracks on Beatport.");
     fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
-    expect(onStart).toHaveBeenCalledWith({ query: {} }, true, "Whole library");
+    expect(onStart).toHaveBeenCalledWith({ query: {} }, true, "All tracks");
   });
 
   it("takes the chosen playlists, Collections and Sets, and counts what is not looked up in them", async () => {

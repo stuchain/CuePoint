@@ -66,7 +66,7 @@ describe("matchRequest", () => {
     expect(matchRequest({ whole: true }, { ...COUNTS, not_matched: 4 })).toEqual({
       selection: { query: {} },
       again: false,
-      label: "Whole library",
+      label: "All tracks",
     });
     expect(matchRequest({ whole: true }, { ...COUNTS, not_matched: 0 }).again).toBe(true);
   });

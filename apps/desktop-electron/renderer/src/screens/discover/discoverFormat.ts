@@ -324,7 +324,7 @@ export function refusalText(refusal: DiscoverRefusal): string {
 
 /** The lookup prompt's sentence, for `toRead` tracks (DSC-4). */
 export function resolvePrompt(toRead: number): string {
-  return `${formatCount(toRead)} ${toRead === 1 ? "track needs" : "tracks need"} artist info`;
+  return `${formatCount(toRead)} matched ${toRead === 1 ? "track has" : "tracks have"} no Beatport artist yet`;
 }
 
 /** What the prompt says while the lookup works (DSC-12). */

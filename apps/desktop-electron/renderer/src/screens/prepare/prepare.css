@@ -648,6 +648,12 @@ body.prepare-resizing {
    those columns in view (entryButtonsRoom). The end cell is sticky; its margin is kept clear too. */
 .track-table__row > .track-table__end:has(> .prepare-row-buttons) {
   margin-right: var(--entry-buttons-clear, 0px);
+  /* An end cell of its own (D21, M192): a gap before the first button and a hairline at its left
+     edge, on the row's flat ground (never see-through), so the data it covers is cut off cleanly
+     ("Na" of a name never shows beside "↑") instead of running into the buttons. The measured form
+     reads this padding as part of the cell. */
+  padding-inline-start: var(--space-lg);
+  box-shadow: inset var(--hairline) 0 0 0 var(--row-line);
 }
 
 /* The words and the glyphs, drawn unseen and out of the flow so the end cell can be measured for
@@ -885,22 +891,8 @@ body.prepare-resizing {
   background: var(--bg-panel);
 }
 
-/* Underline tabs (C11) as everywhere, in a narrow column: the strip's own hairline stays. */
-.prepare-source .cp-tabs {
-  padding: 0;
-  background: transparent;
-}
-
-.prepare-source .cp-tabs__tab {
-  min-height: var(--control-height);
-  padding: 0 var(--space-xs);
-  border-bottom-width: var(--tab-underline);
-}
-
-/* L1: the first tab's word starts on the panel's edge, over "Inserting" and the boxes below. */
-.prepare-source .cp-tabs__tab:first-child {
-  margin-inline-start: calc(-1 * var(--space-xs));
-}
+/* Suggestions | Library are the app's one sub-tab slab (D21, M191): it hugs its words, the picked part
+   is lighter than the slab, and this panel adds nothing to it. */
 
 /* The pool, and the panel's one action at the end of its line: the select
    gives way, so the button always shows whole. */

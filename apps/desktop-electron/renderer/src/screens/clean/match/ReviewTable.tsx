@@ -357,7 +357,7 @@ export function ReviewTable({
             )}
           </tbody>
         </table>
-        {rows.length === 0 && <EmptyState compact headline="Nothing to review here" />}
+        {rows.length === 0 && <EmptyState compact headline="Nothing to check here" />}
         {hasMore && (
           <div className="review__more">
             <ShowMore total={rows.length + remaining} expanded={false} onToggle={onShowAll} />

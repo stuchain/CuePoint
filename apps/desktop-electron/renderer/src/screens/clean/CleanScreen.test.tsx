@@ -322,7 +322,7 @@ function renderClean(section?: string, tab: string | null = null) {
 }
 
 /** Tick a playlist (or the whole library) and press Match (C22): the only way to start a match. */
-async function startMatching(name = "Whole library") {
+async function startMatching(name = "All tracks") {
   fireEvent.click(await screen.findByRole("checkbox", { name: `Match ${name}` }));
   fireEvent.click(screen.getByRole("button", { name: "Match ticked playlists" }));
 }
@@ -441,7 +441,7 @@ describe("the page", () => {
     expect(within(header).getByRole("heading", { level: 1, name: "Clean" })).toBeInTheDocument();
     await screen.findByText("Peak time");
     expect(within(header).queryByRole("button")).toBeNull();
-    for (const name of ["Whole library", "Peak time", "Closing", "Warmup", "hj", "all"]) {
+    for (const name of ["All tracks", "Peak time", "Closing", "Warmup", "hj", "all"]) {
       expect(screen.getByRole("checkbox", { name: `Match ${name}` })).toBeEnabled();
       expect(screen.queryByRole("button", { name: `Match ${name}` })).toBeNull();
     }
@@ -498,7 +498,7 @@ describe("the Match tab", () => {
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
         selection: { query: {} },
         rematch: false,
-        label: "Whole library",
+        label: "All tracks",
       }),
     );
     // The started message ("Matching 2 tracks on Beatport. 1 …left out.", see cleanFormat.test.ts) is
@@ -578,7 +578,7 @@ describe("the Match tab", () => {
   it("offers to resume a search that stopped, and resumes only what was left (CLEAN-14)", async () => {
     const stopped = run({
       job_id: "job-old",
-      label: "Whole library",
+      label: "All tracks",
       planned: 5,
       done: 3,
       found: 3,
@@ -599,7 +599,7 @@ describe("the Match tab", () => {
     });
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
     renderClean();
-    fireEvent.click(await screen.findByRole("button", { name: `Resume ${quoted("Whole library")}` }));
+    fireEvent.click(await screen.findByRole("button", { name: `Resume ${quoted("All tracks")}` }));
 
     await waitFor(() =>
       expect(bridge.resumeCleanMatch).toHaveBeenCalledWith({ job_id: "job-old-2" }),
@@ -884,7 +884,7 @@ describe("opening one track from the Library (CLEAN-13)", () => {
     renderOpened(2);
 
     expect(await screen.findByRole("tab", { name: "Match", selected: true })).toBeInTheDocument();
-    expect(await screen.findByRole("region", { name: "Review Whole library" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Review All tracks" })).toBeInTheDocument();
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
     expect(panel).toHaveTextContent("Track 2");
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ limit: 2000 });
@@ -967,7 +967,7 @@ describe("matching what is ticked (C22)", () => {
     );
   });
 
-  it("matches the whole library as the empty question, called Whole library, and only it", async () => {
+  it("matches the whole library as the empty question, called All tracks, and only it", async () => {
     renderClean(undefined, "playlists");
     fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
     await startMatching();
@@ -975,7 +975,7 @@ describe("matching what is ticked (C22)", () => {
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
         selection: { query: {} },
         rematch: false,
-        label: "Whole library",
+        label: "All tracks",
       }),
     );
   });
@@ -1027,8 +1027,8 @@ describe("matching what is ticked (C22)", () => {
       whole_library: { ...PLAYLISTS.whole_library, not_matched: 0, accepted: 50 },
     });
     renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("button", { name: "Review Whole library" }));
-    expect(await screen.findByRole("region", { name: "Review Whole library" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Review All tracks" }));
+    expect(await screen.findByRole("region", { name: "Review All tracks" })).toBeInTheDocument();
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ limit: 2000 }));
     bridge.correctMatches = vi.fn().mockResolvedValue({ applied: { batch_id: "values", changed: 2 } });
     fireEvent.click(await screen.findByRole("button", { name: "Sync to files…" }));
@@ -1075,10 +1075,10 @@ describe("when a match ends (C22)", () => {
   });
 
   it("lands on only the whole library's review for a whole-library match", async () => {
-    bridge.getMatchJobs!.mockResolvedValue({ jobs: [{ ...RUN, label: "Whole library" }], total: 1 });
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [{ ...RUN, label: "All tracks" }], total: 1 });
     renderClean(undefined, "playlists");
     await startMatching();
-    expect(await screen.findByRole("region", { name: "Review Whole library" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Review All tracks" }, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /^Review/ })).toBeNull();
   });
 

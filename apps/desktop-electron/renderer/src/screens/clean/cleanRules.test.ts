@@ -172,6 +172,6 @@ describe("the places a review can be scoped to", () => {
   });
 
   it("is only the library when there is nothing else", () => {
-    expect(scopeOptions([], [])).toEqual([{ value: WHOLE_LIBRARY, label: "The whole library" }]);
+    expect(scopeOptions([], [])).toEqual([{ value: WHOLE_LIBRARY, label: "All tracks" }]);
   });
 });

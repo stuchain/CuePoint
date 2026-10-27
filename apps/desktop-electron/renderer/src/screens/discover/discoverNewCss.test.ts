@@ -28,6 +28,11 @@ describe("New dig (P14)", () => {
     expect(bar).toMatch(/background:\s*var\(--bg-between\)/);
     expect(bar).toMatch(/border-top:\s*var\(--divider\)/);
   });
+
+  it("lifts the dig bar with the upward sticky shadow and keeps scrolled-to controls clear of it (M180)", () => {
+    expect(body(".discover-new__bar")).toMatch(/box-shadow:[^;]*rgba\(0, 0, 0, 0\.6\)/);
+    expect(body(".discover-new__body")).toMatch(/scroll-padding-bottom:/);
+  });
 });
 
 describe("the dig list (P23)", () => {

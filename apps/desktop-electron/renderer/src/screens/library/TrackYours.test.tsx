@@ -478,6 +478,11 @@ describe("the note", () => {
     expect(onError).toHaveBeenCalledWith("A note may be at most 10000");
     expect(screen.getByLabelText("Your notes")).toHaveValue("the note the engine has");
   });
+
+  it("asks for a note in words that cannot be mistaken for one (M135)", () => {
+    draw({ notes: "" });
+    expect(screen.getByLabelText("Your notes")).toHaveAttribute("placeholder", "Add a note…");
+  });
 });
 
 describe("the tags", () => {

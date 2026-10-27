@@ -176,7 +176,8 @@ describe("the dig bar", () => {
     const body = /\.discover-new__body \{([^}]*)\}/.exec(css)?.[1] ?? "";
     // P14: the pane has 12 at the top and the sides (it is a panel-tone pane now), and still none below.
     expect(body).toMatch(/padding: var\(--space-lg\) var\(--space-lg\) 0;/);
-    expect(body).not.toMatch(/padding-bottom/);
+    // scroll-padding-bottom (M180) only keeps focus clear of the bar; it adds no space under it.
+    expect(body).not.toMatch(/(?<!scroll-)padding-bottom/);
     const barRule = /\.discover-new__bar \{([^}]*)\}/.exec(css)?.[1] ?? "";
     expect(barRule).toContain("background: var(--bg-between)"); // P14 (was --bg-panel)
     expect(barRule).toContain("min-height: var(--toolbar-height)");

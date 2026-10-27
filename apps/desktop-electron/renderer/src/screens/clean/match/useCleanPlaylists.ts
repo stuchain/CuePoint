@@ -93,4 +93,4 @@ export function playlistKey(id: number): string {
   return `playlist:${id}`;
 }
 
-export const WHOLE_LIBRARY_NAME = "Whole library";
+export const WHOLE_LIBRARY_NAME = "All tracks";

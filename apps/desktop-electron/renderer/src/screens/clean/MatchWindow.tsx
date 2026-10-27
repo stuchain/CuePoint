@@ -122,7 +122,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
   /** What this run is called in Past searches: the place, the library, or how many tracks. */
   const runLabel = (): string => {
     if (which === "not_yet") return "Not looked up yet";
-    if (which === "all") return "Whole library";
+    if (which === "all") return "All tracks";
     if (which === "places") {
       const named = places
         .map((place) => sources.find((source) => source.kind === place.kind && source.id === place.id))
