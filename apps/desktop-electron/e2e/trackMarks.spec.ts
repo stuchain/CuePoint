@@ -160,7 +160,8 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
       await expect(marks.getByRole("listitem")).toHaveText(["Memory · 0:20.0 · Kept"]);
 
       marks = await inspect(window, "No Marks");
-      await expect(marks.getByRole("heading")).toHaveText(/^Cue points.*none$/);
+      // M126: the folded heading's summary says "No cues", not "none".
+      await expect(marks.getByRole("heading")).toHaveText(/^Cue points.*No cues$/);
       await expect(marks).toContainText("No cues");
       await expect(marks).toContainText("No beat grid");
 

@@ -367,7 +367,9 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       await inspect(window, "Sine");
       await expect(window.locator("[data-testid=inspector-waveform] canvas")).toBeVisible({ timeout: 20_000 });
       await expectReading(window, "Loudness −20.0 LUFS · Peak −20.0 dBFS", 30_000);
-      expect((await analysis(window)).remaining).toBe(TRACKS.length - 1);
+      // The reading is drawn from the request's answer; the store's count follows a moment later
+      // (seen: 4 at once, 3 within 5 s on Linux CI), so it is polled, not read once.
+      await expect.poll(async () => (await analysis(window)).remaining, { timeout: 30_000 }).toBe(TRACKS.length - 1);
 
       // Resumed, the rest are measured, every picture as it was.
       await window.evaluate(() => window.cuepoint!.waveforms!.resume());

@@ -210,7 +210,9 @@ async function choose(win: Page, name: string | RegExp, max = 30) {
       const active = [...document.querySelectorAll(".cp-track-menu__item--active")]
         .filter((item) => !item.closest("[data-ghost]"))
         .pop();
-      return (active?.textContent ?? "").replace("▸", "").trim();
+      // The entry's own words: since M298 an entry can carry a hint line (and a shortcut) beside them.
+      const label = active?.querySelector(".cp-track-menu__label") ?? active;
+      return (label?.textContent ?? "").replace("▸", "").trim();
     });
     const hit = typeof name === "string" ? at === name : name.test(at);
     if (hit) {
@@ -373,6 +375,12 @@ const libraryRow = (win: Page, title: string) =>
  * nothing there, so the row is chosen with the mouse.
  */
 async function pick(win: Page, ...titles: string[]) {
+  // M283: toasts float over the bottom right of the page, rows included. Since N2 the zoomed strip
+  // shows while a library track is in the player, so the table is shorter and a row can sit under
+  // the last action's message: it is closed first, as a person would.
+  for (const close of await win.locator(".cp-toast").getByRole("button", { name: "Close message" }).all()) {
+    await close.click({ timeout: 2_000 }).catch(() => undefined);
+  }
   for (const [index, title] of titles.entries()) {
     await libraryRow(win, title).click({ modifiers: index === 0 ? [] : ["ControlOrMeta"] });
   }
@@ -1003,7 +1011,8 @@ test.describe("FLW-2: each function has one home, and the other places link to i
 
     // Several: Track details opens the same editor, in place (K4).
     await pick(win, "Warm One", "Warm Two");
-    await use(win, details.getByRole("button", { name: "Edit values for 2 tracks…" }), "Track details' Edit values for 2 tracks…");
+    // M405: the button opens the editor over the tracks, so it has no "…".
+    await use(win, details.getByRole("button", { name: "Edit values for 2 tracks" }), "Track details' Edit values for 2 tracks");
     await expect(win).toHaveURL(/#\/library/);
     await expect(win.getByRole("dialog", { name: "Edit values" })).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");

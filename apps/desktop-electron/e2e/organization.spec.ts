@@ -713,18 +713,12 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(window.getByRole("toolbar", { name: "Selection" })).toContainText("50,000 selected");
       await expect(window.getByText("The selection is everything matching")).toBeAttached();
 
-      await window.getByRole("button", { name: "Organize", exact: true }).click();
+      // M299: Favorite is on the track menu's top level, beside the stars, not in the bar's Organize.
+      // M382: a favorite is set at once, with no question, however many tracks; it is still a job.
       // P8: the entry names what it does.
+      await table.locator(".track-table__row").first().click({ button: "right" });
       await window.getByRole("menuitem", { name: "Add to favorites", exact: true }).click();
-
-      // Above the threshold it asks first, with the number, and says the batch
-      // can be reverted as one from Activity (DEC-008, CLEAN-13).
-      const confirm = window.getByRole("dialog");
-      await expect(confirm).toContainText("Favorite 50,000 tracks?");
-      await expect(confirm).toContainText("Change 50,000 tracks?");
-      await expect(confirm).toContainText(/undone from Activity/i);
-      // The button names the change and its count (DEC-267).
-      await confirm.getByRole("button", { name: "Change 50,000 tracks" }).click();
+      await expect(window.getByRole("dialog")).toHaveCount(0);
 
       // It is a job, it says so from the shell, and it can be stopped there.
       // Stop first: it shows only while the job runs, and a fast runner can get
@@ -781,11 +775,10 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
           await close.click({ timeout: 2_000 });
         }
         if (!(await favorite.isVisible())) {
-          await window.getByRole("button", { name: "Organize", exact: true }).click({ timeout: 2_000 });
+          await table.locator(".track-table__row").first().click({ button: "right", timeout: 2_000 });
         }
         await favorite.click({ timeout: 2_000 });
       }).toPass({ timeout: 30_000 });
-      await window.getByRole("dialog").getByRole("button", { name: "Change 50,000 tracks" }).click();
 
       await expect.poll(favorited, { timeout: 180_000 }).toBe(50_000);
 
