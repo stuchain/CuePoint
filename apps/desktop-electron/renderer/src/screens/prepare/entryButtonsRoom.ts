@@ -144,7 +144,11 @@ export function measureFormWidth(measure: HTMLElement, titleMin: number, timesCl
   const form = entryButtonsForm(room, words, glyphsWidth);
   const actions = end.querySelector<HTMLElement>('[data-measure="actions"]');
   const width = form === "words" ? words : form === "glyphs" ? glyphsWidth : (actions?.offsetWidth ?? 0) + padding;
-  return { form, width: Math.ceil(width) };
+  // The end cell runs to the row's end, over the Columns corner's share of the row too (C69), so
+  // the reserved column is the cell less that corner: then the cell's left edge is the column's
+  // (M192; e2e found them a corner, 36 px at 1.5x, apart).
+  const corner = reserved ? (row.querySelector<HTMLElement>(":scope > .track-table__row-corner")?.offsetWidth ?? 0) : 0;
+  return { form, width: Math.max(0, Math.ceil(width - corner)) };
 }
 
 /** The form alone (see `measureFormWidth`). */

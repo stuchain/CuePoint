@@ -65,6 +65,14 @@ describe("room for the entry buttons (C15d, DEC-249)", () => {
     expect(measureFormWidth(measure, 56, 0, 700)).toEqual({ form: "glyphs", width: 150 });
     // They need 850: room 50, one Actions button.
     expect(measureFormWidth(measure, 56, 0, 850)).toEqual({ form: "actions", width: 90 });
+    // With the Columns corner's share at the row's end, the end cell covers it too, so the reserved
+    // column is the form less the corner and the cell's left edge is the column's (M192, e2e).
+    const corner = document.createElement("div");
+    corner.className = "track-table__row-corner";
+    document.querySelector(".track-table__row")!.append(corner);
+    px(".track-table__row-corner", 36);
+    expect(measureFormWidth(measure, 56, 0, 400)).toEqual({ form: "words", width: 364 });
+    corner.remove();
     // No reserved column in the row: the old room beside the number and the title's minimum.
     document.querySelector('[data-column="entry_buttons"]')!.remove();
     expect(measureFormWidth(measure, 56, 0, 850)?.form).toBe("words");
