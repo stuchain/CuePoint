@@ -99,8 +99,6 @@ describe("pages and dialogs", () => {
     ["getting-started", "Getting started"],
     ["shortcuts", "Keyboard shortcuts"],
     ["get-help", "Get help"],
-    ["report-problem", "Get help"],
-    ["support-bundle", "Get help"],
     ["diagnostics", "Diagnostics"],
     ["log-viewer", "Log viewer"],
     ["rekordbox-help", "How to get your Rekordbox file"],
@@ -135,6 +133,24 @@ describe("pages and dialogs", () => {
     await userEvent.click(screen.getByRole("button", { name: "Diagnostics…" }));
     expect(await screen.findByRole("dialog", { name: "Diagnostics" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Get help" })).not.toBeInTheDocument();
+  });
+
+  it("opens the Library for Export to Rekordbox (M497)", async () => {
+    render(<App />);
+    command("export-rekordbox");
+    await waitFor(() => expect(window.location.hash).toBe("#/library"));
+  });
+
+  it("undoes typing in a focused field with Undo, and leaves the page alone (M456)", () => {
+    render(<App />);
+    const field = document.createElement("input");
+    document.body.append(field);
+    field.focus();
+    const exec = vi.fn(() => true);
+    Object.defineProperty(document, "execCommand", { value: exec, configurable: true });
+    command("undo");
+    expect(exec).toHaveBeenCalledWith("undo");
+    field.remove();
   });
 
   it("ignores an id it does not know", () => {

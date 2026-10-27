@@ -20,6 +20,7 @@ import { leaveAsGhost } from "../../tokens/useLeaveGhost";
 import { useSelectedTrack, type SelectedTrack } from "./selectedTrack";
 import { escapeClosesPanel, isDialogOpen } from "./shellKeyboard";
 import { useShellCommand } from "./shellCommands";
+import { reportViewState } from "../../api/menuViewState";
 import "./TrackInspector.css";
 
 interface TrackInspectorProps {
@@ -161,8 +162,9 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   }, [visible, toggleByButton, hasContent]);
   useEffect(() => () => publishDetails(null), []);
 
-  // View → Track details in the menu.
+  // View → Track details in the menu, which carries a tick while the panel shows.
   useShellCommand("toggle-inspector", toggleByKey);
+  useEffect(() => reportViewState({ inspector: visible }), [visible]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

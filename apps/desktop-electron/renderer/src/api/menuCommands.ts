@@ -17,15 +17,14 @@ export const MENU_COMMAND_IDS = [
   "shortcuts",
   "privacy",
   "get-help",
-  // Kept for one release (DEC-265); not in the menu, and both open Get help.
-  "report-problem",
   "diagnostics",
   "log-viewer",
-  "support-bundle",
   "rekordbox-help",
   "about",
   "import",
   "check-rekordbox",
+  "export-rekordbox",
+  "undo",
   "toggle-inspector",
   "toggle-sidebar",
   "search-library",
@@ -34,20 +33,6 @@ export const MENU_COMMAND_IDS = [
   "size-smaller",
   "size-default",
 ] as const;
-
-/**
- * Ids main sends that no item of the shell answers yet (M456, M497): Export to Rekordbox in File,
- * and Undo (Ctrl+Z). They are not in `MENU_COMMAND_IDS` because `useMenuCommands` asks for a
- * handler for every id there, and a handler is the shell's to write; a command it has no handler
- * for is ignored. When the shell answers one, it moves into `MENU_COMMAND_IDS`.
- */
-export const NEW_MENU_COMMAND_IDS = ["export-rekordbox", "undo"] as const;
-
-/**
- * Ids no menu item sends any more (M497) but the shell still has a handler for, so they stay one
- * more release: remove each here and in `MENU_COMMAND_IDS`, with its handler.
- */
-export const RETIRED_MENU_COMMAND_IDS = ["report-problem", "support-bundle"] as const;
 
 const NO_TYPED_TEXT = ["button", "checkbox", "radio", "range", "color", "file", "image", "reset", "submit"];
 

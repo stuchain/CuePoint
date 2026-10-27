@@ -161,6 +161,23 @@ export function libraryImportState(): Record<string, unknown> {
   return { [IMPORT_KEY]: true };
 }
 
+const EXPORT_KEY = "cuepointLibraryExport";
+
+/**
+ * The location state that opens the Library and its Export to Rekordbox dialog: File → "Export to
+ * Rekordbox…" (M497) does what the Library's own button does.
+ */
+export function libraryExportState(): Record<string, unknown> {
+  return { [EXPORT_KEY]: true };
+}
+
+/** The navigation that asked for the export dialog, as a token, or null when none did. */
+export function exportOpening(location: { state: unknown; key: string }): string | null {
+  const state = location.state;
+  if (!state || typeof state !== "object") return null;
+  return (state as Record<string, unknown>)[EXPORT_KEY] === true ? location.key : null;
+}
+
 /** The navigation that asked for an import, as a token, or null when none did. */
 export function importOpening(location: { state: unknown; key: string }): string | null {
   const state = location.state;

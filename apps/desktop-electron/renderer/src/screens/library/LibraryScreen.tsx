@@ -212,8 +212,10 @@ export interface LibraryScreenProps {
    * "Import a Rekordbox file…" (FLW-20) does what the Library's own button does.
    */
   importWith?: string | null;
+  /** Open the Export to Rekordbox dialog once, for the navigation this token names (M497). */
+  exportWith?: string | null;
   /**
-   * Called once a one-shot opening (`trackWith`, `importWith`) has been applied, so the
+   * Called once a one-shot opening (`trackWith`, `importWith`, `exportWith`) has been applied, so the
    * caller can clear it from the history: Back must not reopen the file chooser or
    * re-select the track. A prop so routing stays in `App.tsx`.
    */
@@ -264,6 +266,7 @@ export function LibraryScreen({
   refreshWith,
   trackWith,
   importWith,
+  exportWith,
   onOpeningApplied,
   onOpenInClean,
   onOpenMissingFiles,
@@ -1770,6 +1773,15 @@ export function LibraryScreen({
     },
     [push],
   );
+
+  // Once per navigation that asked for the export dialog (File → Export to Rekordbox…, M497).
+  const exportedWith = useRef<string | null>(null);
+  useEffect(() => {
+    if (!exportWith || exportedWith.current === exportWith) return;
+    exportedWith.current = exportWith;
+    onOpeningApplied?.();
+    openExport(NOTHING_TICKED);
+  }, [exportWith, onOpeningApplied, openExport]);
 
   // ------------------------------------------------------------------- Sets
 

@@ -7,8 +7,6 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SCALE, SCALE_OPTIONS } from "../tokens/scale";
 import {
   MENU_COMMAND_IDS,
-  NEW_MENU_COMMAND_IDS,
-  RETIRED_MENU_COMMAND_IDS,
   sizeAfterCommand,
   undoTarget,
 } from "./menuCommands";
@@ -64,18 +62,11 @@ describe("the command ids", () => {
   });
 });
 
-describe("the ids main sends that the shell does not answer yet", () => {
-  it("are new, and not already in the shell's list", () => {
-    expect([...NEW_MENU_COMMAND_IDS]).toEqual(["export-rekordbox", "undo"]);
-    for (const id of NEW_MENU_COMMAND_IDS) {
-      expect((MENU_COMMAND_IDS as readonly string[]).includes(id), id).toBe(false);
-    }
-  });
-
-  it("keep the retired ids in the shell's list until their handlers go", () => {
-    for (const id of RETIRED_MENU_COMMAND_IDS) {
-      expect((MENU_COMMAND_IDS as readonly string[]).includes(id), id).toBe(true);
-    }
+describe("the menu's new commands (M456, M497)", () => {
+  it("are answered by the shell, and the retired Get help ids are gone", () => {
+    expect(MENU_COMMAND_IDS).toEqual(expect.arrayContaining(["export-rekordbox", "undo"]));
+    expect(MENU_COMMAND_IDS).not.toEqual(expect.arrayContaining(["report-problem"]));
+    expect(MENU_COMMAND_IDS).not.toEqual(expect.arrayContaining(["support-bundle"]));
   });
 });
 

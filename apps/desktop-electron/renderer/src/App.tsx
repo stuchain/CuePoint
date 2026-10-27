@@ -10,6 +10,7 @@ import {
   GetHelpDialog,
   ShortcutsDialog,
   ToastProvider,
+  useToast,
 } from "./components";
 import {
   applyLaunchDestination,
@@ -49,6 +50,8 @@ import { sendExitClearing } from "./screens/exitClearing";
 import {
   importOpening,
   libraryImportState,
+  libraryExportState,
+  exportOpening,
   libraryOpening,
   libraryRefreshState,
   libraryTrackState,
@@ -61,6 +64,8 @@ import { hasShortcutModifier } from "./components/shell/platformKeys";
 import { emitShellCommand } from "./components/shell/shellCommands";
 import { openActivity } from "./components/shell/activityState";
 import { useMenuCommands } from "./components/shell/useMenuCommands";
+import { useWindowTitle } from "./components/shell/useWindowTitle";
+import { undoTarget } from "./api/menuCommands";
 import { PREPARE_SET_ROUTE, preparePath } from "./screens/prepare/prepareLink";
 import { EntityScreen } from "./screens/discover/EntityScreen";
 import { SimilarScreen } from "./screens/discover/SimilarScreen";
@@ -106,6 +111,8 @@ function slotPaths(id: string, path: string): string[] {
 function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { runNewestAction } = useToast();
+  useWindowTitle();
   // A different page steps in (Changing page, PAGES-12). The phase alternates so each change
   // names a different animation and restarts it without remounting the page; there is none
   // before the first change, so the app does not move as it opens. Worked out while rendering,
@@ -250,6 +257,7 @@ function AppShell() {
             refreshWith={refreshOpening(slotLocation)}
             trackWith={trackOpening(slotLocation)}
             importWith={importOpening(slotLocation)}
+            exportWith={exportOpening(slotLocation)}
             onOpeningApplied={clearOpening}
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={openInClean}
@@ -312,15 +320,19 @@ function AppShell() {
     // The choices live in Settings → Privacy; the dialog only explains them.
     privacy: () => navigate("/settings", { state: settingsFocusState("privacy") }),
     "get-help": () => setGetHelpOpen(true),
-    // The two ids the old items sent stay for one release (DEC-265); both open Get help.
-    "report-problem": () => setGetHelpOpen(true),
     diagnostics: () => setDiagnosticsOpen(true),
     "log-viewer": () => setLogViewerOpen(true),
-    "support-bundle": () => setGetHelpOpen(true),
     "rekordbox-help": () => setRekordboxOpen(true),
     about: () => setAboutOpen(true),
     import: () => navigate("/library", { state: libraryImportState() }),
     "check-rekordbox": () => navigate("/library", { state: libraryRefreshState() }),
+    "export-rekordbox": () => navigate("/library", { state: libraryExportState() }),
+    // Ctrl+Z (M456): the menu takes it from the page, so a text field's typing is undone here
+    // and anything else presses the newest toast's Undo.
+    undo: () => {
+      if (undoTarget(document.activeElement) === "text") document.execCommand("undo");
+      else runNewestAction();
+    },
     "toggle-inspector": () => emitShellCommand("toggle-inspector"),
     "toggle-sidebar": () => emitShellCommand("toggle-sidebar"),
     "search-library": () => emitShellCommand("open-search"),

@@ -12,6 +12,7 @@ import {
 import { Kbd } from "../Kbd";
 import { isDialogOpen } from "./shellKeyboard";
 import { emitShellCommand, useShellCommand } from "./shellCommands";
+import { reportViewState } from "../../api/menuViewState";
 import { loadSidebarCollapsed, neededHeightFor, saveSidebarCollapsed, railTight } from "./sidebarState";
 import { useLibraryEmpty } from "./useLibraryPresence";
 import "./Sidebar.css";
@@ -158,6 +159,7 @@ export function Sidebar() {
   // View → Sidebar in the menu.
   // Focus stays where it was (M472), as it does for Ctrl+B.
   useShellCommand("toggle-sidebar", toggle);
+  useEffect(() => reportViewState({ sidebar: !collapsed }), [collapsed]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

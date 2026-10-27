@@ -18,9 +18,8 @@ import type { BrowserWindow, Menu, MenuItemConstructorOptions } from "electron";
 export type MenuPlatform = "darwin" | "win32" | "linux";
 
 /**
- * The ids the menu sends besides `size:<value>`; the renderer's `menuCommands.ts` lists the same
- * (its `MENU_COMMAND_IDS` and `NEW_MENU_COMMAND_IDS`, less the ids `RETIRED_MENU_COMMAND_IDS` keeps
- * for one more release). `report-problem` and `support-bundle` are gone: no item sends them (M497).
+ * The ids the menu sends besides `size:<value>`; the renderer's `menuCommands.ts` lists the same.
+ * `report-problem` and `support-bundle` are gone: no item sends them (M497).
  */
 export const MENU_COMMAND_IDS = [
   "settings",

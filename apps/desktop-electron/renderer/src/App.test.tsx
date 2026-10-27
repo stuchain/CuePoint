@@ -159,13 +159,14 @@ describe("App shell", () => {
     expect(container.querySelector(".app-shell__inspector")).toBe(before);
   });
 
-  it("keeps the window title as CuePoint on every page", async () => {
+  // Round 3 (M501): the window and task bar name the page, or the track while one plays.
+  it("names the page in the window title", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(navLink("Settings"));
     await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
-    expect(document.title).not.toContain("—");
+    await waitFor(() => expect(document.title).toBe("Settings — CuePoint"));
   });
 
   it("shows the player bar before anything has played, as Nothing playing (area 83)", () => {

@@ -2420,13 +2420,10 @@ describe("desktop contract", () => {
     });
 
     it("gives the renderer and the menu the same list of command ids", () => {
-      // What main sends is what the shell answers, less the ids no item sends any more, plus the
-      // ones main sends that the shell has no handler for yet (M456, M497).
+      // What main sends is what the shell answers, Undo and Export to Rekordbox included (M456, M497).
       const main = listed(appMenu, "MENU_COMMAND_IDS");
       expect(main.length).toBeGreaterThan(10);
-      const retired = listed(menuCommands, "RETIRED_MENU_COMMAND_IDS");
-      const shell = listed(menuCommands, "MENU_COMMAND_IDS").filter((id) => !retired.includes(id));
-      expect([...shell, ...listed(menuCommands, "NEW_MENU_COMMAND_IDS")].sort()).toEqual([...main].sort());
+      expect(listed(menuCommands, "MENU_COMMAND_IDS").sort()).toEqual([...main].sort());
     });
 
     it("reports which panels are open to main, and main handles it (M497)", () => {
