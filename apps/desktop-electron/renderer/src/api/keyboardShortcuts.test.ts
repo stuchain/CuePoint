@@ -10,6 +10,7 @@ import globalSearchSource from "../components/shell/GlobalSearch.tsx?raw";
 import inspectorSource from "../components/shell/TrackInspector.tsx?raw";
 import sidebarSource from "../components/shell/Sidebar.tsx?raw";
 import statusStripSource from "../components/shell/StatusStrip.tsx?raw";
+import shellKeyboardSource from "../components/shell/shellKeyboard.ts?raw";
 import playerShortcutsSource from "../components/player/usePlayerShortcuts.ts?raw";
 import queuePanelSource from "../components/player/QueuePanel.tsx?raw";
 import pageSearchSource from "../components/usePageSearch.ts?raw";
@@ -187,6 +188,8 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Ctrl+I", "Everywhere", inspectorSource, /key\.toLowerCase\(\) === "i"/],
     ["Ctrl+B", "Everywhere", sidebarSource, /key\.toLowerCase\(\) === "b"/],
     ["Ctrl+Shift+A", "Everywhere", statusStripSource, /shiftKey && event\.key\.toLowerCase\(\) === "a"/],
+    ["F6", "Everywhere", shellKeyboardSource, /key !== "F6"/],
+    ["Shift+F6", "Everywhere", shellKeyboardSource, /nextPane\(shownPanes\(\), document\.activeElement, event\.shiftKey\)/],
     ["Ctrl+?", "Everywhere", appSource, /key === "\?"/],
     ["F1", "Everywhere", appSource, /key === "F1"/],
     ["Esc", "Everywhere", modalSource, /key === "Escape"/],

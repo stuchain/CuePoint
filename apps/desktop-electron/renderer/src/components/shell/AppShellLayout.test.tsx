@@ -414,6 +414,7 @@ describe("focus when the page changes (item 14)", () => {
   });
 
   it("draws no ring of its own on the page it focuses", () => {
-    expect(shellCss).toMatch(/\.app-shell__content:focus\s*\{[^}]*outline:\s*none/);
+    expect(shellCss).not.toMatch(/\.app-shell__content:focus\s*\{[^}]*outline:\s*(?!none)/);
+    expect(shellCss).toMatch(/\[data-pane\]:focus-visible/);
   });
 });

@@ -10,7 +10,6 @@ import {
   type NavDestination,
 } from "./navRegistry";
 import { Kbd } from "../Kbd";
-import { ActivityButton } from "./ActivityButton";
 import { isDialogOpen } from "./shellKeyboard";
 import { emitShellCommand, useShellCommand } from "./shellCommands";
 import { loadSidebarCollapsed, neededHeightFor, saveSidebarCollapsed, railTight } from "./sidebarState";
@@ -21,7 +20,8 @@ import "./Sidebar.css";
  * Primary navigation (DEC-020, DEC-021, DEC-022), laid out as option D of the sidebar redesign:
  * the logo and name alone on top; the Search field (K8, DEC-282) with a divider under it (C229);
  * the page entries, which alone scroll; and at the foot Settings with the collapse toggle on its
- * own row under it, in the same icon column (C228). The top and bottom rows stay fixed (R2-9).
+ * own row under it, in the same icon column (C228). Activity is not a page: its button is in the
+ * status strip (M273, D25). The top and bottom rows stay fixed (R2-9).
  * There is no "Pages" label: it labelled nothing the rail does not show, and it moved every
  * entry when the rail was toggled (C228).
  *
@@ -80,17 +80,18 @@ function Brand({ collapsed }: { collapsed: boolean }) {
 
 /**
  * The Search field (K8, DEC-282, option D): a button that looks like the box you type into, a
- * magnifier, "Search…" and the shortcut muted at the right. It opens the search dialog, which
- * Ctrl+K opens too; nothing is typed here. Its accessible name stays "Search". The collapsed rail
- * shows the icon alone, named "Search library", and the tip says the key there.
+ * magnifier, "Search library" and the shortcut muted at the right. It opens the search dialog,
+ * which Ctrl+K opens too; nothing is typed here. Its name is "Search library" in both states (M393);
+ * the collapsed rail shows the icon alone, and the tip says the key there.
  */
 function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () => void }) {
   return (
-    <Hint text="Search" shortcut="Mod+K" portal placement="right">
+    <Hint text="Search library" shortcut="Mod+K" portal placement="right">
       <button
         type="button"
         className={`cp-sidebar__link cp-sidebar__search${collapsed ? "" : " cp-sidebar__search--box"}`}
-        aria-label={collapsed ? "Search library" : "Search"}
+        // One name in the rail, the field, the dialog and the shortcuts list (M393).
+        aria-label="Search library"
         aria-haspopup="dialog"
         onClick={onOpen}
       >
@@ -99,7 +100,7 @@ function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () =>
         </span>
         {!collapsed && (
           <>
-            <span className="cp-sidebar__label cp-sidebar__search-placeholder">Search…</span>
+            <span className="cp-sidebar__label cp-sidebar__search-placeholder">Search library</span>
             <span className="cp-sidebar__search-keys" aria-hidden>
               <Kbd keys="Mod+K" />
             </span>
@@ -113,7 +114,6 @@ function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () =>
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(loadSidebarCollapsed);
   const openSearch = useCallback(() => emitShellCommand("open-search"), []);
-  const toggleRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const lit = litDestination(location.pathname, location.state)?.id ?? null;
 
@@ -138,7 +138,8 @@ export function Sidebar() {
     const mode = `${collapsed ? "closed" : "open"}@${getComputedStyle(rail).getPropertyValue("--scale").trim()}`;
     const overflow = Math.max(0, list.scrollHeight - list.clientHeight) + Math.max(0, rail.scrollHeight - rail.clientHeight);
     const height = rail.clientHeight;
-    const next = railTight(tight, { overflow, height, needed: neededHeightFor(neededHeight.current, mode) });
+    const scale = Number.parseFloat(getComputedStyle(rail).getPropertyValue("--scale"));
+    const next = railTight(tight, { overflow, height, needed: neededHeightFor(neededHeight.current, mode), scale });
     if (next && !tight) neededHeight.current = { mode, height: height + overflow };
     if (next !== tight) setTight(next);
   }, [tight, collapsed]);
@@ -155,11 +156,8 @@ export function Sidebar() {
   const libraryEmpty = useLibraryEmpty();
 
   // View → Sidebar in the menu.
-  const toggleFromMenu = useCallback(() => {
-    toggle();
-    toggleRef.current?.focus();
-  }, [toggle]);
-  useShellCommand("toggle-sidebar", toggleFromMenu);
+  // Focus stays where it was (M472), as it does for Ctrl+B.
+  useShellCommand("toggle-sidebar", toggle);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -167,10 +165,8 @@ export function Sidebar() {
         // Not behind an open dialog (C201).
         if (isDialogOpen()) return;
         event.preventDefault();
+        // Focus stays where it was (M472): the shortcut changes the rail, it does not take you there.
         toggle();
-        // Keyboard users need somewhere to be after the rail changes width;
-        // the toggle is the one control that exists in both states.
-        toggleRef.current?.focus();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -186,7 +182,6 @@ export function Sidebar() {
   const toggleButton = (
     <Hint text={`${collapsed ? "Expand" : "Collapse"} sidebar`} shortcut="Mod+B" portal placement="right">
       <button
-        ref={toggleRef}
         type="button"
         className="cp-sidebar__link cp-sidebar__toggle"
         onClick={toggle}
@@ -222,8 +217,6 @@ export function Sidebar() {
         {label}
         {entry.destinations.slice(0, -1).map(renderLink)}
         <div className="cp-sidebar__foot">
-          {/* Activity sits above Settings (C231): the status strip no longer holds its button. */}
-          <ActivityButton collapsed={collapsed} />
           {last ? renderLink(last) : null}
           {toggleButton}
         </div>
@@ -260,7 +253,6 @@ export function Sidebar() {
       ) : (
         <div className="cp-sidebar__group cp-sidebar__group--pinned">
           <div className="cp-sidebar__foot">
-            <ActivityButton collapsed={collapsed} />
             {toggleButton}
           </div>
         </div>

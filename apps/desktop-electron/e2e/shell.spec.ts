@@ -69,7 +69,7 @@ async function openSearch(window: Page) {
     .getByRole("navigation", { name: /main navigation/i })
     .getByRole("button", { name: /^Search/ })
     .click();
-  await expect(window.getByRole("dialog", { name: "Search" })).toBeVisible();
+  await expect(window.getByRole("dialog", { name: "Search library" })).toBeVisible();
 }
 
 test.describe("Application shell navigation", () => {
@@ -275,7 +275,7 @@ test.describe("Application shell navigation", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       await dismissOnboarding(window);
 
-      // Tab from the top and record where focus goes, until the sidebar's Activity
+      // Tab from the top and record where focus goes, until the status strip's Activity
       // button and the page's Track details button have both been reached. Every region has to appear on
       // the way, or some part of the app is mouse-only. Walked to a stop rather
       // than a count: a count had to change with every page a phase enabled
@@ -284,7 +284,7 @@ test.describe("Application shell navigation", () => {
       // The Details toggle is the page header's last button now, so the page has to be drawn first.
       await expect(window.getByRole("button", { name: "Track details", exact: true })).toBeVisible({ timeout: 30_000 });
       const reached: string[] = [];
-      // Activity is in the sidebar now, so the walk goes on to the page header's Track details button.
+      // Activity is in the status strip (D25); the walk goes on to the page header's Track details button.
       for (let i = 0; i < 60 && !(reached.join("|").includes("Activity") && /track details/i.test(reached.join("|"))); i += 1) {
         await window.keyboard.press("Tab");
         reached.push(
@@ -322,7 +322,7 @@ test.describe("Application shell navigation", () => {
       await window.keyboard.press("Control+k");
       await expect(window.getByRole("combobox", { name: /search library/i })).toBeFocused();
       await window.keyboard.press("Escape");
-      await expect(window.getByRole("dialog", { name: "Search" })).toHaveCount(0);
+      await expect(window.getByRole("dialog", { name: "Search library" })).toHaveCount(0);
 
       await window.keyboard.press("Control+Shift+a");
       const dialog = window.getByRole("dialog", { name: /activity/i });
@@ -504,7 +504,7 @@ ${tracks.join("\n")}
       await window.getByRole("combobox", { name: /search library/i }).fill("moonlight");
       await expect(window.getByRole("listbox")).toBeVisible({ timeout: 15_000 });
       await window.keyboard.press("Escape");
-      await expect(window.getByRole("dialog", { name: "Search" })).toHaveCount(0);
+      await expect(window.getByRole("dialog", { name: "Search library" })).toHaveCount(0);
       await expect(
         window.getByRole("navigation", { name: /main navigation/i }).getByRole("button", { name: /^Search/ }),
       ).toBeFocused();

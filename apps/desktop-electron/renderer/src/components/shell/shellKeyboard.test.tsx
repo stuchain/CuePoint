@@ -48,14 +48,16 @@ describe("sidebar keyboard", () => {
     expect(nav).toHaveAttribute("data-collapsed", "false");
   });
 
-  it("leaves focus on the toggle rather than on the body", async () => {
+  it("leaves focus where it was: Ctrl+B changes the rail, it does not take you to its toggle (M472)", async () => {
     const user = userEvent.setup();
     renderSidebar();
+    const search = screen.getByRole("button", { name: "Search library" });
+    search.focus();
 
     await user.keyboard("{Control>}b{/Control}");
 
-    expect(toggle()).toHaveFocus();
-    expect(document.activeElement).not.toBe(document.body);
+    expect(screen.getByRole("button", { name: "Search library" })).toHaveFocus();
+    expect(toggle()).not.toHaveFocus();
   });
 
   it("does not fire on Ctrl+Shift+B", async () => {
@@ -123,18 +125,24 @@ describe("inspector focus", () => {
     expect(screen.getByRole("button", { name: /hide track details/i })).toHaveFocus();
   });
 
-  it("keeps focus somewhere real when toggled by keyboard", async () => {
+  it("keeps focus where it was when toggled by keyboard, and hands it on only from inside the panel (M472)", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <MemoryRouter>
         <ScreenHeader title="Page" />
+        <button>Elsewhere</button>
         <TrackInspector />
       </MemoryRouter>,
     );
+    screen.getByRole("button", { name: "Elsewhere" }).focus();
 
     await user.keyboard("{Control>}i{/Control}");
+    expect(screen.getByRole("button", { name: "Elsewhere" })).toHaveFocus();
 
-    expect(document.activeElement).not.toBe(document.body);
+    // Closed from inside the panel, the focus is not lost with it.
+    await user.keyboard("{Control>}i{/Control}");
+    screen.getByRole("button", { name: /hide track details/i }).focus();
+    await user.keyboard("{Control>}i{/Control}");
     expect(screen.getByRole("button", { name: /^track details$/i })).toHaveFocus();
   });
 

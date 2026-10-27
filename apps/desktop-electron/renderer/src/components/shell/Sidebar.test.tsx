@@ -281,17 +281,17 @@ describe("Sidebar", () => {
   });
 
   describe("the Search field (K8, option D)", () => {
-    it("sits under the logo row and above the list, a field reading Search… with Ctrl+K muted", async () => {
+    it("sits under the logo row and above the list, a field reading Search library with Ctrl+K muted", async () => {
       renderSidebar();
-      const button = within(nav()).getByRole("button", { name: "Search" });
+      const button = within(nav()).getByRole("button", { name: "Search library" });
       expect(button).toHaveClass("cp-sidebar__search--box");
       expect(button).toHaveAttribute("aria-haspopup", "dialog");
-      expect(button).toHaveTextContent("Search…");
+      expect(button).toHaveTextContent("Search library");
       expect(button).toHaveTextContent("Ctrl+K");
       expect(button.querySelector(".cp-sidebar__search-keys")).toHaveTextContent("Ctrl+K");
       expect(button.querySelector("svg[data-icon='search']")).not.toBeNull();
       button.focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search Ctrl+K");
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search library Ctrl+K");
       const top = nav().querySelector(".cp-sidebar__top")!;
       const list = nav().querySelector(".cp-sidebar__list")!;
       expect(top.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -303,11 +303,11 @@ describe("Sidebar", () => {
     it("shows Cmd+K on a Mac, in the field and in the tip", async () => {
       vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
       renderSidebar();
-      const button = within(nav()).getByRole("button", { name: "Search" });
+      const button = within(nav()).getByRole("button", { name: "Search library" });
       expect(button).toHaveTextContent("⌘K");
       expect(button).not.toHaveTextContent("Ctrl+K");
       button.focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search ⌘K");
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search library ⌘K");
     });
 
     it("is an icon alone in the collapsed rail, named Search library, tipped with the key", async () => {
@@ -324,7 +324,7 @@ describe("Sidebar", () => {
       expect(button).not.toHaveClass("cp-sidebar__search--box");
       expect(button.querySelector("svg[data-icon='search']")).not.toBeNull();
       button.focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search Ctrl+K");
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search library Ctrl+K");
     });
 
     it("asks the shell to open the search dialog, which App mounts", async () => {
@@ -379,7 +379,7 @@ describe("Sidebar", () => {
   describe("Search is set apart from the pages (C229)", () => {
     it("has a divider between the Search field and the list of pages", () => {
       renderSidebar();
-      const search = within(nav()).getByRole("button", { name: "Search" });
+      const search = within(nav()).getByRole("button", { name: "Search library" });
       const divider = nav().querySelector<HTMLElement>(".cp-sidebar__divider")!;
       const list = nav().querySelector<HTMLElement>(".cp-sidebar__list")!;
       expect(divider).not.toBeNull();
@@ -397,7 +397,7 @@ describe("Sidebar", () => {
     it("gives Discover an icon of its own, not the magnifier Search wears", () => {
       renderSidebar();
       const discover = within(nav()).getByRole("link", { name: "Discover" }).querySelector("svg")!;
-      const search = within(nav()).getByRole("button", { name: "Search" }).querySelector("svg")!;
+      const search = within(nav()).getByRole("button", { name: "Search library" }).querySelector("svg")!;
       expect(discover.getAttribute("data-icon")).not.toBe(search.getAttribute("data-icon"));
       expect(discover.innerHTML).not.toBe(search.innerHTML);
     });
@@ -437,13 +437,13 @@ describe("Sidebar", () => {
       expect(toggle()).toHaveFocus();
     });
 
-    it("keeps Activity, Settings and the toggle in one foot, the toggle on its own row under Settings (C228)", () => {
+    it("keeps Settings and the toggle in one foot, the toggle on its own row under Settings; Activity is in the status strip (C228, M273)", () => {
       renderSidebar();
       const foot = nav().querySelector<HTMLElement>(".cp-sidebar__foot")!;
       expect(within(foot).getAllByRole("link").map((l) => l.getAttribute("aria-label"))).toEqual(["Settings"]);
-      // Activity is a row above Settings; the toggle is the last button (C231, C228).
+      // Activity is not a page: its button is in the status strip (M273, D25). The toggle is the last button (C228).
       const buttons = within(foot).getAllByRole("button");
-      expect(buttons.map((el) => el.getAttribute("aria-label"))).toEqual(["Activity", toggle().getAttribute("aria-label")]);
+      expect(buttons.map((el) => el.getAttribute("aria-label"))).toEqual([toggle().getAttribute("aria-label")]);
       expect(buttons[buttons.length - 1]).toBe(toggle());
       expect(toggle().classList.contains("cp-sidebar__link")).toBe(true);
     });
@@ -593,11 +593,23 @@ describe("the sidebar's sizes follow the text, not the window (C208, C34)", () =
     return rule ? Object.fromEntries(declarations(rule.body))[property] : undefined;
   };
 
-  it("makes a page row one bar tall, and the search field a control", () => {
+  it("makes the brand, the search row and every page row one bar tall, so entry n sits at one y in both states (M486, M487)", () => {
     // Q5a (amending C208): bar-tall rows, so the 24 px icons do not nearly touch.
     expect(decl(".cp-sidebar__link", "min-height")).toBe("var(--toolbar-height)");
-    expect(decl(".cp-sidebar__search", "min-height")).toBe("var(--control-height)");
-    expect(decl(".cp-sidebar__brand", "min-height")).toBe("var(--row-height)");
+    expect(decl(".cp-sidebar__search", "min-height")).toBe("var(--toolbar-height)");
+    expect(decl(".cp-sidebar__brand", "min-height")).toBe("var(--toolbar-height)");
+  });
+
+  it("makes the closed rail's entries bar-tall squares at every scale (M487)", () => {
+    expect(decl(".cp-sidebar--collapsed .cp-sidebar__link", "width")).toBe("var(--toolbar-height)");
+    expect(decl(".cp-sidebar--collapsed .cp-sidebar__brand", "width")).toBe("var(--toolbar-height)");
+    expect(decl(".cp-sidebar--collapsed .cp-sidebar__search", "width")).toBeUndefined();
+  });
+
+  it("sets every pressable word at the control size, and the active entry no heavier (M26, M361)", () => {
+    expect(decl(".cp-sidebar__link", "font-size")).toBe("var(--control-font-size)");
+    expect(decl(".cp-sidebar__link--active", "font-weight")).toBeUndefined();
+    expect(decl(".cp-sidebar__search-placeholder", "font-family")).toBe("var(--font-data)");
   });
 
   it("reads no window height anywhere", () => {
@@ -624,6 +636,33 @@ describe("a window too short for the rail (item 2, at 2x in 1264x735)", () => {
     expect(railTight(false, { overflow: 40, height: 600, needed: 0 })).toBe(true);
     expect(railTight(true, { overflow: 0, height: 620, needed: 640 })).toBe(true);
     expect(railTight(true, { overflow: 0, height: 640, needed: 640 })).toBe(false);
+  });
+
+  it("never tightens below 2x: at 1.5x the loose rail keeps its full-size targets and its list scrolls (M70)", () => {
+    // 1264x735 at 1.5x: the rail used to tighten with 251 px free.
+    expect(railTight(false, { overflow: 40, height: 600, needed: 0, scale: 1.5 })).toBe(false);
+    expect(railTight(true, { overflow: 0, height: 100, needed: 640, scale: 1.5 })).toBe(false);
+    expect(railTight(false, { overflow: 40, height: 600, needed: 0, scale: 2 })).toBe(true);
+    expect(railTight(false, { overflow: 40, height: 600, needed: 0, scale: 3 })).toBe(true);
+    // A pixel of rounding is not an overflow.
+    expect(railTight(false, { overflow: 1, height: 600, needed: 0 })).toBe(false);
+  });
+
+  it("reads the text size from the rail and stays loose at 1.5x", () => {
+    const scroll = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-sidebar__list") ? 400 : 0;
+    });
+    const client = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-sidebar__list") ? 300 : 600;
+    });
+    const style = vi.spyOn(window, "getComputedStyle").mockImplementation(
+      () => ({ getPropertyValue: (name: string) => (name === "--scale" ? "1.5" : "") }) as unknown as CSSStyleDeclaration,
+    );
+    renderSidebar();
+    expect(nav()).not.toHaveAttribute("data-tight");
+    style.mockRestore();
+    scroll.mockRestore();
+    client.mockRestore();
   });
 
   it("marks the rail tight when its list overflows", () => {

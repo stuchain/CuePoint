@@ -14,6 +14,7 @@ import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 
 import css from "./TrackInspector.css?raw";
 import shell from "./AppShellLayout.css?raw";
+import screens from "../../screens/screens.css?raw";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { InspectorSlotProvider, useInspectorSlot } from "./inspectorSlot";
 import { PageActiveContext } from "./pageActive";
@@ -34,6 +35,12 @@ const handle = () => screen.getByRole("separator", { name: /resize track details
 
 const SELECTED = { id: 12, key: "8A", title: "Strobe" };
 
+/** A page with a track list fills the slot; one that never does (Settings) draws no panel and no toggle (M490). */
+function FillsSlot() {
+  useInspectorSlot(<span />);
+  return null;
+}
+
 /** Inside a router, on the Library unless a test says otherwise (K1 keys its choice by page). */
 function render(ui: ReactElement, path = "/library") {
   const result = rtlRender(
@@ -41,6 +48,7 @@ function render(ui: ReactElement, path = "/library") {
       <InspectorSlotProvider>
         {/* The page header draws the Details toggle. */}
         <ScreenHeader title="Page" />
+        <FillsSlot />
         {ui}
       </InspectorSlotProvider>
     </MemoryRouter>,
@@ -124,8 +132,28 @@ describe("TrackInspector", () => {
       expect(screen.getByRole("heading", { name: "Track details" })).toHaveClass("cp-panel-header__title");
     });
 
-    it("starts at the page's top gutter and lights its handle with the shared resizer colour", () => {
-      expect(css).toMatch(/\.cp-inspector\s*\{[^}]*padding-top:\s*var\(--page-gutter-top\)/);
+    it("has no padding above: its head carries the page's top margin and is as tall as the page's header (M50, D9)", () => {
+      render(<TrackInspector />);
+      const rule = css.match(/\.cp-inspector\s*\{[^}]*\}/)?.[0] ?? "";
+      expect(rule).not.toMatch(/padding-top/);
+      expect(panel().querySelector("header")).toHaveClass("cp-side-head");
+      expect(screens).toMatch(/\.cp-panel-header\.cp-side-head[^{]*\{[^}]*min-height:\s*var\(--side-head-height/);
+      expect(screens).toMatch(/\.cp-panel-header\.cp-side-head[^{]*\{[^}]*padding:\s*var\(--page-gutter-top\) var\(--space-lg\) 0/);
+    });
+
+    it("pads its body --space-lg and keeps the scrollbar's room, so tabs do not shift the column (M66, M121)", () => {
+      const body = css.match(/\.cp-inspector__body\s*\{[^}]*\}/)?.[0] ?? "";
+      expect(body).toMatch(/padding:\s*var\(--space-lg\)/);
+      expect(body).toMatch(/scrollbar-gutter:\s*stable/);
+    });
+
+    it("leaves the sub-tabs to the strip's own rules: no padding or wrap override (M120)", () => {
+      expect(css).not.toMatch(/cp-tabs--sub\s*\{/);
+      expect(css).not.toMatch(/cp-tabs__tab\s*\{/);
+      expect(css).not.toMatch(/round\(down, calc\(var\(--space-xs\) \/ 2\)/);
+    });
+
+    it("lights its handle with the shared resizer colour", () => {
       expect(css).toMatch(/\.cp-inspector__handle:hover[^{]*\{[^}]*background:\s*var\(--resizer-edge-hover\)/); // Q6b: the edge itself lights up
     });
   });
@@ -258,9 +286,29 @@ describe("TrackInspector", () => {
       render(<TrackInspector />);
 
       await user.tab(); // the header's Details toggle comes first
-      await user.tab();
+      await user.tab(); // then the panel's own close
+      await user.tab(); // the handle is the panel's last stop, not its first (M359)
 
       expect(handle()).toHaveFocus();
+    });
+
+    it("is not the panel's first tab stop (M359)", () => {
+      render(<TrackInspector />);
+      const stops = [...panel().querySelectorAll("[tabindex], button")];
+      expect(stops[0]).not.toBe(handle());
+      expect(panel().lastElementChild).toBe(handle());
+    });
+
+    it("puts the width back on Enter (M359)", async () => {
+      const user = userEvent.setup();
+      render(<TrackInspector />);
+      await user.tab();
+      await user.tab();
+      await user.tab();
+      await user.keyboard("{ArrowLeft}");
+      expect(panel().style.width).not.toBe(`${DEFAULT_PX}px`);
+      await user.keyboard("{Enter}");
+      expect(panel().style.width).toBe(`${DEFAULT_PX}px`);
     });
 
     it("widens with the left arrow key and narrows with the right", async () => {
@@ -735,5 +783,46 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
       select();
       expect(panel()).not.toHaveAttribute("data-entering");
     });
+  });
+});
+
+describe("a page with no track list (M490)", () => {
+  it("draws no panel and no Details toggle when the page put nothing in the slot", () => {
+    choose({ library: "open" });
+    rtlRender(
+      <MemoryRouter initialEntries={["/library"]}>
+        <InspectorSlotProvider>
+          <ScreenHeader title="Settings" />
+          <TrackInspector />
+        </InspectorSlotProvider>
+      </MemoryRouter>,
+    );
+    settle();
+    expect(screen.queryByRole("complementary", { name: /track details/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^track details$/i })).toBeNull();
+  });
+});
+
+describe("the shortcut leaves focus where it was (M472)", () => {
+  it("does not move focus to the Details toggle on Ctrl+I", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button>Elsewhere</button>
+        <TrackInspector />
+      </>,
+    );
+    screen.getByRole("button", { name: "Elsewhere" }).focus();
+    await user.keyboard("{Control>}i{/Control}");
+    expect(screen.getByRole("button", { name: "Elsewhere" })).toHaveFocus();
+  });
+
+  it("still hands focus on when the panel it was in closes", async () => {
+    const user = userEvent.setup();
+    choose({ library: "open" });
+    render(<TrackInspector />);
+    hide().focus();
+    await user.keyboard("{Control>}i{/Control}");
+    expect(screen.getByRole("button", { name: /^track details$/i })).toHaveFocus();
   });
 });

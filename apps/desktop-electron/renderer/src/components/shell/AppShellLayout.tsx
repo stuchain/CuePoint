@@ -1,5 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { UNSAFE_LocationContext as LocationContext } from "react-router-dom";
 import { OverflowHintHost } from "../OverflowHintHost";
+import { findOwningDestination } from "./navRegistry";
+import { DIALOGS, keepInert } from "./offlineInert";
+import { installPaneKeys } from "./shellKeyboard";
+import { queryShown } from "./pageActive";
 import "./AppShellLayout.css";
 
 interface AppShellLayoutProps {
@@ -29,11 +34,13 @@ interface AppShellLayoutProps {
   pagePhase?: "a" | "b";
 }
 
-/** What a click can press: a click inside one of these is stopped while offline. */
+/**
+ * What a click can press: a click inside one of these is stopped while offline. The page is also
+ * `inert` then (offlineInert.ts), which is what keeps radios, selects, sliders and fields from
+ * changing; this is the net under it for a press that reaches the page before the attribute is
+ * set (a page that has only just drawn).
+ */
 const PRESSABLE = 'button, [role="menuitem"], [role="button"], a[href], input[type="checkbox"]';
-
-/** Dialogs rendered inside the page (the modal is not portaled) stay usable offline. */
-const DIALOGS = '[role="dialog"], [role="alertdialog"]';
 
 /**
  * The application frame: a grid of named regions that later Phase 2 steps fill.
@@ -58,9 +65,13 @@ const DIALOGS = '[role="dialog"], [role="alertdialog"]';
  * The banner follows the same rule: no banner, no element, no height.
  *
  * Offline, a veil is laid over the page in the same grid cell (not opacity on the page: that
- * would make it a stacking context and trap its dialogs under the banner), and a capture-phase listener on the content element stops presses
- * before the page sees them. It sits on `main` only, so the sidebar,
- * Inspector, player and status strip (all outside it) keep working.
+ * would make it a stacking context and trap its dialogs under the banner), and the page's content
+ * is made `inert` (offlineInert.ts, D31): no hover, no hand cursor, nothing to focus, whatever the
+ * control. Dialogs drawn inside it stay usable. Track details' body is inert too, so stars, tags
+ * and notes cannot be edited into a failure (M364). It sits on `main` and the Inspector only, so
+ * the sidebar, the banner, the player and the status strip keep working.
+ *
+ * F6 and Shift+F6 cycle the panes (`data-pane`, shellKeyboard.ts); the shell marks its own.
  *
  * The content element keeps its historical `app-main` class alongside the grid
  * class, because screen styling in `App.css` and `screens.css` is written
@@ -82,8 +93,21 @@ export function AppShellLayout({
   const playerRegion = useRef<HTMLDivElement | null>(null);
   const statusRegion = useRef<HTMLElement | null>(null);
   const sidebarRegion = useRef<HTMLDivElement | null>(null);
+  const inspectorRegion = useRef<HTMLDivElement | null>(null);
   const blocked = useRef(onBlockedClick);
   blocked.current = onBlockedClick;
+
+  // F6 and Shift+F6 between the panes (M459).
+  useEffect(() => installPaneKeys(), []);
+
+  // Offline the page's content, and Track details' body, stop answering (M363, M364).
+  useEffect(() => {
+    if (!offline) return;
+    const stops: Array<() => void> = [];
+    if (content.current) stops.push(keepInert(content.current));
+    if (inspectorRegion.current) stops.push(keepInert(inspectorRegion.current, ".cp-inspector__body"));
+    return () => stops.forEach((stop) => stop());
+  }, [offline, Boolean(inspector)]);
 
   useEffect(() => {
     const element = content.current;
@@ -101,12 +125,13 @@ export function AppShellLayout({
     return () => element.removeEventListener("click", stop, true);
   }, [offline]);
 
-  // A page opened by a menu, a shortcut or a link inside a page leaves focus where it was. On a rail
-  // entry for another page that is wrong (item 14): it is still the focused element, so Chromium
-  // lights its :focus-visible ring once any key is pressed, and Tab would start from the old page's
-  // entry. Focus moves into the page that opened instead. The page is focusable only while it holds
-  // focus, so a click on its empty space never lands on it. The entry that was pressed to open the
-  // page is the lit one now, and keeps focus.
+  // A page opened by a menu, a shortcut or a link inside a page leaves focus where it was. On the rail
+  // (its Search button, an entry for another page) or on nothing, that is wrong (item 14, M484): the
+  // old control is still the focused element, so Chromium lights its :focus-visible ring once any key
+  // is pressed, and Tab would start from it. Focus moves to the new page's heading instead, which
+  // draws no ring and from which Tab goes to the page's first control. The heading is focusable only
+  // while it holds focus. The entry that was pressed to open the page is the lit one now, and keeps
+  // focus; focus inside a dialog or the page itself is left alone.
   const shownPhase = useRef(pagePhase);
   useEffect(() => {
     if (shownPhase.current === pagePhase) return;
@@ -114,12 +139,27 @@ export function AppShellLayout({
     const page = content.current;
     const rail = sidebarRegion.current;
     const focused = document.activeElement;
-    if (!page || !rail || !(focused instanceof HTMLElement) || !rail.contains(focused)) return;
-    if (!focused.matches("a[href]") || focused.getAttribute("aria-current") === "page") return;
-    page.setAttribute("tabindex", "-1");
-    page.addEventListener("blur", () => page.removeAttribute("tabindex"), { once: true });
-    page.focus({ preventScroll: true });
+    if (!page) return;
+    const lost = focused === null || focused === document.body || focused === document.documentElement;
+    const onRail = rail !== null && focused instanceof HTMLElement && rail.contains(focused);
+    if (!lost && !onRail) return;
+    if (onRail && focused instanceof HTMLElement && focused.getAttribute("aria-current") === "page") return;
+    const heading = queryShown(".app-main h1");
+    const target = heading instanceof HTMLElement ? heading : page;
+    target.setAttribute("tabindex", "-1");
+    target.addEventListener("blur", () => target.removeAttribute("tabindex"), { once: true });
+    target.focus({ preventScroll: true });
   }, [pagePhase]);
+
+  // A page already seen comes back as it was left: its entrance motion is not played again (M381).
+  // The destinations seen so far are remembered here; a first visit gets the phase as before.
+  const location = useContext(LocationContext)?.location;
+  const owner = location ? (findOwningDestination(location.pathname)?.id ?? null) : null;
+  const seenPages = useRef(new Set<string>());
+  const returning = useRef(false);
+  if (owner !== null) {
+    returning.current = seenPages.current.has(owner);
+  }
 
   // A new page is held at its first look ("hold") for the frame that draws it, and its phase is
   // written on the frame after: the page's motion then starts once it is on the screen, rather
@@ -128,6 +168,12 @@ export function AppShellLayout({
   useLayoutEffect(() => {
     const page = content.current;
     if (!page || pagePhase === undefined) return undefined;
+    if (owner !== null) seenPages.current.add(owner);
+    if (returning.current) {
+      // Returning: no entrance, so nothing names a step-in for it (motion.css keys on "hold", "a", "b").
+      page.setAttribute("data-page-phase", "return");
+      return undefined;
+    }
     page.setAttribute("data-page-phase", "hold");
     let second = 0;
     const first = requestAnimationFrame(() => {
@@ -137,7 +183,7 @@ export function AppShellLayout({
       cancelAnimationFrame(first);
       cancelAnimationFrame(second);
     };
-  }, [pagePhase]);
+  }, [pagePhase, owner]);
 
   // The toast stack is rendered outside the shell, so the room the player and status strip take
   // goes on the root element, where it can lift the stack clear of them.
@@ -166,21 +212,30 @@ export function AppShellLayout({
   return (
     <div className="app-shell">
       {sidebar ? (
-        <div className="app-shell__sidebar" ref={sidebarRegion}>
+        <div className="app-shell__sidebar" ref={sidebarRegion} data-pane="navigation">
           {sidebar}
         </div>
       ) : null}
       {banner ? <div className="app-shell__banner">{banner}</div> : null}
       <main
         className="app-shell__content app-main"
+        data-pane="page"
         data-offline={offline ? "" : undefined}
         ref={content}
       >
         {children}
       </main>
       {offline ? <div className="app-shell__veil" aria-hidden="true" /> : null}
-      {inspector ? <div className="app-shell__inspector">{inspector}</div> : null}
-      {player ? <div className="app-shell__player" ref={playerRegion}>{player}</div> : null}
+      {inspector ? (
+        <div className="app-shell__inspector" ref={inspectorRegion} data-pane="details">
+          {inspector}
+        </div>
+      ) : null}
+      {player ? (
+        <div className="app-shell__player" ref={playerRegion} data-pane="player">
+          {player}
+        </div>
+      ) : null}
       {statusBar ? (
         <footer className="app-shell__status" ref={statusRegion}>{statusBar}</footer>
       ) : null}

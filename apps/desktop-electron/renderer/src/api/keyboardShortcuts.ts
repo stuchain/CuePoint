@@ -34,6 +34,9 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Everywhere", action: "Track details", shortcut: "Ctrl+I" },
   { context: "Everywhere", action: "Sidebar", shortcut: "Ctrl+B" },
   { context: "Everywhere", action: "Open activity", shortcut: "Ctrl+Shift+A" },
+  // The panes of the window (M459, D34): sidebar, page and its panes, Track details or the queue, player.
+  { context: "Everywhere", action: "Go to the next pane", shortcut: "F6" },
+  { context: "Everywhere", action: "Go to the previous pane", shortcut: "Shift+F6" },
   { context: "Everywhere", action: "Keyboard shortcuts", shortcut: "Ctrl+?" },
   { context: "Everywhere", action: "Open this list", shortcut: "F1" },
   { context: "Everywhere", action: "Close a dialog, panel or search", shortcut: "Esc" },

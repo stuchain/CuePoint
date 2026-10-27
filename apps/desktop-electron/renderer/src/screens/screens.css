@@ -58,3 +58,54 @@
     max-width: 100%;
   }
 }
+
+/*
+ * Side heads (M50, M66, D9): the title bar of a panel beside the page (Track details, the queue,
+ * Prepare's source panel, a Keys pane) is as tall as the page's own header, so its title sits on
+ * the page title's line and its divider on the header's divider. The header publishes that height
+ * as `--side-head-height` (ScreenHeader.tsx: its height plus the page's top margin); the fallback
+ * is one toolbar under the margin. A side panel pads `--space-lg`, like the page's main area.
+ */
+.cp-panel-header.cp-side-head,
+.cp-queue .cp-queue__header {
+  box-sizing: border-box;
+  align-items: flex-start;
+  min-height: var(--side-head-height, calc(var(--page-gutter-top) + var(--toolbar-height) + var(--hairline)));
+  padding: var(--page-gutter-top) var(--space-lg) 0;
+}
+
+/* The title and the close mark share the page title's row: one toolbar tall, the mark centred in it. */
+.cp-side-head > .cp-panel-header__title,
+.cp-queue .cp-queue__header > .cp-panel-header__title {
+  min-height: var(--toolbar-height);
+  line-height: var(--toolbar-height);
+}
+
+.cp-queue .cp-queue__header > .cp-queue__title {
+  align-items: center;
+}
+
+.cp-side-head .cp-close,
+.cp-queue .cp-queue__header .cp-close {
+  margin-top: calc((var(--toolbar-height) - var(--control-height-sm)) / 2);
+}
+
+/*
+ * The part of a page below its header that scrolls by itself (M225). A page whose whole body scrolls
+ * (Statistics, Settings) puts its content in this region instead of letting `.app-main` scroll, so
+ * the bar sits on the content's edge under the header, not at the window's edge beside Details.
+ */
+.screen-region {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+/* Chrome is not text to select: Ctrl+A or a drag over the window takes the page's words only (M499). */
+.cp-sidebar,
+.cp-status,
+.cp-screen-header {
+  user-select: none;
+}

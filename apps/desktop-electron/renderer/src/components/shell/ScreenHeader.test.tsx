@@ -131,7 +131,7 @@ describe("ScreenHeader", () => {
     });
 
     it("keeps a fixed gap between the icon and the word", () => {
-      expect(/\.cp-details-toggle\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/gap:\s*var\(--space-xs\)/);
+      expect(/\.cp-details-toggle\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/gap:\s*var\(--space-sm\)/);
     });
 
     it("draws the divider one control high in the line colour (C232)", () => {
@@ -195,7 +195,32 @@ describe("ScreenHeader", () => {
 
 // P47 (answer 1): page titles are 22 with a hair of tracking; the voice face and weight are unchanged.
 describe("the page title type (P47)", () => {
-  it("is --font-size-page with 0.01em letter spacing", () => {
-    expect(css).toMatch(/\.cp-screen-header__title,[\s\S]*?letter-spacing:\s*0\.01em/);
+  it("is --font-size-page with no added letter spacing (M25)", () => {
+    expect(css).toMatch(/\.cp-screen-header__title,[\s\S]*?font-size:\s*var\(--font-size-page\)/);
+    expect(css.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/letter-spacing/);
+  });
+
+  it("sits the title row on the last baseline (M57)", () => {
+    expect(css).toMatch(/align-items:\s*last baseline/);
+  });
+});
+
+describe("the side panels' head height (D9)", () => {
+  it("publishes the header's height as --side-head-height and takes it back on leaving", () => {
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 48 });
+    try {
+      const { unmount } = render(<ScreenHeader title="Library" />);
+      expect(document.documentElement.style.getPropertyValue("--side-head-height")).toMatch(/^\d+px$/);
+      unmount();
+      expect(document.documentElement.style.getPropertyValue("--side-head-height")).toBe("");
+    } finally {
+      if (original) Object.defineProperty(HTMLElement.prototype, "offsetHeight", original);
+    }
+  });
+
+  it("marks a data title so it shrinks and keeps its cut (M190)", () => {
+    const { container } = render(<ScreenHeader title="Some playlist" dataTitle />);
+    expect(container.querySelector(".cp-screen-header__title--data")).not.toBeNull();
   });
 });

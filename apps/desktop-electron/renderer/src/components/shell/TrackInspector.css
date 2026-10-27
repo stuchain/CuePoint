@@ -12,8 +12,8 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  /* The top starts where the page and the sidebar start (C34). */
-  padding-top: var(--page-gutter-top);
+  /* No padding above: the head carries the page's top margin and is as tall as the page's header,
+     so the title and the divider meet the page's (M50, D9). */
   background: var(--bg-toolbar);
   border-left: var(--divider);
 }
@@ -58,13 +58,8 @@ body.cp-inspector-resizing {
   user-select: none;
 }
 
-/* The title bar is the shared panel header (.cp-panel-header, C29); only its height is a toolbar's.
-   Its title starts on the body's inset (L1), not 6 px right of every line under it. */
-.cp-inspector__header {
-  box-sizing: border-box;
-  min-height: var(--toolbar-height);
-  padding-inline: var(--space-md);
-}
+/* The title bar is the shared panel header with the side-head rules (screens.css): as tall as the
+   page header, padded --space-lg like the body below it (M50, M66). */
 
 .cp-inspector__hide {
   flex: none;
@@ -76,7 +71,10 @@ body.cp-inspector-resizing {
   /* Only down: a stray horizontal scrollbar here (Track details, area bug) shortens the panel. */
   overflow-x: hidden;
   overflow-y: auto;
-  padding: var(--space-md);
+  /* The bar's room is always kept, so a tab with a scrollbar (Yours) does not narrow the column by
+     its width and move everything 8 px (M121). */
+  scrollbar-gutter: stable;
+  padding: var(--space-lg);
 }
 
 .cp-inspector__empty {
@@ -88,21 +86,11 @@ body.cp-inspector-resizing {
 }
 
 /*
- * Track details' sub-tabs share one line at the panel's own width: the Library's sheet lets them
- * wrap, which at the default width dropped "Yours" under the others. Less padding and no gap, and
- * the strip scrolls sideways if it ever still does not fit. Focus rings are inset (the strip clips).
+ * Track details' sub-tabs: the strip's own rules (Tabs.css, TrackDetailPanel.css) keep them on one
+ * line at an even --space-sm padding, spanning the content edge, and scroll sideways if they do not
+ * fit. This sheet no longer overrides them (M120: a 2 px padding crushed the labels together).
+ * Focus rings are inset (the strip clips).
  */
-.cp-inspector .cp-track-detail > .cp-tabs--sub {
-  flex-wrap: nowrap;
-  gap: 0;
-}
-
-.cp-inspector .cp-track-detail > .cp-tabs--sub .cp-tabs__tab {
-  /* Half a gutter each side: at 1.5x in a 1,264-wide window the four labels at --space-xs
-     were 10px wider than the panel and "Yours" was clipped at the right edge. */
-  padding: 0 round(down, calc(var(--space-xs) / 2), 1px);
-}
-
 .cp-inspector .cp-tabs--sub .cp-tabs__tab:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset-inset);

@@ -105,6 +105,21 @@ export function useInspectorAutoOpen(): boolean {
 }
 
 /**
+ * Whether the page in the slot filled it at all (M490). A page with no track list (Settings) never
+ * does, and the Details toggle is not drawn for it. A boolean snapshot, so this re-renders its reader
+ * only when the answer flips, never for each new element the page builds. True outside a provider
+ * (a page or the panel rendered on its own).
+ */
+export function useInspectorHasContent(): boolean {
+  const store = useContext(InspectorSlotContext);
+  return useSyncExternalStore(
+    store?.subscribe ?? NOTHING.subscribe,
+    () => (store ? store.get() !== null && store.get() !== undefined : true),
+    () => true,
+  );
+}
+
+/**
  * Renders whatever the current page put in the slot.
  *
  * A component rather than a hook call in the shell, so the re-render a change

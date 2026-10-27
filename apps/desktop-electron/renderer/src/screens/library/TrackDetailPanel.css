@@ -120,10 +120,10 @@
 }
 
 /* Sub-tabs (T8): one framed strip as wide as the panel, its four parts sharing the width, so they
-   are not squeezed into a short box and each sits apart from the next (C260). They wrap rather
-   than clip at the Inspector's narrowest. */
+   are not squeezed into a short box and each sits apart from the next (C260). One line always, even
+   --space-sm padding; at the narrowest the strip scrolls sideways rather than wrap or crush (M120). */
 .cp-track-detail > .cp-tabs {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   width: 100%;
 }
 

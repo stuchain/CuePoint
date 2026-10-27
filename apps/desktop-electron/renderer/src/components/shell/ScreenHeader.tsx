@@ -12,6 +12,12 @@ export interface ScreenHeaderProps {
    * drawn `aria-hidden`, so it must hold no interactive content (no buttons, links or fields).
    */
   display?: ReactNode;
+  /**
+   * The title (or `display`) is the page's data, a name the person gave or Beatport did (an artist,
+   * a label, a playlist): it may be long, so it shrinks with an ellipsis and carries its whole
+   * value in the hint rather than push the status and actions out of the header (M190).
+   */
+  dataTitle?: boolean;
   /** Where this is inside the page, drawn above the title. */
   crumb?: ReactNode;
   /**
@@ -80,6 +86,7 @@ export function headerHeightPx(offsetHeight: number, top: number): number {
 export function ScreenHeader({
   title,
   display,
+  dataTitle = false,
   crumb,
   extras,
   beside,
@@ -94,16 +101,25 @@ export function ScreenHeader({
 }: ScreenHeaderProps) {
   const root = useRef<HTMLElement>(null);
   // The header sticks, so what sticks or scrolls under it needs its height: the page gets it as
-  // `--screen-header-height`.
+  // `--screen-header-height`. The panels beside the page take the same height as `--side-head-height`
+  // on the root, so their title bars meet this header's line (M50, D9).
   useLayoutEffect(() => {
     const header = root.current;
     const host = header?.parentElement;
     if (!header || !host) return;
+    const rootStyle = document.documentElement.style;
+    let written: string | null = null;
     // A plain pixel number, so a script can read it (`useSectionInView`): the header's height
     // plus the gap it keeps above itself when it sticks.
     const measure = () => {
       const top = Number.parseFloat(getComputedStyle(header).top);
-      host.style.setProperty("--screen-header-height", `${headerHeightPx(header.offsetHeight, top)}px`);
+      const height = `${headerHeightPx(header.offsetHeight, top)}px`;
+      host.style.setProperty("--screen-header-height", height);
+      // A header of a page kept hidden measures 0: it leaves the shown page's value alone.
+      if (header.offsetHeight > 0) {
+        rootStyle.setProperty("--side-head-height", height);
+        written = height;
+      }
     };
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
@@ -111,6 +127,9 @@ export function ScreenHeader({
     return () => {
       observer?.disconnect();
       host.style.removeProperty("--screen-header-height");
+      if (written !== null && rootStyle.getPropertyValue("--side-head-height") === written) {
+        rootStyle.removeProperty("--side-head-height");
+      }
     };
   }, []);
   const hasDisplay = display !== undefined && display !== null && display !== false && display !== "";
@@ -122,11 +141,18 @@ export function ScreenHeader({
       {crumb && <div className="cp-screen-header__crumb">{crumb}</div>}
       <div className="cp-screen-header__main">
         <div className="cp-screen-header__title-row">
-          <h1 className={`cp-screen-header__title ${hasDisplay ? "cp-screen-header__title--hidden cp-visually-hidden" : ""}`.trim()}>
+          <h1
+            className={`cp-screen-header__title ${hasDisplay ? "cp-screen-header__title--hidden cp-visually-hidden" : ""}${dataTitle && !hasDisplay ? " cp-screen-header__title--data" : ""}`.trim()}
+            data-cut-hint={dataTitle && !hasDisplay ? "" : undefined}
+          >
             {title}
           </h1>
           {hasDisplay && (
-            <div className="cp-screen-header__display" aria-hidden="true">
+            <div
+              className={`cp-screen-header__display${dataTitle ? " cp-screen-header__display--data" : ""}`}
+              aria-hidden="true"
+              data-cut-hint={dataTitle ? "" : undefined}
+            >
               {display}
             </div>
           )}

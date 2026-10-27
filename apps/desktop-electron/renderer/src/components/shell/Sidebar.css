@@ -9,8 +9,9 @@
  * icon is optically centered in the rail rather than sitting where a hidden
  * label left it.
  *
- * Sizes follow the text, never the window's height (C208): a row is one row-height tall, the
- * Search field one control tall, and the list scrolls when the window is too short for them.
+ * Sizes follow the text, never the window's height (C208): the brand, the Search row and every
+ * entry are one bar tall in both states, so entry n is at one y whether the rail is open or
+ * closed (M486, M487); the list scrolls when the window is too short for them.
  */
 .cp-sidebar {
   --cp-sidebar-pad: var(--space-sm);
@@ -55,6 +56,8 @@
   flex: none;
   align-items: center;
   min-width: 0;
+  /* With the rail's gap, 8 under the brand before the Search row (M487). */
+  margin-bottom: var(--space-xs);
 }
 
 /*
@@ -67,12 +70,13 @@
   min-width: 0;
   align-items: center;
   gap: var(--space-sm);
-  min-height: var(--row-height);
+  /* One bar tall in both states, so the entries below do not move (M486). */
+  min-height: var(--toolbar-height);
   /* No block padding. The left edge is the entries' (their padding and border), so the logo and
      the icons all start at one x. */
   padding: 0 0 0 var(--cp-sidebar-edge);
   color: var(--fg-primary);
-  font-size: var(--font-size-sm);
+  font-size: var(--control-font-size);
   font-weight: var(--weight-strong);
   text-decoration: none;
 }
@@ -80,7 +84,9 @@
 .cp-sidebar--collapsed .cp-sidebar__brand {
   flex: none;
   justify-content: center;
-  padding: var(--space-xs);
+  /* A bar-tall square, as the rail's entries are (M487). */
+  width: var(--toolbar-height);
+  padding: 0;
 }
 
 /* The brand's hint wrapper takes the row, so the link keeps its width. */
@@ -206,7 +212,8 @@
   background: transparent;
   color: var(--fg-muted);
   font: inherit;
-  font-size: var(--font-size-sm);
+  /* The one pressable word size, the control's, not 15 (M26). */
+  font-size: var(--control-font-size);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
@@ -214,7 +221,10 @@
 
 .cp-sidebar--collapsed .cp-sidebar__link {
   justify-content: center;
-  padding: var(--space-xs);
+  /* A bar-tall square at every scale (M487). */
+  flex: none;
+  width: var(--toolbar-height);
+  padding: 0;
 }
 
 /*
@@ -225,7 +235,8 @@
 .cp-sidebar__search {
   flex: none;
   width: 100%;
-  min-height: var(--control-height);
+  /* The same bar-tall row in both states (M486, M487); the open field is drawn on it. */
+  min-height: var(--toolbar-height);
 }
 
 /*
@@ -253,14 +264,17 @@
   container: sidebar-search / inline-size;
 }
 
-/* The magnifier inside the field: three quarters of the entries' icons, closer to the text's size. */
+/* The magnifier inside the field: the small icon size, on the 12-unit art grid (M38). */
 .cp-sidebar__search--box .cp-sidebar__icon .cp-pixel-icon {
-  width: round(nearest, calc(var(--icon-size) * 0.75), 1px);
-  height: round(nearest, calc(var(--icon-size) * 0.75), 1px);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
+/* Inter at the control size, as every page's search is (M487). */
 .cp-sidebar__search-placeholder {
   flex: 1 0 auto;
+  font-family: var(--font-data);
+  font-size: var(--control-font-size);
 }
 
 @container sidebar-search (max-width: 10.5em) {
@@ -288,7 +302,7 @@
   color: var(--fg-primary);
   background: var(--selected-row-background);
   background-origin: border-box;
-  font-weight: var(--weight-strong);
+  /* No heavier weight: the label would widen when picked (M361). The tint, the bar and the accent icon mark it. */
 }
 
 .cp-sidebar__link:focus-visible {
@@ -374,4 +388,14 @@
 
 .cp-sidebar[data-tight] .cp-sidebar__top {
   display: none;
+}
+
+/* Tight and closed: the entries stay square, on the smaller icon (M487). */
+.cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__link,
+.cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__search {
+  width: var(--icon-size);
+}
+
+.cp-sidebar[data-tight] .cp-sidebar__search {
+  min-height: var(--icon-size);
 }

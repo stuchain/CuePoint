@@ -58,7 +58,8 @@
   flex: 1 1 auto;
   max-width: 100%;
   display: flex;
-  align-items: flex-start;
+  /* What sits beside the title shares its last baseline, not its box's centre (M57). */
+  align-items: last baseline;
   gap: var(--space-md);
   min-width: 0;
   min-height: var(--toolbar-height);
@@ -74,7 +75,7 @@
   font-family: var(--font-voice);
   font-size: var(--font-size-page);
   font-weight: var(--font-weight-bold);
-  letter-spacing: 0.01em;
+  /* No letter-spacing: it put the glyphs on sub-pixels (M25). */
   line-height: var(--toolbar-height);
   min-width: 0;
   overflow: hidden;
@@ -82,9 +83,22 @@
   white-space: nowrap;
 }
 
+/* Focus lands on the heading after a page switch (M484): it is where you are, not a control, so no ring. */
+.cp-screen-header__title:focus,
+.cp-screen-header__display:focus {
+  outline: none;
+}
+
 /* The page name always shows in full; whatever shrinks, shrinks beside it. */
 .cp-screen-header__title:where(:not(.cp-visually-hidden)) {
   flex: none;
+}
+
+/* A title that is the page's data (an artist, a label) may be long: it shrinks, cut with an ellipsis
+   and its whole value in the hint, so the status and the actions stay in the header (M190). */
+.cp-screen-header__title--data:where(:not(.cp-visually-hidden)),
+.cp-screen-header__display--data {
+  flex: 0 1 auto;
 }
 
 .cp-screen-header__status,
@@ -163,10 +177,10 @@
   background: var(--border-muted);
 }
 
-/* The icon and the word are a fixed --space-xs apart. Open is Button's own on look
+/* The icon and the word are a fixed --space-sm apart (M65). Open is Button's own on look
    ([aria-pressed]), the same as every toggle (D1). */
 .cp-details-toggle {
-  gap: var(--space-xs);
+  gap: var(--space-sm);
   white-space: nowrap;
 }
 

@@ -37,10 +37,22 @@ export function saveSidebarCollapsed(collapsed: boolean): void {
  * @param measure.overflow How far the rail's rows run past its height now.
  * @param measure.height The rail's height now.
  * @param measure.needed The height the loose rail needed when it tightened.
+ * @param measure.scale The text size now. The tight rail is for 2x and up (M70): below that the
+ *   loose rail keeps its full-size targets and its list scrolls instead. Unknown reads as eligible.
  */
-export function railTight(tight: boolean, measure: { overflow: number; height: number; needed: number }): boolean {
-  return tight ? measure.height < measure.needed : measure.overflow > 0;
+export function railTight(
+  tight: boolean,
+  measure: { overflow: number; height: number; needed: number; scale?: number },
+): boolean {
+  if (measure.scale !== undefined && Number.isFinite(measure.scale) && measure.scale < TIGHT_FROM_SCALE) return false;
+  return tight ? measure.height < measure.needed : measure.overflow > 1;
 }
+
+/**
+ * The text size from which the rail may go tight (M70). At 1.5x in 1264x735 the rail used to
+ * tighten with 251 px to spare, which made the targets smaller at a larger size.
+ */
+export const TIGHT_FROM_SCALE = 2;
 
 /**
  * The height the loose rail needed, for the rail as it is drawn now (zoom spot 3A). The open and

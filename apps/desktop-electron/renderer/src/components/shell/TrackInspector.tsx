@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import {
+  INSPECTOR_DEFAULT_WIDTH,
   inspectorVisible,
   inspectorWidthFromPx,
   inspectorWidthPx,
@@ -9,7 +10,7 @@ import {
   withInspectorChoice,
   type InspectorState,
 } from "./inspectorState";
-import { useInspectorAutoOpen } from "./inspectorSlot";
+import { useInspectorAutoOpen, useInspectorHasContent } from "./inspectorSlot";
 import { DETAILS_PANEL_ID, focusDetailsToggle, publishDetails } from "./detailsToggle";
 import { CloseButton } from "../CloseButton";
 import { findOwningDestination } from "./navRegistry";
@@ -53,6 +54,9 @@ interface TrackInspectorProps {
 /** How long a selection waits before it opens Track details: the double-click window (K1). */
 export const INSPECTOR_AUTO_OPEN_DELAY_MS = 500;
 
+/** One arrow press on the resize handle, in pixels at the current size. */
+const INSPECTOR_NUDGE = 16;
+
 export function TrackInspector({ children }: TrackInspectorProps) {
   // The width is kept in 1× units and drawn times the scale, so a bigger text size
   // widens the panel with it (R2-4, DEC-273).
@@ -63,6 +67,8 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   // The page is the destination the location belongs to (K1); Discover's sub-pages share it.
   const page = findOwningDestination(useLocation().pathname)?.id ?? "other";
   const autoOpen = useInspectorAutoOpen();
+  // A page with no track list puts nothing in the slot: no panel, and no Details toggle (M490).
+  const hasContent = useInspectorHasContent();
   // Which page a selection was first seen on. On a page change the new page still reads the
   // old page's selection (and its slot) for a commit, until that page's cleanup runs; a
   // selection only opens the panel on the page it came from, so the panel never flashes open.
@@ -85,9 +91,9 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     const timer = setTimeout(() => setArmed(true), INSPECTOR_AUTO_OPEN_DELAY_MS);
     return () => clearTimeout(timer);
   }, [autoOpening]);
-  const visible = state.choice[page]
-    ? inspectorVisible(state, page, selectionHere, autoOpen)
-    : autoOpening && armed;
+  const visible =
+    hasContent &&
+    (state.choice[page] ? inspectorVisible(state, page, selectionHere, autoOpen) : autoOpening && armed);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
   const panelRef = useRef<HTMLElement>(null);
@@ -119,13 +125,21 @@ export function TrackInspector({ children }: TrackInspectorProps) {
 
   const width = inspectorWidthPx(state.width, scale, windowWidth);
 
-  const toggle = useCallback(() => {
-    toggled.current = true;
-    const panel = panelRef.current;
-    if (panel && moves) leaveAsGhost(panel);
-    setEntering(!panel);
-    setState((prev) => withInspectorChoice(prev, page, !visibleRef.current));
-  }, [moves, page]);
+  // A button asks for focus to follow (the panel's close hands it to the Details toggle). The
+  // shortcut and the menu leave it where it was (M472), unless it was inside the panel that closes.
+  const toggle = useCallback(
+    (moveFocus = true) => {
+      const panel = panelRef.current;
+      toggled.current =
+        moveFocus || Boolean(panel && document.activeElement && panel.contains(document.activeElement));
+      if (panel && moves) leaveAsGhost(panel);
+      setEntering(!panel);
+      setState((prev) => withInspectorChoice(prev, page, !visibleRef.current));
+    },
+    [moves, page],
+  );
+  const toggleByButton = useCallback(() => toggle(true), [toggle]);
+  const toggleByKey = useCallback(() => toggle(false), [toggle]);
 
   // Hiding removes the panel's own close button: focus goes to the header's Details toggle,
   // which opens it again. Opening moves focus to the panel's close button, as before.
@@ -143,12 +157,12 @@ export function TrackInspector({ children }: TrackInspectorProps) {
 
   // The page header draws the Details toggle (detailsToggle.tsx); this tells it the state.
   useEffect(() => {
-    publishDetails({ open: visible, toggle });
-  }, [visible, toggle]);
+    publishDetails(hasContent ? { open: visible, toggle: toggleByButton } : null);
+  }, [visible, toggleByButton, hasContent]);
   useEffect(() => () => publishDetails(null), []);
 
   // View → Track details in the menu.
-  useShellCommand("toggle-inspector", toggle);
+  useShellCommand("toggle-inspector", toggleByKey);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -156,12 +170,12 @@ export function TrackInspector({ children }: TrackInspectorProps) {
         // Not behind an open dialog (C201).
         if (isDialogOpen()) return;
         event.preventDefault();
-        toggle();
+        toggleByKey();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggle]);
+  }, [toggleByKey]);
 
   const startResize = useCallback(
     (startX: number) => {
@@ -225,16 +239,37 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       onKeyDown={(event) => {
         if (escapeClosesPanel(event)) {
           event.preventDefault();
-          toggle();
+          toggleByButton();
         }
       }}
       aria-label="Track details"
       data-width={width}
     >
+      <header className="cp-panel-header cp-side-head cp-inspector__header">
+        <h2 className="cp-panel-header__title">Track details</h2>
+        <CloseButton
+          ref={hideRef}
+          className="cp-inspector__hide"
+          onClick={toggleByButton}
+          aria-expanded
+          aria-label="Hide track details"
+          shortcut="Mod+I"
+        />
+      </header>
+
+      <div className="cp-inspector__body">
+        {children ?? (
+          <p className="cp-inspector__empty">
+            Nothing selected on this page.
+          </p>
+        )}
+      </div>
+
       {/*
         A separator role rather than a button: this is a resize handle, and
         making it focusable with arrow-key support is what keeps the panel
-        resizable without a mouse.
+        resizable without a mouse. Last in the panel, so it is not the first tab stop (M359); it
+        is drawn on the left edge by its own position. Enter puts the width back.
       */}
       <div
         className={`cp-inspector__handle ${dragging ? "cp-inspector__handle--active" : ""}`.trim()}
@@ -250,34 +285,18 @@ export function TrackInspector({ children }: TrackInspectorProps) {
         onKeyDown={(event) => {
           if (event.key === "ArrowLeft") {
             event.preventDefault();
-            nudge(16);
+            nudge(INSPECTOR_NUDGE);
           }
           if (event.key === "ArrowRight") {
             event.preventDefault();
-            nudge(-16);
+            nudge(-INSPECTOR_NUDGE);
+          }
+          if (event.key === "Enter") {
+            event.preventDefault();
+            setState((prev) => ({ ...prev, width: INSPECTOR_DEFAULT_WIDTH }));
           }
         }}
       />
-
-      <header className="cp-panel-header cp-inspector__header">
-        <h2 className="cp-panel-header__title">Track details</h2>
-        <CloseButton
-          ref={hideRef}
-          className="cp-inspector__hide"
-          onClick={toggle}
-          aria-expanded
-          aria-label="Hide track details"
-          shortcut="Mod+I"
-        />
-      </header>
-
-      <div className="cp-inspector__body">
-        {children ?? (
-          <p className="cp-inspector__empty">
-            Nothing selected on this page.
-          </p>
-        )}
-      </div>
     </aside>
   );
 }
