@@ -5,6 +5,7 @@ import {
   PIXEL_ICON_NAMES,
   pixelRunsFor,
   toPixelRuns,
+  PIXEL_ICON_ALIASES,
   type PixelIconName,
 } from "./pixelIcons";
 import { NAV_DESTINATIONS } from "./shell/navRegistry";
@@ -77,6 +78,8 @@ describe("pixel icon artwork", () => {
   it("has no duplicate artwork", () => {
     const seen = new Map<string, PixelIconName>();
     for (const name of PIXEL_ICON_NAMES) {
+      // M44: chevron-right-sm is the one chevron under its old name, on purpose.
+      if (PIXEL_ICON_ALIASES.includes(name)) continue;
       const key = PIXEL_ICONS[name].join("\n");
       const twin = seen.get(key);
       expect(twin, `${name} is identical to ${twin}`).toBeUndefined();
@@ -181,9 +184,18 @@ describe("C138 icons: drawn marks for the typed glyphs", () => {
     expect(PIXEL_ICONS["dot-filled"]).not.toEqual(PIXEL_ICONS["dot-half"]);
   });
 
-  it("draws the small chevron in fewer rows than the chevron", () => {
-    const rows = (name: PixelIconName) => PIXEL_ICONS[name].filter((row) => row.includes("#")).length;
-    expect(rows("chevron-right-sm")).toBeLessThan(rows("chevron-right"));
+  it("draws one chevron: the small name is the same art (M44, D3)", () => {
+    expect(PIXEL_ICONS["chevron-right-sm"]).toEqual(PIXEL_ICONS["chevron-right"]);
+    expect(PIXEL_ICON_ALIASES).toEqual(["chevron-right-sm"]);
+  });
+
+  it("draws the chevron two cells thick and centred, so it is neither heavy nor off-centre (M44)", () => {
+    const rows = PIXEL_ICONS["chevron-right"].map((row) => [...row].map((c): number => (c === "#" ? 1 : 0)));
+    const lit = rows.map((row, y) => (row.includes(1) ? y : -1)).filter((y) => y >= 0);
+    expect(lit.length).toBe(6);
+    // As many empty rows above as below.
+    expect(Math.min(...lit)).toBe(PIXEL_GRID_SIZE - 1 - Math.max(...lit));
+    for (const y of lit) expect(rows[y]!.reduce((a, b) => a + b, 0)).toBe(2);
   });
 
   it("draws the tick as the checkbox's tick", () => {
@@ -197,5 +209,37 @@ describe("the gem and the three dots", () => {
     expect(PIXEL_ICONS.discover).not.toEqual(PIXEL_ICONS.search);
     // Three dots: three runs on each of the two rows they use.
     expect(pixelRunsFor("more")).toHaveLength(6);
+  });
+});
+
+describe("round 3 icon art (M31, M32, M24, M39)", () => {
+  const litRows = (name: PixelIconName) => {
+    const rows = PIXEL_ICONS[name].map((row, y) => (row.includes("#") ? y : -1)).filter((y) => y >= 0);
+    return [Math.min(...rows), Math.max(...rows)];
+  };
+
+  it("draws the transport icons level: repeat, repeat-one, queue and smart start on row 1 or 2 and are not a row high (M31)", () => {
+    // Shuffle runs rows 1-9 and the waveform 1-10: the loop runs 1-10, the queue and smart start on row 2.
+    expect(litRows("repeat")).toEqual([1, 10]);
+    expect(litRows("repeat-one")).toEqual([1, 10]);
+    expect(litRows("queue")[0]).toBe(2);
+    expect(litRows("smart")[0]).toBe(2);
+  });
+
+  it("draws repeat as a loop with an arrow, not a box (M31)", () => {
+    expect(PIXEL_ICONS.repeat.slice(1, 3).join("")).toContain("##");
+    expect(PIXEL_ICONS.repeat[1]!.indexOf("#")).toBeGreaterThan(5);
+  });
+
+  it("gives Activity its own glyph, not a bar chart like Statistics (M32)", () => {
+    expect(PIXEL_ICONS.activity).not.toEqual(PIXEL_ICONS.statistics);
+    expect(PIXEL_ICONS.activity[1]).toBe("...######...");
+  });
+
+  it("has a plus and a calendar for New and for the date button (M24, M39)", () => {
+    expect(PIXEL_ICON_NAMES).toEqual(expect.arrayContaining(["plus", "calendar"]));
+    // The plus is symmetric across and down.
+    const plus = PIXEL_ICONS.plus;
+    expect(plus.map((row) => [...row].reverse().join(""))).toEqual([...plus]);
   });
 });

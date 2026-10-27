@@ -119,11 +119,9 @@ const volumeMuted = [
   "............",
 ];
 
-/** Queue: stacked lines, the list the player is working through (PLAYER-08). */
+/** Queue: stacked lines, the list the player is working through (PLAYER-08); rows 2-9 (M31). */
 const queue = [
   "............",
-  "..##.######.",
-  "..##.######.",
   "............",
   "..##.######.",
   "..##.######.",
@@ -131,6 +129,8 @@ const queue = [
   "..##.######.",
   "..##.######.",
   "............",
+  "..##.######.",
+  "..##.######.",
   "............",
   "............",
 ];
@@ -168,7 +168,7 @@ const shuffle = [
 ];
 
 /**
- * Repeat: a closed loop.
+ * Repeat: a loop with an arrow, rows 1-10 so it sits level with shuffle and waveform (M31).
  *
  * Repeat has three states and DEC-052 asks for three *visually distinct* ones
  * rather than two and a badge, so `repeat-one` is its own drawing rather than
@@ -177,32 +177,32 @@ const shuffle = [
  */
 const repeat = [
   "............",
-  "...######...",
-  "..##....##..",
+  ".......#....",
+  ".......##...",
+  "..########..",
+  "..#....###..",
+  "..#....#.#..",
   "..#......#..",
   "..#......#..",
   "..#......#..",
   "..#......#..",
-  "..##....##..",
-  "...######...",
-  "............",
-  "............",
+  "..########..",
   "............",
 ];
 
 /** Repeat one: the same loop around a numeral 1. */
 const repeatOne = [
   "............",
-  "...######...",
-  "..##....##..",
-  "..#..##..#..",
-  "..#...#..#..",
-  "..#...#..#..",
-  "..#..###.#..",
-  "..##....##..",
-  "...######...",
-  "............",
-  "............",
+  ".......#....",
+  ".......##...",
+  "..########..",
+  "..#....###..",
+  "..#..#.#.#..",
+  "..#.##...#..",
+  "..#..#...#..",
+  "..#.###..#..",
+  "..#......#..",
+  "..########..",
   "............",
 ];
 
@@ -243,19 +243,19 @@ const library = [
   "............",
 ];
 
-/** Activity: rising bars on a baseline — a log of things that happened. */
+/** Activity: a clock face, what happened and when (M32); the bar chart is Statistics. */
 const activity = [
   "............",
-  "..........##",
-  "..........##",
-  "....##....##",
-  "....##....##",
-  "....##.##.##",
-  ".##.##.##.##",
-  ".##.##.##.##",
-  ".##.##.##.##",
-  ".##.##.##.##",
-  "############",
+  "...######...",
+  "..##....##..",
+  ".##......##.",
+  ".#...#....#.",
+  ".#...#....#.",
+  ".#...###..#.",
+  ".#........#.",
+  ".##......##.",
+  "..##....##..",
+  "...######...",
   "............",
 ];
 
@@ -484,6 +484,7 @@ const playlist = [
  */
 const smart = [
   "............",
+  "............",
   ".########...",
   "..######....",
   "...####..##.",
@@ -492,7 +493,6 @@ const smart = [
   "....##......",
   "....##......",
   "...####.....",
-  "............",
   "............",
   "............",
 ];
@@ -519,24 +519,6 @@ const tag = [
   "............",
 ];
 
-/**
- * Chevrons for the sidebar's toggle (NAV-2): drawn rather than the « » text glyphs, which
- * sit differently in every font. Mirror images of each other.
- */
-const chevronLeft = [
-  "............",
-  "............",
-  ".......##...",
-  "......##....",
-  ".....##.....",
-  "....##......",
-  "....##......",
-  ".....##.....",
-  "......##....",
-  ".......##...",
-  "............",
-  "............",
-];
 
 /** Close: a diagonal cross, for dismissing and removing (BAR-8). */
 const close = [
@@ -554,20 +536,6 @@ const close = [
   "............",
 ];
 
-const chevronRight = [
-  "............",
-  "............",
-  "...##.......",
-  "....##......",
-  ".....##.....",
-  "......##....",
-  "......##....",
-  ".....##.....",
-  "....##......",
-  "...##.......",
-  "............",
-  "............",
-];
 
 /**
  * The brand (HDR-6): a cue point, the marker a DJ drops on a track — a pin whose head is
@@ -620,21 +588,58 @@ const keys = [
   "............",
 ];
 
-// G6 T10: the chevron that marks a Select, the sort arrows and the edit pencil, so none of
-// them is a typed glyph any more.
-// G6 T10: the chevron that marks a Select, the sort arrows and the edit pencil.
-const chevronDown = [
+
+/**
+ * The one chevron (M44, D3): two cells thick, six rows, centred. Right is drawn; left is its mirror
+ * and down its transpose, so the three always agree. The sidebar toggle, the "Open in Library"
+ * link, the trail, selects and tree twisties all draw this one.
+ */
+const chevronRight = [
   "............",
   "............",
   "............",
-  "..#......#..",
-  "..##....##..",
-  "...##..##...",
-  "....####....",
+  "....##......",
+  ".....##.....",
+  "......##....",
+  "......##....",
+  ".....##.....",
+  "....##......",
+  "............",
+  "............",
+  "............",
+];
+const chevronLeft = chevronRight.map((row) => [...row].reverse().join(""));
+const chevronDown = chevronRight[0]!.split("").map((_, c) => chevronRight.map((row) => row[c]).join(""));
+
+/** Plus: a bar across a bar, for "New" and "Add" (M24). */
+const plus = [
+  "............",
+  "............",
+  "............",
+  ".....##.....",
+  ".....##.....",
+  "..########..",
+  "..########..",
+  ".....##.....",
   ".....##.....",
   "............",
   "............",
   "............",
+];
+
+/** Calendar: a month page with its two rings, for a date field's button (M39). */
+const calendar = [
+  "............",
+  "..##....##..",
+  ".##########.",
+  ".##########.",
+  ".#........#.",
+  ".#.##.##..#.",
+  ".#.##.##..#.",
+  ".#........#.",
+  ".#.##.##..#.",
+  ".#.##.##..#.",
+  ".##########.",
   "............",
 ];
 
@@ -909,21 +914,6 @@ const refresh = [
   "............",
 ];
 
-/** The small chevron, for a link that goes somewhere ("Open in Library ›"): five rows, in the line of text. */
-const chevronRightSm = [
-  "............",
-  "............",
-  "............",
-  "....##......",
-  ".....##.....",
-  "......##....",
-  ".....##.....",
-  "....##......",
-  "............",
-  "............",
-  "............",
-  "............",
-];
 
 /** More: three dots in a row, the button that opens a row's other actions. */
 const more = [
@@ -983,7 +973,10 @@ export const PIXEL_ICONS = {
   "chevron-down": chevronDown,
   "arrow-up": arrowUp,
   "arrow-down": arrowDown,
-  "chevron-right-sm": chevronRightSm,
+  // The same drawing as chevron-right (M44): kept as a name until Tabs and the Library trail say chevron-right.
+  "chevron-right-sm": chevronRight,
+  plus,
+  calendar,
   edit,
   columns,
   close,
@@ -1007,6 +1000,9 @@ export const PIXEL_ICONS = {
   refresh,
   more,
 } as const satisfies Record<string, readonly string[]>;
+
+/** Names that draw the same art as another on purpose (the duplicate-artwork test lets them). */
+export const PIXEL_ICON_ALIASES: readonly PixelIconName[] = ["chevron-right-sm"];
 
 export type PixelIconName = keyof typeof PIXEL_ICONS;
 

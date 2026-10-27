@@ -1,9 +1,8 @@
 .cp-pixel-icon {
   /*
-   * A 12-unit viewBox drawn into 24px means one grid cell is exactly 2 CSS
-   * pixels at 1x, 4 at 2x, 6 at 3x — always a whole number, so cell edges
-   * never land mid-pixel. Only three sizes exist (--icon-size-sm / -md / -lg), each a
-   * whole multiple of the grid, and they scale pixelated, never smoothed.
+   * A 12-unit viewBox drawn into a multiple of 12px: one grid cell is a whole number of CSS pixels
+   * at every scale, so cell edges never land mid-pixel. Two sizes exist (--icon-size-sm and
+   * --icon-size-lg, D3; --icon-size-md is an alias of lg), and they scale pixelated, never smoothed.
    */
   width: var(--icon-size-lg);
   height: var(--icon-size-lg);

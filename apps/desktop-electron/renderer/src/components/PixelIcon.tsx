@@ -11,8 +11,9 @@ interface PixelIconProps {
   title?: string;
   className?: string;
   /**
-   * One of three sizes, and no other: `"sm"` 12, `"md"` 16, `"lg"` 24 (the default), each times
-   * the text size and a whole multiple of the 12-unit grid, so no art pixel is fractional.
+   * One of two sizes (D3): `"sm"` and `"lg"` (the default), each a whole multiple of the 12-unit
+   * grid so no art pixel is fractional. sm is 12 up to 1.25x and 24 from 1.5x; lg is 24 at 1x and
+   * 1.25x and 36 from 1.5x. `"md"` is the old medium, now an alias of lg until its last two uses move.
    */
   size?: PixelIconSize;
 }
