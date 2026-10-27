@@ -51,6 +51,8 @@ import { userMessage } from "../../api/userMessage";
 
 interface WantlistViewProps {
   tools: DiscoverTools;
+  /** Told whether wanted tracks are showing (M490: the page's Details slot). */
+  onHasRows?: (has: boolean) => void;
 }
 
 const WANTLIST_SORTS: readonly WantlistSort[] = ["added_at", "release_date", "artist", "title"];
@@ -73,7 +75,7 @@ function isFilter(value: string): value is DiscoverOwnedFilter {
   return value === "all" || value === "hide" || value === "only";
 }
 
-export function WantlistView({ tools }: WantlistViewProps) {
+export function WantlistView({ tools, onHasRows }: WantlistViewProps) {
   const openPage = useOpenPage();
   const [owned, setOwned] = useState<DiscoverOwnedFilter>("all");
   const [bought, setBought] = useState<DiscoverOwnedFilter>("all");
@@ -271,6 +273,11 @@ export function WantlistView({ tools }: WantlistViewProps) {
   const filtered = owned !== "all" || bought !== "all";
   if (page != null) seenPage.current = true;
   // Nothing wanted and nothing filtered: no bar, header or Columns over an empty list.
+  const showsRows = (page?.entries ?? 0) > 0;
+  useEffect(() => {
+    onHasRows?.(showsRows);
+  }, [onHasRows, showsRows]);
+  useEffect(() => () => onHasRows?.(false), [onHasRows]);
   const bareEmpty =
     !filtered && !list.loading && list.status !== "error" && page != null && page.entries === 0;
 
@@ -301,7 +308,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
         action={{ label: RETRY, onClick: reload }}
       />
     ) : list.loading ? (
-      <Loading what="your wantlist" />
+      <Loading what="your wantlist" centered />
     ) : (page?.entries ?? 0) === 0 ? (
       <EmptyState icon="discover" headline={EMPTY_HEADLINE} description={EMPTY_DESCRIPTION} />
     ) : (
@@ -334,7 +341,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
   if (!seenPage.current && page == null && list.status !== "error") {
     return (
       <section className="discover-wantlist" aria-label="Wantlist" {...trackFocus}>
-        <Loading what="your wantlist" />
+        <Loading what="your wantlist" centered />
       </section>
     );
   }

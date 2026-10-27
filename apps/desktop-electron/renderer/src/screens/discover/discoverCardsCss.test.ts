@@ -21,9 +21,15 @@ describe("Discover cards (C254)", () => {
     expect(css).not.toMatch(/art--placeholder|art--artist|--discover-card-placeholder/);
   });
 
-  it("fills the placeholder into the picture's square and fades a picture in (M43, M385)", () => {
+  // Moved for M385: the picture fades in once it has loaded, through the shared Art (its own
+  // sheet), so no rule here animates it on mount.
+  it("fills the placeholder into the picture's square and leaves the picture's fade to Art (M43, M385)", () => {
     expect(body(".discover-card__art .cp-artwork-placeholder")).toMatch(/height:\s*100%/);
-    expect(css).toMatch(/data-motion-entrance\] \.discover-card__art img[^}]*cp-fade-in/);
+    expect(css).not.toMatch(/\.discover-card__art img[^{]*\{[^}]*animation/);
+  });
+
+  it("gives a ticked card no ring and no tint: the tick box alone says it (M338)", () => {
+    expect(css).not.toMatch(/discover-card--ticked/);
   });
 
   it("sets the tick 12 in from the top right corner (M175)", () => {

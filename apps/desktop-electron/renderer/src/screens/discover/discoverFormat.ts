@@ -20,6 +20,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { formatDay, formatDayTime, formatRange } from "../../format/dates";
 import { countNoun, formatCount } from "../../format/counts";
+import { quoted } from "../../format/words";
 import type { HeaderFacts } from "../../components/shell/ScreenHeader";
 
 /**
@@ -234,7 +235,7 @@ export function artistsText(row: Pick<BeatportTrackRow, "artists" | "remixers">)
  * then names the chart itself) reads "On the chart “{chart}”".
  */
 export function sourceText(source: DiscoverRunSource): string {
-  const name = source.source_name ? `“${source.source_name}”` : null;
+  const name = source.source_name ? quoted(source.source_name) : null;
   if (
     source.source_type === "chart" &&
     name &&
@@ -268,7 +269,7 @@ export function foundLine(found: number, inLibrary: number, hiding: boolean): st
 
 /** What making a playlist did, for the page's notice (DSC-7). */
 export function pushOutcome(result: BeatportPlaylistResult): string {
-  const name = `“${result.name}”`;
+  const name = quoted(result.name);
   const skipped =
     result.skipped_owned > 0
       ? ` ${countNoun(result.skipped_owned, "track")} already in your library ${result.skipped_owned === 1 ? "was" : "were"} left out.`
@@ -301,7 +302,7 @@ export function resolveOutcome(result: BeatportResolveResult): string {
   const missing =
     result.not_found > 0 ? `; Beatport no longer has ${formatCount(result.not_found)}` : "";
   if (result.outcome === "succeeded") return `${read}${missing}.`;
-  if (result.outcome === "cancelled" || result.cancelled) return `Stopped when asked. ${read}${missing}.`;
+  if (result.outcome === "cancelled" || result.cancelled) return `Stopped. ${read}${missing}.`;
   return `Stopped because ${stoppedBecause(result.error_class)}. ${read}${missing}.`;
 }
 

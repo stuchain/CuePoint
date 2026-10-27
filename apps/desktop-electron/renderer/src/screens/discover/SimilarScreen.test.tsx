@@ -163,6 +163,14 @@ afterEach(() => {
 });
 
 describe("the seed and its suggestions", () => {
+  it("treats the seed's title as data that shrinks before the actions (M190)", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    const title = screen.getByRole("heading", { level: 1, name: SEED.track.title });
+    const header = title.closest("header") as HTMLElement;
+    expect(header.querySelector(".cp-screen-header__title--data, .cp-screen-header__display--data")).not.toBeNull();
+  });
+
   it("asks for the seed's suggestions and reads each row through the track-detail path", async () => {
     renderAt(similarPath(1));
     await listed();
@@ -227,7 +235,7 @@ describe("the seed and its suggestions", () => {
     // Spelled out, with check marks (C79, C138); Title and Artist lead, then Key, BPM and Genre (C70).
     expect(headers.slice(0, 5)).toEqual(["Title", "Artist", "Key", "BPM", "Genre"]);
     expect(headers).toEqual(
-      expect.arrayContaining(["BPM Δ", "Same genre", "Same label", "Same artist", "Fit"]),
+      expect.arrayContaining(["BPM change", "Same genre", "Same label", "Same artist", "Fit"]),
     );
     expect(headers).not.toContain("Reasons");
     expect(headers).not.toContain("Match");

@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
+import { useLayerStack } from "../../hooks/useLayerStack";
 import { usePresence } from "../../tokens/usePresence";
 import { WheelPopover } from "./WheelPopover";
 import { closeWheel, useWheelState } from "./wheelStore";
@@ -11,12 +12,17 @@ import { closeWheel, useWheelState } from "./wheelStore";
  * It is drawn in the body, fixed under whichever opener was used, so no scrolling panel clips it.
  *
  * Escape, a press outside and the opener itself close it. A press on an opener is not
- * "outside": the opener's own click decides.
+ * "outside": the opener's own click decides. It is on the one stack of open layers (M469), so
+ * Escape is its only while it is the newest: a menu or dialog opened over it answers first, and a
+ * dialog it was opened from stays open.
  */
 export function WheelPopoverHost() {
   const { open, source, anchor } = useWheelState();
   // Closing plays an exit while the popover is kept as an inert copy (PAGES-12).
   const pop = usePresence<HTMLDivElement>(open);
+  const isTop = useLayerStack(open);
+  const isTopRef = useRef(isTop);
+  isTopRef.current = isTop;
 
   useEffect(() => {
     if (!open) return;
@@ -26,7 +32,7 @@ export function WheelPopoverHost() {
       closeWheel({ restoreFocus: false });
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeWheel();
+      if (event.key === "Escape" && isTopRef.current()) closeWheel();
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKeyDown);

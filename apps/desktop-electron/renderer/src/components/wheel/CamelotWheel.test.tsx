@@ -25,6 +25,7 @@ import { saveKeyColours } from "./keyColourSetting";
 import { resetKeyNotationForTests, saveKeyNotation } from "./keyNotationSetting";
 import { WheelButton } from "./WheelButton";
 import { WheelPopoverHost } from "./WheelPopoverHost";
+import { useLayerStack } from "../../hooks/useLayerStack";
 import { closeWheel, openWheel, toggleWheel } from "./wheelStore";
 
 function wheelFor(code: string): CompatibleKeys {
@@ -249,6 +250,24 @@ describe("the Track details button (K8)", () => {
     await openFromHeader();
     await userEvent.click(screen.getByRole("button", { name: "Camelot wheel" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("answers Escape only while it is the newest layer (M469)", async () => {
+    install();
+    const view = mount();
+    await openFromHeader();
+    // A layer opened over the wheel (a menu, a dialog) takes Escape first.
+    function Over() {
+      useLayerStack(true);
+      return null;
+    }
+    const over = render(<Over />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog", { name: "Camelot wheel" })).toBeInTheDocument();
+    over.unmount();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    view.unmount();
   });
 });
 

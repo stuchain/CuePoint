@@ -9,9 +9,10 @@
  * why it waits, in a Hint, until some are selected.
  *
  * **Double-click and Enter play from that track**, as in every other track list: a
- * Beatport row has no file (DEC-097), so what plays is its 2-minute sample, the same
- * one the round button at the row's right end plays. Esc clears the selection, Ctrl+A
- * selects every row loaded, and a right-click selects the row first, as everywhere.
+ * Beatport row has no file (DEC-097), so what plays is its 2-minute sample, and the row
+ * shows it is sounding as a Library row does. No row draws a play button (M99, D12). Esc
+ * clears the selection, Ctrl+A selects every row loaded, and a right-click selects the row
+ * first, as everywhere.
  *
  * The bar of actions is above the table, like the Library's, and says how many tracks are
  * selected once, at its left. With one track selected, "Open on Beatport" becomes one "Open" menu
@@ -33,10 +34,8 @@ import {
   type TrackTableSort,
 } from "../../components/table";
 import type { TrackTableSource } from "../../components/table";
-import { stopAllPreviews } from "../../components/preview/useBeatportPreview";
+import { stopAllPreviews, useBeatportPreview } from "../../components/preview/useBeatportPreview";
 import { countNoun, formatCount } from "../../format/counts";
-import { PreviewButton } from "./PreviewButton";
-import { trackName } from "./discoverFormat";
 import { sortedRows } from "./clientSort";
 import { beatportPageItems } from "./libraryRowMenu";
 import type { BeatportAction, BeatportActionId } from "./beatportActions";
@@ -139,9 +138,28 @@ export function BeatportTable<Row extends BeatportTrackRow>({
     }
     reindex(positions);
   }, [displayed, idOf, reindex, selection.keys, source]);
-  // Preview cells scroll in and out of a virtualised table, so a sample belongs
-  // to the table's lifetime, not its cell's (DEC-269).
+  // Rows scroll in and out of a virtualised table, so a sample belongs to the table's lifetime,
+  // not its row's (DEC-269).
   useEffect(() => stopAllPreviews, []);
+  // The sample asked for last (M99): the row a double-click or Enter played. `asked` counts the
+  // asks, so the same row asked again is a new ask.
+  const [previewing, setPreviewing] = useState<{ id: number; asked: number } | null>(null);
+  const preview = useBeatportPreview(
+    previewing ? { kind: "catalog", id: previewing.id } : null,
+    { stopOnUnmount: false },
+  );
+  const { toggle: togglePreview } = preview;
+  const previewState = preview.state;
+  const handled = useRef(0);
+  useEffect(() => {
+    if (!previewing || previewing.asked === handled.current) return;
+    handled.current = previewing.asked;
+    // A sounding sample is left alone, and one Beatport has none for is not asked again.
+    if (previewState === "playing" || previewState === "loading" || previewState === "none") return;
+    togglePreview();
+  }, [previewState, previewing, togglePreview]);
+  const sounding = previewState === "playing" || previewState === "loading";
+  const isPlayingRow = (row: Row) => sounding && previewing?.id === row.beatport_track_id;
   const [picking, setPicking] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number; row: Row } | null>(null);
 
@@ -179,15 +197,11 @@ export function BeatportTable<Row extends BeatportTrackRow>({
     selection.onRowClick(row, active, { shiftKey: false, ctrlKey: false, metaKey: false });
   };
 
-  const rowsRef = useRef<HTMLDivElement>(null);
-  /** Double-click or Enter: play that track's sample, unless it is sounding already. */
-  const playFrom = (index: number) => {
-    const button = rowsRef.current?.querySelector<HTMLButtonElement>(
-      `[role="row"][data-index="${index}"] .cp-play-btn`,
-    );
-    const state = button?.dataset.state;
-    if (!button || state === "playing" || state === "loading" || state === "none") return;
-    button.click();
+  /** Double-click or Enter: play that track's sample through the preview hook (M99), unless it is sounding already. */
+  const playFrom = (row: Row) => {
+    // A build that cannot fetch samples has nothing to play.
+    if (!window.cuepoint?.getCatalogPreview) return;
+    setPreviewing((was) => ({ id: row.beatport_track_id, asked: (was?.asked ?? 0) + 1 }));
   };
 
   /** The actions, then (for one track) the way to its artist's and label's pages (C196). */
@@ -278,7 +292,7 @@ export function BeatportTable<Row extends BeatportTrackRow>({
         {folded && !openAction && !wantAction && openButton}
       </div>
 
-      <div ref={rowsRef} className="discover-table__rows" onKeyDown={onRowKeys}>
+      <div className="discover-table__rows" onKeyDown={onRowKeys}>
         <TrackTable<Row>
           columns={layout.visible}
           source={source}
@@ -294,10 +308,8 @@ export function BeatportTable<Row extends BeatportTrackRow>({
             selection.onRowClick(row, index, modifiers, displayed ? (at) => displayed[at] : undefined);
           }}
           onSelectAll={selection.selectAll}
-          onRowActivate={(_row, index) => playFrom(index)}
-          rowEnd={(row) => (
-            <PreviewButton beatportTrackId={row.beatport_track_id} title={trackName(row)} />
-          )}
+          onRowActivate={(row) => playFrom(row)}
+          isPlayingRow={isPlayingRow}
           onRowContextMenu={(row, index, anchor) => {
             selection.onRowMenu(row, index);
             setMenu({ ...anchor, row });

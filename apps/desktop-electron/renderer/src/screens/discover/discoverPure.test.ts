@@ -575,6 +575,10 @@ describe("the sentences", () => {
     expect(resolveOutcome(fixture.resolve_result as BeatportResolveResult)).toBe(
       "Looked up 2 tracks on Beatport.",
     );
+    // M424: a stopped look-up says "Stopped", never "Stopped when asked".
+    expect(
+      resolveOutcome({ ...(fixture.resolve_result as BeatportResolveResult), outcome: "cancelled" }),
+    ).toBe("Stopped. Looked up 2 tracks on Beatport.");
     expect(discoveryEnded(fixture.discovery_result as DiscoveryRunResult)).toBe(
       "Dig found 7 tracks from 3 charts and 2 releases.",
     );

@@ -32,6 +32,8 @@ import { cleanMatchOpening } from "../clean/cleanLink";
 import { libraryOpening } from "../library/libraryLink";
 import { DEFAULT_LIBRARY_QUERY } from "../library/libraryQuery";
 import { KeysScreen } from "./KeysScreen";
+import { KEYS_COLUMNS, rowWithRating } from "./KeysTracks";
+import { LIBRARY_COLUMNS } from "../library/libraryColumns";
 import type { KeysOpening } from "./keysLink";
 
 vi.mock("../../reporting/reporting", async (importOriginal) => ({
@@ -796,8 +798,11 @@ describe("choosing keys", () => {
     await opened();
     await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
     const bar = trackToolbar();
-    // M418: the count alone, the noun is the heading's ("Tracks 3").
-    await waitFor(() => expect(within(bar).getByRole("status")).toHaveTextContent(/^3\b/));
+    // M418: the count alone, the noun is the heading's ("Tracks 3"). The toolbar's other status is
+    // M382's inline "Saved", empty until a rating is set.
+    const count = () => bar.querySelector(".keys-tracks__count");
+    await waitFor(() => expect(count()).toHaveTextContent(/^3\b/));
+    expect(count()).toHaveAttribute("role", "status");
     const link = within(bar).getByRole("button", { name: "Open in Library" });
     expect(link).toHaveClass("cp-link", "cp-link--go");
   });
@@ -959,8 +964,9 @@ describe("choosing keys", () => {
     // menu; the rest stays there.
     expect(within(bar).getByRole("button", { name: /^Play/ })).toBeInTheDocument();
     fireEvent.click(within(bar).getByRole("button", { name: "Add to a Set…" }));
-    expect(await screen.findByRole("dialog", { name: "Add to Set" })).toBeInTheDocument();
-    fireEvent.keyDown(screen.getByRole("dialog", { name: "Add to Set" }), { key: "Escape" });
+    // M414: the picker says the article, as the menu does.
+    expect(await screen.findByRole("dialog", { name: "Add to a Set" })).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Add to a Set" }), { key: "Escape" });
     for (const name of ["Organize", "Beatport", "More"]) {
       expect(within(bar).queryByRole("button", { name: new RegExp(`^${name}`) })).toBeNull();
     }
@@ -971,7 +977,8 @@ describe("choosing keys", () => {
 
 describe("the Beatport and More entries (K4)", () => {
   it.each([
-    ["Copy Beatport values…", "Copy Beatport values"],
+    // P8 (M412): the entry says Use; the dialog's own title is P2's (ApplyValuesDialog).
+    ["Use Beatport values…", /Beatport values/],
     ["Edit values…", "Edit values"],
   ])("open %s in place, not on Clean", async (entry, title) => {
     install({
@@ -1024,6 +1031,85 @@ describe("the Beatport and More entries (K4)", () => {
     );
     // The key counts are read again, not only the table.
     await waitFor(() => expect(mock("getKeysPopulation").mock.calls.length).toBeGreaterThan(populations));
+  });
+});
+
+describe("a rating or favorite set from the menu (M382)", () => {
+  const FAVORITED = {
+    applied: {
+      batch_id: "b2",
+      operation: "set_favorite",
+      target: "favorite",
+      total: 1,
+      changed: 1,
+      unchanged: 0,
+      failed: 0,
+      cancelled: false,
+    },
+  };
+
+  async function favoriteTrack3() {
+    renderKeys();
+    await opened();
+    fireEvent.click(rowButton("8A"));
+    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const row = (await within(table).findByText("Track 3")).closest("[role=row]")!;
+    fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
+    const reads = {
+      browse: mock("browseLibrary").mock.calls.length,
+      population: mock("getKeysPopulation").mock.calls.length,
+    };
+    await userEvent.click(await menuItem("Add to favorites", await screen.findByRole("menu")));
+    return reads;
+  }
+
+  it("is set at once: no question, no toast, an inline tick, and the table is not read again", async () => {
+    install({ applyBatch: vi.fn().mockResolvedValue(FAVORITED) });
+    const before = await favoriteTrack3();
+    await waitFor(() =>
+      expect(mock("applyBatch")).toHaveBeenCalledWith({
+        selection: { track_ids: [3] },
+        operation: { kind: "set_favorite", value: true },
+      }),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await within(trackToolbar()).findByText("Saved")).toBeInTheDocument();
+    expect(screen.queryByText(/^Favorited/)).toBeNull();
+    // Nothing on screen waits for a round trip: neither the rows nor the key counts are asked again.
+    expect(mock("browseLibrary").mock.calls.length).toBe(before.browse);
+    expect(mock("getKeysPopulation").mock.calls.length).toBe(before.population);
+  });
+
+  it("says so only when it fails, and reads the rows again", async () => {
+    install({ applyBatch: vi.fn().mockRejectedValue(new Error("The disk is full")) });
+    const before = await favoriteTrack3();
+    await waitFor(() => expect(mock("browseLibrary").mock.calls.length).toBeGreaterThan(before.browse));
+    expect(within(trackToolbar()).queryByText("Saved")).toBeNull();
+  });
+
+  it("draws the new rating the way the engine resolves it", () => {
+    const row = { ...TRACKS[0]!, rating: 2, effective_rating: 2, rating_source: "rekordbox" as const };
+    expect(rowWithRating(row, 4)).toMatchObject({ effective_rating: 4, rating_source: "cuepoint" });
+    // Clearing falls back to Rekordbox's rating, not to nothing (DEC-057).
+    expect(rowWithRating(row, null)).toMatchObject({ effective_rating: 2, rating_source: "rekordbox" });
+    expect(rowWithRating({ ...row, rating: null }, null)).toMatchObject({ effective_rating: null, rating_source: null });
+  });
+});
+
+describe("the tracks pane's columns (M85, M88)", () => {
+  it("opens on Title, Artist, BPM and Key: Length waits in the Columns list", () => {
+    const shown = KEYS_COLUMNS.filter((column) => !column.hiddenByDefault).map((column) => column.id);
+    expect(shown).toEqual(["title", "artist", "bpm", "key"]);
+    expect(KEYS_COLUMNS.map((column) => column.id)).toContain("duration_seconds");
+  });
+
+  it("keeps the Library's own defs for Key and Length, so their headings keep the Library's minimum width", () => {
+    for (const id of ["key", "duration_seconds"]) {
+      const keys = KEYS_COLUMNS.find((column) => column.id === id)!;
+      const library = LIBRARY_COLUMNS.find((column) => column.id === id)!;
+      expect(keys.minWidthPx).toBe(library.minWidthPx);
+      expect(keys.header).toBe(library.header);
+    }
   });
 });
 

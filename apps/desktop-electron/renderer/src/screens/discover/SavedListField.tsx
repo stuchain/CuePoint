@@ -70,7 +70,7 @@ export function SavedListField({
               checked={mode === "list"}
               onChange={() => onMode("list")}
             />
-            A saved list:
+            A saved list
           </label>
           <Select
             label={`Saved ${noun} list`}

@@ -4,7 +4,7 @@
  * A suggestion is a library row, so it has the Library's columns, and some of
  * its own after the title, each a few characters wide and built from the
  * engine's structured reasons (`reasonTokens`): **Key** (the track's key and
- * how it relates to the seed's: "9A +1", "8A same"), **BPM Δ** ("−2", "+3",
+ * how it relates to the seed's: "9A +1", "8A same"), **BPM change** ("−2", "+3",
  * "±0", "0.5×"), a check mark each under **Same genre**, **Same label** and **Same artist** for
  * what it shares with the seed, and the **Fit** as a five-step bar with the band word and
  * number in its title. A sentence ("Mixes well (next key): 8A → 9A", from
@@ -39,7 +39,7 @@ import { describeSimilarReason, matchWords } from "./similarReasons";
 export type SimilarRow = LibraryTrackRow & { id: number; suggestion: SimilarTrack };
 
 /**
- * v2 (R4-8): the columns changed (Reasons became Key, BPM Δ, G, L, A and Fit
+ * v2 (R4-8): the columns changed (Reasons became Key, BPM Δ (now BPM change), G, L, A and Fit
  * in a new order), so a saved v1 layout is left behind once, as for Prepare.
  */
 export const SIMILAR_TABLE_LAYOUT_KEY = "cuepoint-discover-similar-layout-v2";
@@ -168,10 +168,11 @@ export const SIMILAR_COLUMNS: readonly TrackColumnDef<SimilarRow>[] = [
   libraryColumn("genre"),
   {
     id: "bpm_delta",
-    header: "BPM Δ",
+    // M7/M428: the heading says it in words; wide enough to hold them and the sort arrow (M88).
+    header: "BPM change",
     hint: "How far the BPM is from that of the track you are comparing with: −2, +3 or ±0, and a mark for half or double the tempo",
-    minWidthPx: 52,
-    defaultWidthPx: 56,
+    minWidthPx: 88,
+    defaultWidthPx: 92,
     align: "right",
     render: (row) => {
       const text = tempoDeltaText(reasonTokens(row.suggestion.reasons).tempo);

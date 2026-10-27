@@ -18,7 +18,7 @@ interface DateFieldProps {
   onChange: (value: string) => void;
   /** The field's name for a screen reader: "From". */
   label: string;
-  /** Said where there is no day: "Pick a day". */
+  /** Said where there is no day: "Choose a day". */
   empty?: string;
   className?: string;
 }
@@ -38,7 +38,7 @@ function showCalendar(input: HTMLInputElement) {
   }
 }
 
-export function DateField({ value, onChange, label, empty = "Pick a day", className = "" }: DateFieldProps) {
+export function DateField({ value, onChange, label, empty = "Choose a day", className = "" }: DateFieldProps) {
   const shown = day(value);
   return (
     <span className={`cp-field__input discover-date ${className}`.trim()}>

@@ -142,7 +142,7 @@
   background: none;
   outline: none;
   font: inherit;
-  cursor: pointer;
+  cursor: default;
   -webkit-tap-highlight-color: transparent;
 }
 

@@ -191,18 +191,19 @@ export function NewRunPanel({
 
   const artistCount = scopeCount(form.artists, options.artists.total_values, members.artists);
   const labelCount = scopeCount(form.labels, options.labels.total_values, members.labels);
-  // "Look for charts in 2 genres, releases by 200 artists and 121 labels from the last 30 days."
+  // M422: "Dig charts in 2 genres and releases by 200 artists and 121 labels, from the last 30 days."
+  // A part with nothing chosen is left out, so charts are never said to be by artists none chose.
   const releaseParts = [
     artistCount > 0 ? <strong key="a">{countNoun(artistCount, "artist")}</strong> : null,
     labelCount > 0 ? <strong key="l">{countNoun(labelCount, "label")}</strong> : null,
   ].filter((part) => part !== null);
   const sentence = (
     <>
-      Look for charts in <strong>{countNoun(form.genreIds.length, "genre")}</strong>
+      Dig charts in <strong>{countNoun(form.genreIds.length, "genre")}</strong>
       {releaseParts.length > 0 && (
         <>
-          , releases by {releaseParts[0]}
-          {releaseParts.length > 1 && <> and {releaseParts[1]}</>}
+          {" "}and releases by {releaseParts[0]}
+          {releaseParts.length > 1 && <> and {releaseParts[1]}</>},
         </>
       )}{" "}
       from <strong>{windowShort(form, options.defaults)}</strong>.
@@ -237,6 +238,8 @@ export function NewRunPanel({
               <>
                 <SearchField
                   ref={genreSearch}
+                  // M47: as wide as the list under it, one right edge.
+                  className="cp-field--full"
                   thing="genres"
                   id="discover-genre-filter"
                   label="Find genres"

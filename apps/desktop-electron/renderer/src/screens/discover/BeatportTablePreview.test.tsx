@@ -1,3 +1,8 @@
+/**
+ * A Beatport row's sample (M99, D12 A): no row draws a play button; a double-click or Enter plays
+ * the row's sample through the preview hook, the row shows it is sounding, and the sample belongs to
+ * the table's lifetime, not its row's.
+ */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -118,53 +123,74 @@ function draw(count = 0) {
   return render(tableOf(ROWS, count));
 }
 
-describe("the play button of a Beatport row", () => {
-  it("is no column: the header has no Preview, the button sits at the row's right end", () => {
-    draw();
+const rowOf = (title: string) => screen.getByText(title).closest('[role="row"]') as HTMLElement;
+
+describe("a Beatport row's sample (M99)", () => {
+  it("draws no play button and no Preview column", () => {
+    const view = draw();
     expect(screen.queryByRole("columnheader", { name: "Preview" })).toBeNull();
-    for (const name of ["Play preview of Alpha", "Play preview of Beta"]) {
-      const button = screen.getByRole("button", { name });
-      expect(button).toHaveClass("cp-play-btn");
-      expect(button.closest(".track-table__end")).not.toBeNull();
-    }
+    expect(screen.queryByRole("button", { name: /preview/i })).toBeNull();
+    expect(view.container.querySelector(".cp-play-btn")).toBeNull();
+    expect(view.container.querySelector(".track-table__end")).toBeNull();
   });
 
-  it("plays on click without selecting the row, and stops on a second click", async () => {
-    draw();
-    await userEvent.click(screen.getByRole("button", { name: "Play preview of Alpha" }));
-
-    const stop = await screen.findByRole("button", { name: "Stop preview of Alpha" });
-    expect(bridge.getCatalogPreview).toHaveBeenCalledWith({ beatportTrackId: 11 });
-    expect(onRowClick).not.toHaveBeenCalled();
-
-    await userEvent.click(stop);
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Play preview of Alpha" })).toBeInTheDocument(),
-    );
-    expect(onRowClick).not.toHaveBeenCalled();
-  });
-
-  it("marks the playing row's button only", async () => {
-    draw();
-    await userEvent.click(screen.getByRole("button", { name: "Play preview of Alpha" }));
-    const stop = await screen.findByRole("button", { name: "Stop preview of Alpha" });
-    await waitFor(() => expect(stop).toHaveAttribute("data-state", "playing"));
-    expect(stop).toHaveClass("cp-play-btn--playing");
-    expect(screen.getByRole("button", { name: "Play preview of Beta" })).not.toHaveClass(
-      "cp-play-btn--playing",
-    );
-  });
-
-  it("plays from that track on a double-click and on Enter, and leaves a playing one alone", async () => {
+  it("plays that track's sample on a double-click, marks the row, and leaves a sounding one alone", async () => {
     draw();
     await userEvent.dblClick(screen.getByText("Alpha"));
-    await screen.findByRole("button", { name: "Stop preview of Alpha" });
-    expect(bridge.getCatalogPreview).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(bridge.getCatalogPreview).toHaveBeenCalledWith({ beatportTrackId: 11 }));
+    await waitFor(() => expect(rowOf("Alpha")).toHaveAttribute("data-playing", "true"));
+    expect(rowOf("Beta")).not.toHaveAttribute("data-playing");
 
-    // Another double-click on the sounding row does not stop it.
+    // Another double-click on the sounding row does not stop it or ask again.
     await userEvent.dblClick(screen.getByText("Alpha"));
     expect(bridge.getCatalogPreview).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Stop preview of Alpha" })).toBeInTheDocument();
+    expect(rowOf("Alpha")).toHaveAttribute("data-playing", "true");
+  });
+
+  it("plays the keyboard's row on Enter", async () => {
+    draw();
+    await userEvent.click(screen.getByText("Alpha"));
+    screen.getByRole("table").focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(bridge.getCatalogPreview).toHaveBeenCalledWith({ beatportTrackId: 11 }));
+  });
+
+  it("moves to another row's sample, and asks no more for one Beatport has none for", async () => {
+    draw();
+    await userEvent.dblClick(screen.getByText("Alpha"));
+    await waitFor(() => expect(rowOf("Alpha")).toHaveAttribute("data-playing", "true"));
+    await userEvent.dblClick(screen.getByText("Beta"));
+    await waitFor(() => expect(bridge.getCatalogPreview).toHaveBeenCalledWith({ beatportTrackId: 404 }));
+    await waitFor(() => expect(rowOf("Alpha")).not.toHaveAttribute("data-playing"));
+    expect(FakeAudio.instances[0]!.pause).toHaveBeenCalled();
+    expect(rowOf("Beta")).not.toHaveAttribute("data-playing");
+
+    await userEvent.dblClick(screen.getByText("Beta"));
+    expect(bridge.getCatalogPreview).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps sounding when the playing row leaves the table, and stops with the table", async () => {
+    const view = draw();
+    await userEvent.dblClick(screen.getByText("Alpha"));
+    await waitFor(() => expect(FakeAudio.instances).toHaveLength(1));
+    const audio = FakeAudio.instances[0]!;
+
+    view.rerender(tableOf([ROWS[1]!]));
+    expect(audio.pause).not.toHaveBeenCalled();
+
+    view.unmount();
+    expect(audio.pause).toHaveBeenCalled();
+    expect(bridge.releaseCandidatePreview).toHaveBeenCalledWith("blob:catalog-11");
+  });
+
+  it("does nothing when the bridge cannot fetch samples", async () => {
+    delete bridge.getCatalogPreview;
+    draw();
+    await act(async () => {
+      await userEvent.dblClick(screen.getByText("Alpha"));
+    });
+    expect(FakeAudio.instances).toHaveLength(0);
+    expect(rowOf("Alpha")).not.toHaveAttribute("data-playing");
   });
 
   it("lets go of the selection on Escape", async () => {
@@ -172,53 +198,5 @@ describe("the play button of a Beatport row", () => {
     screen.getByRole("table").focus();
     await userEvent.keyboard("{Escape}");
     expect(clear).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows busy while the sample loads", async () => {
-    let resolve!: (url: string) => void;
-    bridge.getCatalogPreview!.mockReturnValue(new Promise((r) => (resolve = r)));
-    draw();
-    await userEvent.click(screen.getByRole("button", { name: "Play preview of Alpha" }));
-    expect(screen.getByRole("button", { name: "Stop preview of Alpha" })).toHaveAttribute("aria-busy", "true");
-    await act(async () => resolve("blob:x"));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Stop preview of Alpha" })).not.toHaveAttribute("aria-busy"),
-    );
-  });
-
-  it("disables itself as No preview when the engine answers null", async () => {
-    draw();
-    await userEvent.click(screen.getByRole("button", { name: "Play preview of Beta" }));
-
-    const none = await screen.findByRole("button", { name: "No preview for Beta" });
-    expect(none).toHaveAttribute("aria-disabled", "true");
-    expect(none).not.toBeDisabled();
-    await userEvent.click(none);
-    expect(bridge.getCatalogPreview).toHaveBeenCalledTimes(1);
-    expect(onRowClick).not.toHaveBeenCalled();
-  });
-
-  it("keeps sounding when the playing row leaves the table, and stops with the table", async () => {
-    const view = draw();
-    await userEvent.click(screen.getByRole("button", { name: "Play preview of Alpha" }));
-    await screen.findByRole("button", { name: "Stop preview of Alpha" });
-    const audio = FakeAudio.instances[0]!;
-
-    view.rerender(tableOf([ROWS[1]!]));
-    expect(screen.queryByRole("button", { name: /of Alpha/ })).toBeNull();
-    expect(audio.pause).not.toHaveBeenCalled();
-
-    view.rerender(tableOf(ROWS));
-    expect(screen.getByRole("button", { name: "Stop preview of Alpha" })).toBeInTheDocument();
-
-    view.unmount();
-    expect(audio.pause).toHaveBeenCalled();
-    expect(bridge.releaseCandidatePreview).toHaveBeenCalledWith("blob:catalog-11");
-  });
-
-  it("is not there when the bridge cannot fetch samples", () => {
-    delete bridge.getCatalogPreview;
-    draw();
-    expect(screen.queryByRole("button", { name: /preview/i })).toBeNull();
   });
 });

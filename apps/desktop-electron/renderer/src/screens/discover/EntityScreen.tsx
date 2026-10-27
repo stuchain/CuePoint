@@ -29,9 +29,10 @@ import type {
   FilterRuleSet,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
 import { LinkButton } from "../../components/LinkButton";
 import { formatCount } from "../../format/counts";
-import { goTo, opensDialog, RETRY } from "../../format/words";
+import { goTo, opensDialog, quoted, RETRY } from "../../format/words";
 import { MoreAbout } from "../../components/MoreAbout";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
@@ -72,10 +73,12 @@ import { userMessage } from "../../api/userMessage";
 type Focus = "library" | "beatport";
 
 const INSPECTOR_BEATPORT = (
-  <p className="cp-inspector__empty">
-    Tracks on Beatport are not in your library, so there is nothing to inspect here. Select one
-    of your tracks to see its details.
-  </p>
+  // M349: the one empty state, in its short form.
+  <EmptyState
+    compact
+    headline="No track details for Beatport's tracks"
+    description="They are not in your library. Select one of your tracks to see its details."
+  />
 );
 
 /**
@@ -230,7 +233,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
       return;
     }
     setSaving("closed");
-    push(`Saved “${result.node.name}”. It is under Collections in the Library.`, "success");
+    push(`Saved ${quoted(result.node.name)}. It is under Collections in the Library.`, "success");
   };
 
   // --- drawing
@@ -268,6 +271,8 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
     <div className="screen screen--scroll discover-page">
       <ScreenHeader
         title={pageTitle(shown)}
+        // M190: a long name is data: it shrinks and cuts before the status and actions.
+        dataTitle
         crumb={<PageCrumb current={kindTitle(kind)} />}
         facts={entityFacts(shown)}
         pageActions={
@@ -326,7 +331,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
         </ul>
       </div>
 
-      <section className="discover-page__half" aria-labelledby="discover-page-library">
+      <section className="discover-page__half" aria-labelledby="discover-page-library" data-pane="library">
         <LibraryHalf
           heading={{ id: "discover-page-library", text: "Your tracks" }}
           kind={kind}
@@ -341,7 +346,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
         />
       </section>
 
-      <section className="discover-page__half" aria-labelledby="discover-page-beatport">
+      <section className="discover-page__half" aria-labelledby="discover-page-beatport" data-pane="beatport">
         <h2 id="discover-page-beatport" className="discover-section__title">
           On Beatport
         </h2>

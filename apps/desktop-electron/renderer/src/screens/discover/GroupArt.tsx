@@ -16,6 +16,7 @@
 import { useCallback } from "react";
 
 import { ArtworkPlaceholder } from "../../components/ArtworkPlaceholder";
+import { Art } from "../../components/Art";
 import type { DiscoverGroupKind } from "../../api/cuepointBridge.types";
 import { useCover } from "../../api/useCover";
 
@@ -43,7 +44,7 @@ export function GroupArt({ runId, kind, cardKey, hasArt }: GroupArtProps) {
 
   return (
     <span ref={ref} className={`discover-card__art discover-card__art--${kind}`} aria-hidden="true">
-      {url ? <img src={url} alt="" draggable={false} /> : empty ? null : <ArtworkPlaceholder label="" />}
+      {url ? <Art src={url} alt="" draggable={false} /> : empty ? null : <ArtworkPlaceholder label="" />}
     </span>
   );
 }

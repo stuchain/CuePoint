@@ -60,6 +60,12 @@ describe("the counts list's key column", () => {
     expect(keysCss).not.toMatch(/data-key-colours="off"\]\s+\.keys-counts__bar/);
   });
 
+  it("draws no track behind the bar, selected or not, as Statistics' Keys card does (M211)", () => {
+    const bar = /\.keys-counts__bar\s*\{[^}]*\}/.exec(keysCss)?.[0] ?? "";
+    expect(bar).toMatch(/background:\s*transparent/);
+    expect(keysCss).not.toMatch(/\[aria-pressed="true"\]\s+\.keys-counts__bar\s*\{/);
+  });
+
   it("insets a row by the one list inset, so a chip starts where the words above it do (M173)", () => {
     const row = /\.keys-counts__row\s*\{[^}]*\}/.exec(keysCss)?.[0] ?? "";
     expect(row).toMatch(/padding:\s*0 var\(--space-sm\)/);
@@ -80,7 +86,16 @@ describe("the counts list's key column", () => {
   it("uses the data face for names and numbers (C60)", () => {
     expect(/\.keys-counts__name\s*\{[^}]*\}/.exec(keysCss)?.[0]).toContain("var(--font-data)");
     expect(/\.keys-page__caption\s*\{[^}]*\}/.exec(keysCss)?.[0]).toContain("var(--font-data)");
-    expect(keysCss).not.toContain("--font-pixel-digits");
+    // Moved for M8: the counts list keeps the data face; only the tracks head's count ("Tracks 83")
+    // takes the pixel face's size-matched figures, beside its pixel heading.
+    const fontsOf = [...keysCss.matchAll(/([^{}]+)\{[^}]*--font-pixel-digits[^}]*\}/g)].map((m) => m[1]!.trim());
+    expect(fontsOf).toEqual([".keys-tracks__count"]);
+  });
+
+  it("draws the tracks head's count in the size-matched figures, tabular (M8)", () => {
+    const count = /\.keys-tracks__count\s*\{[^}]*\}/.exec(keysCss)?.[0] ?? "";
+    expect(count).toMatch(/font-family:\s*var\(--font-pixel-digits\)/);
+    expect(count).toContain("font-variant-numeric: tabular-nums");
   });
 });
 
@@ -153,9 +168,28 @@ describe("the two panes (D12)", () => {
     expect(tracks).toContain("padding-inline: var(--space-sm)");
   });
 
-  it("lets a wide window give the wheel a larger whole-pixel cell (M168)", () => {
+  // Moved for M168: the wide step's cell is at least 8 points and grows with the window's height up
+  // to 11, a whole pixel count (it was 8 points, whatever the height).
+  it("lets a wide window give the wheel a larger whole-pixel cell, growing with the height (M168)", () => {
     const wide = parseRules(stripComments(keysCss)).find((r) => r.context === "@container content (min-width: 110em)");
-    expect(wide?.body).toMatch(/--keys-cell:\s*min\(round\(nearest, calc\(8px \* var\(--scale\)\), 1px\)/);
+    const cell = /--keys-cell:\s*([^;]+);/.exec(wide?.body ?? "")?.[1]?.replace(/\s+/g, " ") ?? "";
+    expect(cell).toMatch(/^clamp\( round\(nearest, calc\(8px \* var\(--scale\)\), 1px\),/);
+    expect(cell).toContain("round(down, calc((100dvh - var(--keys-chrome)) / 48), 1px)");
+    expect(cell).toMatch(/round\(down, calc\(11px \* var\(--scale\)\), 1px\) \)$/);
+  });
+
+  it("fits the wheel to its pane's height: a size container and a whole-pixel cell from 100cqh (M162, M168)", () => {
+    const panel = rule(".keys-page__panel");
+    expect(panel).toContain("container-type: size");
+    expect(panel).toContain("min-height: calc(48 * var(--keys-cell-least) + var(--keys-wheel-reserve))");
+    const wheel = rule(".keys-page__wheel").replace(/\s+/g, " ");
+    expect(wheel).toContain(
+      "--keys-fit-cell: clamp( var(--keys-cell-least), round(down, calc((100cqh - var(--keys-wheel-reserve)) / 48), 1px), var(--keys-cell) )",
+    );
+    expect(wheel).toContain("width: calc(48 * var(--keys-fit-cell))");
+    // The drawing takes the fitted cell; nothing else in the wheel sets its own.
+    expect(keysCss).toMatch(/\.keys-page__wheel \.cp-wheel \{\s*--wheel-cell: var\(--keys-fit-cell\);/);
+    expect(keysCss).not.toMatch(/\.keys-page \.cp-wheel\s*\{/);
   });
 
   it("names the wheel's one line of legend in the muted meta face (D6 B)", () => {

@@ -24,7 +24,8 @@ const META_LINES: Record<string, string[]> = {
   "../screens/discover/discover.css": [
     ".discover-runs__what, .discover-runs__found",
     ".discover-run__looked",
-    ".discover-run__scope > summary",
+    // Moved for M60: the scope's one line is now the Disclosure's head, not a <summary>.
+    ".discover-run__scope > .cp-fold__head",
     ".discover-page__facts",
   ],
   "../screens/clean/match/match.css": [".review-candidate__why"],

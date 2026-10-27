@@ -38,7 +38,7 @@ import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { LIBRARY_PLAYLISTS, LIBRARY_SUMMARY, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { countNoun, formatCount } from "../../format/counts";
-import { MATCH_ON_BEATPORT, RETRY, couldNot, opensDialog } from "../../format/words";
+import { MATCH_ON_BEATPORT, RETRY, couldNot, opensDialog, quoted } from "../../format/words";
 import { cleanTrackState, openClean } from "../clean/cleanLink";
 import type { CleanTracks } from "../clean/cleanTracks";
 import { entityPath, originState, similarPath } from "../discover/discoverLinks";
@@ -292,7 +292,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
       return;
     }
     setSaving("closed");
-    push(`Saved “${result.node.name}”. It is under Collections in the Library.`, "success");
+    push(`Saved ${quoted(result.node.name)}. It is under Collections in the Library.`, "success");
   };
 
   // ------------------------------------------------------------- Inspector
@@ -568,6 +568,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
                 setReloadToken((value) => value + 1);
                 detail.reload();
               }}
+              onDetailChanged={detail.reload}
             />
           </section>
         )}

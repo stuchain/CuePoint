@@ -10,6 +10,12 @@
      size, and never more than 9. It follows the text size, never the window's width. */
   --keys-cell: min(round(nearest, calc(6px * var(--scale)), 1px), calc(9px * var(--scale)));
   --keys-wheel: calc(48 * var(--keys-cell));
+  /* The smallest cell the wheel is drawn at, at this text size (M162). */
+  --keys-cell-least: round(nearest, calc(6px * var(--scale)), 1px);
+  /* What the window's height holds besides the wheel (M168): the page and pane heads, the pane's
+     padding, the legend, the no-key row and the caption, the status strip and the player bar. An
+     estimate for the pane's width; the wheel itself fits the pane's real height (.keys-page__wheel). */
+  --keys-chrome: calc(5 * var(--toolbar-height) + var(--row-height) + 4 * var(--space-lg) + 4 * var(--space-md) + 4 * var(--font-size-xs));
   /* The page column grows down to the player bar (P7) and still scrolls when its content is taller. */
   flex: 1 0 auto;
   gap: 0;
@@ -21,8 +27,9 @@
   max-width: none;
 }
 
-.keys-page .cp-wheel {
-  --wheel-cell: var(--keys-cell);
+/* The wheel draws at the cell its pane's height holds (M168), not the page's. */
+.keys-page__wheel .cp-wheel {
+  --wheel-cell: var(--keys-fit-cell);
 }
 
 /* A pane's head (D19): one toolbar tall with the divider under it, the title in the section role, one
@@ -93,13 +100,22 @@
   gap: var(--space-xs);
 }
 
+/*
+ * M162, M168: the wheel's box is a size container, so the wheel fits the height the pane has: it
+ * shrinks in a short window, so the caption under it is never pushed under the player, and grows in
+ * a tall one. The room under the wheel (the legend, up to two lines, the no-key row and the gaps) is
+ * kept for them. Never shorter than the smallest wheel and that room, so a stacked page, whose row
+ * takes its height from what is in it, still draws the wheel.
+ */
 .keys-page__panel {
+  --keys-wheel-reserve: calc(var(--row-height) + 3 * var(--font-size-xs) + 2 * var(--space-md));
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-md);
-  min-height: 0;
+  min-height: calc(48 * var(--keys-cell-least) + var(--keys-wheel-reserve));
   min-width: 0;
+  container-type: size;
 }
 
 /* The one line that says what the wheel's brightness means (D6 B, M169). */
@@ -112,8 +128,16 @@
 }
 
 .keys-page__wheel {
-  flex: 0 0 var(--keys-wheel);
-  width: var(--keys-wheel);
+  /* M168: the whole-pixel cell the panel's height holds under the room it keeps, between the
+     smallest cell and the page's (which sets the pane's width). 100cqh is the panel's height. */
+  --keys-fit-cell: clamp(
+    var(--keys-cell-least),
+    round(down, calc((100cqh - var(--keys-wheel-reserve)) / 48), 1px),
+    var(--keys-cell)
+  );
+  flex: 0 0 calc(48 * var(--keys-fit-cell));
+  align-self: center;
+  width: calc(48 * var(--keys-fit-cell));
   max-width: 100%;
 }
 
@@ -288,7 +312,7 @@
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 /* Selected is the tint and the bar, never bold (C82). */
@@ -334,22 +358,19 @@
   border-left-color: transparent;
 }
 
+/* M211: no track behind the bar, as on Statistics' Keys card: the one violet bar alone. */
 .keys-counts__bar {
   display: block;
   height: var(--chart-bar-thickness);
-  background: var(--bg-panel-alt);
+  background: transparent;
 }
 
-/* The bar itself is the shared RankBar, the track behind it is this row's. */
+/* The bar itself is the shared RankBar. */
 .keys-counts__bar > .cp-rank-bar {
   height: 100%;
 }
 
 /* The bar is the chart's one violet ink (D22, M211): the chip beside it carries the key's colour. */
-
-.keys-counts__row[aria-pressed="true"] .keys-counts__bar {
-  background: var(--bg-input);
-}
 
 .keys-counts__count {
   font-family: var(--font-data);
@@ -383,10 +404,16 @@
   }
 }
 
-/* A wide window gives the wheel more of the room (M168): a cell is a size larger, still a whole pixel count. */
+/* A wide window gives the wheel more of the room (M168): a cell is at least a size larger, and grows
+   with the window's height up to 11 points, still a whole pixel count. The wheel then fits the
+   pane's real height (.keys-page__wheel). */
 @container content (min-width: 110em) {
   .keys-page {
-    --keys-cell: min(round(nearest, calc(8px * var(--scale)), 1px), calc(11px * var(--scale)));
+    --keys-cell: clamp(
+      round(nearest, calc(8px * var(--scale)), 1px),
+      round(down, calc((100dvh - var(--keys-chrome)) / 48), 1px),
+      round(down, calc(11px * var(--scale)), 1px)
+    );
   }
 }
 
@@ -417,7 +444,8 @@
   min-width: 0;
   overflow: hidden;
   color: var(--fg-muted);
-  font-family: var(--font-data);
+  /* M8: the size-matched figures of the pixel face, so "83" sits on the heading's caps. */
+  font-family: var(--font-pixel-digits);
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -336,12 +336,34 @@ describe("the page", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the Inspector's empty state, never a library track (DEC-097)", async () => {
+  it("shows the Inspector's empty state, never a library track (DEC-097, M349)", async () => {
     renderDiscover();
     await screen.findByRole("tab", { name: "Results" });
-    expect(screen.getByTestId("inspector")).toHaveTextContent(
-      "Tracks found on Beatport are not in your library",
-    );
+    await screen.findByRole("navigation", { name: "Past digs" });
+    const inspector = screen.getByTestId("inspector");
+    // M349: the one empty state in its short form, not a bare paragraph.
+    await waitFor(() => expect(inspector.querySelector(".cp-empty-state--compact")).not.toBeNull());
+    expect(inspector).toHaveTextContent("No track details for Beatport's tracks");
+    expect(inspector.querySelector(".cp-inspector__empty")).toBeNull();
+  });
+
+  it("fills the Details slot only while a tab shows rows of tracks (M490)", async () => {
+    renderDiscover();
+    await screen.findByRole("navigation", { name: "Past digs" });
+    const inspector = screen.getByTestId("inspector");
+    await waitFor(() => expect(inspector).toHaveTextContent("No track details"));
+    // New dig shows no tracks: nothing in the slot, so no Details for nothing.
+    fireEvent.click(screen.getByRole("tab", { name: "New dig" }));
+    await waitFor(() => expect(inspector).toBeEmptyDOMElement());
+    fireEvent.click(screen.getByRole("tab", { name: "Results" }));
+    await waitFor(() => expect(inspector).toHaveTextContent("No track details"));
+  });
+
+  it("leaves the Details slot empty on Results with no digs (M490)", async () => {
+    install({ listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)) });
+    renderDiscover();
+    await screen.findByText("No digs yet");
+    expect(screen.getByTestId("inspector")).toBeEmptyDOMElement();
   });
 });
 
@@ -358,11 +380,16 @@ describe("Beatport's state", () => {
     const notice = (await screen.findByText(headline)).closest(".cp-notice") as HTMLElement;
     const button = within(notice).getByRole("button", { name: action });
     expect(button).toBeInTheDocument();
-    // One line: the longer hint is the button's tooltip, never drawn as text.
     expect(notice.querySelectorAll(".cp-notice__title")).toHaveLength(0);
     if (state === "options_rate_limited") expect(button).toHaveAttribute("title", expect.stringMatching(/^Wait /));
-    else if (state === "options_unavailable") expect(button).toHaveAttribute("title", "Beatport answered 503.");
     else expect(button).not.toHaveAttribute("title");
+    if (state === "options_unavailable") {
+      // M348: out of reach is a failure, its reason a muted line of its own, not a hover.
+      expect(notice).toHaveClass("cp-notice--danger");
+      expect(within(notice).getByText("Beatport answered 503.")).toHaveClass("discover-note");
+    } else {
+      expect(notice).toHaveClass("cp-notice--warning");
+    }
     // Past digs still open without Beatport.
     expect(await screen.findByRole("navigation", { name: "Past digs" })).toBeInTheDocument();
   });
@@ -613,9 +640,13 @@ describe("Results", () => {
     renderDiscover();
     await openRun(1);
     const looked = await screen.findByRole("list", { name: "What it looked for", hidden: true });
-    const scope = looked.closest("details") as HTMLDetailsElement;
-    expect(scope).not.toHaveAttribute("open");
-    expect(scope.querySelector("summary")).toHaveTextContent(/House, Techno.*artists.*labels/);
+    // M60: the shared Disclosure, folded, its head the scope in one line.
+    const scope = looked.closest(".discover-run__scope") as HTMLElement;
+    expect(scope).toHaveClass("cp-fold");
+    expect(scope.querySelector("details")).toBeNull();
+    const head = within(scope).getByRole("button", { name: /House, Techno.*artists.*labels/ });
+    expect(head).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("What it looked for")).toHaveClass("cp-text-subhead");
     expect(screen.getByText("What it looked for")).toBeInTheDocument();
     expect(looked).toHaveTextContent("in House, Techno (Peak Time / Driving)");
     expect(looked).toHaveTextContent("Artists: every artist in your library (3)");
@@ -1109,6 +1140,17 @@ describe("Results", () => {
     expect(screen.queryByText(/This can take a few minutes/)).toBeNull();
   });
 
+  it("names its tab strip, ties each tab to its panel, and marks the dig list and the results as panes (M474, M459)", async () => {
+    renderDiscover();
+    await openRun(1);
+    expect(screen.getByRole("tablist", { name: "Discover views" })).toBeInTheDocument();
+    const tab = screen.getByRole("tab", { name: "Results" });
+    expect(tab).toHaveAttribute("aria-controls", "discover-panel-results");
+    expect(screen.getByRole("tabpanel", { name: "Results" })).toHaveAttribute("id", "discover-panel-results");
+    expect(document.querySelector(".discover-runs-view__list")).toHaveAttribute("data-pane", "digs");
+    expect(document.querySelector(".discover-runs-view__detail")).toHaveAttribute("data-pane", "results");
+  });
+
   it("goes back to the list when a search is gone", async () => {
     install({
       getDiscoveryRun: vi.fn(async ({ run_id }: { run_id: number }) =>
@@ -1147,6 +1189,11 @@ describe("New dig", () => {
     renderDiscover();
     expect(await screen.findByText("No library yet")).toBeInTheDocument();
     expect(screen.queryByRole("tab")).toBeNull();
+    // M350 (D32 A): one grey button; the way to genre charts is in the description.
+    const emptyState = screen.getByText("No library yet").closest(".cp-empty-state") as HTMLElement;
+    const description = emptyState.querySelector(".cp-empty-state__description") as HTMLElement;
+    expect(within(description).getByRole("button", { name: "Dig genre charts" })).toBeInTheDocument();
+    expect(emptyState.querySelectorAll(":scope > button, :scope > .cp-button-row")).toHaveLength(1);
     expect(screen.queryByText(/Your library has no artists or labels yet/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(await screen.findByTestId("where")).toHaveTextContent("/library");
@@ -1324,7 +1371,10 @@ describe("the wantlist", () => {
     fireEvent.change(screen.getByLabelText("Marked bought"), { target: { value: "hide" } });
     fireEvent.click(screen.getByRole("tab", { name: "Results" }));
     // The wantlist is hidden, not taken down.
-    const panel = document.querySelector<HTMLElement>('[role="tabpanel"][aria-label="Wantlist"]');
+    // M474: the panel is named by its tab, through the ids the tabs and panels share.
+    const panel = document.getElementById("discover-panel-wantlist");
+    expect(panel).toHaveAttribute("role", "tabpanel");
+    expect(screen.getByRole("tab", { name: "Wantlist" })).toHaveAttribute("aria-controls", "discover-panel-wantlist");
     expect(panel).not.toBeNull();
     expect(panel).toHaveAttribute("hidden");
     fireEvent.click(screen.getByRole("tab", { name: "Wantlist" }));

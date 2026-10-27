@@ -59,6 +59,8 @@ interface RunsViewProps {
    * dig, and is not drawn while there are no digs to look at.
    */
   lookup?: ReactNode;
+  /** Told whether a dig, and so rows of tracks, is showing (M490: the page's Details slot). */
+  onHasRows?: (has: boolean) => void;
 }
 
 export function RunsView({
@@ -70,6 +72,7 @@ export function RunsView({
   continueBlocked,
   pollMs = JOB_POLL_MS,
   lookup = null,
+  onHasRows,
 }: RunsViewProps) {
   // The list is read through the shared cache (C19d): a page shown again has it
   // at once, and it is read again when a search ends (the cache hears the job),
@@ -105,6 +108,11 @@ export function RunsView({
         ? userMessage(read.error)
         : null;
   const [selected, setSelected] = useState<number | null>(() => runs?.[0]?.id ?? null);
+  const showsRows = runs !== null && runs.length > 0;
+  useEffect(() => {
+    onHasRows?.(showsRows);
+  }, [onHasRows, showsRows]);
+  useEffect(() => () => onHasRows?.(false), [onHasRows]);
   const [deleting, setDeleting] = useState<DiscoverRun | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [detailVersion, setDetailVersion] = useState(0);
@@ -222,7 +230,7 @@ export function RunsView({
   };
 
   if (runs === null) {
-    return <Loading what="your digs" className="discover-runs-view__waiting" />;
+    return <Loading what="your digs" className="discover-runs-view__waiting" centered />;
   }
 
   // A search just started is on its way to the list: not "none yet".
@@ -259,7 +267,8 @@ export function RunsView({
         ref={view}
         className={`discover-runs-view${stacked ? " discover-runs-view--stacked" : ""}`}
       >
-        <div className="discover-runs-view__list">
+        {/* M459: F6 visits the dig list and the results as two panes. */}
+        <div className="discover-runs-view__list" data-pane="digs">
           {listError && (
             <Notice
               action={
@@ -288,7 +297,7 @@ export function RunsView({
             loadingMore={loadingMore}
           />
         </div>
-        <div className="discover-runs-view__detail">
+        <div className="discover-runs-view__detail" data-pane="results">
           {selected === null ? (
             <Loading what="your digs" />
           ) : (

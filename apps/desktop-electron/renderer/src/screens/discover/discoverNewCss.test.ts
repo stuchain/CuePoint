@@ -12,15 +12,19 @@ const body = (selector: string) =>
   rules.find((rule) => rule.selector.split(",").map((part) => part.trim()).includes(selector))?.body ?? "";
 
 describe("New dig (P14)", () => {
-  it("is one panel-tone pane with no frame", () => {
-    expect(body(".discover-new")).toMatch(/background:\s*var\(--bg-panel\)/);
+  // Moved for M58 (D9 A): the pane is the ground, not one panel-tone pane, and has no frame.
+  it("sits on the ground with no frame (M58)", () => {
+    expect(body(".discover-new")).toMatch(/background:\s*transparent/);
     expect(body(".discover-new")).not.toMatch(/border/);
   });
 
-  it("lays Artists and Labels as sections with a divider between, not cards", () => {
-    expect(body(".discover-new__scope")).toMatch(/background:\s*transparent/);
-    expect(body(".discover-new__scope")).toMatch(/padding:\s*0/);
-    expect(body(".discover-new__scope + .discover-new__scope")).toMatch(/border-top:\s*var\(--divider\)/);
+  // Moved for M58 (D9 A): Genres, Artists, Labels and When are each a filled card, with no inner rules.
+  it("makes each group a card on the ground, with no inner rules (M58)", () => {
+    for (const group of [".discover-new__genres", ".discover-new__scope", ".discover-new__when"]) {
+      expect(body(group), group).not.toMatch(/background|padding|border/);
+    }
+    expect(css).not.toMatch(/\.discover-new__scope\s*\+\s*\.discover-new__scope/);
+    expect(body(".discover-new__column")).toMatch(/gap:\s*var\(--space-xl\)/);
   });
 
   it("sets the dig bar on the between-tone under a divider", () => {
@@ -29,8 +33,10 @@ describe("New dig (P14)", () => {
     expect(bar).toMatch(/border-top:\s*var\(--divider\)/);
   });
 
-  it("lifts the dig bar with the upward sticky shadow and keeps scrolled-to controls clear of it (M180)", () => {
-    expect(body(".discover-new__bar")).toMatch(/box-shadow:[^;]*rgba\(0, 0, 0, 0\.6\)/);
+  // Moved for M33: the bar's lift is one hard hairline mirrored upward, no soft shadow.
+  it("sets the dig bar off with a hard hairline and keeps scrolled-to controls clear of it (M180, M33)", () => {
+    expect(body(".discover-new__bar")).toMatch(/box-shadow:\s*0 calc\(-1 \* var\(--hairline\)\) 0 var\(--row-line\);/);
+    expect(body(".discover-new__bar")).not.toMatch(/rgba/);
     expect(body(".discover-new__body")).toMatch(/scroll-padding-bottom:/);
   });
 });
@@ -55,6 +61,8 @@ describe("New dig, round 3 (D20)", () => {
 
   it("makes New list… a quiet small button at the radios' label edge, not a link (M182, M184)", () => {
     expect(body(".discover-new__new-list")).toMatch(/margin-left:\s*calc\(var\(--check-size\)/);
+    // M182: less the quiet button's own inline padding, so the word "New" starts on the label edge.
+    expect(body(".discover-new__new-list")).toContain("- (var(--space-sm) + var(--control-border-width))");
     expect(css).not.toMatch(/\.discover-new__new-list[^{]*\{[^}]*color:\s*var\(--link/);
   });
 });

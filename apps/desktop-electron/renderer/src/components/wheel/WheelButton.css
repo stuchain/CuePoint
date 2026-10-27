@@ -12,7 +12,7 @@
   border: 0;
   /* Not `font: inherit`: the chip's face, size and weight (KeyChip.css, P2) must stay. */
   line-height: inherit;
-  cursor: pointer;
+  cursor: default;
 }
 
 .key-chip--button:hover {

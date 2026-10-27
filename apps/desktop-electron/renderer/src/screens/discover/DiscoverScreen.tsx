@@ -43,7 +43,7 @@ import { Hint } from "../../components/Hint";
 import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
-import { Tabs } from "../../components/Tabs";
+import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
@@ -83,15 +83,20 @@ import { userMessage } from "../../api/userMessage";
 /** The banner's button: the artist look-up, not the Library's match run (M389, D33). */
 const READ_ARTISTS = "Read artists from Beatport";
 
+/** The id prefix that ties Discover's tabs to their panels (M474). */
+const DISCOVER_TABS = "discover";
+
 /**
  * What the Inspector says on this page. One element for the page's life, so
  * setting it is not a new value on every render.
  */
 const INSPECTOR_EMPTY = (
-  <p className="cp-inspector__empty">
-    Tracks found on Beatport are not in your library, so there is nothing to inspect here. Select
-    a track in the Library to see its details.
-  </p>
+  // M349: the one empty state, in its short form.
+  <EmptyState
+    compact
+    headline="No track details for Beatport's tracks"
+    description="They are not in your library. Select a track in the Library to see its details."
+  />
 );
 
 export function DiscoverScreen() {
@@ -107,8 +112,24 @@ export function DiscoverScreen() {
   const [runsVersion, setRunsVersion] = useState(0);
   const [pushNotice, setPushNotice] = useState<PlaylistOutcome | null>(null);
 
+  // Which tabs show rows of tracks (M490): the Details slot is filled only while one is showing, so
+  // an empty Results, New dig or an empty Wantlist has no Details button for nothing.
+  const [rowsShown, setRowsShown] = useState<{ results: boolean; wantlist: boolean }>({
+    results: false,
+    wantlist: false,
+  });
+  const resultsHaveRows = useCallback(
+    (has: boolean) => setRowsShown((was) => (was.results === has ? was : { ...was, results: has })),
+    [],
+  );
+  const wantlistHasRows = useCallback(
+    (has: boolean) => setRowsShown((was) => (was.wantlist === has ? was : { ...was, wantlist: has })),
+    [],
+  );
+  const hasRows =
+    (section === "results" && rowsShown.results) || (section === "wantlist" && rowsShown.wantlist);
   // Nothing here describes a track, so a selection elsewhere does not open the panel (K1).
-  useInspectorSlot(INSPECTOR_EMPTY, { autoOpen: false });
+  useInspectorSlot(hasRows ? INSPECTOR_EMPTY : null, { autoOpen: false });
 
   // The options come through the shared cache (C19d): a page shown again has
   // them at once, and they are read again when a lookup or a sign-in ends.
@@ -170,7 +191,7 @@ export function DiscoverScreen() {
     if (result) {
       toast(discoveryEnded(result), result.outcome === "succeeded" ? "success" : "warning");
     } else if (finished.state !== "succeeded") {
-      toast(finished.error?.message ?? "The dig did not finish.", "warning");
+      toast(finished.error?.message ?? "The dig did not finish", "warning");
     }
   });
 
@@ -194,7 +215,7 @@ export function DiscoverScreen() {
     if (result) {
       toast(resolveOutcome(result), result.outcome === "succeeded" ? "success" : "warning");
     } else if (finished.state !== "succeeded") {
-      toast(finished.error?.message ?? "The lookup did not finish.", "warning");
+      toast(finished.error?.message ?? "The lookup did not finish", "warning");
     }
     // Kept beside the cache's own invalidation: the job store only sees a job that outlasts
     // one of its polls (2 s), and a lookup shorter than that would leave the prompt standing.
@@ -340,7 +361,7 @@ export function DiscoverScreen() {
             {optionsError}
           </Notice>
         ) : (
-          <Loading what="Discover" />
+          <Loading what="Discover" centered />
         )}
       </div>
     );
@@ -348,10 +369,13 @@ export function DiscoverScreen() {
 
   const toRead = tools.options.resolve.to_read;
   const looking = resolve.jobId !== null;
-  // Beatport's state is the page's, said once, above whatever tab is showing.
+  // Beatport's state is the page's, said once, above whatever tab is showing. Beatport out of reach
+  // is a failure (M348): the danger tone, and its reason a muted line of its own under the
+  // sentence, never only in a hover.
+  const unreachable = notice?.state === "unavailable";
   const stateNotice = notice ? (
     <Notice
-      kind="warning"
+      kind={unreachable ? "danger" : "warning"}
       action={
         notice.action === "signin" ? (
           <BeatportSignInButton
@@ -359,6 +383,10 @@ export function DiscoverScreen() {
             hint={notice.hint || undefined}
             onDone={reloadOptions}
           />
+        ) : unreachable ? (
+          <Button variant="secondary" onClick={reloadOptions}>
+            {notice.actionLabel}
+          </Button>
         ) : (
           <Hint text={notice.hint || undefined}>
             <Button variant="secondary" onClick={reloadOptions}>
@@ -368,7 +396,14 @@ export function DiscoverScreen() {
         )
       }
     >
-      {notice.headline}
+      {unreachable && notice.hint ? (
+        <>
+          <p>{notice.headline}</p>
+          <p className="discover-note discover-screen__notice-reason">{notice.hint}</p>
+        </>
+      ) : (
+        notice.headline
+      )}
     </Notice>
   ) : null;
   const openPlaylist = (url: string) => {
@@ -386,20 +421,16 @@ export function DiscoverScreen() {
         <ScreenHeader title="Discover" inset />
         {stateNotice}
         {waitingForDigs ? (
-          <Loading what="Discover" />
+          <Loading what="Discover" centered />
         ) : (
+          // M350 (D32 A): one grey action; the way to genre charts is in the description.
           <EmptyState
             icon="discover"
             headline="No library yet"
-            description="Discover looks for new music by the artists and labels in your library. Genre charts work without one."
-            action={
-              <div className="cp-button-row">
-                <Button
-                  variant="secondary"
-                  onClick={() => navigate("/library", { state: libraryImportState() })}
-                >
-                  {IMPORT_COLLECTION_LABEL}
-                </Button>
+            description={
+              <>
+                Discover looks for new music by the artists and labels in your library. Genre charts
+                work without one:{" "}
                 <LinkButton
                   onClick={() => {
                     setDigging(true);
@@ -408,8 +439,13 @@ export function DiscoverScreen() {
                 >
                   Dig genre charts
                 </LinkButton>
-              </div>
+                .
+              </>
             }
+            action={{
+              label: IMPORT_COLLECTION_LABEL,
+              onClick: () => navigate("/library", { state: libraryImportState() }),
+            }}
           />
         )}
       </div>
@@ -442,6 +478,9 @@ export function DiscoverScreen() {
             tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
             activeId={section}
             onChange={choose}
+            // M474: the tabs name their panels, and the strip has a name.
+            idPrefix={DISCOVER_TABS}
+            label="Discover views"
           />
         }
       />
@@ -463,7 +502,8 @@ export function DiscoverScreen() {
         {seen.has("results") && (
           <div
             role="tabpanel"
-            aria-label="Results"
+            id={panelId(DISCOVER_TABS, "results")}
+            aria-labelledby={tabId(DISCOVER_TABS, "results")}
             hidden={section !== "results"}
             className="discover-screen__panel"
           >
@@ -481,13 +521,15 @@ export function DiscoverScreen() {
                     : unusableReason(state)
               }
               lookup={lookupNotice}
+              onHasRows={resultsHaveRows}
             />
           </div>
         )}
         {seen.has("new") && (
           <div
             role="tabpanel"
-            aria-label="New dig"
+            id={panelId(DISCOVER_TABS, "new")}
+            aria-labelledby={tabId(DISCOVER_TABS, "new")}
             hidden={section !== "new"}
             className="discover-screen__panel"
           >
@@ -504,11 +546,12 @@ export function DiscoverScreen() {
         {seen.has("wantlist") && (
           <div
             role="tabpanel"
-            aria-label="Wantlist"
+            id={panelId(DISCOVER_TABS, "wantlist")}
+            aria-labelledby={tabId(DISCOVER_TABS, "wantlist")}
             hidden={section !== "wantlist"}
             className="discover-screen__panel"
           >
-            <WantlistView tools={tools} />
+            <WantlistView tools={tools} onHasRows={wantlistHasRows} />
           </div>
         )}
       </div>

@@ -8,8 +8,8 @@
  * Every Beatport table sends one row shape (DISCOVER-09's `BeatportTrackRow`),
  * so the shared columns are written once over it and each table adds its own:
  * a search's order and reasons, the wantlist's note, date added and bought mark.
- * Artist and label names are links to their pages (FLW-16). The play button is no column:
- * the table draws it at the right end of each row (`PreviewButton`).
+ * Artist and label names are links to their pages (FLW-16). There is no play column or button:
+ * a double-click or Enter plays a row's sample (M99).
  * A column sorts by the engine's own sort names; one the engine cannot order
  * by has no `sortKey`. Each table keeps its own layout (DEC-042).
  */
@@ -19,11 +19,32 @@ import type {
   WantlistRow,
 } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
+import { Hint } from "../../components/Hint";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatBpm } from "../library/trackValues";
 import { beatportRowKey } from "./beatportKey";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { artistsText, formatIsoDay, formatWhen, sourcesText, trackName } from "./discoverFormat";
+
+/**
+ * The genres a Beatport genre string names, each once, in its order (M95): the engine's
+ * `core/genres.split_genres` read the same way (a comma, a pipe or a semicolon separates; a slash
+ * and an ampersand do not), for rows the engine sends with the one raw string.
+ */
+export function beatportGenres(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const genres: string[] = [];
+  for (const part of raw.split(/[,|;]/)) {
+    const name = part.split(/\s+/).filter(Boolean).join(" ");
+    const key = name.toLocaleLowerCase();
+    if (name && !seen.has(key)) {
+      seen.add(key);
+      genres.push(name);
+    }
+  }
+  return genres;
+}
 
 export const RUN_TABLE_LAYOUT_KEY = "cuepoint-discover-run-table-layout";
 export const WANTLIST_TABLE_LAYOUT_KEY = "cuepoint-discover-wantlist-table-layout";
@@ -110,7 +131,18 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       accessor: (row) => row.genre_name,
       minWidthPx: 90,
       defaultWidthPx: 100,
-      render: (row) => row.genre_name || null,
+      // M95: the primary genre, as the Library's column; the hint lists them all when there are more.
+      render: (row) => {
+        const genres = beatportGenres(row.genre_name);
+        if (genres.length === 0) return null;
+        if (genres.length === 1) return genres[0];
+        return (
+          <Hint text={genres.join(", ")} portal>
+            <span>{genres[0]}</span>
+          </Hint>
+        );
+      },
+      text: (row) => row.genre_name ?? "",
     },
     {
       id: "label",

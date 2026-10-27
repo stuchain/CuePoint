@@ -19,6 +19,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { DiscoverGroupCard, DiscoverRun, DiscoverRunHeader } from "../../api/cuepointBridge.types";
 import { scrollParent } from "../../api/useCover";
 import { Button } from "../../components/Button";
+import { Disclosure } from "../../components/Disclosure";
 import { Loading, loadingWords } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { countNoun } from "../../format/counts";
@@ -70,12 +71,10 @@ function BackToResults({ onBack }: { onBack: () => void }) {
 function ScopeNames({ names, noun }: { names: DiscoverRunHeader["artists"]; noun: string }) {
   if (names.length === 0) return null;
   return (
-    <details className="discover-run__names">
-      <summary>
-        The {countNoun(names.length, noun)} it looked for
-      </summary>
+    // M60: the one Disclosure, not the browser's own fold.
+    <Disclosure className="discover-run__names" title={`The ${countNoun(names.length, noun)} it looked for`}>
       <p className="discover-note">{names.map((entry) => entry.name).join(", ")}</p>
-    </details>
+    </Disclosure>
   );
 }
 
@@ -265,9 +264,10 @@ export function RunDetail({ runId, listed = null, tools, version, onGone }: RunD
             {/* No title of its own: the open dig's card in the list is the heading. */}
             {/* A stopped dig's card in the list says why; not said twice. */}
             {!canContinueRun(run) && <p className="discover-run__outcome">{runOutcome(run)}</p>}
-            <details className="discover-run__scope">
-              <summary>{runScopeLine(run, tools.options.genres)}</summary>
-              <p className="discover-run__looked-title">What it looked for</p>
+            {/* M60: the one Disclosure; its head is the scope in one line. */}
+            <Disclosure className="discover-run__scope" title={runScopeLine(run, tools.options.genres)}>
+              {/* M13: the shared subhead, not a bold mini-head of its own. */}
+              <p className="cp-text-subhead">What it looked for</p>
               <ul className="discover-run__looked" aria-label="What it looked for">
                 <li>{chartsLine(run, tools.options.genres)}</li>
                 <li>{releasesLine(run)}</li>
@@ -277,7 +277,7 @@ export function RunDetail({ runId, listed = null, tools, version, onGone }: RunD
               {/* Only the engine's header has the names; they join the header when it arrives. */}
               {header && <ScopeNames names={header.artists} noun="artist" />}
               {header && <ScopeNames names={header.labels} noun="label" />}
-            </details>
+            </Disclosure>
           </>
         )}
       </header>

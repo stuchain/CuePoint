@@ -393,6 +393,8 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
     <div className="screen discover-page discover-page--similar">
       <ScreenHeader
         title={seed.track.title}
+        // M190: a long name is data: it shrinks and cuts before the status and actions.
+        dataTitle
         crumb={<PageCrumb current="Similar tracks" />}
         facts={{ count: rows.length, noun: "similar track", facts: seedFactParts(seed.track) }}
         pageActions={

@@ -865,6 +865,24 @@ describe("the library half: library rows", () => {
 });
 
 describe("the page header (C11, C216, C221)", () => {
+  it("treats a long name as data that shrinks before the actions (M190)", async () => {
+    renderAt(entityPath("artist", "bp:301001"));
+    const title = await opened("Mara Veil");
+    const header = title.closest("header") as HTMLElement;
+    expect(header.querySelector(".cp-screen-header__title--data, .cp-screen-header__display--data")).not.toBeNull();
+  });
+
+  it("marks its two halves as panes for F6, and says what \"in your library\" means above Beatport's table (M459, M520)", async () => {
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Mara Veil");
+    const halves = [...document.querySelectorAll<HTMLElement>(".discover-page__half")];
+    expect(halves.map((half) => half.dataset.pane)).toEqual(["library", "beatport"]);
+    const table = await beatportRows(/Beatport's releases by this artist/);
+    const note = await within(halves[1]!).findByText(/counts tracks you have matched on Beatport/, {}, LOADED);
+    expect(within(note).getByRole("button", { name: "Match more" })).toBeInTheDocument();
+    expect(note.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("holds Open in Library and Save as Smart Collection among the header's actions", async () => {
     renderAt(entityPath("artist", "bp:301001"));
     const title = await opened("Mara Veil");
@@ -977,9 +995,9 @@ describe("the Inspector on a page", () => {
       fireEvent.mouseDown(cell);
       fireEvent.click(cell);
     });
-    expect(
-      await within(inspector).findByText(/Tracks on Beatport are not in your library/, {}, LOADED),
-    ).toBeInTheDocument();
+    // M349: the one empty state, in its short form.
+    const empty = await within(inspector).findByText("No track details for Beatport's tracks", {}, LOADED);
+    expect(empty.closest(".cp-empty-state--compact")).not.toBeNull();
     // The library half let go of its selection.
     await waitFor(() => expect(within(library).queryByText("1 selected")).toBeNull());
   });

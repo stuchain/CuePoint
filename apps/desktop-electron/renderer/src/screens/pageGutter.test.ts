@@ -102,7 +102,8 @@ describe("the shared page margin", () => {
   });
 
   it("pads New dig's pane inside its own tone, never at the bottom where the sticky bar sits (P14)", () => {
-    expect(decls(discover, ".discover-new")["background"]).toBe("var(--bg-panel)");
+    // Moved for M58 (D9 A): the pane sits on the ground; its groups are filled cards.
+    expect(decls(discover, ".discover-new")["background"]).toBe("transparent");
     expect(decls(discover, ".discover-new__body")["padding"]).toBe("var(--space-lg) var(--space-lg) 0");
   });
 

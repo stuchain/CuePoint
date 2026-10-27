@@ -28,6 +28,7 @@ import { Notice } from "../../components/Notice";
 import { useToast } from "../../components/Toast";
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
+import { SavedTick, useSavedSignal } from "../../components/SavedTick";
 import { LinkButton } from "../../components/LinkButton";
 import { SelectAllButton, SelectionBar } from "../../components/SelectionBar";
 import { formatCount } from "../../format/counts";
@@ -73,10 +74,25 @@ import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
 const trackIdOf = (row: LibraryTrackRow) => row.id;
 
+/** No change waiting to be read back: one array, so the drawn source stays the answer's own. */
+const NO_EDITS: readonly OptimisticEdit[] = [];
+
 /** The keys table keeps a layout of its own, apart from the Library's. */
 const KEYS_TABLE_LAYOUT_KEY = "cuepoint-keys-table-layout";
-/** The Library's columns in the Library's order: Title, Artist, BPM, Key, Length (M87, D12). */
-const KEYS_COLUMNS = LIBRARY_COLUMNS;
+/** The Library's columns that wait in the Columns list in this narrow pane (M85). */
+const KEYS_HIDDEN_BY_DEFAULT: ReadonlySet<string> = new Set(["duration_seconds", "genre"]);
+
+/**
+ * The Library's columns in the Library's order (M87, D12), the same defs, so Key and Length keep
+ * the Library's `minWidthPx`, which holds each heading and its sort arrow (M88). One difference
+ * (M85): Length, and Genre after it, wait in the Columns list, so the narrow tracks pane opens on
+ * Title, Artist, BPM and Key and never scrolls sideways or puts the corner over a heading. With
+ * Length alone hidden, Genre became the last column and was cut the same way. A layout saved
+ * before keeps its own columns (M86's migrate): this changes the default only.
+ */
+export const KEYS_COLUMNS = LIBRARY_COLUMNS.map((column) =>
+  KEYS_HIDDEN_BY_DEFAULT.has(column.id) ? { ...column, hiddenByDefault: true } : column,
+);
 /**
  * What a layout saved on this page held before D12: Key straight after Title (C69), then the
  * Library's order of the time. One never rearranged moves to the shared order once.
@@ -97,6 +113,26 @@ interface Target {
   selection: ReturnType<typeof batchSelection>;
   count: number;
   trackId: number | null;
+  /** Whether a track is one of these, for a change drawn before the engine answers (M382). */
+  covers: (trackId: number) => boolean;
+}
+
+/**
+ * A rating or favorite set here and drawn at once (M382, D32 A), over the rows of the answer it was
+ * made on. A new answer (a reload, another question) is read after the change, so it drops these.
+ */
+interface OptimisticEdit {
+  covers: (trackId: number) => boolean;
+  patch: (row: LibraryTrackRow) => LibraryTrackRow;
+}
+
+/** The row as it reads with a new CuePoint rating: the engine's resolution, mirrored (trackEdits.withRating). */
+export function rowWithRating(row: LibraryTrackRow, stars: number | null): LibraryTrackRow {
+  return {
+    ...row,
+    effective_rating: stars ?? row.rating,
+    rating_source: stars != null ? "cuepoint" : row.rating != null ? "rekordbox" : null,
+  };
 }
 
 type PickerKind = "collection" | "set" | "tag-add" | "tag-remove";
@@ -138,6 +174,11 @@ interface KeysTracksProps {
    * again what depends on it: the key counts and the Inspector's detail.
    */
   onTracksChanged: () => void;
+  /**
+   * Called after a rating or favorite set here (M382): only the Inspector's detail is read again.
+   * The table already shows the change, and the key counts do not move.
+   */
+  onDetailChanged?: () => void;
 }
 
 /** The bar's groups on Keys: Play only (K15). */
@@ -157,6 +198,7 @@ export function KeysTracks({
   onOpenInClean,
   onOpenMatch,
   onTracksChanged,
+  onDetailChanged,
 }: KeysTracksProps) {
   const playMarks = useTrackPlayMarks(trackIdOf);
   const { push } = useToast();
@@ -187,7 +229,38 @@ export function KeysTracks({
     previousDefaultOrder: KEYS_PREVIOUS_DEFAULT_ORDER,
   });
   const window_ = useTrackWindow(query);
-  const selection = useTrackSelection(query, window_.total, window_.source.getRow);
+
+  // M382: a rating or favorite is drawn the moment it is set, with an inline tick, and no
+  // confirmation; the engine's answer only speaks when it fails.
+  const [optimistic, setOptimistic] = useState<{ identity: string; edits: OptimisticEdit[] }>({
+    identity: "",
+    edits: [],
+  });
+  const edits = optimistic.identity === window_.identity ? optimistic.edits : NO_EDITS;
+  const baseSource = window_.source;
+  const source = useMemo(() => {
+    if (edits.length === 0) return baseSource;
+    // One drawn row per row of the answer, so the table sees a stable object between renders.
+    const drawn = new WeakMap<LibraryTrackRow, LibraryTrackRow>();
+    return {
+      ...baseSource,
+      getRow: (index: number) => {
+        const row = baseSource.getRow(index);
+        if (!row || row.id == null) return row;
+        const id = row.id;
+        if (!edits.some((edit) => edit.covers(id))) return row;
+        let shown = drawn.get(row);
+        if (!shown) {
+          shown = edits.reduce((next, edit) => (edit.covers(id) ? edit.patch(next) : next), row);
+          drawn.set(row, shown);
+        }
+        return shown;
+      },
+    };
+  }, [baseSource, edits]);
+  const [ratingSaved, markRatingSaved] = useSavedSignal();
+
+  const selection = useTrackSelection(query, window_.total, source.getRow);
   const playback = useLibraryPlayback({ query, onMessage: (message) => push(message, "info") });
   const { reload } = window_;
 
@@ -222,6 +295,40 @@ export function KeysTracks({
     (action: BatchAction, target: Target) =>
       void batch.start({ action, selection: target.selection, count: target.count }),
     [batch],
+  );
+
+  // A rating or favorite (M382): no question first, no toast when it worked. Its own runner, so a
+  // success reads only the Inspector again instead of the whole table (which already shows it).
+  const quick = useLibraryBatch({
+    onMessage: (message, tone) => {
+      if (tone === "warning") push(message, "warning");
+    },
+    onApplied: () => onDetailChanged?.(),
+  });
+  const { run: runQuick } = quick;
+  const identity = window_.identity;
+  const setNow = useCallback(
+    (action: BatchAction, target: Target) => {
+      const patch =
+        action.kind === "set_rating"
+          ? (row: LibraryTrackRow) => rowWithRating(row, (action.value as number | null) ?? null)
+          : (row: LibraryTrackRow) => ({ ...row, favorite: Boolean(action.value) });
+      const edit: OptimisticEdit = { covers: target.covers, patch };
+      setOptimistic((was) => ({
+        identity,
+        edits: [...(was.identity === identity ? was.edits : []), edit],
+      }));
+      void runQuick(
+        { action, selection: target.selection, count: target.count },
+        { onResult: () => markRatingSaved() },
+      ).then((applied) => {
+        if (applied || !mounted.current) return;
+        // It did not take (the toast said why): the rows go back to what the engine says.
+        setOptimistic((was) => ({ ...was, edits: was.edits.filter((other) => other !== edit) }));
+        reload();
+      });
+    },
+    [identity, markRatingSaved, reload, runQuick],
   );
 
   // ------------------------------------------------------------- the pickers
@@ -313,14 +420,15 @@ export function KeysTracks({
 
   // ---------------------------------------------------------- the bar and menu
 
-  const barTarget = useCallback(
-    (): Target => ({
-      selection: batchSelection(selection.selection, query),
+  const barTarget = useCallback((): Target => {
+    const chosen = selection.selection;
+    return {
+      selection: batchSelection(chosen, query),
       count: selection.count,
-      trackId: selection.count === 1 ? onlySelectedId(selection.selection, window_.total) : null,
-    }),
-    [query, selection.count, selection.selection, window_.total],
-  );
+      trackId: selection.count === 1 ? onlySelectedId(chosen, window_.total) : null,
+      covers: (id) => isSelected(chosen, id),
+    };
+  }, [query, selection.count, selection.selection, window_.total]);
 
   const copyRows = useCallback(
     async (gather: () => Promise<LibraryTrackRow[]>, wanted: number) => {
@@ -393,8 +501,9 @@ export function KeysTracks({
             onRemoveFromCollection: () => undefined,
             onAddTag: () => openPicker("tag-add", target),
             onRemoveTag: () => openPicker("tag-remove", target),
+            // M382: drawn at once, no confirmation, a tick when the engine has it.
             onRate: (stars) =>
-              runAction(
+              setNow(
                 {
                   kind: "set_rating",
                   value: stars,
@@ -403,7 +512,7 @@ export function KeysTracks({
                 target,
               ),
             onFavorite: (favorite) =>
-              runAction({ kind: "set_favorite", value: favorite, target: "favorite" }, target),
+              setNow({ kind: "set_favorite", value: favorite, target: "favorite" }, target),
           },
           explore:
             first != null
@@ -446,8 +555,8 @@ export function KeysTracks({
       playback,
       push,
       revealPath,
-      runAction,
       selection,
+      setNow,
       window_.total,
     ],
   );
@@ -509,17 +618,20 @@ export function KeysTracks({
       const inSelection = row.id != null && isSelected(selection.selection, row.id);
       const rows =
         inSelection && selection.count > 1 ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [row];
+      const chosen = selection.selection;
       const target: Target =
         inSelection && selection.count > 0
           ? {
-              selection: batchSelection(selection.selection, query),
+              selection: batchSelection(chosen, query),
               count: selection.count,
               trackId: selection.count === 1 ? row.id : null,
+              covers: (id) => isSelected(chosen, id),
             }
           : {
               selection: { track_ids: row.id == null ? [] : [row.id] },
               count: 1,
               trackId: row.id,
+              covers: (id) => id === row.id,
             };
       const first = rows[0]?.id ?? row.id ?? null;
       const credits = first == null ? null : await creditsFor(first, heldDetail);
@@ -593,6 +705,8 @@ export function KeysTracks({
           {formatCount(window_.total)}
           <span className="cp-visually-hidden">{` ${window_.total === 1 ? "track" : "tracks"}`}</span>
         </span>
+        {/* M382: the inline tick a rating or favorite set from the menu answers with. */}
+        <SavedTick signal={ratingSaved} />
         {!folded && offerSelectAll && (
           <span className="keys-tracks__fold">
             <SelectAllButton onSelectAll={selection.selectAllMatching} />
@@ -641,7 +755,7 @@ export function KeysTracks({
       <div className="keys-tracks__rows">
         <TrackTable<LibraryTrackRow>
           columns={columns.visible}
-          source={window_.source}
+          source={source}
           widths={columns.widths}
           onWidthsChange={columns.setWidths}
           onColumnMove={columns.move}
@@ -712,10 +826,11 @@ export function KeysTracks({
       <PickerDialog
         open={picker !== null}
         title={
+          // M414: the article, as the menu entries say it.
           picker?.kind === "collection"
-            ? "Add to Collection"
+            ? "Add to a Collection"
             : picker?.kind === "set"
-              ? "Add to Set"
+              ? "Add to a Set"
               : picker?.kind === "tag-remove"
                 ? "Remove a tag"
                 : "Add a tag"

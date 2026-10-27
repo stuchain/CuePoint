@@ -41,7 +41,7 @@ import { useToast } from "../../components/Toast";
 import { countNoun, formatCount } from "../../format/counts";
 import { BeatportSignInButton } from "./BeatportSignInButton";
 import { BeatportTable } from "./BeatportTable";
-import { HideOwnedSwitch } from "./HideOwnedSwitch";
+import { HideOwnedSwitch, InLibraryNote } from "./HideOwnedSwitch";
 import { useHideOwned } from "./useHideOwned";
 import { PlaylistNotice, type PlaylistOutcome } from "./PlaylistNotice";
 import { PushDialog } from "./PushDialog";
@@ -207,7 +207,7 @@ export function BeatportHalf({
     if (result) {
       notify(resolveOutcome(result), result.outcome === "succeeded" ? "success" : "warning");
     } else if (finished.state !== "succeeded") {
-      notify(finished.error?.message ?? "The lookup did not finish.", "warning");
+      notify(finished.error?.message ?? "The lookup did not finish", "warning");
     }
     onResolved();
     reload();
@@ -456,6 +456,8 @@ export function BeatportHalf({
   return (
     <div className="discover-page__beatport">
       {pushBanner}
+      {/* M520: what "in your library" means stays in view above the table, as on a dig's results. */}
+      <InLibraryNote />
       <div
         className="discover-page__beatport-table"
         onMouseDownCapture={() => {
