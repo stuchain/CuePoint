@@ -205,7 +205,9 @@ export function PaneTree({
         >
           <span className="cp-playlist-pane__twisty" aria-hidden />
           <PixelIcon name={leadingRow.icon} className="cp-playlist-pane__icon" />
-          <span className="cp-playlist-pane__name">{leadingRow.name}</span>
+          <span className="cp-playlist-pane__name" data-cut-hint="">
+            {leadingRow.name}
+          </span>
           {leadingRow.count != null && (
             <span className="cp-playlist-pane__count">{formatCount(leadingRow.count)}</span>
           )}
@@ -233,7 +235,7 @@ export function PaneTree({
             data-kind={row.kind}
             tabIndex={tabStop === row.key ? 0 : -1}
             draggable={row.draggable === true}
-            style={{ paddingLeft: `calc(var(--space-sm) + ${row.depth} * var(--tree-step))` }}
+            style={{ paddingLeft: `calc(var(--space-sm) + var(--pane-edge, 0px) + ${row.depth} * var(--tree-step))` }}
             className={classes}
             onClick={() => {
               setFocusKey(row.key);
@@ -267,7 +269,7 @@ export function PaneTree({
                 className="cp-playlist-pane__guide"
                 aria-hidden
                 style={{
-                  left: `calc(var(--space-sm) + ${level} * var(--tree-step) + var(--tree-step) / 2)`,
+                  left: `calc(var(--space-sm) + var(--pane-edge, 0px) + ${level} * var(--tree-step) + var(--tree-step) / 2)`,
                 }}
               />
             ))}

@@ -40,10 +40,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
 import {
   CANCEL,
   NO_COLLECTIONS,
+  couldNot,
+  freezeTitle,
   deleteLabel,
   deleteLead,
   deleteTitle,
@@ -439,7 +442,7 @@ export function CollectionsPane({
     const movingId = draggedNodeId(event.dataTransfer) ?? dragging;
     if (movingId == null) return;
     const result = await onMove(movingId, target ? target.id : null);
-    if (!result.ok) say(result.error ?? "Could not move that.", "warning");
+    if (!result.ok) say(result.error ?? couldNot("move", findCollection(tree, movingId)?.name), "warning");
   };
 
   /** One row's menu: what its buttons do, and what has no button (DEC-087). */
@@ -461,7 +464,7 @@ export function CollectionsPane({
     if (node.kind === "smart" && onFreezeSmart) {
       items.push({
         id: "freeze",
-        label: "Freeze to a Collection…",
+        label: "Save as a Collection…",
         onSelect: () => setFreezing(node),
       });
     }
@@ -638,7 +641,7 @@ export function CollectionsPane({
           }}
         >
           {status === "ready" && rows.length === 0 && (
-            <p className="cp-collections__empty">{NO_COLLECTIONS}</p>
+            <EmptyState compact className="cp-collections__empty" headline={NO_COLLECTIONS} />
           )}
         </PaneTree>
       )}
@@ -684,7 +687,8 @@ export function CollectionsPane({
 
       <Modal
         open={freezing !== null}
-        title={`Freeze ${freezing?.name ?? ""}?`}
+        title={freezeTitle(freezing?.name)}
+        closeDisabled={frozenBusy}
         onClose={() => setFreezing(null)}
         size="small"
         primaryAction={{
@@ -707,6 +711,7 @@ export function CollectionsPane({
         title={deleteTitle(pending ? kindWord(pending.node) : "Collection", pending?.node.name)}
         variant="danger"
         size="small"
+        closeDisabled={deleting}
         onClose={() => setPending(null)}
         primaryAction={{
           label: deleteLabel(pending ? kindWord(pending.node) : "Collection"),

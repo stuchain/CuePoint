@@ -21,7 +21,6 @@ import {
   type FixMenuHandlers,
 } from "./libraryClean";
 import { organizationMenuItems, type OrganizationMenuHandlers } from "./trackMenu";
-import { thisPageBlock } from "../prepare/prepareMenus";
 import { formatCount } from "../../format/counts";
 
 export type TrackActionGroupId = "play" | "organize" | "beatport" | "more";
@@ -54,6 +53,8 @@ export interface TrackActionContext {
   credits: TrackCreditLinks | null;
   /** Whether exactly one track with a known file is acted on (Show in folder). */
   revealable: boolean;
+  /** Whether all the tracks are favorites, none are, or not known (see `trackMenu.ts`). */
+  favorite?: boolean | null;
 }
 
 export interface TrackActionHandlers {
@@ -96,9 +97,9 @@ export function playItems(
   ];
 }
 
-/** Copy, as it is worded for this many tracks. */
+/** Copy, as it is worded for this many tracks: it copies text, and says so (M412). */
 function copyItem(count: number, onCopy: () => void): TrackContextMenuItem {
-  return { id: "copy", label: count > 1 ? `Copy ${tracks(count)}` : "Copy", onSelect: onCopy };
+  return { id: "copy", label: count > 1 ? `Copy ${tracks(count)} as text` : "Copy as text", onSelect: onCopy };
 }
 
 function revealItem(
@@ -167,17 +168,16 @@ export function trackActionGroups(
       : [];
   const built: Record<TrackActionGroupId, TrackContextMenuItem[]> = {
     play: count > 0 && handlers.play ? playItems(count, handlers.play) : [],
-    organize: [
-      ...organizationMenuItems({ count, collection: context.collection }, handlers.organization),
-      ...(count > 0
-        ? [{ ...copyItem(count, handlers.more.onCopy), separatorBefore: true }]
-        : []),
-    ],
+    organize: organizationMenuItems(
+      { count, collection: context.collection, favorite: context.favorite },
+      handlers.organization,
+    ),
     beatport: beatportMenuItems({ count }, handlers.beatport ?? {}),
     more:
       count > 0
         ? moreWithExplore(explore, [
             ...fixMenuItems({ count }, handlers.fix ?? {}),
+            copyItem(count, handlers.more.onCopy),
             revealItem(context, handlers.more.onReveal),
           ])
         : [],
@@ -228,14 +228,32 @@ export function menuFromGroups(groups: readonly TrackActionGroup[]): TrackContex
     onSelect: () => undefined,
     items: group.items,
   });
-  // The base track menu every list has is Play, then More; what only the Library does
-  // (Organize, Beatport) sits between them in a "This page" block (area 38).
+  // The base track menu every list has is Play, then More. The Library's own groups sit between
+  // them, divided and with no heading of their own (M410). Rating and Favorite are among a DJ's most
+  // frequent edits, so they are lifted out of Organize to the top level (D26, M299).
   const play = filled.filter((group) => group.id === "play").flatMap((group) => group.items);
+  const quick: TrackContextMenuItem[] = [];
   const page = filled
     .filter((group) => group.id !== "play" && group.id !== "more")
-    .map(submenu);
+    .map((group) => {
+      if (group.id !== "organize") return submenu(group);
+      const rest = group.items.filter((item) => {
+        if (!QUICK_IDS.has(item.id)) return true;
+        quick.push(item);
+        return false;
+      });
+      return submenu({ ...group, items: rest });
+    })
+    .filter((entry) => entry.items === undefined || entry.items.length > 0);
   const more = filled.filter((group) => group.id === "more").map(submenu);
-  const top: TrackContextMenuItem[] = [...play, ...thisPageBlock(page)];
+  const top: TrackContextMenuItem[] = [
+    ...play,
+    ...quick.map((item, at) => ({ ...item, separatorBefore: at === 0 })),
+    ...page.map((item, at) => ({ ...item, separatorBefore: at === 0 })),
+  ];
   for (const entry of more) top.push({ ...entry, separatorBefore: top.length > 0 });
   return top;
 }
+
+/** Organize's entries that the right-click menu shows at its top level. */
+const QUICK_IDS = new Set(["rate", "favorite", "unfavorite"]);

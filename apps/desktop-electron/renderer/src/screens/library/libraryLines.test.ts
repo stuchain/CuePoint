@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import library from "./library.css?raw";
 import pane from "./CollectionsPane.css?raw";
+import tree from "./PaneTree.tsx?raw";
 import filterBar from "./FilterBar.css?raw";
 import playlistPane from "./PlaylistPane.css?raw";
 import detail from "./TrackDetailPanel.css?raw";
@@ -126,10 +127,11 @@ describe("the pane meets the sidebar (D36)", () => {
   });
 
   it("pads the pane's heads and rows in by the same gutter, so their words stay on the title's edge", () => {
-    const css = strip(pane);
-    expect(css).toMatch(
-      /\.cp-library-pane \.cp-playlist-pane__head,\s*\.cp-library-pane \.cp-playlist-pane__row \{\s*padding-inline-start: calc\(var\(--space-sm\) \+ var\(--safe-left\)\)/,
+    expect(rule(pane, ".cp-library-pane")).toContain("--pane-edge: var(--safe-left)");
+    expect(strip(pane)).toMatch(
+      /\.cp-library-pane \.cp-playlist-pane__head,\s*\.cp-library-pane__all \.cp-playlist-pane__row \{\s*padding-inline-start: calc\(var\(--space-sm\) \+ var\(--pane-edge\)\)/,
     );
+    expect(tree).toContain("var(--space-sm) + var(--pane-edge, 0px) + ${row.depth}");
   });
 });
 

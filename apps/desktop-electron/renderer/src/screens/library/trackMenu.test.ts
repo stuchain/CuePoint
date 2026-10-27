@@ -33,12 +33,12 @@ describe("what the menu offers", () => {
   it("offers every operation the engine knows", () => {
     const items = organizationMenuItems(IN_LIBRARY, handlers());
     expect(labels(items)).toEqual([
-      "Add to Collection…",
+      "Add to a Collection…",
       "Add tag…",
       "Remove tag…",
       "Rate",
-      "Favorite",
-      "Remove favorite",
+      "Add to favorites",
+      "Remove from favorites",
     ]);
   });
 
@@ -68,9 +68,9 @@ describe("what the menu offers", () => {
   it("offers the Set entries after Add to Collection, where a Set can be reached (PREP-09, PREP-12)", () => {
     const withSets = { ...handlers(), onAddToSet: vi.fn(), onNewSetFromSelection: vi.fn() };
     expect(labels(organizationMenuItems(IN_LIBRARY, withSets)).slice(0, 3)).toEqual([
-      "Add to Collection…",
-      "Add to Set…",
-      "New Set from these…",
+      "Add to a Collection…",
+      "Add to a Set…",
+      "New Set from 3 tracks…",
     ]);
     organizationMenuItems(IN_LIBRARY, withSets)
       .find((item) => item.id === "new-set-from-selection")!

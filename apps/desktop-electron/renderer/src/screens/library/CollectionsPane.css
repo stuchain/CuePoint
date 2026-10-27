@@ -33,6 +33,8 @@
   /* No right edge (P1): the pane is the panel tone beside the sunken table. */
   border-right: 0;
   background: var(--bg-panel);
+  /* D36 (below): the gutter the pane runs out over. */
+  --pane-edge: var(--safe-left);
 }
 
 /* Inside the pane a section is not its own scroll container or its own edge. */
@@ -222,10 +224,19 @@
 
 /* The selected row's "•••" menu, at the right end of the row (C15, C227). */
 .cp-playlist-pane__trailing {
+  /* Over the count's slot, at the row's end (M104, M105): the row's words never move when it is
+     picked, and a folder (no count) puts it where the others do. */
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--space-sm);
   display: inline-flex;
-  flex: none;
   align-items: center;
-  margin-inline-start: var(--space-xs);
+  background: var(--selected-row-background, inherit);
+}
+
+/* The count under the menu is hidden, not removed, so the name keeps the room it had. */
+.cp-playlist-pane__row .cp-playlist-pane__count:has(~ .cp-playlist-pane__trailing) {
+  visibility: hidden;
 }
 
 .cp-collections__row-menu {
@@ -234,9 +245,9 @@
   letter-spacing: 0;
 }
 
-/* D36: the pane runs out to the sidebar, so its heads and rows pad in by the gutter it covers and
-   their words stay on the title's edge. */
+/* D36: the pane runs out to the sidebar over the page's left gutter; its heads and rows (PaneTree
+   too, which reads --pane-edge) pad in by that gutter so their words stay on the title's edge. */
 .cp-library-pane .cp-playlist-pane__head,
-.cp-library-pane .cp-playlist-pane__row {
-  padding-inline-start: calc(var(--space-sm) + var(--safe-left));
+.cp-library-pane__all .cp-playlist-pane__row {
+  padding-inline-start: calc(var(--space-sm) + var(--pane-edge));
 }

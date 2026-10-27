@@ -307,7 +307,7 @@ describe("the selected row's actions menu", () => {
 describe("Freeze lives on the row's menu for a Smart Collection (K14)", () => {
   it("is drawn for a Smart Collection and asks before it freezes", async () => {
     const props = paneWith(SMART);
-    await pickAction("Freeze to a Collection…");
+    await pickAction("Save as a Collection…");
     expect(props.onFreezeSmart).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
     expect(props.onFreezeSmart).toHaveBeenCalledWith(SMART.id);
@@ -316,7 +316,7 @@ describe("Freeze lives on the row's menu for a Smart Collection (K14)", () => {
   it("is not drawn for a Collection, a Set or a folder", async () => {
     for (const node of [WARMUP, FRIDAY, GIGS]) {
       paneWith(node);
-      expect(await rowActions()).not.toContain("Freeze to a Collection…");
+      expect(await rowActions()).not.toContain("Save as a Collection…");
       cleanup();
     }
   });

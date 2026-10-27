@@ -880,7 +880,7 @@ describe("a Smart Collection's own gestures", () => {
     paneOnSmart();
     const names = await rowActions();
     expect(names).toContain("Duplicate");
-    expect(names).toContain("Freeze to a Collection…");
+    expect(names).toContain("Save as a Collection…");
   });
 
   it("draws one button on the selected row, its menu, and none on the others (K14, C227)", () => {
@@ -903,7 +903,7 @@ describe("a Smart Collection's own gestures", () => {
     for (const id of [1, 2, 3]) {
       const view = paneWith(NODES, [1], { selected: findCollection(tree, id)! });
       const names = await rowActions();
-      expect(names).not.toContain("Freeze to a Collection…");
+      expect(names).not.toContain("Save as a Collection…");
       expect(names).not.toContain("Duplicate");
       view.view.unmount();
     }
@@ -952,16 +952,16 @@ describe("a Smart Collection's own gestures", () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true, frozen: 12 }));
     paneOnSmart({ onFreezeSmart });
 
-    await pickAction("Freeze to a Collection…");
+    await pickAction("Save as a Collection…");
 
     expect(onFreezeSmart).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog")).toHaveTextContent(/Freeze Recent techno\?/);
+    expect(screen.getByRole("dialog")).toHaveTextContent(/Freeze “Recent techno”\?/);
   });
 
   it("says the copy stops changing, which is the whole point", async () => {
     paneOnSmart({ onFreezeSmart: vi.fn(async () => ({ ok: true })) });
 
-    await pickAction("Freeze to a Collection…");
+    await pickAction("Save as a Collection…");
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent(/matches right now/);
@@ -975,7 +975,7 @@ describe("a Smart Collection's own gestures", () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true, frozen: 412 }));
     paneOnSmart({ onFreezeSmart });
 
-    await pickAction("Freeze to a Collection…");
+    await pickAction("Save as a Collection…");
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() => expect(onFreezeSmart).toHaveBeenCalledWith(5));
@@ -990,7 +990,7 @@ describe("a Smart Collection's own gestures", () => {
       onNotify,
     });
 
-    await pickAction("Freeze to a Collection…");
+    await pickAction("Save as a Collection…");
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() =>
@@ -1005,7 +1005,7 @@ describe("a Smart Collection's own gestures", () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true }));
     paneOnSmart({ onFreezeSmart });
 
-    await pickAction("Freeze to a Collection…");
+    await pickAction("Save as a Collection…");
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onFreezeSmart).not.toHaveBeenCalled();
@@ -1024,7 +1024,7 @@ describe("a Smart Collection's own gestures", () => {
       onNotify,
     });
 
-    await pickAction("Freeze to a Collection…");
+    await pickAction("Save as a Collection…");
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() =>
@@ -1038,7 +1038,7 @@ describe("a Smart Collection's own gestures", () => {
     paneOnSmart({ onDuplicateSmart: undefined, onFreezeSmart: undefined });
 
     const names = await rowActions();
-    expect(names).not.toContain("Freeze to a Collection…");
+    expect(names).not.toContain("Save as a Collection…");
     expect(names).not.toContain("Duplicate");
   });
 });
@@ -1074,7 +1074,7 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
 
     expect(entries()).toEqual([
       "Duplicate",
-      "Freeze to a Collection…",
+      "Save as a Collection…",
       "Rename",
       "Export to Rekordbox…",
       "Delete…",
@@ -1132,7 +1132,7 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     fireEvent.contextMenu(rowFor("Recent techno"));
-    await user.click(within(menu()).getByRole("menuitem", { name: "Freeze to a Collection…" }));
+    await user.click(within(menu()).getByRole("menuitem", { name: "Save as a Collection…" }));
     await user.click(await screen.findByRole("button", { name: "Freeze it" }));
     expect(onFreezeSmart).toHaveBeenCalledWith(5);
 

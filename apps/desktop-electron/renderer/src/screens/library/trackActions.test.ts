@@ -86,16 +86,15 @@ describe("the groups", () => {
     const by = Object.fromEntries(groups.map((group) => [group.id, labels(group.items)]));
     expect(by.play).toEqual(["Play 3 tracks", "Play next", "Add to queue"]);
     expect(by.organize).toEqual([
-      "Add to Collection…",
-      "Add to Set…",
-      "New Set from these…",
+      "Add to a Collection…",
+      "Add to a Set…",
+      "New Set from 3 tracks…",
       "Remove from “Closers”",
       "Add tag…",
       "Remove tag…",
       "Rate",
-      "Favorite",
-      "Remove favorite",
-      "Copy 3 tracks",
+      "Add to favorites",
+      "Remove from favorites",
     ]);
     expect(by.beatport).toEqual(["Match on Beatport…", "Review these matches", "Copy Beatport values…"]);
     expect(by.more).toEqual([
@@ -104,6 +103,7 @@ describe("the groups", () => {
       "Label page",
       "Edit values…",
       "Sync to files…",
+      "Copy 3 tracks as text",
       "Show in folder",
     ]);
   });
@@ -143,8 +143,8 @@ describe("the groups", () => {
     const by = Object.fromEntries(groups.map((group) => [group.id, group.items]));
     expect(by.play).toEqual([]);
     expect(by.beatport).toEqual([]);
-    // Neither explore nor fix entries: More holds Show in folder alone, with no divider.
-    expect(by.more!.map((item) => item.id)).toEqual(["reveal"]);
+    // Neither explore nor fix entries: More holds Copy as text and Show in folder, with no divider.
+    expect(by.more!.map((item) => item.id)).toEqual(["copy", "reveal"]);
     // Show in folder is shown and disabled for several tracks: one file, one folder.
     expect(by.more!.find((item) => item.id === "reveal")?.disabled).toBe(true);
   });
@@ -163,11 +163,14 @@ describe("one list behind both surfaces", () => {
     const play = groups.find((group) => group.id === "play")!;
     const rest = groups.filter((group) => group.id !== "play");
 
-    // Top level: Play's three entries, a "This page" block (a group title, not an entry) holding the Library's own groups,
-    // then More last (the base menu every list has is Play, then More).
+    // Top level (D26, M410): Play's three entries, Rate and the favorites lifted out of Organize, the
+    // Library's own groups with no heading, then More last.
     const page = rest.filter((group) => group.id !== "more");
     expect(labels(menu)).toEqual([
       ...labels(play.items),
+      "Rate",
+      "Add to favorites",
+      "Remove from favorites",
       ...page.map((group) => group.label),
       "More",
     ]);
@@ -178,15 +181,20 @@ describe("one list behind both surfaces", () => {
     for (const group of rest) {
       const parent = menu.find((item) => item.id === groupMenuId(group.id))!;
       expect(parent.label).toBe(group.label);
-      expect(parent.items!.map((item) => item.id)).toEqual(group.items.map((item) => item.id));
-      expect(labels(parent.items!)).toEqual(labels(group.items));
+      // Organize keeps Rate and the favorites on the bar; the menu shows them one level up.
+      const held = group.items.filter((item) => !["rate", "favorite", "unfavorite"].includes(item.id));
+      expect(parent.items!.map((item) => item.id)).toEqual(held.map((item) => item.id));
+      expect(labels(parent.items!)).toEqual(labels(held));
     }
   });
 
-  it("keeps Rate inside Organize, as a submenu of its own", () => {
+  it("lifts Rate, a submenu of its own, and Favorite to the menu's top level and keeps Organize to seven or fewer (D26, M299)", () => {
     const menu = menuFromGroups(trackActionGroups(IN_COLLECTION, handlers()));
+    expect(menu.find((item) => item.id === "rate")?.items?.length).toBeGreaterThan(1);
+    expect(menu.some((item) => item.id === "favorite")).toBe(true);
     const organize = menu.find((item) => item.id === groupMenuId("organize"))!;
-    expect(organize.items!.find((item) => item.id === "rate")?.items?.length).toBeGreaterThan(1);
+    expect(organize.items!.length).toBeLessThanOrEqual(7);
+    expect(organize.items!.some((item) => item.id === "rate")).toBe(false);
   });
 
   it("puts a divider above the first parent, and none above the first line", () => {
@@ -194,7 +202,8 @@ describe("one list behind both surfaces", () => {
     expect(menu[0]!.separatorBefore).toBeFalsy();
     const first = menu.find((item) => item.id === groupMenuId("organize"))!;
     expect(first.separatorBefore).toBe(true);
-    expect(first.groupTitle).toBe("This page");
+    // No "This page" heading (M410): dividers alone.
+    expect(first.groupTitle).toBeUndefined();
     expect(menu.find((item) => item.id === groupMenuId("more"))!.separatorBefore).toBe(true);
   });
 
@@ -206,15 +215,16 @@ describe("one list behind both surfaces", () => {
         { organization: partial.organization, more: { onCopy: vi.fn(), onReveal: null } },
       ),
     );
-    expect(labels(menu)).toEqual(["Organize", "More"]);
+    expect(labels(menu)).toEqual(["Rate", "Add to favorites", "Remove from favorites", "Organize", "More"]);
   });
 
   it("is built by the same function for one track, a few and many", () => {
     for (const count of [1, 2, 40_000]) {
       const groups = trackActionGroups({ ...IN_COLLECTION, count }, handlers());
       const menu = menuFromGroups(groups);
-      expect(leaves(menu).map((item) => item.id)).toEqual(
-        leaves(groups.flatMap((group) => group.items)).map((item) => item.id),
+      // Same entries; Rate and the favorites sit higher in the menu than in Organize.
+      expect(leaves(menu).map((item) => item.id).sort()).toEqual(
+        leaves(groups.flatMap((group) => group.items)).map((item) => item.id).sort(),
       );
     }
   });

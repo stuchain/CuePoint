@@ -266,7 +266,7 @@ describe("New Set from… in the tree", () => {
     fireEvent.contextMenu(rowFor("Ada", "smart"));
     expect(entries()).toEqual([
       "Duplicate",
-      "Freeze to a Collection…",
+      "Save as a Collection…",
       "New Set from…",
       "Rename",
       "Export to Rekordbox…",

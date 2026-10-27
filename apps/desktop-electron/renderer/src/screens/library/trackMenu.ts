@@ -31,6 +31,11 @@ interface OrganizationMenuContext {
    * the Prepare page, where each has its own row (PREP-09, fact 3).
    */
   collection: { id: number; name: string } | null;
+  /**
+   * Whether every track acted on is a favorite (true), none is (false) or it is not known / mixed
+   * (null or absent). Known, only the entry that applies is offered (M411).
+   */
+  favorite?: boolean | null;
 }
 
 export interface OrganizationMenuHandlers {
@@ -58,6 +63,19 @@ function stars(count: number): string {
   return countNoun(count, "star");
 }
 
+/** Favorite, as one entry that names what it will do; both when the tracks differ or are not known (M411). */
+function favoriteItems(
+  favorite: boolean | null,
+  onFavorite: (favorite: boolean) => void,
+): TrackContextMenuItem[] {
+  const add = { id: "favorite", label: "Add to favorites", onSelect: () => onFavorite(true) };
+  // Two entries rather than a toggle when the tracks differ: "Favorite" has no state to toggle away from.
+  const remove = { id: "unfavorite", label: "Remove from favorites", onSelect: () => onFavorite(false) };
+  if (favorite === true) return [remove];
+  if (favorite === false) return [add];
+  return [add, remove];
+}
+
 /**
  * The organization entries, in the order they are read.
  *
@@ -73,20 +91,21 @@ export function organizationMenuItems(
   const items: TrackContextMenuItem[] = [
     {
       id: "add-to-collection",
-      label: "Add to Collection…",
+      label: "Add to a Collection…",
       separatorBefore: true,
       onSelect: handlers.onAddToCollection,
     },
   ];
 
   if (handlers.onAddToSet) {
-    items.push({ id: "add-to-set", label: "Add to Set…", onSelect: handlers.onAddToSet });
+    items.push({ id: "add-to-set", label: "Add to a Set…", onSelect: handlers.onAddToSet });
   }
 
   if (handlers.onNewSetFromSelection) {
     items.push({
       id: "new-set-from-selection",
-      label: "New Set from these…",
+      // One track is "this track", not "these" (M413).
+      label: context.count === 1 ? "New Set from this track…" : `New Set from ${countNoun(context.count, "track")}…`,
       onSelect: handlers.onNewSetFromSelection,
     });
   }
@@ -129,18 +148,7 @@ export function organizationMenuItems(
         },
       ],
     },
-    {
-      id: "favorite",
-      label: "Favorite",
-      onSelect: () => handlers.onFavorite(true),
-    },
-    {
-      id: "unfavorite",
-      // Two entries rather than a toggle: over twelve thousand tracks with
-      // both kinds in them, "Favorite" has no state to toggle away from.
-      label: "Remove favorite",
-      onSelect: () => handlers.onFavorite(false),
-    },
+    ...favoriteItems(context.favorite ?? null, handlers.onFavorite),
   );
 
   return items;
