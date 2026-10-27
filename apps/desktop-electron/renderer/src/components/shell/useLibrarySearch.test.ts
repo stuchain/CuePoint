@@ -87,13 +87,10 @@ describe("resultSummary", () => {
     expect(resultSummary(response({ total: 0 }))).toBe("");
   });
 
-  it("counts results when the page holds all of them", () => {
+  it("says nothing when the page holds all of them, the rows are the count (M268)", () => {
     const tracks = [1, 2, 3].map(() => ({}) as never);
-    expect(resultSummary(response({ total: 3, tracks }))).toBe("3 results");
-  });
-
-  it("uses the singular for one result", () => {
-    expect(resultSummary(response({ total: 1, tracks: [{} as never] }))).toBe("1 result");
+    expect(resultSummary(response({ total: 3, tracks }))).toBe("");
+    expect(resultSummary(response({ total: 1, tracks: [{} as never] }))).toBe("");
   });
 
   it("says how many of the total are shown when paged", () => {

@@ -8,7 +8,7 @@
  * looking for the wrong problem.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
@@ -113,7 +113,7 @@ describe("GlobalSearch", () => {
 
     await user.click(searchButton());
 
-    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Search library" })).toBeInTheDocument();
     expect(input()).toBeInTheDocument();
     expect(input()).toHaveFocus();
   });
@@ -226,10 +226,38 @@ describe("GlobalSearch", () => {
     await type("strobe");
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Search did not work. Try again.");
-    // The cause is for the title, not the sentence (HDR-7).
-    expect(alert).toHaveAttribute("title", expect.stringContaining("engine offline"));
-    expect(alert).not.toHaveTextContent(/offline/);
+    expect(alert).toHaveTextContent("Search did not work.");
+    // The reason is a line of its own, and there is a button to try again (M348).
+    expect(alert.querySelector(".cp-global-search__reason")).not.toBeNull();
+    expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("tries the search again from the failure's button (M348)", async () => {
+    searchLibrary.mockRejectedValue(new Error("engine offline"));
+    const user = await type("strobe");
+    const alert = await screen.findByRole("alert");
+    searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
+    await user.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("listbox", { name: /search results/i })).toBeInTheDocument();
+  });
+
+  it("keeps the last results up while the next search is out (M370)", async () => {
+    const user = await type("stro");
+    searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
+    await user.type(input(), "b");
+    await screen.findByRole("listbox", { name: /search results/i });
+    let release: (r: LibrarySearchResponse) => void = () => undefined;
+    searchLibrary.mockReturnValue(new Promise<LibrarySearchResponse>((r) => (release = r)));
+    await user.type(input(), "e");
+    await new Promise((r) => setTimeout(r, 400));
+    expect(screen.getByRole("listbox", { name: /search results/i })).toBeInTheDocument();
+    release(response({ total: 1, tracks: [TRACK] }));
+  });
+
+  it("says what Enter and Shift+Enter do (M485)", async () => {
+    searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
+    await type("strobe");
+    expect(await screen.findByText("Enter opens · Shift+Enter plays")).toBeInTheDocument();
   });
 
   it("opens the dialog on Ctrl+K, with the field focused", async () => {
@@ -239,7 +267,7 @@ describe("GlobalSearch", () => {
 
     await user.keyboard("{Control>}k{/Control}");
 
-    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Search library" })).toBeInTheDocument();
     expect(input()).toHaveFocus();
   });
 
@@ -283,7 +311,7 @@ describe("GlobalSearch", () => {
     const user = userEvent.setup();
     mount();
     await user.click(searchButton());
-    const dialog = await screen.findByRole("dialog", { name: "Search" });
+    const dialog = await screen.findByRole("dialog", { name: "Search library" });
     expect(screen.getByRole("navigation", { name: /main navigation/i })).not.toContainElement(dialog);
   });
 
@@ -496,8 +524,8 @@ describe("the command palette look (C135, C119)", () => {
     return rule ? Object.fromEntries(declarations(rule.body))[property] : undefined;
   };
 
-  it("is 560 wide at 1x, scaled, and no wider", () => {
-    expect(decl(".cp-modal:has(.cp-global-search)", "width")).toMatch(/calc\(560px \* var\(--scale\)\)/);
+  it("is the dialogs' medium width, no wider (M267)", () => {
+    expect(decl(".cp-modal:has(.cp-global-search)", "width")).toMatch(/var\(--modal-width-medium\)/);
     expect(searchCss).not.toMatch(/70vw|1500px/);
   });
 
@@ -511,9 +539,10 @@ describe("the command palette look (C135, C119)", () => {
     expect(decl(".cp-global-search__results", "max-height")).toBeDefined();
   });
 
-  it("does not make titles bold, and underlines the matched text in the accent", () => {
+  it("does not make titles bold, and sets the matched text heavier, not underlined (M268)", () => {
     expect(decl(".cp-global-search__title", "font-weight")).toBeUndefined();
-    expect(decl(".cp-global-search__mark", "text-decoration-color")).toBe("var(--accent-primary)");
+    expect(decl(".cp-global-search__mark", "font-weight")).toBe("var(--font-weight-bold)");
+    expect(decl(".cp-global-search__mark", "text-decoration")).toBe("none");
     expect(decl(".cp-global-search__mark", "background")).toBe("transparent");
   });
 });

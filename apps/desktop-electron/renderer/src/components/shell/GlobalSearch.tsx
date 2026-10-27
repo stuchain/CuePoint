@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Hint } from "../Hint";
+import { Button } from "../Button";
 import { Modal } from "../Modal";
 import { PlayButton } from "../PlayButton";
 import { TrackFactsLine } from "../TrackFactsLine";
@@ -47,9 +47,11 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const { ref, focus } = useSearchInputRef();
-  const { status, response, error } = useLibrarySearch(query);
+  const { status, response, error, retry } = useLibrarySearch(query);
 
-  const tracks: LibraryTrackRow[] = status === "results" && response ? response.tracks : [];
+  // While the next answer is out, the last one stays up (M370): nothing blinks per keystroke.
+  const tracks: LibraryTrackRow[] =
+    (status === "results" || status === "searching") && response ? response.tracks : [];
 
   // After the dialog has taken focus for itself (a layout effect in Modal): the field is where typing starts.
   useEffect(() => focus(), [focus]);
@@ -102,6 +104,8 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
       setActive((current) => Math.min(tracks.length - 1, Math.max(0, current + step)));
     } else if (event.key === "Enter") {
       event.preventDefault();
+      // The list on screen may be the last query's while the new one is out: it is not acted on.
+      if (status !== "results") return;
       if (event.shiftKey) playTrack(tracks[active]);
       else openTrack(tracks[active]);
     }
@@ -111,15 +115,7 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
   const tooShort = trimmed.length > 0 && trimmed.length < MIN_QUERY_LENGTH;
   const showPanel = status !== "idle" || tooShort;
   const showList = showPanel && tracks.length > 0;
-  // Each new answer pulses once (feedback, DEC-154): the list is a new element for each.
-  const [answer, setAnswer] = useState({ response, n: 0 });
-  if (answer.response !== response) setAnswer({ response, n: answer.n + 1 });
-  const [pulsed, setPulsed] = useState(0);
-  useEffect(() => {
-    if (!showList) return;
-    const timer = window.setTimeout(() => setPulsed(answer.n), 400);
-    return () => window.clearTimeout(timer);
-  }, [showList, answer.n]);
+  const stale = status === "searching" && showList;
 
   return (
     <div className="cp-global-search" role="search">
@@ -142,6 +138,8 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
       {showPanel && (
         <div
           className="cp-global-search__panel"
+          aria-busy={status === "searching" ? true : undefined}
+          data-stale={stale ? "" : undefined}
           // A press inside the panel (a row's ▶) must not take focus from the field.
           onMouseDown={(event) => event.preventDefault()}
         >
@@ -149,7 +147,7 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
             <p className="cp-global-search__note">Keep typing: at least {MIN_QUERY_LENGTH} letters</p>
           )}
 
-          {status === "searching" && (
+          {status === "searching" && !showList && (
             <p className="cp-global-search__note" role="status">
               Searching…
             </p>
@@ -172,29 +170,25 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
           )}
 
           {status === "error" && (
-            <Hint text={error ?? undefined} portal>
-              <p
-                className="cp-global-search__note cp-global-search__note--error"
-                role="alert"
-                // What went wrong is for the hint; the sentence says what to do.
-                tabIndex={error ? 0 : undefined}
-              >
-                Search did not work. Try again.
-              </p>
-            </Hint>
+            // The reason is a line of its own, muted, and there is a button to try again: nothing
+            // is told by hover alone (M348).
+            <div className="cp-global-search__note cp-global-search__note--error" role="alert">
+              <p className="cp-global-search__failure">Search did not work.</p>
+              {error && <p className="cp-global-search__reason">{error}</p>}
+              <Button variant="secondary" size="sm" onClick={retry}>
+                Try again
+              </Button>
+            </div>
           )}
 
-          {status === "results" && response && (
+          {showList && response && (
             <>
-              <p className="cp-global-search__summary">{resultSummary(response)}</p>
+              {resultSummary(response) && <p className="cp-global-search__summary">{resultSummary(response)}</p>}
               {/* The count above stays; only this part scrolls (C119). */}
               <div className="cp-global-search__results">
               {/* Results are grouped by what they are; tracks are all the library search finds (C135). */}
               <h3 className="cp-global-search__group">Tracks</h3>
-              <ul
-                key={answer.n}
-                className={`cp-global-search__list${pulsed !== answer.n ? " cp-global-search__list--fresh" : ""}`}
-                role="listbox" id={LISTBOX_ID} aria-label="Search results">
+              <ul className="cp-global-search__list" role="listbox" id={LISTBOX_ID} aria-label="Search results">
                 {response.tracks.map((track, index) => (
                   <li
                     className="cp-global-search__row"
@@ -242,6 +236,8 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                 ))}
               </ul>
               </div>
+              {/* The keys, said once where they are used: Play is not a tab stop (M485). */}
+              <p className="cp-global-search__footer">Enter opens · Shift+Enter plays</p>
             </>
           )}
         </div>
@@ -302,7 +298,7 @@ export function SearchDialogHost() {
   }, []);
 
   return (
-    <Modal open={open} title="Search" onClose={() => close()} size="large" restoreFocus={!navigated} noFooter>
+    <Modal open={open} title="Search library" onClose={() => close()} size="large" restoreFocus={!navigated} noFooter>
       <SearchBody onDone={close} />
     </Modal>
   );

@@ -1,4 +1,4 @@
-import { countNoun, formatCount } from "../../format/counts";
+import { formatCount } from "../../format/counts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibrarySearchResponse } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -24,6 +24,8 @@ interface LibrarySearchState {
   status: SearchStatus;
   response: LibrarySearchResponse | null;
   error: string | null;
+  /** Ask again after a failure (M348). */
+  retry: () => void;
 }
 
 /** What a query and a response mean together, as a pure function.
@@ -52,14 +54,18 @@ export function shouldSearch(query: string): boolean {
  * Search-as-you-type over a 50,000-track library needs the debounce and the
  * server-side limit from the start, not once it feels slow. Responses are
  * dropped when a newer query has already been typed, so a slow early request
- * cannot overwrite the results of a later one.
+ * cannot overwrite the results of a later one. While a new query is out the last answer stays in
+ * `response` (status "searching"), so the list the reader is looking at does not blink away and
+ * back with every keystroke (M370).
  */
 export function useLibrarySearch(query: string): LibrarySearchState {
-  const [state, setState] = useState<LibrarySearchState>({
+  const [state, setState] = useState<Omit<LibrarySearchState, "retry">>({
     status: "idle",
     response: null,
     error: null,
   });
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((count) => count + 1), []);
   // Identifies the query a response belongs to, so a stale one can be dropped.
   const latest = useRef(0);
 
@@ -99,18 +105,19 @@ export function useLibrarySearch(query: string): LibrarySearchState {
     }, SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, attempt]);
 
-  return state;
+  return { ...state, retry };
 }
 
-/** Formats "showing 20 of 340", using the unpaged total the engine returns. */
+/**
+ * "Showing 20 of 340", using the unpaged total the engine returns, and only when the list is cut
+ * short: a count of what is all there ("4 results") repeated the group's own heading (M267).
+ */
 export function resultSummary(response: LibrarySearchResponse | null): string {
   if (!response || response.total === 0) return "";
   const shown = response.tracks.length;
-  return shown < response.total
-    ? `Showing ${formatCount(shown)} of ${formatCount(response.total)}`
-    : countNoun(response.total, "result");
+  return shown < response.total ? `Showing ${formatCount(shown)} of ${formatCount(response.total)}` : "";
 }
 
 /** A stable, human-readable second line for a result row. */

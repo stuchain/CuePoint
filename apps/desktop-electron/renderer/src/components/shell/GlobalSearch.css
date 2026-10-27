@@ -3,11 +3,12 @@
  * which scrolls; the field is its own container so a narrow dialog drops to one column.
  */
 /*
- * A command palette (C135): 560 wide at 1x, scaled with the text, hanging from the top of the
- * window like the palettes people know, so the field does not move as the results come and go.
+ * A command palette (C135): the dialogs' medium width token like every other dialog (M267),
+ * hanging from the top of the window like the palettes people know, so the field does not move as
+ * the results come and go.
  */
 .cp-modal:has(.cp-global-search) {
-  width: min(calc(560px * var(--scale)), calc(100vw - 2 * var(--space-xl)));
+  width: min(var(--modal-width-medium), calc(100vw - 2 * var(--space-xl)));
 }
 
 .cp-modal__backdrop:has(.cp-global-search) {
@@ -45,8 +46,38 @@
   font-size: var(--text-body);
 }
 
+/* A failure: the sentence in the danger tone, the reason under it muted, then a button (M348). */
 .cp-global-search__note--error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.cp-global-search__failure {
+  margin: 0;
   color: var(--danger-text);
+}
+
+.cp-global-search__reason {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* The last answer stays up while the next is out, a step dimmer by colour, not opacity (M370). */
+.cp-global-search__panel[data-stale] .cp-global-search__title {
+  color: var(--fg-muted);
+}
+
+/* What Enter and Shift+Enter do: Play is not a tab stop (M485). */
+.cp-global-search__footer {
+  margin: 0;
+  padding: var(--space-xs) var(--space-sm);
+  border-top: var(--hairline) solid var(--row-line);
+  color: var(--fg-muted);
+  font-family: var(--font-meta);
+  font-size: var(--font-size-xs);
 }
 
 .cp-global-search__summary {
@@ -66,11 +97,12 @@
   overflow-y: auto;
 }
 
-/* The group's name over its rows: small and muted, as the count is. */
+/* The group's name over its rows: small and muted, in the pixel face the menus' group titles use (M21). */
 .cp-global-search__group {
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
   color: var(--fg-muted);
+  font-family: var(--font-control);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-regular);
 }
@@ -103,9 +135,9 @@
   gap: var(--space-sm);
   /* Centred, as the play button beside it is: with a row taller than its text the text sat at the top. */
   align-items: center;
-  /* The one track-list row height. */
+  /* The one track-list row height; stacked, the lines have air above and below (M268). */
   min-height: var(--row-height);
-  padding: 0 var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
   cursor: pointer;
 }
 
@@ -127,14 +159,12 @@
   font-size: var(--font-size-xs);
 }
 
-/* The part of a title the search matched: the accent underline, no fill and no bolder (C135). */
+/* The part of a title the search matched: heavier, never underlined like a link (M268). */
 .cp-global-search__mark {
   background: transparent;
   color: inherit;
-  text-decoration: underline;
-  text-decoration-color: var(--accent-primary);
-  text-decoration-thickness: var(--hairline);
-  text-underline-offset: 0.2em;
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
 }
 
 .cp-global-search__meta {
@@ -155,9 +185,11 @@
   white-space: nowrap;
 }
 
-/* One column when the dialog is too narrow for three. */
-@container search (max-width: 700px) {
+/* One column when the dialog is too narrow for two. In em, so it scales with the text: a pixel
+   width was always hit at the dialog's own width, and every row stacked (M268). */
+@container search (max-width: 30em) {
   .cp-global-search__option {
     grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-2xs);
   }
 }
