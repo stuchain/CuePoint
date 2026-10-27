@@ -170,6 +170,20 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
     expect(lum(toolbar)).toBeLessThan(lum(panel));
   });
 
+  it("separates the toolbar from both the page and the panel, 1.07:1 each way (M330, D29)", () => {
+    if (!builtIn) return;
+    expect(contrastRatio(app, toolbar), "page to toolbar").toBeGreaterThanOrEqual(1.07);
+    expect(contrastRatio(toolbar, panel), "toolbar to panel").toBeGreaterThanOrEqual(1.07);
+  });
+
+  it("draws the tab underline in the accent fill, one accent and not a third (M327, D28)", () => {
+    if (!builtIn || !t["tab-underline-color"]) return;
+    // The fill, unless the fill is under the underline's 3:1 on the toolbar (selectionContrast.test.ts):
+    // then the accent itself. Never a colour of its own.
+    const fillReads = contrastRatio(t["accent-fill"]!, toolbar) >= 3;
+    expect(t["tab-underline-color"]).toBe(fillReads ? t["accent-fill"] : t["accent-primary"]);
+  });
+
   it("keeps --accent-info at 3:1 on the panel", () => {
     expect(contrastRatio(t["accent-info"]!, panel)).toBeGreaterThanOrEqual(floor(3, [panel]));
   });

@@ -18,10 +18,10 @@
   cursor: default;
 }
 
-/* The mark is a whole multiple of the 12-unit grid and always fits the circle. */
+/* The mark is the small icon (M29, D3: two sizes, no local third), a whole multiple of the 12-unit grid. */
 .cp-play-btn .cp-pixel-icon {
-  width: max(12px, round(down, calc(8px * var(--scale)), 12px));
-  height: max(12px, round(down, calc(8px * var(--scale)), 12px));
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .cp-play-btn:hover:not(:disabled):not([aria-disabled="true"]) {

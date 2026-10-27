@@ -51,11 +51,8 @@ export function useLoadingGate(loading: boolean, delay = LOADING_DELAY_MS, minim
  * frame but draws nothing for the first 300 ms, so a quick load never flashes it (M371).
  */
 export function Loading({ what, centered = false, className = "" }: LoadingProps) {
-  const [waiting, setWaiting] = useState(true);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setWaiting(false), LOADING_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, []);
+  // The one gate (M371): drawn while it is up, after the 300 ms show delay.
+  const waiting = !useLoadingGate(true);
   return (
     <div
       className={`cp-loading${centered ? " cp-loading--centered" : ""} ${className}`.trim()}

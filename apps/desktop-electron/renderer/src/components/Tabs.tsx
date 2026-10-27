@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { PixelIcon } from "./PixelIcon";
+import { useMotion } from "../tokens/MotionContext";
 import "./Tabs.css";
 
 interface TabItem {
@@ -52,6 +53,9 @@ function hasMoreToRight(strip: HTMLElement): boolean {
 export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix, label }: TabsProps) {
   const strip = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState(false);
+  // The "more" chevron scrolls smoothly only while motion may move (M387): under reduced motion or
+  // with Scrolling off it jumps.
+  const smooth = useMotion("scroll");
 
   // Sub-tabs that do not fit scroll sideways; a quiet chevron at the right edge, over a fade,
   // says there is more and scrolls it (C27).
@@ -136,7 +140,7 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix, lab
           className="cp-tabs__more"
           tabIndex={-1}
           aria-hidden="true"
-          onClick={() => strip.current?.scrollBy?.({ left: Math.max(1, (strip.current?.clientWidth ?? 0) * 0.6), behavior: "smooth" })}
+          onClick={() => strip.current?.scrollBy?.({ left: Math.max(1, (strip.current?.clientWidth ?? 0) * 0.6), behavior: smooth ? "smooth" : "auto" })}
         >
           <PixelIcon name="chevron-right-sm" size="sm" />
         </button>

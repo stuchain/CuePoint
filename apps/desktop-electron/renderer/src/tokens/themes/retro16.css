@@ -28,10 +28,7 @@
   --fg-on-status: #000000;
 
   --accent-primary: #c77dff;
-  --accent-primary-hover: #d493ff;
-  --accent-primary-pressed: #9a5ad4;
   --accent-secondary: #2d4563;
-  --accent-secondary-hover: #4d6a90;
   --accent-success: #4caf50;
   --accent-warning: #ffb703;
   --accent-danger: #eb5d67;
@@ -47,7 +44,6 @@
   --focus-ring-color: #b673f0;
   --color-scheme: dark;
 
-  --overlay-header: rgba(0, 0, 0, 0.15);
   --overlay-backdrop: rgba(0, 0, 0, 0.7);
 
   /* Waveforms (WAVE-05): each band at 3:1 or more against --bg-panel. */

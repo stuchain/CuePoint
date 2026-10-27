@@ -22,9 +22,12 @@
 
   /* Pixel-art chrome (structural) */
   --border-width: round(down, calc(2px * var(--scale)), 1px);
-  /* A hairline is 1px at every scale (M82, D10): a line stays the thinnest mark on the page, so a
-     header rule is never 6px at 3x. A border and a shadow of this token agree (DEC-161). */
-  --hairline: 1px;
+  /* A hairline is one pixel at every scale (M82, D10): a line stays the thinnest mark on the page, so a
+     header rule is never 6px at 3x. A border and a shadow of this token agree (DEC-161). It is snapped
+     to the screen's own pixels (M493, D35 A): at Windows 125% or 150% (--dpr 1.25, 1.5, from
+     tokens/scale.ts) a 1px CSS line falls between device pixels and blurs, so the line is the
+     whole device pixels nearest 1px, never less than one. At --dpr 1 and 2 it is 1px, as before. */
+  --hairline: max(calc(1px / var(--dpr, 1)), calc(round(down, calc(1px * var(--dpr, 1)), 1px) / var(--dpr, 1)));
   --border-width-heavy: round(down, calc(3px * var(--scale)), 1px);
   --bevel-size: round(down, calc(2px * var(--scale)), 1px);
   --bevel-size-sm: var(--hairline);
@@ -224,8 +227,10 @@
   /* A sticky header over scrolling content (P40, M33): a hard hairline in the row line, no blur. */
   --shadow-sticky: 0 var(--hairline) 0 var(--row-line);
   --check-size: round(nearest, calc(14px * var(--scale)), 1px);
-  --icon-size-sm: max(12px, round(down, calc(16px * var(--scale)), 12px));
-  --icon-size-lg: max(12px, round(down, calc(24px * var(--scale)), 12px));
+  /* Snapped like the hairline (M493): a whole multiple of 12 *device* pixels, so every art cell is
+     whole device pixels at Windows 125% and 150% too. At --dpr 1 this is the size it always was. */
+  --icon-size-sm: max(calc(12px / var(--dpr, 1)), calc(round(down, calc(16px * var(--scale) * var(--dpr, 1)), 12px) / var(--dpr, 1)));
+  --icon-size-lg: max(calc(12px / var(--dpr, 1)), calc(round(down, calc(24px * var(--scale) * var(--dpr, 1)), 12px) / var(--dpr, 1)));
   /* Gone (M28, D3): there is no medium. An alias of lg until wave 2 moves the last two uses. */
   --icon-size-md: var(--icon-size-lg);
 

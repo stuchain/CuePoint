@@ -365,14 +365,23 @@ describe("the one footer (area 75)", () => {
 });
 
 describe("Modal footer and focus (C107, C111, C112)", () => {
-  it("gives a dialog with no actions one grey Close button", () => {
+  // M254 (D24 A): was "one grey Close button" (C107). A dialog with no buttons of its own now
+  // shows the header's × only; a footer Close is drawn only when the dialog names one.
+  it("gives a dialog with no actions the header's × only, no footer Close", () => {
     const onClose = vi.fn();
     render(<Modal open title="About" onClose={onClose}>words</Modal>);
-    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
-    const close = within(footer).getByRole("button", { name: "Close" });
-    expect(close).toHaveClass("cp-btn--secondary");
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector(".cp-modal__footer")).toBeNull();
+    const close = within(dialog.querySelector<HTMLElement>(".cp-modal__header")!).getByRole("button", { name: "Close" });
     fireEvent.click(close);
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
+  });
+
+  it("draws a grey footer Close when the dialog names one with closeLabel", () => {
+    render(<Modal open title="Columns" onClose={() => {}} closeLabel="Close">words</Modal>);
+    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
+    expect(within(footer).getByRole("button", { name: "Close" })).toHaveClass("cp-btn--secondary");
   });
 
   it("does not add a Close when the dialog has its own buttons", () => {
@@ -413,15 +422,17 @@ describe("Modal footer and focus (C107, C111, C112)", () => {
   });
 });
 
-describe("the automatic footer Close (S1)", () => {
-  it("is drawn for a dialog with no buttons of its own", () => {
+describe("the footer Close (S1, M254)", () => {
+  // M254 (D24 A): was "is drawn for a dialog with no buttons of its own". There is no automatic
+  // footer Close any more; the header's × is the way out.
+  it("is not drawn by itself for a dialog with no buttons of its own", () => {
     render(
       <Modal open title="Log" onClose={() => {}}>
         words
       </Modal>,
     );
-    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
-    expect(within(footer).getByRole("button", { name: "Close" })).toBeEnabled();
+    expect(screen.getByRole("dialog").querySelector(".cp-modal__footer")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
   });
 
   it("is left out with noFooter, for a dialog that draws its own buttons", () => {
@@ -437,7 +448,7 @@ describe("the automatic footer Close (S1)", () => {
 
   it("is greyed while closeDisabled, and the reason line says why", () => {
     render(
-      <Modal open title="Saving" onClose={() => {}} closeDisabled closeReason="Wait until it has saved.">
+      <Modal open title="Saving" onClose={() => {}} closeLabel="Close" closeDisabled closeReason="Wait until it has saved.">
         words
       </Modal>,
     );

@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -75,7 +76,9 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 
   const switches = useMemo(() => mergeMotion(overrides), [overrides]);
 
-  useEffect(() => {
+  // Before the paint (M381): a layout effect, so the first frame React draws already carries the
+  // kinds (index.html's boot script wrote them from storage before React ran at all).
+  useLayoutEffect(() => {
     const root = document.documentElement;
     for (const kind of MOTION_KINDS) {
       const name = `data-motion-${kind.id}`;

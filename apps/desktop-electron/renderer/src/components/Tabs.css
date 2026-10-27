@@ -127,8 +127,9 @@
 /* A count or chip beside a tab's label: muted, and it keeps one line with it. */
 .cp-tabs__detail {
   margin-left: var(--space-sm);
-  /* A count is data: the data face with figures that line up (area 56). */
-  font-family: var(--font-data);
+  /* A count beside a tab's label is the label's pixel face with data-face figures that line up
+     (M8, area 56), so the tab is one face, not pixel words and an Inter number. */
+  font-family: var(--font-pixel-digits);
   font-variant-numeric: tabular-nums;
   color: var(--fg-muted);
   font-weight: var(--control-font-weight);
@@ -138,8 +139,9 @@
   color: var(--fg-muted);
 }
 
-/* More sub-tabs than fit (C27): a chevron stuck to the right edge, over a fade of the strip's own
-   colour. It is not a tab and not in the tab order; the arrow keys reach every tab. */
+/* More sub-tabs than fit (C27): a chevron stuck to the right edge, on the strip's own colour with a
+   hard hairline on its left (M89, D13: no fade). It is not a tab and not in the tab order; the
+   arrow keys reach every tab. */
 .cp-tabs__more {
   position: sticky;
   right: 0;
@@ -151,7 +153,8 @@
   margin-inline-start: auto;
   padding: 0 var(--space-xs);
   border: 0;
-  background: linear-gradient(to right, transparent, var(--bg-panel-alt) 40%);
+  background: var(--bg-panel-alt);
+  box-shadow: inset var(--hairline) 0 0 0 var(--row-line);
   color: var(--fg-muted);
   cursor: default;
 }

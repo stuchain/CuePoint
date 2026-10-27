@@ -5,7 +5,7 @@
   --bg-panel: #2a2a2b;
   --bg-panel-alt: #404040;
   --bg-input: #1e1e1e;
-  --bg-toolbar: #222223;
+  --bg-toolbar: #242425;
 
   --border-highlight: #5a5a5a;
   --border-shadow: #141414;
@@ -16,8 +16,9 @@
   --row-divider: #454545;
   --hover-fill: #404040;
   --border-control: #7e7e7e;
-  /* Accent #0078d4 is 2.79:1 on the toolbar; the active-tab underline needs 3:1. */
-  --tab-underline-color: #3794ff;
+  /* The tab underline is the accent fill (M327, D28: one violet, here one blue); the active tab is also
+     the brighter text colour, so the underline is not the only sign. */
+  --tab-underline-color: #0078d4;
   --bevel-highlight: #5a5a5a;
   --bevel-shadow: #141414;
 
@@ -28,10 +29,7 @@
   --fg-on-status: #000000;
 
   --accent-primary: #218ada;
-  --accent-primary-hover: #106ebe;
-  --accent-primary-pressed: #005a9e;
   --accent-secondary: #3c3c3c;
-  --accent-secondary-hover: #4a4a4a;
   --accent-success: #4caf50;
   --accent-warning: #ff9800;
   --accent-danger: #f44336;
@@ -47,7 +45,6 @@
   --focus-ring-color: #3794ff;
   --color-scheme: dark;
 
-  --overlay-header: rgba(0, 0, 0, 0.2);
   --overlay-backdrop: rgba(0, 0, 0, 0.7);
 
   /* Waveforms (WAVE-05): each band at 3:1 or more against --bg-panel. */

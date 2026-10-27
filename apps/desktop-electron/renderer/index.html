@@ -46,6 +46,37 @@
         }
       })();
     </script>
+    <!--
+      Motion before the first paint (M381). MotionProvider writes data-motion-<kind> on <html>, but
+      only once React runs; this writes the same from storage first, so the first frame already
+      knows which kinds move. The same rule as tokens/motion.ts and MotionContext: every kind on
+      unless switched off, and none while the system asks for reduced motion and Follow system is
+      chosen (the default). motionBoot.test.ts holds the kinds and keys to that file.
+    -->
+    <script id="boot-motion">
+      (function () {
+        try {
+          var kinds = ["micro", "interaction", "state", "page", "entrance", "hover", "scroll", "loading", "shared", "feedback"];
+          var overrides = {};
+          try {
+            var parsed = JSON.parse(localStorage.getItem("cuepoint-motion") || "{}");
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) overrides = parsed;
+          } catch (error) {
+            overrides = {};
+          }
+          var follow = localStorage.getItem("cuepoint-motion-follow-system") !== "false";
+          var reduced = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+          var root = document.documentElement;
+          for (var at = 0; at < kinds.length; at += 1) {
+            var on = overrides[kinds[at]] !== false && !(reduced && follow);
+            if (on) root.setAttribute("data-motion-" + kinds[at], "on");
+            else root.removeAttribute("data-motion-" + kinds[at]);
+          }
+        } catch (error) {
+          // Storage can be unavailable; MotionProvider writes the attributes when it mounts.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

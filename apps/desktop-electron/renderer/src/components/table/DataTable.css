@@ -31,7 +31,7 @@
   color: var(--fg-muted);
   font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--control-font-weight); /* M2 */
   text-align: left;
   white-space: nowrap;
 }
@@ -103,7 +103,7 @@
   color: var(--fg-muted);
   font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--control-font-weight); /* M2 */
   text-align: left;
   white-space: nowrap;
 }
@@ -119,7 +119,8 @@
 
 .cp-data-grid__item {
   min-height: var(--row-height);
-  border-bottom: var(--divider);
+  /* The soft line between rows, drawn inside the row so it adds no height (M216, D29). */
+  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--row-line);
 }
 
 .cp-data-grid__item:hover {
@@ -137,5 +138,6 @@
   color: var(--fg-primary);
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  /* D31 (M339): the arrow on a selectable row; the hand is for links. */
+  cursor: default;
 }

@@ -1,4 +1,9 @@
 .cp-saved-tick {
+  /* One line tall whether "Saved" is there or not, so nothing beside it moves as it comes and goes
+     (M387). An inline box ignores a minimum height, so it is an inline block. */
+  display: inline-block;
+  min-height: 1lh;
+  vertical-align: middle;
   /* All good is quiet (D14, M325): the tick and "Saved" are muted, not green. */
   color: var(--fg-muted);
   font-size: var(--font-size-xs);

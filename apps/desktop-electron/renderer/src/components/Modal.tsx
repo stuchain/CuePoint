@@ -98,7 +98,7 @@ type ModalProps = FooterExtras & {
   closeReason?: string;
   /**
    * True for a dialog that draws its own buttons in its body (Save to files, a search): the
-   * footer, and so the automatic grey Close, is not drawn.
+   * footer, and so a `closeLabel` button, is not drawn.
    */
   noFooter?: boolean;
 };
@@ -283,10 +283,9 @@ export function Modal(props: ModalProps) {
     (closeDisabled ? closeReason : undefined) ??
     reasonProp ??
     (primaryAction?.disabled ? primaryAction.disabledReason : undefined);
-  // A dialog with no buttons of its own only shows something: it ends in one grey Close (C107).
-  const footerClose = noFooter
-    ? undefined
-    : (closeLabel ?? (!primaryAction && !secondaryAction && !backAction ? "Close" : undefined));
+  // A dialog with no buttons of its own shows the header's × only (M254, D24 A): the automatic
+  // footer Close (C107) is gone. A dialog that wants a footer Close names it with `closeLabel`.
+  const footerClose = noFooter ? undefined : closeLabel;
   const close = () => {
     if (!closeDisabled) onClose();
   };

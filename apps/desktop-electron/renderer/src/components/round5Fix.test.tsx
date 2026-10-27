@@ -165,10 +165,10 @@ describe("B7: a tab count follows its name after a comma", () => {
 });
 
 describe("A2: the menu chevron", () => {
-  it("is 12px from 1x to 1.75x and 24px at 2x", () => {
-    expect(decl(buttonCss, ".cp-btn__menu .cp-pixel-icon", "width")).toContain(
-      "round(down, calc(12px * var(--scale)), 12px)",
-    );
+  // M29 (D3): was a local 12px-grid size; the chevron is now the small icon, no third size.
+  it("is the small icon size", () => {
+    expect(decl(buttonCss, ".cp-btn__menu .cp-pixel-icon", "width")).toBe("var(--icon-size-sm)");
+    expect(decl(buttonCss, ".cp-btn__menu .cp-pixel-icon", "height")).toBe("var(--icon-size-sm)");
   });
 });
 

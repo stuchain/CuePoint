@@ -178,7 +178,8 @@ describe("no hover nudge and one panel motion (area 53)", () => {
     expect(side.selector).toContain(".cp-queue");
     expect(side.selector).toContain(".cp-inspector[data-entering]");
     expect(side.body).toMatch(/cp-from-edge/);
-    const popover = parseRules(stripComments(motionCss)).find((r) => r.selector.includes(".cp-popover"))!;
+    // M387: the dead .cp-popover selector is gone; the popover rule is found by its last member.
+    const popover = parseRules(stripComments(motionCss)).find((r) => r.selector.includes(".first-steps-note__popover") && r.body.includes("cp-drop-in"))!;
     expect(popover.selector).toContain(".cp-wheel-pop");
     expect(popover.selector).toContain(".cp-track-menu");
     expect(popover.body).toMatch(/cp-drop-in/);

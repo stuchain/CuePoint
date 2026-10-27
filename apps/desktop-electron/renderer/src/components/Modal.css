@@ -103,9 +103,17 @@
    sentences, so Inter (D5, C55); labels and headings in the body keep the pixel face. Its size is
    set here, once, so no dialog needs its own (M251). */
 .cp-modal__lead {
+  /* The body's gap spaces it; the browser's own paragraph margin would add to it (M63). */
+  margin: 0;
   color: var(--fg-muted);
   font-family: var(--font-data);
   font-size: var(--control-font-size);
+}
+
+/* A paragraph anywhere in a body has no margin of its own (M63): the gap of what holds it is the
+   space, so About and Get help do not gain a browser margin inside a wrapper. */
+.cp-modal__body p {
+  margin: 0;
 }
 
 /* Paragraphs in a body are flex children: the body's gap is the space, never a margin. */

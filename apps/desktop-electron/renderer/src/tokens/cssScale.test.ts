@@ -186,15 +186,29 @@ describe("rem lengths (R2-4)", () => {
 
 describe("pixel icon sizes snap on their own (C136)", () => {
   const css = sheets["./tokens.css"] ?? sheets["../tokens/tokens.css"] ?? "";
+  // M493: the sizes are snapped to device pixels, so the expression carries --dpr (1 when unset):
+  // max(12 device px, the base at the scale rounded down to 12 device px), in CSS px.
   const expression = (name: string) =>
-    new RegExp(`--icon-size-${name}:\\s*(?:max\\(12px,\\s*)?round\\(down,\\s*calc\\((\\d+)px \\* var\\(--scale\\)\\),\\s*12px\\)\\)?;`).exec(css);
+    new RegExp(
+      `--icon-size-${name}:\\s*max\\(calc\\(12px / var\\(--dpr, 1\\)\\),\\s*calc\\(round\\(down,\\s*calc\\((\\d+)px \\* var\\(--scale\\) \\* var\\(--dpr, 1\\)\\),\\s*12px\\) / var\\(--dpr, 1\\)\\)\\);`,
+    ).exec(css);
 
-  /** What the token resolves to at a scale: the base, rounded down to the 12px grid, never under 12. */
-  const sizeAt = (name: string, scale: number) => {
+  /** What the token resolves to at a scale and pixel ratio: whole 12-device-pixel cells, never under 12. */
+  const sizeAt = (name: string, scale: number, dpr = 1) => {
     const match = expression(name);
     expect(match, `--icon-size-${name} is a rounded-down calc`).not.toBeNull();
-    return Math.max(12, Math.floor((Number(match![1]) * scale) / 12) * 12);
+    return Math.max(12 / dpr, (Math.floor((Number(match![1]) * scale * dpr) / 12) * 12) / dpr);
   };
+
+  it.each([1.25, 1.5])("lands every icon size on whole device pixels at --dpr %s (M493)", (dpr) => {
+    for (const scale of SIZES) {
+      for (const name of ["sm", "lg"]) {
+        const device = sizeAt(name, scale, dpr) * dpr;
+        expect(Math.abs(device - Math.round(device)), `${name} at ${scale}x`).toBeLessThan(1e-9);
+        expect(Math.round(device) % 12, `${name} at ${scale}x`).toBe(0);
+      }
+    }
+  });
 
   it.each([
     ["sm", [12, 12, 24, 24, 48]],
@@ -208,6 +222,16 @@ describe("pixel icon sizes snap on their own (C136)", () => {
       expect(sizeAt("sm", scale)).toBeLessThanOrEqual(sizeAt("lg", scale));
       for (const name of ["sm", "lg"]) expect(sizeAt(name, scale) % 12).toBe(0);
     }
+  });
+
+  it("snaps the hairline to whole device pixels and keeps it one pixel at every scale (M493, M82)", () => {
+    expect(css).toMatch(
+      /--hairline:\s*max\(calc\(1px \/ var\(--dpr, 1\)\),\s*calc\(round\(down,\s*calc\(1px \* var\(--dpr, 1\)\),\s*1px\) \/ var\(--dpr, 1\)\)\);/,
+    );
+    const hairline = (dpr: number) => Math.max(1 / dpr, Math.floor(dpr) / dpr);
+    expect([1, 1.25, 1.5, 2].map((dpr) => hairline(dpr) * dpr)).toEqual([1, 1, 1, 2]);
+    // No --scale in it: a header rule is the same thin line at 1x and 3x (M82).
+    expect(/--hairline:[^;]*--scale/.test(css)).toBe(false);
   });
 
   it("has no medium: --icon-size-md is lg under its old name until the last two uses move (M28)", () => {

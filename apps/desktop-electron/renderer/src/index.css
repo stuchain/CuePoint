@@ -289,6 +289,12 @@ legend,
   cursor: pointer;
 }
 
+/* A link in a table row is a target 24 tall (M477), like the small icon buttons: the row is taller
+   (--row-height), so the row does not grow. */
+:where(.track-table, .cp-data-table, .cp-data-grid) .cp-link {
+  min-block-size: var(--hit-target);
+}
+
 .cp-link:hover,
 .cp-link:focus-visible,
 a[href]:where(:not([class])):hover {
@@ -581,10 +587,16 @@ details > summary:has(.cp-disclosure)::before {
 }
 
 .cp-toolbar--ground,
-.cp-filter-bar__row.cp-toolbar,
-.keys-tracks__toolbar.cp-toolbar,
 .cp-card .cp-toolbar {
   padding-inline: var(--space-md);
+}
+
+/* The bar over a table (the Library's filter bar, the Keys tracks bar) is set in by the table's own
+   cell padding, so the bar's first word and the first column's words share one edge (M51, D9 A:
+   bars and cells use one inline padding). */
+.cp-filter-bar__row.cp-toolbar,
+.keys-tracks__toolbar.cp-toolbar {
+  padding-inline: var(--space-sm);
 }
 
 /* Buttons in a row are 8 apart (C28). */

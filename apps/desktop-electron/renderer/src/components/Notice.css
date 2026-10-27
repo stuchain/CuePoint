@@ -51,7 +51,8 @@
 
 .cp-notice__title {
   font-family: var(--font-control);
-  font-weight: var(--font-weight-semibold);
+  /* M2: the control weight, like every pixel-face word. */
+  font-weight: var(--control-font-weight);
 }
 
 .cp-notice__action {

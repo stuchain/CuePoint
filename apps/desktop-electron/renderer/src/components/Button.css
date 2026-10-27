@@ -332,7 +332,7 @@
 }
 
 .cp-btn__menu .cp-pixel-icon {
-  /* 12 at 1x to 1.75x, 24 at 2x: the chevron stays a small mark, not the --icon-size-sm that grows with the buttons. */
-  width: max(12px, round(down, calc(12px * var(--scale)), 12px));
-  height: max(12px, round(down, calc(12px * var(--scale)), 12px));
+  /* Two icon sizes and no local third (M29, D3): the menu chevron is the small icon. */
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }

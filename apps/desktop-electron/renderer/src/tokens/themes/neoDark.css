@@ -16,7 +16,9 @@
   --row-divider: #3b3b41;
   --hover-fill: #3f3f46;
   --border-control: #71717a;
-  --tab-underline-color: #8b5cf6;
+  /* The tab underline is one of the two accent tokens, never a third violet (M327, D28). The fill
+     #7c3aed is 2.88:1 on this toolbar, under the 3:1 an underline needs, so it is the accent. */
+  --tab-underline-color: #9164f6;
   --bevel-highlight: #71717a;
   --bevel-shadow: #09090b;
 
@@ -27,10 +29,7 @@
   --fg-on-status: #000000;
 
   --accent-primary: #9164f6;
-  --accent-primary-hover: #a78bfa;
-  --accent-primary-pressed: #7c3aed;
   --accent-secondary: #3f3f46;
-  --accent-secondary-hover: #52525b;
   --accent-success: #22c55e;
   --accent-warning: #eab308;
   --accent-danger: #ef4444;
@@ -46,7 +45,6 @@
   --focus-ring-color: #a78bfa;
   --color-scheme: dark;
 
-  --overlay-header: rgba(0, 0, 0, 0.25);
   --overlay-backdrop: rgba(0, 0, 0, 0.7);
 
   /* Waveforms (WAVE-05): each band at 3:1 or more against --bg-panel. */

@@ -18,6 +18,11 @@ describe.each(Object.entries(THEMES))("the %s theme sheet", (name, css) => {
     expect(names.filter((token) => SHAPE_TOKENS.test(token)), name).toEqual([]);
   });
 
+  it("carries no unused hover or press token (M323, D29 A)", () => {
+    const gone = ["--accent-primary-hover", "--accent-primary-pressed", "--accent-secondary-hover", "--overlay-header"];
+    expect(names.filter((token) => gone.includes(token)), name).toEqual([]);
+  });
+
   it("sets at least the surface ladder, so the check above is reading something", () => {
     expect(names).toContain("--bg-app");
   });

@@ -229,29 +229,44 @@ perKind(
 
 // ---- hover ----------------------------------------------------------------------------------
 
-perKind(
-  "hover",
-  "a row in the table",
-  () => ({ ui: table(), target: first(".track-table__row"), pseudo: "::before" }),
-  (m) => expect(m.animation).toMatch(/cp-edge-in [^,]*steps\(1\)/),
-);
+/** The row's hover edge bar, as motion.css writes it. */
+function rowBarRule(): { selector: string; body: string } {
+  const css = Object.values(import.meta.glob("./motion.css", { query: "?raw", import: "default", eager: true })).join("\n");
+  const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const match = /([^{}]*\.track-table__row[^{}]*:hover::before)\s*\{([^}]*)\}/.exec(flat)!;
+  return { selector: match[1]!.trim(), body: match[2]! };
+}
+
+// M387: the row's edge bar is drawn on the hover's own frame, with no step in from off the row
+// (that came a frame late), so it has no animation to read; the bar itself is still the kind's.
+describe("hover: a row in the table", () => {
+  it("draws the edge bar only with the kind on, at once", () => {
+    const rule = rowBarRule();
+    expect(rule.selector.startsWith(":root[data-motion-hover]")).toBe(true);
+    expect(rule.body).toMatch(/content:\s*""/);
+    expect(rule.body).toMatch(/animation:\s*none/);
+    for (const setup of ["off", "reduced"] as const) {
+      configure("hover", setup);
+      expect(document.documentElement.hasAttribute("data-motion-hover")).toBe(false);
+    }
+  });
+});
 
 describe("hover: the table holds still while it scrolls", () => {
   it("draws no row's bar during a scroll, and draws it again after", () => {
+    // The bar is keyed on a table that is not scrolling.
+    expect(rowBarRule().selector).toMatch(/\.track-table__scroll:not\(\[data-scrolling\]\) \.track-table__row/);
     vi.useFakeTimers();
     configure("hover", "on");
     const { container } = mount(table());
     const scroller = container.querySelector(".track-table__scroll")!;
-    const row = container.querySelector(".track-table__row")!;
-    expect(motionOf(row, "::before", "hover").animation).not.toBeNull();
+    expect(scroller).not.toHaveAttribute("data-scrolling");
     fireEvent.scroll(scroller);
     expect(scroller).toHaveAttribute("data-scrolling");
-    expect(motionOf(row, "::before", "hover")).toEqual({ animation: null, transition: null });
     act(() => {
       vi.advanceTimersByTime(300);
     });
     expect(scroller).not.toHaveAttribute("data-scrolling");
-    expect(motionOf(row, "::before", "hover").animation).not.toBeNull();
   });
 });
 

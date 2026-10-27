@@ -8,7 +8,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { reportToast } from "../reporting/reporting";
+import { inHiddenPage } from "./shell/pageActive";
+import { MODAL_DIALOG_SELECTOR } from "./shell/shellKeyboard";
 import { Button } from "./Button";
 import { CloseButton } from "./CloseButton";
 import { usePresence } from "../tokens/usePresence";
@@ -20,6 +23,26 @@ export type ToastVariant = "info" | "success" | "warning" | "error";
 export interface ToastAction {
   label: string;
   onClick: () => void;
+  /**
+   * The action takes back what was just done (M456): Ctrl+Z and Edit › Undo press it, and only
+   * such an action. Left out, an action labelled "Undo" counts as one.
+   */
+  undo?: boolean;
+}
+
+/** Whether a toast's action is an undo (M456): said so, or labelled "Undo". */
+export function isUndoAction(action: ToastAction | undefined): boolean {
+  if (!action) return false;
+  return action.undo ?? /^undo\b/i.test(action.label.trim());
+}
+
+/** The modal dialog on top, if one is open in the page that shows (M456). */
+function topDialog(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  const open = Array.from(document.querySelectorAll<HTMLElement>(MODAL_DIALOG_SELECTOR)).filter(
+    (dialog) => !inHiddenPage(dialog) && !dialog.closest("[data-leaving], [data-ghost]"),
+  );
+  return open.length > 0 ? open[open.length - 1]! : null;
 }
 
 interface ToastMessage {
@@ -41,7 +64,10 @@ interface ToastContextValue {
   dismissKey: (key: string) => void;
   /** Moves focus to the newest toast's action (or its close button), so Undo is reachable from the keyboard (M456). False when none shows. */
   focusNewest: () => boolean;
-  /** Presses the newest toast's action, which is Undo when it has one: Ctrl+Z and Edit › Undo (M456). False when there is none. */
+  /**
+   * Presses Undo on the newest toast that offers one: Ctrl+Z and Edit › Undo (M456). Only an undo
+   * action (`data-undo`) is ever pressed, never another action. False when no toast offers Undo.
+   */
   runNewestAction: () => boolean;
 }
 
@@ -123,25 +149,47 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [newestToast]);
 
   const runNewestAction = useCallback(() => {
-    const action = newestToast()?.querySelector<HTMLElement>(".cp-toast__action");
+    const undos = stack.current?.querySelectorAll<HTMLElement>(".cp-toast:not([data-leaving]) .cp-toast__action[data-undo]");
+    const action = undos && undos.length > 0 ? undos[undos.length - 1] : undefined;
     if (!action) return false;
     action.click();
     return true;
-  }, [newestToast]);
+  }, []);
+
+  // While a modal dialog is open the stack is drawn inside it (M456): a toast outside an
+  // `aria-modal` dialog cannot be reached or read, so its Undo would be lost behind the dialog.
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const showing = toasts.length > 0;
+  useEffect(() => {
+    if (!showing) {
+      setHost(null);
+      return;
+    }
+    const find = () => setHost(topDialog());
+    find();
+    if (typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(find);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-modal", "data-leaving"] });
+    return () => observer.disconnect();
+  }, [showing]);
 
   const value = useMemo(
     () => ({ push, dismissKey, focusNewest, runNewestAction }),
     [push, dismissKey, focusNewest, runNewestAction],
   );
 
+  const stackNode = (
+    <div className="cp-toast-stack" aria-live="polite" ref={stack} data-in-dialog={host ? "" : undefined}>
+      {toasts.map((toast) => (
+        <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} onGone={remove} />
+      ))}
+    </div>
+  );
+
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="cp-toast-stack" aria-live="polite" ref={stack}>
-        {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} onGone={remove} />
-        ))}
-      </div>
+      {host ? createPortal(stackNode, host) : stackNode}
     </ToastContext.Provider>
   );
 }
@@ -203,6 +251,7 @@ function ToastItem({
           variant="secondary"
           size="sm"
           className="cp-toast__action"
+          data-undo={isUndoAction(toast.action) ? "" : undefined}
           onClick={() => {
             const run = toast.action?.onClick;
             onDismiss(toast.id);

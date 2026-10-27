@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import toastCss from "./Toast.css?raw";
@@ -109,6 +109,67 @@ describe("the keyboard (M456)", () => {
     fireEvent.click(screen.getByRole("button", { name: "keys" }));
     expect(result).toEqual({ focused: true, ran: true });
     expect(undo).toHaveBeenCalledTimes(1);
+  });
+
+  it("presses only an undo action, never another (M456)", () => {
+    const other = vi.fn();
+    function Other() {
+      const toast = useToast();
+      return (
+        <>
+          <button type="button" onClick={() => toast.push("Exported", "info", { label: "Show in folder", onClick: other })}>
+            push other
+          </button>
+          <button type="button" onClick={() => setResult({ focused: false, ran: toast.runNewestAction() })}>
+            undo key
+          </button>
+        </>
+      );
+    }
+    result = null;
+    render(
+      <ToastProvider>
+        <Other />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "push other" }));
+    expect(screen.getByRole("button", { name: "Show in folder" })).not.toHaveAttribute("data-undo");
+    fireEvent.click(screen.getByRole("button", { name: "undo key" }));
+    expect(result).toEqual({ focused: false, ran: false });
+    expect(other).not.toHaveBeenCalled();
+  });
+
+  it("marks an Undo action data-undo", () => {
+    render(
+      <ToastProvider>
+        <Keys />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "push" }));
+    expect(screen.getByRole("button", { name: "Undo" })).toHaveAttribute("data-undo");
+  });
+
+  it("draws the stack inside an open modal dialog, so its Undo can be reached (M456)", async () => {
+    function WithDialog() {
+      const toast = useToast();
+      return (
+        <>
+          <div role="dialog" aria-modal="true" aria-label="Edit values" />
+          <button type="button" onClick={() => toast.push("Removed 2 tracks", "info", { label: "Undo", onClick: undo })}>
+            push
+          </button>
+        </>
+      );
+    }
+    render(
+      <ToastProvider>
+        <WithDialog />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "push" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit values" });
+    await waitFor(() => expect(dialog.querySelector(".cp-toast-stack")).not.toBeNull());
+    expect(dialog.querySelector(".cp-toast-stack .cp-toast__action[data-undo]")).not.toBeNull();
   });
 });
 
