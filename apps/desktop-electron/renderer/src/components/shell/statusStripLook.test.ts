@@ -5,7 +5,7 @@ import statusStrip from "./StatusStrip.css?raw";
 import updateItem from "../updates/UpdateStatusItem.css?raw";
 
 /**
- * R2-2, DEC-266: the status strip is one control tall, with no padding above or below.
+ * R2-2, DEC-266: the status strip is one control tall, plus even air above and below (Q6c).
  * Pins the rules that make it so; the strip shrinks only while nothing inside it is taller.
  */
 function ruleDecls(css: string, selector: string): Record<string, string> {
@@ -22,8 +22,8 @@ describe("the status strip is slim", () => {
   it("is the height of a control, inset from the edges", () => {
     const strip = ruleDecls(statusStrip, ".cp-status");
     expect(strip["min-height"]).toBe("var(--control-height)");
-    // The shell inset at both sides (C46) and a little air below (C231).
-    expect(strip["padding"]).toBe("0 var(--space-lg) var(--space-xs)");
+    // The shell inset at both sides (C46) and the same air above and below (Q6c, amending C231).
+    expect(strip["padding"]).toBe("var(--space-xs) var(--space-lg)");
     expect(strip["border-top"]).toBe("var(--divider)");
   });
 

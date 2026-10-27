@@ -4,8 +4,8 @@
  * It spans the full width beneath the sidebar, content and inspector, so its
  * height is the one thing every other region gives up. It stays a single line
  * for that reason: no wrapping, ellipsis on anything long. It is one control
- * tall (`--control-height`) with no vertical padding, and nothing inside it may
- * be taller (R2-2, DEC-266).
+ * tall (`--control-height`) plus the same small air above and below (Q6c), and
+ * nothing inside it may be taller (R2-2, DEC-266).
  */
 .cp-status {
   /* Its visually hidden live text is clipped with the strip, so an idle strip adds no scroll to the page. */
@@ -14,9 +14,9 @@
   align-items: center;
   gap: var(--space-md);
   min-height: var(--control-height);
-  /* The shell inset at both sides (C46), and a little air under it: the strip is not flush
-     with the window's bottom edge (C231). */
-  padding: 0 var(--space-lg) var(--space-xs);
+  /* The shell inset at both sides (C46), and the same air above and below (Q6c, amending C231's
+     air below only), so everything sits on the strip's centre line and nothing touches its top line. */
+  padding: var(--space-xs) var(--space-lg);
   background: var(--bg-toolbar);
   border-top: var(--divider);
   /* P45: Inter at the label size, muted; the engine word alone takes a status colour. */
@@ -74,7 +74,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The strip's buttons are the standard small button at the strip's own height (a control's). */
+/* Q6c: a thin bar, so the strip reads as a line of text with progress, not a gauge. */
+.cp-status .cp-progress {
+  height: round(nearest, calc(3px * var(--scale)), 1px);
+  border: 0;
+}
+
+/* The strip's buttons are quiet buttons (Q6c) at the strip's own height (a control's); the last
+   one hangs out by its padding so its word ends on the strip's inset (Q1). */
 /* Stopping the job the strip is reporting (ORG-13). Beside the progress it
    belongs to rather than at the end of the strip, which is where the Activity
    button lives. */

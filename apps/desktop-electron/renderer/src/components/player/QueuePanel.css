@@ -38,7 +38,13 @@
 
 .cp-queue__handle:hover,
 .cp-queue__handle--active {
-  background: var(--resizer-hover);
+  background: var(--resizer-edge-hover);
+}
+
+/* Q6b: the panel's own border is the line that lights up, so there is one line in its real place. */
+.cp-queue:has(> .cp-queue__handle:hover),
+.cp-queue:has(> .cp-queue__handle--active) {
+  border-left-color: var(--accent-primary);
 }
 
 .cp-queue__handle:focus-visible {

@@ -289,7 +289,7 @@ export function StatusStrip() {
             {activeCount > 1 && (
               <>
                 <Button
-                  variant="secondary"
+                  variant="quiet"
                   className="cp-status__more"
                   ref={moreButton}
                   aria-expanded={listOpen}
@@ -313,7 +313,7 @@ export function StatusStrip() {
             )}
             {canCancel(job) && (
               <Button
-                variant="secondary"
+                variant="quiet"
                 className="cp-status__cancel"
                 onClick={() => void cancel(job)}
                 disabled={cancelling === job.id}

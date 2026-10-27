@@ -244,6 +244,13 @@
     var(--accent-primary) 0 calc(50% + var(--selected-bar-width) / 2),
     transparent 0
   );
+  /* Q6b: a panel's own edge lights up under the resize cursor. The panel's border turns violet
+     and the handle widens it from the inside to the bar width, so one line shows, in its place. */
+  --resizer-edge-hover: linear-gradient(
+    to right,
+    var(--accent-primary) 0 calc(var(--selected-bar-width) - var(--hairline)),
+    transparent 0
+  );
   --row-end-inset: var(--space-sm);
   --search-width: round(nearest, calc(205px * var(--scale)), 1px);
 

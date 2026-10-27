@@ -43,7 +43,13 @@
 
 .cp-inspector__handle:hover,
 .cp-inspector__handle--active {
-  background: var(--resizer-hover);
+  background: var(--resizer-edge-hover);
+}
+
+/* Q6b: the panel's own border is the line that lights up, so there is one line in its real place. */
+.cp-inspector:has(> .cp-inspector__handle:hover),
+.cp-inspector:has(> .cp-inspector__handle--active) {
+  border-left-color: var(--accent-primary);
 }
 
 /* While dragging, the cursor should not flicker over text it passes. */

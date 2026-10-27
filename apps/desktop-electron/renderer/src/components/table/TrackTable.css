@@ -26,6 +26,8 @@
   overflow: hidden;
   border: 0;
   background: var(--bg-input);
+  /* Q6a: chips in the rows mix their fill with the table's own ground, not the row's hover. */
+  --chip-ground: var(--bg-input);
 }
 
 .track-table__scroll {

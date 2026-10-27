@@ -29,9 +29,13 @@ describe("Badge", () => {
     expect(code).not.toMatch(/--shadow-badge|--border-width/);
   });
 
-  it("tints its fill from the tone and reads its words from it, never a solid fill", () => {
+  it("tints its fill from the tone over its table's own ground, and reads its words from the tone", () => {
     const body = rule(".cp-badge");
-    expect(body).toMatch(/background:\s*color-mix\(in srgb, var\(--chip-tone\) var\(--chip-fill-mix\), transparent\)/);
+    // Q6a: the tint is mixed once with --chip-ground (a table's solid ground), so a hovered or
+    // selected row never changes the chip; outside a table the surface still shows through.
+    expect(body).toMatch(
+      /background:\s*color-mix\(in srgb, var\(--chip-tone\) var\(--chip-fill-mix\), var\(--chip-ground, transparent\)\)/,
+    );
     expect(body).toMatch(/color:\s*var\(--chip-text, color-mix\(in srgb, var\(--chip-tone\) var\(--chip-text-mix\), var\(--fg-primary\)\)\)/);
     expect(body).not.toMatch(/fg-on-status|fg-on-accent/);
   });

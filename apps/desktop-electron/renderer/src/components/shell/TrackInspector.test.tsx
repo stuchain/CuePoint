@@ -126,7 +126,7 @@ describe("TrackInspector", () => {
 
     it("starts at the page's top gutter and lights its handle with the shared resizer colour", () => {
       expect(css).toMatch(/\.cp-inspector\s*\{[^}]*padding-top:\s*var\(--page-gutter-top\)/);
-      expect(css).toMatch(/\.cp-inspector__handle:hover[^{]*\{[^}]*background:\s*var\(--resizer-hover\)/);
+      expect(css).toMatch(/\.cp-inspector__handle:hover[^{]*\{[^}]*background:\s*var\(--resizer-edge-hover\)/); // Q6b: the edge itself lights up
     });
   });
 

@@ -260,6 +260,8 @@
    is one line of a known height, which is what lets only the rows in view exist. */
 .review-table {
   table-layout: auto;
+  /* Q6a: the review sits on the page ground; its chips mix with it, not with a hovered row. */
+  --chip-ground: var(--bg-app);
 }
 
 /* One tick column, the same 32 wide as the Playlists step (C77). */
