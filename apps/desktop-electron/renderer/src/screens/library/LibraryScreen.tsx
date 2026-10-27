@@ -93,7 +93,6 @@ import {
   type DraggedTracks,
 } from "./collectionDrag";
 import { PickerDialog, type PickerItem } from "./PickerDialog";
-import { useSharedLines } from "./useSharedLines";
 import { SaveSmartDialog, type FolderOption } from "./SaveSmartDialog";
 import { TagManagerDialog } from "./TagManagerDialog";
 import { smartQuery, type SmartAttachment } from "./smartFilter";
@@ -308,7 +307,6 @@ export function LibraryScreen({
   const searchInput = useRef<HTMLInputElement>(null);
   // Ctrl+F (Cmd+F) focuses the search on this page, as on every page (C189).
   usePageSearch(searchInput);
-  const shareLines = useSharedLines();
 
   useEffect(() => {
     mounted.current = true;
@@ -2000,7 +1998,7 @@ export function LibraryScreen({
         }
       />
 
-      <div className="library-screen__body" ref={shareLines}>
+      <div className="library-screen__body">
         <LibraryPane
           libraryTrackCount={summary.track_count}
           playlists={playlists}

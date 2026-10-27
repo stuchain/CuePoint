@@ -198,8 +198,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  /* One row tall, as every row is (C208); it grows only with the text. */
-  min-height: var(--row-height);
+  /* One bar tall (Q5a, amending C208's row height): the 24 px pixel icons keep their size and get
+     room above and below, so neighbouring icons no longer nearly touch. It grows only with the text. */
+  min-height: var(--toolbar-height);
   padding: 0 var(--space-sm);
   border: var(--hairline) solid transparent;
   background: transparent;

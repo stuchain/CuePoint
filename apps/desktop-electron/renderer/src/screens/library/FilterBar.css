@@ -17,6 +17,9 @@
   flex-wrap: wrap;
   row-gap: var(--space-xs);
   padding-block: var(--space-xs);
+  /* Q2 (L3): the bar is one toolbar tall including its line, the height of the pane's All tracks
+     row beside it, so the two lines meet. */
+  min-height: calc(var(--toolbar-height) - var(--hairline));
 }
 
 .cp-filter-bar__builder {

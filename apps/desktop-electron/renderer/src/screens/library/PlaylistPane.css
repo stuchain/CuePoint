@@ -7,8 +7,10 @@
 
 .cp-playlist-pane,
 .cp-playlist-pane__tree {
-  /* One level of nesting: the width of a twisty, so a child's icon sits under its parent's name. */
-  --tree-step: calc(20px * var(--scale));
+  /* Q5b: a twisty is the section fold arrow's width, so a top-level row's icon starts under its
+     section's title; one level of nesting steps in by that arrow and the gap after it. */
+  --tree-twisty: var(--icon-size-sm);
+  --tree-step: calc(var(--tree-twisty) + var(--space-xs));
 }
 
 /* In a narrow pane (Track details open, a small window) a full twisty per level leaves a nested
@@ -36,10 +38,11 @@
   /* "from Rekordbox" goes under the title in a narrow pane, not past its edge. */
   flex-wrap: wrap;
   gap: 0 var(--space-sm);
-  /* P32: every pane head is one toolbar tall, on the pane's tone. */
+  /* Q2 (amending P32's toolbar height): every pane head is one row tall including its line, as the
+     table's header is, so the pane's lines continue across the table. On the pane's tone. */
   box-sizing: border-box;
-  min-block-size: var(--toolbar-height);
-  padding: var(--space-xs) var(--space-sm);
+  min-block-size: var(--row-height);
+  padding: 0 var(--space-sm);
   border-bottom: var(--divider);
   background: transparent;
 }
@@ -133,7 +136,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: var(--tree-step);
+  width: var(--tree-twisty);
   height: calc(14px * var(--scale));
   padding: 0;
   border: none;

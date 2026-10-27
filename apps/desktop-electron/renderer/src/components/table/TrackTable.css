@@ -82,7 +82,9 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: var(--row-height);
+  /* Q2 (L3): the header is one row tall including its line, as every row is, so the Library pane's
+     lines continue across it. */
+  height: calc(var(--row-height) - var(--hairline));
   padding: 0 var(--space-lg) 0 var(--space-sm);
   border: none;
   background: inherit;

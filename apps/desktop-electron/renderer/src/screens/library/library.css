@@ -195,9 +195,10 @@
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
-  /* The pane is its own column from its own top. The only line it shares with the right side is
-     the table header's, set by useSharedLines as --library-collections-min when the pane can hold
-     it; --library-module is the 12 between the search/filter bar and the toolbar. */
+  /* The pane is its own column from its own top. Its lines meet the table's because both use one
+     grid (Q2, L3): the first row is a bar tall, as the filter bar is, and every head and row is a
+     row tall, as the table's header and rows are. --library-module is the 12 between the
+     search/filter bar and the toolbar. */
   --library-module: round(nearest, calc(12px * var(--scale)), 1px);
 }
 

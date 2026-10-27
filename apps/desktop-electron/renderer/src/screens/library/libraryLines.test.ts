@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import library from "./library.css?raw";
 import pane from "./CollectionsPane.css?raw";
 import filterBar from "./FilterBar.css?raw";
+import playlistPane from "./PlaylistPane.css?raw";
 import detail from "./TrackDetailPanel.css?raw";
 
 const strip = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -27,10 +28,15 @@ describe("the Library's shared lines", () => {
     expect(rule(pane, ".cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head")).not.toMatch(/\bheight:/);
   });
 
-  it("shares only the table header's line, as a floor under the Collections section", () => {
-    expect(rule(pane, ".cp-library-pane .cp-collections")).toContain(
-      "min-height: var(--library-collections-min, 0)",
+  it("puts the pane on the table's grid: All tracks a bar tall, heads a row tall, no gap between sections (Q2)", () => {
+    // Was a floor under the Collections section (useSharedLines) that met only the header's line.
+    expect(rule(pane, ".cp-library-pane__all .cp-playlist-pane__row")).toContain(
+      "min-height: calc(var(--toolbar-height) - var(--hairline))",
     );
+    expect(rule(filterBar, ".cp-filter-bar__row")).toContain("min-height: calc(var(--toolbar-height) - var(--hairline))");
+    expect(rule(playlistPane, ".cp-playlist-pane__head")).toContain("min-block-size: var(--row-height)");
+    expect(rule(pane, ".cp-collections")).toContain("border-bottom: 0");
+    expect(strip(pane)).not.toContain("--library-collections-min");
   });
 
   it("draws each rule once: the table has no top or left border", () => {

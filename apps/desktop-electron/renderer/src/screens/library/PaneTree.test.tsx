@@ -36,13 +36,17 @@ function renderTree() {
 }
 
 describe("PaneTree nesting", () => {
-  it("steps each level in by one twisty width, a token that scales with the text size", () => {
+  it("steps each level in by the fold arrow and its gap; a twisty is the fold arrow's width (Q5b)", () => {
     renderTree();
     const rows = screen.getAllByRole("treeitem");
     expect(rows[1]!.style.paddingLeft).toBe("calc(var(--space-sm) + 1 * var(--tree-step))");
     expect(rows[2]!.style.paddingLeft).toBe("calc(var(--space-sm) + 2 * var(--tree-step))");
-    expect(rule(".cp-playlist-pane,\n.cp-playlist-pane__tree")).toContain("--tree-step: calc(20px * var(--scale))");
-    expect(rule(".cp-playlist-pane__twisty")).toContain("width: var(--tree-step)");
+    // Q5b: was a 20 px twisty slot on every row, so names started past the section titles.
+    expect(rule(".cp-playlist-pane,\n.cp-playlist-pane__tree")).toContain("--tree-twisty: var(--icon-size-sm)");
+    expect(rule(".cp-playlist-pane,\n.cp-playlist-pane__tree")).toContain(
+      "--tree-step: calc(var(--tree-twisty) + var(--space-xs))",
+    );
+    expect(rule(".cp-playlist-pane__twisty")).toContain("width: var(--tree-twisty)");
   });
 
   it("draws one guide line per open ancestor, and none on a root", () => {

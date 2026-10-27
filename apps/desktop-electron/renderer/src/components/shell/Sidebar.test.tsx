@@ -593,8 +593,9 @@ describe("the sidebar's sizes follow the text, not the window (C208, C34)", () =
     return rule ? Object.fromEntries(declarations(rule.body))[property] : undefined;
   };
 
-  it("makes a page row one row-height tall, and the search field a control", () => {
-    expect(decl(".cp-sidebar__link", "min-height")).toBe("var(--row-height)");
+  it("makes a page row one bar tall, and the search field a control", () => {
+    // Q5a (amending C208): bar-tall rows, so the 24 px icons do not nearly touch.
+    expect(decl(".cp-sidebar__link", "min-height")).toBe("var(--toolbar-height)");
     expect(decl(".cp-sidebar__search", "min-height")).toBe("var(--control-height)");
     expect(decl(".cp-sidebar__brand", "min-height")).toBe("var(--row-height)");
   });

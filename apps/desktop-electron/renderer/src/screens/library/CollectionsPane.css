@@ -46,6 +46,8 @@
   /* Clipped, not visible: a name too long for a narrow pane ends in "…" and the count never
      paints over it (the rows below are as wide as the pane, never wider). */
   overflow: clip;
+  /* No room under a section's rows (Q2): the next head follows on the table's grid. */
+  padding-bottom: 0;
 }
 
 .cp-library-pane .cp-playlist-pane__row {
@@ -63,7 +65,8 @@
 }
 
 .cp-collections {
-  border-bottom: var(--divider);
+  /* No line of its own (Q2): the Playlists head below draws the next line, on the table's grid. */
+  border-bottom: 0;
 }
 
 /* The one "+ New" menu button, at the right of the heading (FLW-10, K14). */
@@ -80,13 +83,8 @@
 }
 
 
-/* The tighter gap is room, not looks: rows carry no controls now (K14), but the pane
-   is only ~156px inside its scrollbar and a deep row's twisty, icon, name and count
-   still have to fit without scrolling the pane sideways (organization e2e). */
-.cp-collections .cp-playlist-pane__row {
-  gap: round(down, calc(var(--space-xs) / 2), 1px);
-  padding: 0 var(--space-xs);
-}
+/* Collections rows are the playlist rows exactly (Q2, L1): one left edge for names and one right
+   edge for counts across both sections. A narrow pane tightens both alike (PlaylistPane.css). */
 
 /* A name is the only flexible item in the row: it shrinks to "…" before the count is touched. */
 .cp-collections .cp-playlist-pane__name {
@@ -112,7 +110,12 @@
  * until something is dragged over it, and never a hole in the layout.
  */
 .cp-collections__root-drop {
-  min-height: var(--space-md);
+  /* A drop target that takes no room (Q2: no gap between sections): it lies over the top of the
+     next section's head and is only seen while something is dragged over it. */
+  position: relative;
+  z-index: 1;
+  height: var(--space-md);
+  margin-bottom: calc(-1 * var(--space-md));
 }
 
 .cp-collections__root-drop--over {
@@ -140,10 +143,10 @@
 
 /*
  * The pane starts at its own top with "All tracks" and is as tall as its content: nothing in it
- * is sized by the toolbar on the right (a blank band there pushed the pane down by up to 170px).
- * The one line it shares is the table header's: when the pane has room, the Collections section
- * is given --library-collections-min (useSharedLines) so its closing divider runs across to the
- * header's rule; the spare room sits at the foot of the section, under its rows.
+ * is sized by what the right side shows (a blank band there pushed the pane down by up to 170px).
+ * Its lines meet the table's by sharing one grid (Q2, L3): "All tracks" is a bar tall, as the
+ * filter bar is; every head and row is a row tall, as the table's header and rows are; and no
+ * section leaves a gap. The lines are inside those heights, as the table's are.
  */
 .cp-library-pane__all {
   box-sizing: border-box;
@@ -157,18 +160,13 @@
 .cp-library-pane__all .cp-playlist-pane__row {
   /* Shrink to the pane: the name ellipsises, the count (flex: none) stays whole. */
   min-width: 0;
-}
-
-.cp-library-pane .cp-collections {
-  box-sizing: border-box;
-  min-height: var(--library-collections-min, 0);
+  /* One bar tall with the line under it, the filter bar's height beside it (Q2). */
+  min-height: calc(var(--toolbar-height) - var(--hairline));
 }
 
 /* A heading that does not fit wraps (zoom spot 1C): "+ New" and "from Rekordbox" go under the
    title, at the right, and the title is never ellipsised. Only a heading that does not fit grows a
-   line. The Collections section's floor (--library-collections-min) is its whole height, heading
-   included, so its divider still meets the table header's rule; useSharedLines measures the
-   Playlists heading as it is drawn, wrapped or not. */
+   line, which is the one case where the pane's lines leave the table's grid. */
 .cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head {
   box-sizing: border-box;
   flex-wrap: wrap;
