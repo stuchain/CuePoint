@@ -354,6 +354,10 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
       await window.getByRole("link", { name: "Library" }).click();
       await window.locator(".track-table__row").filter({ hasText: "Bands" }).first().click();
       const inspector = window.getByTestId("inspector-waveform");
+      // M71 (D11): at the default 1280 window and size the panel folds to keep the table's room;
+      // the person's own Track details opens it.
+      const showDetails = window.getByRole("button", { name: "Track details", exact: true });
+      if ((await showDetails.getAttribute("aria-pressed")) === "false") await showDetails.click();
       await expect(inspector.locator("canvas")).toBeVisible({ timeout: 20_000 });
       let cue: { x: number | null; columns: number; unit: number } | null = null;
       await expect

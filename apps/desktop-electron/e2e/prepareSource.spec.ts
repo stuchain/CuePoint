@@ -139,18 +139,23 @@ async function toggleView(win: Page, name: string) {
  * Track details open from the Details button on this page and hide the source panel while open
  * (C226): a selected row no longer opens them by itself.
  */
+// M125 (D16): the header's Details button shows only while the panel is hidden; the panel's own
+// "Hide track details" closes it.
 async function showDetails(win: Page) {
-  const toggle = win.getByRole("button", { name: "Track details", exact: true });
-  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
+  const panel = win.getByRole("complementary", { name: "Track details" });
+  if (await panel.isVisible()) return;
+  await win.getByRole("button", { name: "Track details", exact: true }).click();
+  await expect(panel).toBeVisible();
 }
 
 async function hideDetails(win: Page) {
-  const toggle = win.getByRole("button", { name: "Track details", exact: true });
-  if ((await toggle.getAttribute("aria-pressed")) === "true") await toggle.click();
+  const hide = win.getByRole("button", { name: "Hide track details" });
+  if (await hide.isVisible()) await hide.click();
+  await expect(win.getByRole("button", { name: "Track details", exact: true })).toBeVisible();
 }
 
 function point(win: Page) {
-  return win.getByRole("region", { name: "Add to the Set" }).getByRole("status", { name: /^Inserting: / });
+  return win.getByRole("region", { name: "Add to the Set" }).getByRole("status", { name: /^Insert / });
 }
 
 test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
@@ -206,15 +211,16 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
 
       // --- the end of the Set, with nothing selected ----------------------------
-      await expect(point(win)).toHaveAccessibleName("Inserting: after “Track 10”, at the end of the Set, in Peak");
+      await expect(point(win)).toHaveAccessibleName("Insert after “Track 10” · Peak");
 
       // --- a gap from Suggestions, and the selection follows what went in ------
       await clickRow(win, rowTitled(win, "Set entries", "Track 02"));
-      await expect(point(win)).toHaveAccessibleName(/^Inserting: between “Track 02” and “Track 03”/);
+      await expect(point(win)).toHaveAccessibleName(/^Insert between “Track 02” and “Track 03”/);
       const suggestions = win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row");
       await expect(suggestions.first()).toBeVisible({ timeout: 30_000 });
       const first = suggestions.first();
-      const title = ((await first.locator('[data-column="title"]').textContent()) ?? "").trim();
+      // M196: a track already in the Set ends its title cell with "In Set"; the title is its own span.
+      const title = ((await first.locator('[data-column="title"] .prepare-source__title-text').textContent()) ?? "").trim();
       await clickRow(win, first);
       await win.getByRole("button", { name: "Insert here" }).click();
       await expect(win.getByText(`Inserted “${title}” into “Friday”`)).toBeVisible({ timeout: 15_000 });
@@ -224,7 +230,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
         title,
         "Track 03",
       ]);
-      await expect(point(win)).toHaveAccessibleName(new RegExp(`^Inserting: between “${title}” and “Track 03”`));
+      await expect(point(win)).toHaveAccessibleName(new RegExp(`^Insert between “${title}” and “Track 03”`));
 
       // --- a gap nothing bridges, and each side's own list ----------------------
       await clickRow(win, rowTitled(win, "Set entries", "Track 04"));
@@ -285,7 +291,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await expect.poll(async () => (await runningOrder(win, setId)).at(-1)?.title).toBe("Track 22");
 
       // --- the lanes: open, and a column selects its entry -----------------------
-      await toggleView(win, "Tempo lane");
+      await toggleView(win, "Tempo and key lane");
       const lanes = win.getByRole("group", { name: "Tempo and key lanes" });
       await expect(lanes).toBeVisible();
       await expect(lanes.locator('[data-relation="clash"]').first()).toBeAttached();
@@ -297,7 +303,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       const inspector = win.getByRole("complementary", { name: "Track details" });
       await expect(inspector.getByText(`Entry ${order.indexOf(ninth) + 1}, in Peak`)).toBeVisible({ timeout: 15_000 });
       await hideDetails(win);
-      await expect(point(win)).toHaveAccessibleName(/^Inserting: between “Track 09” and “Track 10”, in Peak$/);
+      await expect(point(win)).toHaveAccessibleName(/^Insert between “Track 09” and “Track 10” · Peak$/);
 
       // --- a reload keeps the tab and the lanes -------------------------------------
       await win.reload();

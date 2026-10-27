@@ -188,7 +188,8 @@ test.describe("The waveform analysis (WAVE-03)", () => {
       await expect(row.getByText(`All ${PRESENT} analyzed · 1 could not be read`)).toBeVisible({
         timeout: 10_000,
       });
-      await expect(row.getByRole("button", { name: "Analyze waveforms" })).toBeVisible();
+      // M441: with every waveform made the button says "Analyze again".
+      await expect(row.getByRole("button", { name: "Analyze again" })).toBeVisible();
 
       // One event a run: the one paused from the strip said so, the resumed one
       // finished, and the broken file was reported by whichever run reached it

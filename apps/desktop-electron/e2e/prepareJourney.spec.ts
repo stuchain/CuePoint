@@ -170,14 +170,24 @@ async function toggleView(win: Page, name: string) {
  * Track details open from the Details button on this page and hide the source panel while open
  * (C226): a selected row no longer opens them by itself.
  */
+// M125 (D16): the header's Details button shows only while the panel is hidden; the panel's own
+// "Hide track details" closes it.
 async function showDetails(win: Page) {
-  const toggle = win.getByRole("button", { name: "Track details", exact: true });
-  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
+  const panel = win.getByRole("complementary", { name: "Track details" });
+  if (await panel.isVisible()) return;
+  await win.getByRole("button", { name: "Track details", exact: true }).click();
+  await expect(panel).toBeVisible();
 }
 
 async function hideDetails(win: Page) {
-  const toggle = win.getByRole("button", { name: "Track details", exact: true });
-  if ((await toggle.getAttribute("aria-pressed")) === "true") await toggle.click();
+  const hide = win.getByRole("button", { name: "Hide track details" });
+  if (await hide.isVisible()) await hide.click();
+  await expect(win.getByRole("button", { name: "Track details", exact: true })).toBeVisible();
+}
+
+/** The Set's name, the page title and the Set menu's button (M201). */
+function setTitle(win: Page) {
+  return win.getByRole("heading", { level: 1 }).getByRole("button");
 }
 
 function facts(win: Page) {
@@ -245,14 +255,13 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
 
       // --- 1. a Set from the Collection ------------------------------------------
       await win.getByRole("link", { name: "Prepare", exact: true }).click();
-      await win.getByRole("button", { name: "New Set from…" }).click();
-      const source = win.getByRole("dialog", { name: "New Set from" });
-      await source.getByRole("combobox", { name: "Copy the tracks of" }).selectOption({ label: "Crate" });
-      await source.getByRole("button", { name: "Continue…" }).click();
-      const naming = win.getByRole("dialog", { name: "New Set from “Crate”" });
+      // One dialog (M408): the source, the name, the folder and Create.
+      await win.getByRole("button", { name: "New Set from a list…" }).click();
+      const naming = win.getByRole("dialog", { name: "New Set from a list" });
+      await naming.getByRole("combobox", { name: "Copy the tracks of" }).selectOption({ label: "Crate" });
       await naming.getByRole("textbox", { name: "Name" }).fill("Friday");
       await naming.getByRole("combobox", { name: "In" }).selectOption({ label: "Gigs" });
-      await naming.getByRole("button", { name: "Create the Set" }).click();
+      await naming.getByRole("button", { name: "Create", exact: true }).click();
       await expect(win).toHaveURL(/#\/prepare\/\d+$/, { timeout: 30_000 });
       const setId = Number(/#\/prepare\/(\d+)$/.exec(win.url())![1]);
       await expect(row(win, "Close")).toBeVisible({ timeout: 30_000 });
@@ -260,10 +269,10 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
 
       // --- 2. three chapters, one with a target and a range ------------------------
       await at(win, row(win, "Build"), "right");
-      await menu(win, "Start a chapter here");
+      await menu(win, "New chapter");
       await expect(row(win, "Chapter 2")).toBeVisible({ timeout: 15_000 });
       await at(win, row(win, "Close"), "right");
-      await menu(win, "Start a chapter here");
+      await menu(win, "New chapter");
       await expect(row(win, "Chapter 3")).toBeVisible({ timeout: 15_000 });
       await at(win, row(win, "Chapter 1"), "right");
       await menu(win, "Edit chapter…");
@@ -273,18 +282,20 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await chapter.getByRole("textbox", { name: "Lowest BPM" }).fill("120");
       await chapter.getByRole("textbox", { name: "Highest BPM" }).fill("127");
       await chapter.getByRole("button", { name: "Save" }).click();
-      await expect(row(win, "Warm-up")).toContainText("0:00 of 8:00", { timeout: 15_000 });
+      // M195: a chapter with no timed track shows no time ("0:00 of 8:00" is gone); its range shows.
+      await expect(row(win, "Warm-up")).toContainText("120–127", { timeout: 15_000 });
+      await expect(row(win, "Warm-up")).not.toContainText("of 8:00");
       const plan2 = (await readSet(win, setId)).plan;
       expect(plan2.chapters.map((c: { name: string }) => c.name)).toEqual(["Warm-up", "", ""]);
       expect([plan2.chapters[0].target_seconds, plan2.chapters[0].bpm_min, plan2.chapters[0].bpm_max]).toEqual([480, 120, 127]);
       // The Set's own notes, from the header's Set menu.
-      await win.getByRole("button", { name: "Set", exact: true }).click();
+      await setTitle(win).click();
       await menu(win, "Notes…");
       const notes = win.getByRole("dialog", { name: "Notes for “Friday”" });
       await notes.getByLabel("Notes").fill("The Loft, 23:00 to 01:00");
       await notes.getByRole("button", { name: "Save" }).click();
       await expect(notes).toBeHidden({ timeout: 15_000 });
-      await win.getByRole("button", { name: "Set", exact: true }).click();
+      await setTitle(win).click();
       await expect(win.getByRole("menuitem", { name: "Notes (1)…", exact: true })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
       await win.keyboard.press("Escape");
       expect((await readSet(win, setId)).plan.notes).toBe("The Loft, 23:00 to 01:00");
@@ -302,14 +313,14 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         await hideDetails(win);
       }
       // C246: Mix in shows already and Mix out waits; the View item ticks for both, so one click shows Mix out.
-      await toggleView(win, "Mix in and Mix out");
+      await toggleView(win, "Mix-in and mix-out columns");
       // FLW-18: Warm One's times are typed in the table: click Mix in, Tab to Mix out, Enter.
       await row(win, "Warm One").getByRole("button", { name: /^Mix in for/ }).first().click();
       await win.getByRole("textbox", { name: /^Mix in for/ }).fill("0:30");
       await win.keyboard.press("Tab");
       await win.getByRole("textbox", { name: /^Mix out for/ }).fill("4:30");
       await win.keyboard.press("Enter");
-      await expect(facts(win)).toContainText("4:00 planned", { timeout: 15_000 });
+      await expect(facts(win)).toContainText("4:00", { timeout: 15_000 });
       expect(
         (await readSet(win, setId)).entries.entries.find((entry: { position: number }) => entry.position === 0),
       ).toMatchObject({ in_seconds: 30, out_seconds: 270 });
@@ -328,9 +339,9 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await setTable(win).evaluate((element) => {
         element.scrollLeft = 0;
       });
-      await expect(facts(win)).toContainText("4:00 planned", { timeout: 15_000 });
+      await expect(facts(win)).toContainText("4:00", { timeout: 15_000 });
       await time("Warm Two", "", "5:00");
-      await expect(facts(win)).toContainText("9:00 planned", { timeout: 15_000 });
+      await expect(facts(win)).toContainText("9:00", { timeout: 15_000 });
       // "Starts at" is hidden until it is chosen in the table's Columns.
       // M404/D33: the corner button is "Columns", without "…".
       await setTable(win).getByRole("button", { name: "Columns", exact: true }).click();
@@ -376,9 +387,9 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
           return document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) === field;
         }),
       ).toBe(true);
-      await expect(row(win, "Warm Two").getByRole("group", { name: "Selected entries" })).toHaveCount(0);
+      await expect(row(win, "Warm Two").getByRole("group", { name: "Selected tracks" })).toHaveCount(0);
       await win.keyboard.press("Escape");
-      await expect(row(win, "Warm Two").getByRole("group", { name: "Selected entries" })).toBeVisible();
+      await expect(row(win, "Warm Two").getByRole("group", { name: "Selected tracks" })).toBeVisible();
       // One press of ↓ from the keyboard: React moves the row's node, and focus is still on the button.
       // With Track details and the picker open the Set pane is too narrow for the buttons: they fold into one
       // Actions ▾ (visiblePlaces covers that form). The buttons themselves are looked at in a wider window,
@@ -409,10 +420,12 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       });
       await at(win, row(win, "Warm Two"));
       const panel = win.getByRole("region", { name: "Add to the Set" });
-      await expect(panel.getByRole("status", { name: /^Inserting: between “Warm Two” and “Warm One”/ })).toBeVisible();
+      // M198: one line, "Insert between “A” and “B” · chapter".
+      await expect(panel.getByRole("status", { name: /^Insert between “Warm Two” and “Warm One”/ })).toBeVisible();
       const suggestion = win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row").first();
       await expect(suggestion).toBeVisible({ timeout: 30_000 });
-      const suggested = ((await suggestion.locator('[data-column="title"]').textContent()) ?? "").trim();
+      // M196: the title is its own span; an "In Set" mark may follow it in the cell.
+      const suggested = ((await suggestion.locator('[data-column="title"] .prepare-source__title-text').textContent()) ?? "").trim();
       await at(win, suggestion);
       await panel.getByRole("button", { name: "Insert here" }).click();
       await expect(win.getByText(`Inserted “${suggested}” into “Friday”`)).toBeVisible({ timeout: 15_000 });
@@ -467,14 +480,14 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       ] as const) {
         const file = path.join(lists, `Friday.${extension}`);
         await saveDialogAnswers(app, file);
-        await win.getByRole("button", { name: "Set", exact: true }).click();
+        await win.getByRole("button", { name: "Export", exact: true }).click();
         await menu(win, "Save set list…");
         await expect(win.getByText(new RegExp(`^Saved “Friday” as ${form} set list`))).toBeVisible({ timeout: 15_000 });
         expect(existsSync(file)).toBe(true);
       }
       const m3u8 = readFileSync(path.join(lists, "Friday.m3u8"), "utf-8");
       expect(m3u8.split("\n").filter((line) => line.endsWith("1.mp3"))).toHaveLength(2);
-      await win.getByRole("button", { name: "Set", exact: true }).click();
+      await win.getByRole("button", { name: "Export", exact: true }).click();
       await menu(win, "Copy set list");
       await expect(win.getByText("Copied the set list for “Friday”")).toBeVisible({ timeout: 15_000 });
       const copied = await app.evaluate(({ clipboard }) => clipboard.readText());
@@ -488,14 +501,16 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const exported = path.join(workspace, "out", "CuePoint Export.xml");
       mkdirSync(path.dirname(exported));
       await saveDialogAnswers(app, exported);
-      // Export is a page action in the header (C216), no longer in the Set menu.
-      await win.getByRole("button", { name: "Export to Rekordbox…", exact: true }).click();
+      // Export is a menu in the header (C216, M201): its first item is the file for Rekordbox.
+      await win.getByRole("button", { name: "Export", exact: true }).click();
+      await menu(win, "Export to Rekordbox…");
       const dialog = win.getByRole("dialog", { name: "Export to Rekordbox" });
-      // The playlist ticks sit behind Details, which starts closed (DEC-247).
-      await dialog.getByRole("button", { name: "Details" }).click({ timeout: 30_000 });
+      // The playlist ticks sit behind "What goes in the file", which starts closed (DEC-247, P10).
+      await dialog.getByRole("button", { name: "What goes in the file" }).click({ timeout: 30_000 });
       await expect(dialog.getByRole("checkbox", { name: /^Friday/ })).toBeChecked({ timeout: 30_000 });
       await expect(dialog.getByRole("list", { name: "Playlists to add" })).toContainText("7 tracks", { timeout: 30_000 });
-      await dialog.getByRole("button", { name: "Choose…" }).click();
+      // M512: the folder is chosen from "Choose file…" (or Export itself) with the one fixed name.
+      await dialog.getByRole("button", { name: "Choose file…" }).click();
       await dialog.getByRole("button", { name: /^Export .*1 playlist$/ }).click();
       await dialog.getByRole("button", { name: "Done" }).click({ timeout: 60_000 });
       const written = readFileSync(exported, "utf-8");
@@ -514,7 +529,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       await expect(row(win, "Warm-up")).toBeVisible({ timeout: 30_000 });
       await expect(facts(win).getByTitle(/1 marked OK/)).toBeVisible();
-      await win.getByRole("button", { name: "Set", exact: true }).click();
+      await setTitle(win).click();
       await expect(win.getByRole("menuitem", { name: "Notes (1)…", exact: true })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
       await win.keyboard.press("Escape");
       expect(await readSet(win, setId)).toEqual(before);
@@ -562,13 +577,14 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(win.getByRole("toolbar", { name: "Selection" }).getByText("3 selected", { exact: true })).toBeVisible();
       // The bar's Organize ▸ holds it (FLW-8).
       await win.getByRole("toolbar", { name: "Selection" }).getByRole("button", { name: "Organize", exact: true }).click();
-      await win.getByRole("menuitem", { name: "New Set from these…" }).click();
+      // M413: the item names the count, "New Set from 3 tracks…".
+      await win.getByRole("menuitem", { name: "New Set from 3 tracks…" }).click();
 
       const dialog = win.getByRole("dialog", { name: "New Set from the 3 selected tracks" });
       await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue("New Set");
       await dialog.getByRole("textbox", { name: "Name" }).fill("Picked");
-      await dialog.getByRole("button", { name: "Create the Set" }).click();
-      await expect(win.getByText("Made the Set “Picked” with 3 entries.")).toBeVisible({ timeout: 15_000 });
+      await dialog.getByRole("button", { name: "Create", exact: true }).click();
+      await expect(win.getByText("Made the Set “Picked” with 3 tracks.")).toBeVisible({ timeout: 15_000 });
 
       const made = await win.evaluate(async () => {
         const c = (window as never as Bridge).cuepoint;

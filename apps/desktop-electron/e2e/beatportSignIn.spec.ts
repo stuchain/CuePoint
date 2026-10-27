@@ -277,7 +277,17 @@ async function signInOnPage(app: ElectronApplication, window: Page, origin: stri
   await clickSignIn(await openSignIn(app, window, origin));
 }
 
-const SIGNED_IN = (masked: string) => `Signed in to Beatport · ${masked} · renews by itself`;
+// M439, D23: the status line names no end of the token, so which token is held is read from the
+// bridge's masked preview (never the token itself) while the line says the sign-in renews.
+const SIGNED_IN = "Signed in to Beatport · renews by itself";
+
+/** The page says it is signed in, with the token whose masked end is `masked`. */
+async function expectSignedIn(window: Page, masked: string, timeout: number): Promise<void> {
+  await expect(window.getByText(SIGNED_IN, { exact: true })).toBeVisible({ timeout });
+  await expect
+    .poll(() => window.evaluate(async () => (await window.cuepoint!.getBeatportAuth()).masked), { timeout })
+    .toBe(masked);
+}
 
 test.describe("Beatport sign-in", () => {
   let userDataDir: string;
@@ -310,7 +320,7 @@ test.describe("Beatport sign-in", () => {
       expect(stand.callbacks).toBe(0);
       await clickSignIn(signInWindow);
       // The callback and home follow, and the window closes itself once the token checks out.
-      await expect(window.getByText(SIGNED_IN(MASKED))).toBeVisible({ timeout: 30_000 });
+      await expectSignedIn(window, MASKED, 30_000);
       expect(stand.callbacks).toBe(1);
       expect(stand.introspections).toBeGreaterThan(0);
       await expect.poll(() => app.windows().length, { timeout: 15_000 }).toBe(1);
@@ -349,12 +359,12 @@ test.describe("Beatport sign-in", () => {
     try {
       const window = await ready(app);
       await signInOnPage(app, window, stand.origin);
-      await expect(window.getByText(SIGNED_IN(MASKED))).toBeVisible({ timeout: 30_000 });
+      await expectSignedIn(window, MASKED, 30_000);
       await expect.poll(() => app.windows().length, { timeout: 15_000 }).toBe(1);
 
       // Beatport rotates the token; the app picks it up at its next read, without opening a window.
       stand.rotated = true;
-      await expect(window.getByText(SIGNED_IN(MASKED_2))).toBeVisible({ timeout: 90_000 });
+      await expectSignedIn(window, MASKED_2, 90_000);
       expect(app.windows().length).toBe(1);
       expect(await renderersHold(window)).not.toContain(TOKEN_2);
     } finally {
@@ -369,7 +379,7 @@ test.describe("Beatport sign-in", () => {
     try {
       const window = await ready(app);
       await signInOnPage(app, window, stand.origin);
-      await expect(window.getByText(SIGNED_IN(MASKED))).toBeVisible({ timeout: 30_000 });
+      await expectSignedIn(window, MASKED, 30_000);
       expect(stand.sessionReads).toBeGreaterThan(0);
     } finally {
       await app.close();
@@ -416,7 +426,7 @@ test.describe("Beatport sign-in", () => {
     try {
       const window = await ready(app);
       await signInOnPage(app, window, stand.origin);
-      await expect(window.getByText(SIGNED_IN(MASKED))).toBeVisible({ timeout: 30_000 });
+      await expectSignedIn(window, MASKED, 30_000);
       // The page objects to being left (beforeunload), and the sign-in window still goes away.
       await expect.poll(() => app.windows().length, { timeout: 15_000 }).toBe(1);
       expect((await window.evaluate(() => window.cuepoint!.getBeatportTokenStatus())).configured).toBe(true);
@@ -433,13 +443,13 @@ test.describe("Beatport sign-in", () => {
       try {
         const window = await ready(app);
         await signInOnPage(app, window, stand.origin);
-        await expect(window.getByText(SIGNED_IN(MASKED))).toBeVisible({ timeout: 45_000 });
+        await expectSignedIn(window, MASKED, 45_000);
         await expect.poll(() => app.windows().length, { timeout: 15_000 }).toBe(1);
         expect(await renderersHold(window)).not.toContain(TOKEN);
 
         // Renewal reads the session endpoint again; introspection still cannot decide, the session's scope does.
         stand.rotated = true;
-        await expect(window.getByText(SIGNED_IN(MASKED_2))).toBeVisible({ timeout: 90_000 });
+        await expectSignedIn(window, MASKED_2, 90_000);
         expect(app.windows().length).toBe(1);
         expect(await renderersHold(window)).not.toContain(TOKEN_2);
       } finally {
@@ -464,7 +474,7 @@ test.describe("Beatport sign-in", () => {
       await expect.poll(() => stand.callbacks, { timeout: 30_000 }).toBe(1);
       await signInWindow.close().catch(() => undefined);
       await expect.poll(() => app.windows().length, { timeout: 15_000 }).toBe(1);
-      await expect(window.getByText(SIGNED_IN(MASKED))).toBeVisible({ timeout: 30_000 });
+      await expectSignedIn(window, MASKED, 30_000);
       expect((await window.evaluate(() => window.cuepoint!.getBeatportTokenStatus())).configured).toBe(true);
       // The final read, not the window's own polling, is what decided.
       const read = () => (existsSync(logFile) ? readFileSync(logFile).subarray(before).toString("utf8") : "");
@@ -486,7 +496,7 @@ test.describe("Beatport sign-in", () => {
       const logFile = path.join(logsDir, "beatport-signin.log");
       const before = existsSync(logFile) ? readFileSync(logFile, "utf8").length : 0;
       await signInOnPage(app, window, stand.origin);
-      await expect(window.getByText(SIGNED_IN(MASKED))).toBeVisible({ timeout: 30_000 });
+      await expectSignedIn(window, MASKED, 30_000);
 
       const read = () => (existsSync(logFile) ? readFileSync(logFile, "utf8").slice(before) : "");
       await expect.poll(() => read().includes("accepted"), { timeout: 15_000 }).toBe(true);

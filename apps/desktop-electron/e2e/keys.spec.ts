@@ -119,7 +119,7 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     await expect(win.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible();
 
     // The page opens on the wheel (K15); these steps read the list. The Wheel | List switch is in
-    // the track list's own toolbar (D12), beside the count and "Open in Library".
+    // the Keys pane's own head (D19), a radio pair above the wheel.
     const trackBar = win.getByRole("toolbar", { name: "Track list" });
     await expect(trackBar.getByRole("button", { name: "Open in Library" })).toBeVisible();
     // The decision's size: 1264 x 735 at text size 1.25.
@@ -135,7 +135,7 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     const barBox = await trackBar.boundingBox();
     expect(barBox!.x, "toolbar is right of the wheel").toBeGreaterThanOrEqual(wheelBox!.x + wheelBox!.width);
     expect(Math.abs(barBox!.y - wheelBox!.y), "toolbar and wheel share their top").toBeLessThanOrEqual(1);
-    await trackBar.getByRole("tab", { name: "List" }).click();
+    await win.getByRole("radio", { name: "List" }).click();
     const list = win.getByRole("group", { name: "Keys in these sources" });
     // The exact count on a key's row (its count cell, not a substring of the row).
     const countOf = (code: string) =>
@@ -156,7 +156,8 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     await expect(countOf("8A")).toHaveText("3");
     await expect(countOf("9A")).toHaveText("1");
     // "— no key" is one more row of the list (C258).
-    await expect(list.getByRole("button", { name: "No Beatport key: 0" })).toBeVisible();
+    // M399: one no-key wording, "No key".
+    await expect(list.getByRole("button", { name: "No key: 0" })).toBeVisible();
 
     // Warmup alone is 8A x2 and 9A x1 (3 tracks).
     await sources.getByRole("checkbox", { name: "Peak" }).uncheck();

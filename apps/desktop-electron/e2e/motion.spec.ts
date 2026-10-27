@@ -64,7 +64,9 @@ test.describe("Motion switches and the system setting", () => {
   /** The Motion section's own Reset: it acts at once and says so in a toast, with Undo (DEC-267). */
   async function motionReset(window: Page): Promise<string> {
     const section = window.getByRole("region", { name: "Motion" });
-    await section.getByRole("button", { name: "Reset motion" }).click();
+    // M436, D23: "Reset to defaults" is drawn only once something differs, so Off comes first.
+    await section.getByRole("radio", { name: "Off", exact: true }).check();
+    await section.getByRole("button", { name: "Reset to defaults" }).click();
     const toast = window.locator(".cp-toast").first();
     await expect(toast).toBeVisible();
     return toast.evaluate((el) => getComputedStyle(el).animationName);
@@ -76,7 +78,8 @@ test.describe("Motion switches and the system setting", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       await window.emulateMedia({ reducedMotion: "reduce" });
       await openSettings(window);
-      await expect(window.getByText(/Reduce motion setting: on, so nothing moves/)).toBeVisible();
+      // M435, D23: the status line says what Follow system does now.
+      await expect(window.getByText(/Your system is set to reduce animations, so CuePoint keeps still/)).toBeVisible();
       expect(await motionReset(window)).toBe("none");
     } finally {
       await app.close();
@@ -102,11 +105,14 @@ test.describe("Motion switches and the system setting", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       await window.emulateMedia({ reducedMotion: "no-preference" });
       await openSettings(window);
-      // The per-kind list is behind "Choose each kind…" unless the page loads on Custom.
-      await window.getByRole("button", { name: "Choose each kind…" }).click();
+      // M435, D23: the per-kind list shows under the Custom radio.
+      await window.getByRole("radio", { name: "Custom", exact: true }).check();
       await window.getByRole("checkbox", { name: "Opening and closing panels and dialogs" }).uncheck();
-      // Motion's own Reset would turn the switch back on, so the toast comes from Appearance's.
-      await window.getByRole("button", { name: "Reset appearance" }).click();
+      // Motion's own Reset would turn the switch back on, so the toast comes from Appearance's,
+      // which is drawn only once Appearance differs (M436).
+      const appearance = window.getByRole("region", { name: "Appearance" });
+      await appearance.getByRole("combobox", { name: "Row density" }).selectOption("roomy");
+      await appearance.getByRole("button", { name: "Reset to defaults" }).click();
       const toast = window.locator(".cp-toast").first();
       await expect(toast).toBeVisible();
       expect(await toast.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
@@ -145,7 +151,8 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       await ready(window);
       await window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", { name: "Settings" }).click();
-      await expect(window.getByRole("radio", { name: "On", exact: true })).toBeChecked({ timeout: 15_000 });
+      // M435, D23: Follow system is the default choice; "On" moves whatever the system asks.
+      await expect(window.getByRole("radio", { name: /^Follow system/ })).toBeChecked({ timeout: 15_000 });
 
       // Watch for the leaving copy, so the test knows the exit really held an element.
       await window.evaluate(() => {
@@ -156,14 +163,14 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         }).observe(document.body, { subtree: true, childList: true, attributes: true });
       });
 
-      // A Settings button that opens a dialog with Cancel. Reset acts at once now (DEC-267), so
-      // the custom-theme editor is the one.
-      const create = window.getByRole("button", { name: "Create custom theme…" });
+      // A Settings button that opens a dialog with a footer button. Reset acts at once (DEC-267) and
+      // the custom-theme editor is on the page (D23), so About & updates' Keyboard shortcuts is it (M489).
+      const create = window.getByRole("button", { name: "Keyboard shortcuts", exact: true });
       await create.click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible();
 
-      // Cancel closes it. Focus goes back to the button that opened it, so that button is on screen,
+      // Close closes it. Focus goes back to the button that opened it, so that button is on screen,
       // behind the backdrop that is still fading. The very next click is on it.
       // Cancel is pressed, and the point is read as React commits the close: a MutationObserver's
       // callback runs in that same task, before any frame, so even a slow machine's exit is still
@@ -174,10 +181,10 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         (button) =>
           new Promise<{ leaving: boolean; behind: boolean; x: number; y: number }>((resolve, reject) => {
             const cancel = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(
-              (candidate) => candidate.textContent?.trim() === "Cancel",
+              (candidate) => candidate.textContent?.trim() === "Close",
             );
             if (!cancel) {
-              reject(new Error("no Cancel button in the dialog"));
+              reject(new Error("no Close button in the dialog"));
               return;
             }
             const observer = new MutationObserver(() => {

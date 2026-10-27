@@ -449,16 +449,17 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
 
       await test.step("Settings shows where exports go, and offers no way to start one", async () => {
         await window.getByRole("link", { name: "Settings" }).click();
-        const panel = window.locator(".cp-panel").filter({ hasText: "Import a Rekordbox file…" });
+        // D23: the Rekordbox section's button is "Change file…" (as in the Library).
+        const panel = window.locator(".cp-panel").filter({ hasText: "Change file…" });
         await expect(panel.getByTestId("export-remembered-folder")).toHaveText(exports, { timeout: 30_000 });
-        await expect(panel.getByTestId("export-remembered-notation")).toHaveText("Camelot (8A, 12B)");
+        // M437: the export's notation is a sentence, not a second "Key notation" row.
+        await expect(panel.getByTestId("export-remembered-notation")).toHaveText("Exports write keys as Camelot, like 8A.");
         await expect(panel.getByRole("list")).toContainText("CuePoint Export.xml");
         await expect(panel.getByRole("list")).toContainText("Techno.xml");
-        // Nothing here starts an export: the buttons are the "More about this" disclosure and
-        // the import of another file (which reads a file, it does not write one).
+        // Nothing here starts an export: the one button is the change of file (which reads a
+        // file, it does not write one); the section has no disclosure any more (M237).
         await expect(panel.getByRole("button", { name: /export/i })).toHaveCount(0);
-        await expect(panel.getByRole("button", { name: "Import a Rekordbox file…" })).toBeVisible();
-        await expect(panel.getByRole("button", { name: "More about this" })).toBeVisible();
+        await expect(panel.getByRole("button")).toHaveText(["Change file…"]);
       });
 
       await test.step("the exported file reads back as a collection with its tree intact", async () => {

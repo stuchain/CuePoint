@@ -293,6 +293,10 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       await window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" }).fill("Bands");
       await window.locator(".track-table__row").filter({ hasText: "Bands" }).first().click();
       const inspector = "[data-testid=inspector-waveform] canvas";
+      // M71 (D11): at the default 1280 window and size the panel folds to keep the table's room;
+      // the person's own Track details opens it.
+      const showDetails = window.getByRole("button", { name: "Track details", exact: true });
+      if ((await showDetails.getAttribute("aria-pressed")) === "false") await showDetails.click();
       await expect(window.locator(inspector)).toBeVisible({ timeout: 20_000 });
       let cue: Awaited<ReturnType<typeof columnOf>> = null;
       await expect
@@ -304,10 +308,11 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       const found = cue as unknown as { column: number; columns: number };
       expect(Math.abs(found.column - Math.floor((HOT_CUE_SECONDS / BANDS_SECONDS) * found.columns))).toBeLessThanOrEqual(1);
       // Its loudness under it, as the pinned decoder measures bands.flac (WAVE-08).
-      // (The value is in the Overview's facts grid; the peak stays under the waveform.)
+      // (The value is in the Overview's facts grid, the peak in its hint.)
       const loudness = window.getByTestId("track-fact-loudness");
       await expect(loudness.locator("dd")).toHaveText("−3.5 LUFS");
-      await expect(window.getByTestId("inspector-loudness")).toHaveText("Peak −4.3 dBFS");
+      // M129, M130: the facts line holds the reading, so no loudness line stays under the waveform.
+      await expect(window.getByTestId("inspector-loudness")).toHaveCount(0);
       await expect(loudness.locator("dd span:not(.cp-hint)")).toHaveAttribute("title", /^Loudness −3\.5 LUFS · Peak −4\.3 dBFS/);
 
       // --- 5. play a track, and seek by clicking the bar's waveform ---------

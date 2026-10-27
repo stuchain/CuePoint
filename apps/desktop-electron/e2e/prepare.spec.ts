@@ -413,7 +413,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       const mixInName = (await entryRow.getByRole("button", { name: /^Mix in for/ }).getAttribute("aria-label"))!;
       await clickRowAt(win, entryRow);
       const focusedRow = table.locator(".track-table__row").filter({ has: win.getByRole("button", { name: mixInName, exact: true }) });
-      const buttons = focusedRow.getByRole("group", { name: "Selected entries" });
+      const buttons = focusedRow.getByRole("group", { name: "Selected tracks" });
       await expect(buttons).toBeVisible();
       const mixInBox = (await focusedRow.getByRole("button", { name: mixInName, exact: true }).boundingBox())!;
       const buttonsBox = (await buttons.boundingBox())!;
@@ -443,7 +443,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       });
 
       // --- with the tempo and key lanes open (PREP-11) ------------------------
-      await toggleView(win, "Tempo lane");
+      await toggleView(win, "Tempo and key lane");
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toBeVisible();
       const lanes: Record<string, Measured> = {};
       for (const collapsed of [false, true]) {
@@ -460,7 +460,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       for (const [state, m] of Object.entries(lanes)) {
         expect(m.whole, `whole rows, ${state}`).toBeGreaterThanOrEqual(WHOLE_ROWS_LANES);
       }
-      await toggleView(win, "Tempo lane");
+      await toggleView(win, "Tempo and key lane");
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toHaveCount(0);
 
       // --- with the transition strip open (WAVE-07) ---------------------------
@@ -565,7 +565,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await setSidebar(win, false);
       const crowded: Record<string, number> = {};
       for (const [show, hide, name] of [
-        ["Tempo lane", "Tempo lane", "lanes"],
+        ["Tempo and key lane", "Tempo and key lane", "lanes"],
         ["Transition strip", "Transition strip", "transition"],
       ] as const) {
         await toggleView(win, show);
@@ -590,8 +590,9 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
       const openedAt = await win.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
       await setInnerSize(app, win, WINDOWS_INNER);
+      // M125 (D16): the header's Details button shows only while the panel is hidden.
       const detailsToggle = win.getByRole("button", { name: "Track details", exact: true });
-      if ((await detailsToggle.getAttribute("aria-pressed")) !== "true") await detailsToggle.click();
+      if (await detailsToggle.isVisible()) await detailsToggle.click();
       await expect(win.getByRole("complementary", { name: "Track details" })).toBeVisible();
       // No default column is cut: the rule drops Artist first, and what is left fits without a sideways scroll.
       await expect
@@ -608,10 +609,10 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         .getByRole("columnheader")
         .allTextContents();
       expect(headersShown.map((text) => text.trim()).filter(Boolean)).toEqual(
-        expect.arrayContaining(["#", "Title", "Key", "BPM", "Plays for", "Mix in"]),
+        expect.arrayContaining(["#", "Title", "Key", "BPM", "Time", "Mix in"]),
       );
       // Back to the scale and the window the rest of this spec measures.
-      await detailsToggle.click();
+      await win.getByRole("button", { name: "Hide track details" }).click();
       await setInnerSize(app, win, openedAt);
       await win.evaluate(() => localStorage.removeItem("cuepoint-ui-lab-scale"));
       await win.reload();

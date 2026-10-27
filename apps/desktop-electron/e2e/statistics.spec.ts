@@ -132,23 +132,24 @@ test.describe("The Statistics page (STATS-04)", () => {
       await window.getByRole("link", { name: "Statistics" }).click();
       await expect(window.getByRole("heading", { name: "Statistics", level: 1 })).toBeVisible();
       const tabs = window.getByRole("tablist");
-      for (const name of ["Plays", "Library", "Health"]) {
+      for (const name of ["Overview", "Plays", "Health"]) {
         await expect(tabs.getByRole("tab", { name: new RegExp(`^${name}`) })).toBeVisible({
           timeout: 30_000,
         });
       }
       await expect(window.getByRole("combobox", { name: "Which tracks" })).toHaveValue("library");
-      // The word Scope is the picker's own inline label, and the Library tab carries no count.
+      // The word Scope is the picker's own inline label, and the Overview tab carries no count.
       await expect(window.locator(".cp-select--inline .cp-select__inline-label")).toHaveText("Which tracks");
-      await expect(tabs.getByRole("tab", { name: /^Library/ })).toHaveText("Library");
-      // The three routes answered through the bridge: each tab drew its count.
-      await expect(window.locator(".plays__unplayed")).toContainText(/Plays unknown\s*3/, {
+      await expect(tabs.getByRole("tab", { name: /^Overview/ })).toHaveText("Overview");
+      // The three routes answered through the bridge: each tab drew its count. Overview opens first (D22).
+      await expect(window.locator('[data-figure="time"]')).toBeVisible({ timeout: 30_000 });
+      await tabs.getByRole("tab", { name: /^Plays/ }).click();
+      await expect(window.locator(".plays__unplayed")).toContainText(/No play count\s*3/, {
         timeout: 30_000,
       });
-      await tabs.getByRole("tab", { name: /^Library/ }).click();
-      await expect(window.locator('[data-figure="tracks"]')).toContainText("3", { timeout: 30_000 });
       await tabs.getByRole("tab", { name: /^Health/ }).click();
-      await expect(window.locator('[data-panel="files"]')).toContainText("Present 2", {
+      // D22: the count sits at the card's right edge, in a cell of its own, so no space precedes it.
+      await expect(window.locator('[data-panel="files"]')).toContainText(/Present\s*2/, {
         timeout: 30_000,
       });
       // An import seeds the baseline read (DEC-168), so a library imported by this build has
@@ -230,12 +231,11 @@ test.describe("The Your library section (STATS-06)", () => {
       });
 
       await window.getByRole("link", { name: "Statistics" }).click();
-      await window.getByRole("tab", { name: /^Library/ }).click();
       const library = window.locator(".library-tab");
       const tempo = library.locator('[data-panel="tempo"]');
 
       // The whole library: 2 of 4 tracks have a key.
-      await expect(library).toContainText("2 with a key · 2 with none", { timeout: 30_000 });
+      await expect(library).toContainText("2 with a key · 2 without a key", { timeout: 30_000 });
 
       // A tempo bar opens the Library with the count the bar carries.
       await tempo.getByRole("button", { name: "124 BPM, 3 tracks" }).click();
@@ -247,9 +247,8 @@ test.describe("The Your library section (STATS-06)", () => {
       // Narrow to the Warmup playlist and open Keys: the same counts, the playlist ticked.
       await window.getByRole("link", { name: "Statistics" }).click();
       await window.getByRole("combobox", { name: "Which tracks" }).selectOption({ label: "Warmup" });
-      await window.getByRole("tab", { name: /^Library/ }).click();
       const section = window.locator(".library-tab");
-      await expect(section).toContainText("1 with a key · 1 with none", { timeout: 30_000 });
+      await expect(section).toContainText("1 with a key · 1 without a key", { timeout: 30_000 });
       await section.getByRole("button", { name: "Open in Keys" }).click();
       await expect(window.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible();
       await expect(
@@ -259,7 +258,8 @@ test.describe("The Your library section (STATS-06)", () => {
         "2 tracks · 1 playlist",
         { timeout: 30_000 },
       );
-      await expect(window.getByRole("button", { name: "No Beatport key: 1" })).toBeVisible();
+      // M399: one no-key wording, "No key".
+      await expect(window.getByRole("button", { name: "No key: 1" })).toBeVisible();
       await expect(window.locator(".keys-page__wheel strong")).toHaveText("1");
     } finally {
       await app.close();
@@ -347,6 +347,7 @@ test.describe("The Plays section (STATS-05)", () => {
       await refreshLibrary(window, writePlayExport(workspace, [6, 9, 1, 4], "second.xml"));
 
       await window.getByRole("link", { name: "Statistics" }).click();
+      await window.getByRole("tab", { name: /^Plays/ }).click();
       const plays = window.locator('[data-panel-of="plays"]');
       const list = plays.getByRole("list", { name: "Most played tracks" });
       await expect(list).toBeVisible({ timeout: 30_000 });
@@ -428,13 +429,14 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
       await window.getByRole("link", { name: "Statistics" }).click();
       const tabs = window.getByRole("tablist");
       const plays = window.locator('[data-panel-of="plays"]');
-      const library = window.locator('[data-panel-of="library"]');
+      const library = window.locator('[data-panel-of="overview"]');
       const health = window.locator('[data-panel-of="health"]');
+      await tabs.getByRole("tab", { name: /^Plays/ }).click();
       await expect(plays.getByRole("list", { name: "Most played tracks" })).toBeVisible({
         timeout: 30_000,
       });
 
-      await tabs.getByRole("tab", { name: /^Library/ }).click();
+      await tabs.getByRole("tab", { name: /^Overview/ }).click();
       await expect(library.locator('[data-panel="tempo"]')).toBeVisible({ timeout: 30_000 });
       await expect(library.getByRole("button", { name: "House, 4 tracks" })).toBeVisible();
 
@@ -446,8 +448,9 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
       await expect(
         health.locator('[data-panel="beatport"]').getByRole("button", { name: /^Open in Clean/ }).first(),
       ).toBeVisible();
+      // Health only reads (M220): the artwork read is a link to Clean's Missing files.
       await expect(
-        health.locator('[data-panel="other"]').getByRole("button", { name: "Read artwork" }),
+        health.locator('[data-panel="other"]').getByRole("button", { name: /Read artwork in Clean/ }),
       ).toBeVisible();
 
       const rows = window.locator(".track-table__row");
@@ -465,7 +468,7 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
       await expect(rows).toContainText("Track 2");
 
       // Library: the House bar opens all four tracks.
-      await openStatistics(/^Library/);
+      await openStatistics(/^Overview/);
       await library.getByRole("button", { name: "House, 4 tracks" }).click({ timeout: 30_000 });
       await expect(libraryHeading).toBeVisible();
       await expect(rows).toHaveCount(4, { timeout: 30_000 });

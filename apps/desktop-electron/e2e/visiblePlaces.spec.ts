@@ -551,9 +551,9 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await choose(win, "New Set from 2 tracks…"); // P8: the entry counts the tracks
     const dialog = win.getByRole("dialog", { name: "New Set from the 2 selected tracks" });
     await dialog.getByRole("textbox", { name: "Name" }).fill("From the bar");
-    await reach(win, dialog.getByRole("button", { name: "Create the Set" }), "Create the Set");
+    await reach(win, dialog.getByRole("button", { name: "Create" }), "Create");
     await win.keyboard.press("Enter");
-    await expect(win.getByText("Made the Set “From the bar” with 2 entries.")).toBeVisible({ timeout: 15_000 });
+    await expect(win.getByText("Made the Set “From the bar” with 2 tracks.")).toBeVisible({ timeout: 15_000 });
   });
 
   test("New Collection, New Set and New folder: the + New menu over the tree", async () => {
@@ -642,7 +642,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(exporting).toBeHidden();
   });
 
-  test("Import a Rekordbox file…: Settings", async () => {
+  test("Change file…: Settings", async () => {
     // The Library header no longer has an import button (K9); Settings does, and so does the File menu.
     await win.getByRole("link", { name: "Settings" }).click();
     const xml = path.join(workspace, "collection.xml");
@@ -650,7 +650,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
       (dialog as unknown as { showOpenDialog: unknown }).showOpenDialog = async () => ({ canceled: false, filePaths: [chosen] });
     }, xml);
     const imports = await jobsOf(win, "library_import");
-    await use(win, win.getByRole("button", { name: "Import a Rekordbox file…" }), "Import a Rekordbox file…");
+    // D23: Settings' Rekordbox section names it "Change file…", as the Library does.
+    await use(win, win.getByRole("button", { name: "Change file…" }), "Change file…");
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 
@@ -745,8 +746,9 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1800, 900));
     await openSet(win, setId);
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
-    const entries = win.getByRole("group", { name: "Selected entries" });
-    const names = ["Move up", "Move down", "Start a chapter here", "Repeat after", "Remove"];
+    const entries = win.getByRole("group", { name: "Selected tracks" });
+    // M426: the row's words are the menu's, "New chapter" and "Repeat".
+    const names = ["Move up", "Move down", "New chapter", "Repeat", "Remove"];
 
     // On the selected row only (DEC-249): none until an entry is selected.
     await expect(entries).toHaveCount(0);
@@ -761,12 +763,12 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, entries.getByRole("button", { name: "Move up", exact: true }), "Move up");
     await expect.poll(order, { timeout: 15_000 }).toEqual(first);
 
-    await use(win, entries.getByRole("button", { name: "Repeat after", exact: true }), "Repeat after");
+    await use(win, entries.getByRole("button", { name: "Repeat", exact: true }), "Repeat");
     await expect.poll(async () => (await order()).length, { timeout: 15_000 }).toBe(5);
     expect((await order()).filter((title) => title === first[1])).toHaveLength(2);
 
     await pickEntry(win, first[3]);
-    await use(win, entries.getByRole("button", { name: "Start a chapter here", exact: true }), "Start a chapter here");
+    await use(win, entries.getByRole("button", { name: "New chapter", exact: true }), "New chapter");
     await expect.poll(async () => (await readSet(win, setId)).chapters.length, { timeout: 15_000 }).toBe(2);
 
     // The page draws a heading for each chapter once the Set has two, which moves every row down:
@@ -808,9 +810,9 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const press = (heading: string, name: string) =>
       use(win, setRow(win, heading).getByRole("button", { name }), name);
 
-    // The heading carries Edit… alone; moving and deleting are in the chapter's dialog.
+    // M205: the chapter's name is the heading's one button; moving and deleting are in its dialog.
     await expect(setRow(win, "Peak").getByRole("button")).toHaveCount(1);
-    await press("Peak", "Edit chapter");
+    await press("Peak", "Peak");
     const dialog = win.getByRole("dialog", { name: /^Edit chapter/ });
     await use(win, dialog.getByRole("button", { name: "Move up" }), "Move up");
     await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["Peak", ""]);
@@ -821,7 +823,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await win.keyboard.press("Enter");
     await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["", "Climb"]);
 
-    await press("Climb", "Edit chapter");
+    await press("Climb", "Climb");
     await use(win, win.getByRole("dialog", { name: /^Edit chapter/ }).getByRole("button", { name: "Delete chapter…" }), "Delete chapter…");
     const confirm = win.getByRole("dialog", { name: /^Delete / });
     await reach(win, confirm.getByRole("button", { name: "Delete chapter" }), "the confirm's Delete chapter");
@@ -833,9 +835,9 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const setId = await makeSet(win, "Times", ["Warm One", "Warm Two", "Build"]);
     await openSet(win, setId);
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
-    // R4-5: the time columns are hidden until View ▸ Mix in and Mix out.
+    // R4-5: the time columns are hidden until View ▸ Mix-in and mix-out columns (M429's words).
     await win.getByRole("button", { name: "View", exact: true }).click();
-    await win.getByRole("menuitemcheckbox", { name: "Mix in and Mix out" }).click();
+    await win.getByRole("menuitemcheckbox", { name: "Mix-in and mix-out columns" }).click();
     await win.keyboard.press("Escape");
     // Select the entry with a click, then F2 starts the cell, Tab moves from In to Out, Enter saves.
     await pickEntry(win, "Warm Two");
@@ -847,7 +849,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect
       .poll(async () => (await readSet(win, setId)).entries.find((entry) => entry.track.title === "Warm Two"), { timeout: 15_000 })
       .toMatchObject({ in_seconds: 30, out_seconds: 270 });
-    await expect(win.locator(".prepare-header__facts")).toContainText("4:00 planned", { timeout: 15_000 });
+    // M201: the planned length stands alone beside the track count ("3 tracks · 0:04:00").
+    await expect(win.locator(".prepare-header__facts")).toContainText("3 tracks · 0:04:00", { timeout: 15_000 });
     // Later tests start with the times hidden, as a new install does.
     await win.evaluate(() => localStorage.removeItem("cuepoint-prepare-set-layout-2"));
     await win.reload();
@@ -907,7 +910,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(win.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible({ timeout: 15_000 });
 
     // The page opens on the wheel (K15); these steps read the list.
-    await win.getByRole("toolbar", { name: "Track list" }).getByRole("tab", { name: "List" }).click();
+    // M161, D19: Wheel | List is a radio group at the top of the Keys pane.
+    await win.getByRole("radiogroup", { name: "Show keys as" }).getByRole("radio", { name: "List" }).click();
     const list = win.getByRole("group", { name: "Keys in these sources" });
     const countOf = (code: string) => list.getByRole("button", { name: new RegExp(`^${code},`) }).locator(".keys-counts__count");
     // The whole library to start: 8A on 1, 3, 5 and 7; 9A on 2 and 6; 8B on 4.
@@ -1038,7 +1042,9 @@ test.describe("FLW-2: each function has one home, and the other places link to i
 
     const setId = await makeSet(win, "Home set", ["Warm One", "Warm Two"]);
     await openSet(win, setId);
-    await use(win, win.getByRole("button", { name: "Export to Rekordbox…" }), "Prepare's Export to Rekordbox…");
+    // D21: Prepare's main button is an Export menu holding Export to Rekordbox….
+    await use(win, win.getByRole("button", { name: "Export", exact: true }), "Prepare's Export menu");
+    await choose(win, "Export to Rekordbox…");
     await expect(exporting).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
 
@@ -1128,6 +1134,6 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await expect(setTable(win)).toBeVisible({ timeout: 30_000 });
     // The Library does not edit a Set's chapters or times: Prepare owns them.
     await pickEntry(win, "Warm One");
-    await expect(win.getByRole("group", { name: "Selected entries" })).toBeVisible();
+    await expect(win.getByRole("group", { name: "Selected tracks" })).toBeVisible();
   });
 });

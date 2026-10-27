@@ -314,7 +314,8 @@ test.describe("A waveform painted (WAVE-05)", () => {
         (now) => now.state === "idle" && now.remaining === 0,
       );
       await expect(state(window)).toHaveText(`All ${copies} analyzed`, { timeout: 15_000 });
-      await expect(window.getByRole("button", { name: "Analyze waveforms" })).toBeVisible();
+      // M441: with every waveform made the button says "Analyze again".
+      await expect(window.getByRole("button", { name: "Analyze again" })).toBeVisible();
     } finally {
       await app.close();
     }
