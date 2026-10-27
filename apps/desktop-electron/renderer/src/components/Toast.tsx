@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -158,9 +159,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   // While a modal dialog is open the stack is drawn inside it (M456): a toast outside an
   // `aria-modal` dialog cannot be reached or read, so its Undo would be lost behind the dialog.
+  // A layout effect, so a new toast moves into the dialog before it paints or is read outside it.
   const [host, setHost] = useState<HTMLElement | null>(null);
   const showing = toasts.length > 0;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!showing) {
       setHost(null);
       return;
