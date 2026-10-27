@@ -281,11 +281,10 @@ const countsList = () => screen.getByRole("group", { name: "Keys in these source
 const wheel = () => screen.getByRole("group", { name: "Keys" });
 const rowButton = (code: string) =>
   within(countsList()).getByRole("button", { name: new RegExp(`^${code},`) });
-const showWheel = () => fireEvent.click(screen.getByRole("tab", { name: "Wheel" }));
-const showList = () => fireEvent.click(screen.getByRole("tab", { name: "List" }));
+const showWheel = () => fireEvent.click(screen.getByRole("radio", { name: "Wheel" }));
+const showList = () => fireEvent.click(screen.getByRole("radio", { name: "List" }));
 const caption = () => document.querySelector(".keys-page__caption") as HTMLElement;
 const trackToolbar = () => screen.getByRole("toolbar", { name: "Track list" });
-const whichTracks = () => within(sourcesPanel()).getByRole("combobox", { name: "Which tracks" });
 const findList = () => screen.findByRole("group", { name: "Keys in these sources" }, LOADED);
 const where = () => screen.getByTestId("where");
 const state = () => JSON.parse(where().getAttribute("data-state") ?? "null");
@@ -325,27 +324,30 @@ afterEach(() => {
 });
 
 describe("the source picker", () => {
-  it("writes the library's track count in the Which tracks choice", async () => {
+  it("has one scope control, the sources checklist: no Which tracks select anywhere on the page (D19, M172)", async () => {
     renderKeys();
     await opened();
-    await waitFor(() =>
-      expect(within(whichTracks()).getByRole("option", { name: "All tracks · 1,500" })).toBeInTheDocument(),
-    );
+    expect(screen.queryByRole("combobox", { name: "Which tracks" })).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
   });
 
-  it("chooses which tracks with the shared Select, its label inside the box, as Statistics does (C222)", async () => {
+  it("gives the three panes matching heads: Sources, Keys and Tracks (D19)", async () => {
     renderKeys();
     await opened();
-    expect(whichTracks().closest(".cp-select")).toHaveClass("cp-select--inline");
+    const heads = ["Sources", "Keys", "Tracks"].map((name) => screen.getByRole("heading", { level: 2, name }));
+    expect(heads[0]!.closest(".keys-head")).not.toBeNull();
+    expect(heads[1]!.closest(".keys-head")).not.toBeNull();
+    // The Tracks head is the list's toolbar, which carries the same divider and side padding.
+    expect(heads[2]!.closest(".keys-tracks__toolbar")).not.toBeNull();
   });
 
   it("starts on the whole library and asks for its keys", async () => {
     renderKeys();
     await opened();
     expect(screen.getByRole("heading", { level: 1, name: "Keys" })).toBeInTheDocument();
-    expect(whichTracks()).toHaveValue("whole");
     expect(mock("getKeysPopulation")).toHaveBeenCalledWith({ sources: [{ kind: "all" }] });
-    expect(screen.getByText("1,500 tracks · All tracks")).toBeInTheDocument();
+    expect(screen.getByText("1,500 tracks · All tracks (tick sources to narrow)")).toBeInTheDocument();
   });
 
   it("offers Rekordbox's playlists, the Collections and the Sets to tick", async () => {
@@ -392,7 +394,7 @@ describe("the source picker", () => {
     expect(within(panel).getByRole("checkbox", { name: "Crates" })).toBeChecked();
   });
 
-  it("counts the ticked sources, and the Which tracks choice lets go of them", async () => {
+  it("counts the ticked sources, and Clear in the Sources head lets go of them", async () => {
     renderKeys();
     await opened();
     const panel = sourcesPanel();
@@ -407,14 +409,13 @@ describe("the source picker", () => {
         ],
       }),
     );
-    expect(whichTracks()).toHaveValue("ticked");
     expect(await screen.findByText("20 tracks · 1 playlist and 1 Set")).toBeInTheDocument();
     expect(await within(countsList()).findByRole("button", { name: /^1B,/ })).toBeInTheDocument();
 
-    fireEvent.change(whichTracks(), { target: { value: "whole" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     // The whole library's counts were read on opening and are still in the shared cache (C19d),
     // so going back to them shows them without asking again.
-    expect(await screen.findByText("1,500 tracks · All tracks")).toBeInTheDocument();
+    expect(await screen.findByText("1,500 tracks · All tracks (tick sources to narrow)")).toBeInTheDocument();
     expect(within(panel).getByRole("checkbox", { name: "Warm-up" })).not.toBeChecked();
   });
 
@@ -529,7 +530,7 @@ describe("the counts", () => {
       expect.stringMatching(/^10A.*5$/),
       expect.stringMatching(/^11B.*1,234$/),
       // One more row, drawn like the others (C258).
-      expect.stringMatching(/^—no key.*246$/),
+      expect.stringMatching(/^—No key.*246$/),
     ]);
     expect(rowButton("8A").querySelector("[data-bar]")).not.toBeNull();
     expect(rowButton("11B").querySelector("[data-bar]")).toHaveAttribute("data-percent", "100");
@@ -538,11 +539,11 @@ describe("the counts", () => {
   it("ends the list with '— no key  N' as one more row, not a lone line under a rule (C258)", async () => {
     renderKeys();
     await opened();
-    const none = within(countsList()).getByRole("button", { name: "No Beatport key: 246" });
+    const none = within(countsList()).getByRole("button", { name: "No key: 246" });
     expect(none.parentElement).toHaveAttribute("data-line", "no-key");
     expect(none).toHaveClass("keys-counts__row");
     expect(none.closest("li")).toBe(countsList().querySelector("li:last-child"));
-    expect(none).toHaveTextContent("—no key246");
+    expect(none).toHaveTextContent("—No key246");
   });
 
   it("writes the counts on the wheel's segments, in the same numbers", async () => {
@@ -564,27 +565,48 @@ describe("the counts", () => {
 });
 
 describe("the Wheel | List switch (K15)", () => {
-  const tab = (name: "Wheel" | "List") => screen.getByRole("tab", { name });
+  const tab = (name: "Wheel" | "List") => screen.getByRole("radio", { name });
 
-  it("sits in the track list's toolbar, so nothing moves when it is used (D12, C249)", async () => {
+  it("sits in the Keys pane's own head as a radio group, not in the track list's toolbar (D19, M161)", async () => {
     localStorage.clear();
     renderKeys();
     await screen.findByRole("group", { name: "Keys" }, LOADED);
-    const bar = trackToolbar();
-    expect(bar).toHaveClass("cp-toolbar");
-    expect(within(bar).getByRole("tab", { name: "Wheel" })).toBeInTheDocument();
-    expect(within(bar).getByRole("tab", { name: "List" })).toBeInTheDocument();
-    // The view's own box is not a second place for the switch: the one tablist is the toolbar's (P33).
-    expect(screen.getAllByRole("tablist")).toHaveLength(1);
-    expect(within(bar).getByRole("tablist")).toHaveClass("cp-tabs--sub");
+    const head = screen.getByRole("heading", { level: 2, name: "Keys" }).closest(".keys-head") as HTMLElement;
+    const group = within(head).getByRole("radiogroup", { name: "Show keys as" });
+    expect(group).toHaveClass("cp-tabs--sub");
+    expect(within(group).getByRole("radio", { name: "Wheel" })).toBeInTheDocument();
+    expect(within(group).getByRole("radio", { name: "List" })).toBeInTheDocument();
+    // The Tracks head keeps no switch, and nothing on the page is a tab strip any more.
+    expect(within(trackToolbar()).queryByRole("radio")).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
+  });
+
+  it("moves between the two views with the arrow keys, as a radio group does", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    fireEvent.keyDown(tab("Wheel"), { key: "ArrowRight" });
+    expect(tab("List")).toHaveAttribute("aria-checked", "true");
+    expect(tab("List")).toHaveFocus();
+    fireEvent.keyDown(tab("List"), { key: "ArrowLeft" });
+    expect(tab("Wheel")).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("says what the wheel's brightness means, once, under the wheel and not in the list (D6 B, M169)", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    expect(screen.getByText("Brighter = more tracks")).toBeInTheDocument();
+    showList();
+    expect(screen.queryByText("Brighter = more tracks")).toBeNull();
   });
 
   it("is visible above the counts, one view at a time, on the wheel at first", async () => {
     localStorage.clear();
     renderKeys();
     await screen.findByRole("group", { name: "Keys" }, LOADED);
-    expect(tab("Wheel")).toHaveAttribute("aria-selected", "true");
-    expect(tab("List")).toHaveAttribute("aria-selected", "false");
+    expect(tab("Wheel")).toHaveAttribute("aria-checked", "true");
+    expect(tab("List")).toHaveAttribute("aria-checked", "false");
     expect(wheel()).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Keys in these sources" })).not.toBeInTheDocument();
   });
@@ -595,7 +617,7 @@ describe("the Wheel | List switch (K15)", () => {
     await screen.findByRole("group", { name: "Keys" }, LOADED);
 
     showList();
-    expect(tab("List")).toHaveAttribute("aria-selected", "true");
+    expect(tab("List")).toHaveAttribute("aria-checked", "true");
     expect(countsList()).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Keys" })).not.toBeInTheDocument();
     expect(rowButton("8A")).toHaveTextContent("12");
@@ -623,25 +645,38 @@ describe("the Wheel | List switch (K15)", () => {
 
     renderKeys();
     await findList();
-    expect(tab("List")).toHaveAttribute("aria-selected", "true");
+    expect(tab("List")).toHaveAttribute("aria-checked", "true");
     expect(screen.queryByRole("group", { name: "Keys" })).not.toBeInTheDocument();
     showWheel();
     expect(localStorage.getItem("cuepoint-keys-view")).toBe("wheel");
   });
 
-  it("keeps 'No Beatport key: N' as a button in the wheel view too", async () => {
+  it("goes to a key by typing its name in the list, and only there (M481)", async () => {
+    renderKeys();
+    await opened();
+    rowButton("8A").focus();
+    // Letters typed within a moment build one word: "1" then "0" is 10A.
+    fireEvent.keyDown(rowButton("8A"), { key: "1" });
+    fireEvent.keyDown(rowButton("8A"), { key: "0" });
+    expect(rowButton("10A")).toHaveFocus();
+    // A space with nothing typed is a press, which the type-ahead leaves alone.
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    expect(fireEvent.keyDown(rowButton("10A"), { key: " " })).toBe(true);
+  });
+
+  it("keeps 'No key: N' as a button in the wheel view too", async () => {
     localStorage.clear();
     renderKeys();
     await screen.findByRole("group", { name: "Keys" }, LOADED);
-    const none = screen.getByRole("button", { name: "No Beatport key: 246" });
+    const none = screen.getByRole("button", { name: "No key: 246" });
     expect(none).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(none);
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "No Beatport key: 246" })).toHaveAttribute("aria-pressed", "true"),
+      expect(screen.getByRole("button", { name: "No key: 246" })).toHaveAttribute("aria-pressed", "true"),
     );
     // Drawn once: the list does not add a second one.
     showList();
-    expect(screen.getAllByRole("button", { name: "No Beatport key: 246" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "No key: 246" })).toHaveLength(1);
   });
 
   it("writes each key in the list as the Library's key chip", async () => {
@@ -685,7 +720,7 @@ describe("the Wheel | List switch (K15)", () => {
     for (const entry of ALL.keys) {
       expect(rowButton(entry.code)).toHaveTextContent(entry.count.toLocaleString());
     }
-    expect(within(countsList()).getByRole("button", { name: "No Beatport key: 246" })).toBeInTheDocument();
+    expect(within(countsList()).getByRole("button", { name: "No key: 246" })).toBeInTheDocument();
   });
 });
 
@@ -702,8 +737,13 @@ describe("choosing keys", () => {
 
     fireEvent.click(rowButton("8A"));
 
-    await waitFor(() => expect(caption()).toHaveTextContent("8A A minor · 12 tracks"));
+    // M170: in the list the chosen row and the Tracks head already say which key, so the caption is gone.
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Tracks in 8A" })).toBeInTheDocument());
+    expect(caption()).toBeNull();
+    showWheel();
+    expect(caption()).toHaveTextContent("8A A minor · 12 tracks");
     expect(caption().querySelector(".key-chip--8A")).not.toBeNull();
+    showList();
     expect(screen.getByRole("heading", { level: 2, name: "Tracks in 8A" })).toBeInTheDocument();
     expect(rowButton("8A")).toHaveAttribute("aria-pressed", "true");
     const last = mock("browseLibrary").mock.calls.at(-1)![0] as {
@@ -756,7 +796,8 @@ describe("choosing keys", () => {
     await opened();
     await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
     const bar = trackToolbar();
-    await waitFor(() => expect(within(bar).getByText("3 tracks")).toBeInTheDocument());
+    // M418: the count alone, the noun is the heading's ("Tracks 3").
+    await waitFor(() => expect(within(bar).getByRole("status")).toHaveTextContent(/^3\b/));
     const link = within(bar).getByRole("button", { name: "Open in Library" });
     expect(link).toHaveClass("cp-link", "cp-link--go");
   });
@@ -829,6 +870,7 @@ describe("choosing keys", () => {
       const last = mock("browseLibrary").mock.calls.at(-1)![0] as { filters: any };
       expect(last.filters.rules[0].value).toEqual(["9A", "10A", "11B"]);
     });
+    showWheel();
     expect(caption()).toHaveTextContent(/^9A, 10A and 11B · /);
     expect(screen.getByRole("heading", { level: 2, name: "Tracks in 9A, 10A and 11B" })).toBeInTheDocument();
   });
@@ -861,7 +903,7 @@ describe("choosing keys", () => {
     });
     renderKeys();
     await opened();
-    const none = screen.getByRole("button", { name: /^No Beatport key: 0/ });
+    const none = screen.getByRole("button", { name: /^No key: 0/ });
     expect(none).toHaveAttribute("aria-disabled", "true");
     expect(none).toHaveAttribute("title", "Every track here has a key");
     fireEvent.click(none);
@@ -873,7 +915,7 @@ describe("choosing keys", () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
-    fireEvent.click(within(countsList()).getByRole("button", { name: "No Beatport key: 246" }));
+    fireEvent.click(within(countsList()).getByRole("button", { name: "No key: 246" }));
     await waitFor(() => {
       const last = mock("browseLibrary").mock.calls.at(-1)![0] as { filters: any };
       expect(last.filters.rules).toEqual([{ field: "key", operator: "is_empty" }]);
@@ -899,7 +941,7 @@ describe("choosing keys", () => {
     await waitFor(() => expect(getSelectedTrack()).toMatchObject({ id: 3, key: "9A" }));
   });
 
-  it("shows the shared selection bar over the table, with Play only (C215)", async () => {
+  it("shows the shared selection bar over the table, with Play and Add to a Set (C215, M518)", async () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
@@ -913,8 +955,12 @@ describe("choosing keys", () => {
     expect(bar.closest(".track-table__bottom-bar")).not.toBeNull();
     expect(table.contains(bar)).toBe(false);
     expect(table.querySelector(".track-table__bottom-room")).not.toBeNull();
-    // K15: only Play, the page's job, is on the bar; the rest stays in the right-click menu.
+    // K15: Play, the page's job, is on the bar, and (M518) Add to a Set, which was only in the right-click
+    // menu; the rest stays there.
     expect(within(bar).getByRole("button", { name: /^Play/ })).toBeInTheDocument();
+    fireEvent.click(within(bar).getByRole("button", { name: "Add to a Set…" }));
+    expect(await screen.findByRole("dialog", { name: "Add to Set" })).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Add to Set" }), { key: "Escape" });
     for (const name of ["Organize", "Beatport", "More"]) {
       expect(within(bar).queryByRole("button", { name: new RegExp(`^${name}`) })).toBeNull();
     }
@@ -1048,7 +1094,12 @@ describe("the keys that mix", () => {
     await opened();
     const button = screen.getByRole("button", { name: "Show keys that mix" });
     expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(button).toHaveAttribute("title", "Select a key first");
+    expect(button).toHaveAttribute("title", "Pick a key in the list first");
+    // M419: the reason names where to pick; the label does not change when a key is chosen (M163).
+    showWheel();
+    expect(screen.getByRole("button", { name: "Show keys that mix" })).toHaveAttribute("title", "Pick a key on the wheel first");
+    fireEvent.click(within(wheel()).getByRole("button", { name: /^8A,/ }));
+    expect(screen.getByRole("button", { name: "Show keys that mix with 8A" })).toHaveTextContent(/^Show keys that mix$/);
   });
 
   it("lights the engine's compatible keys on the wheel and in the list, in words", async () => {
@@ -1122,7 +1173,7 @@ describe("carrying the choice on", () => {
     fireEvent.click(await within(await findList()).findByRole("button", { name: /^8A,/ }, LOADED));
     fireEvent.click(rowButton("8A"), { ctrlKey: true });
     fireEvent.click(within(countsList()).getByRole("button", { name: /^8B,/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Save as Smart Collection…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save as a Collection…" }));
 
     const dialog = await screen.findByRole("dialog", {}, LOADED);
     expect(within(dialog).getByText(/key is 8B/i)).toBeInTheDocument();
@@ -1149,7 +1200,7 @@ describe("carrying the choice on", () => {
   it("keeps both buttons off until a key is chosen, with the reason", async () => {
     renderKeys();
     await opened();
-    for (const name of ["Open in Library", "Save as Smart Collection…"]) {
+    for (const name of ["Open in Library", "Save as a Collection…"]) {
       const button = screen.getByRole("button", { name });
       expect(button).toHaveAttribute("aria-disabled", "true");
       expect(button).toHaveAttribute("title", "Select a key first");
@@ -1160,16 +1211,16 @@ describe("carrying the choice on", () => {
     localStorage.clear();
     renderKeys();
     await screen.findByRole("group", { name: "Keys" }, LOADED);
-    const facts = screen.getByText("1,500 tracks · All tracks");
+    const facts = screen.getByText("1,500 tracks · All tracks (tick sources to narrow)");
     expect(facts).toHaveAttribute("role", "status");
-    expect(screen.getByRole("button", { name: "No Beatport key: 246" }).querySelector("[data-bar]")).toBeNull();
+    expect(screen.getByRole("button", { name: "No key: 246" }).querySelector("[data-bar]")).toBeNull();
   });
 
   it("keeps the page's actions in the header and the selection's in the bar (C216, D7)", async () => {
     renderKeys();
     await opened();
     const header = screen.getByRole("heading", { level: 1, name: "Keys" }).closest(".cp-screen-header") as HTMLElement;
-    expect(within(header).getByRole("button", { name: "Save as Smart Collection…" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Save as a Collection…" })).toBeInTheDocument();
     expect(within(header).getByRole("button", { name: "Show keys that mix" })).toBeInTheDocument();
     // The header takes the page's one margin, with no local offset (C219).
     expect(header).not.toHaveClass("cp-screen-header--inset");

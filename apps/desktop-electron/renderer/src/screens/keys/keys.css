@@ -1,9 +1,9 @@
 /*
- * The Keys page (PAGES-16, D12). Two panes: on the left the Sources and the wheel (or the
- * counts list) side by side, top-aligned; on the right the track list, which fills the rest and
- * has its own toolbar. With no key picked the list shows every track in the sources, so picking
- * a key changes what is already on screen. Where the right pane would be squeezed it wraps under
- * the wheel instead.
+ * The Keys page (PAGES-16, D12, D19): three panes with matching heads, Sources, the wheel (or the
+ * counts list, switched at the top of its own pane) and the tracks, on one top edge and one bottom
+ * edge. With no key picked the list shows every track in the sources, so picking a key changes what
+ * is already on screen. Where the tracks would be squeezed they wrap under Sources and the wheel
+ * instead (the wheel stacks above the tracks).
  */
 .keys-page {
   /* The wheel is 48 cells across and a cell is a whole number of pixels: 6 points at the default
@@ -23,6 +23,28 @@
 
 .keys-page .cp-wheel {
   --wheel-cell: var(--keys-cell);
+}
+
+/* A pane's head (D19): one toolbar tall with the divider under it, the title in the section role, one
+   padding for all three panes, so their lines run across the page together. */
+.keys-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  box-sizing: border-box;
+  min-height: var(--toolbar-height);
+  padding: 0 var(--space-sm);
+  border-bottom: var(--divider);
+}
+
+.keys-head__title {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
 }
 
 /* Sources, the wheel (or its list) and the tracks. The header leaves 12 below its divider, so the
@@ -49,19 +71,44 @@
   display: flex;
   flex: 0 0 calc(var(--keys-wheel) + 2 * var(--space-lg));
   flex-direction: column;
-  gap: var(--space-md);
   width: calc(var(--keys-wheel) + 2 * var(--space-lg));
   max-width: 100%;
   min-width: 0;
-  padding: var(--space-lg);
   background: var(--bg-panel);
+}
+
+/* The pane under its head: 12 inside (--space-lg), the wheel or list, then the caption. */
+.keys-page__view-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 0;
+  padding: var(--space-lg);
+}
+
+/* The Wheel | List switch is a radio group in the pane's own head (M161). */
+.keys-page__switch {
+  display: inline-flex;
+  gap: var(--space-xs);
 }
 
 .keys-page__panel {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-md);
+  min-height: 0;
   min-width: 0;
+}
+
+/* The one line that says what the wheel's brightness means (D6 B, M169). */
+.keys-page__legend {
+  margin: 0;
+  color: var(--fg-muted);
+  font-family: var(--font-meta);
+  font-size: var(--font-size-xs);
+  text-align: center;
 }
 
 .keys-page__wheel {
@@ -74,7 +121,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 1;
+  line-height: round(nearest, 1em, 1px);
 }
 
 .keys-page__wheel .cp-wheel__center small {
@@ -110,8 +157,13 @@
   flex-direction: column;
   min-width: min(calc(140px * var(--scale) + var(--safe-left)), 100%);
   /* D36: the Sources pane meets the sidebar's edge, as the Library's pane does; its words stay on the
-     title's edge (the body pads in by the gutter it covers). */
+     title's edge (the head and body pad in by the gutter it covers). */
   margin-inline-start: calc(-1 * var(--safe-left));
+  background: var(--bg-panel);
+}
+
+.keys-sources__head {
+  padding-inline-start: calc(var(--space-sm) + var(--safe-left));
 }
 
 .keys-sources__body {
@@ -121,18 +173,22 @@
   /* As tall as the row the wheel's pane sets, from the same top line; the rows scroll inside. */
   flex: 1 1 0;
   min-height: 0;
-  /* A dense side panel: 8 inside. */
-  padding: var(--space-md);
-  padding-inline-start: calc(var(--space-md) + var(--safe-left));
+  padding: var(--space-md) 0;
+  padding-inline-start: var(--safe-left);
   overflow-y: auto;
-  background: var(--bg-panel);
   border: 0;
+}
+
+/* The search box and the groups share the head's side padding (M50, M66). */
+.keys-sources__filter {
+  margin-inline: var(--space-sm);
 }
 
 /* The one tree indent (C40): a child's icon sits 12 (at 1x) in from its parent's. */
 .keys-sources__row {
   gap: var(--space-xs);
-  padding-right: var(--space-xs);
+  /* One side padding, so the counts end on the edge the head's words start from (M164). */
+  padding-right: var(--space-sm);
 }
 
 .keys-sources__row input[type="checkbox"],
@@ -146,14 +202,25 @@
   height: var(--font-size-sm);
 }
 
-/* A group's name is the label role (.cp-text-label); it sits 4 above its list. */
+/* A group's name is the Library's fold head (M171): the arrow, the pixel title, the same row height and
+   side padding as the rows under it. */
 .keys-sources__title {
-  font-family: var(--font-voice);
-  margin: 0 0 var(--space-xs);
+  margin: 0;
+}
+
+.keys-sources__fold {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--row-height);
+  padding: 0 var(--space-sm);
 }
 
 .keys-sources__section + .keys-sources__section {
-  margin-top: var(--space-lg);
+  margin-top: var(--space-md);
+}
+
+.keys-sources__list[hidden] {
+  display: none;
 }
 
 .keys-sources__list {
@@ -178,10 +245,13 @@
 
 .keys-counts {
   display: flex;
+  /* M166: the list ends with the pane (it was a fixed box with a band of empty pane under it). Its
+     basis is the wheel's height, so a pane that sizes to its content still shows as many keys. */
+  flex: 1 1 var(--keys-wheel);
   flex-direction: column;
   gap: var(--space-md);
+  min-height: 0;
   min-width: 0;
-  max-height: var(--keys-wheel);
   overflow-y: auto;
 }
 
@@ -209,7 +279,8 @@
   gap: var(--space-md);
   width: 100%;
   min-height: var(--row-height);
-  padding: 0 var(--space-xs);
+  /* M173: the one list inset (--space-sm, 8 at the default text size), so a chip starts where the words above it do. */
+  padding: 0 var(--space-sm);
   border: var(--hairline) solid transparent;
   background: none;
   color: var(--fg-primary);
@@ -265,21 +336,16 @@
 
 .keys-counts__bar {
   display: block;
-  height: round(nearest, calc(6px * var(--scale)), 1px);
+  height: var(--chart-bar-thickness);
   background: var(--bg-panel-alt);
-  /* The bar is the key's own colour at the chip's tint (C100); with the colours off it is the
-     chart's. */
-  --bar-color: color-mix(in srgb, var(--key, var(--chart-bar, var(--accent-primary))) 55%, var(--bg-panel-alt));
-}
-
-:root[data-key-colours="off"] .keys-counts__bar {
-  --bar-color: var(--chart-bar, var(--accent-primary));
 }
 
 /* The bar itself is the shared RankBar, the track behind it is this row's. */
 .keys-counts__bar > .cp-rank-bar {
   height: 100%;
 }
+
+/* The bar is the chart's one violet ink (D22, M211): the chip beside it carries the key's colour. */
 
 .keys-counts__row[aria-pressed="true"] .keys-counts__bar {
   background: var(--bg-input);
@@ -308,28 +374,19 @@
   padding: 0;
 }
 
-/* The Wheel | List switch: its two buttons are 8 apart, like every row of buttons (C28). */
-.keys-page__actions {
-  display: flex;
-  gap: var(--space-md);
-  padding: 0;
-}
-
 /* Below about 1024 wide at 1.25 text size (C206: a container query, in em of the content region's
-   text: 81.92em is 1024px at 12.5px text) the list moves under the wheel and takes the whole row. */
+   text: 81.92em is 1024px at 12.5px text) the tracks move under Sources and the wheel and take the
+   whole row (M162). The two panes above stay one height: the row they wrap in stretches them. */
 @container content (max-width: 81.92em) {
   .keys-page__tracks {
     flex-basis: 100%;
   }
+}
 
-  /* The list is under the wheel: the panes stop sharing a bottom edge, and Sources keeps the wheel's height. */
-  .keys-page__top {
-    align-items: flex-start;
-  }
-
-  .keys-sources__body {
-    flex: none;
-    height: var(--keys-wheel);
+/* A wide window gives the wheel more of the room (M168): a cell is a size larger, still a whole pixel count. */
+@container content (min-width: 110em) {
+  .keys-page {
+    --keys-cell: min(round(nearest, calc(8px * var(--scale)), 1px), calc(11px * var(--scale)));
   }
 }
 
@@ -343,8 +400,11 @@
 
 .keys-tracks__toolbar {
   flex: none;
-  /* The shared toolbar is transparent (P1), so the list's head takes the panel tone itself. */
+  /* The shared toolbar is transparent (P1), so the list's head takes the panel tone itself, and the
+     divider and side padding of the other two heads (D19). */
   background: var(--bg-panel);
+  border-bottom: var(--divider);
+  padding-inline: var(--space-sm);
 }
 
 .keys-tracks__heading {

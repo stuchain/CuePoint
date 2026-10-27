@@ -1,6 +1,6 @@
 /** The Keys page's Sources box: the Library tree's rows with a tick box in front (Q18, Q20). */
 import rawCss from "./keys.css?raw";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { CollectionNode } from "../../api/cuepointBridge.types";
@@ -49,7 +49,7 @@ function renderPicker(extra: Partial<React.ComponentProps<typeof KeysSourcePicke
 
 describe("KeysSourcePicker", () => {
   it("draws the Library tree's rows: tick box, icon, name and a right-hand count", () => {
-    renderPicker({ libraryTrackCount: 300 });
+    renderPicker();
     const panel = screen.getByRole("group", { name: "Sources" });
     const sunset = within(panel).getByRole("checkbox", { name: "Sunset" });
     const row = sunset.closest("label")!;
@@ -148,42 +148,58 @@ describe("KeysSourcePicker", () => {
     expect(folder).not.toBeChecked();
   });
 
-  it("chooses which tracks with the shared Select, its label inside the box (C222)", () => {
-    const { onClear } = renderPicker({ libraryTrackCount: 300 });
-    const select = screen.getByRole("combobox", { name: "Which tracks" });
-    expect(select.closest(".cp-select")).toHaveClass("cp-select--inline");
-    expect(select).toHaveValue("whole");
-    expect(within(select).getByRole("option", { name: "All tracks · 300" })).toBeInTheDocument();
-    // With nothing ticked there is nothing else to choose.
-    expect(within(select).getByRole("option", { name: "Ticked sources" })).toBeDisabled();
-    fireEvent.change(select, { target: { value: "whole" } });
+  it("has no Which tracks select: the checklist is the one scope, and Clear lets go of the ticks (D19, M172)", () => {
+    const { onClear } = renderPicker();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    // Nothing ticked: nothing to clear.
+    expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
+    cleanup();
+    const again = renderPicker({ picked: [{ kind: "playlist", id: 2 }] });
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(again.onClear).toHaveBeenCalledTimes(1);
     expect(onClear).not.toHaveBeenCalled();
   });
 
-  it("names the ticked choice with what is ticked", () => {
-    renderPicker({ picked: [{ kind: "playlist", id: 2 }] });
-    const select = screen.getByRole("combobox", { name: "Which tracks" });
-    expect(within(select).getByRole("option", { name: "1 playlist" })).toBeInTheDocument();
-  });
-
-  it("goes back to the whole library from the Select once something is ticked", () => {
-    const { onClear } = renderPicker({ picked: [{ kind: "playlist", id: 2 }] });
-    const select = screen.getByRole("combobox", { name: "Which tracks" });
-    expect(select).toHaveValue("ticked");
-    fireEvent.change(select, { target: { value: "whole" } });
-    expect(onClear).toHaveBeenCalledTimes(1);
-  });
-
-  it("hints its search box 'Search sources…' while it fits (the field shortens it to 'Search…' when it does not)", () => {
+  it("heads the pane 'Sources', like the wheel's and the tracks' heads (D19)", () => {
     renderPicker();
-    const search = screen.getByRole("searchbox", { name: "Search sources" });
-    expect(search).toHaveAttribute("placeholder", "Search sources…");
+    expect(screen.getByRole("heading", { level: 2, name: "Sources" }).closest(".keys-head")).not.toBeNull();
+  });
+
+  it("hints its search box with what it searches, in words the person uses (M418)", () => {
+    renderPicker();
+    const search = screen.getByRole("searchbox", { name: "Search playlists and Collections" });
+    expect(search).toHaveAttribute("placeholder", "Search playlists and Collections…");
   });
 
   it("goes to its search box on Ctrl+F (C189)", () => {
     renderPicker();
     fireEvent.keyDown(window, { key: "f", ctrlKey: true });
-    expect(screen.getByRole("searchbox", { name: "Search sources" })).toHaveFocus();
+    expect(screen.getByRole("searchbox", { name: "Search playlists and Collections" })).toHaveFocus();
+  });
+
+  it("folds each group from the Library's fold head, and a search opens them all (M171)", () => {
+    renderPicker();
+    const fold = screen.getByRole("button", { name: "Collections" });
+    expect(fold).toHaveClass("cp-playlist-pane__fold");
+    expect(fold).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(fold);
+    expect(fold).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("checkbox", { name: "Ideas", hidden: true }).closest("ul")).toHaveAttribute("hidden");
+    // The other groups stay open.
+    expect(screen.getByRole("button", { name: "Playlists" })).toHaveAttribute("aria-expanded", "true");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search playlists and Collections" }), { target: { value: "ideas" } });
+    expect(screen.getByRole("button", { name: "Collections" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("starts every group's top rows on one left edge, however deep the tree begins (M164)", () => {
+    const nested = buildTree([
+      { id: 9, parent_id: null, name: "Root", kind: "folder", depth: 0, position: 0, path: "Root", track_count: 0 },
+      { id: 10, parent_id: 9, name: "Flat one", kind: "playlist", depth: 1, position: 0, path: "Root/Flat one", track_count: 4 },
+    ]);
+    renderPicker({ playlists: nested });
+    expect(screen.getByRole("checkbox", { name: "Root" }).closest("label")!.style.paddingLeft).toBe(
+      "calc(var(--space-sm) + 0 * var(--tree-indent))",
+    );
   });
 
   it("is as tall as the wheel's pane (it stretches with the row, P7), its rows scrolling inside", () => {

@@ -136,7 +136,7 @@ export function listRules(choice: KeyChoice, sources: readonly PickedSource[]): 
 
 /** The choice in words: "8A", "8A and 9A", "1A, 8A and 9A". */
 export function choiceWords(choice: KeyChoice): string {
-  if (choice.none) return "No Beatport key";
+  if (choice.none) return "No key";
   const keys = choice.keys;
   if (keys.length <= 1) return keys.join("");
   return `${keys.slice(0, -1).join(", ")} and ${keys[keys.length - 1]}`;

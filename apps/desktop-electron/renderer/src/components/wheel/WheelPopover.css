@@ -9,8 +9,8 @@
   /* The wheel's 48 cells, then the padding and the border around them. */
   width: calc(48 * 4px * var(--scale) + 2 * var(--space-lg) + 2 * var(--control-border-width));
   max-width: calc(100vw - 2 * var(--space-lg));
+  /* M296: one padding on every side, so the wheel and the button keep the same room from the edge. */
   padding: var(--space-lg);
-  padding-block: var(--space-xs);
   background: var(--bg-panel);
   border: var(--popover-border);
   box-shadow: var(--shadow-popover);
@@ -25,6 +25,13 @@
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
+}
+
+/* M297 (D26): the scrollbar is hidden, so a hairline along the bottom edge says there is more below
+   (the caption, the action) while the popover is not scrolled to its end. An inset shadow stays on the
+   box while the content scrolls under it. */
+.cp-wheel-pop[data-more-below] {
+  box-shadow: var(--shadow-popover), inset 0 calc(-1 * var(--hairline)) 0 var(--border-control);
 }
 
 .cp-wheel-pop__caption {

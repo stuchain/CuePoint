@@ -137,6 +137,6 @@ describe("the rules a choice makes (FLW-7, PAGES-16)", () => {
     expect(choiceWords(chooseKey(chooseKey(one, "9A", ORDER, "toggle"), "1A", ORDER, "toggle"))).toBe(
       "1A, 8A and 9A",
     );
-    expect(choiceWords(chooseNone(EMPTY_CHOICE))).toBe("No Beatport key");
+    expect(choiceWords(chooseNone(EMPTY_CHOICE))).toBe("No key");
   });
 });

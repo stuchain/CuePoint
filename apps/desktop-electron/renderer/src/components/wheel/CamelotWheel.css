@@ -14,8 +14,8 @@
   margin-inline: auto;
 }
 
-/* The drawing: one SVG on the 48-unit square. The segments are stepped, never blurred, as every
-   other graphic in the app is (C255). */
+/* The drawing: one SVG on the 48-unit square. D6 B: the wedges are smooth arcs, the one data graphic
+   that is not stepped (DEC-238); everything written on it is the pixel face. */
 .cp-wheel__art {
   position: absolute;
   inset: 0;
@@ -152,10 +152,12 @@
   top: var(--wheel-y);
   transform: translate(-50%, -50%);
   color: var(--fg-primary);
-  font-family: var(--font-data);
-  font-weight: var(--font-weight-semibold);
+  /* D6 B: the drawing stays smooth (DEC-238, the one smooth data graphic); the labels inside it are the
+     pixel face (M35), regular weight (the face ships 400 and 700), and a line is a whole number of pixels. */
+  font-family: var(--font-control);
+  font-weight: var(--font-weight-regular);
   font-size: round(nearest, calc(var(--font-size-xs) * 14 / 15), 1px);
-  line-height: 1.05;
+  line-height: round(nearest, 1.1em, 1px);
   pointer-events: none;
 }
 
@@ -177,6 +179,7 @@
 .cp-wheel__count {
   font-size: round(down, calc(var(--font-size-xs) * 13 / 15), 1px);
   font-weight: var(--font-weight-bold);
+  line-height: round(nearest, 1.1em, 1px);
 }
 
 /* Keys written as Both (K1 to K3): the musical name is a small line under the code, 80% of its size. */
@@ -206,6 +209,7 @@
   color: var(--fg-primary);
   font-family: var(--font-data);
   font-size: var(--font-size-lg);
+  line-height: round(nearest, 1.1em, 1px);
   pointer-events: none;
 }
 

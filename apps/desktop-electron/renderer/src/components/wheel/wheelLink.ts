@@ -22,8 +22,8 @@ export function keyHint(code: string): string {
 type Navigate = (to: string, options?: { state?: unknown }) => void;
 
 /**
- * Open Clean's match window: on this track when it is a library track, else on
- * the tracks not looked up yet (PAGES-07B).
+ * Start a match in Clean (M505, D17): on this track when it is a library track, else on the tracks
+ * not looked up yet (PAGES-07B). Clean is the one place a match starts, so this opens it.
  */
 export function openMatching(navigate: Navigate, trackId?: number | string | null): void {
   openClean(navigate, typeof trackId === "number" ? [trackId] : undefined);

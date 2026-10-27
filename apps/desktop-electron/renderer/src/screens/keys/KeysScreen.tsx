@@ -1,16 +1,16 @@
 /**
- * The Keys page (PAGES-16, FLW-21, DEC-200).
+ * The Keys page (PAGES-16, FLW-21, DEC-200, D19).
  *
  * Which keys the playlists, Collections and Sets you pick hold, and the tracks in the keys you
- * click (D12). Two panes. On the left, the sources and beside them the Camelot wheel, with each
- * key's count on its segment (and in its name) and darker where there are more, or the same
- * counts as a list with a bar each, in Camelot order and "— no key" as one more row. On the
- * right, the track list in the Library's table: with no key picked it shows every track in the
- * sources and the wheel's caption asks to "Pick a key"; clicking keys (Ctrl or Command for
- * several, Shift for a run) narrows it at once. The list's own toolbar holds the count, the link
- * to the Library and the Wheel | List switch, which picks the view in the middle one at a time
- * and is remembered (K15). Every count is written on the page: the list is the reading of the
- * wheel for anyone who cannot see its colors, and nothing here waits on a hover.
+ * click (D12). Three panes with matching heads. Sources, the one scope: nothing ticked counts every
+ * track. The middle pane, headed Keys, with the Wheel | List switch (a radio group, remembered, K15):
+ * the Camelot wheel with each key's count on its segment (and in its name) and brighter where there
+ * are more, a line saying so, or the same counts as a list with a bar each, in Camelot order and
+ * "No key" as one more row. And Tracks, the track list in the Library's table: with no key picked it
+ * shows every track in the sources and the wheel's caption asks to "Pick a key"; clicking keys (Ctrl
+ * or Command for several, Shift for a run) narrows it at once. Every count is written on the page:
+ * the list is the reading of the wheel for anyone who cannot see its colors, and nothing here waits
+ * on a hover.
  *
  * The counts are the engine's (`POST /api/v1/library/keys/population`) and the keys are
  * Beatport's (DEC-201); the page keeps no rule about either. The tracks are asked for with an
@@ -25,7 +25,6 @@ import { useNavigate } from "react-router-dom";
 
 import type { EntityKind, FilterRuleSet, LibraryPlaylistNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { Tabs } from "../../components/Tabs";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
@@ -40,7 +39,7 @@ import { useReportSelectedTrack } from "../../components/shell/useReportSelected
 import { LIBRARY_PLAYLISTS, LIBRARY_SUMMARY, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { countNoun, formatCount } from "../../format/counts";
 import { MATCH_ON_BEATPORT, RETRY, couldNot, opensDialog } from "../../format/words";
-import { cleanMatchState, cleanTrackState } from "../clean/cleanLink";
+import { cleanTrackState, openClean } from "../clean/cleanLink";
 import type { CleanTracks } from "../clean/cleanTracks";
 import { entityPath, originState, similarPath } from "../discover/discoverLinks";
 import { flattenCollections, holdsTracks } from "../library/collectionTree";
@@ -57,6 +56,7 @@ import "./keys.css";
 import { KeysCountsList, KeysNoKeyRow } from "./KeysCountsList";
 import { KeysSourcePicker } from "./KeysSourcePicker";
 import { KeysTracks } from "./KeysTracks";
+import { KeysViewSwitch } from "./KeysViewSwitch";
 import {
   EMPTY_CHOICE,
   chooseKey,
@@ -86,11 +86,11 @@ import { loadView, saveView, type KeysView } from "./keysView";
 import { useKeysPopulation } from "./useKeysPopulation";
 
 const SELECT_A_KEY = "Select a key first";
-
-const VIEWS: { id: KeysView; label: string }[] = [
-  { id: "wheel", label: "Wheel" },
-  { id: "list", label: "List" },
-];
+/** M419: why "Show keys that mix" is off, said where the key is picked. */
+const PICK_A_KEY_ON_WHEEL = "Pick a key on the wheel first";
+const PICK_A_KEY_IN_LIST = "Pick a key in the list first";
+/** D6 B (M169): what the wheel's brightness means. */
+const WHEEL_LEGEND = "Brighter = more tracks";
 
 interface KeysScreenProps {
   /** Sources to open on, from the Library's Key list; replaces what was remembered. */
@@ -337,7 +337,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
     [navigate],
   );
   const openMatch = useCallback(
-    (tracks?: CleanTracks) => navigate("/clean", { state: cleanMatchState(tracks) }),
+    (tracks?: CleanTracks) => openClean(navigate, tracks),
     [navigate],
   );
 
@@ -351,7 +351,9 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
   const noKeys = data !== null && data.total > 0 && data.keys.length === 0;
   const emptySources = data !== null && data.total === 0 && picked.length > 0;
   const countable = data !== null && data.keys.length > 0;
-  const mixWord = choice.anchor ? `Show keys that mix with ${choice.anchor}` : "Show keys that mix";
+  // M163: the label never changes, so the button does not move the one beside it; the key is in its
+  // accessible name and on the wheel.
+  const mixName = choice.anchor ? `Show keys that mix with ${choice.anchor}` : "Show keys that mix";
   const needChoice = rules === null;
 
   const header = (
@@ -363,23 +365,28 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
           <span role="status">
             {shown.total === 0
               ? "No tracks here"
-              : factsLine({ count: shown.total, noun: "track", facts: [sourcesWords(picked)] })}
+              : factsLine({
+                  count: shown.total,
+                  noun: "track",
+                  facts: [picked.length === 0 ? "All tracks (tick sources to narrow)" : sourcesWords(picked)],
+                })}
           </span>
         ) : undefined
       }
       pageActions={
         countable || noKeys ? (
           <>
-            <Hint text={choice.anchor === null ? SELECT_A_KEY : undefined}>
+            <Hint text={choice.anchor === null ? (view === "wheel" ? PICK_A_KEY_ON_WHEEL : PICK_A_KEY_IN_LIST) : undefined}>
               <Button
                 variant="secondary"
                 aria-pressed={showMix}
+                aria-label={mixName}
                 aria-disabled={choice.anchor === null ? true : undefined}
                 onClick={() => {
                   if (choice.anchor !== null) setShowMix((on) => !on);
                 }}
               >
-                {mixWord}
+                Show keys that mix
               </Button>
             </Hint>
             <Hint text={needChoice ? SELECT_A_KEY : undefined}>
@@ -392,7 +399,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
                   setSaving("open");
                 }}
               >
-                {opensDialog("Save as Smart Collection")}
+                {opensDialog("Save as a Collection")}
               </Button>
             </Hint>
           </>
@@ -426,7 +433,6 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         <KeysSourcePicker
           playlists={playlistTree}
           collections={collections.tree}
-          libraryTrackCount={summaryRead.value?.track_count ?? null}
           picked={picked}
           onToggle={(source) => update(toggleSource(picked, source))}
           onToggleMany={(sources, on) => update(setSources(picked, sources, on))}
@@ -462,7 +468,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
             className="keys-page__state"
             icon="keys"
             headline="Keys come from Beatport"
-            description={`Match your tracks in Clean. No Beatport key: ${formatCount(data!.no_key)}`}
+            description={`Match your tracks in Clean. ${formatCount(data!.no_key)} without a key`}
             action={{ label: MATCH_ON_BEATPORT, onClick: () => openMatch() }}
           />
         )}
@@ -476,74 +482,78 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         )}
 
         {countable && data && (
-          <div className="keys-page__view" data-view={view}>
-            <div className="keys-page__panel">
-              {view === "wheel" ? (
-                <>
-                  <div className="keys-page__wheel">
-                    <CamelotWheel
-                      lit={lit}
-                      focusCode={choice.anchor ?? order[0] ?? CAMELOT_CODES[0]!}
-                      onFocusCode={() => undefined}
-                      onPick={pick}
-                      counts={counts}
-                      chosen={chosen}
-                      center={
-                        <>
-                          <strong>{formatCount(data.total - data.no_key)}</strong>
-                          <small>with a key</small>
-                        </>
-                      }
-                    />
-                  </div>
-                  <KeysNoKeyRow noKey={data.no_key} noneChosen={choice.none} onPickNone={pickNone} />
-                </>
-              ) : (
-                <KeysCountsList
-                  keys={keys}
-                  noKey={data.no_key}
-                  chosen={chosen}
-                  noneChosen={choice.none}
-                  lit={lit}
-                  mixKey={mixKey}
-                  onPick={pick}
-                  onPickNone={pickNone}
-                />
+          <section className="keys-page__view" data-view={view} data-pane="keys" aria-labelledby="keys-view-title">
+            <div className="keys-head">
+              <h2 id="keys-view-title" className="keys-head__title">
+                Keys
+              </h2>
+              <KeysViewSwitch
+                view={view}
+                onChange={(next) => {
+                  setView(next);
+                  saveView(next);
+                }}
+              />
+            </div>
+            <div className="keys-page__view-body">
+              <div className="keys-page__panel">
+                {view === "wheel" ? (
+                  <>
+                    <div className="keys-page__wheel">
+                      <CamelotWheel
+                        lit={lit}
+                        focusCode={choice.anchor ?? order[0] ?? CAMELOT_CODES[0]!}
+                        onFocusCode={() => undefined}
+                        onPick={pick}
+                        counts={counts}
+                        chosen={chosen}
+                        center={
+                          <>
+                            <strong>{formatCount(data.total - data.no_key)}</strong>
+                            <small>with a key</small>
+                          </>
+                        }
+                      />
+                    </div>
+                    <p className="keys-page__legend">{WHEEL_LEGEND}</p>
+                    <KeysNoKeyRow noKey={data.no_key} noneChosen={choice.none} onPickNone={pickNone} />
+                  </>
+                ) : (
+                  <KeysCountsList
+                    keys={keys}
+                    noKey={data.no_key}
+                    chosen={chosen}
+                    noneChosen={choice.none}
+                    lit={lit}
+                    mixKey={mixKey}
+                    onPick={pick}
+                    onPickNone={pickNone}
+                  />
+                )}
+              </div>
+              {/* M170: in the list the chosen row and the Tracks head already say which key; only the ask stays. */}
+              {(view === "wheel" || !chosenAny) && (
+                <p className="keys-page__caption" role="status">
+                  {!chosenAny ? (
+                    "Pick a key"
+                  ) : choice.keys.length === 1 && !choice.none ? (
+                    <>
+                      <KeyChip value={choice.keys[0]} /> {keyName(choice.keys[0]!)} · {countNoun(choiceTotal, "track")}
+                    </>
+                  ) : (
+                    `${choiceWords(choice)} · ${countNoun(choiceTotal, "track")}`
+                  )}
+                </p>
               )}
             </div>
-            <p className="keys-page__caption" role="status">
-              {!chosenAny ? (
-                "Pick a key"
-              ) : choice.keys.length === 1 && !choice.none ? (
-                <>
-                  <KeyChip value={choice.keys[0]} /> {keyName(choice.keys[0]!)} · {countNoun(choiceTotal, "track")}
-                </>
-              ) : (
-                `${choiceWords(choice)} · ${countNoun(choiceTotal, "track")}`
-              )}
-            </p>
-          </div>
+          </section>
         )}
 
         {countable && (
-          <section className="keys-page__tracks" aria-label="Tracks">
+          <section className="keys-page__tracks" aria-label="Tracks" data-pane="tracks">
             <KeysTracks
-              heading={chosenAny ? `Tracks in ${choiceWords(choice)}` : "Tracks"}
+              heading={chosenAny ? (choice.none ? "Tracks without a key" : `Tracks in ${choiceWords(choice)}`) : "Tracks"}
               rules={shownRules}
-              viewSwitch={
-                <span className="keys-page__actions">
-                  <Tabs
-                    tabs={VIEWS}
-                    activeId={view}
-                    variant="sub"
-                    onChange={(id) => {
-                      const next = id as KeysView;
-                      setView(next);
-                      saveView(next);
-                    }}
-                  />
-                </span>
-              }
               openInLibrary={{ run: openInLibrary, disabledReason: needChoice ? SELECT_A_KEY : null }}
               onSelectTrack={onSelectTrack}
               reloadToken={reloadToken}

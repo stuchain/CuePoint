@@ -6,20 +6,21 @@
  * Rekordbox playlist folder counts everything under it; a Collections or Sets folder is only a
  * place, so its box ticks everything under it at once and shows a dash while only some of it is
  * ticked (C40). A Smart Collection holds a question rather than tracks, so it has no box. The
- * Select at the top is the page's "Which tracks" control, the same one Statistics has (C222):
- * it names the choice and takes it back to the whole library. Ticking is `toggleSource`; the
- * page remembers it.
+ * D19: the checklist is the page's one scope model (nothing ticked counts every track), so there
+ * is no "Which tracks" select here; the head's Clear lets go of the ticks. The pane has a head like
+ * the wheel's and the tracks' (M161), its groups fold from heads like the Library's (M171), and
+ * every row starts on one left edge whatever the tree's own depth (M164). Ticking is
+ * `toggleSource`; the page remembers it.
  */
 import { useMemo, useRef, useState } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
 import type { PixelIconName } from "../../components/pixelIcons";
 import { SearchField } from "../../components/SearchField";
-import { Select } from "../../components/Select";
 import { usePageSearch } from "../../components/usePageSearch";
+import { Button } from "../../components/Button";
 import { formatCount } from "../../format/counts";
 import { nothingMatches } from "../../format/words";
-import { WHICH_TRACKS } from "../../words";
 import { flatten, type PlaylistTreeNode } from "../library/playlistTree";
 import {
   collectionPickerNodes,
@@ -32,7 +33,7 @@ import {
   type CollectionTreeNode,
 } from "../library/collectionTree";
 import "../library/PlaylistPane.css";
-import { folderTick, sameSource, sourcesWords, type PickedSource } from "./keysSources";
+import { folderTick, sameSource, type PickedSource } from "./keysSources";
 
 interface KeysSourcePickerProps {
   playlists: readonly PlaylistTreeNode[];
@@ -41,10 +42,8 @@ interface KeysSourcePickerProps {
   onToggle: (source: PickedSource) => void;
   /** A Collections or Sets folder's box: everything under it ticked or unticked together. */
   onToggleMany?: (sources: readonly PickedSource[], on: boolean) => void;
-  /** Back to the whole library. */
+  /** Back to the whole library: lets go of every tick. */
   onClear: () => void;
-  /** Tracks in the whole library, written in the Select's first choice when known. */
-  libraryTrackCount?: number | null;
 }
 
 interface Row {
@@ -66,7 +65,10 @@ function matches(label: string, needle: string): boolean {
 }
 
 /** Each row with the sources of the rows nested under it (the rows that follow it and are deeper). */
-function withUnder(rows: Omit<Row, "under">[]): Row[] {
+function withUnder(input: Omit<Row, "under">[]): Row[] {
+  // The tree may start below depth 0 (Rekordbox's own root is hidden): the top rows of a group sit on one edge (M164).
+  const base = Math.min(...input.map((row) => row.depth));
+  const rows = input.map((row) => ({ ...row, depth: row.depth - base }));
   return rows.map((row, index) => {
     const under: PickedSource[] = [];
     for (let next = index + 1; next < rows.length && rows[next]!.depth > row.depth; next += 1) {
@@ -84,9 +86,10 @@ export function KeysSourcePicker({
   onToggle,
   onToggleMany,
   onClear,
-  libraryTrackCount = null,
 }: KeysSourcePickerProps) {
   const [filter, setFilter] = useState("");
+  // A group folded from its head (M171); a search opens every group it has a hit in.
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
   const needle = filter.trim().toLocaleLowerCase();
   const search = useRef<HTMLInputElement>(null);
   // Ctrl+F goes to the search box, only while it is showing (C189).
@@ -140,48 +143,61 @@ export function KeysSourcePicker({
 
   const everything = picked.length === 0;
   const any = hasSearch;
-  const wholeLabel =
-    libraryTrackCount != null ? `All tracks · ${formatCount(libraryTrackCount)}` : "All tracks";
 
   return (
-    <section className="keys-sources" aria-labelledby="keys-sources-title">
-      <h2 id="keys-sources-title" className="cp-visually-hidden">
-        Sources
-      </h2>
+    <section className="keys-sources" aria-labelledby="keys-sources-title" data-pane="sources">
+      <div className="keys-head keys-sources__head">
+        <h2 id="keys-sources-title" className="cp-text-section keys-head__title">
+          Sources
+        </h2>
+        {!everything && (
+          <Button variant="quiet" size="sm" onClick={onClear}>
+            Clear
+          </Button>
+        )}
+      </div>
       <div className="keys-sources__body" role="group" aria-label="Sources">
-        <Select
-          label={WHICH_TRACKS}
-          inlineLabel
-          width="full"
-          className="keys-sources__scope"
-          value={everything ? "whole" : "ticked"}
-          options={[
-            { value: "whole", label: wholeLabel },
-            { value: "ticked", label: everything ? "Ticked sources" : sourcesWords(picked), disabled: everything },
-          ]}
-          // The other choice is made by ticking; going back to everything lets go of the ticks.
-          onChange={(event) => {
-            if (event.target.value === "whole" && !everything) onClear();
-          }}
-        />
-
         {any && (
           <SearchField
             ref={search}
-            thing="sources"
+            thing="playlists and Collections"
             className="keys-sources__filter"
-            // "Search sources…" is cut off in the narrow box, so it shortens to "Search…" when it does
-            // not fit. The field's accessible name stays "Search sources".
+            // The long hint is cut off in the narrow box, so it shortens to "Search…" when it does
+            // not fit. The field's accessible name stays "Search playlists and Collections".
             fitPlaceholder
             value={filter}
             onValueChange={setFilter}
           />
         )}
 
-        {sections.map((section) => (
+        {sections.map((section) => {
+          const closed = needle === "" && folded.has(section.title);
+          return (
           <div key={section.title} className="keys-sources__section">
-            <h3 className="cp-text-label keys-sources__title">{section.title}</h3>
-            <ul className="keys-sources__list">
+            <h3 className="keys-sources__title">
+              <button
+                type="button"
+                className="cp-playlist-pane__fold keys-sources__fold"
+                aria-expanded={!closed}
+                onClick={() =>
+                  setFolded((now) => {
+                    const next = new Set(now);
+                    if (next.has(section.title)) next.delete(section.title);
+                    else next.add(section.title);
+                    return next;
+                  })
+                }
+              >
+                <span aria-hidden>
+                  <PixelIcon
+                    name={closed ? "chevron-right" : "chevron-down"}
+                    className="cp-pixel-icon--text"
+                  />
+                </span>
+                <span className="cp-playlist-pane__title">{section.title}</span>
+              </button>
+            </h3>
+            <ul className="keys-sources__list" hidden={closed}>
               {section.rows.map((row) => {
                 const indent = {
                   paddingLeft: `calc(var(--space-sm) + ${row.depth} * var(--tree-indent))`,
@@ -252,7 +268,8 @@ export function KeysSourcePicker({
               })}
             </ul>
           </div>
-        ))}
+          );
+        })}
         {needle !== "" && sections.length === 0 && (
           <p className="keys-note">{nothingMatches(filter.trim())}</p>
         )}

@@ -30,7 +30,7 @@ interface CamelotWheelProps {
   onFocusCode: (code: string) => void;
   /**
    * A key was chosen, by a click or Enter. The click's Ctrl, Command and Shift come with it, for
-   * the Keys page's choosing of several; the header's wheel takes the code alone.
+   * the Keys page's choosing of several (Shift+Arrow too, M478); the header's wheel takes the code alone.
    */
   onPick: (code: string, modifiers: PickModifiers) => void;
   /** What the hole in the middle shows. */
@@ -123,6 +123,11 @@ export function CamelotWheel({
     const next = moveOnRing(current, move);
     onFocusCode(next);
     buttons.current.get(next)?.focus();
+    // Counts mode (M478): Shift+Arrow takes a run from the anchor as Shift+click does. Ctrl or Command with
+    // Enter or Space already adds a key: the button's own click carries the modifier.
+    if (counts && event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      onPick(next, { ctrlKey: false, metaKey: false, shiftKey: true });
+    }
   };
 
   const levelOf = (code: string) => (counts ? countLevel(counts.get(code) ?? 0, biggest) : 0);

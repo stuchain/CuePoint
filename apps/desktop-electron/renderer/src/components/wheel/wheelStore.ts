@@ -53,12 +53,15 @@ export function openWheel(source: WheelSource): void {
   publish({ open: true, source, anchor });
 }
 
-export function closeWheel(options: { restoreFocus?: boolean } = {}): void {
+export function closeWheel(options: { restoreFocus?: boolean; afterFocusMove?: boolean } = {}): void {
   if (!state.open) return;
   const target = options.restoreFocus === false ? null : opener;
   opener = null;
   publish({ ...state, open: false });
-  if (target?.isConnected) target.focus();
+  // From a focus-out handler (M471) the browser is still moving focus to where it was going, and would
+  // overwrite a focus() made now: the chip takes it back once that move is done.
+  if (options.afterFocusMove) window.setTimeout(() => target?.isConnected && target.focus(), 0);
+  else if (target?.isConnected) target.focus();
 }
 
 /** The button's own press: closes the wheel it opened, else opens it for this source. */

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "../Button";
@@ -109,6 +109,29 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
     [navigate],
   );
 
+  // The popover is portaled to the end of the body, so Tab from its last control (or Shift+Tab from its
+  // first) would leave for somewhere unrelated and leave it open (M471): focus going anywhere outside it
+  // and its opener closes it and gives focus back to the key chip.
+  const onBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const next = event.relatedTarget;
+    if (!(next instanceof Element)) return;
+    if (event.currentTarget.contains(next) || next.closest("[data-wheel-opener]")) return;
+    closeWheel({ afterFocusMove: true });
+  };
+
+  // M297: a hairline along the bottom edge while more of the popover is below the fold.
+  const [moreBelow, setMoreBelow] = useState(false);
+  const measureMore = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    setMoreBelow(root.scrollHeight - root.scrollTop - root.clientHeight > 1);
+  }, []);
+  useLayoutEffect(() => {
+    measureMore();
+    window.addEventListener("resize", measureMore);
+    return () => window.removeEventListener("resize", measureMore);
+  }, [measureMore, anchor, source, subject]);
+
   const who = subject?.kind === "playing" ? "Playing" : "Selected";
   const name = subject?.title ?? "this track";
 
@@ -133,7 +156,10 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
       role="dialog"
       aria-label="Camelot wheel"
       data-leaving={leaving ? "" : undefined}
+      data-more-below={moreBelow ? "" : undefined}
       inert={leaving}
+      onBlur={onBlur}
+      onScroll={measureMore}
     >
       <CamelotWheel
         lit={lit}

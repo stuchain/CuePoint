@@ -12,7 +12,7 @@
  * runs after one — is repeated here at the size this page needs; Clean's windows are
  * opened by way of the page's `navigate` and the same link state the Library uses.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type {
   LibraryTrackDetail,
@@ -30,8 +30,8 @@ import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
 import { LinkButton } from "../../components/LinkButton";
 import { SelectAllButton, SelectionBar } from "../../components/SelectionBar";
-import { countNoun, formatCount } from "../../format/counts";
-import { RETRY, couldNot, goTo } from "../../format/words";
+import { formatCount } from "../../format/counts";
+import { RETRY, couldNot, goTo, opensDialog } from "../../format/words";
 import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -118,8 +118,6 @@ interface KeysTracksProps {
   heading: string;
   /** The tracks asked for: the sources alone, or with the keys chosen. No rules is every track. */
   rules: FilterRuleSet;
-  /** The Wheel | List switch, drawn at the right of this list's toolbar (D12). */
-  viewSwitch: ReactNode;
   /** Go to the Library on the same choice; the reason says why it cannot yet. */
   openInLibrary: { run: () => void; disabledReason: string | null };
   /** The track the Inspector should show, and how many are selected. */
@@ -148,7 +146,6 @@ const KEYS_BAR_GROUPS: readonly TrackActionGroupId[] = ["play"];
 export function KeysTracks({
   heading,
   rules,
-  viewSwitch,
   openInLibrary,
   onSelectTrack,
   reloadToken,
@@ -591,8 +588,10 @@ export function KeysTracks({
     <div className="keys-tracks">
       <div className="cp-toolbar keys-tracks__toolbar" role="toolbar" aria-label="Track list" ref={toolbarRef}>
         <h2 className="cp-text-section keys-tracks__heading">{heading}</h2>
+        {/* M418: the count alone ("Tracks 300"), the noun is the heading's; a screen reader still hears it. */}
         <span className="keys-tracks__count" role="status">
-          {countNoun(window_.total, "track")}
+          {formatCount(window_.total)}
+          <span className="cp-visually-hidden">{` ${window_.total === 1 ? "track" : "tracks"}`}</span>
         </span>
         {!folded && offerSelectAll && (
           <span className="keys-tracks__fold">
@@ -617,7 +616,6 @@ export function KeysTracks({
               </Hint>
             </span>
           )}
-          {viewSwitch}
         </div>
       </div>
       {folded && moreMenu.open && moreBox && (
@@ -668,6 +666,10 @@ export function KeysTracks({
           bottomBar={
             selection.count > 0 ? (
               <SelectionBar count={selection.count} onClear={selection.clear} overlay>
+                {/* M518: Add to a Set is one click from the bar, as it is in the row's menu. */}
+                <Button variant="secondary" onClick={() => openPicker("set", barTarget())}>
+                  {opensDialog("Add to a Set")}
+                </Button>
                 {barGroups.map((group) => (
                   <Hint key={group.id} text={group.disabledReason ?? undefined}>
                     <Button

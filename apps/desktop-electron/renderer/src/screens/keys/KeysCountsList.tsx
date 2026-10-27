@@ -2,11 +2,12 @@
  * The counts as a list (PAGES-16): the accessible reading of the wheel's numbers.
  *
  * Every key the sources hold, in Camelot order, each as the Library's key chip with its name, a
- * bar in the key's own colour and its count written out, then "— no key" as one more row (C258).
+ * bar in the chart's one violet ink (the chip carries the key's colour, D22) and its count written
+ * out, then "— No key" as one more row (C258).
  * A row is a button that chooses its key (Ctrl or Command adds one, Shift takes a run); the keys
  * that mix with the one asked about say so in words, so the light is never color alone.
  */
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useRef, type CSSProperties, type KeyboardEvent } from "react";
 
 import type { KeyPopulationEntry } from "../../api/cuepointBridge.types";
 import { countedName, keyName } from "../../components/wheel/camelot";
@@ -32,8 +33,11 @@ interface KeysCountsListProps {
 }
 
 /** What the no-key row is called to a screen reader: the words the page has always used. */
-const NO_KEY_NAME = "No Beatport key";
+const NO_KEY_NAME = "No key";
 const NO_KEY_HINT = "Every track here has a key";
+
+/** How long letters typed in the list build one word for type-ahead (M481), in ms. */
+const TYPE_AHEAD_MS = 700;
 
 export function KeysCountsList({
   keys,
@@ -48,8 +52,37 @@ export function KeysCountsList({
   const counts = useMemo(() => new Map(keys.map((entry) => [entry.code, entry.count])), [keys]);
   const marks = useCountChanges(counts);
   const rows = useMemo(() => keysListRows(keys, noKey), [keys, noKey]);
+
+  // Type-ahead (M481): "8" then "a" within a moment goes to 8A; a name's first letters work too ("a" then
+  // the cycle of keys starting with A). The row takes focus; Enter or Space chooses it as a click does.
+  const typed = useRef({ text: "", timer: 0 });
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key === " " && typed.current.text === "") return;
+    event.preventDefault();
+    window.clearTimeout(typed.current.timer);
+    typed.current.text += event.key.toLowerCase();
+    typed.current.timer = window.setTimeout(() => {
+      typed.current.text = "";
+    }, TYPE_AHEAD_MS);
+    const word = typed.current.text;
+    const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button[data-code]"));
+    const from = buttons.findIndex((button) => button === document.activeElement);
+    // One repeated letter cycles through the rows that start with it.
+    const wanted = /^(.)\1+$/.test(word) ? word[0]! : word;
+    const start = wanted.length === 1 ? from + 1 : Math.max(from, 0);
+    for (let step = 0; step < buttons.length; step += 1) {
+      const button = buttons[(start + step) % buttons.length]!;
+      const code = button.dataset.code!;
+      const names = [code, keyName(code)].map((name) => name.toLowerCase());
+      if (names.some((name) => name.startsWith(wanted))) {
+        button.focus();
+        return;
+      }
+    }
+  };
   return (
-    <div className="keys-counts" role="group" aria-label="Keys in these sources">
+    <div className="keys-counts" role="group" aria-label="Keys in these sources" onKeyDown={onKeyDown}>
       <ul className="keys-counts__list">
         {rows.map((row) =>
           row.kind === "none" ? (
@@ -95,6 +128,7 @@ function KeyRow({
       type="button"
       className="keys-counts__row"
       style={{ "--key": `var(--key-${code})` } as CSSProperties}
+      data-code={code}
       aria-pressed={chosen}
       aria-label={countedName(code, row.count, chosen, relation)}
       data-lit={relation}
@@ -130,7 +164,7 @@ function KeyRow({
 }
 
 /**
- * "— no key  47": the tracks without a Beatport key, a button that chooses them. The list ends
+ * "— No key  47": the tracks without a Beatport key, a button that chooses them. The list ends
  * with it, and the wheel view draws it under the wheel, so it is on the page in both.
  */
 function KeysNoKeyButton({
@@ -159,7 +193,7 @@ function KeysNoKeyButton({
         }}
       >
         <span className="keys-counts__code">{NO_VALUE}</span>
-        <span className="keys-counts__name">no key</span>
+        <span className="keys-counts__name">No key</span>
         {bar ? (
           <span className="keys-counts__bar" aria-hidden="true" data-bar data-percent={row.percent}>
             <RankBar share={row.percent / 100} />

@@ -53,9 +53,22 @@ describe("the counts list's key column", () => {
     expect(row).toMatch(/\)\)\s+\d+ch\s+minmax\(0, 1fr\)\s+\d+ch;/);
   });
 
-  it("colours the bar with the key's own colour at a tint, and the chart's with the colours off", () => {
-    expect(keysCss).toMatch(/\.keys-counts__bar\s*\{[^}]*color-mix\(in srgb, var\(--key/);
-    expect(keysCss).toMatch(/data-key-colours="off"\]\s+\.keys-counts__bar/);
+  it("draws the bar in the chart's one violet ink, the chip carrying the key's colour (D22, M211)", () => {
+    const bar = /\.keys-counts__bar\s*\{[^}]*\}/.exec(keysCss)?.[0] ?? "";
+    expect(bar).toContain("height: var(--chart-bar-thickness)");
+    expect(bar).not.toMatch(/--bar-color|var\(--key/);
+    expect(keysCss).not.toMatch(/data-key-colours="off"\]\s+\.keys-counts__bar/);
+  });
+
+  it("insets a row by the one list inset, so a chip starts where the words above it do (M173)", () => {
+    const row = /\.keys-counts__row\s*\{[^}]*\}/.exec(keysCss)?.[0] ?? "";
+    expect(row).toMatch(/padding:\s*0 var\(--space-sm\)/);
+  });
+
+  it("fills the pane instead of a fixed 380 px box (M166)", () => {
+    const list = /\.keys-counts\s*\{[^}]*\}/.exec(keysCss)?.[0] ?? "";
+    expect(list).toContain("flex: 1 1 var(--keys-wheel)");
+    expect(list).not.toContain("max-height");
   });
 
   it("never sets a selected row or a count in bold (C82)", () => {
@@ -88,7 +101,8 @@ describe("the two panes (D12)", () => {
 
   it("meets the sidebar with the Sources pane and keeps the panes 20 apart (D36, M61)", () => {
     expect(rule(".keys-sources")).toContain("margin-inline-start: calc(-1 * var(--safe-left))");
-    expect(rule(".keys-sources__body")).toContain("padding-inline-start: calc(var(--space-md) + var(--safe-left))");
+    expect(rule(".keys-sources__head")).toContain("padding-inline-start: calc(var(--space-sm) + var(--safe-left))");
+    expect(rule(".keys-sources__body")).toContain("padding-inline-start: var(--safe-left)");
     expect(rule(".keys-page__top")).toContain("gap: var(--space-xl)");
   });
 
@@ -109,24 +123,43 @@ describe("the two panes (D12)", () => {
   });
 
   it("makes the wheel and the list the same box, so switching moves nothing (C249)", () => {
-    // P7: the wheel has its own padded pane, so the box is the wheel plus 2 x space-lg.
+    // P7: the wheel has its own pane, so the box is the wheel plus 2 x space-lg; D19: the head is the
+    // pane's, and the 12 inside is the body's under it.
     expect(rule(".keys-page__view")).toContain("flex: 0 0 calc(var(--keys-wheel) + 2 * var(--space-lg))");
     expect(rule(".keys-page__view")).toContain("background: var(--bg-panel)");
-    expect(rule(".keys-page__view")).toContain("padding: var(--space-lg)");
+    expect(rule(".keys-page__view-body")).toContain("padding: var(--space-lg)");
     expect(keysCss).not.toContain('data-view="list"');
   });
 
   it("holds Sources and the track list to the wheel's height, so the panes share their lines", () => {
-    // P7: they stretch with the row instead of a fixed height; the list keeps the wheel's height as its floor,
-    // and the narrow layout gives Sources the wheel's height back.
+    // P7: they stretch with the row instead of a fixed height; the list keeps the wheel's height as its floor.
+    // M162: stacked (narrow), the row's line stretches Sources to the wheel pane's height, so there is no
+    // fixed height to keep in step.
     expect(rule(".keys-sources__body")).not.toContain("height: var(--keys-wheel)");
     expect(rule(".keys-sources__body")).toContain("flex: 1 1 0");
     expect(rule(".keys-tracks")).toContain("min-height: max(var(--keys-wheel)");
     expect(rule(".keys-tracks")).toContain("flex: 1 1 auto");
-    const narrow = parseRules(stripComments(keysCss)).find(
-      (r) => r.selector === ".keys-sources__body" && r.context.startsWith("@container content"),
-    );
-    expect(narrow?.body).toContain("height: var(--keys-wheel)");
+    const narrow = parseRules(stripComments(keysCss)).filter((r) => r.context.startsWith("@container content (max-width"));
+    expect(narrow.some((r) => r.selector === ".keys-sources__body")).toBe(false);
+  });
+
+  it("matches the three panes' heads: one toolbar tall, one divider, one side padding (D19, M161)", () => {
+    const head = rule(".keys-head");
+    expect(head).toContain("min-height: var(--toolbar-height)");
+    expect(head).toContain("border-bottom: var(--divider)");
+    expect(head).toContain("padding: 0 var(--space-sm)");
+    const tracks = rule(".keys-tracks__toolbar");
+    expect(tracks).toContain("border-bottom: var(--divider)");
+    expect(tracks).toContain("padding-inline: var(--space-sm)");
+  });
+
+  it("lets a wide window give the wheel a larger whole-pixel cell (M168)", () => {
+    const wide = parseRules(stripComments(keysCss)).find((r) => r.context === "@container content (min-width: 110em)");
+    expect(wide?.body).toMatch(/--keys-cell:\s*min\(round\(nearest, calc\(8px \* var\(--scale\)\), 1px\)/);
+  });
+
+  it("names the wheel's one line of legend in the muted meta face (D6 B)", () => {
+    expect(rule(".keys-page__legend")).toContain("color: var(--fg-muted)");
   });
 
   it("draws no second divider under the header and adds no padding offset of its own (C35, C219)", () => {

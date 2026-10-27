@@ -706,3 +706,56 @@ describe("the wheel with Keys written as (K1 to K3)", () => {
     expect(wheelCss).toMatch(/\.cp-wheel__musical \{[^}]*\* 0\.8\)/);
   });
 });
+
+describe("D6 B: the wheel stays smooth, its labels are the pixel face (M35)", () => {
+  const rule = (selector: string) => parseRules(stripComments(wheelCss)).find((r) => r.selector === selector)!;
+  const decl = (selector: string, name: string) => declarations(rule(selector).body).find(([n]) => n === name)?.[1];
+
+  it("writes the key and its count in the control (pixel) face at the regular weight, not Inter semibold", () => {
+    expect(decl(".cp-wheel__label", "font-family")).toBe("var(--font-control)");
+    expect(decl(".cp-wheel__label", "font-weight")).toBe("var(--font-weight-regular)");
+    expect(decl(".cp-wheel__count", "font-weight")).toBe("var(--font-weight-bold)");
+  });
+
+  it("sets every line at a whole number of pixels, never a bare multiplier", () => {
+    for (const selector of [".cp-wheel__label", ".cp-wheel__count", ".cp-wheel__center"]) {
+      expect(decl(selector, "line-height"), selector).toMatch(/^round\(nearest, [\d.]+em, 1px\)$/);
+    }
+  });
+
+  it("keeps the drawing itself smooth (DEC-238): arcs are not stepped and carry no crispEdges", () => {
+    expect(decl(".cp-wheel__shape", "shape-rendering")).toBe("geometricPrecision");
+    expect(wheelCss).not.toContain("crispEdges");
+  });
+});
+
+describe("the wheel's keyboard choosing (M478)", () => {
+  const counts = new Map([
+    ["8A", 12],
+    ["9A", 3],
+  ]);
+  const props = { lit: new Map(), focusCode: "8A", onFocusCode: () => undefined };
+
+  it("takes a run with Shift+Arrow in the counts mode, as Shift+click does", () => {
+    const onPick = vi.fn();
+    render(<CamelotWheel {...props} onPick={onPick} counts={counts} />);
+    const start = document.querySelector<HTMLElement>('[data-key="8A"]')!;
+    start.focus();
+    fireEvent.keyDown(start, { key: "ArrowRight", shiftKey: true });
+    expect(onPick).toHaveBeenCalledWith("9A", { ctrlKey: false, metaKey: false, shiftKey: true });
+  });
+
+  it("only moves with a bare arrow, and the header's wheel never picks by arrow", () => {
+    const onPick = vi.fn();
+    const { unmount } = render(<CamelotWheel {...props} onPick={onPick} counts={counts} />);
+    const start = document.querySelector<HTMLElement>('[data-key="8A"]')!;
+    start.focus();
+    fireEvent.keyDown(start, { key: "ArrowRight" });
+    expect(onPick).not.toHaveBeenCalled();
+    unmount();
+    render(<CamelotWheel {...props} onPick={onPick} />);
+    const header = document.querySelector<HTMLElement>('[data-key="8A"]')!;
+    fireEvent.keyDown(header, { key: "ArrowRight", shiftKey: true });
+    expect(onPick).not.toHaveBeenCalled();
+  });
+});
