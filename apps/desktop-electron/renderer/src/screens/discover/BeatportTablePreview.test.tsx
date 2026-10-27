@@ -150,7 +150,7 @@ describe("a Beatport row's sample (M99)", () => {
   it("plays the keyboard's row on Enter", async () => {
     draw();
     await userEvent.click(screen.getByText("Alpha"));
-    screen.getByRole("table").focus();
+    screen.getByRole("grid").focus();
     await userEvent.keyboard("{Enter}");
     await waitFor(() => expect(bridge.getCatalogPreview).toHaveBeenCalledWith({ beatportTrackId: 11 }));
   });
@@ -195,7 +195,7 @@ describe("a Beatport row's sample (M99)", () => {
 
   it("lets go of the selection on Escape", async () => {
     draw(2);
-    screen.getByRole("table").focus();
+    screen.getByRole("grid").focus();
     await userEvent.keyboard("{Escape}");
     expect(clear).toHaveBeenCalledTimes(1);
   });

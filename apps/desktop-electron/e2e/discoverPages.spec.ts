@@ -180,7 +180,7 @@ async function currentTitle(window: Page): Promise<string | null> {
 /** The titles a table shows, top to bottom. */
 async function titlesIn(window: Page, table: string): Promise<string[]> {
   return window
-    .getByRole("table", { name: table })
+    .getByRole("grid", { name: table })
     .locator('.track-table__row [data-column="title"]')
     .allInnerTexts()
     // The playing row's title cell carries words for screen readers before the title (DEC-268).
@@ -189,7 +189,7 @@ async function titlesIn(window: Page, table: string): Promise<string[]> {
 
 /** A row of a Beatport table, by what it shows. */
 function bpRow(window: Page, table: string, title: string) {
-  return window.getByRole("table", { name: table }).getByRole("row").filter({ hasText: title });
+  return window.getByRole("grid", { name: table }).getByRole("row").filter({ hasText: title });
 }
 
 /** A row of the Review list the Match area opens on a run that just finished. */
@@ -224,7 +224,7 @@ async function expectOneLineBar(window: Page, page: string) {
 
 function row(window: Page, table: string, title: string) {
   return window
-    .getByRole("table", { name: table })
+    .getByRole("grid", { name: table })
     .locator(".track-table__row", { hasText: title })
     .first();
 }
@@ -391,7 +391,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         ).toBeVisible({ timeout: 60_000 });
         // Results opens on rows of cards; Everything is the dig as one table.
         await window.getByRole("button", { name: /^Everything · / }).click();
-        const rows = window.getByRole("table", { name: found }).getByRole("row");
+        const rows = window.getByRole("grid", { name: found }).getByRole("row");
         // The header and the two tracks nobody owns; the two accepted are counted.
         await expect(rows).toHaveCount(3, { timeout: 15_000 });
         await expect(bpRow(window, found, "Undertow")).toBeVisible();
@@ -435,7 +435,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(notice.getByRole("button", { name: "Open the playlist" })).toBeVisible();
         await idle(window);
         await window.getByRole("tab", { name: "Wantlist" }).click();
-        const wanted = window.getByRole("table", { name: "Wantlist" }).getByRole("row");
+        const wanted = window.getByRole("grid", { name: "Wantlist" }).getByRole("row");
         await expect(wanted).toHaveCount(2, { timeout: 15_000 });
         await expect(bpRow(window, "Wantlist", "Undertow")).toBeVisible();
       });
@@ -494,7 +494,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
           .poll(() => titlesIn(window, "Similar tracks"), { timeout: 30_000 })
           .toEqual(["Harbour Lights", "Night Bus", "Low Tide"]);
         // M85/D12: Label waits in the Columns list; shown, the row carries it.
-        await window.getByRole("table", { name: "Similar tracks" }).getByRole("button", { name: "Columns", exact: true }).click();
+        await window.getByRole("grid", { name: "Similar tracks" }).getByRole("button", { name: "Columns", exact: true }).click();
         await window.getByRole("dialog").getByRole("checkbox", { name: "Label", exact: true }).check();
         await window.keyboard.press("Escape");
         await expect(row(window, "Similar tracks", "Night Bus")).toContainText("Cold Room");
@@ -562,11 +562,11 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(hideAgain).not.toBeChecked();
         await hideAgain.check();
         // The same tracks, still owned where they were, and why each was found.
-        await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(3, {
+        await expect(window.getByRole("grid", { name: found }).getByRole("row")).toHaveCount(3, {
           timeout: 15_000,
         });
         // M85/D12: "From" waits in the Columns list; shown, it says why each was found.
-        await window.getByRole("table", { name: found }).getByRole("button", { name: "Columns", exact: true }).click();
+        await window.getByRole("grid", { name: found }).getByRole("button", { name: "Columns", exact: true }).click();
         await window.getByRole("dialog").getByRole("checkbox", { name: "From", exact: true }).check();
         await window.keyboard.press("Escape");
         await expect(bpRow(window, found, "Undertow")).toContainText("Harbour Selects");

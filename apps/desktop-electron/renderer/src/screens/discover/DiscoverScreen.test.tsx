@@ -215,7 +215,7 @@ async function showColumn(tableName: string, column: string) {
 }
 
 function table(name: string) {
-  return screen.getByRole("table", { name });
+  return screen.getByRole("grid", { name });
 }
 
 function rowsOf(name: string) {
@@ -737,7 +737,7 @@ describe("Results", () => {
     // Columns… is the table header's corner icon (K21), not a word in the actions bar.
     expect(within(bar).queryByRole("button", { name: "Columns" })).toBeNull();
     fireEvent.click(
-      screen.getByRole("table", { name: "Tracks this dig found" }).querySelector<HTMLElement>(
+      screen.getByRole("grid", { name: "Tracks this dig found" }).querySelector<HTMLElement>(
         '[aria-label="Columns"]',
       )!,
     );

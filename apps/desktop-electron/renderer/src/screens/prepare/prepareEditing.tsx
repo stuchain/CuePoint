@@ -61,7 +61,7 @@ function TimeInput({ row, field, editing }: { row: EntryRow; field: TimeField; e
     if (leaving.current) return;
     leaving.current = true;
     // Enter keeps the keyboard on the row: the table is found before the field is gone.
-    const table = backToTable ? input.current?.closest<HTMLElement>('[role="table"]') : null;
+    const table = backToTable ? input.current?.closest<HTMLElement>('[role="grid"]') : null;
     const result = await editing.commitTime(entryId, field, text, move);
     if (result !== "refused") {
       table?.focus();
@@ -102,7 +102,7 @@ function TimeInput({ row, field, editing }: { row: EntryRow; field: TimeField; e
           event.preventDefault();
           leaving.current = true;
           // Like Enter, the keyboard stays on the row: the table is found before the field is gone.
-          const table = input.current?.closest<HTMLElement>('[role="table"]');
+          const table = input.current?.closest<HTMLElement>('[role="grid"]');
           editing.stopTimeEdit(false);
           table?.focus();
         }

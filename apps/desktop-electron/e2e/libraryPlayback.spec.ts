@@ -156,7 +156,7 @@ test("plays and queues from the Library table", async () => {
     await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 
     await win.getByRole("link", { name: "Library" }).click();
-    const table = win.getByRole("table", { name: "Library tracks" });
+    const table = win.getByRole("grid", { name: "Library tracks" });
     await expect(table).toBeVisible({ timeout: 30_000 });
     await expect(win.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
 

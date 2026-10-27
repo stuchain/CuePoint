@@ -140,7 +140,7 @@ async function openLibrary(window: Page) {
   // Through another page and back, so the page reads the tree the bridge built.
   await window.getByRole("link", { name: "Clean", exact: true }).click();
   await window.getByRole("link", { name: "Library", exact: true }).click();
-  await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
+  await expect(window.getByRole("grid", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
 }
 
 async function exportFromHeader(window: Page) {

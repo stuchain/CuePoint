@@ -99,7 +99,7 @@ async function importLibrary(window: Page, xml: string) {
 }
 
 function row(window: Page, table: string, title: RegExp) {
-  return window.getByRole("table", { name: table }).getByRole("row", { name: title });
+  return window.getByRole("grid", { name: table }).getByRole("row", { name: title });
 }
 
 test.describe("The Discover page (DISCOVER-10)", () => {
@@ -178,9 +178,9 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await window.getByRole("button", { name: "Everything · 3 tracks" }).click();
       const found = "Tracks this dig found";
       await expect(row(window, found, /Harbour Lights/)).toBeVisible({ timeout: 15_000 });
-      await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(4);
+      await expect(window.getByRole("grid", { name: found }).getByRole("row")).toHaveCount(4);
       // M85/D12: "From" waits in the Columns list; shown, it says why the dig found the track.
-      await window.getByRole("table", { name: found }).getByRole("button", { name: "Columns", exact: true }).click();
+      await window.getByRole("grid", { name: found }).getByRole("button", { name: "Columns", exact: true }).click();
       await window.getByRole("dialog").getByRole("checkbox", { name: "From", exact: true }).check();
       await window.keyboard.press("Escape");
       await expect(row(window, found, /Harbour Lights/)).toContainText("On a chart by Mara Veil: “Journey Selects”");
@@ -244,7 +244,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByText(/Night Bus.*2 tracks already on it/)).toBeVisible();
 
       await window.getByRole("tab", { name: "Wantlist" }).click();
-      await expect(window.getByRole("table", { name: "Wantlist" }).getByRole("row")).toHaveCount(4, {
+      await expect(window.getByRole("grid", { name: "Wantlist" }).getByRole("row")).toHaveCount(4, {
         timeout: 15_000,
       });
       await row(window, "Wantlist", /Low Tide/).locator('[data-column="title"]').click();
@@ -252,7 +252,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByText(/Marked “Low Tide \(Original Mix\)” .* bought/)).toBeVisible();
 
       await window.getByRole("combobox", { name: "Marked bought" }).selectOption("only");
-      await expect(window.getByRole("table", { name: "Wantlist" }).getByRole("row")).toHaveCount(2);
+      await expect(window.getByRole("grid", { name: "Wantlist" }).getByRole("row")).toHaveCount(2);
       await expect(row(window, "Wantlist", /Low Tide/)).toBeVisible();
     } finally {
       await app.close();

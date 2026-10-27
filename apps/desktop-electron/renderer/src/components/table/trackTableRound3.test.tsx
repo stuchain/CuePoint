@@ -112,7 +112,7 @@ describe("headings and rows (M96, M97, M100)", () => {
     expect(screen.getByRole("button", { name: "Key" })).toHaveClass("track-table__header-cell--chips");
     expect(screen.getByRole("button", { name: "Title" })).not.toHaveClass("track-table__header-cell--chips");
     expect(css).toMatch(/\.track-table__header-cell--chips \{[^}]*padding-left: calc\(var\(--space-sm\) - var\(--chip-pad\)\)/);
-    expect(document.querySelector('[role="cell"][data-column="key"]')).toHaveAttribute("data-chips");
+    expect(document.querySelector('[role="gridcell"][data-column="key"]')).toHaveAttribute("data-chips");
   });
 
   it("puts the arrow before the words in a number column, centred on them", () => {
@@ -123,7 +123,7 @@ describe("headings and rows (M96, M97, M100)", () => {
   it("keeps room for the speaker in the title cell of every row and in its heading, so no title moves", () => {
     draw({ isPlayingRow: (row) => row.id === 2 });
     expect(screen.getByRole("button", { name: "Title" })).toHaveClass("track-table__header-cell--mark");
-    const cells = document.querySelectorAll('[role="cell"][data-column="title"]');
+    const cells = document.querySelectorAll('[role="gridcell"][data-column="title"]');
     expect(cells.length).toBeGreaterThan(0);
     for (const cell of cells) expect(cell).toHaveClass("track-table__cell--mark");
     expect(css).toMatch(/\.track-table__playing-icon \{[^}]*position: absolute/);
@@ -175,7 +175,7 @@ describe("the scroll bar and the focus mark (M91, M455)", () => {
 
   it("gives a click no ring, and a key brings it back", () => {
     draw();
-    const table = screen.getByRole("table");
+    const table = screen.getByRole("grid");
     expect(table).not.toHaveAttribute("data-pointer");
     fireEvent.mouseDown(document.querySelector('[role="row"][data-index="0"]')!);
     expect(table).toHaveAttribute("data-pointer");

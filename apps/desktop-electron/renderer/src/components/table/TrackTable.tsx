@@ -23,6 +23,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -711,6 +712,11 @@ export function TrackTable<Row>({
   }, [source, onSelect]);
 
   const virtualRows = virtualizer.getVirtualItems();
+  // M457: the grid names its current row with aria-activedescendant, so each row needs an id
+  // unique on the page. useId's ":" is kept out, so the id also works in a CSS selector.
+  const rowIdBase = `track-table-${useId().replace(/:/g, "")}`;
+  const rowId = (index: number) => `${rowIdBase}-row-${index}`;
+  const activeRowShown = cursorRow != null && virtualRows.some((item) => item.index === cursorRow);
   const firstIndex = virtualRows[0]?.index ?? 0;
   const lastIndex = virtualRows[virtualRows.length - 1]?.index ?? 0;
 
@@ -1034,17 +1040,21 @@ export function TrackTable<Row>({
           {bottomBar}
         </div>
       )}
-      {/* The rows, headers and cells below are ARIA table parts, so something
-          has to be the table: without this they describe nothing and a screen
-          reader reads a pile of groups. `aria-rowcount` is the whole result,
-          not the window — the rows in the DOM are tens of a possible fifty
-          thousand, and saying "3 of 3" would be a lie the user cannot see. */}
+      {/* The rows, headers and cells below are ARIA grid parts, so something
+          has to be the grid: without this they describe nothing and a screen
+          reader reads a pile of groups. It is a grid, not a table (M457): the
+          rows are selected and moved through with the keys, and the focus stays
+          here while aria-activedescendant names the current row. `aria-rowcount`
+          is the whole result, not the window — the rows in the DOM are tens of a
+          possible fifty thousand, and saying "3 of 3" would be a lie. */}
       <div
         ref={scrollRef}
         className="track-table__scroll"
-        role="table"
+        role="grid"
         aria-label={ariaLabel}
         aria-rowcount={source.total}
+        aria-multiselectable={onSelect ? true : undefined}
+        aria-activedescendant={activeRowShown && cursorRow != null ? rowId(cursorRow) : undefined}
         // Focusable so the table can be reached, scrolled and asked for a
         // context menu without a mouse — and so a menu opened from it has
         // somewhere to give focus back to when it closes.
@@ -1244,6 +1254,7 @@ export function TrackTable<Row>({
                     height: `${item.size}px`,
                   }}
                   role="row"
+                  id={rowId(item.index)}
                   // Row 1 is the header, so the first track is row 2. This was
                   // index + 1 while nothing claimed to be a row above it.
                   aria-rowindex={item.index + 2}
@@ -1312,7 +1323,7 @@ export function TrackTable<Row>({
                         // The end cell takes the whole first grid row, so the cells are placed by hand.
                         ...(hasEnd ? { gridColumn: index + 1, gridRow: 1 } : null),
                       }}
-                      role="cell"
+                      role="gridcell"
                       data-column={column.id}
                       data-chips={column.chips ? "" : undefined}
                     >
@@ -1339,7 +1350,7 @@ export function TrackTable<Row>({
                       column running under it at the edge is cut where its heading is (C69). */}
                   {onColumns && <div className="track-table__row-corner" aria-hidden="true" />}
                   {hasEnd && (
-                    <div className="track-table__end" role="cell">
+                    <div className="track-table__end" role="gridcell">
                       {end}
                     </div>
                   )}

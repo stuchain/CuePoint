@@ -131,7 +131,7 @@ async function order(win: Page, setId: number): Promise<string[]> {
 }
 
 function setTable(win: Page) {
-  return win.getByRole("table", { name: "Set entries" });
+  return win.getByRole("grid", { name: "Set entries" });
 }
 
 /** A Set row by its title; a heading's title cell is its chapter's name. */
@@ -430,7 +430,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const panel = win.getByRole("region", { name: "Add to the Set" });
       // M198: one line, "Insert between “A” and “B” · chapter".
       await expect(panel.getByRole("status", { name: /^Insert between “Warm Two” and “Warm One”/ })).toBeVisible();
-      const suggestion = win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row").first();
+      const suggestion = win.getByRole("grid", { name: "Suggestions" }).locator(".track-table__row").first();
       await expect(suggestion).toBeVisible({ timeout: 30_000 });
       // M196: the title is its own span; an "In Set" mark may follow it in the cell.
       const suggested = ((await suggestion.locator('[data-column="title"] .prepare-source__title-text').textContent()) ?? "").trim();
@@ -570,7 +570,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 
       await win.getByRole("link", { name: "Library", exact: true }).click();
-      const table = win.getByRole("table", { name: "Library tracks" });
+      const table = win.getByRole("grid", { name: "Library tracks" });
       const titled = (title: string) =>
         table.locator('[role="row"][data-index]').filter({
           has: win.locator('[data-column="title"]', { hasText: new RegExp(`^${title}$`) }),

@@ -45,7 +45,7 @@ describe("a table scrolled sideways", () => {
         <TrackTable<Row> columns={COLUMNS} source={inMemorySource([{ id: 1, title: "A" }])} getRowKey={(r) => r.id} />
       </ScaleProvider>,
     );
-    const scroll = screen.getByRole("table");
+    const scroll = screen.getByRole("grid");
     scroll.scrollLeft = 120;
     fireEvent.scroll(scroll);
     // What a browser does as a header cell takes focus: it moves the scroll to centre it.

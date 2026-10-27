@@ -250,7 +250,7 @@ function renderScreen() {
 }
 
 async function tableReady() {
-  await screen.findByRole("table", { name: "Library tracks" });
+  await screen.findByRole("grid", { name: "Library tracks" });
   await screen.findByText("Track 1");
 }
 
@@ -369,7 +369,7 @@ describe("what the entries do", () => {
     renderScreen();
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
-    fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), { key: "a", ctrlKey: true });
+    fireEvent.keyDown(screen.getByRole("grid", { name: "Library tracks" }), { key: "a", ctrlKey: true });
     await screen.findByText(/everything matching/);
     await userEvent.click((await menuItem("Match on Beatport…", await openGroup("Beatport"))));
     expect(OPEN_MATCH.mock.calls[0]![0]).toEqual({ query: expect.any(Object), count: 3 });
@@ -495,7 +495,7 @@ describe("the toolbar row", () => {
   it("is one row directly above the table, with the count and Select all; Columns… is the header's corner", async () => {
     renderScreen();
     await tableReady();
-    const table = screen.getByRole("table", { name: "Library tracks" });
+    const table = screen.getByRole("grid", { name: "Library tracks" });
     const row = document.querySelector<HTMLElement>(".cp-filter-bar")!;
     // Document order: the filter row, then the table. Select all is at the end of the row (C215).
     expect(row.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -646,7 +646,7 @@ describe("the table", () => {
       await userEvent.click(within(picker).getByRole("checkbox", { name }));
     }
     await userEvent.keyboard("{Escape}");
-    const table = screen.getByRole("table", { name: "Library tracks" });
+    const table = screen.getByRole("grid", { name: "Library tracks" });
     expect(within(table).getByRole("columnheader", { name: /Match/ })).toBeInTheDocument();
     expect(within(table).getAllByText("To check").length).toBe(3);
     expect(within(table).getAllByText("81.0").length).toBe(3);

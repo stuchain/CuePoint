@@ -112,7 +112,7 @@ describe("a dig's table", () => {
     // The header, and a screenful with its overscan.
     expect(rows.length).toBeGreaterThan(1);
     expect(rows.length).toBeLessThan(120);
-    expect(screen.getByRole("table", { name: "Tracks this dig found" })).toHaveAttribute(
+    expect(screen.getByRole("grid", { name: "Tracks this dig found" })).toHaveAttribute(
       "aria-rowcount",
       String(TRACKS),
     );

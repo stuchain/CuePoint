@@ -71,7 +71,7 @@ function tree(props: Props) {
 function draw(props: Props = {}) {
   const onSelect = props.onSelect ?? vi.fn();
   const view = render(tree({ ...props, onSelect }));
-  const table = screen.getByRole("table", { name: "Rows" });
+  const table = screen.getByRole("grid", { name: "Rows" });
   table.focus();
   return { ...view, table, onSelect: onSelect as ReturnType<typeof vi.fn>, again: (next: Props) => view.rerender(tree({ onSelect, ...next })) };
 }
@@ -269,7 +269,7 @@ describe("the cursor", () => {
       });
     }
     render(<Screen />);
-    const table = screen.getByRole("table", { name: "Rows" });
+    const table = screen.getByRole("grid", { name: "Rows" });
     table.focus();
     fireEvent.keyDown(table, { key: "ArrowDown", shiftKey: true });
     fireEvent.keyDown(table, { key: "ArrowDown", shiftKey: true });
@@ -388,5 +388,25 @@ describe("Enter, F2 and Escape (C186, C188)", () => {
     fireEvent.keyDown(popover, { key: "Escape" });
     popover.remove();
     expect(onClearSelection).not.toHaveBeenCalled();
+  });
+});
+
+describe("the grid and its current row (M457)", () => {
+  it("is a multi-select grid of gridcells that names the cursor's row as its active descendant", () => {
+    const { table } = draw({ activeIndex: 2 });
+    expect(table).toHaveAttribute("role", "grid");
+    expect(table).toHaveAttribute("aria-multiselectable", "true");
+    expect(screen.getAllByRole("gridcell").length).toBeGreaterThan(0);
+    const current = document.getElementById(table.getAttribute("aria-activedescendant")!);
+    expect(current).toHaveAttribute("role", "row");
+    expect(current).toHaveAttribute("data-index", "2");
+    fireEvent.keyDown(table, { key: "ArrowDown" });
+    const next = document.getElementById(table.getAttribute("aria-activedescendant")!);
+    expect(next).toHaveAttribute("data-index", "3");
+  });
+
+  it("names no active descendant before there is a current row", () => {
+    const { table } = draw();
+    expect(table).not.toHaveAttribute("aria-activedescendant");
   });
 });

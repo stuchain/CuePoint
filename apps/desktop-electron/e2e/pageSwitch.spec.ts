@@ -390,7 +390,7 @@ test.describe("page-switch time budget", () => {
       const window = await ready(app);
       await importCollection(window, writeExport(workspace));
       // The Library is home and already open; wait for its table so round 1 starts from a settled page.
-      await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 60_000 });
+      await expect(window.getByRole("grid", { name: "Library tracks" })).toBeVisible({ timeout: 60_000 });
       await expect(window.getByTestId("library-track-count")).toContainText("5,000 tracks", { timeout: 60_000 });
 
       await installShownProbe(window);

@@ -160,7 +160,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await expect(window.getByRole("tab", { name: /^One at a time/ })).toHaveCount(0);
 
       await window.getByRole("tab", { name: "Missing files" }).click();
-      const missing = window.getByRole("table", { name: "Missing files" });
+      const missing = window.getByRole("grid", { name: "Missing files" });
       await expect(missing.getByText("Gone")).toBeVisible();
       await expect(missing.getByText("Present One")).toHaveCount(0);
 
@@ -282,7 +282,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
         // places list open. It opens from a track's Beatport tab in the Library (a playlist's
         // Match starts a run and opens no window, C22).
         await window.getByRole("link", { name: "Library", exact: true }).click();
-        await window.getByRole("table", { name: "Library tracks" }).getByText("Present One").first().click();
+        await window.getByRole("grid", { name: "Library tracks" }).getByText("Present One").first().click();
         // D11, D16: Track details folds itself when the window is too narrow for the table beside it.
         await showTrackDetails(window);
         await window.getByRole("tab", { name: "Beatport" }).click();

@@ -192,7 +192,7 @@ function renderScreen(props: React.ComponentProps<typeof LibraryScreen> = {}) {
 }
 
 async function ready() {
-  await screen.findByRole("table", { name: "Library tracks" });
+  await screen.findByRole("grid", { name: "Library tracks" });
   await screen.findByText("Warm Two");
   const tree = await screen.findByRole("tree", { name: "Collections" });
   await within(tree).findByText("Friday copy");
@@ -294,7 +294,7 @@ describe("a Set as the table's scope (DEC-104, fact 3)", () => {
     await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
     await screen.findByRole("note");
     await userEvent.click(screen.getByText("Warm Two"));
-    fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), {
+    fireEvent.keyDown(screen.getByRole("grid", { name: "Library tracks" }), {
       key: "ArrowDown",
       altKey: true,
     });

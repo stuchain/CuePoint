@@ -121,7 +121,7 @@ describe("a dig's results as rows of cards", () => {
     expect(await card("Artist Mara Veil, 1 chart · 1 new")).toBeInTheDocument();
     expect(await card("Label NIGHTFALL-AUDIO, 3 new")).toBeInTheDocument();
     // The cards, not a table, are what the tab holds.
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
   it("names a chart's maker on its own, with no 'by' in front", async () => {
@@ -270,7 +270,7 @@ describe("coming back from a card", () => {
     const image = label.querySelector("img");
 
     fireEvent.click(await card("Artist Mara Veil, 1 chart · 1 new"));
-    expect(await screen.findByRole("table", { name: "Mara Veil" })).toBeInTheDocument();
+    expect(await screen.findByRole("grid", { name: "Mara Veil" })).toBeInTheDocument();
     // The cards are kept, hidden, while the card's tracks show.
     expect(screen.queryByRole("region", { name: "Your labels" })).not.toBeInTheDocument();
     expect(label.isConnected).toBe(true);
@@ -316,7 +316,7 @@ describe("coming back from a card", () => {
     top = 640; // read down the cards
     fireEvent.click(open);
     expect(top).toBe(0);
-    await screen.findByRole("table", { name: "NIGHTFALL-AUDIO" });
+    await screen.findByRole("grid", { name: "NIGHTFALL-AUDIO" });
     top = 120; // a little way down the card's tracks
     fireEvent.click(screen.getByRole("button", { name: "Back to all results" }));
     expect(top).toBe(640);
@@ -479,7 +479,7 @@ describe("opening a card, and Everything", () => {
         expect.objectContaining({ run_id: 1, groups: [{ kind: "artist", key: "mara veil" }], owned: "hide" }),
       ),
     );
-    expect(await screen.findByRole("table", { name: "Mara Veil" })).toBeInTheDocument();
+    expect(await screen.findByRole("grid", { name: "Mara Veil" })).toBeInTheDocument();
     expect(bridge.getDiscoveryRunTracks).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Back to all results" }));
     expect(await screen.findByRole("region", { name: "Your labels" })).toBeInTheDocument();
@@ -489,7 +489,7 @@ describe("opening a card, and Everything", () => {
     install();
     renderRun();
     fireEvent.click(await card("Label NIGHTFALL-AUDIO, 3 new"));
-    await screen.findByRole("table", { name: "NIGHTFALL-AUDIO" });
+    await screen.findByRole("grid", { name: "NIGHTFALL-AUDIO" });
     // Nothing ticked in the card's table: all of its actions wait for rows.
     expect(await screen.findByRole("button", { name: "Add to a Beatport playlist…" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Beatport" })).toBeDisabled();
@@ -499,7 +499,7 @@ describe("opening a card, and Everything", () => {
     install();
     renderRun();
     fireEvent.click(await screen.findByRole("button", { name: "Everything · 5 tracks" }));
-    const table = await screen.findByRole("table", { name: "Tracks this dig found" });
+    const table = await screen.findByRole("grid", { name: "Tracks this dig found" });
     // From waits in the Columns list at the default window (M85, D12): it is one tick away.
     expect(within(table).queryByText("From")).toBeNull();
     fireEvent.click(within(table).getByRole("button", { name: "Columns" }));
@@ -522,7 +522,7 @@ describe("opening a card, and Everything", () => {
       ),
     });
     renderRun();
-    expect(await screen.findByRole("table", { name: "Tracks this dig found" })).toBeInTheDocument();
+    expect(await screen.findByRole("grid", { name: "Tracks this dig found" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Back to all results" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Your labels" })).not.toBeInTheDocument();
   });
@@ -542,7 +542,7 @@ describe("opening a card, and Everything", () => {
       })),
     });
     renderRun();
-    expect(await screen.findByRole("table", { name: "Tracks this dig found" })).toBeInTheDocument();
+    expect(await screen.findByRole("grid", { name: "Tracks this dig found" })).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Not now");
   });
 

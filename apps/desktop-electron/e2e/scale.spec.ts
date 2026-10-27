@@ -199,7 +199,7 @@ test.describe("the sizes (PAGES-14)", () => {
       for (const edgeScale of [1.25, 1.5]) {
         await openAt(win, edgeScale);
         await win.getByRole("link", { name: "Library", exact: true }).click();
-        await expect(win.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
+        await expect(win.getByRole("grid", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
         await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
         await settled(win);
         expect(await fractionalEdges(win), `Library: borders and shadows at ${edgeScale}×`).toEqual([]);
@@ -219,7 +219,7 @@ test.describe("the sizes (PAGES-14)", () => {
           for (const page of ["Settings", "Library"]) {
             await win.getByRole("link", { name: page, exact: true }).click();
             if (page === "Library") {
-              await expect(win.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
+              await expect(win.getByRole("grid", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
               await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
             } else {
               await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
@@ -237,7 +237,7 @@ test.describe("the sizes (PAGES-14)", () => {
           }
 
           const rows = await win.evaluate(() => {
-            const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+            const table = document.querySelector<HTMLElement>('[role="grid"][aria-label="Library tracks"]')!;
             // The header row with the line under it is one row tall, as a body row is (L3, DEC-301):
             // the line is inside that height, so the pane's lines beside it meet the table's.
             const header = table.querySelector<HTMLElement>(".track-table__header")!;

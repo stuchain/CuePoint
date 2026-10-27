@@ -321,7 +321,7 @@ describe("a cell at the row's end (rowEnd, C15d)", () => {
 });
 
 describe("moving the active row with Alt+↑ and Alt+↓ (FLW-10)", () => {
-  const table = () => screen.getByRole("table");
+  const table = () => screen.getByRole("grid");
 
   it("reports the active row and the direction", () => {
     const onRowMove = vi.fn();
@@ -350,7 +350,7 @@ describe("moving the active row with Alt+↑ and Alt+↓ (FLW-10)", () => {
     expect(onRowMove).not.toHaveBeenCalled();
     expect(() => {
       renderTable({ source: inMemorySource(tracks(3)), activeIndex: 0 });
-      fireEvent.keyDown(screen.getAllByRole("table")[1]!, { key: "ArrowDown", altKey: true });
+      fireEvent.keyDown(screen.getAllByRole("grid")[1]!, { key: "ArrowDown", altKey: true });
     }).not.toThrow();
   });
 });
@@ -403,7 +403,7 @@ describe("the context menu gesture (PLAYER-09)", () => {
     const onRowContextMenu = vi.fn();
     renderTable({ source: inMemorySource(tracks(5)), onRowContextMenu, activeIndex: 2 });
 
-    const table = screen.getByRole("table");
+    const table = screen.getByRole("grid");
     fireEvent.keyDown(table, { key: "F10", shiftKey: true });
     expect(onRowContextMenu).toHaveBeenCalledWith(
       expect.objectContaining({ id: 3 }),
@@ -420,7 +420,7 @@ describe("the context menu gesture (PLAYER-09)", () => {
     const onRowContextMenu = vi.fn();
     renderTable({ source: inMemorySource(tracks(5)), onRowContextMenu, activeIndex: null });
 
-    fireEvent.keyDown(screen.getByRole("table"), { key: "ContextMenu" });
+    fireEvent.keyDown(screen.getByRole("grid"), { key: "ContextMenu" });
 
     expect(onRowContextMenu).not.toHaveBeenCalled();
   });
@@ -429,7 +429,7 @@ describe("the context menu gesture (PLAYER-09)", () => {
     const onRowContextMenu = vi.fn();
     renderTable({ source: inMemorySource(tracks(5)), onRowContextMenu, activeIndex: 0 });
 
-    fireEvent.keyDown(screen.getByRole("table"), { key: "F10" });
+    fireEvent.keyDown(screen.getByRole("grid"), { key: "F10" });
 
     expect(onRowContextMenu).not.toHaveBeenCalled();
   });
@@ -439,7 +439,7 @@ describe("the context menu gesture (PLAYER-09)", () => {
     const onRowActivate = vi.fn();
     renderTable({ source: inMemorySource(tracks(5)), onRowActivate, activeIndex: 3 });
 
-    fireEvent.keyDown(screen.getByRole("table"), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("grid"), { key: "Enter" });
 
     expect(onRowActivate).toHaveBeenCalledWith(expect.objectContaining({ id: 4 }), 3);
   });
@@ -448,7 +448,7 @@ describe("the context menu gesture (PLAYER-09)", () => {
     const onRowActivate = vi.fn();
     renderTable({ source: inMemorySource(tracks(5)), onRowActivate });
 
-    fireEvent.keyDown(screen.getByRole("table"), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("grid"), { key: "Enter" });
 
     expect(onRowActivate).not.toHaveBeenCalled();
   });
@@ -458,7 +458,7 @@ describe("the context menu gesture (PLAYER-09)", () => {
     // focus would drop the user at the top of the page instead.
     renderTable();
 
-    const table = screen.getByRole("table");
+    const table = screen.getByRole("grid");
     expect(table).toHaveAttribute("tabindex", "0");
     table.focus();
     expect(table).toHaveFocus();
@@ -993,7 +993,7 @@ describe("dragging rows (ORG-11)", () => {
   it("takes a drop below the last row as the end", () => {
     const onRowDrop = vi.fn();
     renderTable({ onRowDrop });
-    const table = screen.getByRole("table");
+    const table = screen.getByRole("grid");
     const body = table.querySelector(".track-table__body") as HTMLElement;
     body.getBoundingClientRect = () => ({ top: 0, bottom: 180, left: 0, right: 0, width: 0, height: 180, x: 0, y: 0, toJSON: () => ({}) });
     const dataTransfer = transfer();
@@ -1028,7 +1028,7 @@ describe("dragging rows (ORG-11)", () => {
   it("hands an empty table's drop to onEmptyDrop, wherever in it", () => {
     const onEmptyDrop = vi.fn();
     renderTable({ source: inMemorySource([]), onEmptyDrop });
-    const table = screen.getByRole("table");
+    const table = screen.getByRole("grid");
     const dataTransfer = transfer();
 
     const over = new MouseEvent("dragover", { bubbles: true, cancelable: true });
@@ -1050,7 +1050,7 @@ describe("dragging rows (ORG-11)", () => {
     expect(root).toHaveAttribute("data-drop-ready");
     expect(screen.getByText("Drop here to add to “Friday”")).toBeInTheDocument();
 
-    fireEvent.dragLeave(screen.getByRole("table"));
+    fireEvent.dragLeave(screen.getByRole("grid"));
     expect(root).not.toHaveAttribute("data-drop-ready");
 
     drag("dragover", renderedRows()[1]!, dataTransfer, 0);
@@ -1403,7 +1403,7 @@ describe("an empty cell reads as a dash only when the value is missing (C73, S2)
     renderTable({ columns });
     const first = renderedRows()[0]!;
     expect(within(first).getAllByText("—")).toHaveLength(2);
-    const cells = within(first).getAllByRole("cell");
+    const cells = within(first).getAllByRole("gridcell");
     expect(cells[1]).toHaveTextContent(/^$/);
     expect(cells[4]).toHaveTextContent(/^$/);
   });
@@ -1444,7 +1444,7 @@ describe("sorting by a column with an accessor, in the table (C193)", () => {
         />
       </ScaleProvider>,
     );
-    expect(renderedRows().map((row) => within(row).getAllByRole("cell")[0]!.textContent)).toEqual(["C", "A", "B"]);
+    expect(renderedRows().map((row) => within(row).getAllByRole("gridcell")[0]!.textContent)).toEqual(["C", "A", "B"]);
     expect(screen.getByRole("columnheader", { name: /BPM/ })).toHaveAttribute("aria-sort", "ascending");
   });
 
@@ -1454,7 +1454,7 @@ describe("sorting by a column with an accessor, in the table (C193)", () => {
       source: inMemorySource(DATA),
       sort: { key: "bpm", direction: "desc" },
     });
-    expect(renderedRows().map((row) => within(row).getAllByRole("cell")[0]!.textContent)).toEqual(["A", "C", "B"]);
+    expect(renderedRows().map((row) => within(row).getAllByRole("gridcell")[0]!.textContent)).toEqual(["A", "C", "B"]);
   });
 
   it("leaves a column with an engine sort key to the engine", () => {
@@ -1463,7 +1463,7 @@ describe("sorting by a column with an accessor, in the table (C193)", () => {
       { id: "bpm", header: "BPM", sortKey: "bpm", accessor: (t) => t.bpm, render: (t) => String(t.bpm) },
     ];
     renderTable({ columns: withKey, source: inMemorySource(DATA), sort: { key: "bpm", direction: "asc" } });
-    expect(renderedRows().map((row) => within(row).getAllByRole("cell")[0]!.textContent)).toEqual(["A", "B", "C"]);
+    expect(renderedRows().map((row) => within(row).getAllByRole("gridcell")[0]!.textContent)).toEqual(["A", "B", "C"]);
   });
 });
 
@@ -1528,21 +1528,21 @@ describe("the Delete key (M483)", () => {
   it("reports Delete on the table, and leaves a key pressed in a field inside a row alone", () => {
     const onDeleteKey = vi.fn();
     renderTable({ onDeleteKey });
-    const table = screen.getByRole("table", { name: "Tracks" });
+    const table = screen.getByRole("grid", { name: "Tracks" });
     fireEvent.keyDown(table, { key: "Delete" });
     expect(onDeleteKey).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing without a handler", () => {
     renderTable({});
-    expect(() => fireEvent.keyDown(screen.getByRole("table", { name: "Tracks" }), { key: "Delete" })).not.toThrow();
+    expect(() => fireEvent.keyDown(screen.getByRole("grid", { name: "Tracks" }), { key: "Delete" })).not.toThrow();
   });
 });
 
 describe("a drag the table will not take (C187)", () => {
   it("answers none, so the pointer shows a no-drop cursor", () => {
     renderTable({ onRowDrop: () => {}, acceptsRowDrop: () => false });
-    const table = screen.getByRole("table", { name: "Tracks" });
+    const table = screen.getByRole("grid", { name: "Tracks" });
     const dataTransfer = { dropEffect: "move", effectAllowed: "move" } as unknown as DataTransfer;
     fireEvent.dragOver(table, { dataTransfer });
     expect(dataTransfer.dropEffect).toBe("none");

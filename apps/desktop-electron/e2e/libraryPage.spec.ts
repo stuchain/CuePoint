@@ -263,7 +263,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
         ),
       );
       await openLibrary(window);
-      const table = window.getByRole("table", { name: "Library tracks" });
+      const table = window.getByRole("grid", { name: "Library tracks" });
       await expect(table.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
 
       // Two buttons, never a menu, and on one line whatever their labels say.
@@ -285,7 +285,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await expect(window.getByRole("button", { name: /^Select all/ })).toHaveCount(0);
       await expect(
         // M404/D33: the corner button is "Columns", without "…".
-        window.getByRole("table", { name: "Library tracks" }).getByRole("button", { name: "Columns", exact: true }),
+        window.getByRole("grid", { name: "Library tracks" }).getByRole("button", { name: "Columns", exact: true }),
       ).toBeVisible();
       // The notice line is not on the page while someone works in the table.
       await expect(window.getByRole("status", { name: "Getting your library ready" })).toHaveCount(0);
@@ -297,7 +297,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
           [...document.querySelectorAll<HTMLElement>(selector)].find((el) => el.offsetParent) ?? null;
         const row = visible(".cp-filter-bar__row")!;
         const bar = visible(".cp-selection-bar");
-        const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+        const table = document.querySelector<HTMLElement>('[role="grid"][aria-label="Library tracks"]')!;
         const first = table.querySelector<HTMLElement>(".track-table__row");
         const round = (value: number) => Math.round(value * 10) / 10;
         const tableBox = table.getBoundingClientRect();
@@ -317,7 +317,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
         const visible = (selector: string) =>
           [...document.querySelectorAll<HTMLElement>(selector)].find((el) => el.offsetParent) ?? null;
         const bar = visible(".cp-selection-bar");
-        const box = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+        const box = document.querySelector<HTMLElement>('[role="grid"][aria-label="Library tracks"]')!;
         const header = box.querySelector<HTMLElement>(".track-table__header")!;
         const rect = box.getBoundingClientRect();
         const top = Math.max(rect.top + box.clientTop + header.getBoundingClientRect().height, 0);
@@ -613,7 +613,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
         BrowserWindow.getAllWindows()[0]!.webContents.setZoomFactor(0.4),
       );
       await openLibrary(window);
-      await window.getByRole("table", { name: "Library tracks" }).waitFor();
+      await window.getByRole("grid", { name: "Library tracks" }).waitFor();
 
       const widths = await window.evaluate(() => ({
         // The page scroller keeps its scrollbar's room (C219): what the page fills is what is left of it.

@@ -768,7 +768,7 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
     render(<App />);
     await userEvent.click(navLink("Library"));
 
-    expect(await screen.findByRole("table", { name: "Library tracks" })).toBeInTheDocument();
+    expect(await screen.findByRole("grid", { name: "Library tracks" })).toBeInTheDocument();
     await userEvent.click(await screen.findByText("Contact"));
 
     // The Inspector is the shell's, and the page reached it.
@@ -780,7 +780,7 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
   it("empties the Inspector when the user leaves the page", async () => {
     render(<App />);
     await userEvent.click(navLink("Library"));
-    await screen.findByRole("table", { name: "Library tracks" });
+    await screen.findByRole("grid", { name: "Library tracks" });
     await userEvent.click(await screen.findByText("Contact"));
     // A selection opens the panel after the double-click window (K1).
     const inspector = await screen.findByRole("complementary", { name: /track details/i }, { timeout: 3000 });

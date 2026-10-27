@@ -731,7 +731,7 @@ describe("choosing keys", () => {
     renderKeys();
     await opened();
     // With no key picked the list already shows every track in the sources, and the caption asks.
-    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const table = await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
     expect(await within(table).findByText("Track 1")).toBeInTheDocument();
     expect(screen.getByText("Pick a key")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Tracks" })).toBeInTheDocument();
@@ -796,7 +796,7 @@ describe("choosing keys", () => {
   it("counts the tracks in the toolbar and links to the Library from it, as a go-to link (C80, C11)", async () => {
     renderKeys();
     await opened();
-    await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
     const bar = trackToolbar();
     // M418: the count alone, the noun is the heading's ("Tracks 3"). The toolbar's other status is
     // M382's inline "Saved", empty until a rating is set.
@@ -819,7 +819,7 @@ describe("choosing keys", () => {
       renderKeys();
       await opened();
       fireEvent.click(await within(await findList()).findByRole("button", { name: /^8A,/ }, LOADED));
-      await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+      await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
       const bar = trackToolbar();
       const more = await within(bar).findByRole("button", { name: "More actions for these tracks" });
       expect(within(bar).queryByRole("button", { name: "Open in Library" })).toBeNull();
@@ -838,7 +838,7 @@ describe("choosing keys", () => {
   it("selects the row that is right-clicked first, so the menu acts on what is marked (C183)", async () => {
     renderKeys();
     await opened();
-    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const table = await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
     const row = async (title: string) => (await within(table).findByText(title)).closest("[role=row]")!;
     fireEvent.click(await row("Track 1"));
     fireEvent.click(await row("Track 2"), { ctrlKey: true });
@@ -940,7 +940,7 @@ describe("choosing keys", () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
-    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const table = await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
     const row = (await within(table).findByText("Track 3")).closest("[role=row]")!;
     fireEvent.click(row);
     await waitFor(() => expect(getSelectedTrack()).toMatchObject({ id: 3, key: "9A" }));
@@ -951,7 +951,7 @@ describe("choosing keys", () => {
     await opened();
     fireEvent.click(rowButton("8A"));
     // The bar shows once a track is selected; before that there is no empty band.
-    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const table = await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
     expect(screen.queryByRole("toolbar", { name: "Selection" })).toBeNull();
     fireEvent.click((await within(table).findByText("Track 3")).closest("[role=row]")!);
     const bar = await screen.findByRole("toolbar", { name: "Selection" }, LOADED);
@@ -989,7 +989,7 @@ describe("the Beatport and More entries (K4)", () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
-    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const table = await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
     const row = (await within(table).findByText("Track 3")).closest("[role=row]")!;
     fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
     await userEvent.click(await menuItem(entry, await screen.findByRole("menu")));
@@ -1017,7 +1017,7 @@ describe("the Beatport and More entries (K4)", () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
-    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const table = await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
     const row = (await within(table).findByText("Track 3")).closest("[role=row]")!;
     const populations = mock("getKeysPopulation").mock.calls.length;
     fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
@@ -1052,7 +1052,7 @@ describe("a rating or favorite set from the menu (M382)", () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
-    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const table = await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
     const row = (await within(table).findByText("Track 3")).closest("[role=row]")!;
     fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
     const reads = {

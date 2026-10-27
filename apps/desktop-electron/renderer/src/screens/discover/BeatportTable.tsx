@@ -179,7 +179,7 @@ export function BeatportTable<Row extends BeatportTrackRow>({
   const onRowKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
     // The table answers a key it owns (the arrows, Ctrl+Space) and says so.
     if (event.defaultPrevented) return;
-    if ((event.target as HTMLElement).getAttribute("role") !== "table") return;
+    if ((event.target as HTMLElement).getAttribute("role") !== "grid") return;
     if (event.key === "Escape" && selection.count > 0) {
       event.preventDefault();
       selection.clear();

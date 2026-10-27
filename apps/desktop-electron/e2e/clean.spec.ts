@@ -152,7 +152,7 @@ async function importLibrary(window: Page, xml: string) {
 
 function libraryRow(window: Page, title: string) {
   return window
-    .getByRole("table", { name: "Library tracks" })
+    .getByRole("grid", { name: "Library tracks" })
     .getByRole("row")
     .filter({ hasText: title });
 }
@@ -329,7 +329,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await window.getByRole("tab", { name: "Missing files" }).click();
         await window.getByRole("button", { name: /^Check (every file|again)$/ }).click();
         await idle(window);
-        const missing = window.getByRole("table", { name: "Missing files" });
+        const missing = window.getByRole("grid", { name: "Missing files" });
         await expect(missing.getByText("Gone")).toBeVisible({ timeout: 15_000 });
         await expect(missing.getByText("Tone One")).toHaveCount(0);
       });
@@ -338,12 +338,12 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await expect(window.getByRole("tab", { name: "Missing files, 1" })).toBeVisible({ timeout: 15_000 });
         await expect(window.getByRole("tab", { name: /^Health/ })).toHaveCount(0);
         await expect(window.getByRole("tab", { name: /^Fix values/ })).toHaveCount(0);
-        const table = window.getByRole("table", { name: "Missing files" });
+        const table = window.getByRole("grid", { name: "Missing files" });
         await expect(table.getByText("Gone")).toBeVisible({ timeout: 15_000 });
         await expect(table.getByText("Tone One")).toHaveCount(0);
         await window.getByRole("link", { name: "Library", exact: true }).click();
         await expect(
-          window.getByRole("table", { name: "Library tracks" }).getByText("Tone One"),
+          window.getByRole("grid", { name: "Library tracks" }).getByText("Tone One"),
         ).toBeVisible({ timeout: 15_000 });
       });
 

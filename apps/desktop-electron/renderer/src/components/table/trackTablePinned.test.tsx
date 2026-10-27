@@ -54,7 +54,7 @@ describe("a table in a pane narrower than its pinned columns", () => {
   it("does not pin, so the other columns scroll into reach", () => {
     width = 368;
     const { container } = render(table());
-    expect(screen.getByRole("table")).toBeTruthy();
+    expect(screen.getByRole("grid")).toBeTruthy();
     expect(container.querySelector(".track-table__header-cell-wrap--sticky")).toBeNull();
     expect(container.querySelector(".track-table__cell--sticky")).toBeNull();
   });

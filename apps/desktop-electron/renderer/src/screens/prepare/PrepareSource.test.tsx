@@ -183,7 +183,7 @@ function renderAt(path: string) {
 }
 
 function rowsOf(name: string): HTMLElement[] {
-  return within(screen.getByRole("table", { name }))
+  return within(screen.getByRole("grid", { name }))
     .getAllByRole("row")
     .filter((row) => row.dataset.index !== undefined);
 }
@@ -355,7 +355,7 @@ describe("the ranking, said in the BPM change header (C203)", () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     await suggestionRows();
-    const table = screen.getByRole("table", { name: "Suggestions" });
+    const table = screen.getByRole("grid", { name: "Suggestions" });
     const header = within(table).getByText("BPM change").closest<HTMLElement>(".track-table__header-cell")!;
     expect(header.getAttribute("title") ?? header.getAttribute("data-hint")).toContain(SUGGESTIONS_RANKING_TITLE);
   });
@@ -391,7 +391,7 @@ describe("Suggestions", () => {
   it("sorts on screen by Key and by BPM change, and remembers the last sort (C193)", async () => {
     const first = await between();
     expect(first.map(titleOf)).toEqual(["Bridge Deep", "Deep Spare", "Deep Relative", "Half Time"]);
-    const table = screen.getByRole("table", { name: "Suggestions" });
+    const table = screen.getByRole("grid", { name: "Suggestions" });
     fireEvent.click(within(table).getByRole("button", { name: "Key" }));
     await waitFor(() => expect(rowsOf("Suggestions").map(titleOf)).toEqual(["Bridge Deep", "Deep Relative", "Deep Spare", "Half Time"]));
     // The engine was not asked for a key it does not know.
@@ -408,7 +408,7 @@ describe("Suggestions", () => {
     const first = rows[0];
     const [best] = SUGGESTIONS.both.suggestions;
     // Title, the normal Key column and a right-aligned BPM change: no fit text, no dot (C78).
-    const table = screen.getByRole("table", { name: "Suggestions" });
+    const table = screen.getByRole("grid", { name: "Suggestions" });
     const headers = Array.from(table.querySelectorAll(".track-table__header-cell")).map((cell) => cell.textContent?.trim());
     expect(headers).toEqual(["Title", "Key", "BPM change"]);
     const header = (name: string) => within(table).getByText(name).closest<HTMLElement>(".track-table__header-cell")!;
@@ -618,7 +618,7 @@ describe("the source tabs keep their state", () => {
     );
     fireEvent.click(rowsOf("Library tracks to add")[0]);
     fireEvent.click(within(panel()).getByRole("tab", { name: "Suggestions" }));
-    expect(screen.queryByRole("table", { name: "Library tracks to add" })).toBeNull();
+    expect(screen.queryByRole("grid", { name: "Library tracks to add" })).toBeNull();
     fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
     expect(within(panel()).getByRole("searchbox", { name: "Search tracks" })).toHaveValue("Deep");
     expect(rowsOf("Library tracks to add").map(titleOf).sort()).toEqual(["Bridge Deep", "Deep Relative", "Deep Spare"]);
@@ -668,7 +668,7 @@ describe("the source tabs keep their state", () => {
     expect(rows.some((row) => row.classList.contains("track-table__row--grip"))).toBe(false);
     fireEvent.click(rows[0]);
     expect(rowsOf("Suggestions")[0]).toHaveAttribute("aria-selected", "true");
-    fireEvent.keyDown(screen.getByRole("table", { name: "Suggestions" }), { key: "Escape" });
+    fireEvent.keyDown(screen.getByRole("grid", { name: "Suggestions" }), { key: "Escape" });
     await waitFor(() => expect(rowsOf("Suggestions")[0]).not.toHaveAttribute("aria-selected", "true"));
   });
 });
@@ -850,7 +850,7 @@ describe("inserting", () => {
   it("an empty Set takes a drop anywhere in its table", async () => {
     renderAt(preparePath(SOURCE_IDS.blank));
     await opened("Blank");
-    const table = screen.getByRole("table", { name: "Set entries" });
+    const table = screen.getByRole("grid", { name: "Set entries" });
     const tracks = transfer({ [TRACK_IDS_MIME]: "[7]" });
     const over = new MouseEvent("dragover", { bubbles: true, cancelable: true });
     Object.defineProperty(over, "dataTransfer", { value: tracks });
@@ -870,7 +870,7 @@ describe("inserting", () => {
   it("a drop below the last row appends to the last chapter", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
-    const table = screen.getByRole("table", { name: "Set entries" });
+    const table = screen.getByRole("grid", { name: "Set entries" });
     const body = table.querySelector(".track-table__body") as HTMLElement;
     body.getBoundingClientRect = () => ({ top: 0, bottom: 100, left: 0, right: 0, width: 0, height: 100, x: 0, y: 0, toJSON: () => ({}) });
     const tracks = transfer({ [TRACK_IDS_MIME]: "[5]" });
@@ -1058,7 +1058,7 @@ describe("the Library tab", () => {
     );
     await waitFor(() => expect(rowsOf("Library tracks to add").length).toBe(3), LOADED);
     // BPM waits in the Columns list in this narrow panel (M85), so the sort is shown on Key.
-    fireEvent.click(within(screen.getByRole("table", { name: "Library tracks to add" })).getByRole("button", { name: "Key" }));
+    fireEvent.click(within(screen.getByRole("grid", { name: "Library tracks to add" })).getByRole("button", { name: "Key" }));
     await waitFor(() => expect(bridge.browseLibrary).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "key" })));
     await waitFor(() => expect(rowsOf("Library tracks to add").length).toBe(3), LOADED);
     fireEvent.doubleClick(rowsOf("Library tracks to add")[2]);
@@ -1197,7 +1197,7 @@ describe("the transition strip (WAVE-07)", () => {
 
     const shown = strip()!;
     const lanes = screen.getByRole("group", { name: "Tempo and key lanes" });
-    const table = screen.getByRole("table", { name: "Set entries" });
+    const table = screen.getByRole("grid", { name: "Set entries" });
     expect(lanes.compareDocumentPosition(shown) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(shown.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -1251,6 +1251,6 @@ describe("a shell without the source panel's reads", () => {
     await opened();
     await act(async () => {});
     expect(panel()).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "Set entries" })).toBeInTheDocument();
+    expect(screen.getByRole("grid", { name: "Set entries" })).toBeInTheDocument();
   });
 });

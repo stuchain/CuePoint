@@ -203,7 +203,7 @@ function renderScreen(props: React.ComponentProps<typeof LibraryScreen> = {}) {
 }
 
 async function ready() {
-  await screen.findByRole("table", { name: "Library tracks" });
+  await screen.findByRole("grid", { name: "Library tracks" });
   await screen.findByText("Track 1");
   await screen.findByRole("treeitem", { name: /Loose/ });
 }

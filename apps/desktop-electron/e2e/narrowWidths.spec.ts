@@ -153,7 +153,7 @@ test.describe("the tightest rows at 1,024 px wide and 1.5x (P2)", () => {
 
       // --- Prepare's source toolbar -------------------------------------------------------
       await win.evaluate((id) => (window.location.hash = `#/prepare/${id}`), setId);
-      await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByRole("grid", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
       await expect(win.locator(".prepare-source__controls")).toBeVisible();
       const prepare = await fit(win, ".prepare-source__controls");
       console.log("Prepare source toolbar at 1024 px / 1.5x:", JSON.stringify(prepare));
@@ -165,7 +165,7 @@ test.describe("the tightest rows at 1,024 px wide and 1.5x (P2)", () => {
       // --- Prepare's side Library table (M85, M88) ----------------------------------------
       // The narrow panel opens on Title and Key: no sideways scroll, and Key's heading is whole.
       await win.getByRole("region", { name: "Add to the Set" }).getByRole("tab", { name: "Library" }).click();
-      const side = win.getByRole("table", { name: "Library tracks to add" });
+      const side = win.getByRole("grid", { name: "Library tracks to add" });
       await expect(side.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
       const sideFit = await side.evaluate((el) => ({
         headers: [...el.querySelectorAll<HTMLElement>(".track-table__header-text")].map((h) => (h.textContent ?? "").trim()),

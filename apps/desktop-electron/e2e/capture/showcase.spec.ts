@@ -251,7 +251,7 @@ function titleCell(window: Page, title: string): Locator {
 
 async function openLibrary(window: Page) {
   await window.getByRole("link", { name: "Library", exact: true }).click();
-  await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
+  await expect(window.getByRole("grid", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
 }
 
 /** Closes every toast showing; info toasts would go by themselves, errors and warnings would not. */
@@ -395,7 +395,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         // the sidebar as a rail, the way a person with this window keeps it: the table gets its columns
         await sidebar("rail");
         await expect(window.getByTestId("library-track-count")).toContainText(`${showcase.tracks.length} tracks`, { timeout: 30_000 });
-        const rows = window.getByRole("table", { name: "Library tracks" }).locator(".track-table__row");
+        const rows = window.getByRole("grid", { name: "Library tracks" }).locator(".track-table__row");
         await expect(rows.nth(5)).toBeVisible({ timeout: 30_000 });
         for (let i = 2; i < 12 && !selected; i += 1) {
           const key = (await rows.nth(i).locator('[data-column="key"]').innerText()).trim();
@@ -483,7 +483,7 @@ test.describe("the website's pictures (SITE-04)", () => {
       await test.step("prepare: the Set in chapters, with the transition strip", async () => {
         await window.getByRole("link", { name: "Prepare", exact: true }).click();
         await expect(window).toHaveURL(/#\/prepare\/\d+$/, { timeout: 30_000 });
-        const table = window.getByRole("table", { name: "Set entries" });
+        const table = window.getByRole("grid", { name: "Set entries" });
         await expect(table).toBeVisible({ timeout: 30_000 });
         await expect(table.locator(".track-table__row").nth(3)).toBeVisible();
         await window.getByRole("button", { name: "View", exact: true }).click();
@@ -519,7 +519,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         await expect(window.getByText(/^Found \d+ tracks from 1 chart/)).toBeVisible({ timeout: 90_000 });
         // The shot of the table: Everything, after the cards.
         await window.getByRole("button", { name: /^Everything · / }).click();
-        const found = window.getByRole("table", { name: "Tracks this dig found" });
+        const found = window.getByRole("grid", { name: "Tracks this dig found" });
         await expect(found.locator(".track-table__row").first()).toBeVisible();
         await idle(window);
         // Beatport's rows have nothing to inspect: the panel away gives the search its width

@@ -284,7 +284,7 @@ test.describe("Alignment (L9)", () => {
 
         // --- L1, L4: Prepare's side panel ---------------------------------------------------
         await win.evaluate((id) => (window.location.hash = `#/prepare/${id}`), setId);
-        await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+        await expect(win.getByRole("grid", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
         await expect(win.locator(".prepare-source__controls")).toBeVisible();
         // M191 (D21): Suggestions | Library are the app's sub-tab slab, a filled box like the select
         // and the table below it, so the slab's box keeps the edge and its words sit inside it.

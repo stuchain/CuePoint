@@ -389,7 +389,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       await window.keyboard.press("Escape");
       const strip = window.getByRole("region", { name: "Transition" });
       await expect(strip).toContainText("Select a row to see the transition");
-      const setTable = window.getByRole("table", { name: "Set entries" });
+      const setTable = window.getByRole("grid", { name: "Set entries" });
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
       // Step 7 made the second track a copy of bands.flac: the two sit level.
       // The fixtures carry no Beatport key, so the strip first says the key was not checked (PAGES-09B).

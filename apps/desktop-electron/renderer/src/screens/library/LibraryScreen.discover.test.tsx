@@ -207,13 +207,13 @@ function renderScreen(props: LibraryScreenProps = {}) {
 }
 
 async function tableReady() {
-  await screen.findByRole("table", { name: "Library tracks" });
+  await screen.findByRole("grid", { name: "Library tracks" });
   await screen.findByText("Track 1");
 }
 
 async function openMenuOn(text: string) {
   // In the table: a right-click selects the row (SB1), and the details panel then shows its title too.
-  const row = within(screen.getByRole("table", { name: "Library tracks" })).getByText(text).closest("[role=row]")!;
+  const row = within(screen.getByRole("grid", { name: "Library tracks" })).getByText(text).closest("[role=row]")!;
   fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
   return screen.findByRole("menu");
 }
@@ -283,7 +283,7 @@ describe("the operations list's Discover entries", () => {
   it("opens the first track's page when several are selected (FLW-8)", async () => {
     const hooks = renderScreen();
     await tableReady();
-    const table = screen.getByRole("table", { name: "Library tracks" });
+    const table = screen.getByRole("grid", { name: "Library tracks" });
     fireEvent.click(within(table).getByText("Track 2"));
     fireEvent.click(within(table).getByText("Track 1"), { ctrlKey: true });
     expect(await screen.findByRole("button", { name: "Clear selection" })).toBeInTheDocument();

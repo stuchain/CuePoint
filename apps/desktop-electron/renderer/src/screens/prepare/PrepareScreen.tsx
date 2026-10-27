@@ -612,7 +612,7 @@ export function PrepareScreen({
     const host = rowsBox.current;
     const target =
       last.id === "remove"
-        ? host?.querySelector<HTMLElement>('[role="table"]')
+        ? host?.querySelector<HTMLElement>('[role="grid"]')
         : host?.querySelector<HTMLElement>(`#${entryButtonDomId(last.id)}:not(:disabled)`);
     if (!target) return;
     pressed.current = null;
@@ -725,16 +725,16 @@ export function PrepareScreen({
       if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
         const group = rowsBox.current?.querySelector<HTMLElement>('.prepare-row-buttons[role="group"]');
         const first = group?.querySelector<HTMLElement>("button:not(:disabled)");
-        if (!event.shiftKey && target.getAttribute("role") === "table" && first) {
+        if (!event.shiftKey && target.getAttribute("role") === "grid" && first) {
           event.preventDefault();
           first.focus();
         } else if (event.shiftKey && first && target === first) {
           event.preventDefault();
-          target.closest<HTMLElement>('[role="table"]')?.focus();
+          target.closest<HTMLElement>('[role="grid"]')?.focus();
         }
         return;
       }
-      if (target.getAttribute("role") !== "table") return;
+      if (target.getAttribute("role") !== "grid") return;
       const plain = !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
       const act = (run: () => void) => {
         event.preventDefault();

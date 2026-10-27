@@ -113,7 +113,7 @@ async function runningOrder(win: Page, setId: number): Promise<{ id: number; tit
 /** A table's row by the title it shows. */
 function rowTitled(win: Page, table: string, title: string) {
   return win
-    .getByRole("table", { name: table })
+    .getByRole("grid", { name: table })
     .locator(".track-table__row")
     .filter({ has: win.locator(`[data-column="title"]`, { hasText: title }) })
     .first();
@@ -208,7 +208,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await win.getByRole("link", { name: "Prepare", exact: true }).click();
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
-      await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByRole("grid", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
 
       // --- the end of the Set, with nothing selected ----------------------------
       await expect(point(win)).toHaveAccessibleName("Insert after “Track 10” · Peak");
@@ -216,7 +216,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       // --- a gap from Suggestions, and the selection follows what went in ------
       await clickRow(win, rowTitled(win, "Set entries", "Track 02"));
       await expect(point(win)).toHaveAccessibleName(/^Insert between “Track 02” and “Track 03”/);
-      const suggestions = win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row");
+      const suggestions = win.getByRole("grid", { name: "Suggestions" }).locator(".track-table__row");
       await expect(suggestions.first()).toBeVisible({ timeout: 30_000 });
       const first = suggestions.first();
       // M196: a track already in the Set ends its title cell with "In Set"; the title is its own span.
@@ -248,7 +248,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await panel.getByRole("searchbox", { name: "Search" }).fill("Track 21");
       // The search waits for typing to stop, so the whole library shows first: drag
       // only once the list has narrowed, or the rows move under the pointer.
-      const libraryRows = win.getByRole("table", { name: "Library tracks to add" }).locator(".track-table__row");
+      const libraryRows = win.getByRole("grid", { name: "Library tracks to add" }).locator(".track-table__row");
       await expect(libraryRows).toHaveCount(1, { timeout: 30_000 });
       const found = rowTitled(win, "Library tracks to add", "Track 21");
       await expect(found).toBeVisible({ timeout: 30_000 });
@@ -265,7 +265,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       // --- below the last row: the dead space under the rows takes a drop too -------
       // The fourteen rows overflow the Set's table once the player bar is always shown, so
       // the window grows until there is space under the last row to drop on.
-      const setScroll = win.getByRole("table", { name: "Set entries" });
+      const setScroll = win.getByRole("grid", { name: "Set entries" });
       const spaceBelow = () =>
         setScroll.evaluate((element) => {
           const rows = element.querySelectorAll(".track-table__row");
@@ -282,7 +282,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await expect(libraryRows).toHaveCount(1, { timeout: 30_000 });
       const below = rowTitled(win, "Library tracks to add", "Track 22");
       await expect(below).toBeVisible({ timeout: 30_000 });
-      const setTable = win.getByRole("table", { name: "Set entries" });
+      const setTable = win.getByRole("grid", { name: "Set entries" });
       const setBox = (await setTable.boundingBox())!;
       await below.dragTo(setTable, {
         sourcePosition: { x: 30, y: 8 },
@@ -307,7 +307,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
 
       // --- a reload keeps the tab and the lanes -------------------------------------
       await win.reload();
-      await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByRole("grid", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toBeVisible();
       await expect(
         win.getByRole("region", { name: "Add to the Set" }).getByRole("tab", { name: "Library" }),
@@ -337,14 +337,14 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await win.getByRole("link", { name: "Prepare", exact: true }).click();
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
-      const setTable = win.getByRole("table", { name: "Set entries" });
+      const setTable = win.getByRole("grid", { name: "Set entries" });
       await expect(setTable).toBeVisible({ timeout: 30_000 });
       await expect(win.getByText(/This Set is empty/)).toBeVisible();
 
       const panel = win.getByRole("region", { name: "Add to the Set" });
       await panel.getByRole("tab", { name: "Library" }).click();
       await panel.getByRole("searchbox", { name: "Search" }).fill("Track 21");
-      const libraryRows = win.getByRole("table", { name: "Library tracks to add" }).locator(".track-table__row");
+      const libraryRows = win.getByRole("grid", { name: "Library tracks to add" }).locator(".track-table__row");
       await expect(libraryRows).toHaveCount(1, { timeout: 30_000 });
       const found = rowTitled(win, "Library tracks to add", "Track 21");
       await expect(found).toBeVisible({ timeout: 30_000 });

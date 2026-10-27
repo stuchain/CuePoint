@@ -309,7 +309,7 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       await window.getByRole("button", { name: "View", exact: true }).click();
       await window.getByRole("menuitemcheckbox", { name: "Transition strip" }).click();
       await window.keyboard.press("Escape");
-      const setTable = window.getByRole("table", { name: "Set entries" });
+      const setTable = window.getByRole("grid", { name: "Set entries" });
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
       const words = window.getByTestId("transition-words");
       const caption = window.getByTestId("transition-caption");

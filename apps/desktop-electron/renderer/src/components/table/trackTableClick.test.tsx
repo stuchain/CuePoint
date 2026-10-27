@@ -63,7 +63,7 @@ function draw(onRowActivate = vi.fn()) {
 describe("a mouse press on a row", () => {
   it("focuses the table without asking the browser to scroll it into view", async () => {
     draw();
-    const table = screen.getByRole("table", { name: "Rows" });
+    const table = screen.getByRole("grid", { name: "Rows" });
     const focus = vi.spyOn(table, "focus");
     const row = (await screen.findByText("Row 2")).closest('[role="row"]')!;
 
@@ -75,7 +75,7 @@ describe("a mouse press on a row", () => {
 
   it("leaves a table that already has focus alone", async () => {
     draw();
-    const table = screen.getByRole("table", { name: "Rows" });
+    const table = screen.getByRole("grid", { name: "Rows" });
     table.focus();
     const focus = vi.spyOn(table, "focus");
     const row = (await screen.findByText("Row 3")).closest('[role="row"]')!;

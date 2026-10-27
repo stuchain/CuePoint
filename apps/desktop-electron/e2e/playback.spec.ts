@@ -126,7 +126,7 @@ async function importCollection(win: Page, xmlPath: string): Promise<void> {
 
 async function openLibrary(win: Page) {
   await win.getByRole("link", { name: "Library" }).click();
-  const table = win.getByRole("table", { name: "Library tracks" });
+  const table = win.getByRole("grid", { name: "Library tracks" });
   await expect(table).toBeVisible({ timeout: 30_000 });
   await win.locator(".track-table__row").first().waitFor({ timeout: 30_000 });
   return table;

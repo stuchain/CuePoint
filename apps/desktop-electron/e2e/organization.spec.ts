@@ -275,7 +275,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(collectionsTree(window).getByText("Openers")).toBeVisible();
 
       // ---------------------------------------------------------------- 3
-      const table = window.getByRole("table", { name: "Library tracks" });
+      const table = window.getByRole("grid", { name: "Library tracks" });
       await expect(table).toBeVisible({ timeout: 30_000 });
       const rows = table.getByRole("row").filter({ hasText: /Track/ });
       await rows.nth(0).click();
@@ -705,7 +705,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(window.getByTestId("library-track-count")).toHaveText("50,000 tracks", {
         timeout: 60_000,
       });
-      const table = window.getByRole("table", { name: "Library tracks" });
+      const table = window.getByRole("grid", { name: "Library tracks" });
       await expect(table).toBeVisible({ timeout: 30_000 });
 
       // Everything matching, which is never a list of ids.

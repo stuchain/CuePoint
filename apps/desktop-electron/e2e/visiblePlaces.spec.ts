@@ -335,12 +335,12 @@ async function readSet(win: Page, setId: number) {
 async function openSet(win: Page, setId: number) {
   await go(win, "#/library");
   await go(win, `#/prepare/${setId}`);
-  await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+  await expect(win.getByRole("grid", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
 }
 
 const setTitles = async (win: Page, setId: number) => (await readSet(win, setId)).entries.map((entry) => entry.track.title);
 
-const setTable = (win: Page) => win.getByRole("table", { name: "Set entries" });
+const setTable = (win: Page) => win.getByRole("grid", { name: "Set entries" });
 
 /** A Set row by its title; a chapter's heading carries its Edit… button in the same cell. */
 function setRow(win: Page, title: string, nth = 0) {
@@ -360,7 +360,7 @@ async function pickEntry(win: Page, title: string, nth = 0) {
 }
 
 const toolbar = (win: Page) => win.getByRole("toolbar", { name: "Selection" });
-const libraryTable = (win: Page) => win.getByRole("table", { name: "Library tracks" });
+const libraryTable = (win: Page) => win.getByRole("grid", { name: "Library tracks" });
 const libraryRow = (win: Page, title: string) =>
   libraryTable(win)
     .locator('[role="row"][data-index]')
@@ -870,7 +870,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(bar).toHaveCount(0);
     await expect(win.getByRole("button", { name: "Actions…" })).toHaveCount(0);
 
-    const rows = win.getByRole("table", { name: "Similar tracks" }).locator('[role="row"][data-index]');
+    const rows = win.getByRole("grid", { name: "Similar tracks" }).locator('[role="row"][data-index]');
     await expect(rows.first()).toBeVisible({ timeout: 30_000 });
     await rows.first().click();
     await expect(bar).toBeVisible();
@@ -891,7 +891,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     });
     await go(win, "#/library");
     await go(win, `#/discover/similar/${seed}`);
-    const rows = win.getByRole("table", { name: "Similar tracks" }).locator('[role="row"][data-index]');
+    const rows = win.getByRole("grid", { name: "Similar tracks" }).locator('[role="row"][data-index]');
     await expect(rows.first()).toBeVisible({ timeout: 30_000 });
     await rows.first().click();
     await use(win, win.getByRole("button", { name: "Open in Library" }), "Open in Library");
@@ -1110,7 +1110,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await go(win, `#/discover/similar/${seed}`);
     const bar = win.getByRole("toolbar", { name: "Selection" });
     // The bar shows once a suggestion is selected.
-    const rows = win.getByRole("table", { name: "Similar tracks" }).locator('[role="row"][data-index]');
+    const rows = win.getByRole("grid", { name: "Similar tracks" }).locator('[role="row"][data-index]');
     await expect(rows.first()).toBeVisible({ timeout: 30_000 });
     await rows.first().click();
     await expect(bar).toBeVisible();

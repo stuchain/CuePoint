@@ -228,7 +228,7 @@ function renderScreen(props: Record<string, unknown> = {}) {
 
 // Within the table: Track details repeats the title of the selected track.
 const rowFor = (text: string) =>
-  within(screen.getByRole("table", { name: "Library tracks" }))
+  within(screen.getByRole("grid", { name: "Library tracks" }))
     .getByText(text)
     .closest("[role=row]")!;
 
@@ -236,7 +236,7 @@ describe("the Library opened on a track", () => {
   it("shows that track selected, with its details", async () => {
     renderScreen({ trackWith: { trackId: 3, token: "nav-1" } });
 
-    await screen.findByRole("table", { name: "Library tracks" });
+    await screen.findByRole("grid", { name: "Library tracks" });
     await waitFor(() => expect(rowFor("Track 3")).toHaveAttribute("aria-selected", "true"));
     expect(rowFor("Track 1")).toHaveAttribute("aria-selected", "false");
     await waitFor(() => expect(mock("getLibraryTrack")).toHaveBeenCalledWith({ trackId: 3 }));

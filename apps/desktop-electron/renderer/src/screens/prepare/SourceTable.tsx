@@ -180,7 +180,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
       <div
         className="prepare-source__rows"
         onKeyDown={(event) => {
-          if (event.key === "Escape" && selection.count > 0 && (event.target as HTMLElement).getAttribute("role") === "table") {
+          if (event.key === "Escape" && selection.count > 0 && (event.target as HTMLElement).getAttribute("role") === "grid") {
             selection.clear();
           }
         }}

@@ -73,7 +73,7 @@ function tree(bottomBar: React.ReactNode | undefined) {
 describe("the bottom bar over a table (option 1A)", () => {
   it("keeps one end room after the rows, with or without the bar, and draws the bar outside the scroll area", () => {
     const { container, rerender } = render(tree(null));
-    const scroll = screen.getByRole("table", { name: "Rows" });
+    const scroll = screen.getByRole("grid", { name: "Rows" });
     const room = container.querySelector(".track-table__bottom-room");
     expect(room).not.toBeNull();
     expect(scroll.lastElementChild).toBe(room);
@@ -120,7 +120,7 @@ describe("the bottom bar over a table (option 1A)", () => {
 
   it("asks the scroll area for its scroll padding when the keys move the row, so the row stays above the bar", () => {
     render(tree(<div />));
-    const scroll = screen.getByRole("table", { name: "Rows" });
+    const scroll = screen.getByRole("grid", { name: "Rows" });
     const spy = vi.spyOn(window, "getComputedStyle");
     try {
       scroll.focus();
@@ -136,7 +136,7 @@ describe("the bar's place in the tab order", () => {
   it("comes before the table's headers, so Tab reaches it without walking every column", () => {
     render(tree(<button type="button">Clear selection</button>));
     const bar = screen.getByRole("button", { name: "Clear selection" });
-    const table = screen.getByRole("table", { name: "Rows" });
+    const table = screen.getByRole("grid", { name: "Rows" });
     expect(bar.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

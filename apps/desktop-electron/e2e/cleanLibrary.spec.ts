@@ -172,7 +172,7 @@ async function importAndCheck(window: Page, xmlPath: string) {
 }
 
 function row(window: Page, title: string) {
-  return window.getByRole("table", { name: "Library tracks" }).getByRole("row").filter({ hasText: title });
+  return window.getByRole("grid", { name: "Library tracks" }).getByRole("row").filter({ hasText: title });
 }
 
 test.describe("Clean in the Library (CLEAN-13)", () => {

@@ -190,7 +190,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       await importCollection(window, writeExport(workspace, tracks));
       await openLibrary(window);
 
-      const table = window.getByRole("table", { name: "Library tracks" });
+      const table = window.getByRole("grid", { name: "Library tracks" });
 
       // --- browse -------------------------------------------------------
       await expect(table).toBeVisible({ timeout: 30_000 });
@@ -304,7 +304,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       const window = await ready(app);
       await importCollection(window, writeExport(workspace, tracks));
       await openLibrary(window);
-      await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({
+      await expect(window.getByRole("grid", { name: "Library tracks" })).toBeVisible({
         timeout: 30_000,
       });
       await expect(window.getByTestId("library-track-count")).toContainText("300 tracks");
@@ -379,7 +379,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       const window = await ready(app);
       await importCollection(window, writeExport(workspace, tracks));
       await openLibrary(window);
-      await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({
+      await expect(window.getByRole("grid", { name: "Library tracks" })).toBeVisible({
         timeout: 60_000,
       });
 
@@ -495,7 +495,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       await window.evaluate(() => localStorage.setItem("cuepoint-ui-lab-scale", "1"));
       await window.reload();
       await openLibrary(window);
-      await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 60_000 });
+      await expect(window.getByRole("grid", { name: "Library tracks" })).toBeVisible({ timeout: 60_000 });
       await observeLongTasks();
       await lap();
       const smallest = await longTasks();

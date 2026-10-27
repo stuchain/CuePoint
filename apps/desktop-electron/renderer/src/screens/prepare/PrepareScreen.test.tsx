@@ -174,7 +174,7 @@ function where(): string {
 }
 
 function table() {
-  return screen.getByRole("table", { name: "Set entries" });
+  return screen.getByRole("grid", { name: "Set entries" });
 }
 
 function rows(): HTMLElement[] {

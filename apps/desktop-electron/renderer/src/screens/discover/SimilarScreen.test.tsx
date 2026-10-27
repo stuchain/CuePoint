@@ -119,7 +119,7 @@ function closeMenus() {
 }
 
 function table() {
-  return screen.getByRole("table", { name: "Similar tracks" });
+  return screen.getByRole("grid", { name: "Similar tracks" });
 }
 
 function rowOf(text: string): HTMLElement {

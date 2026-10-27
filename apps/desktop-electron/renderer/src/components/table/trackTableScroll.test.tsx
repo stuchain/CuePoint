@@ -120,7 +120,7 @@ describe("the keyboard's own row", () => {
       render(table(null));
       await screen.findByText("Row 1");
       await settle();
-      const grid = screen.getByRole("table", { name: "Tracks" });
+      const grid = screen.getByRole("grid", { name: "Tracks" });
       grid.focus();
       scrolled.mockClear();
 

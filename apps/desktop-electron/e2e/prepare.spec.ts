@@ -206,7 +206,7 @@ interface Measured {
 
 async function measure(win: Page, tableName: string): Promise<Measured> {
   return win.evaluate((name) => {
-    const table = document.querySelector<HTMLElement>(`[role="table"][aria-label="${name}"]`)!;
+    const table = document.querySelector<HTMLElement>(`[role="grid"][aria-label="${name}"]`)!;
     const header = table.querySelector<HTMLElement>(".track-table__header")!;
     const box = table.getBoundingClientRect();
     // The client area, not the box: a horizontal scrollbar along the bottom
@@ -372,7 +372,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await win.getByRole("link", { name: "Prepare", exact: true }).click();
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
-      const table = win.getByRole("table", { name: "Set entries" });
+      const table = win.getByRole("grid", { name: "Set entries" });
       await expect(table).toBeVisible({ timeout: 30_000 });
       await expect(win.locator(".prepare-heading").first()).toBeVisible({ timeout: 30_000 });
       await win.evaluate(async () => {
@@ -398,7 +398,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
 
       // --- the source panel's rows, the page as it opens (PREP-11) -----------
       await setSidebar(win, false);
-      await expect(win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row").first()).toBeVisible({
+      await expect(win.getByRole("grid", { name: "Suggestions" }).locator(".track-table__row").first()).toBeVisible({
         timeout: 30_000,
       });
       const source = await measure(win, "Suggestions");
@@ -534,7 +534,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       // nothing: scroll half a row at a time until an entry is cut.
       for (let tries = 0; !before.partial && tries < 4; tries += 1) {
         await win.evaluate(() => {
-          const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]')!;
+          const table = document.querySelector<HTMLElement>('[role="grid"][aria-label="Set entries"]')!;
           const row = table.querySelector<HTMLElement>(".track-table__row")!;
           table.scrollTop += row.getBoundingClientRect().height / 2;
         });
@@ -546,15 +546,15 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await expect(win.locator(".cp-player-bar")).toBeVisible({ timeout: 15_000 });
       // Back to the top, where the rows below are counted from.
       await win.evaluate(() => {
-        document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]')!.scrollTop = 0;
+        document.querySelector<HTMLElement>('[role="grid"][aria-label="Set entries"]')!.scrollTop = 0;
       });
 
       // --- a shift-click picks the range, with every kind of motion on ----------
-      const entryRows = win.locator('[role="table"][aria-label="Set entries"] .track-table__row:not(.prepare-heading)');
+      const entryRows = win.locator('[role="grid"][aria-label="Set entries"] .track-table__row:not(.prepare-heading)');
       await entryRows.nth(0).click();
       await entryRows.nth(3).click({ modifiers: ["Shift"] });
       await expect(
-        win.locator('[role="table"][aria-label="Set entries"] .track-table__row[aria-selected="true"]:not(.prepare-heading)'),
+        win.locator('[role="grid"][aria-label="Set entries"] .track-table__row[aria-selected="true"]:not(.prepare-heading)'),
         "the range from the first entry to the fourth",
       ).toHaveCount(4);
 
@@ -607,7 +607,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       // --- the default columns at 1264 x 735, scale 1.25, Details open (C246) --------
       await win.evaluate(() => localStorage.setItem("cuepoint-ui-lab-scale", "1.25"));
       await win.reload();
-      await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByRole("grid", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
       const openedAt = await win.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
       await setInnerSize(app, win, WINDOWS_INNER);
       // M125 (D16): the header's Details button shows only while the panel is hidden.
@@ -619,13 +619,13 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         .poll(() =>
           win.evaluate(() => {
             // The table is drawn again as Track details opens: read nothing until it is back.
-            const scroll = document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]');
+            const scroll = document.querySelector<HTMLElement>('[role="grid"][aria-label="Set entries"]');
             return scroll ? scroll.scrollWidth - scroll.clientWidth : Number.POSITIVE_INFINITY;
           }),
         )
         .toBeLessThanOrEqual(1);
       const headersShown = await win
-        .getByRole("table", { name: "Set entries" })
+        .getByRole("grid", { name: "Set entries" })
         .getByRole("columnheader")
         .allTextContents();
       const shownNames = headersShown.map((text) => text.trim()).filter(Boolean);
@@ -638,11 +638,11 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await setInnerSize(app, win, openedAt);
       await win.evaluate(() => localStorage.removeItem("cuepoint-ui-lab-scale"));
       await win.reload();
-      await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByRole("grid", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
 
       // --- the Library, where Phase 8 found a double-click defeated -----------
       await win.getByRole("link", { name: "Library", exact: true }).click();
-      const library = win.getByRole("table", { name: "Library tracks" });
+      const library = win.getByRole("grid", { name: "Library tracks" });
       await expect(library).toBeVisible({ timeout: 30_000 });
       await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
       // Phase 8 found a double-click defeated where a row straddles the bottom of
@@ -653,7 +653,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       // falls depends on the window's height (M496 hides the menu bar, so the page
       // is 27 px taller), and half a row from there landed on a row's boundary.
       await win.evaluate(() => {
-        const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+        const table = document.querySelector<HTMLElement>('[role="grid"][aria-label="Library tracks"]')!;
         const row = table.querySelector<HTMLElement>(".track-table__row")!;
         const height = row.getBoundingClientRect().height;
         const bottom = table.getBoundingClientRect().top + table.clientTop + table.clientHeight;

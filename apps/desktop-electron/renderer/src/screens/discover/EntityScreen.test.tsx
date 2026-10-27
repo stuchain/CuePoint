@@ -237,11 +237,11 @@ async function opened(title: string) {
 }
 
 function yourTracks() {
-  return screen.getByRole("table", { name: "Your tracks" });
+  return screen.getByRole("grid", { name: "Your tracks" });
 }
 
 async function beatportRows(name: RegExp | string) {
-  return screen.findByRole("table", { name }, LOADED);
+  return screen.findByRole("grid", { name }, LOADED);
 }
 
 function rowOf(text: string): HTMLElement {

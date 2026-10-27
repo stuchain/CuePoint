@@ -173,7 +173,7 @@ function renderBoth() {
  * preserve it.
  */
 function visibleRows(): string[] {
-  const table = screen.getByRole("table", { name: "Library tracks" });
+  const table = screen.getByRole("grid", { name: "Library tracks" });
   return within(table)
     .getAllByRole("row")
     .slice(1)
@@ -223,7 +223,7 @@ afterEach(() => {
 describe("toggling shuffle leaves the table alone", () => {
   it("does not reorder the rows", async () => {
     renderBoth();
-    await screen.findByRole("table", { name: "Library tracks" });
+    await screen.findByRole("grid", { name: "Library tracks" });
     await screen.findByText("Track 1");
     const before = visibleRows();
     // Guard the guard: an empty table would make the comparison below pass

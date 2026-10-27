@@ -36,7 +36,7 @@ export function setAreaFloor(above: readonly number[], chrome: number, rowHeight
  */
 function tableChrome(set: HTMLElement): number {
   const area = set.querySelector<HTMLElement>(".prepare-set__rows");
-  const table = set.querySelector<HTMLElement>('[role="table"]');
+  const table = set.querySelector<HTMLElement>('[role="grid"]');
   const header = set.querySelector<HTMLElement>(".track-table__header");
   const edges = area && table ? area.getBoundingClientRect().height - table.clientHeight : 0;
   return edges + (header?.getBoundingClientRect().height ?? 0);

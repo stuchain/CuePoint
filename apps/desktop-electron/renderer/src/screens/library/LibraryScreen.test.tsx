@@ -537,7 +537,7 @@ let importAsks = 0;
 
 /** The table holding rows is what "the first window landed" looks like. */
 async function tableReady() {
-  await screen.findByRole("table", { name: "Library tracks" });
+  await screen.findByRole("grid", { name: "Library tracks" });
   await screen.findByText("Track 1");
 }
 
@@ -974,7 +974,7 @@ describe("an imported library", () => {
   /**
    * This assertion is inverted from LIBRARY-11, deliberately and in one place.
    *
-   * LIBRARY-11 asserted `queryByRole("table")` was **not** in the document and
+   * LIBRARY-11 asserted `queryByRole("grid")` was **not** in the document and
    * called it "the scope boundary this step is most likely to be eroded at" —
    * correct then, because Phase 3 was to import and refresh a collection and
    * nothing more. DEC-039 moved that boundary: the Library page *is* the
@@ -985,7 +985,7 @@ describe("an imported library", () => {
     renderScreen();
     await screen.findByTestId("library-track-count");
 
-    expect(await screen.findByRole("table", { name: "Library tracks" })).toBeInTheDocument();
+    expect(await screen.findByRole("grid", { name: "Library tracks" })).toBeInTheDocument();
   });
 });
 
@@ -1280,7 +1280,7 @@ describe("the browser (LIBUI-10, DEC-039)", () => {
     expect(lastBrowse()).toMatchObject({ playlistId: null, sort: "artist", dir: "asc" });
     // The nine columns a DJ reads, and not the eight that are theirs to turn
     // on (DEC-042) — a default of "everything" is unreadable at this width.
-    const table = screen.getByRole("table", { name: "Library tracks" });
+    const table = screen.getByRole("grid", { name: "Library tracks" });
     expect(within(table).getByRole("columnheader", { name: /Title/ })).toBeInTheDocument();
     expect(within(table).queryByRole("columnheader", { name: /Comment/ })).toBeNull();
   });
@@ -1289,7 +1289,7 @@ describe("the browser (LIBUI-10, DEC-039)", () => {
     renderScreen();
     await tableReady();
 
-    await userEvent.click(within(screen.getByRole("table", { name: "Library tracks" })).getByRole("button", { name: "Title" }));
+    await userEvent.click(within(screen.getByRole("grid", { name: "Library tracks" })).getByRole("button", { name: "Title" }));
 
     await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "title", dir: "asc" }));
     // Sorting is a new question, not a re-render of the rows in hand.
@@ -1438,7 +1438,7 @@ describe("nothing to show (LIBUI-10)", () => {
       screen.getByText("Export again from Rekordbox and import that file"),
     ).toBeInTheDocument();
 
-    const table = screen.getByRole("table", { name: "Library tracks" });
+    const table = screen.getByRole("grid", { name: "Library tracks" });
     await userEvent.click(within(table).getByRole("button", { name: "Import a Rekordbox file…" }));
 
     await waitFor(() => expect(bridge.openXmlFileDialog).toHaveBeenCalledTimes(1));
@@ -1456,7 +1456,7 @@ describe("nothing to show (LIBUI-10)", () => {
       ),
     ).toBeInTheDocument();
 
-    const table = screen.getByRole("table", { name: "Library tracks" });
+    const table = screen.getByRole("grid", { name: "Library tracks" });
     await userEvent.click(
       within(table).getByRole("button", { name: "Check for changes" }),
     );
@@ -1489,7 +1489,7 @@ describe("nothing to show (LIBUI-10)", () => {
     await userEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
     await screen.findByText("No tracks match these filters");
 
-    const table = screen.getByRole("table", { name: "Library tracks" });
+    const table = screen.getByRole("grid", { name: "Library tracks" });
     await userEvent.click(within(table).getByRole("button", { name: "Clear all filters" }));
 
     expect(
@@ -1544,7 +1544,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
   it("selects from the keyboard once the table is focused: Down, then Shift+Down", async () => {
     renderScreen();
     await tableReady();
-    const grid = screen.getByRole("table", { name: "Library tracks" });
+    const grid = screen.getByRole("grid", { name: "Library tracks" });
     grid.focus();
 
     fireEvent.keyDown(grid, { key: "ArrowDown" });
@@ -1622,7 +1622,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     await userEvent.click(screen.getByText("Track 2"));
     await screen.findByText("1 selected");
 
-    await userEvent.click(within(screen.getByRole("table", { name: "Library tracks" })).getByRole("button", { name: "Title" }));
+    await userEvent.click(within(screen.getByRole("grid", { name: "Library tracks" })).getByRole("button", { name: "Title" }));
 
     // What was selected under the old sort is not a subset of the new one.
     await waitFor(() => expect(screen.queryByText(/\d selected/)).toBeNull());
@@ -1651,7 +1651,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     await tableReady();
 
     await userEvent.click(
-      within(screen.getByRole("table", { name: "Library tracks" })).getByRole("button", {
+      within(screen.getByRole("grid", { name: "Library tracks" })).getByRole("button", {
         name: "Title",
       }),
     );
@@ -1822,7 +1822,7 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await userEvent.click(screen.getByText("Track 2"));
     await screen.findByText("1 selected");
 
-    fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), {
+    fireEvent.keyDown(screen.getByRole("grid", { name: "Library tracks" }), {
       key: "F10",
       shiftKey: true,
     });
@@ -1861,7 +1861,7 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await userEvent.click(screen.getByText("Track 2"));
     await screen.findByText("1 selected");
 
-    fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("grid", { name: "Library tracks" }), { key: "Enter" });
 
     await waitFor(() => expect(bridge.player.playView).toHaveBeenCalledTimes(1));
     expect(bridge.player.playView.mock.calls[0]![1]).toBe(1);
@@ -2147,7 +2147,7 @@ describe("CuePoint's own Collections in the pane (ORG-09, DEC-062)", () => {
       getLibrarySummary: vi.fn().mockResolvedValue(loadedSummary()),
     });
     renderScreen();
-    await screen.findByRole("table", { name: "Library tracks" });
+    await screen.findByRole("grid", { name: "Library tracks" });
 
     const tree = await screen.findByRole("tree", { name: "Collections" });
     await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
@@ -3158,7 +3158,7 @@ describe("rearranging a Collection (ORG-11)", () => {
   });
 
   describe("with Alt+↑ and Alt+↓ (FLW-10)", () => {
-    const table = () => screen.getByRole("table", { name: "Library tracks" });
+    const table = () => screen.getByRole("grid", { name: "Library tracks" });
 
     it("moves the selected track down one place", async () => {
       renderScreen();
