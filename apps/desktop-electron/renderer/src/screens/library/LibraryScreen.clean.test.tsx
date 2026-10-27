@@ -10,7 +10,7 @@
  *   here; Beatport's values and Edit values open their dialogs in
  *   place (K4); More ▸ holds Edit values, and syncing into the files is per playlist, on Clean.
  * - **The toolbar row** is one row above the table: the bar (with a selection), the count,
- *   Select all; Columns… is the table header's corner.
+ *   Columns… is the table header's corner; Select all is in the selection bar.
  * - **Overridden cells are marked** and name their source, and a copy reads the
  *   value shown.
  * - **The Clean columns** are hidden by default and offered in the picker.
@@ -264,17 +264,17 @@ const BETWEEN = [
   "Play",
   "Play next",
   "Add to queue",
-  "Add to Collection…",
+  "Add to a Collection…",
   "Add tag…",
   "Remove tag…",
   "Rate",
-  "Favorite",
-  "Remove favorite",
-  "Copy",
+  "Add to favorites",
+  "Remove from favorites",
   "Match on Beatport…",
   "Review these matches",
   "Copy Beatport values…",
   "Edit values…",
+  "Copy as text",
   "Show in folder",
 ];
 
@@ -301,17 +301,21 @@ describe("the operations list", () => {
       "Play",
       "Play next",
       "Add to queue",
+      "Rate",
+      "Add to favorites",
       "Organize",
       "Beatport",
       "More",
     ]);
-    // Each parent opens exactly the entries the bar's button for it opens.
+    // Each parent opens exactly the entries the bar's button for it opens; Rate and the favorites
+    // are lifted to the menu's top level (D26), so Organize's submenu lacks them.
+    const lifted = ["Rate", "Add to favorites", "Remove from favorites"];
     const seen = BETWEEN.slice(0, 3);
     for (const name of ["Organize", "Beatport", "More"]) {
       await userEvent.click(within(menu).getByRole("menuitem", { name: new RegExp(`^${name}`) }));
       seen.push(...labelsOf(screen.getByRole("menu", { name })));
     }
-    expect(seen).toEqual(BETWEEN);
+    expect(seen).toEqual(BETWEEN.filter((label) => !lifted.includes(label)));
   });
 
   it("is the same list behind the bar's buttons, group by group", async () => {
@@ -447,7 +451,7 @@ describe("what the entries do", () => {
     expect(await findMenuItem("Check the files are still there", await openMenuOn("Track 3"))).toBeNull();
     expect(mock("startFileCheck")).not.toHaveBeenCalled();
     // Proving an entry absent opens every submenu in turn, which is slow under a loaded run.
-  }, 15_000);
+  }, 40_000);
 
   it("shows a moved file's nearest folder", async () => {
     renderScreen();
@@ -473,9 +477,9 @@ describe("what the entries do", () => {
     await openGroup("More");
     expect((await menuItem("Show in folder"))).toHaveAttribute("aria-disabled", "true");
     await userEvent.keyboard("{Escape}");
-    // Copy is Organize's now.
-    await openGroup("Organize");
-    expect((await menuItem("Copy 2 tracks"))).toBeInTheDocument();
+    // Copy is More's now (M412), and says what it copies.
+    await openGroup("More");
+    expect((await menuItem("Copy 2 tracks as text"))).toBeInTheDocument();
   });
 });
 
@@ -491,7 +495,8 @@ describe("the toolbar row", () => {
     expect(within(table).getByRole("button", { name: "Columns" })).toBeInTheDocument();
     // The facts line says "3 tracks"; the row repeats it only while a filter narrows the view (A3).
     expect(within(row).queryByRole("status")).toBeNull();
-    expect(within(row).getByRole("button", { name: "Select all" })).toBeInTheDocument();
+    // Select all is the selection bar's now (M116, D15), not the filter row's.
+    expect(within(row).queryByRole("button", { name: /^Select all/ })).toBeNull();
     // No selection, so no bar between the filter row and the table.
     expect(screen.queryByRole("toolbar", { name: "Selection" })).toBeNull();
   });
@@ -592,7 +597,7 @@ describe("the table", () => {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     renderScreen();
     await tableReady();
-    await userEvent.click((await menuItem("Copy", await openMenuOn("Track 1"))));
+    await userEvent.click((await menuItem("Copy as text", await openMenuOn("Track 1"))));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     const [header, row] = (writeText.mock.calls[0]![0] as string).split("\n");
     const bpm = header!.split("\t").indexOf("BPM");

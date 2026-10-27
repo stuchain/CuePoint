@@ -86,12 +86,14 @@ function Harness({
   initial = null,
   onChange,
   onOpenKeys,
+  onMatch,
   onRequest = () => {},
 }: {
   quickFacets?: LibraryQuickFacets | null;
   initial?: FilterRuleSet | null;
   onChange?: (next: FilterRuleSet | null) => void;
   onOpenKeys?: () => void;
+  onMatch?: () => void;
   onRequest?: () => void;
 }) {
   const [filters, setFilters] = useState<FilterRuleSet | null>(initial);
@@ -116,6 +118,7 @@ function Harness({
       quickFacets={quickFacets}
       onRequestQuickFacets={onRequest}
       onOpenKeys={onOpenKeys}
+      onMatch={onMatch}
     />
   );
 }
@@ -195,8 +198,16 @@ describe("the quick filters (FLW-4)", () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Key" }));
     const list = within(screen.getByRole("dialog", { name: "Key" }));
-    const lines = list.getAllByRole("checkbox").map((box) => box.closest("label")?.textContent);
-    expect(lines).toEqual(["2A7", "8A12", "10A3", "No Beatport key: 5"]);
+    // Twelve numbers by the two rings (M112): the keys this view has can be ticked, the rest cannot.
+    expect(list.getAllByRole("checkbox")).toHaveLength(24 + 1);
+    const ticks = list.getAllByRole("checkbox").filter((box) => !(box as HTMLInputElement).disabled);
+    expect(ticks.map((box) => box.getAttribute("aria-label") ?? box.closest("label")?.textContent)).toEqual([
+      "2A",
+      "8A",
+      "10A",
+      "No Beatport key: 5",
+    ]);
+    expect(ticks[1]!.closest("label")).toHaveAttribute("data-hint", "12 tracks");
   });
 
   it("writes the keys in the chosen notation (K1), and the rule keeps the stored key", () => {
@@ -205,8 +216,13 @@ describe("the quick filters (FLW-4)", () => {
       render(<Harness />);
       fireEvent.click(screen.getByRole("button", { name: "Key" }));
       const list = within(screen.getByRole("dialog", { name: "Key" }));
-      const lines = list.getAllByRole("checkbox").map((box) => box.closest("label")?.textContent);
-      expect(lines).toEqual(["E♭m7", "Am12", "Bm3", "No Beatport key: 5"]);
+      const ticks = list.getAllByRole("checkbox").filter((box) => !(box as HTMLInputElement).disabled);
+      expect(ticks.map((box) => box.getAttribute("aria-label") ?? box.closest("label")?.textContent)).toEqual([
+        "E♭m",
+        "Am",
+        "Bm",
+        "No Beatport key: 5",
+      ]);
     } finally {
       localStorage.clear();
       delete document.documentElement.dataset.keyNotation;
@@ -267,15 +283,17 @@ describe("the quick filters (FLW-4)", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
   });
 
-  it("says keys come from matching when no track has one, with no button of its own", async () => {
+  it("says keys come from matching when no track has one, with the way to start one (M114)", async () => {
     libraryKeys([{ value: null, count: 40 }]);
-    render(<Harness quickFacets={{ ...FACETS, keys: [], no_key: 40 }} />);
+    const onMatch = vi.fn();
+    render(<Harness quickFacets={{ ...FACETS, keys: [], no_key: 40 }} onMatch={onMatch} />);
     fireEvent.click(screen.getByRole("button", { name: "Key" }));
     const panel = within(screen.getByRole("dialog", { name: "Key" }));
     expect(
       await panel.findByText("No tracks have a Beatport key yet. Keys come from matching."),
     ).toBeInTheDocument();
-    expect(panel.queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
+    fireEvent.click(panel.getByRole("button", { name: "Match on Beatport…" }));
+    expect(onMatch).toHaveBeenCalledTimes(1);
   });
 
   it("says only this view has no key when the library has some", async () => {
@@ -454,5 +472,37 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Key" }));
     expect(screen.queryByRole("button", { name: "Open in Keys" })).toBeNull();
+  });
+});
+
+describe("the Key list (D15: M111, M112, M114, M470)", () => {
+  it("draws each key as its coloured chip in a grid of twelve numbers by two rings", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
+    const grid = screen.getByRole("dialog", { name: "Key" }).querySelector(".cp-quick__keys")!;
+    expect(grid.querySelectorAll(".cp-quick__key")).toHaveLength(24);
+    expect(grid.querySelectorAll(".key-chip")).toHaveLength(24);
+    expect(grid.querySelector(".key-chip--8A")).not.toBeNull();
+  });
+
+  it("offers Clear once a key is ticked, and clears only the keys", () => {
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
+    const panel = within(screen.getByRole("dialog", { name: "Key" }));
+    expect(panel.queryByRole("button", { name: "Clear" })).toBeNull();
+    fireEvent.click(panel.getByRole("checkbox", { name: "8A" }));
+    fireEvent.click(panel.getByRole("button", { name: "Clear" }));
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it("gives focus back to the button when Escape closes the list", () => {
+    render(<Harness />);
+    const button = screen.getByRole("button", { name: "Key" });
+    fireEvent.click(button);
+    expect(screen.getByRole("dialog", { name: "Key" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Key" })).toBeNull();
+    expect(button).toHaveFocus();
   });
 });

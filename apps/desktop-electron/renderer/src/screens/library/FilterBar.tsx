@@ -126,6 +126,8 @@ interface FilterBarProps {
   onRequestQuickFacets?: () => void;
   /** Open the Keys page on this view's playlist or Collection (PAGES-16). */
   onOpenKeys?: () => void;
+  /** Open the match on Beatport, which keys come from: the Key list's way out of "no keys" (M114). */
+  onMatch?: () => void;
 
   /** The Smart Collection these rules came from, when they came from one. */
   smart?: SmartAttachment | null;
@@ -195,6 +197,7 @@ export function FilterBar({
   quickFacetsLoading = false,
   onRequestQuickFacets,
   onOpenKeys,
+  onMatch,
   smart = null,
   onSaveSmart,
   onUpdateSmart,
@@ -274,9 +277,9 @@ export function FilterBar({
 
   // The row is one line at every size (W1, after item 12's Tags… fold): when it would wrap, the
   // next thing in this order folds away, and comes back once the row has room for it again.
-  //   1. Tags… into Add filter's menu (item 12).
-  //   2. Select all and the filter actions (Clear all filters, Save, Update, Keep as a filter) into
-  //      a More menu at the row's end; the count stays, said the short way.
+  //   1. (Was Tags… into Add filter's menu: Manage tags… is only ever there now, M115.)
+  //   2. The filter actions (Clear all filters, Save, Update, Keep as a filter) and any trailing
+  //      entries into a More menu at the row's end; the count stays, said the short way.
   //   3. Add filter (with Tags…) into that More menu.
   //   4. Key, BPM and Genre into one Filters menu.
   //   5. The More menu into that Filters menu, so the row is the search and one menu.
@@ -323,7 +326,7 @@ export function FilterBar({
     const children = Array.from(row.children) as HTMLElement[];
     if (!rowWraps(children.map((box) => ({ top: box.offsetTop, height: box.offsetHeight })))) return;
     let next = fold + 1;
-    while (next <= 5 && ((next === 1 && !onManageTags) || (next === 2 && !hasTrailingMenu))) next += 1;
+    while (next <= 5 && (next === 1 || (next === 2 && !hasTrailingMenu))) next += 1;
     if (next > 5 || (next === 5 && !onRequestQuickFacets)) return;
     const style = getComputedStyle(row);
     const gap = parseFloat(style.columnGap) || 0;
@@ -333,7 +336,7 @@ export function FilterBar({
     const one = drawn.reduce((sum, box) => sum + box.offsetWidth, 0) + gap * Math.max(0, drawn.length - 1) + pad;
     for (let level = fold; level < next; level += 1) needs.current[level] = Math.max(one, row.clientWidth + 1);
     setFold(next);
-  }, [fold, chipsOpen, onManageTags, hasTrailingMenu, onRequestQuickFacets]);
+  }, [fold, chipsOpen, hasTrailingMenu, onRequestQuickFacets]);
   useLayoutEffect(measureRow, [measureRow, filters, smart]);
   useEffect(() => {
     const row = rowRef.current;
@@ -346,7 +349,8 @@ export function FilterBar({
   const foldAdd = fold >= 3;
   const foldQuick = fold >= 4;
   const foldMore = fold >= 5;
-  const foldTags = fold >= 1 && !!onManageTags;
+  // With a way to manage tags, Add filter is the menu that holds it (M115, D15).
+  const foldTags = !!onManageTags;
   const addBox = foldTags && addMenu.open ? addMenu.anchor.current?.getBoundingClientRect() : undefined;
   const moreBox = moreMenu.open ? moreMenu.anchor.current?.getBoundingClientRect() : undefined;
   const moreItems: TrackContextMenuItem[] = [
@@ -360,7 +364,7 @@ export function FilterBar({
                         setAdding(true);
                       },
                     },
-                    ...(onManageTags ? [{ id: "tags", label: "Tags…", onSelect: () => onManageTags() }] : []),
+                    ...(onManageTags ? [{ id: "tags", label: "Manage tags…", onSelect: () => onManageTags() }] : []),
                   ]
                 : []),
               ...(foldTrailing
@@ -598,7 +602,7 @@ export function FilterBar({
         // keeps one shape as the facet arrives, so typing is not interrupted.
         onPick={offersText ? (value) => setDraft((previous) => ({ ...previous, value })) : undefined}
         spellCheck={false}
-        placeholder={arity === "list" ? "House, Techno" : undefined}
+        placeholder={arity === "list" ? "House, Techno" : "Type a value"}
         onChange={(event) =>
           setDraft((previous) => ({ ...previous, value: event.target.value }))
         }
@@ -608,6 +612,14 @@ export function FilterBar({
 
   const offersText = !!field && !isMembership(field) && !offersChoices(field, draft.operator);
   const textSuggestions = offersText && suggestions.length > 0;
+  // A typed value is not added empty: the button waits and says why (M110). The pickers (a
+  // Collection, a source, stars) keep refusing in words, as they did.
+  const missingValue =
+    offersText &&
+    field?.type !== "source" &&
+    field?.type !== "tag" &&
+    arity !== "none" &&
+    (draft.value.trim() === "" || (arity === "pair" && draft.secondValue.trim() === ""));
 
   return (
     <div className="cp-filter-bar">
@@ -629,13 +641,14 @@ export function FilterBar({
             loading={quickFacetsLoading}
             onOpen={onRequestQuickFacets}
             onOpenKeys={onOpenKeys}
+            onMatch={onMatch}
             folded={foldQuick}
             extraItems={foldMore ? moreItems : undefined}
           />
         )}
 
-        {/* The label never changes; Cancel is inside the builder it opens (C19). With Tags…
-            folded into it (item 12) it is a menu of the two. */}
+        {/* The label never changes; Cancel is inside the builder it opens (C19). With a way to
+            manage tags it is a menu of the two (M115). */}
         {foldAdd ? null : foldTags ? (
           <Button variant="secondary" menu {...addMenu.buttonProps}>
             Add filter
@@ -668,7 +681,7 @@ export function FilterBar({
                   setAdding(true);
                 },
               },
-              { id: "tags", label: "Tags…", onSelect: () => onManageTags?.() },
+              { id: "tags", label: "Manage tags…", onSelect: () => onManageTags?.() },
             ]}
           />
         )}
@@ -723,12 +736,6 @@ export function FilterBar({
         {ruleCount(filters) > 0 && !foldTrailing && (
           <Button variant="secondary" onClick={() => onFiltersChange(null)}>
             Clear all filters
-          </Button>
-        )}
-
-        {onManageTags && !foldTags && (
-          <Button variant="secondary" onClick={onManageTags}>
-            Tags…
           </Button>
         )}
 
@@ -844,8 +851,7 @@ export function FilterBar({
             </span>
           )}
 
-          <div className="cp-button-row">
-            <Button variant="primary" onClick={submit}>Add</Button>
+          <div className="cp-button-row cp-filter-bar__builder-actions">
             <Button
               variant="secondary"
               onClick={() => {
@@ -855,6 +861,11 @@ export function FilterBar({
             >
               {CANCEL}
             </Button>
+            <Hint text={missingValue ? "Type a value first" : undefined}>
+              <Button variant="primary" onClick={submit} disabled={missingValue}>
+                Add
+              </Button>
+            </Hint>
           </div>
 
           {problem && (

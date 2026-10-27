@@ -28,6 +28,8 @@ interface LibrarySelectionBarProps {
   /** Open a group's menu, anchored under its button (also from the keyboard). */
   onOpenGroup: (id: TrackActionGroupId, anchor: { x: number; y: number }) => void;
   onClear: () => void;
+  /** Every track the view holds, and the way to take them all: "Select all 300" in the bar (M116). */
+  selectAll?: { total: number; onSelectAll: () => void };
 }
 
 export function LibrarySelectionBar({
@@ -37,6 +39,7 @@ export function LibrarySelectionBar({
   openGroup,
   onOpenGroup,
   onClear,
+  selectAll,
 }: LibrarySelectionBarProps) {
   const keys = useToolbarKeys(groups.length);
   const none = selected === 0;
@@ -59,7 +62,7 @@ export function LibrarySelectionBar({
   };
 
   return (
-    <SelectionBar count={selected} onClear={onClear} overlay>
+    <SelectionBar count={selected} onClear={onClear} overlay selectAll={selectAll}>
       <div ref={keys.ref} className="library-selection-bar__groups" onKeyDown={onKeyDown}>
         {groups.map((group, index) => (
           <Hint key={group.id} text={group.disabledReason ?? undefined}>

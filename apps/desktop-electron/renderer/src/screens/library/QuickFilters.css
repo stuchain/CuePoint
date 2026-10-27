@@ -19,7 +19,8 @@
 
 .cp-quick__panel {
   position: absolute;
-  top: 100%;
+  /* The trigger's border and the panel's are one line where they meet (M113). */
+  top: calc(100% - var(--control-border-width));
   left: 0;
   z-index: var(--z-sticky);
   display: flex;
@@ -46,7 +47,7 @@
 .cp-quick__choice {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
   min-height: var(--row-height);
   padding-inline: var(--space-xs);
   font-family: var(--font-control);
@@ -95,5 +96,42 @@
 .cp-quick__ends,
 .cp-quick__actions {
   display: flex;
+  gap: var(--space-md);
+}
+
+/* The Key list: twelve numbers by the two rings, as the wheel has them (M112, M111). */
+.cp-quick__keys {
+  display: grid;
+  grid-template-columns: repeat(12, auto);
+  gap: var(--space-xs);
+  justify-content: start;
+}
+
+.cp-quick__key {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+/* A ticked key is outlined, so the chip's own colour is never the only sign (M111). */
+.cp-quick__key--on .key-chip {
+  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.cp-quick__key:has(input:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.cp-quick__key--none {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.cp-quick__keys-end {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-md);
 }

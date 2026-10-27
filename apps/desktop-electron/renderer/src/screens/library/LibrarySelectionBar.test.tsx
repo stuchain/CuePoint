@@ -1,7 +1,7 @@
 /**
  * The Library's selection bar (C9, C215): the shared SelectionBar with the four group buttons as its
- * actions. It is drawn only while something is selected; Select all and the count live in the
- * filter row.
+ * actions. It is drawn only while something is selected; Select all is in the bar (M116); the
+ * count is in the filter row.
  */
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
@@ -51,6 +51,26 @@ describe("the Library's selection bar", () => {
     expect(bar).toHaveTextContent("3 selected");
     await userEvent.click(within(bar).getByRole("button", { name: "Clear selection" }));
     expect(onClear).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Select all with the total, until every track is selected (M116)", async () => {
+    const onSelectAll = vi.fn();
+    const { rerender } = renderBar({ selectAll: { total: 300, onSelectAll } });
+    const bar = screen.getByRole("toolbar", { name: "Selection" });
+    await userEvent.click(within(bar).getByRole("button", { name: "Select all 300" }));
+    expect(onSelectAll).toHaveBeenCalledTimes(1);
+    rerender(
+      <LibrarySelectionBar
+        groups={groups()}
+        selected={300}
+        describedByQuery
+        openGroup={null}
+        onOpenGroup={vi.fn()}
+        onClear={vi.fn()}
+        selectAll={{ total: 300, onSelectAll }}
+      />,
+    );
+    expect(within(bar).queryByRole("button", { name: /^Select all/ })).toBeNull();
   });
 
   it("holds the four groups as grey menu buttons", () => {

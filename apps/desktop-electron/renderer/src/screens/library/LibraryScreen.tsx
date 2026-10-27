@@ -54,7 +54,6 @@ import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { RekordboxExportDialog } from "./RekordboxExportDialog";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { LibrarySelectionBar } from "./LibrarySelectionBar";
-import { SelectAllButton } from "../../components/SelectionBar";
 import { usePageSearch } from "../../components/usePageSearch";
 import { NO_COLLECTIONS, NO_SETS, UNDO, couldNot, removedFrom } from "../../format/words";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
@@ -1090,6 +1089,15 @@ export function LibraryScreen({
               : null,
           credits,
           revealable: target.count === 1 && Boolean(path),
+          // Known from the rows a row's menu is about; a selection's rows are not all in hand (M411).
+          favorite:
+            kind === "row" && rows.length > 0
+              ? rows.every((row) => row.favorite)
+                ? true
+                : rows.some((row) => row.favorite)
+                  ? null
+                  : false
+              : null,
         },
         {
           play: {
@@ -2075,6 +2083,7 @@ export function LibraryScreen({
                   ? () => onOpenKeys(keysSources(query.playlistId, scopedCollection, barRules))
                   : undefined
               }
+              onMatch={onOpenMatch ? () => onOpenMatch() : undefined}
               smart={smart}
               onSaveSmart={() => {
                 setSavingError(null);
@@ -2093,27 +2102,6 @@ export function LibraryScreen({
                 onOpenEntity ? (page) => onOpenEntity(page.kind, page.ref) : undefined
               }
               openAddToken={openAdd}
-              trailingMenu={
-                window_.total > 0
-                  ? [
-                      {
-                        id: "select-all",
-                        label: "Select all",
-                        onSelect: selection.selectAllMatching,
-                        disabled: selection.count >= window_.total,
-                        reason: "Every track here is selected",
-                      },
-                    ]
-                  : undefined
-              }
-              trailing={
-                window_.total > 0 && (
-                  <SelectAllButton
-                    onSelectAll={selection.selectAllMatching}
-                    disabled={selection.count >= window_.total}
-                  />
-                )
-              }
               // The plain count is the facts line's; the row says it only while a search or
               // filter narrows the view.
               count={
@@ -2247,6 +2235,11 @@ export function LibraryScreen({
                     openGroup={menu?.kind === "selection" ? menu.group : null}
                     onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
                     onClear={selection.clear}
+                    selectAll={
+                      window_.total > 0
+                        ? { total: window_.total, onSelectAll: selection.selectAllMatching }
+                        : undefined
+                    }
                   />
                 ) : null
               }

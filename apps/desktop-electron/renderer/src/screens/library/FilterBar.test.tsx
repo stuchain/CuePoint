@@ -1051,73 +1051,29 @@ describe("a question the engine refused (ORG-12)", () => {
 });
 
 describe("the tag vocabulary (ORG-12)", () => {
-  it("is reachable from the bar that uses it", () => {
+  it("is reachable from Add filter's menu, as Manage tags… (M115)", () => {
     const onManageTags = vi.fn();
     show({ onManageTags });
-    fireEvent.click(screen.getByRole("button", { name: "Tags…" }));
+    // Nowhere else on the row: it is not a filter, so it is not a button of its own.
+    expect(screen.queryByRole("button", { name: /tags/i })).not.toBeInTheDocument();
+    const add = screen.getByRole("button", { name: "Add filter" });
+    expect(add).toHaveAttribute("aria-haspopup", "menu");
+    fireEvent.click(add);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Manage tags…" }));
     expect(onManageTags).toHaveBeenCalled();
   });
 
-  it("is not offered by a bar that was given no way to open it", () => {
+  it("is not offered by a bar that was given no way to open it, and Add filter stays a plain button", () => {
     show();
-    expect(screen.queryByRole("button", { name: "Tags…" })).not.toBeInTheDocument();
-  });
-});
-
-describe("a filter row too narrow for Tags… (item 12)", () => {
-  /** Lays the row out as a browser would at 1.5x: Tags… and what follows it on a second line. */
-  function wrapAfterAddFilter(rowWidth: number) {
-    const top = vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (this: HTMLElement) {
-      const row = this.parentElement?.classList.contains("cp-filter-bar__row") ? this.parentElement : null;
-      if (!row) return 0;
-      const index = Array.from(row.children).indexOf(this);
-      const addAt = Array.from(row.children).findIndex((child) => child.textContent?.startsWith("Add filter"));
-      return index > addAt ? 44 : 0;
-    });
-    const height = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(36);
-    const width = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(60);
-    const client = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => rowWidth);
-    return () => {
-      top.mockRestore();
-      height.mockRestore();
-      width.mockRestore();
-      client.mockRestore();
-    };
-  }
-
-  it("folds Tags… into Add filter's menu instead of wrapping, and Tags stays one click away", () => {
-    const restore = wrapAfterAddFilter(700);
-    try {
-      const onManageTags = vi.fn();
-      show({ onManageTags });
-      expect(screen.queryByRole("button", { name: "Tags…" })).not.toBeInTheDocument();
-      const add = screen.getByRole("button", { name: "Add filter" });
-      expect(add).toHaveAttribute("aria-haspopup", "menu");
-
-      fireEvent.click(add);
-      fireEvent.click(screen.getByRole("menuitem", { name: "Tags…" }));
-      expect(onManageTags).toHaveBeenCalled();
-    } finally {
-      restore();
-    }
+    expect(screen.queryByRole("button", { name: /tags/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add filter" })).not.toHaveAttribute("aria-haspopup");
   });
 
   it("still opens the filter form from that menu", () => {
-    const restore = wrapAfterAddFilter(700);
-    try {
-      show({ onManageTags: vi.fn() });
-      fireEvent.click(screen.getByRole("button", { name: "Add filter" }));
-      fireEvent.click(screen.getByRole("menuitem", { name: "Add a filter…" }));
-      expect(screen.getByLabelText("Field")).toBeInTheDocument();
-    } finally {
-      restore();
-    }
-  });
-
-  it("keeps Tags… on the row, and Add filter a plain button, when the row has room", () => {
     show({ onManageTags: vi.fn() });
-    expect(screen.getByRole("button", { name: "Tags…" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add filter" })).not.toHaveAttribute("aria-haspopup");
+    fireEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add a filter…" }));
+    expect(screen.getByLabelText("Field")).toBeInTheDocument();
   });
 });
 
@@ -1262,5 +1218,19 @@ describe("a chip that names one artist or label (DISCOVER-11)", () => {
     expect(within(chips).queryByRole("button", { name: /^Open page/ })).toBeNull();
     // The remove buttons are untouched.
     expect(within(chips).getAllByRole("button", { name: /^Remove filter/ })).toHaveLength(3);
+  });
+});
+
+describe("the Add filter form (M110)", () => {
+  it("waits for a typed value, says so, and lists Cancel before Add", () => {
+    show();
+    openBuilder();
+    const add = screen.getByRole("button", { name: "Add" });
+    expect(add).toBeDisabled();
+    expect(screen.getByPlaceholderText("Type a value")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "Deep" } });
+    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+    const order = screen.getAllByRole("button").map((button) => button.textContent);
+    expect(order.indexOf("Cancel")).toBeLessThan(order.indexOf("Add"));
   });
 });

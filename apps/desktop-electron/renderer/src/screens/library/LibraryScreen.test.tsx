@@ -1444,6 +1444,7 @@ describe("nothing to show (LIBUI-10)", () => {
     renderScreen();
     await screen.findByText("This Rekordbox file has no tracks in it");
     await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
     await screen.findByText("No tracks match these filters");
@@ -1736,7 +1737,7 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await screen.findByText("1 selected");
 
     await openMenu("Track 3");
-    await userEvent.click((await menuItem("Copy")));
+    await userEvent.click((await menuItem("Copy as text")));
 
     expect(await screen.findByText("Copied 1 track")).toBeInTheDocument();
     // The clicked row, not the selected one.
@@ -2146,13 +2147,15 @@ describe("organizing a selection (ORG-11)", () => {
       // Playback first: DEC-013 made it the first-class gesture.
       expect(top.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
       expect(top).toContain("Organize");
+      // Rate and Favorite are at the top level, not under Organize (D26).
+      expect(top).toContain("Rate");
+      expect(top).toContain("Add to favorites");
       await userEvent.click(within(menu).getByRole("menuitem", { name: /^Organize/ }));
       const labels = within(screen.getByRole("menu", { name: "Organize" }))
         .getAllByRole("menuitem")
         .map((node) => node.textContent);
-      expect(labels).toContain("Add to Collection…");
+      expect(labels).toContain("Add to a Collection…");
       expect(labels).toContain("Add tag…");
-      expect(labels).toContain("Favorite");
     });
 
     it("offers removing from a Collection only inside one", async () => {
@@ -2198,7 +2201,7 @@ describe("organizing a selection (ORG-11)", () => {
       await screen.findByText(/3 selected/);
 
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch()).toEqual({
@@ -2215,7 +2218,7 @@ describe("organizing a selection (ORG-11)", () => {
       await screen.findByText(/everything matching/);
 
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       const payload = lastBatch().selection as Record<string, unknown>;
@@ -2233,7 +2236,7 @@ describe("organizing a selection (ORG-11)", () => {
       await screen.findByText(/2 selected/);
 
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect((lastBatch().selection as Record<string, unknown>).exclude_track_ids).toEqual([3]);
@@ -2246,7 +2249,7 @@ describe("organizing a selection (ORG-11)", () => {
       await screen.findByText("1 selected");
 
       await openMenuOn("Track 3");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().selection).toEqual({ track_ids: [3] });
@@ -2260,7 +2263,7 @@ describe("organizing a selection (ORG-11)", () => {
       await screen.findByText(/everything matching/);
 
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect((lastBatch().selection as Record<string, unknown>).query).toMatchObject({
@@ -2572,7 +2575,7 @@ describe("organizing a selection (ORG-11)", () => {
       await openMenuOn("Track 3");
 
       expect(await screen.findByText(/1 selected/)).toBeInTheDocument();
-      await userEvent.click(await menuItem("Favorite"));
+      await userEvent.click(await menuItem("Add to favorites"));
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().selection).toEqual({ track_ids: [3] });
     });
@@ -2583,7 +2586,7 @@ describe("organizing a selection (ORG-11)", () => {
 
       await openMenuOn("Track 2");
       await userEvent.click(
-        (await menuItem("Add to Collection…")),
+        (await menuItem("Add to a Collection…")),
       );
       await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
 
@@ -2597,7 +2600,7 @@ describe("organizing a selection (ORG-11)", () => {
 
       await openMenuOn("Track 2");
       await userEvent.click(
-        (await menuItem("Add to Collection…")),
+        (await menuItem("Add to a Collection…")),
       );
 
       expect(await screen.findByRole("option", { name: /Sets/ })).toBeDisabled();
@@ -2663,7 +2666,7 @@ describe("organizing a selection (ORG-11)", () => {
       await tableReady();
 
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       expect(await screen.findByText("No tag with id 21")).toBeInTheDocument();
     });
@@ -2677,7 +2680,7 @@ describe("organizing a selection (ORG-11)", () => {
       const trees = bridge.getCollections.mock.calls.length;
 
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       await waitFor(() =>
         expect(bridge.browseLibrary.mock.calls.length).toBeGreaterThan(browses),
@@ -2702,7 +2705,7 @@ describe("organizing a selection (ORG-11)", () => {
       await screen.findByText(/everything matching/);
 
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       expect(await screen.findByText("Favorite 47,913 tracks?")).toBeInTheDocument();
       expect(bridge.applyBatch).not.toHaveBeenCalled();
@@ -2716,7 +2719,7 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       expect(await screen.findByText(/undone from Activity/i)).toBeInTheDocument();
       expect(screen.queryByText(/no undo/i)).toBeNull();
@@ -2728,7 +2731,7 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Add to Collection…")));
+      await userEvent.click((await menuItem("Add to a Collection…")));
       await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
 
       expect(await screen.findByText(/not recorded in History/i)).toBeInTheDocument();
@@ -2742,7 +2745,7 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
       await screen.findByText("Favorite 47,913 tracks?");
 
       await userEvent.click(screen.getByRole("button", { name: "Change 47,913 tracks" }));
@@ -2756,7 +2759,7 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
       await screen.findByText("Favorite 47,913 tracks?");
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -2780,16 +2783,15 @@ describe("organizing a selection (ORG-11)", () => {
         .getAllByRole("menuitem")
         .map((node) => node.textContent);
       expect(labels).toEqual([
-        "Add to Collection…",
+        "Add to a Collection…",
         "Add tag…",
         "Remove tag…",
         "Rate",
-        "Favorite",
-        "Remove favorite",
-        "Copy",
+        "Add to favorites",
+        "Remove from favorites",
       ]);
-      // Three dividers inside the group (Copy has one), none along its top.
-      expect(within(menu).getAllByRole("separator")).toHaveLength(3);
+      // Two dividers inside the group, none along its top.
+      expect(within(menu).getAllByRole("separator")).toHaveLength(2);
     });
 
     it("acts on the selection, not on a row", async () => {
@@ -2801,7 +2803,7 @@ describe("organizing a selection (ORG-11)", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Organize" }));
       await screen.findByRole("menu");
-      await userEvent.click((await menuItem("Favorite")));
+      await userEvent.click((await menuItem("Add to favorites")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().selection).toEqual({ track_ids: [1, 2, 3] });
@@ -2818,7 +2820,7 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await userEvent.click(screen.getByRole("button", { name: "Organize" }));
-      await userEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Favorite" }));
+      await userEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Add to favorites" }));
 
       const dialog = await screen.findByRole("dialog", { name: "Change 47,913 tracks?" });
       expect(within(dialog).getByText(/you can keep working|runs in the background/i)).toBeInTheDocument();
@@ -3216,6 +3218,7 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
 
   async function addAFilter(value: string) {
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value } });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
   }
@@ -3490,6 +3493,7 @@ describe("a question the engine refused (ORG-12)", () => {
     renderScreen();
 
     await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
@@ -3521,7 +3525,8 @@ describe("the tag manager (ORG-12)", () => {
   });
 
   async function openManager() {
-    await userEvent.click(await screen.findByRole("button", { name: "Tags…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Manage tags…" }));
     return screen.findByRole("list", { name: "Tags" });
   }
 
@@ -3902,6 +3907,7 @@ describe("quick filters and saving (PAGES-05B)", () => {
     await tableReady();
     await openFriday();
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
@@ -3934,6 +3940,7 @@ describe("quick filters and saving (PAGES-05B)", () => {
     renderScreen();
     await tableReady();
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
     await userEvent.click(

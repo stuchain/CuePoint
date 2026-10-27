@@ -9,6 +9,7 @@ import {
   asksForNone,
   chosenRange,
   chosenValues,
+  clearField,
   quickCount,
   toggleNone,
   toggleValue,
@@ -90,5 +91,16 @@ describe("the count beside a button", () => {
     expect(quickCount(set, "key")).toBe(2);
     expect(quickCount(set, "bpm")).toBe(1);
     expect(quickCount(set, "genre")).toBe(0);
+  });
+});
+
+describe("clearing a field", () => {
+  it("drops its values and its 'has none' rule, and keeps every other rule", () => {
+    const set = rules(
+      { field: "key", operator: "any_of", value: ["8A", "9A"] },
+      { field: "genre", operator: "is", value: "House" },
+    );
+    expect(clearField(set, "key")).toEqual(rules({ field: "genre", operator: "is", value: "House" }));
+    expect(clearField(rules({ field: "key", operator: "is_empty" }), "key")).toBeNull();
   });
 });

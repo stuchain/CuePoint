@@ -21,6 +21,11 @@ interface SelectionBarProps {
    * pointer goes through it to the row, so the second click of a double-click plays the row.
    */
   overlay?: boolean;
+  /**
+   * "3 selected · Select all 300 · ×" (M116): the way to take every row, in the bar that says how
+   * many are taken. Left out when there is nothing more to select.
+   */
+  selectAll?: { total: number; onSelectAll: () => void };
 }
 
 /**
@@ -34,7 +39,7 @@ export function SelectionBar({ count, ...rest }: SelectionBarProps) {
   return <ShownSelectionBar count={count} {...rest} />;
 }
 
-function ShownSelectionBar({ count, onClear, children, locale, className = "", overlay = false }: SelectionBarProps) {
+function ShownSelectionBar({ count, onClear, children, locale, className = "", overlay = false, selectAll }: SelectionBarProps) {
   const armed = useDoubleClickGrace();
   const bar = useRef<HTMLDivElement>(null);
   // A bar over the table's bottom rows sits where the floating toasts do, so it lifts them by its
@@ -57,6 +62,11 @@ function ShownSelectionBar({ count, onClear, children, locale, className = "", o
     >
       <div className="cp-selection-bar__count">
         <span>{formatCount(count, locale)} selected</span>
+        {selectAll && selectAll.total > count && (
+          <Button variant="quiet" onClick={selectAll.onSelectAll}>
+            Select all {formatCount(selectAll.total, locale)}
+          </Button>
+        )}
         <CloseButton aria-label="Clear selection" onClick={onClear} />
       </div>
       {children ? <div className="cp-selection-bar__actions">{children}</div> : null}

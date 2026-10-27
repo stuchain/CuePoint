@@ -19,6 +19,8 @@ import { formatBpm } from "../../components/format/bpm";
 import { Loading } from "../../components/Loading";
 import { TextField } from "../../components/TextField";
 import { keyLabel } from "../../components/wheel/camelot";
+import { KeyChip } from "../../components/wheel/KeyChip";
+import { camelotOf } from "../../components/wheel/keyColour";
 import { useKeyNotation } from "../../components/wheel/keyNotationSetting";
 import { formatCount } from "../../format/counts";
 import { goTo } from "../../format/words";
@@ -35,6 +37,7 @@ import {
   quickCount,
   toggleNone,
   toggleValue,
+  clearField,
 } from "./quickFilterRules";
 import { libraryHasNoKeys } from "./libraryKeys";
 import "./QuickFilters.css";
@@ -51,6 +54,8 @@ interface QuickFiltersProps {
   onOpen: () => void;
   /** Open the Keys page on this view's playlist or Collection (PAGES-16). */
   onOpenKeys?: () => void;
+  /** Open the match on Beatport, which is where keys come from: the Key list's way out of "no keys" (M114). */
+  onMatch?: () => void;
   /**
    * The row has no room for three buttons (W1): one Filters menu names them, and the one chosen
    * opens under it as it would under its own button.
@@ -85,6 +90,7 @@ export function QuickFilters({
   loading = false,
   onOpen,
   onOpenKeys,
+  onMatch,
   folded = false,
   extraItems = [],
 }: QuickFiltersProps) {
@@ -92,6 +98,8 @@ export function QuickFilters({
   const menu = useMenuButton();
   const root = useRef<HTMLDivElement>(null);
   const panelId = useId();
+  /** The button that opened the list, so Escape can give focus back to it (M470). */
+  const opener = useRef<HTMLElement | null>(null);
 
   // Closed by Escape, and by a click anywhere else, as a menu is.
   useEffect(() => {
@@ -100,7 +108,10 @@ export function QuickFilters({
       if (root.current && !root.current.contains(event.target as Node)) setOpen(null);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(null);
+      if (event.key !== "Escape") return;
+      setOpen(null);
+      // The next Tab starts at the button, not at the top of the window.
+      opener.current?.focus();
     };
     document.addEventListener("mousedown", away);
     document.addEventListener("keydown", escape);
@@ -110,7 +121,8 @@ export function QuickFilters({
     };
   }, [open]);
 
-  const toggle = (kind: QuickKind) => {
+  const toggle = (kind: QuickKind, from?: HTMLElement | null) => {
+    if (from) opener.current = from;
     if (open === kind) {
       setOpen(null);
       return;
@@ -127,6 +139,14 @@ export function QuickFilters({
                     facets={facets}
                     loading={loading}
                     onFiltersChange={onFiltersChange}
+                    onMatch={
+                      onMatch
+                        ? () => {
+                            setOpen(null);
+                            onMatch();
+                          }
+                        : undefined
+                    }
                     onOpenKeys={
                       onOpenKeys
                         ? () => {
@@ -208,7 +228,7 @@ export function QuickFilters({
               aria-pressed={count > 0}
               aria-expanded={shown}
               aria-controls={shown ? panelId : undefined}
-              onClick={() => toggle(kind)}
+              onClick={(event) => toggle(kind, event.currentTarget)}
             >
               {LABELS[kind]}
               {count > 0 && <span className="cp-quick__count">{count}</span>}
@@ -254,7 +274,7 @@ function Choice({
  * has none inside a library that does is a different thing to say, and nothing
  * to match.
  */
-function NoKeys() {
+function NoKeys({ onMatch }: { onMatch?: () => void }) {
   const [none, setNone] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -280,6 +300,11 @@ function NoKeys() {
   return (
     <div className="cp-quick__empty">
       <p className="cp-quick__note">No tracks have a Beatport key yet. Keys come from matching.</p>
+      {onMatch && (
+        <Button variant="secondary" onClick={onMatch}>
+          Match on Beatport…
+        </Button>
+      )}
     </div>
   );
 }
@@ -290,24 +315,63 @@ function KeyList({
   loading,
   onFiltersChange,
   onOpenKeys,
-}: ListProps & { onOpenKeys?: () => void }) {
+  onMatch,
+}: ListProps & { onOpenKeys?: () => void; onMatch?: () => void }) {
   // Keys written as (K1 to K3): the choice's words follow the setting; the filter's value is still the stored key.
   const notation = useKeyNotation();
   if (!facets) {
     return loading ? <Loading what="keys" /> : <p className="cp-quick__note">Keys are not available.</p>;
   }
   if (facets.keys.length === 0) {
-    return <NoKeys />;
+    return <NoKeys onMatch={onMatch} />;
   }
   const chosen = chosenValues(filters, KEY_FIELD);
+  const isChosen = (value: string) => chosen.some((item) => item.toLowerCase() === value.toLowerCase());
+  // The keys of this view by their Camelot code; a key the code cannot name stays a plain row below.
+  const byCode = new Map<string, { value: string; count: number }>();
+  const others: { value: string; count: number }[] = [];
+  for (const entry of facets.keys) {
+    const code = camelotOf(entry.value);
+    if (code && !byCode.has(code)) byCode.set(code, entry);
+    else others.push(entry);
+  }
+  const grid = ["A", "B"].flatMap((ring) =>
+    Array.from({ length: 12 }, (_, index) => `${index + 1}${ring}`),
+  );
+  const anyChosen = chosen.length > 0 || asksForNone(filters, KEY_FIELD);
   return (
     <div className="cp-quick__list" role="group" aria-label="Keys in this view">
-      {facets.keys.map((entry) => (
+      {/* Twelve numbers by the two rings, as the wheel has them (M112); a key with no track here is
+          there but cannot be ticked, so the grid keeps one shape. */}
+      <div className="cp-quick__keys">
+        {grid.map((code) => {
+          const entry = byCode.get(code);
+          const on = entry ? isChosen(entry.value) : false;
+          return (
+            <label
+              key={code}
+              className={`cp-quick__key${on ? " cp-quick__key--on" : ""}${entry ? "" : " cp-quick__key--none"}`}
+              data-hint={entry ? `${formatCount(entry.count)} ${entry.count === 1 ? "track" : "tracks"}` : "No track here"}
+            >
+              <input
+                type="checkbox"
+                className="cp-visually-hidden"
+                aria-label={keyLabel(code, notation)}
+                checked={on}
+                disabled={!entry}
+                onChange={() => entry && onFiltersChange(toggleValue(filters, KEY_FIELD, entry.value))}
+              />
+              <KeyChip value={code} />
+            </label>
+          );
+        })}
+      </div>
+      {others.map((entry) => (
         <Choice
           key={entry.value}
           label={keyLabel(entry.value, notation)}
           count={entry.count}
-          checked={chosen.some((value) => value.toLowerCase() === entry.value.toLowerCase())}
+          checked={isChosen(entry.value)}
           onChange={() => onFiltersChange(toggleValue(filters, KEY_FIELD, entry.value))}
         />
       ))}
@@ -318,11 +382,18 @@ function KeyList({
           onChange={() => onFiltersChange(toggleNone(filters, KEY_FIELD))}
         />
       )}
-      {onOpenKeys && (
-        <button type="button" className="cp-link cp-link--go cp-quick__keys-link" onClick={onOpenKeys}>
-          {goTo("Keys")}
-        </button>
-      )}
+      <div className="cp-quick__keys-end">
+        {onOpenKeys && (
+          <button type="button" className="cp-link cp-link--go cp-quick__keys-link" onClick={onOpenKeys}>
+            {goTo("Keys")}
+          </button>
+        )}
+        {anyChosen && (
+          <Button variant="quiet" onClick={() => onFiltersChange(clearField(filters, KEY_FIELD))}>
+            Clear
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

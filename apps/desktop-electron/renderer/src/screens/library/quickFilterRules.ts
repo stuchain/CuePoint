@@ -92,6 +92,11 @@ export function toggleValue(
   return replaceFamily(rules, field, family, rule);
 }
 
+/** The rules with every value of a field unticked, and "has none" with them (the Key list's Clear). */
+export function clearField(rules: FilterRuleSet | null, field: string): FilterRuleSet | null {
+  return replaceFamily(rules, field, [...VALUE_OPERATORS, "is_empty"], null);
+}
+
 /** The rules asking for the tracks with no value for a field, or no longer asking. */
 export function toggleNone(rules: FilterRuleSet | null, field: string): FilterRuleSet | null {
   const family = [...VALUE_OPERATORS, "is_empty"];

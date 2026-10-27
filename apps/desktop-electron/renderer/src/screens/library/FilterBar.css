@@ -22,17 +22,31 @@
   min-height: calc(var(--toolbar-height) - var(--hairline));
 }
 
+/* M109 (D15): an in-flow panel, not a popover: no shadow and no frame of its own, on the panel
+   tone, flush with the toolbar above it, so its labels start where the search's words do. */
 .cp-filter-bar__builder {
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
   gap: var(--space-md);
-  margin: 0 var(--space-md) var(--space-md);
-  padding: var(--space-md);
-  /* P50: the popover chrome. */
+  margin: 0;
+  padding: var(--space-md) 0;
   background: var(--bg-panel);
-  border: var(--popover-border);
-  box-shadow: var(--shadow-popover);
+  border: 0;
+  box-shadow: none;
+}
+
+/* M110: the value takes the room that is left, with the buttons on its line (they wrap only when
+   the row is too narrow for both), Cancel then the primary at the end. */
+.cp-filter-bar__builder .cp-field {
+  flex: 1 1 calc(120px * var(--scale));
+  min-width: 0;
+  max-width: none;
+}
+
+.cp-filter-bar__builder-actions {
+  flex: none;
+  margin-inline-start: auto;
 }
 
 .cp-filter-bar__hint {
