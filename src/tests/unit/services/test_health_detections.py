@@ -113,7 +113,7 @@ class TestLastRuns:
         labels = {rule.id: rule.label for rule in HEALTH_RULES}
         assert labels["not_matched"] == "Not matched"
         assert labels["needs_review"] == "Waiting for you"
-        assert labels["disputed"] == "Changed since you decided"
+        assert labels["disputed"] == "Changed after you confirmed"
         assert labels["missing_key"] == "No Beatport key"
 
     def test_without_a_feed_nothing_is_claimed(self):

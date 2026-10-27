@@ -368,7 +368,7 @@ def _require_entry(entry_id: int) -> Any:
         raise ApiError(
             404,
             SET_NOT_FOUND,
-            f"There is no entry {entry_id} in a Set",
+            f"There is no track {entry_id} in a Set",
             reason=MISSING_ENTRY,
         )
     return row

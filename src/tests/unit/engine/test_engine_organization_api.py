@@ -620,15 +620,18 @@ class TestSmartCollections:
         assert node["broken"] is False
 
     def test_an_empty_rule_set_is_refused(self, engine, tracks):  # noqa: F811
-        """A filter with no rules is the whole library, which is the Library
-        page (ORG-06)."""
+        """A filter with no rules matches All tracks (ORG-06), and the refusal
+        names the scope by its name (M388)."""
         status, payload = post(
             engine,
             "/api/v1/collections/smart/save",
             {"name": "Everything", "rules": {"match": "all", "rules": []}},
         )
         assert status == 400
-        assert "at least one rule" in payload["error"]["message"]
+        message = payload["error"]["message"]
+        assert "at least one rule" in message
+        assert "matches All tracks" in message
+        assert "whole library" not in message
 
     def test_rules_that_are_not_a_rule_set_are_refused(self, engine, tracks):  # noqa: F811
         status, payload = post(

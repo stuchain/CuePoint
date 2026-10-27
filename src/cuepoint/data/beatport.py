@@ -600,6 +600,39 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
         return None
 
 
+def _title_with_mix(name: str, mix_name: str) -> str:
+    """A track's title as Beatport shows it: "Name (Mix)" (M454).
+
+    The catalog search and Discover already write it this way. A name that
+    already ends with its mix in parentheses is returned unchanged.
+    """
+    name = (name or "").strip()
+    mix = (mix_name or "").strip()
+    if not mix or not name or name.lower().endswith(f"({mix.lower()})"):
+        return name
+    return f"{name} ({mix})"
+
+
+def _heading_title(heading: Any) -> str:
+    """The title a track page's heading holds, with its mix in parentheses.
+
+    Beatport writes the mix name in a ``<span>`` inside the heading. Reading the
+    heading with ``get_text(" ")`` joined the two with a bare space and lost
+    the parentheses ("It's Not Right Original Mix").
+    """
+    span = heading.find("span")
+    mix = span.get_text(" ", strip=True) if span else ""
+    if mix:
+        own = " ".join(
+            str(text).strip()
+            for text in heading.find_all(string=True, recursive=False)
+            if str(text).strip()
+        )
+        if own:
+            return _title_with_mix(own, mix)
+    return heading.get_text(" ", strip=True)
+
+
 def _parse_structured_json_ld(soup: BeautifulSoup) -> Dict[str, str]:
     """Parse structured JSON-LD data from page.
 
@@ -699,6 +732,9 @@ def _parse_next_data(soup: BeautifulSoup) -> Dict[str, str]:
             if isinstance(node, dict):
                 if "title" in node and ("artists" in node or "performers" in node):
                     t = node.get("title") or node.get("name")
+                    mix = node.get("mix_name") or node.get("mixName")
+                    if t and isinstance(mix, str):
+                        t = _title_with_mix(t, mix)
                     out["title"] = t or out.get("title")
                     arts = node.get("artists") or node.get("performers")
                     if isinstance(arts, list):
@@ -834,7 +870,7 @@ def parse_track_page(
         if not title:
             title_el = soup.select_one("h1, h2")
             if title_el:
-                txt = title_el.get_text(" ", strip=True)
+                txt = _heading_title(title_el)
                 if txt and len(txt) > 2 and txt.lower() not in {"track", "title"}:
                     title = txt
 

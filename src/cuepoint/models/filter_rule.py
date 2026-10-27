@@ -933,7 +933,7 @@ FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec(
         "match_disputed",
         TYPE_BOOL,
-        "Changed since you decided",
+        "Changed after you confirmed",
         group=GROUP_BEATPORT,
         facetable=True,
         column=f"({MATCH_ALIAS}.newer_attempt_id IS NOT NULL)",

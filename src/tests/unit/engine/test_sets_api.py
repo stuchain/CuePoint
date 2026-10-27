@@ -952,10 +952,12 @@ class TestChapters:
             engine, "chapters/split", {"entry_id": first}, 400, "INVALID_REQUEST"
         )
         assert "rename" in error["message"].lower()
+        assert "already starts at this track" in error["message"]  # M427
         error = refused(
             engine, "chapters/split", {"entry_id": 99999}, 404, "SET_NOT_FOUND"
         )
         assert error["reason"] == "entry"
+        assert error["message"] == "There is no track 99999 in a Set"  # M427
         crate = ok(
             engine,
             "/api/v1/collections/create",

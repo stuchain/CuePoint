@@ -1072,7 +1072,7 @@ class CollectionService(ICollectionService):
         if not valid.rules:
             raise FilterRuleError(
                 "A smart collection needs at least one rule: a filter with none "
-                "matches the whole library, which is the Library page"
+                "matches All tracks"
             )
         check_rule_references(self._db.connect(), valid)
         return json.dumps(valid.to_dict(), separators=(",", ":"), sort_keys=True)

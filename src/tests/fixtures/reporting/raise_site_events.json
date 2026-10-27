@@ -10063,7 +10063,7 @@
     }
   },
   {
-    "name": "cuepoint/services/set_service.py::SetService.split_chapter_at::{chapter.label} already starts at this entry: rename it rather than start another chapter here",
+    "name": "cuepoint/services/set_service.py::SetService.split_chapter_at::{chapter.label} already starts at this track: rename it rather than start another chapter here",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10075,7 +10075,7 @@
         "values": [
           {
             "type": "ValueError",
-            "value": "\"Lovin' You (Ol' Skool Mix)\" already starts at this entry: rename it rather than start another chapter here"
+            "value": "\"Lovin' You (Ol' Skool Mix)\" already starts at this track: rename it rather than start another chapter here"
           }
         ]
       }
@@ -10085,7 +10085,7 @@
         "values": [
           {
             "type": "ValueError",
-            "value": "\"<value>\" already starts at this entry: rename it rather than start another chapter here"
+            "value": "\"<value>\" already starts at this track: rename it rather than start another chapter here"
           }
         ]
       }

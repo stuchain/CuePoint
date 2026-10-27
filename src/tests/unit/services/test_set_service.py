@@ -508,7 +508,7 @@ class TestSplitChapterAt:
         refused(
             db,
             lambda: service.split_chapter_at(entries[0], "Opening"),
-            "chapter 1 already starts at this entry: rename it",
+            "chapter 1 already starts at this track: rename it",
         )
 
     def test_on_any_chapters_first_entry_is_refused(self, service, db, three):

@@ -399,7 +399,7 @@ class SetService(ISetService):
             if self._sets.first_entry_position(row.plan.chapter_id) == row.position:
                 chapter = self._require_chapter(row.plan.chapter_id)
                 raise ValueError(
-                    f"{chapter.label} already starts at this entry: rename it "
+                    f"{chapter.label} already starts at this track: rename it "
                     "rather than start another chapter here"
                 )
             made = self._sets.split_chapter(int(entry_id), wanted)

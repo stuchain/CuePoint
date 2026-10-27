@@ -110,7 +110,7 @@ HEALTH_RULES: Tuple[HealthRule, ...] = (
     ),
     HealthRule(
         "disputed",
-        "Changed since you decided",
+        "Changed after you confirmed",
         _rules(FilterRule("match_disputed", OP_IS, True)),
     ),
     HealthRule(

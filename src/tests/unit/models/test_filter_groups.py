@@ -128,7 +128,7 @@ def test_tag_and_collection_and_in_playlist_say_where_a_track_is():
     [
         ("match_state", "Beatport match"),
         ("match_decided_by", "Match decided by (you or CuePoint)"),
-        ("match_disputed", "Changed since you decided"),
+        ("match_disputed", "Changed after you confirmed"),
         ("match_score", "Beatport match score"),
         ("file_checked_at", "Last checked on disk"),
         ("in_duplicate_group", "Possible duplicate"),

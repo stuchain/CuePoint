@@ -970,7 +970,7 @@
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
     "verdict": "exempt"
   },
-  "cuepoint/engine/sets_api.py::_require_entry::There is no entry {entry_id} in a Set": {
+  "cuepoint/engine/sets_api.py::_require_entry::There is no track {entry_id} in a Set": {
     "holds": "an integer id",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
     "verdict": "exempt"
@@ -3002,7 +3002,7 @@
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
     "verdict": "exempt"
   },
-  "cuepoint/services/set_service.py::SetService.split_chapter_at::{chapter.label} already starts at this entry: rename it rather than start another chapter here": {
+  "cuepoint/services/set_service.py::SetService.split_chapter_at::{chapter.label} already starts at this track: rename it rather than start another chapter here": {
     "holds": "a playlist, collection, tag, chapter or Set name",
     "verdict": "corpus"
   },

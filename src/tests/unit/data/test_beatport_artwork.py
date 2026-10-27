@@ -486,6 +486,9 @@ class TestMediaHosts:
 @pytest.mark.unit
 class TestScoringDoesNotMove:
     def test_every_recorded_page_scores_exactly_as_before_the_parser_change(self):
+        # M454 moved only the Strobe page's title, "Strobe Original Mix" ->
+        # "Strobe (Original Mix)": the heading's mix span keeps its
+        # parentheses. Every score and winner is unchanged.
         baseline = json.loads(
             (FIXTURES / "scoring_baseline.json").read_text(encoding="utf-8")
         )
