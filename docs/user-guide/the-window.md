@@ -21,8 +21,9 @@ also reopens on the page you were last using.
 
 The sidebar lists the pages available to you, with the CuePoint logo and name and the
 collapse button in a row that stays at its top (click the logo or name to go home, to
-the Library). Each page is one line, its name. Rest the pointer on it, or Tab to it, for
-a tooltip saying what it is for, and when the sidebar is collapsed the tooltip leads with the name:
+the Library). Each page is one line, its name. When the sidebar is collapsed, rest the
+pointer on an icon, or Tab to it, for a tooltip with its name and what it is for; open, the
+name is on screen and a screen reader reads what it is for:
 **Library** "Your Rekordbox tracks", **Clean** "Match on Beatport, find missing files and duplicates",
 **Keys** "The keys in your playlists, Collections and Sets", **Discover** "Find new music",
 **Prepare** "Plan a set", **Statistics** "See what you play most and how your library is made up" and **Settings** "Look, sound, accounts". Your Collections
@@ -117,7 +118,7 @@ details has nothing to show.
 CuePoint has one menu bar, its own, in place of the generic one Electron adds and
 the small Help menu CuePoint used to draw inside the window.
 
-- **CuePoint** (on a Mac only): **About CuePoint**, **Settings...** (**Cmd+,**) and
+- **CuePoint** (on a Mac only): **About CuePoint**, **Settings** (**Cmd+,**) and
   **Quit**.
 - **File**: **Import a Rekordbox file...** (**Ctrl+O**) opens the Library and asks for a
   Rekordbox XML file (the same as **Change file…** in Settings →
@@ -129,16 +130,17 @@ the small Help menu CuePoint used to draw inside the window.
 - **View**: **Size** (Extra small, Small, Medium, Large and Extra large, with the one in use
   ticked; a size too big for your screen is greyed), **Larger text** (**Ctrl+=**), **Smaller text** (**Ctrl+-**), **Default text size**
   (**Ctrl+0**), **Track details** (**Ctrl+I**), **Sidebar** (**Ctrl+B**), **Search library…**
-  (**Ctrl+K**) and **Activity…** (**Ctrl+Shift+A**). These keys change the Size setting, the
-  same one as Settings → Appearance; they never zoom the page. **Settings...** (**Ctrl+,**) is
+  (**Ctrl+K**) and **Activity** (**Ctrl+Shift+A**). These keys change the Size setting, the
+  same one as Settings → Appearance; they never zoom the page. **Settings** (**Ctrl+,**) is
   in **File** on Windows and Linux.
-- **Help**: **Getting started…**, **Keyboard shortcuts…**, **Get help…**, **How to get
-  your Rekordbox file…**, **Privacy…** (opens Settings → Privacy), and on Windows
-  and Linux **About CuePoint**. **Get help...** holds the note, the help file and, under
-  **Details for support**, **Diagnostics...** and **Log viewer...**.
+- **Help**: **Getting started**, **Keyboard shortcuts**, **Get help**, **How to get
+  your Rekordbox file**, **Privacy** (opens Settings → Privacy), and on Windows
+  and Linux **About CuePoint**. **Get help** holds the note, the help file and, under
+  **Details for support**, **Diagnostics** and **Log viewer**. A menu item ends in "…"
+  only when what it opens asks you for something first, as **Search library…** does.
 
 A development build of CuePoint adds a **Developer** menu with reload and the
-developer tools (and **Diagnostics...** and **Log viewer...**); a released build has none.
+developer tools (and **Diagnostics** and **Log viewer**); a released build has none.
 
 ## Track details
 
@@ -187,7 +189,7 @@ in the background. Nothing was changed.** Beside it is **Start it
 again**, and **Library loaded at 5:17 PM** is the time CuePoint last heard from its background process, so you know how old what you see on the page is. While it
 starts again the banner says **CuePoint stopped working in the background. Starting
 it again (1 of 3)…** If that does not work it says **CuePoint could not start in the
-background. Quit and open CuePoint again.** and offers **Get help…**.
+background. Quit and open CuePoint again.** and offers **Get help**.
 
 While the banner is up the page is dimmed and its buttons and links do nothing,
 so nothing fails one click at a time. Clicking one points you to the banner. You can
@@ -215,15 +217,18 @@ file check or a tag write, and carries on after them. See
 
 ## Activity
 
-Click **Activity** in the sidebar (above **Settings**), choose **View → Activity…**, or press **Ctrl+Shift+A**, for a list of
+Click **Activity** in the status strip, choose **View → Activity**, or press **Ctrl+Shift+A**, for a list of
 what CuePoint has done, newest first and grouped by day (**Today**, **Yesterday**,
 then dates such as **Oct 3**): backups, app starts, imports and refreshes, file
 checks, matches, edits to many tracks at once, and tags written to files. Each
 entry has a short word for its kind and the counts and names that matter; the
 rest of what was recorded is behind its **Details**. Times read like the rest of the app ("4:58 PM"), and names are in curly quotes.
+A day's app starts are one entry, such as **Started 3 times**. An entry's words are a link
+to the page that holds what it recorded: a match opens Clean, an edit the Library, a dig
+Discover.
 
 Some entries can be acted on where they are listed. A change to many tracks
-offers **Undo this batch**, and a save to files offers **Undo**; each asks once
+offers **Undo all of these**, and a save to files offers **Undo**; each asks once
 more before it does anything. See
 [Undoing a change](library.md#undoing-a-change) and
 [Undoing a sync](library.md#undoing-a-sync).
@@ -233,7 +238,7 @@ matches only the tracks it had not reached. See [Clean](clean.md#match).
 
 ## Keyboard shortcuts
 
-To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts…**. The dialog lists them by context (Everywhere, Library, Keys, Prepare, Tables, Clean, Check the match, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac the list shows the Mac keys (⌘) itself.
+To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts**. The dialog lists them by context (Everywhere, Library, Keys, Prepare, Tables, Clean, Check the match, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac the list shows the Mac keys (⌘) itself.
 
 | Shortcut | Does |
 | --- | --- |
@@ -254,13 +259,21 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard sh
 | **Esc** | Let go of a selection, or close what is open |
 | **Ctrl+B** | Collapse or expand the sidebar |
 | **Ctrl+I** | Show or hide Track details; while the queue is open, close it and bring Track details back |
-| **Ctrl+Shift+A** | Open Activity (**View → Activity…**) |
+| **Ctrl+Shift+A** | Open Activity (**View → Activity**) |
+| **F6** / **Shift+F6** | Go to the next or previous pane: the sidebar, the page and its panes, Track details or the queue, the player |
+| **Ctrl+Up** / **Ctrl+Down** | In a track table: move without selecting |
+| **Space** | Play or pause, on every page |
+| **Alt+T** | Go to the newest message, to reach its **Undo** before it goes |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
+
+Lists follow two patterns. In the playlist tree, **Enter** opens the playlist. In a track
+table, **Enter** plays the track, **Space** plays or pauses as everywhere, and **Ctrl+Space**
+ticks a track or adds it to the selection.
 
 Clean's Match area keeps its own keys, listed below, in the review table and its side panel.
 
 On Prepare, **Left** / **Right** resize the source panel once its divider has focus,
-and **Enter** saves an entry's In or Out time.
+and **Enter** saves a track's mix-in or mix-out time.
 
 In Clean's Match area, in the review table and its side panel:
 
@@ -271,7 +284,7 @@ In Clean's Match area, in the review table and its side panel:
 | **Ctrl+A** | Select every track |
 | **Esc** | Close the side panel |
 | **Enter** | Play the track |
-| **Space** | Tick or untick the track |
+| **Ctrl+Space** | Tick or untick the track (**Space** plays or pauses, as everywhere) |
 | **N** | Next track still to check |
 
 In the **Check the match** side panel, with focus in the panel but not on one of its buttons:
@@ -306,7 +319,7 @@ and hand focus back to whatever opened them.
 
 ## Messages
 
-Short messages (a save, a reset) appear in the bottom-right corner above the player and status strip. Ones that only tell you something went well or give you information go by themselves after a few seconds, longer if they offer a button such as **Undo**. Errors and warnings stay until you close them with the **×** (**Close message**). Hovering over a message, or moving keyboard focus into it, keeps it on screen until you move away.
+Short messages (a save, a reset) appear in the bottom-right corner above the player and status strip. Ones that only tell you something went well or give you information go by themselves after a few seconds, longer if they offer a button such as **Undo**. Errors and warnings stay until you close them with the **×** (**Close message**). Hovering over a message, or moving keyboard focus into it, keeps it on screen until you move away. **Alt+T** moves focus to the newest message's button, so its **Undo** is a key away; **Ctrl+Z** presses it.
 
 ## Settings
 

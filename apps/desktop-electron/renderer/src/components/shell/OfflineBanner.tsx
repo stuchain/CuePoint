@@ -13,7 +13,7 @@ const AUTO_RESTARTS = 3;
 const PULSE_MS = 600;
 
 interface OfflineBannerProps {
-  /** Opens the help dialog; without it the "Get help…" button is left out. */
+  /** Opens the help dialog; without it the "Get help" button is left out. */
   onGetHelp?: () => void;
   /** Goes up by one each time a click on the dimmed page was stopped. */
   pulse?: number;
@@ -100,7 +100,7 @@ export function OfflineBanner({ onGetHelp, pulse = 0 }: OfflineBannerProps) {
           </Button>
         ) : action === "help" ? (
           <Button variant="secondary" onClick={onGetHelp}>
-            Get help…
+            Get help
           </Button>
         ) : undefined
       }

@@ -49,7 +49,7 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
   }, [open]);
 
   return (
-    <Modal open={open} title="About CuePoint" onClose={onClose} closeLabel="Close">
+    <Modal open={open} title="About CuePoint" onClose={onClose}>
       <div className="about-dialog">
         <div className="about-dialog__brand">
           <img className="about-dialog__logo" src={appIcon} alt="" draggable={false} />

@@ -39,7 +39,8 @@ import "./Sidebar.css";
  * opened from (C221).
  *
  * Each entry is one line, the label (K7), one row tall (C208). What it is for (NAV-1) is its
- * tooltip, with the label in front of it when the rail is collapsed. An empty library dims
+ * tooltip in the collapsed rail, with the label in front of it; in the open rail it is the
+ * link's description only, so no tip covers the page beside the rail (N3). An empty library dims
  * nothing: each page explains itself (C144).
  */
 function DestinationLink({ destination, collapsed, lit, waiting = 0 }: {
@@ -54,7 +55,9 @@ function DestinationLink({ destination, collapsed, lit, waiting = 0 }: {
   const said = waiting > 0 ? `${formatCount(waiting)} to check` : "";
   return (
     <Hint
-      text={collapsed ? `${destination.label}: ${hint}${said ? `. ${said}` : ""}` : hint}
+      // The tip shows only in the collapsed rail, as the brand's does: in the open rail the label
+      // is on screen, and a tip to the right would cover the page's first pane row (N3).
+      text={collapsed ? `${destination.label}: ${hint}${said ? `. ${said}` : ""}` : undefined}
       portal
       placement="right"
     >
@@ -65,6 +68,8 @@ function DestinationLink({ destination, collapsed, lit, waiting = 0 }: {
         // The accessible name has to survive collapsing: with labels hidden the
         // link would otherwise announce as its glyph, or as nothing at all.
         aria-label={said ? `${destination.label}, ${said}` : destination.label}
+        // What the page is for still reaches a screen reader when no tip is shown (N3).
+        aria-description={collapsed ? undefined : hint}
       >
         <span className="cp-sidebar__icon" aria-hidden>
           {destination.icon ? <PixelIcon name={destination.icon} /> : <span className="cp-sidebar__glyph">{destination.glyph}</span>}

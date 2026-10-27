@@ -8,6 +8,10 @@ import { describe, expect, it } from "vitest";
 import { parseRules, stripComments } from "../test/cssRules";
 import css from "./settings.css?raw";
 import errorReportingCss from "./error-reporting-settings.css?raw";
+import themeCss from "./theme-settings.css?raw";
+import exportCss from "./rekordbox-export-settings.css?raw";
+import logViewerCss from "../components/LogViewerDialog.css?raw";
+import updatesCss from "../components/updates/updates.css?raw";
 
 const rules = parseRules(stripComments(css));
 
@@ -52,7 +56,8 @@ describe("Settings without cards (P9, P17)", () => {
   it("draws a status line's state as a tinted pixel icon, not a round dot (M230, M34)", () => {
     expect(rules.some((r) => r.selector.trim() === ".settings-status::before")).toBe(false);
     expect(body(".settings-status__icon")).toMatch(/color:\s*var\(--fg-muted\)/);
-    expect(body(".settings-status--success .settings-status__icon")).toMatch(/color:\s*var\(--success-text\)/);
+    // Moved for M325: an all-good tick stays muted; only warning and danger take a colour.
+    expect(body(".settings-status--success .settings-status__icon")).toMatch(/color:\s*var\(--fg-muted\)/);
     expect(body(".settings-status--warning .settings-status__icon")).toMatch(/color:\s*var\(--warning-text\)/);
     expect(body(".settings-status--danger .settings-status__icon")).toMatch(/color:\s*var\(--danger-text\)/);
     expect(css).not.toMatch(/border-radius:\s*50%/);
@@ -103,5 +108,27 @@ describe("Settings layout (M226-M229)", () => {
     expect(wrapper?.body).toMatch(/border-top:\s*var\(--divider\)/);
     const fieldset = errorRules.find((r) => r.selector.trim() === ".cp-error-reporting__exit > .cp-fieldset");
     expect(fieldset?.body).toMatch(/border:\s*0/);
+  });
+
+  it("shows no second icon under About's version line (M230)", () => {
+    expect(body(".about-updates__version ~ .about-updates__state .settings-status__icon")).toMatch(/display:\s*none/);
+  });
+
+  it("sets the section links at the one pressable word size (M26)", () => {
+    expect(body(".settings-page__nav a")).toMatch(/font-size:\s*var\(--control-font-size\)/);
+  });
+
+  it("makes every Settings and Privacy check one row tall, with the arrow (M78, M339)", () => {
+    // Moved for M78: was calc(24px * var(--scale)), a third check height.
+    expect(body(".settings-check")).toMatch(/min-height:\s*var\(--row-height\)/);
+    expect(body(".settings-check")).toMatch(/cursor:\s*default/);
+    for (const sheet of [css, themeCss]) expect(stripComments(sheet)).not.toMatch(/cursor:\s*pointer/);
+  });
+
+  it("keeps whole pixels and type tokens (M80), and the log viewer's check in the label face (M11)", () => {
+    expect(stripComments(exportCss)).not.toMatch(/(?<!round\(nearest, )calc\(2px \* var\(--scale\)\)/);
+    expect(stripComments(updatesCss)).not.toMatch(/font-size:\s*[\d.]+em/);
+    const auto = parseRules(stripComments(logViewerCss)).find((r) => r.selector.trim() === ".log-viewer-dialog__auto");
+    expect(auto?.body).not.toMatch(/font-family/);
   });
 });

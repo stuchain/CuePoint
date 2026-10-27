@@ -143,7 +143,6 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
       title="Log viewer"
       size="large"
       onClose={onClose}
-      closeLabel="Close"
     >
       <div className="log-viewer-dialog">
         <div className="log-viewer-dialog__controls">

@@ -60,7 +60,6 @@ export function WhatsNew({ notes, open: openOnDemand = true, onClose, hold = fal
       open={onDemand ? openOnDemand : !dismissed && !hold}
       title={`What's new in CuePoint ${shown.version}`}
       onClose={close}
-      closeLabel="Close"
     >
       <ReleaseNotesView notes={shown.notes} />
     </Modal>

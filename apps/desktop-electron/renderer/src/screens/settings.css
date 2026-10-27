@@ -60,7 +60,8 @@
   min-height: var(--row-height);
   padding: 0 var(--space-sm);
   color: var(--fg-muted);
-  font-size: var(--font-size-sm);
+  /* The one pressable word size (M26). */
+  font-size: var(--control-font-size);
   text-decoration: none;
 }
 
@@ -148,19 +149,20 @@
 }
 
 /*
- * One checkbox or radio row for every Settings panel: an even 24px row, the box 6 from its text.
- * The hit area stays 44px tall: the label's own box is 24, and an invisible layer reaches 10 above
- * and below it, so the small row is still an easy target (a row below wins where two layers meet).
+ * One checkbox or radio row for every Settings panel: one row tall, as every check is (M78), the
+ * box 6 from its text. An invisible layer reaches 10 above and below it, so the row is an easy
+ * target (a row below wins where two layers meet). The Privacy dialog's checks use it too.
  */
 .settings-check {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  min-height: calc(24px * var(--scale));
+  min-height: var(--row-height);
   font-size: var(--font-size-xs);
   color: var(--fg-primary);
-  cursor: pointer;
+  /* The arrow, as on every control (M339). */
+  cursor: default;
 }
 
 .settings-check::before {
@@ -248,8 +250,14 @@
   display: none;
 }
 
+/* Fine is quiet: the tick stays muted; only a problem takes a colour (M325). */
 .settings-status--success .settings-status__icon {
-  color: var(--success-text);
+  color: var(--fg-muted);
+}
+
+/* About shows the version first: the state under it needs no second icon (M230). */
+.about-updates__version ~ .about-updates__state .settings-status__icon {
+  display: none;
 }
 
 .settings-status--warning .settings-status__icon {

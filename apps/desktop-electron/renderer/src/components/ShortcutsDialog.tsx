@@ -52,7 +52,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
   const shown = groups.reduce((total, group) => total + group.rows.length, 0);
 
   return (
-    <Modal size="medium" open={open} title="Keyboard shortcuts" onClose={onClose} closeLabel="Close">
+    <Modal size="medium" open={open} title="Keyboard shortcuts" onClose={onClose}>
       <div className="shortcuts-dialog">
         {/* The search and the count stay put; only the list below scrolls (C119). */}
         <div className="shortcuts-dialog__head">

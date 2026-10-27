@@ -76,18 +76,21 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
 
     // Each command's key appears in the dialog: the arrows as a pair.
     for (const key of [...keys, NEXT_TO_CHECK_KEY]) {
+      // The tick's row is read on its own below: it moved to Ctrl+Space (M465, M482).
+      if (key === MATCH_KEYS.tick) continue;
       expect(clean.some((row) => row.shortcut.split(" / ").includes(key)), key).toBe(true);
     }
     // Six, and N for the next track still to check (M508, moved from six with no N).
     expect(clean).toHaveLength(7);
   });
 
-  it("lists Enter as Play and Space as Tick, answered on the review's row", () => {
+  it("lists Enter as Play and Ctrl+Space as Tick, answered on the review's row", () => {
     const action = (shortcut: string) => clean.find((row) => row.shortcut === shortcut)?.action;
     expect(action("Enter")).toBe("Play the track");
-    expect(action("Space")).toBe("Tick or untick the track");
+    // Moved for M465/M482 (D34): Space plays everywhere, Ctrl+Space ticks.
+    expect(action("Ctrl+Space")).toBe("Tick or untick the track");
+    expect(action("Space")).toBeUndefined();
     expect(MATCH_KEYS.play).toBe("Enter");
-    expect(MATCH_KEYS.tick).toBe("Space");
     expect(reviewTableSource).toMatch(/event\.key === "Enter"/);
     expect(reviewTableSource).toMatch(/event\.key === " "/);
   });
@@ -104,7 +107,8 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
 
   it("binds no modified key but Select all, so none can collide with a shell shortcut", () => {
     // Ctrl+A is the Library's select all, taken only outside a field and a dialog; no shell shortcut uses it.
-    for (const row of clean.filter((r) => r.shortcut !== MATCH_KEYS["select-all"])) {
+    // Moved for M482: the tick is Ctrl+Space, as in every track table, and no shell shortcut uses it.
+    for (const row of clean.filter((r) => r.shortcut !== MATCH_KEYS["select-all"] && r.shortcut !== "Ctrl+Space")) {
       expect(row.shortcut).not.toMatch(/Ctrl|Alt|Shift|Cmd/);
     }
   });
@@ -112,8 +116,8 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
   it("leaves Space to the player everywhere but a tickable row", () => {
     // The tick is bound on the row (ReviewTable), not in the shared key map.
     expect(matchKeyboardSource).not.toMatch(/case " "/);
+    // Moved for M482 (D34): no page takes Space from the player.
     expect(KEYBOARD_SHORTCUTS.filter((row) => row.shortcut === "Space").map((row) => row.context)).toEqual([
-      "Clean",
       "Player",
     ]);
   });
@@ -202,6 +206,7 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     // One row for the two keys (M444).
     ["Ctrl+? / F1", "Everywhere", appSource, /key === "\?"/],
     ["Ctrl+? / F1", "Everywhere", appSource, /key === "F1"/],
+    ["Alt+T", "Everywhere", appSource, /event\.code !== "KeyT"[\s\S]*focusNewest\(\)/],
     ["Esc", "Everywhere", modalSource, /key === "Escape"/],
     ["Ctrl+F", "Library", pageSearchSource, /key\.toLowerCase\(\) !== "f"/],
     ["Ctrl+F", "Prepare", sourcePanelSource, /key\.toLowerCase\(\) !== "f"[\s\S]*openLibrarySearch\.current\(\)/],
@@ -224,7 +229,7 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Enter", "Player", queuePanelSource, /key === "Enter"/],
     ["Menu key / Shift+F10", "Player", queuePanelSource, /key === "ContextMenu"/],
     ["Enter", "Clean", reviewTableSource, /event\.key === "Enter"/],
-    ["Space", "Clean", reviewTableSource, /event\.key === " "/],
+    ["Ctrl+Space", "Clean", reviewTableSource, /event\.key === " "/],
     ["N", "Clean", matchKeyboardSource, /case "N":[\s\S]*"next-to-check"/],
     ["Left / Right", "Check the match", candidatePanelSource, /event\.key === "ArrowLeft" \? -1 : event\.key === "ArrowRight"/],
     ["1–9", "Check the match", candidatePanelSource, /\/\^\[1-9\]\$\/\.test\(event\.key\)/],

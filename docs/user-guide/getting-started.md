@@ -16,7 +16,7 @@ This is the only time you need to do that. After the first install, CuePoint fin
 
 ## First run
 
-CuePoint opens with a short guide of four steps: what CuePoint does; how to bring in your Rekordbox file (four small drawings show the export from Rekordbox step by step; **Import a Rekordbox file...** closes the guide and starts the import, and **How do I get one?** shows the same steps in words); matching your tracks on Beatport (**Match on Beatport...** is off until a library is imported, and says so; once on, it closes the guide and opens Clean's match window); and signing in to Beatport, which is optional (**Sign in to Beatport** opens Beatport's own page and the guide stays open). A step that is already done says so, for example "306 tracks imported", "236 confirmed" or "Signed in", each with a tick. While a step's own job is still to do, its button is the main one and **Next** sits beside it. Clicking outside the guide does not close it. The **×** in its corner, or **Esc**, ends it, and so does **Done** on the last step; there is no separate Skip button. Open it again, always from its first step, with **Help > Getting started…**.
+CuePoint opens with a short guide of four steps: what CuePoint does; how to bring in your Rekordbox file (four small drawings show the export from Rekordbox step by step; **Import a Rekordbox file...** closes the guide and starts the import, and **How do I get one?** shows the same steps in words); matching your tracks on Beatport (**Match on Beatport...** is off until a library is imported, and says so; once on, it closes the guide and opens Clean's match window); and signing in to Beatport, which is optional (**Sign in to Beatport** opens Beatport's own page and the guide stays open). A step that is already done says so, for example "306 tracks imported", "236 confirmed" or "Signed in", each with a tick. While a step's own job is still to do, its button is the main one and **Next** sits beside it. Clicking outside the guide does not close it. The **×** in its corner, or **Esc**, ends it, and so does **Done** on the last step; there is no separate Skip button. Open it again, always from its first step, with **Help > Getting started**.
 
 On a new install CuePoint also picks a size for your screen: Small (1.25×) on a screen shorter than 860 pixels, Medium (1.5×) otherwise. Change it in **Settings > Appearance** or **View > Size**.
 
@@ -26,13 +26,13 @@ If you updated from an earlier version, CuePoint shows one note the first time y
 
 ### 1. Export your collection from Rekordbox
 
-In Rekordbox, choose **File > Export Collection in xml format** and save the file somewhere easy to find. **Help > How to get your Rekordbox file...** shows the same steps.
+In Rekordbox, choose **File > Export Collection in xml format** and save the file somewhere easy to find. **Help > How to get your Rekordbox file** shows the same steps.
 
 ### 2. Import it
 
 1. Open CuePoint and go to **Library**.
 2. Choose **Import a Rekordbox file...** and pick the XML file.
-3. Your tracks and playlists appear when the import finishes. The status strip at the bottom shows its progress, and **Activity** in the sidebar lists each step.
+3. Your tracks and playlists appear when the import finishes. The status strip at the bottom shows its progress, and **Activity** in the status strip lists each step.
 
 CuePoint then checks, in the background, that your files are where Rekordbox says they are.
 
@@ -46,7 +46,7 @@ Matching runs in the background, so you can keep working. Tracks CuePoint is cer
 ### 4. Check the matches
 
 1. When a match ends on Clean, it opens **Review** for each playlist: a plain table with your track, the Beatport match (the part that differs is marked) and a tick. **Confirmed** tracks start ticked; tracks with **No match** cannot be.
-2. **Untick** a track to leave it out. Click a row to open a side panel on the Beatport candidates: **Use this match** picks another one, **Search Beatport** looks for it yourself, **None of these, leave it out** unticks it. **Up** and **Down** move along the table, **Enter** plays a track, **Space** ticks it and **Esc** closes the panel.
+2. **Untick** a track to leave it out. Click a row to open a side panel on the Beatport candidates: **Use this match** picks another one, **Search Beatport** looks for it yourself, **None of these, leave it out** unticks it. **Up** and **Down** move along the table, **Enter** plays a track, **Ctrl+Space** ticks it (**Space** plays or pauses, as on every page) and **Esc** closes the panel.
 3. Press the green **Sync to files…** at the bottom right. Choose which values go into the files (BPM, Genre, Label, Year, Key), look at **See every change**, then **Sync N files** (it reads **Nothing to sync** when no file would change). Nothing is written before that, and **Undo this sync** puts the files back.
 
 ### 5. Beatport's values

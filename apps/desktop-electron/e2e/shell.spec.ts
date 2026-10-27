@@ -532,7 +532,7 @@ ${tracks.join("\n")}
 
       const items = await menuItems(app);
       const labels = items.map((item) => item.label);
-      for (const label of ["File", "Edit", "View", "Help", "Import a Rekordbox file…", "Track details", "Search library…", "Activity…", "Privacy…"]) {
+      for (const label of ["File", "Edit", "View", "Help", "Import a Rekordbox file…", "Track details", "Search library…", "Activity", "Privacy"]) {
         expect(labels, label).toContain(label);
       }
       expect(items.filter((item) => /zoom/i.test(item.role) || /zoom/i.test(item.label))).toEqual([]);

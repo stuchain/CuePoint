@@ -38,7 +38,8 @@
   background: var(--bg-input);
   border: 0;
   font-family: var(--font-mono);
-  font-size: 0.9em;
+  /* A type token, not a fraction of the line (M80). */
+  font-size: var(--font-size-sm);
 }
 
 .cp-release-notes a {

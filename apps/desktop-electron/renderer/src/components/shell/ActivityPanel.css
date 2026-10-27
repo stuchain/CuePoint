@@ -90,15 +90,16 @@
   border-bottom: none;
 }
 
-/* A day heading (STR-8) above its rows: the muted label look, not a band (P11). */
+/* A day heading (STR-8) above its rows: the shared label role, not a band (P11, M1). */
 .cp-activity__day-heading {
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
   background: transparent;
   border-bottom: 0;
   color: var(--fg-muted);
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--control-font-weight);
 }
 
 .cp-activity__rows {
@@ -136,6 +137,12 @@
   color: var(--fg-primary);
   /* A sentence, so Inter (D5, C55); the entry's buttons keep the pixel face. */
   font-family: var(--font-data);
+  overflow-wrap: anywhere;
+}
+
+/* The summary as the link to its page (M269): the one link look, a sentence that wraps from the start. */
+.cp-activity__open {
+  text-align: start;
   overflow-wrap: anywhere;
 }
 

@@ -84,6 +84,15 @@ export function headerHeightPx(offsetHeight: number, top: number): number {
   return Math.round(offsetHeight + (Number.isFinite(top) ? top : 0));
 }
 
+/** The nearest ancestor that scrolls vertically: the region the sticky header sits over. */
+export function scrollRegionOf(element: HTMLElement): HTMLElement | null {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const { overflowY } = getComputedStyle(node);
+    if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") return node;
+  }
+  return null;
+}
+
 /**
  * The one header every page uses (G6 T4): a grid of `title + beside | actions`, a summary
  * line, a tabs row and a single divider under all of it. It sticks to the top of a
@@ -138,6 +147,20 @@ export function ScreenHeader({
         rootStyle.removeProperty("--side-head-height");
       }
     };
+  }, []);
+  // The sticky edge shows only while something has scrolled under the header (M215, M329): at
+  // rest the header has one rule, its divider, and the hairline joins it once content slides under.
+  useLayoutEffect(() => {
+    const header = root.current;
+    const region = header ? scrollRegionOf(header) : null;
+    if (!header || !region) return;
+    const update = () => {
+      if (region.scrollTop > 0) header.setAttribute("data-scrolled", "");
+      else header.removeAttribute("data-scrolled");
+    };
+    update();
+    region.addEventListener("scroll", update, { passive: true });
+    return () => region.removeEventListener("scroll", update);
   }, []);
   const hasDisplay = display !== undefined && display !== null && display !== false && display !== "";
   const hasControl = titleControl !== undefined && titleControl !== null && titleControl !== false;

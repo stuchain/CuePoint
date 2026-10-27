@@ -655,7 +655,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 
-  test("Edit values and Copy Beatport values: the Library's More and Beatport menus", async () => {
+  test("Edit values and Use Beatport values: the Library's More and Beatport menus", async () => {
     await openLibrary(win);
     const genres = () =>
       win.evaluate(async () => {
@@ -683,7 +683,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(editor).toBeHidden({ timeout: 30_000 });
     await expect.poll(() => titlesWithGenre("Deep House"), { timeout: 30_000 }).toEqual(["Warm One", "Warm Two"]);
 
-    // Copy Beatport values…: with Beatport's genre accepted for one track, applying it
+    // Use Beatport values… (M412): with Beatport's genre accepted for one track, applying it
     // changes that track's genre and leaves the other (the match is seeded, as the matcher would).
     seedAcceptedMatch(cuepointHome, "Warm One", { genre: "Tech House" });
     await win.reload();
@@ -691,8 +691,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await openLibrary(win);
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "Beatport", exact: true }), "the bar's Beatport");
-    await choose(win, "Copy Beatport values…");
-    const beatport = win.getByRole("dialog", { name: "Copy Beatport values" });
+    await choose(win, "Use Beatport values…");
+    const beatport = win.getByRole("dialog", { name: "Use Beatport values" });
     await expect(beatport).toContainText("2 tracks");
     await use(win, beatport.getByRole("checkbox", { name: "Genre" }), "Genre", "Space");
     // Counted as the tracks it would change.

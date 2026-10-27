@@ -115,7 +115,7 @@
   flex-direction: column;
 }
 
-/* A row: the option (title, artist, details) and its small play button beside it. */
+/* A row: the option (title, artist, details). No play button: Shift+Enter plays (M98). */
 .cp-global-search__row {
   display: flex;
   align-items: stretch;
@@ -133,23 +133,19 @@
   min-width: 0;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: var(--space-sm);
-  /* Centred, as the play button beside it is: with a row taller than its text the text sat at the top. */
+  /* Centred: with a row taller than its text the text sat at the top. */
   align-items: center;
   /* The one track-list row height; stacked, the lines have air above and below (M268). */
   min-height: var(--row-height);
   padding: var(--space-xs) var(--space-sm);
-  cursor: pointer;
+  /* The arrow, as on every row (M339). */
+  cursor: default;
 }
 
-/* The row ↑/↓ is on, which Enter opens and Shift+Enter plays. */
+/* The row ↑/↓ is on, which Enter opens and Shift+Enter plays: the menus' grey step, never the
+   violet selected look and no bar (D26 A, M99, M289). */
 .cp-global-search__option--active {
-  background: var(--selected-row-background);
-}
-
-/* The row's play button is the shared one (components/PlayButton), at the row's right end. */
-.cp-global-search__play {
-  align-self: center;
-  margin-inline-end: var(--space-sm);
+  background: var(--menu-active-fill);
 }
 
 /* Names are data, in Inter like the tables'. */

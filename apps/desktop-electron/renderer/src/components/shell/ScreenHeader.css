@@ -7,14 +7,19 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding-bottom: var(--space-md);
+  /* Whole pixels at every scale (M81). */
+  padding-bottom: round(nearest, var(--space-md), 1px);
+  /* One rule at rest, the divider (M329); the sticky edge joins it only when scrolled (M215). */
   border-bottom: var(--divider);
-  /* Content slides under the sticky header (P40): always on. */
-  box-shadow: var(--shadow-sticky);
   /* Divider to the first content: 12, for every page. */
   margin-bottom: var(--space-lg);
   background: var(--bg-app);
   min-width: 0;
+}
+
+/* Content has scrolled under the header: the sticky edge, a hard hairline (D4 A, M215). */
+.cp-screen-header[data-scrolled] {
+  box-shadow: var(--shadow-sticky);
 }
 
 /* The one exception: a strip attached to the header has no gap under the divider. */
@@ -202,6 +207,8 @@
   margin: 0;
   font-family: var(--font-meta);
   font-size: var(--text-label);
+  /* Whole pixels, so the header's height is too (M81). */
+  line-height: round(nearest, calc(var(--text-label) * var(--line-height-body)), 1px);
   color: var(--fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;

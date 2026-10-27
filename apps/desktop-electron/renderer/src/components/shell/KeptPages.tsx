@@ -154,6 +154,17 @@ export function KeptPages({ slots, unowned }: KeptPagesProps) {
     const before = shown.current;
     const samePage = before.id === owner && before.pathname === location.pathname;
     shown.current = { ...before, id: owner, pathname: location.pathname };
+    // A page coming back (M381): it was kept, hidden, and is shown again as it was left, so the
+    // one-shot entrances inside it (a side panel, the tab underline, a count) must not play again.
+    // Marked before this paint, and for as long as it is shown: taking the mark off would start
+    // those animations then. A first visit, or a page under a slot drawn afresh, is not marked.
+    if (!samePage) {
+      const kept = owner !== null && before.scroll.has(owner);
+      const backToRoot =
+        ownerSlot?.keepRoot === true && before.id === owner && isRootPage(ownerSlot, location.pathname);
+      const returned = kept && (before.id !== owner || backToRoot);
+      main?.toggleAttribute("data-returned", returned);
+    }
     if (owner === null) return;
     let pages = before.scroll.get(owner);
     if (!pages) {
@@ -172,7 +183,7 @@ export function KeptPages({ slots, unowned }: KeptPagesProps) {
     pages.set(location.pathname, 0);
     window.scrollTo(0, 0);
     main?.scrollTo(0, 0);
-  }, [owner, location.key, location.pathname, location.state, navigationType]);
+  }, [owner, ownerSlot, location.key, location.pathname, location.state, navigationType]);
 
   return (
     <>

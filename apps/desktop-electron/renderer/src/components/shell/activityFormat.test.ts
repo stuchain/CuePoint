@@ -14,6 +14,7 @@ import {
   formatEventTime,
   formatEventTone,
   formatEventType,
+  eventDestination,
   groupByDay,
   sortNewestFirst,
 } from "./activityFormat";
@@ -105,6 +106,38 @@ describe("groupByDay (STR-8)", () => {
 
   it("is empty for no events", () => {
     expect(groupByDay([])).toEqual([]);
+  });
+
+  it("folds a day's launches into one row, the newest, saying how many (M272)", () => {
+    const now = new Date(2026, 8, 2, 12);
+    const start = (id: number, h: number, d = 2) =>
+      event({ id, type: "engine.started", summary: "CuePoint started (v1.0.0)", created_at: new Date(2026, 8, d, h).toISOString() });
+    const match = event({ id: 5, type: "clean.match", summary: "Matched 4 tracks", created_at: new Date(2026, 8, 2, 10).toISOString() });
+    const groups = groupByDay([start(9, 11), match, start(4, 9), start(3, 8), start(1, 20, 1)], now);
+    expect(groups[0]!.events.map((e) => [e.id, e.summary])).toEqual([
+      [9, "Started 3 times"],
+      [5, "Matched 4 tracks"],
+    ]);
+    // A day with one launch keeps its own words.
+    expect(groups[1]!.events.map((e) => e.summary)).toEqual(["CuePoint started (v1.0.0)"]);
+  });
+});
+
+describe("eventDestination (M269)", () => {
+  it("sends a match to Clean's Match part, an edit to the Library, a dig to Discover", () => {
+    expect(eventDestination("clean.match")).toMatchObject({ path: "/clean", state: { cuepointCleanSection: "review" } });
+    expect(eventDestination("clean.files.checked")).toMatchObject({ path: "/clean", state: { cuepointCleanSection: "missing" } });
+    expect(eventDestination("clean.duplicates.kept")).toMatchObject({ path: "/clean", state: { cuepointCleanSection: "duplicates" } });
+    expect(eventDestination("clean.tags.written")).toEqual({ path: "/clean", label: "Open in Clean" });
+    expect(eventDestination("library.batch")?.path).toBe("/library");
+    expect(eventDestination("track_field_changed")?.path).toBe("/library");
+    expect(eventDestination("discovery.ran")?.path).toBe("/discover");
+    expect(eventDestination("set.created_from")?.path).toBe("/prepare");
+  });
+
+  it("has nowhere to send a launch or a backup", () => {
+    expect(eventDestination("engine.started")).toBeNull();
+    expect(eventDestination("backup.created")).toBeNull();
   });
 });
 

@@ -315,12 +315,11 @@ describe("GlobalSearch", () => {
     expect(screen.getByRole("navigation", { name: /main navigation/i })).not.toContainElement(dialog);
   });
 
-  it("does not take focus from the field when a row's play button is pressed", async () => {
+  it("keeps focus in the field when a result row is pressed", async () => {
     searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
     await type("strobe");
-    await screen.findByRole("listbox");
-    const play = screen.getByLabelText("Play Strobe");
-    expect(fireEvent.mouseDown(play)).toBe(false); // default prevented: focus stays in the field
+    const option = (await screen.findAllByRole("option"))[0]!;
+    expect(fireEvent.mouseDown(option)).toBe(false); // default prevented: focus stays in the field
     expect(input()).toHaveFocus();
   });
 
@@ -450,25 +449,12 @@ describe("GlobalSearch", () => {
       expect(screen.getByTestId("where")).toHaveTextContent("/clean|");
     });
 
-    it("plays from the small play button on a row without opening it", async () => {
-      const user = await type("strobe");
-      await screen.findByRole("listbox");
-      await user.click(screen.getByLabelText("Play Strobe"));
-
-      await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
-      expect(playQueue.mock.calls[0]![0][0]).toMatchObject({ trackId: 1 });
-      expect(screen.getByTestId("where")).toHaveTextContent("/clean|");
-    });
-
-    it("keeps the play buttons out of the listbox's tree", async () => {
+    it("draws no play button on a result: Shift+Enter is the way to play (M98)", async () => {
       await type("strobe");
       const list = await screen.findByRole("listbox");
-      const buttons = list.querySelectorAll("button");
-      expect(buttons).toHaveLength(2);
-      for (const button of buttons) {
-        expect(button).toHaveAttribute("aria-hidden", "true");
-        expect(button).toHaveAttribute("tabindex", "-1");
-      }
+      expect(list.querySelectorAll("button")).toHaveLength(0);
+      expect(screen.queryByLabelText("Play Strobe")).toBeNull();
+      expect(screen.getByText("Enter opens · Shift+Enter plays")).toBeInTheDocument();
     });
 
     it("says why when the player refuses the track", async () => {
@@ -544,5 +530,13 @@ describe("the command palette look (C135, C119)", () => {
     expect(decl(".cp-global-search__mark", "font-weight")).toBe("var(--font-weight-bold)");
     expect(decl(".cp-global-search__mark", "text-decoration")).toBe("none");
     expect(decl(".cp-global-search__mark", "background")).toBe("transparent");
+  });
+
+  it("marks the active result with the menus' grey step, not the violet selected look (M99, M289)", () => {
+    expect(decl(".cp-global-search__option--active", "background")).toBe("var(--menu-active-fill)");
+    expect(decl(".cp-global-search__option--active", "box-shadow")).toBeUndefined();
+    expect(decl(".cp-global-search__option--active", "border-inline-start")).toBeUndefined();
+    expect(decl(".cp-global-search__option", "cursor")).toBe("default");
+    expect(searchCss).not.toMatch(/selected-row-background|cursor:\s*pointer|__play/);
   });
 });

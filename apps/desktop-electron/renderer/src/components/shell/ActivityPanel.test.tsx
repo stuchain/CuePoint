@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import { ACTIVITY_REFRESH_MS, ActivityPanel } from "./ActivityPanel";
 import type { ActivityEvent, ActivityFeed } from "../../api/cuepointBridge.types";
@@ -254,9 +255,10 @@ describe("ActivityPanel", () => {
     const user = userEvent.setup();
     render(<ActivityPanel open onClose={onClose} />);
 
-    // The footer's grey Close (the title bar has its own ×).
-    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
-    await user.click(within(footer).getByRole("button", { name: "Close" }));
+    // The title bar's × alone: no lone footer Close beside it (M254, D24).
+    expect(screen.getByRole("dialog").querySelector(".cp-modal__footer")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Close" }));
 
     expect(onClose).toHaveBeenCalled();
   });
@@ -323,5 +325,65 @@ describe("ActivityPanel", () => {
     render(<ActivityPanel open onClose={() => {}} />);
     await screen.findByText("Did a thing");
     expect(document.querySelector(".cp-activity__type")).toBeNull();
+  });
+
+  describe("rows open their page (M269)", () => {
+    function Where() {
+      const location = useLocation();
+      return <p data-testid="where">{`${location.pathname}|${JSON.stringify(location.state ?? null)}`}</p>;
+    }
+
+    function routed(onClose: () => void) {
+      render(
+        <MemoryRouter initialEntries={["/statistics"]}>
+          <ActivityPanel open onClose={onClose} />
+          <Routes>
+            <Route path="*" element={<Where />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+    }
+
+    it("opens Clean on Match from a match, closing the dialog first", async () => {
+      getRecentActivity.mockResolvedValue(
+        feed({ events: [event({ type: "clean.match", summary: "Matched 12 tracks", detail: {} })], total: 1 }),
+      );
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      routed(onClose);
+      const link = await screen.findByRole("button", { name: "Matched 12 tracks" });
+      expect(link).toHaveClass("cp-link");
+      expect(link).toHaveAttribute("aria-description", "Open in Clean");
+      await user.click(link);
+      expect(onClose).toHaveBeenCalled();
+      expect(screen.getByTestId("where")).toHaveTextContent('/clean|{"cuepointCleanSection":"review"}');
+    });
+
+    it("opens the Library from an edit batch, and Discover from a dig", async () => {
+      getRecentActivity.mockResolvedValue(
+        feed({
+          events: [
+            event({ id: 2, type: "library.batch", summary: "Changed 3 tracks", detail: {} }),
+            event({ id: 1, type: "discovery.ran", summary: "Dig found 6 tracks", detail: {} }),
+          ],
+          total: 2,
+        }),
+      );
+      const user = userEvent.setup();
+      routed(() => {});
+      await user.click(await screen.findByRole("button", { name: "Changed 3 tracks" }));
+      expect(screen.getByTestId("where")).toHaveTextContent(/^\/library\|/);
+      await user.click(screen.getByRole("button", { name: "Dig found 6 tracks" }));
+      expect(screen.getByTestId("where")).toHaveTextContent(/^\/discover\|/);
+    });
+
+    it("keeps a launch as plain words: it has nowhere to go", async () => {
+      getRecentActivity.mockResolvedValue(
+        feed({ events: [event({ type: "engine.started", summary: "CuePoint started (v1.0.0)", detail: {} })], total: 1 }),
+      );
+      routed(() => {});
+      await screen.findByText("CuePoint started (v1.0.0)");
+      expect(screen.queryByRole("button", { name: "CuePoint started (v1.0.0)" })).toBeNull();
+    });
   });
 });

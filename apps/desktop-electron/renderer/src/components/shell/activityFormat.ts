@@ -1,6 +1,7 @@
 import type { ActivityEvent } from "../../api/cuepointBridge.types";
 import { formatCount } from "../../format/counts";
 import { formatDay, formatTimeOfDay } from "../../format/dates";
+import { cleanSectionState } from "../../screens/clean/cleanLink";
 
 /**
  * Presentation rules for the activity feed, as pure functions.
@@ -37,7 +38,14 @@ export interface DayGroup {
   events: ActivityEvent[];
 }
 
-/** Groups events (already sorted) under day headings, one group per run of the same day. */
+/** The event every launch records; a day of them is folded into one row (M272). */
+const STARTED = "engine.started";
+
+/**
+ * Groups events (already sorted) under day headings, one group per run of the same day. A day's
+ * launches are one row, the newest, saying how many there were ("Started 4 times"), so they do not
+ * bury the matches and edits between them (M272).
+ */
 export function groupByDay(events: ActivityEvent[], now: Date = new Date()): DayGroup[] {
   const groups: DayGroup[] = [];
   for (const event of events) {
@@ -46,7 +54,51 @@ export function groupByDay(events: ActivityEvent[], now: Date = new Date()): Day
     if (last && last.heading === heading) last.events.push(event);
     else groups.push({ heading, events: [event] });
   }
-  return groups;
+  return groups.map((group) => ({ ...group, events: foldStarts(group.events) }));
+}
+
+/** One day's events with its launches folded into the first (newest) of them. */
+function foldStarts(events: ActivityEvent[]): ActivityEvent[] {
+  const starts = events.filter((event) => event.type === STARTED).length;
+  if (starts < 2) return events;
+  let placed = false;
+  const folded: ActivityEvent[] = [];
+  for (const event of events) {
+    if (event.type !== STARTED) folded.push(event);
+    else if (!placed) {
+      placed = true;
+      folded.push({ ...event, summary: `Started ${formatCount(starts)} times`, detail: {} });
+    }
+  }
+  return folded;
+}
+
+/** Where an entry's row leads: the page that holds what it recorded (M269). */
+export interface EventDestination {
+  path: string;
+  state?: Record<string, unknown>;
+  /** The link's name for a screen reader: "Open in Clean". */
+  label: string;
+}
+
+/**
+ * The page an event opens (M269): a match or a sync opens Clean (on its part), an edit or an import
+ * the Library, a dig Discover, a Set Prepare. An event with nowhere to go (a launch, a backup) is
+ * plain text.
+ */
+export function eventDestination(type: string): EventDestination | null {
+  if (type.startsWith("clean.files.")) return { path: "/clean", state: cleanSectionState("missing"), label: "Open in Clean" };
+  if (type.startsWith("clean.duplicates.")) {
+    return { path: "/clean", state: cleanSectionState("duplicates"), label: "Open in Clean" };
+  }
+  if (type.startsWith("clean.match")) return { path: "/clean", state: cleanSectionState("review"), label: "Open in Clean" };
+  if (type.startsWith("clean.")) return { path: "/clean", label: "Open in Clean" };
+  if (type.startsWith("discover")) return { path: "/discover", label: "Open in Discover" };
+  if (type.startsWith("set.") || type.startsWith("set_list.")) return { path: "/prepare", label: "Open in Prepare" };
+  if (type.startsWith("library.") || type.startsWith("track_field_") || type.startsWith("collection.")) {
+    return { path: "/library", label: "Open in the Library" };
+  }
+  return null;
 }
 
 /**

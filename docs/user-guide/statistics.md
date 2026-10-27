@@ -145,7 +145,7 @@ the name, a link such as **Open in Clean** when the count is above zero, and the
 count at the card's right edge. A
 count is red for what is broken, amber for what waits for you, grey for the rest. The "to fix"
 number on the tab adds up the missing and unreadable files, the matches waiting
-for you, the duplicates, the matches that changed since you decided, and the
+for you, the duplicates, the matches that changed after you confirmed, and the
 analyses that failed.
 
 - **Files** is whether each track's file can be found, as a bar: **Present**,

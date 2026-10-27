@@ -2,7 +2,7 @@
  * Settings › About & updates (DIST-07): the build, the state of updates in words, and the buttons.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { EngineJobSummary, UpdateState } from "../api/cuepointBridge.types";
@@ -196,11 +196,23 @@ describe("an update that is ready", () => {
     await waitFor(() => expect(fake.bridge.restart).toHaveBeenCalledTimes(1));
   });
 
-  it("puts focus on Cancel when it asks", async () => {
+  it("puts focus on Later when it asks", async () => {
     jobs = [{ id: "j", type: "library_import", state: "running", created_at: "x", updated_at: "x" }];
     setup(READY);
     await userEvent.click(await screen.findByRole("button", { name: "Restart now" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Later" })).toHaveFocus());
+  });
+
+  it("asks as the update dialog does: Restart now first and main, Restart when done, Later (M279)", async () => {
+    jobs = [{ id: "j", type: "library_import", state: "running", created_at: "x", updated_at: "x" }];
+    setup(READY);
+    await userEvent.click(await screen.findByRole("button", { name: "Restart now" }));
+    const ask = await screen.findByRole("group", { name: "Restart CuePoint" });
+    const buttons = within(ask).getAllByRole("button");
+    expect(buttons.map((button) => button.textContent)).toEqual(["Restart now", "Restart when done", "Later"]);
+    expect(buttons[0]).toHaveClass("cp-btn--primary");
+    expect(buttons[1]).not.toHaveClass("cp-btn--primary");
+    expect(within(ask).queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 
   it("agrees with the strip: waiting started here shows there, and main is asked once", async () => {
@@ -245,7 +257,7 @@ describe("an update that is ready", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Restart now" }));
     expect(await screen.findByText(/Importing is still running\./)).toBeInTheDocument();
     expect(fake.bridge.restart).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Later" }));
     expect(screen.queryByText(/is still running/)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Restart now" }));
     await userEvent.click(await screen.findByRole("button", { name: "Restart when done" }));
@@ -288,7 +300,10 @@ describe("without the bridge", () => {
   });
 });
 
-/** The grey Close of the footer; the title bar has a close button of the same name. */
+/** The dialog's Close. */
 function footerClose(): HTMLElement {
-  return screen.getAllByRole("button", { name: "Close" }).find((b) => !b.classList.contains("cp-close"))!;
+  // The title bar's ×, the dialog's one Close: no lone footer Close beside it (M254, D24).
+  const closes = screen.getAllByRole("button", { name: "Close" });
+  expect(closes).toHaveLength(1);
+  return closes[0]!;
 }

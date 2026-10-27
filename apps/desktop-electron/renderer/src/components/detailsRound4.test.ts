@@ -40,9 +40,15 @@ describe("sticky shadow (P40)", () => {
   it.each([
     ["/src/components/table/TrackTable.css", ".track-table__header"],
     ["/src/components/table/DataTable.css", ".cp-data-table thead th"],
-    ["/src/components/shell/ScreenHeader.css", ".cp-screen-header"],
   ])("%s %s wears it, always", (sheet, selector) => {
     expect(body(sheet, selector)).toMatch(/box-shadow:\s*var\(--shadow-sticky\)/);
+  });
+
+  // Moved for M215/M329: the page header wears it only while content has scrolled under it.
+  it("the page header wears it only when scrolled, one rule at rest", () => {
+    const sheet = "/src/components/shell/ScreenHeader.css";
+    expect(body(sheet, ".cp-screen-header[data-scrolled]")).toMatch(/box-shadow:\s*var\(--shadow-sticky\)/);
+    expect(body(sheet, ".cp-screen-header")).not.toMatch(/box-shadow/);
   });
 });
 

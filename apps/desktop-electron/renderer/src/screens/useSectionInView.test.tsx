@@ -107,12 +107,13 @@ describe("a section that was asked for", () => {
 });
 
 describe("Settings sheet", () => {
-  it("is not centred, adds no gap under the header, and its checkbox rows are 24px with the hit area kept", () => {
+  it("is not centred, adds no gap under the header, and its checkbox rows are one row tall with the hit area kept", () => {
     const page = /\.settings-page\s*\{[^}]*\}/.exec(settingsCss)?.[0] ?? "";
     expect(page).toContain("gap: 0;");
     expect(page).toContain("margin: 0;");
     const check = /\.settings-check\s*\{[^}]*\}/.exec(settingsCss)?.[0] ?? "";
-    expect(check).toContain("min-height: calc(24px * var(--scale));");
+    // Moved for M78: one row tall, as every check is.
+    expect(check).toContain("min-height: var(--row-height);");
     expect(settingsCss).toMatch(/\.settings-check::before\s*\{[^}]*inset: calc\(-10px \* var\(--scale\)\) 0;/);
     const option = /\.settings-option\s*\{[^}]*\}/.exec(settingsCss)?.[0] ?? "";
     expect(option).toContain("gap: var(--space-xs);");

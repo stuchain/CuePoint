@@ -56,7 +56,7 @@ Before each major release, the full suite runs on every supported OS. New OS ver
 
 When reporting issues, include a **help file** for faster resolution:
 
-1. **Help > Get help... > Save a help file...** – Creates a ZIP with:
+1. **Help > Get help > Save a help file…** – Creates a ZIP with:
    - `diagnostics.json` – App version, OS, config summary
    - `logs/` – Application logs
    - `crashes/` – Crash logs (if any)

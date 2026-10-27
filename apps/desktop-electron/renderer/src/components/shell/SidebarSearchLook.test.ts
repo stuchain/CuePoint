@@ -26,7 +26,8 @@ describe("the sidebar's Search field", () => {
   });
 
   it("reads its words in Inter at the control size, like every page's search (M487)", () => {
-    expect(decl(".cp-sidebar__search-placeholder", "font-family")).toBe("var(--font-data)");
-    expect(decl(".cp-sidebar__search-placeholder", "font-size")).toBe("var(--control-font-size)");
+    // Moved for M487: both classes, so the rule wins over .cp-sidebar__label's pixel face.
+    expect(decl(".cp-sidebar__label.cp-sidebar__search-placeholder", "font-family")).toBe("var(--font-data)");
+    expect(decl(".cp-sidebar__label.cp-sidebar__search-placeholder", "font-size")).toBe("var(--control-font-size)");
   });
 });

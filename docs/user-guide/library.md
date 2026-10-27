@@ -567,21 +567,21 @@ selected; deciding a match (confirm or reject) is done there, in Review.
 
 | Column | Shows |
 | --- | --- |
-| Match | Where the track stands with Beatport: Confirmed, To check, No match, Not looked up yet or Rejected — and *changed since you decided* when a newer search found a different best match than the one you chose |
+| Match | Where the track stands with Beatport: Confirmed, To check, No match, Not looked up yet or Rejected — and *changed after you confirmed* when a newer search found a different best match than the one you chose |
 | Score | The score of the Beatport match the track points at |
 | File status | What the last file check found |
 | Artwork | The track's picture, or where it would come from |
 
 Each of the first three sorts by what needs you first. The same facts are
 filters: **Beatport match**, **Match decided by (you or CuePoint)**,
-**Changed since you decided**, **Beatport match score**, **File status** and
+**Changed after you confirmed**, **Beatport match score**, **File status** and
 **Artwork**. A filter whose values are a fixed list offers them to pick from rather than a box to type into.
 
 ### The Clean actions
 
 | Action | Does |
 | --- | --- |
-| Match on Beatport… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
+| Match on Beatport… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed after you confirmed* |
 | Review these matches | Opens Clean's Review on the first selected track, where matches are confirmed or rejected |
 | Copy Beatport values… | Opens a dialog here to copy the fields you choose from each track's confirmed match into your values |
 | Edit values… (in More) | Opens a dialog here to set or clear your key, BPM, genre, label or year |
@@ -630,7 +630,7 @@ An undo that would throw away a later change is refused, and says what the
 value is now. Undo the later change first, or edit the value directly.
 
 A change made to many tracks at once is taken back from its entry in the
-**Activity** panel: **Undo this batch**, then **Undo** to confirm. Adding
+**Activity** panel: **Undo all of these**, then **Undo** to confirm. Adding
 tracks to a Collection or removing them from one cannot be undone; its entry
 says so. An undo is itself a change, and can be undone too.
 

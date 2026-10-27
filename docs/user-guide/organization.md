@@ -141,7 +141,7 @@ while it does. Cancelling stops it where it is; what was already changed stays
 changed, and the History of each track says what happened.
 
 There is no undo button, but a whole change can be taken back: its entry in the
-**Activity** panel offers **Undo this batch**. The exception is adding tracks
+**Activity** panel offers **Undo all of these**. The exception is adding tracks
 to a Collection or removing them from one, which cannot be undone — add or
 remove them again instead. That is why every step says its number first.
 

@@ -111,7 +111,7 @@ function slotPaths(id: string, path: string): string[] {
 function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { runNewestAction } = useToast();
+  const { runNewestAction, focusNewest } = useToast();
   useWindowTitle();
   // A different page steps in (Changing page, PAGES-12). The phase alternates so each change
   // names a different animation and restarts it without remounting the page; there is none
@@ -158,6 +158,19 @@ function AppShell() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // Alt+T (M456): focus goes to the newest message's button (its Undo), so it can be reached
+  // without the pointer before it goes. In a dialog too: the messages are drawn inside it. The
+  // key's place, not its letter, so a Mac's Option+T (which types a dagger) answers too.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.code !== "KeyT" && event.key.toLowerCase() !== "t") return;
+      if (focusNewest()) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [focusNewest]);
 
   useRememberDestination();
   // A step for each destination opened, by its id (REPORT-06).

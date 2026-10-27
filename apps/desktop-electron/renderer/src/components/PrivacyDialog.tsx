@@ -112,7 +112,6 @@ export function PrivacyDialog({ open, onClose, onOpenLogViewer }: PrivacyDialogP
       open={open}
       title="Privacy"
       onClose={onClose}
-      closeLabel="Close"
     >
       <div className="privacy-dialog">
         <p className="cp-modal__lead">{UPDATES}</p>

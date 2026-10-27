@@ -85,18 +85,20 @@ function ReadyActions() {
             ? "CuePoint could not tell whether work is still running."
             : `${flow.work ?? "Background work"} is still running.`}
         </p>
+        {/* One vocabulary with the update dialog (M279): Restart now is the main button, in the place
+            the first Restart now was; the careful choice beside it; Later puts the question away. */}
         <div className="about-updates__row">
+          <Button variant="primary" onClick={flow.restartNow}>
+            Restart now
+          </Button>
           {!flow.unknown && (
-            <Button variant="primary" onClick={flow.restartWhenDone}>
+            <Button variant="secondary" onClick={flow.restartWhenDone}>
               Restart when done
             </Button>
           )}
-          <Button variant="secondary" onClick={flow.restartNow}>
-            Restart now
-          </Button>
           {/* Focus lands here, so a second Enter on the button that was pressed cannot pick another. */}
           <Button variant="secondary" onClick={flow.cancel} autoFocus>
-            Cancel
+            Later
           </Button>
         </div>
       </Notice>

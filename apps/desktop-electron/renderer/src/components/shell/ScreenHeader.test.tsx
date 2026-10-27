@@ -49,6 +49,36 @@ describe("ScreenHeader", () => {
     expect(within(row).getByText("Draft")).toBeInTheDocument();
   });
 
+  it("marks itself scrolled only while its scroll region is scrolled (M215, M329)", () => {
+    const { container } = render(
+      <div data-testid="region" style={{ overflowY: "auto" }}>
+        <ScreenHeader title="Statistics" />
+      </div>,
+    );
+    const region = container.querySelector<HTMLElement>("[data-testid=region]")!;
+    const header = container.querySelector(".cp-screen-header")!;
+    expect(header).not.toHaveAttribute("data-scrolled");
+    act(() => {
+      region.scrollTop = 40;
+      region.dispatchEvent(new Event("scroll"));
+    });
+    expect(header).toHaveAttribute("data-scrolled");
+    act(() => {
+      region.scrollTop = 0;
+      region.dispatchEvent(new Event("scroll"));
+    });
+    expect(header).not.toHaveAttribute("data-scrolled");
+  });
+
+  it("has one rule at rest and whole-pixel spacing (M81, M329)", () => {
+    const rest = /\.cp-screen-header\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rest).not.toMatch(/box-shadow/);
+    expect(rest).toMatch(/padding-bottom:\s*round\(nearest, var\(--space-md\), 1px\)/);
+    expect(css).toMatch(/\.cp-screen-header\[data-scrolled\]\s*\{\s*box-shadow:\s*var\(--shadow-sticky\);?\s*\}/);
+    const summary = /\.cp-screen-header__summary\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(summary).toMatch(/line-height:\s*round\(nearest,/);
+  });
+
   it("keeps the page name in the h1 when display replaces it, visually hidden", () => {
     const { container } = render(<ScreenHeader title="Library" display="Friday set" />);
     const h1 = screen.getByRole("heading", { level: 1 });

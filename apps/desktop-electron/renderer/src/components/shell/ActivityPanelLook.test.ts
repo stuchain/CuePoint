@@ -39,6 +39,13 @@ describe("the Activity list lines up (C37)", () => {
     expect(decl(".cp-activity__day-heading", "padding")).toBe("var(--space-xs) var(--space-sm)");
     expect(decl(".cp-activity__row", "padding")).toBe("var(--space-xs) var(--space-sm)");
   });
+
+  it("heads each day in the shared label role (M1)", () => {
+    expect(decl(".cp-activity__day-heading", "font-family")).toBe("var(--font-control)");
+    expect(decl(".cp-activity__day-heading", "font-size")).toBe("var(--font-size-label)");
+    expect(decl(".cp-activity__day-heading", "font-weight")).toBe("var(--control-font-weight)");
+    expect(decl(".cp-activity__day-heading", "color")).toBe("var(--fg-muted)");
+  });
 });
 
 describe("an Activity line is a sentence (new A, D5)", () => {

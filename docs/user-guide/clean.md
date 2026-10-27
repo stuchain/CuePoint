@@ -9,7 +9,7 @@ Clean has three tabs: **Match**, **Missing files** and **Duplicates**. It
 reopens on the tab you used last. A line under the title gives the facts (the
 tracks in your library and what waits in each tab). The tabs show where work
 waits, with a count after the name, in amber: **Match 42** counts the tracks
-waiting to be checked plus those that changed since you decided, **Missing files 3**
+waiting to be checked plus those that changed after you confirmed, **Missing files 3**
 and **Duplicates 5** count what the last check found;
 Duplicates counts the tracks in duplicate groups, not the groups. A tab shows no
 number when nothing is waiting, or when that check has never run. Values go into
@@ -208,7 +208,7 @@ candidates:
 The review has its own keys. **Up** and **Down** move to the previous or next track
 (the table moves too, also with no panel open; **Shift** extends the selection and
 the panel follows), **Home** and **End** go to the first or last track, **Ctrl+A**
-selects every track, **Enter** plays the track, **Space** ticks or unticks it, **N**
+selects every track, **Enter** plays the track, **Ctrl+Space** ticks or unticks it (**Space** plays or pauses, as everywhere), **N**
 goes to the next track still to check, and **Esc** closes the panel and then clears
 the selection. In the side panel, **Left** and **Right** pick the previous or next
 candidate, **1** to **9** pick one by its number, **Enter** uses the picked match and

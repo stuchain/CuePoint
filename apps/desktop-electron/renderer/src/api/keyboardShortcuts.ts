@@ -41,6 +41,8 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // Two keys for one action, so one row (M444).
   { context: "Everywhere", action: "Keyboard shortcuts", shortcut: "Ctrl+? / F1" },
   { context: "Everywhere", action: "Close a dialog, panel or search", shortcut: "Esc" },
+  // The newest message's buttons (Undo, Show) are a key away (M456).
+  { context: "Everywhere", action: "Go to the newest message", shortcut: "Alt+T" },
   // The Library became a browser in Phase 4 (DEC-039), so it has a context of
   // its own.
   { context: "Library", action: "Search these tracks", shortcut: "Ctrl+F" },
@@ -77,17 +79,19 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Tables", action: "Add or remove the focused track", shortcut: "Ctrl+Space" },
   // Clean's Match area, the Review of a playlist: the table and its side panel. Bare keys, because checking
   // thousands of tracks is a keyboard job; they are not taken while typing in a field or inside a dialog, and
-  // none of them is modified, so none collides with a shell shortcut. A tick is a checkbox and takes Space.
+  // none of them but the tick is modified, so none collides with a shell shortcut. Space plays everywhere and
+  // Ctrl+Space ticks, as in every track table (D34, M465, M482).
   { context: "Clean", action: "Previous or next track in the review", shortcut: "Up / Down" },
   { context: "Clean", action: "First or last track in the review", shortcut: "Home / End" },
   { context: "Clean", action: "Select every track in the review", shortcut: "Ctrl+A" },
   { context: "Clean", action: "Close the track's side panel", shortcut: "Esc" },
   { context: "Clean", action: "Play the track", shortcut: "Enter" },
-  { context: "Clean", action: "Tick or untick the track", shortcut: "Space" },
+  { context: "Clean", action: "Tick or untick the track", shortcut: "Ctrl+Space" },
   { context: "Clean", action: "Next track still to check", shortcut: "N" },
   // The side panel's own keys (M508), answered while focus is in it and not on one of its buttons.
-  { context: "Check the match", action: "Pick the previous or next candidate", shortcut: "Left / Right" },
-  { context: "Check the match", action: "Pick a candidate by its number", shortcut: "1–9" },
+  // "Select", the one word for choosing a row (M452).
+  { context: "Check the match", action: "Select the previous or next candidate", shortcut: "Left / Right" },
+  { context: "Check the match", action: "Select a candidate by its number", shortcut: "1–9" },
   { context: "Check the match", action: "Use the picked match and go to the next track", shortcut: "Enter" },
   { context: "Check the match", action: "Use the picked match and stay on the track", shortcut: "Shift+Enter" },
   { context: "Check the match", action: "Leave the track out", shortcut: "Backspace" },

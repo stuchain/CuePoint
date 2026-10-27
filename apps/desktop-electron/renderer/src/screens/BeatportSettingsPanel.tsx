@@ -123,9 +123,8 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
           {line}
         </SettingsStatus>
         {fromConfig ? (
-          <SettingsStatus>
-            Using a Beatport sign-in saved earlier · {status.masked ?? "••••"}
-          </SettingsStatus>
+          // No token tail on screen (M439): the line says where the sign-in comes from, nothing more.
+          <SettingsStatus>Using a Beatport sign-in saved earlier</SettingsStatus>
         ) : null}
         {!env && !auth.secure_storage ? (
           <Notice kind="warning">

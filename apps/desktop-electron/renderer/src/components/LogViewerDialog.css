@@ -18,8 +18,8 @@
   min-width: calc(160px * var(--scale));
 }
 
+/* The check's own label face, as every check has (M11): no face of its own. */
 .log-viewer-dialog__auto {
-  font-family: var(--font-control);
   font-size: var(--control-font-size);
   color: var(--fg-primary);
 }

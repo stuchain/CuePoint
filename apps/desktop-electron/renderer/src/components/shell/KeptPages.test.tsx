@@ -273,6 +273,21 @@ describe("KeptPages", () => {
     expect(screen.getByText("One count 2")).toBeVisible();
   });
 
+  it("marks a page that comes back, and not one opened for the first time (M381)", async () => {
+    const user = userEvent.setup();
+    mount();
+    const main = document.querySelector(".app-main") as HTMLElement;
+    expect(main).not.toHaveAttribute("data-returned");
+    await go(user, "plain");
+    // A first visit plays its entrances.
+    expect(main).not.toHaveAttribute("data-returned");
+    await go(user, "one");
+    // One was kept, hidden: it comes back as it was left, so its one-shot animations are held.
+    expect(main).toHaveAttribute("data-returned");
+    await go(user, "two 7");
+    expect(main).not.toHaveAttribute("data-returned");
+  });
+
   it("does not mount a destination until it is first opened", async () => {
     const user = userEvent.setup();
     mount();

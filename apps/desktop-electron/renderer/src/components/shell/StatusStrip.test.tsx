@@ -9,11 +9,12 @@
  * discover jobs it did not start, including one that outlived a reload.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { noteOutage, resetEngineOnlineForTests } from "../../api/engineOnline";
 import { resetActivityForTests } from "./activityState";
+import { MotionProvider } from "../../tokens/MotionContext";
 import { DONE_HOLD_MS, StatusStrip, announcedQuarter } from "./StatusStrip";
 import { JOB_EXPLAINERS } from "./useActiveJob";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
@@ -706,6 +707,40 @@ describe("+N more (STR-5)", () => {
 
     expect(screen.queryByRole("dialog", { name: "Running now" })).not.toBeInTheDocument();
     expect(more).toHaveFocus();
+  });
+
+  it("opens above its button and, closed, plays its exit as an inert copy (M380)", async () => {
+    listJobs.mockResolvedValue({ jobs: three, active_count: 3 });
+    const real = window.getComputedStyle;
+    const spy = vi.spyOn(window, "getComputedStyle").mockImplementation((el: Element, pseudo?: string | null) => {
+      const style = real(el, pseudo);
+      return el instanceof HTMLElement && el.hasAttribute("data-leaving")
+        ? ({ ...style, animationName: "cp-sink-out", animationDuration: "80ms" } as unknown as CSSStyleDeclaration)
+        : style;
+    });
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <MotionProvider>
+          <StatusStrip />
+        </MotionProvider>,
+      );
+      await user.click(await screen.findByRole("button", { name: "+2 more" }));
+      const list = screen.getByRole("dialog", { name: "Running now" });
+      expect(list).toHaveAttribute("data-placement", "top");
+      expect(list).not.toHaveAttribute("data-leaving");
+      await user.keyboard("{Escape}");
+      const leaving = document.querySelector(".cp-status__running") as HTMLElement;
+      expect(leaving).not.toBeNull();
+      expect(leaving).toHaveAttribute("data-leaving");
+      expect(leaving).toHaveAttribute("inert");
+      await act(async () => {
+        fireEvent.animationEnd(leaving);
+      });
+      expect(document.querySelector(".cp-status__running")).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("closes on a click outside it", async () => {

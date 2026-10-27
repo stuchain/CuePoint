@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { useEngineOnline } from "../../api/engineOnline";
-import { useLeaveGhost } from "../../tokens/useLeaveGhost";
+import { useLayerStack } from "../../hooks/useLayerStack";
+import { usePresence } from "../../tokens/usePresence";
 import { Button } from "../Button";
 import { Hint } from "../Hint";
 import { PixelSpinner } from "../PixelSpinner";
@@ -45,6 +46,10 @@ export const DONE_HOLD_MS = 30_000;
  * window stays usable. It closes on Escape (returning focus to its button) and on
  * a click anywhere outside it. Fixed to the viewport because the strip clips what
  * overflows it, and kept inside the window by `--space-xs` on all four sides (M294).
+ *
+ * It opens above its button, so it says so (`data-placement="top"`), and when it closes it stays,
+ * inert and `data-leaving`, for the length of its exit (M380). Escape is the one layer stack's
+ * (M469): a dialog or menu opened over it hears the key first.
  */
 function RunningList({
   jobs,
@@ -54,6 +59,8 @@ function RunningList({
   stopping,
   canStop,
   onClose,
+  box,
+  leaving,
 }: {
   jobs: EngineJobSummary[];
   activeCount: number;
@@ -62,14 +69,20 @@ function RunningList({
   stopping: string | null;
   canStop: (job: EngineJobSummary) => boolean;
   onClose: () => void;
+  /** The element that carries the exit (usePresence's ref). */
+  box: RefObject<HTMLDivElement | null>;
+  /** Closed, and playing its exit: it takes no key, click or focus. */
+  leaving: boolean;
 }) {
-  const box = useRef<HTMLDivElement | null>(null);
-  useLeaveGhost(box);
   const [style, setStyle] = useState<{ left: number; bottom: number; maxHeight: number } | undefined>(undefined);
+  const isTop = useLayerStack(!leaving);
+  const isTopRef = useRef(isTop);
+  isTopRef.current = isTop;
 
   useEffect(() => {
+    if (leaving) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && isTopRef.current()) {
         onClose();
         button?.focus();
       }
@@ -85,7 +98,7 @@ function RunningList({
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("mousedown", onPointerDown);
     };
-  }, [button, onClose]);
+  }, [box, button, leaving, onClose]);
 
   // Above its button, then pulled inside the window on every side by the box's own padding
   // (`--space-xs`): at the right edge the list moves left rather than leave the window.
@@ -98,12 +111,22 @@ function RunningList({
     const left = Math.max(gap, Math.min(rect.left, window.innerWidth - width - gap));
     const bottom = Math.max(gap, window.innerHeight - rect.top + gap);
     setStyle({ left, bottom, maxHeight: Math.max(0, window.innerHeight - bottom - gap) });
-  }, [button, jobs.length]);
+  }, [box, button, jobs.length]);
 
   const hidden = activeCount - jobs.length;
 
   return (
-    <div className="cp-status__running" role="dialog" aria-label="Running now" ref={box} style={style}>
+    <div
+      className="cp-status__running"
+      role="dialog"
+      aria-label="Running now"
+      ref={box}
+      style={style}
+      data-placement="top"
+      data-leaving={leaving ? "" : undefined}
+      inert={leaving}
+      aria-hidden={leaving || undefined}
+    >
       <ul className="cp-status__running-list">
         {jobs.map((job) => {
           const percent = jobPercent(job);
@@ -159,6 +182,8 @@ export function StatusStrip() {
     if (activeCount <= 1) setListOpen(false);
   }, [activeCount]);
   const moreButton = useRef<HTMLButtonElement | null>(null);
+  // The list stays for its exit after it closes (M380).
+  const list = usePresence<HTMLDivElement>(listOpen && activeCount > 1);
 
   // A job that finishes leaves "Done · …" in its place (D25), and pulses the strip once (feedback,
   // DEC-154). A job the person stopped says "Stopped" instead.
@@ -333,8 +358,10 @@ export function StatusStrip() {
                 >
                   +{activeCount - 1} more
                 </Button>
-                {listOpen && (
+                {list.present && (
                   <RunningList
+                    box={list.ref}
+                    leaving={list.leaving}
                     jobs={jobs}
                     activeCount={activeCount}
                     button={moreButton.current}

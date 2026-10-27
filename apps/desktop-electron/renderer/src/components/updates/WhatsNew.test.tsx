@@ -99,7 +99,9 @@ describe("WhatsNew on demand", () => {
   });
 });
 
-/** The grey Close of the footer; the title bar has a close button of the same name. */
+/** The title bar's ×, the dialog's one Close: there is no lone footer Close beside it (M254, D24). */
 function footerClose(): HTMLElement {
-  return screen.getAllByRole("button", { name: "Close" }).find((b) => !b.classList.contains("cp-close"))!;
+  const closes = screen.getAllByRole("button", { name: "Close" });
+  expect(closes).toHaveLength(1);
+  return closes[0]!;
 }

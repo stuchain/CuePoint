@@ -18,7 +18,7 @@
  * person decided.
  */
 import { Button } from "../Button";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   ActivityEvent,
@@ -65,6 +65,22 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
   const offer = activityOffer(event);
   const bridge = window.cuepoint;
   const [asking, setAsking] = useState(false);
+  // Focus follows the question (M464): it moves to Keep when the question replaces the button, and
+  // back to the restored button after Keep, so it never drops to the page behind the dialog.
+  const keepRef = useRef<HTMLButtonElement>(null);
+  const offerRef = useRef<HTMLButtonElement>(null);
+  const kept = useRef(false);
+  useEffect(() => {
+    if (asking) keepRef.current?.focus();
+    else if (kept.current) {
+      kept.current = false;
+      offerRef.current?.focus();
+    }
+  }, [asking]);
+  const keep = () => {
+    kept.current = true;
+    setAsking(false);
+  };
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [record, setRecord] = useState<Record_ | null>(null);
@@ -238,7 +254,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
           <>
             <span>Undo every change this batch made?</span>
             {/* Keep, then Undo: the order the dialogs ask in (M271). */}
-            <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
+            <Button ref={keepRef} variant="secondary" size="sm" className="cp-activity__action" onClick={keep}>
               Keep
             </Button>
             <Button
@@ -252,6 +268,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
           </>
         ) : (
           <Button
+            ref={offerRef}
             variant="secondary"
             size="sm"
             className="cp-activity__action"
@@ -278,7 +295,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         (asking ? (
           <>
             <span>Undo these syncs? Every value they replaced goes back.</span>
-            <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
+            <Button ref={keepRef} variant="secondary" size="sm" className="cp-activity__action" onClick={keep}>
               Keep
             </Button>
             {/* Undo puts values back in the files, so it is a write button (M271). */}
@@ -293,6 +310,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
           </>
         ) : (
           <Button
+            ref={offerRef}
             variant="write"
             size="sm"
             className="cp-activity__action"

@@ -39,7 +39,7 @@ export function DiagnosticsDialog({ open, onClose }: DiagnosticsDialogProps) {
   }, [open]);
 
   return (
-    <Modal open={open} title="Diagnostics" onClose={onClose} closeLabel="Close">
+    <Modal open={open} title="Diagnostics" onClose={onClose}>
       {reading.kind === "loading" && <Loading what="diagnostics" />}
       {reading.kind === "none" && (
         <p className="cp-modal__lead">{needsDesktopApp("Diagnostics")}</p>

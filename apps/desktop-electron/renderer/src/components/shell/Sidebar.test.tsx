@@ -215,36 +215,43 @@ describe("Sidebar", () => {
       expect(within(nav()).queryByText("Look, sound, accounts")).not.toBeInTheDocument();
     });
 
-    it("shows the hint in a tooltip on keyboard focus, and on hover after a rest", async () => {
-      const user = userEvent.setup();
+    it("shows no tip on an entry in the open rail, and keeps what it is for as its description (N3)", async () => {
       renderSidebar();
       const discover = within(nav()).getByRole("link", { name: "Discover" });
-      await user.tab();
       discover.focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Find new music");
-      expect(discover).toHaveAttribute("aria-describedby", screen.getByRole("tooltip").id);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(screen.queryByRole("tooltip")).toBeNull();
       expect(discover).toHaveAttribute("aria-label", "Discover");
+      expect(discover).toHaveAttribute("aria-description", "Find new music");
       discover.blur();
-      await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
 
       vi.useFakeTimers();
       try {
         const settings = within(nav()).getByRole("link", { name: "Settings" });
+        expect(settings).toHaveAttribute("aria-description", "Look, sound, accounts");
         fireEvent.pointerEnter(settings.parentElement!);
         act(() => {
           vi.advanceTimersByTime(HINT_HOVER_DELAY_MS + 10);
         });
-        expect(screen.getByRole("tooltip")).toHaveTextContent("Look, sound, accounts");
+        // A tip to the right would cover the Library pane's "All tracks" row (N3).
+        expect(screen.queryByRole("tooltip")).toBeNull();
       } finally {
         vi.useRealTimers();
       }
     });
 
-    it("puts the tooltip beside the item, not over the one below it", async () => {
+    it("puts the collapsed tooltip beside the item, not over the one below it", async () => {
+      const user = userEvent.setup();
       renderSidebar();
+      await user.click(toggle());
+      await user.unhover(toggle());
+      toggle().blur();
+      await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
       const discover = within(nav()).getByRole("link", { name: "Discover" });
       discover.focus();
       const tip = await screen.findByRole("tooltip");
+      expect(discover).toHaveAttribute("aria-describedby", tip.id);
+      expect(discover).not.toHaveAttribute("aria-description");
       // Placed by its vertical middle at the item's right edge, never above or below it.
       expect(tip.style.top).not.toBe("");
       expect(tip.style.bottom).toBe("");
@@ -538,12 +545,11 @@ describe("Sidebar", () => {
       expect(order.indexOf("Keys")).toBe(order.indexOf("Clean") + 1);
     });
 
-    it("says what it is for in its tooltip, not under its name", async () => {
+    it("says what it is for in its description, not under its name (N3)", () => {
       renderSidebar();
       const keys = within(nav()).getByRole("link", { name: "Keys" });
       expect(within(keys).queryByText("The keys in your playlists, Collections and Sets")).not.toBeInTheDocument();
-      keys.focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("The keys in your playlists, Collections and Sets");
+      expect(keys).toHaveAttribute("aria-description", "The keys in your playlists, Collections and Sets");
     });
 
     it("draws a pixel icon, and is lit on its page", () => {
@@ -571,11 +577,10 @@ describe("Sidebar", () => {
       expect(nav().querySelector(".cp-sidebar__empty-line")).toBeNull();
     });
 
-    it("tooltips an entry with its own hint", async () => {
+    it("describes an entry with its own hint (N3)", () => {
       libraryIs(true);
       renderSidebar();
-      within(nav()).getByRole("link", { name: "Prepare" }).focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Plan a Set");
+      expect(within(nav()).getByRole("link", { name: "Prepare" }).getAttribute("aria-description")).toMatch(/Plan a Set/);
     });
 
     it("still reads the library in the background, so the first import is noticed", async () => {
@@ -609,7 +614,40 @@ describe("the sidebar's sizes follow the text, not the window (C208, C34)", () =
   it("sets every pressable word at the control size, and the active entry no heavier (M26, M361)", () => {
     expect(decl(".cp-sidebar__link", "font-size")).toBe("var(--control-font-size)");
     expect(decl(".cp-sidebar__link--active", "font-weight")).toBeUndefined();
-    expect(decl(".cp-sidebar__search-placeholder", "font-family")).toBe("var(--font-data)");
+    // Moved for M487: the placeholder rule names both classes so it wins over .cp-sidebar__label.
+    expect(decl(".cp-sidebar__label.cp-sidebar__search-placeholder", "font-family")).toBe("var(--font-data)");
+  });
+
+  it("keeps the key chip inside the Search box: the words shrink with an ellipsis (M487)", () => {
+    const placeholder = ".cp-sidebar__label.cp-sidebar__search-placeholder";
+    expect(decl(placeholder, "flex")).toBe("1 1 auto");
+    expect(decl(placeholder, "min-width")).toBe("0");
+    expect(decl(placeholder, "text-overflow")).toBe("ellipsis");
+    expect(sidebarCss).toMatch(/@container sidebar-search \(max-width: 13em\)/);
+    // No later rule at the same or higher weight puts the pixel face back on the placeholder.
+    expect(decl(".cp-sidebar__search-placeholder", "font-family")).toBeUndefined();
+  });
+
+  it("draws the Clean count in the size-matched figures (M8)", () => {
+    expect(decl(".cp-sidebar__count", "font-family")).toBe("var(--font-pixel-digits)");
+    expect(decl(".cp-sidebar__count", "font-variant-numeric")).toBe("tabular-nums");
+  });
+
+  it("brightens the brand on hover, never colours it, and shows the arrow on entries (M336, M339)", () => {
+    expect(decl(".cp-sidebar__brand:hover .cp-sidebar__brand-name", "color")).toBe("var(--fg-primary)");
+    expect(decl(".cp-sidebar__link", "cursor")).toBe("default");
+    expect(sidebarCss).not.toMatch(/cursor:\s*pointer/);
+  });
+
+  it("centres the closed rail's entries on whole pixels, counting its own divider (M81)", () => {
+    expect(decl(".cp-sidebar--collapsed", "width")).toBe("calc(var(--icon-size) + var(--cp-sidebar-pad) * 4 + var(--hairline))");
+  });
+
+  it("keeps the xs step and bar-tall rows when tight (M70)", () => {
+    expect(decl(".cp-sidebar[data-tight] .cp-sidebar__foot", "gap")).toBe("var(--space-xs)");
+    expect(decl(".cp-sidebar[data-tight] .cp-sidebar__link", "min-height")).toBe("max(var(--icon-size), var(--toolbar-height))");
+    expect(decl(".cp-sidebar[data-tight] .cp-sidebar__search", "min-height")).toBe("max(var(--icon-size), var(--toolbar-height))");
+    expect(sidebarCss).not.toMatch(/gap:\s*0;/);
   });
 
   it("reads no window height anywhere", () => {
@@ -687,10 +725,10 @@ describe("a window too short for the rail (item 2, at 2x in 1264x735)", () => {
     const rules = parseRules(stripComments(sidebarCss));
     const tight = rules.filter((rule) => selectorList(rule.selector).some((sel) => sel.includes("[data-tight]")));
     expect(tight.length).toBeGreaterThan(0);
-    // The one height a tight rule sets is the icon's own: the link follows the smaller icon.
+    // Moved for M70: a tight row follows the smaller icon but never drops below a bar's height.
     for (const rule of tight) {
       const height = new Map(declarations(rule.body)).get("min-height");
-      if (height !== undefined) expect(height).toBe("var(--icon-size)");
+      if (height !== undefined) expect(height).toBe("max(var(--icon-size), var(--toolbar-height))");
     }
     const link = tight.find((rule) => selectorList(rule.selector).includes(".cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__link"));
     expect(link && new Map(declarations(link.body)).get("padding-block")).toBe("0");
@@ -712,8 +750,8 @@ describe("the tight rail at 3x (zoom spot 3A)", () => {
     expect(get(".cp-sidebar[data-tight] .cp-sidebar__icon .cp-pixel-icon", "height")).toBe("var(--icon-size)");
   });
 
-  it("lets the link's height follow the icon", () => {
-    expect(get(".cp-sidebar[data-tight] .cp-sidebar__link", "min-height")).toBe("var(--icon-size)");
+  it("lets the link's height follow the icon, never below a bar (moved for M70)", () => {
+    expect(get(".cp-sidebar[data-tight] .cp-sidebar__link", "min-height")).toBe("max(var(--icon-size), var(--toolbar-height))");
   });
 
   it("drops the logo row: it was a second link to the Library", () => {

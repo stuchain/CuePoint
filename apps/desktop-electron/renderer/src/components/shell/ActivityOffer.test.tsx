@@ -135,6 +135,18 @@ describe("a batch's entry", () => {
     expect(within(entry).getByRole("button", { name: "Undo all of these" })).toBeEnabled();
   });
 
+  it("moves focus to Keep when it asks, and back to the restored button after Keep (M464)", async () => {
+    events = [event(1, "library.batch", { batch_id: "b-1", operation: "add_tag", changed: 2 }, "Tagged 2")];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("Tagged 2");
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo all of these" }));
+    const keep = within(entry).getByRole("button", { name: "Keep" });
+    await waitFor(() => expect(keep).toHaveFocus());
+    await userEvent.click(keep);
+    await waitFor(() => expect(within(entry).getByRole("button", { name: "Undo all of these" })).toHaveFocus());
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
   it("follows a revert that runs as a job", async () => {
     bridge.revertBatch.mockResolvedValue({ job_id: "j-1", id: "j-1", state: "queued" });
     bridge.getJobResults.mockResolvedValue({

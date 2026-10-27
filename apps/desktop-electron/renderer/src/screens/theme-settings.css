@@ -91,7 +91,8 @@
   height: var(--control-height);
   padding: 0;
   border: var(--control-border-width) solid var(--border-control);
-  cursor: pointer;
+  /* The arrow, as on every control (M339). */
+  cursor: default;
   background: transparent;
 }
 
@@ -111,7 +112,7 @@
 }
 
 /* Settings > Appearance > Tables: a Fieldset (the one legend style), spaced as the panel's own
-   controls are. The checkbox row is the shared .settings-check (24px, hit area kept). */
+   controls are. The checkbox row is the shared .settings-check (one row tall, M78). */
 .theme-settings__group {
   gap: var(--space-lg);
   margin: 0;

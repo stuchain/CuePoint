@@ -178,7 +178,7 @@ describe("OfflineBanner", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "CuePoint could not start in the background. Quit and open CuePoint again.",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Get help…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get help" }));
     expect(onGetHelp).toHaveBeenCalledTimes(1);
   });
 
@@ -188,7 +188,7 @@ describe("OfflineBanner", () => {
     render(<OfflineBanner />);
     await userEvent.click(await screen.findByRole("button", { name: "Start it again" }));
     await screen.findByText(/could not start/);
-    expect(screen.queryByRole("button", { name: "Get help…" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Get help" })).not.toBeInTheDocument();
   });
 
   it("pulses for a moment each time the pulse count changes", async () => {

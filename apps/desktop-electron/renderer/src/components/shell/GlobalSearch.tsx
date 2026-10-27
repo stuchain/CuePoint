@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState, type KeyboardEvent as ReactKeyboardEv
 import { useNavigate } from "react-router-dom";
 import { Button } from "../Button";
 import { Modal } from "../Modal";
-import { PlayButton } from "../PlayButton";
 import { TrackFactsLine } from "../TrackFactsLine";
 import { SearchField } from "../SearchField";
 import { useShellCommand } from "./shellCommands";
@@ -85,7 +84,8 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
     [navigate, onDone],
   );
 
-  // Shift+Enter and the row's ▶ play it, through the player the Library plays with.
+  // Shift+Enter plays it, through the player the Library plays with. A result row has no ▶ of its
+  // own (M98): the row is one option, and the footer says the key.
   const playTrack = useCallback((track: LibraryTrackRow | undefined) => {
     const play = window.cuepoint?.player?.playQueue;
     if (!track || !play) return;
@@ -140,7 +140,7 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
           className="cp-global-search__panel"
           aria-busy={status === "searching" ? true : undefined}
           data-stale={stale ? "" : undefined}
-          // A press inside the panel (a row's ▶) must not take focus from the field.
+          // A press inside the panel must not take focus from the field.
           onMouseDown={(event) => event.preventDefault()}
         >
           {tooShort && (
@@ -223,20 +223,11 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                         />
                       </span>
                     </div>
-                    <PlayButton
-                      className="cp-global-search__play"
-                      aria-label={`Play ${track.title}`}
-                      // Not a tab stop: ↑/↓ and Shift+Enter do this from the field.
-                      tabIndex={-1}
-                      // Not an option, so out of the listbox's tree: Shift+Enter is the keyboard path.
-                      aria-hidden="true"
-                      onClick={() => playTrack(track)}
-                    />
                   </li>
                 ))}
               </ul>
               </div>
-              {/* The keys, said once where they are used: Play is not a tab stop (M485). */}
+              {/* The keys, said once where they are used (M485): Shift+Enter is the only way to play here (M98). */}
               <p className="cp-global-search__footer">Enter opens · Shift+Enter plays</p>
             </>
           )}

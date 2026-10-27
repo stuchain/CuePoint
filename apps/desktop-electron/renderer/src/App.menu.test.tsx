@@ -109,18 +109,19 @@ describe("pages and dialogs", () => {
     expect(await screen.findByRole("dialog", { name: new RegExp(title, "i") })).toBeInTheDocument();
   });
 
-  it("shows a dialog titled with the Help label minus its ellipsis for every Help item that opens one", async () => {
+  it("shows a dialog titled with the Help label for every Help item that opens one", async () => {
     // Labels are the ones electron/appMenu.ts gives its Help items.
     const help: Array<[string, string]> = [
       ["shortcuts", "Keyboard shortcuts"],
-      ["get-help", "Get help…"],
-      ["rekordbox-help", "How to get your Rekordbox file…"],
+      // No "…": neither dialog asks for input first (D33, M404).
+      ["get-help", "Get help"],
+      ["rekordbox-help", "How to get your Rekordbox file"],
       ["about", "About CuePoint"],
     ];
     for (const [id, label] of help) {
       const view = render(<App />);
       command(id);
-      expect(await screen.findByRole("dialog", { name: label.replace("…", "") })).toBeInTheDocument();
+      expect(await screen.findByRole("dialog", { name: label })).toBeInTheDocument();
       view.unmount();
     }
   });

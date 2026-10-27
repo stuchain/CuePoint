@@ -46,7 +46,9 @@
 }
 
 .cp-sidebar--collapsed {
-  width: calc(var(--icon-size) + var(--cp-sidebar-pad) * 4);
+  /* Plus the rail's own divider, which sits inside its box: without it the entries centred half a
+     pixel off (x 7.5, M81). */
+  width: calc(var(--icon-size) + var(--cp-sidebar-pad) * 4 + var(--hairline));
   align-items: center;
 }
 
@@ -111,7 +113,8 @@
 }
 
 .cp-sidebar__brand:hover .cp-sidebar__brand-name {
-  color: var(--accent-info);
+  /* Hover brightens, never colours (M336). */
+  color: var(--fg-primary);
 }
 
 /* The logo's box is the image, not the icon size. */
@@ -216,7 +219,8 @@
   font-size: var(--control-font-size);
   text-align: left;
   text-decoration: none;
-  cursor: pointer;
+  /* The arrow on every control; the hand is for real links in text (M339). */
+  cursor: default;
 }
 
 .cp-sidebar--collapsed .cp-sidebar__link {
@@ -270,14 +274,19 @@
   height: var(--icon-size-sm);
 }
 
-/* Inter at the control size, as every page's search is (M487). */
-.cp-sidebar__search-placeholder {
-  flex: 1 0 auto;
+/* Inter at the control size, as every page's search is (M487). Both classes, so it wins over
+   `.cp-sidebar__label`'s pixel face later in the sheet. It shrinks and ends in an ellipsis, so the
+   key chip stays inside the box. */
+.cp-sidebar__label.cp-sidebar__search-placeholder {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--font-data);
   font-size: var(--control-font-size);
 }
 
-@container sidebar-search (max-width: 10.5em) {
+@container sidebar-search (max-width: 13em) {
   .cp-sidebar__search-keys {
     display: none;
   }
@@ -334,7 +343,8 @@
   flex: none;
   margin-inline-start: auto;
   color: var(--fg-muted);
-  font-family: var(--font-data);
+  /* The size-matched figures, level with the pixel label's caps (M8, D2). */
+  font-family: var(--font-pixel-digits);
   font-variant-numeric: tabular-nums;
 }
 
@@ -351,14 +361,15 @@
 
 /*
  * The tight rail (item 2): a window too short for the rows (2x in 1264x735) takes the room from
- * the gaps between them and from the closed rail's padding above and below each icon, which is
- * more than the row needs there. Every row keeps its height, so nothing gets smaller to aim at.
+ * the insets and from the closed rail's padding above and below each icon. It keeps the xs step
+ * between rows and never makes a row shorter than a bar (M70), so nothing gets smaller to aim at.
  */
 .cp-sidebar[data-tight],
 .cp-sidebar[data-tight] .cp-sidebar__list,
 .cp-sidebar[data-tight] .cp-sidebar__group,
 .cp-sidebar[data-tight] .cp-sidebar__foot {
-  gap: 0;
+  /* Tight keeps the smallest step between rows, never none (M70). */
+  gap: var(--space-xs);
 }
 
 /* The top and bottom insets go to their smallest step; the page's own top line is given up here. */
@@ -396,19 +407,25 @@
 }
 
 .cp-sidebar[data-tight] .cp-sidebar__link {
-  min-height: var(--icon-size);
+  /* Never below a bar's height, so a tight row is still one target (M70). */
+  min-height: max(var(--icon-size), var(--toolbar-height));
 }
 
 .cp-sidebar[data-tight] .cp-sidebar__top {
   display: none;
 }
 
-/* Tight and closed: the entries stay square, on the smaller icon (M487). */
+/* Tight and closed: the rail is one entry wide plus its padding and divider (M70). */
+.cp-sidebar[data-tight].cp-sidebar--collapsed {
+  width: calc(max(var(--icon-size), var(--toolbar-height)) + var(--cp-sidebar-pad) * 2 + var(--hairline));
+}
+
+/* Tight and closed: the entries stay square, never below a bar's height (M487, M70). */
 .cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__link,
 .cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__search {
-  width: var(--icon-size);
+  width: max(var(--icon-size), var(--toolbar-height));
 }
 
 .cp-sidebar[data-tight] .cp-sidebar__search {
-  min-height: var(--icon-size);
+  min-height: max(var(--icon-size), var(--toolbar-height));
 }

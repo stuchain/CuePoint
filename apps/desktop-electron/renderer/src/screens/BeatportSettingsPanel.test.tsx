@@ -255,7 +255,9 @@ describe("signed out", () => {
       getBeatportTokenStatus: vi.fn(async () => ({ configured: true, masked: "••••cfg1", source: "config" })),
     });
     renderPanel();
-    expect(await screen.findByText("Using a Beatport sign-in saved earlier · ••••cfg1")).toBeInTheDocument();
+    expect(await screen.findByText("Using a Beatport sign-in saved earlier")).toBeInTheDocument();
+    // No token tail (M439).
+    expect(screen.queryByText(/saved earlier ·/)).toBeNull();
   });
 
   it("has no 'How do I get a token?' help any more", async () => {

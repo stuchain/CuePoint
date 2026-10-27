@@ -20,7 +20,6 @@ export function RekordboxInstructionsDialog({ open, onClose }: RekordboxInstruct
       open={open}
       title="How to get your Rekordbox file"
       onClose={onClose}
-      closeLabel="Close"
     >
       <div className="rekordbox-instructions">
         <p className="cp-modal__lead">

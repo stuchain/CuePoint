@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useInRouterContext, useNavigate } from "react-router-dom";
 import { Button } from "../Button";
+import { LinkButton } from "../LinkButton";
 import { Loading } from "../Loading";
 import { Modal } from "../Modal";
 import { Select } from "../Select";
 import type { ActivityFeed } from "../../api/cuepointBridge.types";
 import {
   EVENT_FAMILIES,
+  eventDestination,
   formatEventDetail,
   formatEventFamily,
   formatEventSummary,
@@ -55,6 +58,8 @@ const ALL_KINDS = "all";
  * Undo) are a "Show 50 more" away (M269, M270). A kind is quiet text, not a coloured chip.
  */
 export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
+  // Rows link to their page only inside the app's router (a bare panel in a test has none).
+  const routed = useInRouterContext();
   const [feed, setFeed] = useState<ActivityFeed | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +128,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
   const moreToShow = events.length < total;
 
   return (
-    <Modal open={open} title="Activity" onClose={onClose} size="large" closeLabel="Close">
+    <Modal open={open} title="Activity" onClose={onClose} size="large">
       <div className="cp-activity">
         {status === "loading" && <Loading what="activity" className="cp-activity__note" />}
 
@@ -198,7 +203,13 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
                           </span>
                           {word && <span className="cp-activity__type">{word}</span>}
                           <span className="cp-activity__summary-text">
-                            {summary}
+                            {routed ? (
+                              <SummaryLink type={event.type} onGo={onClose}>
+                                {summary}
+                              </SummaryLink>
+                            ) : (
+                              summary
+                            )}
                             {detail && <span className="cp-activity__detail"> {detail}</span>}
                             <ActivityOffer event={event} onDone={() => load(true)} />
                           </span>
@@ -218,5 +229,28 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
         )}
       </div>
     </Modal>
+  );
+}
+
+/**
+ * An entry's summary, as a link to the page that holds what it recorded (M269): a match opens
+ * Clean, an edit the Library, a dig Discover. The dialog closes first. An entry with nowhere to go
+ * stays plain words.
+ */
+function SummaryLink({ type, onGo, children }: { type: string; onGo: () => void; children: ReactNode }) {
+  const navigate = useNavigate();
+  const to = eventDestination(type);
+  if (!to) return <>{children}</>;
+  return (
+    <LinkButton
+      className="cp-activity__open"
+      aria-description={to.label}
+      onClick={() => {
+        onGo();
+        navigate(to.path, to.state ? { state: to.state } : undefined);
+      }}
+    >
+      {children}
+    </LinkButton>
   );
 }
