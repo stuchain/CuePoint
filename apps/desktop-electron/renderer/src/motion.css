@@ -308,14 +308,8 @@
 
 /* ---- Scrolling (scroll) ----------------------------------------------------------------- */
 
-/* The Settings section links follow the scroll: the one in view steps in. Never on the tables. */
-:root[data-motion-scroll] .settings-page__nav a {
-  transition: transform var(--motion-quick) steps(var(--motion-steps-short));
-}
-
-:root[data-motion-scroll] .settings-page__nav a[data-current] {
-  transform: translate(var(--motion-step-px), 0);
-}
+/* The Settings section links used to step in when theirs was in view; being current never moves
+   text (L5), so the current link shows only its selected look. */
 
 /* A section heading settles as it comes into view, driven by the scroll itself. */
 @supports (animation-timeline: view()) {

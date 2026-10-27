@@ -272,7 +272,8 @@ export function TrackYours({
             }
           }}
         />
-        <Button variant="secondary" size="sm" onClick={addTag} disabled={draftTag.trim() === ""}>
+        {/* L6: as tall as the field beside it (was the small button). */}
+        <Button variant="secondary" onClick={addTag} disabled={draftTag.trim() === ""}>
           Add
         </Button>
       </div>

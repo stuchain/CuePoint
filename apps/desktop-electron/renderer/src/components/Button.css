@@ -175,6 +175,38 @@
   border-color: transparent;
 }
 
+/*
+ * Q1 (L2): a quiet button's words sit on the edge. A button without a frame still has its frame's
+ * padding, so the first one in a row is pulled out by it at the start, and the last one at the end:
+ * its words line up with the text above and below, and its hover box reaches into the margin. Only
+ * the ends move (nothing is before or after them in the row); a Hint wrapper is looked through.
+ */
+:where(.cp-toolbar, .cp-filter-bar__row, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons)
+  > :is(.cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]), .cp-btn--quiet):first-child,
+:where(.cp-toolbar, .cp-filter-bar__row, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons)
+  > .cp-hint:first-child > :is(.cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]), .cp-btn--quiet) {
+  margin-inline-start: calc(-1 * (var(--space-sm) + var(--control-border-width)));
+}
+
+:where(.cp-toolbar, .cp-filter-bar__row, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons, .cp-filter-bar__trailing, .cp-selection-bar__actions > :last-child)
+  > :is(.cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]), .cp-btn--quiet):last-child,
+:where(.cp-toolbar, .cp-filter-bar__row, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons)
+  > .cp-hint:last-child > :is(.cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]), .cp-btn--quiet) {
+  margin-inline-end: calc(-1 * (var(--space-sm) + var(--control-border-width)));
+}
+
 /* Small (T12): rows and chips. It has no minimum width (C120): it is as wide as its words. */
 .cp-btn--sm {
   min-width: 0;

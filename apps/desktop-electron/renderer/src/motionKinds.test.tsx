@@ -592,20 +592,14 @@ describe("scroll: the Settings section links follow the scroll", () => {
   };
 
   for (const setup of ["on", "off", "reduced"] as const) {
-    it(setup === "on" ? "the link in view steps in" : `has no animation (${setup})`, () => {
+    it(`marks the link in view and never moves it (L5; ${setup})`, () => {
       configure("scroll", setup);
       mount(<SettingsScreen />);
       const link = screen.getByRole("link", { name: "Motion" });
-      if (setup !== "on") {
-        // The current link is still marked (T15); it just does not slide.
-        scrollTo();
-        expect(link).toHaveAttribute("data-current");
-        expect(motionOf(link, null, "scroll")).toEqual({ animation: null, transition: null });
-        return;
-      }
+      // The current link is marked (T15); being current never moves its text (L5: it used to step in).
       scrollTo();
       expect(link).toHaveAttribute("data-current");
-      expect(motionOf(link, null, "scroll").transition).toMatch(/transform [^,]*steps\(/);
+      expect(motionOf(link, null, "scroll")).toEqual({ animation: null, transition: null });
     });
   }
 

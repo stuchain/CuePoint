@@ -749,7 +749,19 @@
   display: inline-flex;
   flex: none;
   align-items: center;
+  /* L7: the arrow hangs in the panel's inset, centred in it, so the section title sits on the edge
+     with every label and box (it was 18 px in). The end margin takes back the toggle's gap. */
+  justify-content: center;
   width: var(--icon-size-sm);
+  margin-inline-start: calc(-0.5 * (var(--space-md) + var(--icon-size-sm)));
+  margin-inline-end: calc((var(--space-md) - var(--icon-size-sm)) / 2 - var(--space-xs));
+}
+
+/* The heading's hover hint wraps the toggle: it takes the full width, so the summary can sit at the
+   right edge (L7) instead of beside the title. */
+.cp-track-section__heading > .cp-hint {
+  display: flex;
+  width: 100%;
 }
 
 .cp-track-section__body[hidden] {

@@ -30,7 +30,8 @@
   padding: 0 var(--space-sm);
   /* P48: sunken, no frame until hover or focus; the frame is transparent so nothing moves. */
   border: var(--control-border-width) solid transparent;
-  background: var(--bg-input);
+  /* L4: a surface whose ground is the input tone itself sets --field-fill, so the box still shows. */
+  background: var(--field-fill, var(--bg-input));
   color: var(--fg-primary);
   font-family: var(--font-control);
   font-size: var(--control-font-size);

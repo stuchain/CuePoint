@@ -214,7 +214,9 @@ describe("the quiet secondary button in bars, rows and cards (P3)", () => {
   const rules = parseRules(stripComments(css)).filter(
     (r) => r.selector.includes(".cp-toolbar") && r.selector.includes(".cp-btn--secondary") && !r.selector.includes(".cp-btn__icon"),
   );
-  const rest = rules.filter((r) => !/:hover|:is\(:disabled/.test(r.selector));
+  // The Q1 hang rules (margins on the first and last quiet button) share the list; they are pinned below.
+  const hangs = rules.filter((r) => /margin-inline-(start|end)/.test(r.body));
+  const rest = rules.filter((r) => !/:hover|:is\(:disabled/.test(r.selector) && !hangs.includes(r));
   const hover = rules.filter((r) => /:hover/.test(r.selector));
 
   it("has one rule that strips the fill and frame in the bars and, for small buttons, in tables and cards", () => {
@@ -238,6 +240,27 @@ describe("the quiet secondary button in bars, rows and cards (P3)", () => {
     expect(hover[0]!.selector).toContain(":hover:not(:disabled)");
     expect(hover[0]!.body).toMatch(/background:\s*var\(--hover-fill\)/);
     expect(hover[0]!.body).toMatch(/border-color:\s*var\(--border-control\)/);
+  });
+});
+
+describe("a quiet button's words sit on the edge (Q1, L2)", () => {
+  const hangs = parseRules(stripComments(css)).filter(
+    (r) => r.selector.includes(".cp-toolbar") && /margin-inline-(start|end)/.test(r.body),
+  );
+
+  it("pulls the first quiet button out at the start and the last at the end, by its padding and border", () => {
+    const start = hangs.find((r) => /margin-inline-start/.test(r.body))!;
+    const end = hangs.find((r) => /margin-inline-end/.test(r.body))!;
+    expect(start.selector).toMatch(/:first-child/);
+    expect(end.selector).toMatch(/:last-child/);
+    for (const rule of [start, end]) {
+      expect(rule.body).toContain("calc(-1 * (var(--space-sm) + var(--control-border-width)))");
+      // Never a framed button or a toggle that is on: their box is drawn, so the box sits on the edge.
+      expect(rule.selector).toContain(":not(.cp-btn--framed)");
+      expect(rule.selector).toContain(':not([aria-pressed="true"])');
+      // A Hint wrapper is looked through.
+      expect(rule.selector).toContain(".cp-hint:");
+    }
   });
 });
 

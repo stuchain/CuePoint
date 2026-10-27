@@ -7,6 +7,9 @@
 /* The header leaves 12 under its divider; the page adds no gap of its own, and is not centred or
    capped (--content-max-width is 100%). */
 .settings-page {
+  /* L4: Settings sits on the page ground, which is the input tone in some themes (Neo dark), so
+     its fields and selects take the panel tone to read as boxes on it. */
+  --field-fill: var(--bg-panel);
   gap: 0;
   margin: 0;
 }

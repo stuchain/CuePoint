@@ -49,13 +49,11 @@ describe("one link colour (T13)", () => {
 });
 
 describe("settings current section (T15)", () => {
-  it("highlights the current link without motion, and motion keeps only the slide", () => {
+  it("highlights the current link and never moves it (L5: was a sideways step with scroll motion)", () => {
     const current = rule(settings, ".settings-page__nav a[data-current]");
     expect(current).toContain("color: var(--fg-primary);");
     expect(current).toContain("background: var(--selected-row-background);");
-    const slide = rule(motion, ":root[data-motion-scroll] .settings-page__nav a[data-current]");
-    expect(slide).toContain("transform:");
-    expect(slide).not.toContain("color:");
+    expect(motion).not.toMatch(/settings-page__nav a\[data-current\]\s*\{[^}]*transform/);
   });
 });
 

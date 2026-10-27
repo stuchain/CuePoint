@@ -58,10 +58,12 @@ body.cp-inspector-resizing {
   user-select: none;
 }
 
-/* The title bar is the shared panel header (.cp-panel-header, C29); only its height is a toolbar's. */
+/* The title bar is the shared panel header (.cp-panel-header, C29); only its height is a toolbar's.
+   Its title starts on the body's inset (L1), not 6 px right of every line under it. */
 .cp-inspector__header {
   box-sizing: border-box;
   min-height: var(--toolbar-height);
+  padding-inline: var(--space-md);
 }
 
 .cp-inspector__hide {

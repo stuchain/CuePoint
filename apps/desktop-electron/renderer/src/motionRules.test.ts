@@ -364,8 +364,9 @@ describe("the scroll kind", () => {
     expect(problems).toEqual([]);
   });
 
-  it("is used for the Settings links and headings", () => {
+  it("is used for the Settings headings, and never moves the Settings links (L5)", () => {
     const all = Object.values(STYLESHEETS).join("\n");
-    expect(all).toMatch(/data-motion-scroll\][^{]*settings-page__nav/);
+    expect(all).toMatch(/data-motion-scroll\][^{]*settings-page__section/);
+    expect(all).not.toMatch(/data-motion-scroll\][^{]*settings-page__nav/);
   });
 });

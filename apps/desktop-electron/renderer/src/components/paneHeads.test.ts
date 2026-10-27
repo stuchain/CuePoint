@@ -18,8 +18,11 @@ const body = (sheet: string, selector: string): string =>
     .join("\n");
 
 describe("bars of one height (P32)", () => {
+  it("makes the Library pane's heads one row tall, the table header's height (Q2, amending P32)", () => {
+    expect(body("/src/screens/library/PlaylistPane.css", ".cp-playlist-pane__head")).toMatch(/min-block-size:\s*var\(--row-height\)/);
+  });
+
   it.each([
-    ["/src/screens/library/PlaylistPane.css", ".cp-playlist-pane__head"],
     ["/src/components/shell/TrackInspector.css", ".cp-inspector__header"],
     ["/src/components/player/QueuePanel.css", ".cp-queue__header"],
   ])("%s %s is at least --toolbar-height tall", (sheet, selector) => {

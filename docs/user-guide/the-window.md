@@ -370,8 +370,8 @@ ever stepped. Here is where each kind shows:
   refuses, shakes; new dig results and a finished background task pulse once.
 - **Loading**: a small pixel spinner turns while the library is being read, and
   rows of a table that have not arrived yet pulse. Rows hold still while you scroll.
-- **Scrolling**: in Settings, the link for the section you are reading steps in, and a
-  section's heading settles as it comes into view. Track tables never animate as they
+- **Scrolling**: in Settings, a section's heading settles as it comes into view (the link
+  for the section you are reading is highlighted, and never moves). Track tables never animate as they
   scroll.
 
 ## Size and theme
