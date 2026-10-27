@@ -378,6 +378,45 @@ function resolveAll(entries) {
   return resolved;
 }
 
+/**
+ * The website's own theme tokens (M323). The app deleted its unused hover and press tokens (D29 A),
+ * but the site still draws with them: the link's lighter accent and bar, the header and footer,
+ * the buttons, and the 3D scene's palette (also read by the promo video). They live here now, per
+ * theme, at the values the app's themes had, and are written after each theme's own tokens.
+ */
+export const WEB_THEME_TOKENS = {
+  clubNeon: {
+    "--accent-primary-hover": "#ea80fc",
+    "--accent-primary-pressed": "#c2185b",
+    "--accent-secondary-hover": "#2e2e48",
+    "--overlay-header": "rgba(0, 0, 0, 0.2)",
+  },
+  mutedPro: {
+    "--accent-primary-hover": "#a5b4fc",
+    "--accent-primary-pressed": "#6366f1",
+    "--accent-secondary-hover": "#3d4656",
+    "--overlay-header": "rgba(0, 0, 0, 0.18)",
+  },
+  neoDark: {
+    "--accent-primary-hover": "#a78bfa",
+    "--accent-primary-pressed": "#7c3aed",
+    "--accent-secondary-hover": "#52525b",
+    "--overlay-header": "rgba(0, 0, 0, 0.25)",
+  },
+  qtEvolved: {
+    "--accent-primary-hover": "#106ebe",
+    "--accent-primary-pressed": "#005a9e",
+    "--accent-secondary-hover": "#4a4a4a",
+    "--overlay-header": "rgba(0, 0, 0, 0.2)",
+  },
+  retro16: {
+    "--accent-primary-hover": "#d493ff",
+    "--accent-primary-pressed": "#9a5ad4",
+    "--accent-secondary-hover": "#4d6a90",
+    "--overlay-header": "rgba(0, 0, 0, 0.15)",
+  },
+};
+
 function block(selector, pairs) {
   const lines = pairs.map(([name, value]) => `  ${name}: ${value};`);
   return `${selector} {\n${lines.join("\n")}\n}\n`;
@@ -386,7 +425,7 @@ function block(selector, pairs) {
 /**
  * Pure: the app's tokens.css text and a { themeId: css text } map in, the generated CSS out.
  */
-export function generate(tokensCss, themes) {
+export function generate(tokensCss, themes, webTokens = WEB_THEME_TOKENS) {
   const entries = parseTokens(tokensCss);
   // `--scale` is fixed for the web, whatever the app declares
   entries.set("--scale", String(WEB_SCALE));
@@ -399,7 +438,11 @@ export function generate(tokensCss, themes) {
     const decls = parseTheme(id, css);
     for (const [name, value] of decls) own.set(name, value);
     const all = resolveAll(own);
-    return [id, decls.map(([name]) => [name, all.get(name)])];
+    const pairs = decls.map(([name]) => [name, all.get(name)]);
+    // the site's own tokens for this theme, where the app's theme does not set them (M323)
+    const declared = new Set(decls.map(([name]) => name));
+    for (const [name, value] of Object.entries(webTokens[id] ?? {})) if (!declared.has(name)) pairs.push([name, value]);
+    return [id, pairs];
   });
 
   let out = HEADER;

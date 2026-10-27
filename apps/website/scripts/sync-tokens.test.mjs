@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { WEB_SCALE, generate, loadAppSources } from "./sync-tokens.mjs";
+import { WEB_SCALE, WEB_THEME_TOKENS, generate, loadAppSources } from "./sync-tokens.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const generatedPath = join(here, "..", "src", "styles", "tokens.generated.css");
@@ -24,6 +24,18 @@ describe("generated file", () => {
   it("equals what the app's real files give (drift fails)", () => {
     const { tokensCss, themes } = loadAppSources(appTokens);
     expect(readFileSync(generatedPath, "utf8")).toBe(generate(tokensCss, themes));
+  });
+
+  it("keeps the site's own hover and press tokens per theme, which the app no longer has (M323)", () => {
+    const out = readFileSync(generatedPath, "utf8");
+    for (const [id, tokens] of Object.entries(WEB_THEME_TOKENS)) {
+      const src = readFileSync(join(appTokens, "themes", `${id}.css`), "utf8");
+      const generatedBlock = block(out, `[data-theme="${id}"]`);
+      for (const [name, value] of Object.entries(tokens)) {
+        expect(src, `${id} ${name}`).not.toContain(`${name}:`);
+        expect(generatedBlock, `${id} ${name}`).toContain(`${name}: ${value};`);
+      }
+    }
   });
 
   it("carries the do-not-edit header", () => {
