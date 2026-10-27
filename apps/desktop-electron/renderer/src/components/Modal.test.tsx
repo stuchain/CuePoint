@@ -12,6 +12,8 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Modal } from "./Modal";
+import { TrackContextMenu } from "./TrackContextMenu";
+import { MotionProvider } from "../tokens/MotionContext";
 import tokens from "../tokens/tokens.css?raw";
 import css from "./Modal.css?raw";
 
@@ -326,9 +328,9 @@ describe("the title", () => {
     expect(css).toMatch(/border-top:\s*0;/);
   });
 
-  it("has one scroller, the body, which grows with the window (area 76)", () => {
+  it("has one scroller, the body, which grows with the window up to 80% of it (area 76, M255)", () => {
     const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
-    expect(flat).toMatch(/\.cp-modal \{[^}]*max-height:\s*100%/);
+    expect(flat).toMatch(/\.cp-modal \{[^}]*max-height:\s*min\(100%, 80vh\)/);
     expect(flat).toMatch(/\.cp-modal__body \{[^}]*overflow:\s*auto/);
     // No dialog size scrolls on its own, and none sets a height cap of its own.
     expect(flat).not.toMatch(/\.cp-modal--large[^{]*\{[^}]*(max-height|overflow)/);
@@ -537,5 +539,204 @@ describe("Modal body look (C110, C67, C125, C121)", () => {
   it("has no frame and lifts off the page with the dialog shadow (P11)", () => {
     expect(flat).toMatch(/\.cp-modal \{[^}]*border:\s*0;/);
     expect(flat).toMatch(/box-shadow:\s*var\(--shadow-dialog\)/);
+  });
+});
+
+describe("footer and rhythm (M62, M63, M246, M247, M251, M255)", () => {
+  const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  it("pads the footer the same on every side, so the space under Cancel equals the space at its right (M62)", () => {
+    expect(flat).toMatch(/\.cp-modal__footer \{[^}]*padding:\s*var\(--space-lg\);/);
+    // The body's own bottom padding is the footer's job, and a footer-less body keeps its own.
+    expect(flat).toMatch(/\.cp-modal__body \{[^}]*padding:\s*var\(--space-lg\) var\(--space-lg\) 0;/);
+    expect(flat).toMatch(/\.cp-modal__body:last-child \{[^}]*padding-bottom:\s*var\(--space-lg\)/);
+  });
+
+  it("draws a hairline over the footer only while the body scrolls under it (M62)", () => {
+    const sizes = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-modal__body") ? 500 : 0;
+    });
+    const client = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-modal__body") ? 100 : 0;
+    });
+    try {
+      render(
+        <Modal open title="Long" onClose={() => {}} primaryAction={{ label: "Save", onClick: () => {} }}>
+          <p>text</p>
+        </Modal>,
+      );
+      expect(document.querySelector(".cp-modal__footer")).toHaveAttribute("data-divided");
+    } finally {
+      sizes.mockRestore();
+      client.mockRestore();
+    }
+    expect(flat).toMatch(/\.cp-modal__footer\[data-divided\] \{[^}]*border-top:\s*var\(--hairline\) solid/);
+  });
+
+  it("has no hairline when the body fits", () => {
+    render(
+      <Modal open title="Short" onClose={() => {}} primaryAction={{ label: "Save", onClick: () => {} }}>
+        <p>text</p>
+      </Modal>,
+    );
+    expect(document.querySelector(".cp-modal__footer")).not.toHaveAttribute("data-divided");
+  });
+
+  it("lets a long name in the title wrap and keeps the × (M246)", () => {
+    expect(flat).toMatch(/\.cp-modal__title \{[^}]*min-width:\s*0;[^}]*overflow-wrap:\s*anywhere/);
+    expect(flat).toMatch(/\.cp-modal__header > \.cp-close \{[^}]*flex:\s*none/);
+  });
+
+  it("breaks a long path in the body instead of running out of the box (M247)", () => {
+    expect(flat).toMatch(/\.cp-modal__body \{[^}]*overflow-wrap:\s*anywhere/);
+  });
+
+  it("sizes the lead once, on the lead itself (M251)", () => {
+    expect(flat).toMatch(/\.cp-modal__lead \{[^}]*font-size:\s*var\(--control-font-size\)/);
+  });
+
+  it("keeps a dialog that grows at a fixed top, so its title does not jump (M375)", () => {
+    expect(flat).toMatch(/\.cp-modal__backdrop \{[^}]*align-items:\s*flex-start/);
+  });
+});
+
+describe("while a write runs (M245)", () => {
+  it("greys Cancel when its secondary action is disabled, and it does nothing", async () => {
+    const cancel = vi.fn();
+    render(
+      <Modal
+        open
+        title="Delete “Warm-up”?"
+        onClose={() => {}}
+        primaryAction={{ label: "Delete Set", onClick: () => {}, loading: true }}
+        secondaryAction={{ label: "Cancel", onClick: cancel, disabled: true }}
+      >
+        <p>Gone.</p>
+      </Modal>,
+    );
+    const button = screen.getByRole("button", { name: "Cancel" });
+    expect(button).toBeDisabled();
+    await userEvent.click(button);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+});
+
+describe("the footer's far-left action (M250, D24)", () => {
+  it("draws a danger extra as the red outline button", () => {
+    render(
+      <Modal
+        open
+        title="Chapter"
+        onClose={() => {}}
+        extraAction={{ label: "Delete chapter…", onClick: () => {}, danger: true }}
+        primaryAction={{ label: "Save", onClick: () => {} }}
+      >
+        <p>body</p>
+      </Modal>,
+    );
+    expect(screen.getByRole("button", { name: "Delete chapter…" })).toHaveClass("cp-btn--danger");
+  });
+});
+
+describe("words while it closes (M248)", () => {
+  it("keeps the title, body and buttons it had while its exit plays", async () => {
+    const real = window.getComputedStyle;
+    const spy = vi.spyOn(window, "getComputedStyle").mockImplementation((el: Element, pseudo?: string | null) => {
+      const style = real(el, pseudo);
+      return el instanceof HTMLElement && el.hasAttribute("data-leaving")
+        ? ({ ...style, animationName: "cp-fade-out" } as unknown as CSSStyleDeclaration)
+        : style;
+    });
+    try {
+      const ui = (open: boolean, name: string) => (
+        <MotionProvider>
+          <Modal
+            open={open}
+            title={`Freeze ${name}?`}
+            onClose={() => {}}
+            primaryAction={{ label: name ? `Freeze ${name}` : "Freeze", onClick: () => {} }}
+          >
+            <p>Freezing {name}</p>
+          </Modal>
+        </MotionProvider>
+      );
+      const view = render(ui(true, "“Peak time”"));
+      view.rerender(ui(false, ""));
+      const dialog = screen.getByRole("dialog", { hidden: true });
+      expect(dialog).toHaveTextContent("Freeze “Peak time”?");
+      expect(dialog).toHaveTextContent("Freezing “Peak time”");
+      expect(within(dialog).getByRole("button", { name: "Freeze “Peak time”", hidden: true })).toBeInTheDocument();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("Tab after the focused button is removed (M464)", () => {
+  it("pulls focus back into the dialog instead of leaving it on the page behind", async () => {
+    const user = userEvent.setup();
+    function Host() {
+      const [asking, setAsking] = useState(false);
+      return (
+        <>
+          <button type="button">behind</button>
+          <Modal open title="Activity" onClose={() => {}}>
+            {asking ? (
+              <button key="keep" type="button">
+                Keep
+              </button>
+            ) : (
+              <button key="undo" type="button" onClick={() => setAsking(true)}>
+                Undo this batch
+              </button>
+            )}
+          </Modal>
+        </>
+      );
+    }
+    render(<Host />);
+    await user.tab();
+    screen.getByRole("button", { name: "Undo this batch" }).focus();
+    await user.keyboard("{Enter}");
+    // The button that had focus is gone: focus fell to the body.
+    expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(false);
+    await user.tab();
+    expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true);
+  });
+});
+
+describe("one stack of layers (M469)", () => {
+  it("leaves Escape to a menu opened from the dialog, then to the dialog", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onMenuClose = vi.fn();
+    function Host() {
+      const [menu, setMenu] = useState(false);
+      return (
+        <Modal open title="Tags" onClose={onClose}>
+          <button type="button" onClick={() => setMenu(true)}>
+            item
+          </button>
+          {menu ? (
+            <TrackContextMenu
+              x={0}
+              y={0}
+              items={[{ id: "one", label: "One", onSelect: () => {} }]}
+              onClose={() => {
+                onMenuClose();
+                setMenu(false);
+              }}
+            />
+          ) : null}
+        </Modal>
+      );
+    }
+    render(<Host />);
+    await user.click(screen.getByRole("button", { name: "item" }));
+    await user.keyboard("{Escape}");
+    expect(onMenuClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

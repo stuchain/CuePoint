@@ -3,9 +3,12 @@
   inset: 0;
   z-index: 1000;
   display: flex;
-  align-items: center;
+  /* A fixed top, not the middle: a dialog that loads or grows grows downward, so its title and
+     close button stay where the eye is (M375). */
+  align-items: flex-start;
   justify-content: center;
-  padding: var(--space-xl);
+  box-sizing: border-box;
+  padding: max(var(--space-xl), 10vh) var(--space-xl) var(--space-xl);
   background: var(--overlay-backdrop);
 }
 
@@ -16,11 +19,12 @@
   /* One surface that lifts off the page with a shadow, no frame (P11). */
   border: 0;
   box-shadow: var(--shadow-dialog);
-  /* One scroller per dialog, the body: the dialog grows with its content up to the window's
-     height, and title and buttons stay on screen. Nothing inside sets a max-height of its own. */
+  /* One scroller per dialog, the body: the dialog grows with its content up to 80% of the window,
+     so the page title and the player stay in view (M255), and title and buttons stay on screen.
+     Nothing inside sets a max-height of its own. */
   display: flex;
   flex-direction: column;
-  max-height: 100%;
+  max-height: min(100%, 80vh);
   overflow: hidden;
 }
 
@@ -51,6 +55,7 @@
   box-sizing: border-box;
   min-height: var(--toolbar-height);
   padding: var(--space-xs) var(--space-lg);
+  gap: var(--space-md);
   /* The title sits on the dialog's own surface: no band and no line under it (P11). */
   border-bottom: 0;
   background: transparent;
@@ -59,15 +64,25 @@
 .cp-modal__title {
   font-family: var(--font-voice);
   margin: 0;
+  /* A name without spaces wraps instead of pushing the × past the dialog's edge (M246). */
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--font-size-dialog);
   font-weight: var(--font-weight-bold);
+}
+
+.cp-modal__header > .cp-close {
+  flex: none;
 }
 
 .cp-modal__body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: var(--space-lg);
+  /* Header to first content is 12, and the footer's own padding is the space under the last block (M62, M63). */
+  padding: var(--space-lg) var(--space-lg) 0;
+  /* A long path or name breaks instead of running out of the box (M247). */
+  overflow-wrap: anywhere;
   /* P66: sections are 16 apart, a label 4 from its field, paragraphs 8 apart, groups inside a block 8. */
   display: flex;
   flex-direction: column;
@@ -79,11 +94,18 @@
   line-height: var(--line-height-prose);
 }
 
+/* A dialog with no footer has nothing under the body to give it its bottom space. */
+.cp-modal__body:last-child {
+  padding-bottom: var(--space-lg);
+}
+
 /* The lead line (what the dialog is for) is grey; the rest is the primary colour. Both are
-   sentences, so Inter (D5, C55); labels and headings in the body keep the pixel face. */
+   sentences, so Inter (D5, C55); labels and headings in the body keep the pixel face. Its size is
+   set here, once, so no dialog needs its own (M251). */
 .cp-modal__lead {
   color: var(--fg-muted);
   font-family: var(--font-data);
+  font-size: var(--control-font-size);
 }
 
 /* Paragraphs in a body are flex children: the body's gap is the space, never a margin. */
@@ -106,7 +128,7 @@
 /* Why the main button is greyed: one muted line just above the footer. */
 .cp-modal__reason {
   margin: 0;
-  padding: 0 var(--space-lg) var(--space-sm);
+  padding: var(--space-md) var(--space-lg) 0;
   color: var(--fg-muted);
   font-family: var(--font-data);
   font-size: var(--text-body);
@@ -117,9 +139,14 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-md);
-  /* No line above it; 12 of padding above the buttons (P66). */
-  padding: var(--space-lg) var(--space-lg) var(--space-md);
+  /* 12 all round, so the space under Cancel equals the space at its right (M62). */
+  padding: var(--space-lg);
   border-top: 0;
+}
+
+/* A body that scrolls puts a hairline over the buttons (M62). */
+.cp-modal__footer[data-divided] {
+  border-top: var(--hairline) solid var(--row-line);
 }
 
 /* The extra action (Reset columns, Skip) is on the far left; the auto margin is the space

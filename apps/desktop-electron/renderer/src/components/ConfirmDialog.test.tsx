@@ -32,4 +32,26 @@ describe("ConfirmDialog", () => {
     const header = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__header")!;
     expect(within(header).getByRole("button", { name: "Close" })).toHaveAttribute("aria-disabled", "true");
   });
+
+  it("while loading, greys Cancel too: a live Cancel closed the dialog in the middle of the write (M245)", () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmDialog open loading title="Delete “Warm-up”?" confirmLabel="Delete Set" onConfirm={() => {}} onCancel={onCancel}>
+        This cannot be undone.
+      </ConfirmDialog>,
+    );
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel).toBeDisabled();
+    cancel.click();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("is live again once the write is over", () => {
+    render(
+      <ConfirmDialog open title="Delete “Warm-up”?" confirmLabel="Delete Set" onConfirm={() => {}} onCancel={() => {}}>
+        This cannot be undone.
+      </ConfirmDialog>,
+    );
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+  });
 });

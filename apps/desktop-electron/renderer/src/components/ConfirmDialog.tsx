@@ -32,7 +32,8 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
       onClose={onCancel}
       closeDisabled={loading}
       primaryAction={{ label: confirmLabel, onClick: onConfirm, loading }}
-      secondaryAction={{ label: "Cancel", onClick: onCancel }}
+      // Cancel is as dead as the × while the act runs: a live one closed the dialog mid-write (M245).
+      secondaryAction={{ label: "Cancel", onClick: onCancel, disabled: loading }}
     >
       <p>{children}</p>
     </Modal>

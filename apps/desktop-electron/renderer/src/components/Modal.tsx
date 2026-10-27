@@ -1,4 +1,6 @@
-import { useId, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useLastValue } from "../hooks/useLastValue";
+import { useLayerStack } from "../hooks/useLayerStack";
 import { usePresence } from "../tokens/usePresence";
 import { Button } from "./Button";
 import { CloseButton } from "./CloseButton";
@@ -9,7 +11,11 @@ export type ModalSize = "small" | "medium" | "large";
 
 /** An extra for the footer's far left is either a button (`extraAction`) or anything else (`footerExtra`), never both. */
 type FooterExtras =
-  | { extraAction?: { label: string; onClick: () => void }; footerExtra?: never }
+  | {
+      /** `danger` is the one home of a delete inside an edit dialog: far left, red outline, "Delete <thing>…" (D24). */
+      extraAction?: { label: string; onClick: () => void; danger?: boolean; disabled?: boolean };
+      footerExtra?: never;
+    }
   | { extraAction?: never; footerExtra?: ReactNode };
 
 type ModalProps = FooterExtras & {
@@ -38,7 +44,8 @@ type ModalProps = FooterExtras & {
     /** `"write"` is a button that writes to the user's files (Export to Rekordbox): the green fill. */
     variant?: "write";
   };
-  secondaryAction?: { label: string; onClick: () => void };
+  /** `disabled` greys Cancel while a write runs (M245): a live Cancel closed the dialog mid-write. */
+  secondaryAction?: { label: string; onClick: () => void; disabled?: boolean };
   /**
    * A step back in a multi-screen dialog (the first-run guide), in the footer between
    * the secondary and the primary action, so the buttons keep their places. Disabled
@@ -96,9 +103,6 @@ type ModalProps = FooterExtras & {
   noFooter?: boolean;
 };
 
-/** Dialogs open now, oldest first: only the newest answers Escape and Tab, so a question asked from inside a dialog does not close both. */
-const openDialogs: object[] = [];
-
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -110,27 +114,41 @@ const FOCUSABLE =
  * closing left focus on an element that was now covered. A keyboard user could
  * open a dialog and never reach it.
  */
-export function Modal({
-  open,
-  title,
-  children,
-  onClose,
-  primaryAction,
-  secondaryAction,
-  extraAction,
-  backAction,
-  closeLabel,
-  footerExtra,
-  reason: reasonProp,
-  size = "medium",
-  variant = "default",
-  closeOnBackdrop = true,
-  restoreFocus = true,
-  initialFocus,
-  closeDisabled = false,
-  noFooter = false,
-  closeReason,
-}: ModalProps) {
+export function Modal(props: ModalProps) {
+  const {
+    open,
+    onClose,
+    size = "medium",
+    closeOnBackdrop = true,
+    restoreFocus = true,
+    initialFocus,
+    closeDisabled = false,
+    noFooter = false,
+    closeReason,
+  } = props;
+  // The words and buttons the dialog had while it was open stay on screen through its exit
+  // (~200 ms): the state that named it is often already empty by then, so a title read
+  // "Freeze ?" and a delete fell back to its generic words (M248).
+  const words =
+    useLastValue(
+      open
+        ? {
+            title: props.title,
+            children: props.children,
+            primaryAction: props.primaryAction,
+            secondaryAction: props.secondaryAction,
+            extraAction: props.extraAction,
+            backAction: props.backAction,
+            closeLabel: props.closeLabel,
+            footerExtra: props.footerExtra,
+            reason: props.reason,
+            variant: props.variant,
+          }
+        : null,
+    ) ?? props;
+  const { title, children, primaryAction, secondaryAction, extraAction, backAction, closeLabel, footerExtra } = words;
+  const reasonProp = words.reason;
+  const variant = words.variant ?? "default";
   const dialogRef = useRef<HTMLDivElement>(null);
   // Each dialog's own title id. A shared one named every dialog on the page after the
   // first title in it: while one dialog plays its exit and the next opens, both read as
@@ -153,14 +171,17 @@ export function Modal({
   initialFocusRef.current = initialFocus;
   const primaryRef = useRef(primaryAction);
   primaryRef.current = primaryAction;
-  const meRef = useRef({});
+  // The one stack of open layers: a menu or a question opened from this dialog answers Escape first.
+  const isTopLayer = useLayerStack(open);
+  const isTopRef = useRef(isTopLayer);
+  isTopRef.current = isTopLayer;
 
   // Enter runs in the bubble phase, after the field's own handler. A capture listener on the
   // window fired first, so a field that submits itself (NewSetDialogs, ChapterDialog) submitted
   // twice. A handler that already took the key calls preventDefault, and this then does nothing.
   const onDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Enter" || event.defaultPrevented || event.nativeEvent.isComposing) return;
-    if (openDialogs[openDialogs.length - 1] !== meRef.current) return;
+    if (!isTopRef.current()) return;
     // Enter in a text field presses the one main button, if it can be pressed. A button, a
     // link, a multi-line box or a list keeps its own Enter.
     const target = event.target;
@@ -196,10 +217,8 @@ export function Modal({
 
   useLayoutEffect(() => {
     if (!open) return;
-    const me = meRef.current;
-    openDialogs.push(me);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (openDialogs[openDialogs.length - 1] !== me) return;
+      if (!isTopRef.current()) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         if (!closeDisabledRef.current) onCloseRef.current();
@@ -210,13 +229,21 @@ export function Modal({
       // Keep Tab inside the dialog. Without this, focus walks into the page
       // behind an aria-modal dialog, which is exactly what the attribute
       // promises does not happen.
-      const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])];
+      const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].filter(
+        (element) => element.getAttribute("aria-disabled") !== "true",
+      );
       if (focusable.length === 0) return;
       const first = focusable[0]!;
       const last = focusable[focusable.length - 1]!;
       const active = document.activeElement;
 
-      if (event.shiftKey && (active === first || active === dialogRef.current)) {
+      // Focus that is not in the dialog (the focused button was removed, as Activity's "Undo this
+      // batch" is when it turns into a question) is pulled back in rather than left to walk the
+      // page behind (M464).
+      if (!active || !dialogRef.current?.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && (active === first || active === dialogRef.current)) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && active === last) {
@@ -225,12 +252,27 @@ export function Modal({
       }
     };
     window.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
-      const at = openDialogs.indexOf(me);
-      if (at !== -1) openDialogs.splice(at, 1);
-    };
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [open]);
+
+  // A body that scrolls puts a hairline over the footer, so the buttons do not look like part of
+  // the text that runs under them (M62).
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  const measureBody = useCallback(() => {
+    const body = bodyRef.current;
+    if (body) setOverflowing(body.scrollHeight - body.scrollTop - body.clientHeight > 1);
+  }, []);
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!open || !body) return;
+    measureBody();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measureBody);
+    observer.observe(body);
+    for (const child of Array.from(body.children)) observer.observe(child);
+    return () => observer.disconnect();
+  });
 
   // A closed dialog may play its exit (PAGES-12). The leaving copy is inert and takes no
   // pointer events at all, so a click on its backdrop lands on what is behind it.
@@ -276,21 +318,28 @@ export function Modal({
           </h2>
           <CloseButton onClick={close} aria-disabled={closeDisabled || undefined} />
         </header>
-        <div className="cp-modal__body">{children}</div>
+        <div ref={bodyRef} className="cp-modal__body" onScroll={measureBody}>
+          {children}
+        </div>
         {/* The one reason line, directly above the footer (area 93). */}
         <ReasonLine id={reasonId} align="end" className="cp-modal__reason">
           {reason}
         </ReasonLine>
         {(primaryAction || secondaryAction || extraAction || backAction || footerClose || footerExtra) && (
-          <footer className="cp-modal__footer">
+          <footer className="cp-modal__footer" data-divided={overflowing ? "" : undefined}>
             {footerExtra && <div className="cp-modal__footer-extra">{footerExtra}</div>}
             {extraAction && (
-              <Button variant="secondary" className="cp-modal__extra" onClick={extraAction.onClick}>
+              <Button
+                variant={extraAction.danger ? "danger" : "secondary"}
+                className="cp-modal__extra"
+                onClick={extraAction.onClick}
+                disabled={extraAction.disabled}
+              >
                 {extraAction.label}
               </Button>
             )}
             {secondaryAction && (
-              <Button variant="secondary" onClick={secondaryAction.onClick}>
+              <Button variant="secondary" onClick={secondaryAction.onClick} disabled={secondaryAction.disabled}>
                 {secondaryAction.label}
               </Button>
             )}
