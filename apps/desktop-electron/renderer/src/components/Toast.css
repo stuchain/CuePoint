@@ -7,8 +7,9 @@
   position: fixed;
   /* The page's right edge: its gutter plus the scrollbar column, where the table's content ends (M286). */
   right: calc(var(--space-lg) + var(--scrollbar-size, 0px));
-  /* Above the player and the status strip: AppShellLayout measures them. */
-  bottom: calc(var(--shell-bottom-inset, 0px) + var(--space-lg) + var(--space-sm));
+  /* Above the player and the status strip: AppShellLayout measures them. A selection bar over the
+     table's bottom rows lifts the stack too, so a toast never covers its buttons (M283). */
+  bottom: calc(var(--shell-bottom-inset, 0px) + var(--selection-bar-room, 0px) + var(--space-lg) + var(--space-sm));
   z-index: var(--z-toast);
   display: flex;
   flex-direction: column;

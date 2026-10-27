@@ -118,3 +118,17 @@ describe("SelectionBar look (M20, M54, M56, M117)", () => {
     expect(flat).toMatch(/\.cp-selection-bar--overlay \{[^}]*box-shadow:\s*0 calc\(-1 \* var\(--hairline\)\) 0 var\(--row-line\);/);
   });
 });
+
+describe("the floating toasts (M283)", () => {
+  it("are lifted by an overlay bar while it shows, and drop back when it goes", () => {
+    const { unmount } = render(<SelectionBar count={2} onClear={() => undefined} overlay />);
+    expect(document.documentElement.style.getPropertyValue("--selection-bar-room")).toMatch(/px$/);
+    unmount();
+    expect(document.documentElement.style.getPropertyValue("--selection-bar-room")).toBe("");
+  });
+
+  it("are not lifted by a bar above the list", () => {
+    render(<SelectionBar count={2} onClear={() => undefined} />);
+    expect(document.documentElement.style.getPropertyValue("--selection-bar-room")).toBe("");
+  });
+});

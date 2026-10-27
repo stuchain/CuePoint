@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { formatCount } from "../format/counts";
 import { Button } from "./Button";
 import { CloseButton } from "./CloseButton";
@@ -36,8 +36,20 @@ export function SelectionBar({ count, ...rest }: SelectionBarProps) {
 
 function ShownSelectionBar({ count, onClear, children, locale, className = "", overlay = false }: SelectionBarProps) {
   const armed = useDoubleClickGrace();
+  const bar = useRef<HTMLDivElement>(null);
+  // A bar over the table's bottom rows sits where the floating toasts do, so it lifts them by its
+  // height while it shows (M283). A hidden kept page has no effects, so only the shown bar counts.
+  useLayoutEffect(() => {
+    if (!overlay || !bar.current) return;
+    const root = document.documentElement;
+    root.style.setProperty("--selection-bar-room", `${bar.current.offsetHeight}px`);
+    return () => {
+      root.style.removeProperty("--selection-bar-room");
+    };
+  }, [overlay]);
   return (
     <div
+      ref={bar}
       role="toolbar"
       aria-label="Selection"
       className={`cp-selection-bar${overlay ? " cp-selection-bar--overlay" : ""} ${className}`.trim()}
