@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayerStack } from "../hooks/useLayerStack";
 import { useLeaveGhost } from "../tokens/useLeaveGhost";
 import { Hint } from "./Hint";
 import { PixelIcon } from "./PixelIcon";
@@ -31,6 +32,11 @@ import "./TrackContextMenu.css";
  * parents, and Organize ▸ holds Rate ▸. The keys keep their meaning at every
  * depth — ArrowRight goes in, ArrowLeft or the first Escape comes back out one
  * level — and only the deepest open list takes them.
+ *
+ * Focus moves with the highlight (M458): the arrows put real focus on the entry, so a screen
+ * reader says it and a greyed entry shows its reason; Tab closes the menu; typing letters jumps to
+ * the next entry that starts with them (M481). A menu opened with the pointer highlights nothing
+ * until the pointer or a key does; one opened from the keyboard highlights the first entry (M293).
  */
 
 export interface TrackContextMenuItem {
@@ -88,6 +94,44 @@ interface TrackContextMenuProps {
    * click opening it again.
    */
   anchor?: React.RefObject<HTMLElement | null>;
+  /**
+   * The top edge of the control that opened it (viewport px). A menu that does not fit under the
+   * control opens above it, bottom to bottom of the gap, instead of sliding up over the control
+   * itself (M290). Pass it with `x`/`y` at the control's bottom-left.
+   */
+  above?: number;
+  /** The right edge of the control that opened it: the menu's right edge meets it (M290). */
+  right?: number;
+  /** True when a key opened it; left out, it is read from how the opener was focused (M293). */
+  keyboard?: boolean;
+}
+
+/** The air between a menu and the control it opens from (M69, D26). */
+function triggerGap(): number {
+  const value = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--space-2xs"));
+  return Number.isFinite(value) && value > 0 ? value : 2;
+}
+
+/**
+ * The control a menu was opened from, when the caller did not say: the open menu button (it has
+ * `aria-expanded="true"`) whose bottom-left corner is the point the menu was given. Lets a menu
+ * opened "under its button" know the button's top edge, so it can open above it (M290).
+ */
+function findTrigger(x: number, y: number): HTMLElement | null {
+  for (const element of document.querySelectorAll<HTMLElement>('[aria-expanded="true"]')) {
+    const box = element.getBoundingClientRect();
+    if (Math.abs(box.left - x) <= 2 && Math.abs(box.bottom - y) <= 2) return element;
+  }
+  return null;
+}
+
+/** Whether focus is on something a key put it on, so a menu opened from it highlights its first entry. */
+function openedFromKeyboard(): boolean {
+  try {
+    return document.activeElement instanceof HTMLElement && document.activeElement.matches(":focus-visible");
+  } catch {
+    return false;
+  }
 }
 
 /** The room the player bar and status strip take at the bottom (the shell measures it). */
@@ -96,11 +140,27 @@ function bottomInset(): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-/** Keeps a box on screen, and above the player bar, when it opens near an edge. */
-function clampToViewport(x: number, y: number, width: number, height: number) {
-  const maxX = Math.max(0, window.innerWidth - width - 4);
-  const maxY = Math.max(0, window.innerHeight - bottomInset() - height - 4);
-  return { left: Math.min(x, maxX), top: Math.min(y, maxY) };
+/**
+ * Where the menu goes (M290). Under the point it was opened at when it fits there; otherwise
+ * above: above the control's top edge when it has one, else flipped over the pointer, and only
+ * when neither has room pushed up against the bottom. `right` meets the menu's right edge to the
+ * control's, so a menu from a button at the page's end does not run past it.
+ */
+function placeMenu(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  options: { above?: number; right?: number; gap: number },
+) {
+  const limit = window.innerHeight - bottomInset() - 4;
+  const left = Math.max(4, Math.min(options.right !== undefined ? options.right - width : x, window.innerWidth - width - 4));
+  const below = y + options.gap;
+  if (below + height <= limit) return { left, top: below };
+  const from = options.above ?? y;
+  const flipped = from - options.gap - height;
+  if (flipped >= 4) return { left, top: flipped };
+  return { left, top: Math.max(4, limit - height) };
 }
 
 /**
@@ -139,23 +199,24 @@ export function useMenuButton() {
 }
 
 /**
- * Where a submenu goes, given the entry that opened it (ORG-13).
+ * Where a submenu goes, given the entry that opened it (ORG-13, M291).
  *
- * Beside its parent, on whichever side has room, and never below the window.
- * Without room below, its bottom meets the parent's bottom rather than sliding up
- * over the main menu.
+ * Beside the parent *list* (its edge, not the entry's, so the two never overlap), on whichever side
+ * has room, with its first entry level with the parent entry. It moves up only by as much as it
+ * overflows the bottom (above the player bar), never further.
  * Both cases are real: the menu is clamped *against* the right edge when it was
  * opened near one, so a submenu that always opened rightwards opened off
  * screen; and a menu long enough to scroll has entries near the bottom whose
  * child would start below the last visible pixel. Either way the list cannot be
  * clicked at all, which is how "rate this track" became unreachable.
  */
-function placeSubmenu(parent: DOMRect, width: number, height: number) {
-  const room = window.innerWidth - parent.right - 4;
-  const left = room >= width ? parent.right : Math.max(4, parent.left - width);
-  const fitsBelow = parent.top + height <= window.innerHeight - 4;
-  const top = fitsBelow ? parent.top : Math.max(4, parent.bottom - height);
-  return { left, top: clampToViewport(left, top, width, height).top };
+function placeSubmenu(parent: DOMRect, list: DOMRect, width: number, height: number, inset: number) {
+  const room = window.innerWidth - list.right - 4;
+  const left = room >= width ? list.right : Math.max(4, list.left - width);
+  // The child's own padding and border sit above its first entry: level that entry with the parent.
+  const top = parent.top - inset;
+  const limit = window.innerHeight - bottomInset() - 4;
+  return { left, top: Math.max(4, Math.min(top, limit - height)) };
 }
 
 /** A list beside the entry that opened it; measured once it exists (ORG-13). */
@@ -171,7 +232,10 @@ function Submenu({ label, children }: { label: string; children: React.ReactNode
     const parent = child?.parentElement?.querySelector<HTMLElement>('[role="menuitem"]');
     if (!child || !parent) return;
     const box = child.getBoundingClientRect();
-    setPos(placeSubmenu(parent.getBoundingClientRect(), box.width, box.height));
+    const list = parent.closest<HTMLElement>('[role="menu"]')?.getBoundingClientRect() ?? parent.getBoundingClientRect();
+    const style = getComputedStyle(child);
+    const inset = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.borderTopWidth) || 0);
+    setPos(placeSubmenu(parent.getBoundingClientRect(), list, box.width, box.height, inset));
   }, []);
 
   return (
@@ -196,16 +260,37 @@ function Submenu({ label, children }: { label: string; children: React.ReactNode
 const hasChildren = (item: TrackContextMenuItem | undefined) =>
   Boolean(item?.items && item.items.length > 0);
 
-export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }: TrackContextMenuProps) {
+export function TrackContextMenu({
+  x,
+  y,
+  items: given,
+  onClose,
+  label,
+  anchor,
+  above,
+  right,
+  keyboard,
+}: TrackContextMenuProps) {
   const items = useMemo(() => arrange(given), [given]);
   const menuRef = useRef<HTMLDivElement>(null);
+  // On the one stack of open layers, so Escape and Tab in a menu opened from a dialog are the
+  // menu's and the dialog stays (M469).
+  useLayerStack(true);
+  // A menu opened by the pointer highlights nothing; one opened from the keyboard, the first entry.
+  const [byKey] = useState(() => keyboard ?? openedFromKeyboard());
   // Closing leaves a still copy that fades (Opening and closing panels and dialogs).
   useLeaveGhost(menuRef);
   const [position, setPosition] = useState({ left: x, top: y });
   /** The parents whose children are showing, outermost first; the keys go to the last. */
   const [path, setPath] = useState<string[]>([]);
-  /** The highlighted entry at each depth; depth 0 is the menu itself. */
-  const [actives, setActives] = useState<number[]>([0]);
+  /** The highlighted entry at each depth (-1: none yet); depth 0 is the menu itself. */
+  const [actives, setActives] = useState<number[]>([byKey ? 0 : -1]);
+  /** Entries by `depth:id`, so a key can put real focus on the highlighted one. */
+  const itemEls = useRef(new Map<string, HTMLElement>());
+  /** Set by a key that moved the highlight: the next commit moves focus and scrolls to it. */
+  const focusActive = useRef(false);
+  /** What has been typed to jump to an entry, and the timer that forgets it. */
+  const typed = useRef({ text: "", timer: 0 });
   // Whatever had focus before, so it can have it back.
   const restoreTo = useRef<HTMLElement | null>(null);
 
@@ -217,16 +302,31 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
     }
     return list;
   };
-  const enabledAt = (depth: number) => listAt(depth).filter((item) => !item.disabled);
   const depth = path.length;
-  const activeAt = (at: number) => actives[at] ?? 0;
+  const activeAt = (at: number) => actives[at] ?? -1;
   const setActiveAt = (at: number, value: number) =>
     setActives((current) => {
       const next = current.slice(0, at);
-      while (next.length < at) next.push(0);
+      while (next.length < at) next.push(-1);
       next[at] = value;
       return next;
     });
+
+  // Real focus follows the highlight when a key moved it, so a reader says the entry and a greyed
+  // one shows its reason (Hint shows on keyboard focus); the entry scrolls into view (M458).
+  useEffect(() => {
+    if (!focusActive.current) return;
+    focusActive.current = false;
+    const entry = listAt(depth)[activeAt(depth)];
+    const element = entry ? itemEls.current.get(`${depth}:${entry.id}`) : undefined;
+    if (element) {
+      element.focus();
+      element.scrollIntoView?.({ block: "nearest" });
+    } else {
+      menuRef.current?.focus();
+    }
+  });
+  useEffect(() => () => window.clearTimeout(typed.current.timer), []);
 
   // Placed before the first paint, so the menu's entrance plays where it stays rather than
   // jumping into the viewport a frame in.
@@ -235,13 +335,24 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
     const element = menuRef.current;
     if (element) {
       const rect = element.getBoundingClientRect();
-      setPosition(clampToViewport(x, y, rect.width, rect.height));
+      const trigger = anchor?.current ?? findTrigger(x, y);
+      const box = trigger?.getBoundingClientRect();
+      const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--space-lg")) || 12;
+      setPosition(
+        placeMenu(x, y, rect.width, rect.height, {
+          above: above ?? box?.top,
+          // A menu that would run past the page's right edge meets its button's right edge instead.
+          right: right ?? (box && x + rect.width > window.innerWidth - gutter ? box.right : undefined),
+          gap: box || above !== undefined ? triggerGap() : 0,
+        }),
+      );
       element.focus();
     }
     return () => {
       // Focus goes home even when the menu is unmounted by something else.
       restoreTo.current?.focus?.();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- placed once per opening point
   }, [x, y]);
 
   const close = useCallback(() => onClose(), [onClose]);
@@ -265,19 +376,26 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
     };
   }, [anchor, close]);
 
-  /** Open (or shut) a parent listed at `at`. A parent opens; it never acts. */
-  const toggleParent = (item: TrackContextMenuItem, at: number) => {
-    setPath((current) =>
-      current[at] === item.id ? current.slice(0, at) : [...current.slice(0, at), item.id],
-    );
-    setActiveAt(at + 1, 0);
+  /**
+   * Open a parent listed at `at`. A parent opens; it never acts. The pointer opens it with nothing
+   * highlighted inside; a key opens it with its first entry highlighted (M293).
+   */
+  const openParent = (item: TrackContextMenuItem, at: number, fromKey: boolean) => {
+    setPath((current) => (current[at] === item.id ? current : [...current.slice(0, at), item.id]));
+    setActives((current) => {
+      const next = current.slice(0, at + 1);
+      while (next.length < at + 1) next.push(-1);
+      next[at + 1] = fromKey ? 0 : -1;
+      return next;
+    });
+    if (fromKey) focusActive.current = true;
   };
 
-  const choose = (item: TrackContextMenuItem, at: number) => {
+  const choose = (item: TrackContextMenuItem, at: number, fromKey = false) => {
     if (item.disabled) return;
     if (hasChildren(item)) {
       // Closing the menu here would dismiss the list the user was reaching for.
-      toggleParent(item, at);
+      openParent(item, at, fromKey);
       return;
     }
     if (item.checked !== undefined) {
@@ -290,7 +408,9 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
     item.onSelect();
   };
 
+  /** The next entry in a direction; from nothing highlighted either arrow lands on the first (M293). */
   const step = (current: number, by: number, length: number) => {
+    if (current < 0) return 0;
     const next = current + by;
     if (next < 0) return length - 1;
     if (next >= length) return 0;
@@ -299,48 +419,78 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     // Every key belongs to the deepest open list, so no list above it moves
-    // underneath it.
-    const enabled = enabledAt(depth);
+    // underneath it. Greyed entries are walked too, so their reason can be read (M458).
+    const list = listAt(depth);
     const active = activeAt(depth);
 
+    if (event.key === "Tab") {
+      // Tab leaves the menu: it closes and focus goes back to where it was (M458).
+      event.preventDefault();
+      close();
+      return;
+    }
     if (event.key === "Escape" || (event.key === "ArrowLeft" && depth > 0)) {
       event.preventDefault();
       event.stopPropagation();
-      if (depth > 0) setPath((current) => current.slice(0, -1));
-      else close();
+      if (depth > 0) {
+        setPath((current) => current.slice(0, -1));
+        focusActive.current = true;
+      } else close();
       return;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      setActiveAt(depth, step(active, event.key === "ArrowDown" ? 1 : -1, enabled.length));
+      focusActive.current = true;
+      setActiveAt(depth, step(active, event.key === "ArrowDown" ? 1 : -1, list.length));
       return;
     }
     if (event.key === "ArrowRight") {
-      const item = enabled[active];
-      if (item && hasChildren(item)) {
+      const item = list[active];
+      if (item && hasChildren(item) && !item.disabled) {
         event.preventDefault();
-        setPath((current) => [...current.slice(0, depth), item.id]);
-        setActiveAt(depth + 1, 0);
+        openParent(item, depth, true);
       }
       return;
     }
     if (event.key === "Home" || event.key === "End") {
       event.preventDefault();
-      setActiveAt(depth, event.key === "Home" ? 0 : Math.max(0, enabled.length - 1));
+      focusActive.current = true;
+      setActiveAt(depth, event.key === "Home" ? 0 : Math.max(0, list.length - 1));
       return;
     }
-    if (event.key === "Enter" || event.key === " ") {
+    if (event.key === "Enter" || (event.key === " " && typed.current.text === "")) {
       event.preventDefault();
-      const item = enabled[active];
-      if (item) choose(item, depth);
+      const item = list[active];
+      if (item) choose(item, depth, true);
+      return;
+    }
+    // Type-ahead: letters build a word that jumps to the next entry starting with it (M481).
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      window.clearTimeout(typed.current.timer);
+      typed.current.text += event.key.toLowerCase();
+      typed.current.timer = window.setTimeout(() => {
+        typed.current.text = "";
+      }, 700);
+      const word = typed.current.text;
+      // One repeated letter cycles through the entries that start with it.
+      const key = /^(.)\1+$/.test(word) ? word[0]! : word;
+      const from = key.length === 1 ? active + 1 : Math.max(active, 0);
+      for (let i = 0; i < list.length; i += 1) {
+        const at = (from + i) % list.length;
+        if (list[at]!.label.toLowerCase().startsWith(key)) {
+          focusActive.current = true;
+          setActiveAt(depth, at);
+          break;
+        }
+      }
     }
   };
 
   const menuId = useId();
 
   const renderItem = (item: TrackContextMenuItem, at: number): React.ReactNode => {
-    const enabled = enabledAt(at);
-    const index = enabled.indexOf(item);
+    const index = listAt(at).indexOf(item);
     const parent = hasChildren(item);
     const showing = parent && path[at] === item.id;
     const unavailable = item.disabled === true;
@@ -358,13 +508,21 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
             aria-disabled={unavailable || undefined}
             aria-describedby={reasonId}
             aria-keyshortcuts={item.shortcut}
+            ref={(element) => {
+              const key = `${at}:${item.id}`;
+              if (element) itemEls.current.set(key, element);
+              else itemEls.current.delete(key);
+            }}
+            // One entry is in the tab order, the highlighted one; Tab closes the menu anyway (M458).
+            tabIndex={index === activeAt(at) ? 0 : -1}
             aria-haspopup={parent ? "menu" : undefined}
             aria-expanded={parent ? showing : undefined}
             onMouseEnter={() => {
               if (index >= 0) setActiveAt(at, index);
-              // Leaving a parent closes what it opened, so two lists at one
-              // depth are never showing at once.
-              if (!parent) setPath((current) => (current.length > at ? current.slice(0, at) : current));
+              // Resting on a parent opens its list; moving to another entry closes what it opened,
+              // so two lists at one depth are never showing at once (M292).
+              if (parent && !unavailable) openParent(item, at, false);
+              else setPath((current) => (current.length > at ? current.slice(0, at) : current));
             }}
             onClick={() => choose(item, at)}
           >
@@ -374,7 +532,9 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
                 {item.checked === "mixed" && <PixelIcon name="dot-half" size="sm" />}
               </span>
             )}
-            {item.label}
+            <span className="cp-track-menu__label" data-cut-hint="">
+              {item.label}
+            </span>
             {item.shortcut && !parent && (
               <span className="cp-track-menu__shortcut" aria-hidden="true">
                 {item.shortcut}

@@ -37,7 +37,7 @@ function open(props: Partial<React.ComponentProps<typeof TrackContextMenu>> = {}
       <button type="button" data-testid="opener">
         opener
       </button>
-      <TrackContextMenu x={20} y={30} items={menuItems} onClose={onClose} {...props} />
+      <TrackContextMenu x={20} y={30} items={menuItems} onClose={onClose} keyboard {...props} />
     </div>,
   );
   return { ...view, onClose, items: menuItems };
@@ -114,20 +114,26 @@ describe("the menu", () => {
     expect(chosen).toHaveBeenCalledTimes(1);
   });
 
-  it("steps over a disabled entry rather than onto it", async () => {
-    // Arrowing onto a disabled entry and pressing Enter would do nothing, and
-    // look like a broken menu rather than an unavailable action.
+  it("walks onto a greyed entry so its reason can be read, but never runs it (M458)", async () => {
+    // A greyed entry the arrows skipped could never say why it was greyed. It takes focus (and so
+    // its hint), and Enter on it does nothing.
     const queue = vi.fn();
-    open({
+    const reveal = vi.fn();
+    const { onClose } = open({
       items: [
         { id: "play", label: "Play", onSelect: vi.fn() },
-        { id: "reveal", label: "Show in folder", disabled: true, onSelect: vi.fn() },
+        { id: "reveal", label: "Show in folder", disabled: true, reason: "Select one track", onSelect: reveal },
         { id: "queue", label: "Add to queue", onSelect: queue },
       ],
     });
 
-    await userEvent.keyboard("{ArrowDown}{Enter}");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: "Show in folder" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(reveal).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
 
+    await userEvent.keyboard("{ArrowDown}{Enter}");
     expect(queue).toHaveBeenCalledTimes(1);
   });
 
@@ -186,7 +192,8 @@ describe("the menu", () => {
           const item = this.getAttribute("role") === "menuitem";
           if (submenu) return rect(0, 0, 140, 300);
           if (item) return rect(parentRight - 200, parentTop, 200, 30);
-          return rect(0, 0, 200, 160);
+          // The list the entry is in: its right edge is where a submenu starts (M291).
+          return rect(parentRight - 200, 0, 200, 160);
         },
       );
     }
@@ -279,15 +286,15 @@ describe("the menu", () => {
       });
 
       it("lines its bottom up with the entry's when there is not room below", async () => {
-        // Sliding it up to fit left it covering the main menu; its bottom edge
-        // meets the entry's bottom edge instead, so the entry stays in view.
+        // Level with the entry, moved up only by the overflow (M291): 900 less the 4 px margin
+        // less its 300 px height, not the old bottom-to-bottom 580.
         laidOut(220, 850);
         render(<TrackContextMenu x={20} y={850} items={withSubmenu} onClose={vi.fn()} />);
 
         await userEvent.click(screen.getByRole("menuitem", { name: "Rate" }));
 
         const top = parseFloat(screen.getByRole("menu", { name: "Rate" }).style.top);
-        expect(top).toBe(850 + 30 - 300);
+        expect(top).toBe(900 - 4 - 300);
         expect(parseFloat(screen.getByRole("menu", { name: "Rate" }).style.left)).toBe(220);
       });
 
@@ -508,9 +515,10 @@ describe("a submenu inside a submenu (FLW-8)", () => {
     });
 
     // P55: the row under the pointer is a hover (--row-hover), not the selected-row gradient.
-    it("highlights the current item with the row hover, not the selected-row look or the accent", () => {
+    it("highlights the current item with one visible grey step, not the selected-row look or the accent (M289)", () => {
       const active = body('.cp-track-menu__item--active:not([aria-disabled="true"])');
-      expect(active).toMatch(/background:\s*var\(--row-hover\)/);
+      expect(active).toMatch(/background:\s*var\(--menu-active-fill\)/);
+      expect(body(".cp-track-menu")).toMatch(/--menu-active-fill:\s*color-mix\(in srgb, var\(--fg-primary\) 16%, var\(--bg-panel\)\)/);
       expect(active).not.toMatch(/selected-row-background/);
       expect(active).toMatch(/color:\s*var\(--fg-primary\)/);
       expect(active).not.toMatch(/accent-primary|fg-on-accent/);
@@ -703,5 +711,139 @@ describe("placement (C106)", () => {
     expect(flat).toMatch(/\.cp-track-menu \{[^}]*max-height:\s*min\(60vh, calc\(480px \* var\(--scale\)\)\)/);
     expect(flat).toMatch(/\.cp-track-menu \{[^}]*border:\s*var\(--popover-border\)/);
     expect(flat).toMatch(/\.cp-track-menu \{[^}]*box-shadow:\s*var\(--shadow-popover\)/);
+  });
+});
+
+describe("highlight and focus (M293, M458, M481)", () => {
+  const rateItems: TrackContextMenuItem[] = [
+    { id: "play", label: "Play", onSelect: vi.fn() },
+    { id: "queue", label: "Add to queue", onSelect: vi.fn() },
+    {
+      id: "rate",
+      label: "Rate",
+      onSelect: vi.fn(),
+      items: [
+        { id: "one", label: "One star", onSelect: vi.fn() },
+        { id: "two", label: "Two stars", onSelect: vi.fn() },
+      ],
+    },
+  ];
+
+  it("highlights nothing when the pointer opened it, and the first entry when a key did (M293)", () => {
+    const { unmount } = render(<TrackContextMenu x={0} y={0} items={items()} onClose={vi.fn()} keyboard={false} />);
+    expect(document.querySelector(".cp-track-menu__item--active")).toBeNull();
+    unmount();
+    render(<TrackContextMenu x={0} y={0} items={items()} onClose={vi.fn()} keyboard />);
+    expect(screen.getByRole("menuitem", { name: "Play" })).toHaveClass("cp-track-menu__item--active");
+  });
+
+  it("lands on the first entry from either arrow when nothing is highlighted (M293)", async () => {
+    const onSelect = vi.fn();
+    render(<TrackContextMenu x={0} y={0} items={items([{ onSelect }])} onClose={vi.fn()} keyboard={false} />);
+    await userEvent.keyboard("{ArrowUp}");
+    expect(screen.getByRole("menuitem", { name: "Play" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves real focus with the arrows and keeps one entry in the tab order (M458)", async () => {
+    open();
+    await userEvent.keyboard("{ArrowDown}");
+    const second = screen.getByRole("menuitem", { name: "Play next" });
+    expect(second).toHaveFocus();
+    expect(second).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("menuitem", { name: "Play" })).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("closes on Tab and hands focus back (M458)", async () => {
+    const { onClose } = open();
+    await userEvent.keyboard("{Tab}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("jumps to the entry that starts with the typed letters (M481)", async () => {
+    const onSelect = vi.fn();
+    open({ items: items([{}, {}, { onSelect }]) });
+    await userEvent.keyboard("add");
+    expect(screen.getByRole("menuitem", { name: "Add to queue" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens a submenu when the pointer rests on its parent, with nothing lit inside (M292, M293)", async () => {
+    render(<TrackContextMenu x={0} y={0} items={rateItems} onClose={vi.fn()} keyboard={false} />);
+    await userEvent.hover(screen.getByRole("menuitem", { name: "Rate" }));
+    const submenu = screen.getByRole("menu", { name: "Rate" });
+    expect(submenu).toBeInTheDocument();
+    expect(submenu.querySelector(".cp-track-menu__item--active")).toBeNull();
+    // Moving to a plain entry closes it again.
+    await userEvent.hover(screen.getByRole("menuitem", { name: "Play" }));
+    expect(screen.queryByRole("menu", { name: "Rate" })).toBeNull();
+  });
+
+  it("opens a submenu with the arrow key and lights its first entry (M292)", async () => {
+    render(<TrackContextMenu x={0} y={0} items={rateItems} onClose={vi.fn()} keyboard />);
+    await userEvent.keyboard("{ArrowUp}{ArrowRight}");
+    expect(screen.getByRole("menuitem", { name: "One star" })).toHaveFocus();
+  });
+});
+
+describe("placement under a button (M290, M69)", () => {
+  const original = window.innerHeight;
+  afterEach(() => {
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: original });
+    vi.restoreAllMocks();
+  });
+
+  function box(left: number, top: number, width: number, height: number): DOMRect {
+    return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) } as DOMRect;
+  }
+
+  it("opens above its button, not over it, when there is no room below", () => {
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 735 });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute("aria-expanded") === "true") return box(20, 670, 60, 25);
+      if (this.getAttribute("role") === "menu") return box(0, 0, 200, 300);
+      return box(0, 0, 0, 0);
+    });
+    render(
+      <>
+        <button type="button" aria-expanded="true" aria-haspopup="menu">
+          More
+        </button>
+        <TrackContextMenu x={20} y={695} items={items()} onClose={vi.fn()} />
+      </>,
+    );
+    // The button's top (670), less the gap, less the menu's 300: it ends just above the button.
+    expect(parseFloat(screen.getByRole("menu").style.top)).toBe(670 - 2 - 300);
+  });
+
+  it("leaves a gap under its button when there is room (M69)", () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute("aria-expanded") === "true") return box(20, 100, 60, 25);
+      if (this.getAttribute("role") === "menu") return box(0, 0, 200, 150);
+      return box(0, 0, 0, 0);
+    });
+    render(
+      <>
+        <button type="button" aria-expanded="true" aria-haspopup="menu">
+          More
+        </button>
+        <TrackContextMenu x={20} y={125} items={items()} onClose={vi.fn()} />
+      </>,
+    );
+    expect(parseFloat(screen.getByRole("menu").style.top)).toBe(127);
+  });
+});
+
+describe("a long name (M295)", () => {
+  it("is cut with an ellipsis inside a capped menu, not allowed to widen it", () => {
+    const flat = stripComments(css);
+    expect(flat).toMatch(
+      /\.cp-track-menu \{[^}]*max-width:\s*min\(calc\(360px \* var\(--scale\)\), calc\(100vw - 2 \* var\(--space-lg\)\)\)/,
+    );
+    expect(flat).toMatch(/\.cp-track-menu__label \{[^}]*text-overflow:\s*ellipsis/);
+    open({ items: items([{ label: "Remove from “a playlist with a very long name indeed”" }]) });
+    expect(document.querySelector(".cp-track-menu__label")).toHaveAttribute("data-cut-hint");
   });
 });

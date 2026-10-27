@@ -7,9 +7,14 @@
  */
 
 .cp-track-menu {
+  /* The one active look of every list: a visible grey step off the panel, stronger than the row
+     hover, violet only for what is selected (M289, D26). */
+  --menu-active-fill: color-mix(in srgb, var(--fg-primary) 16%, var(--bg-panel));
   position: fixed;
   z-index: 60;
   min-width: calc(140px * var(--scale));
+  /* A long name (Remove from “…”) is cut with an ellipsis, not allowed to widen the menu (M295). */
+  max-width: min(calc(360px * var(--scale)), calc(100vw - 2 * var(--space-lg)));
   padding: var(--space-xs);
   /* The one floating chrome (P12). */
   border: var(--popover-border);
@@ -47,17 +52,30 @@
   white-space: nowrap;
 }
 
+/* The words are the part that is cut; the tick, shortcut and arrow keep their room. */
+.cp-track-menu__label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* One highlight for both pointer and keyboard: hovering sets the active item,
    so the menu never shows two "current" rows at once. The row under the pointer is a hover,
    not a selection (P55). */
 .cp-track-menu__item--active:not([aria-disabled="true"]) {
-  background: var(--row-hover);
+  background: var(--menu-active-fill);
   color: var(--fg-primary);
+}
+
+/* A greyed entry the arrows are on is marked too, so its reason has something to belong to (M458). */
+.cp-track-menu__item--active[aria-disabled="true"] {
+  background: var(--menu-active-fill);
 }
 
 /* A parent whose list is showing keeps the same look while the pointer is in the list (area 81). */
 .cp-track-menu__item--open:not([aria-disabled="true"]) {
-  background: var(--row-hover);
+  background: var(--menu-active-fill);
   color: var(--fg-primary);
 }
 
@@ -161,8 +179,10 @@
  * the viewport, which is what `subPos` does.
  */
 .cp-track-menu__submenu {
+  --menu-active-fill: color-mix(in srgb, var(--fg-primary) 16%, var(--bg-panel));
   position: fixed;
   z-index: 61;
+  max-width: min(calc(360px * var(--scale)), calc(100vw - 2 * var(--space-lg)));
   max-height: min(60vh, calc(480px * var(--scale)));
   overflow-y: auto;
   min-width: calc(140px * var(--scale));
