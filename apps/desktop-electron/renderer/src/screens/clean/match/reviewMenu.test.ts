@@ -14,12 +14,13 @@ const handlers = {
 };
 
 describe("the review menu", () => {
-  it("heads the page's own entries with a label-style group title, not a greyed entry", () => {
+  it("sets the page's own entries off with a line, under no group title", () => {
     const items = reviewMenuItems({ count: 2, canTick: true, canLeaveOut: false }, handlers);
     expect(items.some((item) => item.label === "This page")).toBe(false);
     const first = items.find((item) => item.id === "tick");
-    expect(first?.groupTitle).toBe("This page");
-    expect(items.filter((item) => item.groupTitle)).toHaveLength(1);
+    // Moved for M410: the "This page" heading named nothing to act on; only the separator is left.
+    expect(first?.separatorBefore).toBe(true);
+    expect(items.filter((item) => item.groupTitle)).toHaveLength(0);
   });
 
   it("gives a reason for each greyed entry", () => {
@@ -39,7 +40,7 @@ describe("the review menu", () => {
     expect(off.find((item) => item.id === "leave-out")?.disabled).toBeFalsy();
   });
 
-  it("is ordered as every track menu is: Play, a This page block, then the More submenu with Copy", () => {
+  it("is ordered as every track menu is: Play, the page's own block, then the More submenu with Copy", () => {
     const items = reviewMenuItems({ count: 1, canTick: true, canLeaveOut: true }, handlers);
     expect(items.slice(0, 3).map((item) => item.label)).toEqual(["Play", "Play next", "Add to queue"]);
     const ids = items.map((item) => item.id);

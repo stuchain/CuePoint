@@ -445,7 +445,7 @@ describe("Delete waveform data…", () => {
     const dialog = screen.getByRole("dialog", { name: "Delete waveform data?" });
     expect(dialog).toHaveTextContent("240.3 MB on disk");
     expect(dialog).toHaveTextContent(
-      "The whole library will be analyzed again, which takes about 6 hours at the current rate.",
+      "All tracks will be analyzed again, which takes about 6 hours at the current rate.",
     );
     expect(bridge.deleteData).not.toHaveBeenCalled();
   });

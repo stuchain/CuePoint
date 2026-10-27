@@ -163,7 +163,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         }).observe(document.body, { subtree: true, childList: true, attributes: true });
       });
 
-      // A Settings button that opens a dialog with a footer button. Reset acts at once (DEC-267) and
+      // A Settings button that opens a dialog with a Close button (the × since M254). Reset acts at once (DEC-267) and
       // the custom-theme editor is on the page (D23), so About & updates' Keyboard shortcuts is it (M489).
       const create = window.getByRole("button", { name: "Keyboard shortcuts", exact: true });
       await create.click();
@@ -181,7 +181,8 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         (button) =>
           new Promise<{ leaving: boolean; behind: boolean; x: number; y: number }>((resolve, reject) => {
             const cancel = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(
-              (candidate) => candidate.textContent?.trim() === "Close",
+              (candidate) =>
+                candidate.getAttribute("aria-label") === "Close" || candidate.textContent?.trim() === "Close",
             );
             if (!cancel) {
               reject(new Error("no Close button in the dialog"));

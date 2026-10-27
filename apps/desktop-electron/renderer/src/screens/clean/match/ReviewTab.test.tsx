@@ -679,7 +679,7 @@ describe("selecting rows and the right-click menu", () => {
     await waitFor(() => expect(screen.getByText("5 selected")).toBeInTheDocument());
   });
 
-  it("selects the row on right-click and opens the base menu with a This page block", async () => {
+  it("selects the row on right-click and opens the base menu with the page's own block", async () => {
     renderTab();
     await loaded();
     fireEvent.contextMenu(rowOf(2));
@@ -688,6 +688,8 @@ describe("selecting rows and the right-click menu", () => {
     for (const name of ["Play", "Play next", "Add to queue", "Tick to sync", "Leave out", "Check the match", "More"]) {
       expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
     }
-    expect(within(menu).getByText("This page")).toBeInTheDocument();
+    // Moved for M410: the block has a separator above it and no "This page" title.
+    expect(within(menu).queryByText("This page")).not.toBeInTheDocument();
+    expect(within(menu).getAllByRole("separator").length).toBeGreaterThan(0);
   });
 });

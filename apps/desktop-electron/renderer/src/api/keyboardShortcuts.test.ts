@@ -76,8 +76,6 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
 
     // Each command's key appears in the dialog: the arrows as a pair.
     for (const key of [...keys, NEXT_TO_CHECK_KEY]) {
-      // The tick's row is read on its own below: it moved to Ctrl+Space (M465, M482).
-      if (key === MATCH_KEYS.tick) continue;
       expect(clean.some((row) => row.shortcut.split(" / ").includes(key)), key).toBe(true);
     }
     // Six, and N for the next track still to check (M508, moved from six with no N).
@@ -91,8 +89,10 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
     expect(action("Ctrl+Space")).toBe("Tick or untick the track");
     expect(action("Space")).toBeUndefined();
     expect(MATCH_KEYS.play).toBe("Enter");
+    // Moved for M482: the review's tick key is Ctrl+Space, so its row matches the dialog's again.
+    expect(MATCH_KEYS.tick).toBe("Ctrl+Space");
     expect(reviewTableSource).toMatch(/event\.key === "Enter"/);
-    expect(reviewTableSource).toMatch(/event\.key === " "/);
+    expect(reviewTableSource).toMatch(/event\.key === " " && \(event\.ctrlKey \|\| event\.metaKey\)/);
   });
 
   it("lists no decision key beyond the tick: N only moves to the next track to check (M508)", () => {
@@ -229,7 +229,7 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Enter", "Player", queuePanelSource, /key === "Enter"/],
     ["Menu key / Shift+F10", "Player", queuePanelSource, /key === "ContextMenu"/],
     ["Enter", "Clean", reviewTableSource, /event\.key === "Enter"/],
-    ["Ctrl+Space", "Clean", reviewTableSource, /event\.key === " "/],
+    ["Ctrl+Space", "Clean", reviewTableSource, /event\.key === " " && \(event\.ctrlKey \|\| event\.metaKey\)/],
     ["N", "Clean", matchKeyboardSource, /case "N":[\s\S]*"next-to-check"/],
     ["Left / Right", "Check the match", candidatePanelSource, /event\.key === "ArrowLeft" \? -1 : event\.key === "ArrowRight"/],
     ["1–9", "Check the match", candidatePanelSource, /\/\^\[1-9\]\$\/\.test\(event\.key\)/],

@@ -439,7 +439,7 @@ key on the Camelot wheel, and may share the genre, the label or an artist, each
 by the values CuePoint shows for your tracks, your own corrections included. Short
 columns say which: **Key** (the track's key and how it relates to the one you are
 comparing with: **same**, **+1** or **−1** a step round the wheel, **rel.** for the
-relative key, **next** for another neighbour), **BPM Δ** (the tempo change, such as
+relative key, **next** for another neighbour), **BPM change** (the tempo change, such as
 **−2** or **+3**, **±0** for the same, **0.5×** or **2×** for half or double), and a
 **✓** under **G**, **L** and **A** (genre, label, artist) when it is shared. **Fit** is a bar of
 five blocks, the more filled the closer the match; hover it for the word (Strong,

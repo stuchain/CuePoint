@@ -871,7 +871,7 @@ describe("dragging an entry", () => {
   });
 
   it("says why the engine refused a move, and re-reads when the entry had gone", async () => {
-    const gone: SetRefusal = { code: "SET_NOT_FOUND", message: "There is no entry 5", reason: "entry", path: null };
+    const gone: SetRefusal = { code: "SET_NOT_FOUND", message: "There is no track 5", reason: "entry", path: null };
     sets.moveEntry.mockResolvedValue(refused(gone));
     renderAt(preparePath(IDS.friday));
     await opened();
@@ -879,7 +879,7 @@ describe("dragging an entry", () => {
     const dataTransfer = transfer({ [SET_ENTRY_MIME]: String(E5) });
     drag("dragover", rowAt(3), dataTransfer, 0);
     drag("drop", rowAt(3), dataTransfer, 0);
-    expect(await screen.findByText("There is no entry 5")).toBeInTheDocument();
+    expect(await screen.findByText("There is no track 5")).toBeInTheDocument();
     await waitFor(() => expect(sets.plan.mock.calls.length).toBe(before + 1));
   });
 });

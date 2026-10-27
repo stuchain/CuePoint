@@ -16,7 +16,7 @@ interface ErrorScreenProps {
 /**
  * What the user sees instead of a blank window when a screen throws (REPORT-06,
  * DEC-126). It is drawn in a dialog's own chrome (M281): the title, the words, and the two things
- * to do, Reload and Get help…, which opens the help dialog right here since the app around it may be
+ * to do, Reload and Get help, which opens the help dialog right here since the app around it may be
  * what failed. The short id is shown when a report was made, in the code face (M280).
  *
  * The dialog is drawn in place, not over a backdrop, so a page that failed leaves the shell usable.
@@ -44,7 +44,7 @@ export function ErrorScreen({ scope, reportId, onReload }: ErrorScreenProps) {
         </div>
         <footer className="cp-modal__footer">
           <Button variant="secondary" onClick={() => setHelpOpen(true)}>
-            Get help…
+            Get help
           </Button>
           <Button variant="primary" onClick={onReload}>
             Reload

@@ -24,16 +24,6 @@ export const BORDER_WIDTH_ALLOWLIST: ReadonlyArray<{ sheet: string; text: string
     text: "stroke-width: var(--border-width)",
     reason: "an SVG stroke, not a border",
   },
-  {
-    sheet: "/src/screens/library/CollectionsPane.css",
-    text: "border-top: var(--border-width) dashed",
-    reason: "the drop-target insertion line, not a divider",
-  },
-  {
-    sheet: "/src/screens/library/CollectionsPane.css",
-    text: "border: var(--border-width) solid var(--accent-primary)",
-    reason: "the inline rename field's frame, an editing state",
-  },
 ];
 
 function code(css: string): string {
