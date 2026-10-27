@@ -303,7 +303,7 @@ describe("the page", () => {
       .getAllByRole("listitem")
       .find((item) => item.textContent?.includes("Done"))!;
     await openDelete(row);
-    const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
+    const dialog = await screen.findByRole("dialog", { name: /^Delete “Dig of .*”\?$/ });
     expect(dialog.textContent ?? "").not.toMatch(/\bruns?\b/i);
     expect(document.body.textContent ?? "").not.toMatch(/\bruns?\b/i);
   });
@@ -448,7 +448,7 @@ describe("Beatport's state", () => {
     });
     renderDiscover();
     await openNewSearch();
-    const start = await screen.findByRole("button", { name: "Start looking" });
+    const start = await screen.findByRole("button", { name: "Start dig" });
     expect(start).toBeDisabled();
     expect(screen.getByText("Needs a Beatport sign-in")).toBeInTheDocument();
   });
@@ -461,7 +461,7 @@ describe("Beatport's state", () => {
     renderDiscover();
     await openNewSearch();
     fireEvent.click(await screen.findByRole("checkbox", { name: "House" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start looking" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start dig" }));
     expect(await screen.findByText("Sign in to Beatport to search its charts and releases.")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("no token");
   });
@@ -545,14 +545,14 @@ describe("Results", () => {
     install({ continueDiscoveryRun: vi.fn(async () => Promise.reject(new Error("Engine went away"))) });
     renderDiscover();
     const list = await screen.findByRole("navigation", { name: "Past digs" });
-    fireEvent.click(await within(list).findByRole("button", { name: "Continue" }));
+    fireEvent.click(await within(list).findByRole("button", { name: "Resume" }));
     expect(await screen.findByText("Engine went away")).toBeInTheDocument();
   });
 
   it("continues a dig that stopped partway through the bridge", async () => {
     renderDiscover();
     const list = await screen.findByRole("navigation", { name: "Past digs" });
-    fireEvent.click(await within(list).findByRole("button", { name: "Continue" }));
+    fireEvent.click(await within(list).findByRole("button", { name: "Resume" }));
     await waitFor(() => expect(bridge.continueDiscoveryRun).toHaveBeenCalledWith({ run_id: 2 }));
   });
 
@@ -700,7 +700,8 @@ describe("Results", () => {
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(2), LOADED);
     const bar = actionsBar("Tracks this dig found");
-    const names = ["Add to wantlist", "Add to a Beatport playlist…", "Open on Beatport"];
+    // Add to wantlist and Open on Beatport are one "Beatport" menu button (M174).
+    const names = ["Add to a Beatport playlist…", "Beatport"];
     expect(buttonsOf(bar)).toEqual(names);
     // Columns… is the table header's corner icon (K21), not a word in the actions bar.
     expect(within(bar).queryByRole("button", { name: "Columns" })).toBeNull();
@@ -712,23 +713,25 @@ describe("Results", () => {
     expect(await screen.findByRole("dialog", { name: /columns/i })).toBeInTheDocument();
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     const button = (name: string) => within(bar).getByRole("button", { name });
-    expect(button("Add to wantlist")).toBeDisabled();
-    expect(button("Add to wantlist")).toHaveAttribute("title", "Select tracks in the table first");
-    expect(button("Open on Beatport")).toBeDisabled();
-    expect(button("Add to a Beatport playlist…")).toBeEnabled();
+    // Nothing ticked: all three wait for rows (M189).
+    expect(button("Beatport")).toBeDisabled();
+    expect(button("Beatport")).toHaveAttribute("title", "Select tracks in the table first");
+    expect(button("Add to a Beatport playlist…")).toBeDisabled();
     // The count sits at the bar's right end (C224): what was found, and what the library already has.
     expect(bar).toHaveTextContent(/\d+ tracks · \d+ already in your library \(hidden\)/);
 
     const [first, , third] = rowsOf("Tracks this dig found");
     fireEvent.click(first!);
     // One track selected: its artist and label pages are visible too, not only in the right-click
-    // menu (C196), folded with Open on Beatport into one Open menu button, so the bar never wraps (new D).
-    expect(buttonsOf(bar)).toEqual(["Add to wantlist", "Add to a Beatport playlist…", "Open"]);
-    expect(button("Add to wantlist")).toBeEnabled();
-    expect(button("Open")).toHaveAttribute("aria-haspopup", "menu");
-    fireEvent.click(button("Open"));
+    // menu (C196), folded with the wantlist and Open on Beatport into one Beatport menu button, so the
+    // bar never wraps (M174).
+    expect(buttonsOf(bar)).toEqual(["Add to a Beatport playlist…", "Beatport"]);
+    expect(button("Add to a Beatport playlist…")).toBeEnabled();
+    expect(button("Beatport")).toHaveAttribute("aria-haspopup", "menu");
+    fireEvent.click(button("Beatport"));
     const openMenu = await screen.findByRole("menu");
     expect(within(openMenu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Add to wantlist",
       "Open on Beatport",
       "Open artist page",
       "Open label page",
@@ -743,7 +746,7 @@ describe("Results", () => {
     fireEvent.click(first!, { ctrlKey: true });
     expect(bar).toHaveTextContent("2 selected");
     fireEvent.click(within(bar).getByRole("button", { name: "Clear selection" }));
-    expect(button("Add to wantlist")).toBeDisabled();
+    expect(button("Beatport")).toBeDisabled();
   });
 
   it("sets the selected track from a result row, with Beatport's key as Camelot (DEC-157)", async () => {
@@ -881,7 +884,8 @@ describe("Results", () => {
     fireEvent.click(first!);
     fireEvent.click(second!, { ctrlKey: true });
     const reads = bridge.getDiscoveryRunTracks!.mock.calls.length;
-    fireEvent.click(within(actionsBar("Tracks this dig found")).getByRole("button", { name: "Add to wantlist" }));
+    fireEvent.click(within(actionsBar("Tracks this dig found")).getByRole("button", { name: "Beatport" }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Add to wantlist" }));
     expect(await screen.findByText("Added 2 tracks to the wantlist")).toBeInTheDocument();
     expect(bridge.addToWantlist).toHaveBeenCalledWith({
       track_ids: [HIDDEN.rows[0]!.beatport_track_id, HIDDEN.rows[1]!.beatport_track_id],
@@ -895,8 +899,8 @@ describe("Results", () => {
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     fireEvent.click(rowsOf("Tracks this dig found")[0]!);
-    // One track: Open on Beatport is the first entry of the bar's Open menu (new D).
-    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    // One track: Open on Beatport is the first entry of the bar's Beatport menu (new D).
+    fireEvent.click(screen.getByRole("button", { name: "Beatport" }));
     fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Open on Beatport" }));
     await waitFor(() => expect(bridge.openBeatportPage).toHaveBeenCalledWith(HIDDEN.rows[0]!.url));
   });
@@ -907,8 +911,8 @@ describe("Results", () => {
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     fireEvent.click(rowsOf("Tracks this dig found")[0]!);
-    // One track: Open on Beatport is the first entry of the bar's Open menu (new D).
-    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    // One track: Open on Beatport is the first entry of the bar's Beatport menu (new D).
+    fireEvent.click(screen.getByRole("button", { name: "Beatport" }));
     fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Open on Beatport" }));
     expect(await screen.findByText(/CuePoint opens only pages on beatport\.com/)).toBeInTheDocument();
   });
@@ -942,14 +946,17 @@ describe("Results", () => {
     expect(actionsBar("Tracks this dig found")).toHaveTextContent("1 selected");
   });
 
-  it("makes a playlist of the whole table by the search, in its order, with the library's tracks left out", async () => {
+  it("makes a playlist of the ticked tracks, with the library's tracks left out", async () => {
     renderDiscover();
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    // Nothing ticked: the playlist waits for rows, as Add to wantlist and Open on Beatport do (M189).
+    expect(screen.getByRole("button", { name: "Add to a Beatport playlist…" })).toBeDisabled();
+    fireEvent.click(rowsOf("Tracks this dig found")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Add to a Beatport playlist…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Make a playlist on Beatport" });
+    const dialog = await screen.findByRole("dialog", { name: "Send to Beatport" });
     expect(within(dialog).getByLabelText("Playlist name")).toHaveValue(OPTIONS.defaults.playlist_name);
-    expect(dialog).toHaveTextContent(`the ${HIDDEN.total} tracks this table shows`);
+    expect(dialog).toHaveTextContent("the 1 selected track");
     fireEvent.change(within(dialog).getByLabelText("Playlist name"), {
       target: { value: "Friday finds" },
     });
@@ -958,10 +965,7 @@ describe("Results", () => {
       expect(bridge.startBeatportPlaylistPush).toHaveBeenCalledWith({
         name: "Friday finds",
         include_owned: false,
-        run_id: 1,
-        owned: "hide",
-        sort: "position",
-        dir: "asc",
+        track_ids: [HIDDEN.rows[0]!.beatport_track_id],
       }),
     );
     expect(
@@ -978,29 +982,6 @@ describe("Results", () => {
     // The shared notice closes with the shared Close button (C9, C237).
     fireEvent.click(within(outcome).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("status", { name: "Beatport playlist" })).toBeNull();
-  });
-
-  it("makes the playlist in the order the table is sorted by", async () => {
-    renderDiscover();
-    await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
-    await showColumn("Tracks this dig found", "Released");
-    const released = within(table("Tracks this dig found")).getByRole("button", { name: "Released" });
-    fireEvent.click(released);
-    fireEvent.click(released);
-    await waitFor(() =>
-      expect(bridge.getDiscoveryRunTracks).toHaveBeenLastCalledWith(
-        expect.objectContaining({ sort: "release_date", dir: "desc" }),
-      ),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Add to a Beatport playlist…" }));
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Make playlist" }));
-    await waitFor(() =>
-      expect(bridge.startBeatportPlaylistPush).toHaveBeenCalledWith(
-        expect.objectContaining({ run_id: 1, sort: "release_date", dir: "desc" }),
-      ),
-    );
   });
 
   it("makes a playlist of a selection by its ids, and keeps a refusal in the dialog", async () => {
@@ -1040,6 +1021,7 @@ describe("Results", () => {
     renderDiscover();
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    fireEvent.click(rowsOf("Tracks this dig found")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Add to a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog");
     const name = within(dialog).getByLabelText("Playlist name");
@@ -1058,7 +1040,7 @@ describe("Results", () => {
       .getAllByRole("listitem")
       .find((item) => item.textContent?.includes("Done"))!;
     await openDelete(row);
-    const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
+    const dialog = await screen.findByRole("dialog", { name: /^Delete “Dig of .*”\?$/ });
     install({
       ...bridge,
       listDiscoveryRuns: vi.fn(async () =>
@@ -1108,9 +1090,9 @@ describe("Results", () => {
     renderDiscover();
     const list = await screen.findByRole("navigation", { name: "Past digs" });
     await openDelete(within(list).getAllByRole("listitem")[0]!);
-    const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
+    const dialog = await screen.findByRole("dialog", { name: /^Delete “Dig of .*”\?$/ });
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete this dig?" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /^Delete “Dig of .*”\?$/ })).toBeNull());
     expect(bridge.deleteDiscoveryRun).not.toHaveBeenCalled();
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
   });
@@ -1208,7 +1190,7 @@ describe("New dig", () => {
   it("has no instruction line under the title (C15a)", async () => {
     renderDiscover();
     const panel = await openNewSearch();
-    expect(within(panel).queryByText(/then press Start looking/)).toBeNull();
+    expect(within(panel).queryByText(/then press Start dig/)).toBeNull();
   });
 
   it("shows only the genre count in the legend, with the dates in the bar (DSC-5)", async () => {
@@ -1219,8 +1201,9 @@ describe("New dig", () => {
     expect(within(panel).queryByText(/artists publish charts/)).toBeNull();
     expect(within(panel).queryByText("More options")).toBeNull();
     const bar = within(panel).getByRole("group", { name: "Start a dig" });
-    expect(bar).toContainElement(within(panel).getByLabelText("From"));
-    expect(bar).toContainElement(within(panel).getByLabelText("To"));
+    const when = within(panel).getByRole("group", { name: "When" });
+    expect(when).toContainElement(within(panel).getByLabelText("From"));
+    expect(when).toContainElement(within(panel).getByLabelText("To"));
     expect(bar).toHaveTextContent("from the last 30 days");
   });
 
@@ -1236,7 +1219,7 @@ describe("New dig", () => {
     fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
     fireEvent.change(within(panel).getByLabelText("From"), { target: { value: "2026-09-01" } });
     fireEvent.change(within(panel).getByLabelText("To"), { target: { value: "2026-09-30" } });
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() =>
       expect(bridge.startDiscoveryRun).toHaveBeenCalledWith({
         genre_ids: [5],
@@ -1249,14 +1232,14 @@ describe("New dig", () => {
       }),
     );
     expect(
-      await screen.findByText("The dig found 7 tracks from 3 charts and 2 releases."),
+      await screen.findByText("Dig found 7 tracks from 3 charts and 2 releases."),
     ).toBeInTheDocument();
   });
 
   it("opens Results on the new search when it starts (FLW-15)", async () => {
     renderDiscover();
     const panel = await openNewSearch();
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() =>
       expect(screen.getByRole("tab", { name: "Results" })).toHaveAttribute("aria-selected", "true"),
     );
@@ -1268,7 +1251,7 @@ describe("New dig", () => {
     const panel = await openNewSearch();
     const labels = within(panel).getByRole("group", { name: "Labels" });
     fireEvent.click(within(labels).getByRole("radio", { name: "No labels" }));
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() =>
       expect(bridge.startDiscoveryRun).toHaveBeenCalledWith(
         expect.objectContaining({ artists: null, labels: [] }),
@@ -1295,7 +1278,7 @@ describe("New dig", () => {
     });
     renderDiscover();
     const panel = await openNewSearch();
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     expect(await within(panel).findByRole("alert")).toHaveTextContent(
       "The chart window ends before it starts",
     );
@@ -1323,7 +1306,7 @@ describe("New dig", () => {
     );
     const panel = await openNewSearch();
     listed = { ...listed, runs: [running], total: 1 };
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     expect(await screen.findByText("Running: 7 tracks from 3 charts and 2 releases so far.", {}, { timeout: 4000 })).toBeInTheDocument();
   });
 });
@@ -1579,7 +1562,7 @@ describe("a refusal a start met (C19d)", () => {
     const view = render(<Page shown />);
     await openNewSearch();
     fireEvent.click(await screen.findByRole("checkbox", { name: "House" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start looking" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start dig" }));
     const headline = "Sign in to Beatport to search its charts and releases.";
     expect(await screen.findByText(headline)).toBeInTheDocument();
     const reads = bridge.getDiscoverOptions!.mock.calls.length;

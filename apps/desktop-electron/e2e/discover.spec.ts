@@ -130,7 +130,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       // With no library the page offers its tabs from "Dig genre charts".
       await window.getByRole("button", { name: "Dig genre charts" }).click();
       await window.getByRole("tab", { name: "New dig" }).click();
-      await expect(window.getByRole("button", { name: "Start looking" })).toBeDisabled();
+      await expect(window.getByRole("button", { name: "Start dig" })).toBeDisabled();
       await window.getByRole("tab", { name: "Wantlist" }).click();
       await expect(window.getByText("Your wantlist is empty")).toBeVisible();
       await expect(window.getByText("Add tracks from a dig's results with Add to wantlist.")).toBeVisible();
@@ -158,7 +158,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(panel).toBeVisible({ timeout: 30_000 });
       await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toHaveCount(0);
       await panel.getByRole("checkbox", { name: "House" }).check();
-      await panel.getByRole("button", { name: "Start looking" }).click();
+      await panel.getByRole("button", { name: "Start dig" }).click();
 
       // The search is a job the status strip follows, stage and all.
       await expect(window.locator(".cp-status")).toContainText(
@@ -167,7 +167,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       );
 
       // Results opens on it as soon as the engine has made it, and ends with its tracks.
-      await expect(window.getByText("Found 3 tracks from 1 chart and 0 releases.", { exact: true })).toBeVisible({
+      await expect(window.getByText("Dig found 3 tracks from 1 chart.", { exact: true })).toBeVisible({
         timeout: 60_000,
       });
       // Results opens on rows of cards; "Everything" is the whole dig as one table.
@@ -224,7 +224,8 @@ test.describe("The Discover page (DISCOVER-10)", () => {
 
       await row(window, found, /Harbour Lights/).locator('[data-column="title"]').click();
       await row(window, found, /Low Tide/).locator('[data-column="title"]').click({ modifiers: ["ControlOrMeta"] });
-      await window.getByRole("button", { name: "Add to wantlist" }).click();
+      await window.getByRole("button", { name: "Beatport" }).click();
+      await window.getByRole("menuitem", { name: "Add to wantlist" }).click();
       await expect(window.getByText("Added 2 tracks to the wantlist")).toBeVisible();
       await expect(row(window, found, /Harbour Lights/)).toContainText("On wantlist");
 

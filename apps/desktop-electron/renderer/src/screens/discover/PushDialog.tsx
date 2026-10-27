@@ -1,5 +1,5 @@
 /**
- * "Make a playlist on Beatport", or add to one (DISCOVER-10, DEC-099, DSC-7).
+ * "Send to Beatport": make a playlist there, or add to one (DISCOVER-10, DEC-099, DSC-7, M276).
  *
  * Makes a new playlist on the user's Beatport account, or (where the caller
  * allows it) adds to one they already have, and adds the tracks, as work the
@@ -130,7 +130,7 @@ export function PushDialog({
   return (
     <Modal
       open={open}
-      title={mode === "existing" ? "Add to a playlist on Beatport" : "Make a playlist on Beatport"}
+      title="Send to Beatport"
       onClose={onClose}
       initialFocus={focusById(mode === "new" ? "discover-push-name" : "discover-push-playlist")}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
@@ -169,6 +169,7 @@ export function PushDialog({
               />
               A playlist I already have
             </label>
+            {playlists === null && !playlistsNote && <p className="discover-note">Loading your playlists…</p>}
             {playlistsNote && <p className="discover-note">{playlistsNote}</p>}
             {playlists !== null && playlists.length === 0 && !playlistsNote && (
               <p className="discover-note">You have no playlists on Beatport yet.</p>
@@ -197,7 +198,7 @@ export function PushDialog({
             value={playlistId}
             onChange={(event) => setPlaylistId(event.target.value)}
             options={[
-              { value: "", label: "Choose a playlist", disabled: true },
+              { value: "", label: playlists === null ? "Loading your playlists…" : "Choose a playlist", disabled: true },
               ...(playlists ?? []).map((playlist) => ({ value: playlist.id, label: playlist.name })),
             ]}
           />

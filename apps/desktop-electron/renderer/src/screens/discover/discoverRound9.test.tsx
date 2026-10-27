@@ -30,21 +30,22 @@ describe("a chart without a cover", () => {
     expect(screen.queryByText("P")).toBeNull();
   });
 
-  it("keeps the card's square while its picture is still coming, so nothing moves when it arrives", () => {
+  it("keeps the card's square while its picture is still coming, as the empty tone (M176, M385)", () => {
     (window as unknown as { cuepoint: unknown }).cuepoint = {
       getDiscoveryGroupArt: () => new Promise<string | null>(() => {}),
     };
     try {
       const { container } = render(<GroupArt runId={1} kind="chart" cardKey="k" hasArt />);
       const art = container.querySelector(".discover-card__art")!;
-      expect(art).not.toHaveClass("discover-card__art--placeholder");
-      expect(art.querySelector(".cp-artwork-placeholder")).not.toBeNull();
+      // Not the placeholder yet: that says "no picture", and this one may still come.
+      expect(art.querySelector(".cp-artwork-placeholder")).toBeNull();
+      expect(art.querySelector("img")).toBeNull();
     } finally {
       delete (window as unknown as { cuepoint?: unknown }).cuepoint;
     }
   });
 
-  it("is the same placeholder for an artist or a label, and an artist's stays round", () => {
+  it("is the same placeholder for an artist or a label (M175)", () => {
     const artist = render(<GroupArt runId={1} kind="artist" cardKey="k" hasArt={false} />);
     expect(artist.container.querySelector(".cp-artwork-placeholder")).not.toBeNull();
     expect(artist.container.querySelector(".discover-card__art--artist")).not.toBeNull();

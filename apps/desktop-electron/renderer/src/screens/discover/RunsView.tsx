@@ -26,7 +26,7 @@ import { JOB_POLL_MS } from "../../components/shell/useActiveJob";
 import { RunDetail } from "./RunDetail";
 import { RunList } from "./RunList";
 import { useNarrow } from "./useNarrow";
-import { refusalText } from "./discoverFormat";
+import { refusalText, searchTitle } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
@@ -306,7 +306,7 @@ export function RunsView({
 
         <ConfirmDialog
           open={deleting !== null}
-          title={deleteTitle("this dig")}
+          title={deleteTitle("dig", deleting ? searchTitle(deleting.started_at) : undefined)}
           confirmLabel={deleteLabel("dig")}
           danger
           onConfirm={() => {

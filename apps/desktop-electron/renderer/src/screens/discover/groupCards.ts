@@ -31,27 +31,11 @@ export function rowTitle(id: DiscoverGroupRowId, mode: DiscoverChartsMode | null
   return ROW_TITLES[id];
 }
 
-/** What a row's count is a count of, beside its title. */
-export const ROW_NOTES: Record<DiscoverGroupRowId, string> = {
-  charts: "in your genres",
-  genre_charts: "in your genres",
-  artists: "",
-  labels: "new releases",
-};
-
 /** Cards a row shows before "See all". */
 export const ROW_LIMIT = 6;
 
-/** The count beside a row's title: charts and artists count cards, labels count the new tracks. */
-export function rowCount(
-  id: DiscoverGroupRowId,
-  cards: readonly DiscoverGroupCard[],
-  mode: DiscoverChartsMode | null = null,
-): number {
-  if (id === "artists" && mode === "library") return cards.length;
-  if (id === "labels" || id === "artists") {
-    return cards.reduce((sum, card) => sum + card.new, 0);
-  }
+/** The count beside a row's title: the cards in it, the same in every row (M177). */
+export function rowCount(cards: readonly DiscoverGroupCard[]): number {
   return cards.length;
 }
 

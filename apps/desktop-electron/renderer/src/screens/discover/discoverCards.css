@@ -11,8 +11,8 @@
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
-  /* Row to row 16; the header's rule to the first row 12 (ScreenHeader gives the page's own 12). */
-  gap: var(--space-xl);
+  /* Section to section 12 (M188); the header's rule clears the first row by the header's margin. */
+  gap: var(--space-lg);
   /* No bottom padding: the ticked-cards bar is sticky, and sticks at the padding edge (area 61). */
   padding: 0;
 }
@@ -57,9 +57,8 @@
 
 .discover-cards__grid {
   display: grid;
-  /* A card stays about this wide whatever the window: several fit a row at 1.5x. */
-  grid-template-columns: repeat(auto-fill, minmax(calc(150px * var(--scale)), calc(170px * var(--scale))));
-  justify-content: start;
+  /* A card fills its share of the row (M185): square art at the left, the name beside it. */
+  grid-template-columns: repeat(auto-fill, minmax(calc(220px * var(--scale)), 1fr));
   /* Card to card: the page's large gap (C32). */
   gap: var(--space-xl);
   margin: 0;
@@ -69,9 +68,11 @@
 
 /* ------------------------------------------------------------------- card */
 
+/* One anatomy for every kind (M175): a square picture at the left, the name and counts beside it,
+   the tick 12 in from the top right corner. */
 .discover-card {
-  /* The height of the placeholder band a card without a picture shows (C254). */
-  --discover-card-placeholder: calc(48px * var(--scale));
+  /* The picture's side, with or without a picture and while it loads, so nothing jumps (M176). */
+  --discover-card-art: calc(48px * var(--scale));
   position: relative;
   display: flex;
   min-width: 0;
@@ -91,13 +92,14 @@
 }
 
 .discover-card__open {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+  display: grid;
+  grid-template-columns: var(--discover-card-art) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-md);
   width: 100%;
   min-width: 0;
-  /* Text inset and bottom padding 8; art to title 8 (4 here plus the title's 4). */
-  padding: 0 0 var(--space-md);
+  /* Picture inset 8; room on the right for the tick (12 in, a checkbox wide). */
+  padding: var(--space-md) calc(36px * var(--scale)) var(--space-md) var(--space-md);
   border: 0;
   background: none;
   color: var(--fg-primary);
@@ -112,21 +114,28 @@
   outline-offset: var(--focus-ring-offset-inset);
 }
 
+.discover-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
 .discover-card__art {
   position: relative;
   display: block;
-  width: 100%;
-  aspect-ratio: 1 / 1;
+  width: var(--discover-card-art);
+  height: var(--discover-card-art);
   overflow: hidden;
   /* A slab on the alt tone (P23); violet is for selected and "do this", not for art. */
   background: var(--bg-panel-alt);
 }
 
-/* No picture: the shared placeholder as a short band, not a card-wide empty square (C254). */
-.discover-card__art--placeholder {
-  aspect-ratio: auto;
-  height: var(--discover-card-placeholder);
-  background: transparent;
+/* The placeholder is the Track details cover (ArtworkPlaceholder) filling the same square, so a
+   card without a picture, one still loading and one with a picture are the same size (M43). */
+.discover-card__art .cp-artwork-placeholder {
+  width: 100%;
+  height: 100%;
 }
 
 .discover-card__art img {
@@ -136,41 +145,27 @@
   object-fit: cover;
 }
 
-/* An artist is a picture centred on the card; like every cover it has no radius (P54). */
-.discover-card__art--artist {
-  align-self: center;
-  width: 72%;
-  margin-top: var(--space-md);
-}
-
-/* An artist without one is a small round placeholder of the band's height. */
-.discover-card__art--artist.discover-card__art--placeholder {
-  width: var(--discover-card-placeholder);
+/* A picture arriving fades in over the empty tone instead of swapping in hard (M385). */
+:root[data-motion-entrance] .discover-card__art img {
+  animation: cp-fade-in var(--motion-base) var(--motion-fade);
 }
 
 .discover-card__title,
 .discover-card__curator,
 .discover-card__counts {
-  padding: 0 var(--space-md);
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .discover-card__title {
-  margin-top: var(--space-xs);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  /* A name is data: Inter semibold, like the tables (area 57, P2). */
-  font-family: var(--font-data);
+  /* Card and run titles are both the pixel face at 400 (D1, M16). */
+  font-family: var(--font-voice);
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-regular);
   overflow-wrap: anywhere;
-}
-
-.discover-card--artist .discover-card__title,
-.discover-card--artist .discover-card__counts {
-  text-align: center;
 }
 
 .discover-card__curator,
@@ -182,12 +177,12 @@
   white-space: nowrap;
 }
 
-/* The tick sits over the card's top-left corner, beside the button, never inside it: the bare
-   standard checkbox, with no tile of its own behind it (C254). */
+/* The tick sits over the card's top-right corner, 12 in, beside the button, never inside it: the
+   bare standard checkbox, with no tile of its own behind it (C254). */
 .discover-card__tick {
   position: absolute;
-  top: var(--space-sm);
-  left: var(--space-sm);
+  top: var(--space-lg);
+  right: var(--space-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -241,12 +236,12 @@
   gap: var(--space-md);
 }
 
-/* While a dig's cards are read: a row of card shapes, still (no shimmer: nothing here moves), on
-   the cards' own grid so nothing jumps when they arrive. */
+/* While a dig's cards are read: card shapes, still (no shimmer: nothing here moves), on the cards'
+   own grid and at their height, so nothing jumps when they arrive (M176; the empty tone, M373). */
 .discover-card--placeholder {
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding-bottom: var(--space-md);
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
   pointer-events: none;
 }
 
@@ -254,21 +249,24 @@
   box-shadow: none;
 }
 
-.discover-card--placeholder .discover-card__art {
-  background: var(--bg-panel-alt);
+/* The one skeleton tone (M373): the table's token, with its value where no table scopes it. */
+.discover-card--placeholder .discover-card__art,
+.discover-cards__shape {
+  background: var(--skeleton-tone, color-mix(in srgb, var(--fg-muted) 25%, transparent));
+}
+
+.discover-card--placeholder .discover-card__text {
+  flex: 1;
 }
 
 .discover-cards__shape {
   display: block;
   height: round(nearest, calc(10px * var(--scale)), 1px);
-  margin: 0 var(--space-md);
-  background: var(--bg-panel-alt);
 }
 
 .discover-cards__shape--title {
   width: calc(160px * var(--scale));
   height: round(nearest, calc(14px * var(--scale)), 1px);
-  margin: 0;
 }
 
 .discover-cards__shape--line {

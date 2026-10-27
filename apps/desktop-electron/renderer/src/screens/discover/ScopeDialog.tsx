@@ -18,13 +18,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { DiscoverFacet } from "../../api/cuepointBridge.types";
-import { Button } from "../../components/Button";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Modal } from "../../components/Modal";
 import { focusById } from "../../components/NameFolderDialog";
 import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
-import { deleteLabel, deleteTitle, nothingMatches } from "../../format/words";
+import { deleteLabel, deleteLead, deleteTitle, nothingMatches } from "../../format/words";
 import { TextField } from "../../components/TextField";
 import { countNoun } from "../../format/counts";
 import { formatCount } from "../library/libraryFormat";
@@ -109,6 +108,8 @@ export function ScopeDialog({
       onClose={onClose}
       initialFocus={focusById(`discover-list-name-${noun}`)}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
+      // Delete has one home, the footer's far left, in red (M250).
+      extraAction={list ? { label: `${deleteLabel("list")}…`, danger: true, onClick: () => setConfirming(true) } : undefined}
       primaryAction={{
         label: "Save",
         onClick: save,
@@ -160,19 +161,12 @@ export function ScopeDialog({
             {formatCount(facet.total_values)} in your library.
           </p>
         )}
-        {list && (
-          <div>
-            <Button variant="danger" onClick={() => setConfirming(true)}>
-              Delete list
-            </Button>
-          </div>
-        )}
       </div>
       {list && (
         <ConfirmDialog
           open={confirming}
           danger
-          title={deleteTitle("list")}
+          title={deleteTitle("list", list.name)}
           confirmLabel={deleteLabel("list")}
           onConfirm={() => {
             setConfirming(false);
@@ -180,7 +174,7 @@ export function ScopeDialog({
           }}
           onCancel={() => setConfirming(false)}
         >
-          {`The list “${list.name}” goes. The ${noun}s stay in your library.`}
+          {`The ${noun}s stay in your library. ${deleteLead}`}
         </ConfirmDialog>
       )}
     </Modal>

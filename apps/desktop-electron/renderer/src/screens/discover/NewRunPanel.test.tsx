@@ -123,9 +123,9 @@ describe("charts by regular Beatport users", () => {
   it("are left out of the dig by default, and the note says so", async () => {
     install([]);
     const panel = await renderPanel();
-    expect(within(panel).getByText(/reads charts by artists\. Settings/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Charts by other Beatport users: Settings/)).toBeInTheDocument();
     fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() => expect(onStart).toHaveBeenCalled());
     expect(onStart.mock.calls[0]![0]).not.toHaveProperty("include_user_charts");
   });
@@ -134,9 +134,9 @@ describe("charts by regular Beatport users", () => {
     install([]);
     saveIncludeUserCharts(true);
     const panel = await renderPanel();
-    expect(within(panel).getByText(/by artists and by regular Beatport users/)).toBeInTheDocument();
+    expect(within(panel).getByText(/and by other Beatport users/)).toBeInTheDocument();
     fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() =>
       expect(onStart).toHaveBeenCalledWith(
         expect.objectContaining({ genre_ids: [5], include_user_charts: true }),
@@ -153,15 +153,14 @@ describe("the dig bar", () => {
     expect(bar).toHaveTextContent(
       "Look for charts in 0 genres, releases by 3 artists and 2 labels from the last 30 days.",
     );
-    expect(bar).toHaveTextContent("Dates");
-    expect(bar).toContainElement(within(panel).getByRole("button", { name: "Start looking" }));
+    expect(bar).toContainElement(within(panel).getByRole("button", { name: "Start dig" }));
     // Not pinned to the window's foot: it follows the form inside the scrolling body.
     expect(panel.lastElementChild).not.toBe(bar);
     const grid = panel.querySelector(".discover-new__grid");
     expect(grid?.compareDocumentPosition(bar)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it("is one line pinned at the foot of the form: the sentence cut short, the dates and Start", async () => {
+  it("is one line pinned at the foot of the form: the sentence cut short and Start", async () => {
     install([]);
     const panel = await renderPanel();
     const bar = within(panel).getByRole("group", { name: "Start a dig" });
@@ -183,9 +182,8 @@ describe("the dig bar", () => {
     expect(barRule).toContain("min-height: var(--toolbar-height)");
     expect(barRule).not.toMatch(/accent|color-mix|border: 1px/);
     expect(css).toMatch(/\.discover-new__summary \{[^}]*text-overflow: ellipsis[^}]*white-space: nowrap/);
-    expect(bar).toContainElement(within(panel).getByLabelText("From"));
-    expect(bar).toContainElement(within(panel).getByLabelText("To"));
-    expect(bar).toHaveTextContent("Dates");
+    // The form, what to fix and the bar are one centred block (M181).
+    expect(css).toMatch(/\.discover-new__body > \* \{[^}]*max-width:[^}]*margin-inline: auto/);
   });
 
   it("leaves out the releases it will not look for, and follows the dates", async () => {
@@ -196,7 +194,7 @@ describe("the dig bar", () => {
     expect(bar).toHaveTextContent("Look for charts in 0 genres, releases by 2 labels from the last 30 days.");
     fireEvent.click(within(panel).getByRole("radio", { name: "No labels" }));
     // Only charts are looked for, and the window is still said.
-    expect(bar).toHaveTextContent(/^Look for charts in 0 genres from the last 30 days\.Dates/);
+    expect(bar).toHaveTextContent(/^Look for charts in 0 genres from the last 30 days\./);
     fireEvent.click(within(panel).getByRole("radio", { name: "Every label in your library (2)" }));
     fireEvent.change(within(panel).getByLabelText("From"), { target: { value: "2026-09-01" } });
     fireEvent.change(within(panel).getByLabelText("To"), { target: { value: "2026-09-30" } });
@@ -213,16 +211,20 @@ describe("the dig bar", () => {
     );
   });
 
-  it("holds one From and To pick in the bar, and the old fields are gone", async () => {
+  it("holds one From and To pick in the When group, and the old fields are gone", async () => {
     install([]);
     const panel = await renderPanel();
     const bar = within(panel).getByRole("group", { name: "Start a dig" });
+    const when = within(panel).getByRole("group", { name: "When" });
     const from = within(panel).getByLabelText("From");
     const to = within(panel).getByLabelText("To");
     expect(from).toHaveValue(OPTIONS.defaults.charts_from);
     expect(to).toHaveValue(OPTIONS.defaults.charts_to);
-    expect(bar).toContainElement(from);
-    expect(bar).toContainElement(to);
+    expect(when).toContainElement(from);
+    expect(when).toContainElement(to);
+    expect(bar).not.toContainElement(from);
+    // The day shows the app's way, not the browser's "09/27/2026" (M39).
+    expect(when.querySelector(".discover-date__text")?.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
     expect(within(panel).queryByText("More options")).toBeNull();
     expect(within(panel).queryByLabelText("Charts from")).toBeNull();
     expect(within(panel).queryByLabelText("Releases from the last (days)")).toBeNull();
@@ -236,7 +238,7 @@ describe("the dig bar", () => {
     expect(within(panel).getByLabelText("To")).toBeEnabled();
     fireEvent.change(from, { target: { value: "2026-09-01" } });
     fireEvent.change(within(panel).getByLabelText("To"), { target: { value: "2026-09-30" } });
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() => expect(onStart).toHaveBeenCalled());
     const request = onStart.mock.calls[0][0];
     expect(request).toMatchObject({ releases_from: "2026-09-01", releases_to: "2026-09-30" });
@@ -244,7 +246,7 @@ describe("the dig bar", () => {
     expect(request).not.toHaveProperty("charts_from");
 
     fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() => expect(onStart).toHaveBeenCalledTimes(2));
     expect(onStart.mock.calls[1][0]).toMatchObject({
       charts_from: "2026-09-01",
@@ -258,15 +260,15 @@ describe("the dig bar", () => {
     install([]);
     const panel = await renderPanel();
     fireEvent.change(within(panel).getByLabelText("From"), { target: { value: "" } });
-    expect(within(panel).getByText("Give both dates as dates.")).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Start looking" })).toBeDisabled();
+    expect(within(panel).getByText("Enter both dates.")).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Start dig" })).toBeDisabled();
   });
 
   it("says why it cannot start, and that a dig is already running", async () => {
     install([]);
     const panel = await renderPanel({ usable: false });
     expect(within(panel).getByText("Sign in to Beatport.")).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Start looking" })).toBeDisabled();
+    expect(within(panel).getByRole("button", { name: "Start dig" })).toBeDisabled();
   });
 });
 
@@ -274,6 +276,7 @@ describe("saved lists in the scope fields", () => {
   it("offers every, a saved list and none, for artists and for labels", async () => {
     install([list("artist", "Peak time", ["Kiko", "DJEFF"]), list("label", "Small labels", ["Cold Room"])]);
     const panel = await renderPanel();
+    await waitFor(() => expect(within(group(panel, "Artists")).getByRole("combobox")).toBeInTheDocument());
     for (const [name, noun] of [
       ["Artists", "artist"],
       ["Labels", "label"],
@@ -290,7 +293,7 @@ describe("saved lists in the scope fields", () => {
   it("names each field's buttons apart, so a screen reader can tell them", async () => {
     install([]);
     const panel = await renderPanel();
-    for (const name of ["Edit artist list", "Edit label list", "New artist list", "New label list"]) {
+    for (const name of ["New artist list", "New label list"]) {
       expect(within(panel).getAllByRole("button", { name })).toHaveLength(1);
     }
   });
@@ -309,13 +312,14 @@ describe("saved lists in the scope fields", () => {
     expect(within(group(panel, "Labels")).getByRole("option", { name: "Small labels · 1" })).toBeInTheDocument();
   });
 
-  it("says there are none yet, and keeps Edit… for a list that exists", async () => {
+  it("offers only New list… while there are none, and the select and Edit… once a list exists (M183)", async () => {
     install([]);
     const panel = await renderPanel();
     const artists = group(panel, "Artists");
-    expect(within(artists).getByRole("option", { name: "No saved lists yet" })).toBeInTheDocument();
-    expect(within(artists).getByRole("combobox", { name: "Saved artist list" })).toBeDisabled();
-    expect(within(artists).getByRole("button", { name: "Edit artist list" })).toBeDisabled();
+    expect(within(artists).queryByRole("radio", { name: "A saved list:" })).toBeNull();
+    expect(within(artists).queryByRole("combobox", { name: "Saved artist list" })).toBeNull();
+    expect(within(artists).queryByRole("button", { name: "Edit artist list" })).toBeNull();
+    expect(within(artists).getByRole("button", { name: "New artist list" })).toBeInTheDocument();
   });
 
   it("chooses the first list with the radio, and asks the engine for that list's names", async () => {
@@ -327,7 +331,7 @@ describe("saved lists in the scope fields", () => {
     expect(within(panel).getByRole("group", { name: "Start a dig" })).toHaveTextContent(
       "Look for charts in 0 genres, releases by 2 artists and 2 labels",
     );
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() =>
       expect(onStart).toHaveBeenCalledWith({
         genre_ids: [],
@@ -347,7 +351,7 @@ describe("saved lists in the scope fields", () => {
     fireEvent.change(within(labels).getByRole("combobox"), { target: { value: "2" } });
     expect(within(labels).getByRole("radio", { name: "A saved list:" })).toBeChecked();
     expect(within(panel).getByRole("group", { name: "Start a dig" })).toHaveTextContent("2 labels");
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() =>
       expect(onStart).toHaveBeenCalledWith(
         expect.objectContaining({ artists: null, labels: ["NIGHTFALL-AUDIO", "Cold Room"] }),
@@ -360,7 +364,7 @@ describe("saved lists in the scope fields", () => {
     const panel = await renderPanel();
     fireEvent.click(within(group(panel, "Artists")).getByRole("radio", { name: "No artists" }));
     expect(within(panel).getByRole("group", { name: "Start a dig" })).toHaveTextContent("releases by 2 labels");
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start dig" }));
     await waitFor(() => expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ artists: [] })));
   });
 
@@ -371,7 +375,7 @@ describe("saved lists in the scope fields", () => {
     await waitFor(() => expect(within(artists).getByRole("combobox")).toBeEnabled());
     fireEvent.click(within(artists).getByRole("radio", { name: "A saved list:" }));
     expect(within(panel).getByText("That list has no artists. Add some, or look for every one.")).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Start looking" })).toBeDisabled();
+    expect(within(panel).getByRole("button", { name: "Start dig" })).toBeDisabled();
   });
 });
 
@@ -382,8 +386,9 @@ describe("when the lists cannot be read", () => {
     const panel = await renderPanel();
     const artists = group(panel, "Artists");
     expect(await within(artists).findByText("The library is busy")).toBeInTheDocument();
-    expect(within(artists).getByRole("option", { name: "Saved lists could not be read" })).toBeInTheDocument();
+    // Neither a radio nor a select that says "none yet": the read failed, which is not the same.
     expect(within(artists).queryByRole("option", { name: "No saved lists yet" })).toBeNull();
+    expect(within(artists).getByRole("button", { name: "New artist list" })).toBeInTheDocument();
   });
 
   it("says so when the read throws", async () => {
@@ -408,7 +413,7 @@ describe("the list editor", () => {
     install([]);
     const panel = await renderPanel();
     const dialog = await openNew(panel, "Artists");
-    expect(within(dialog).queryByRole("button", { name: "Delete list" })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Delete list…" })).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
 
     fireEvent.change(within(dialog).getByLabelText("List name"), { target: { value: "  Peak time " } });
@@ -516,17 +521,17 @@ describe("the list editor", () => {
     fireEvent.click(within(artists).getByRole("button", { name: "Edit artist list" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit artist list" });
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Delete list" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete list…" }));
     expect(bridge.deleteDiscoverList).not.toHaveBeenCalled();
-    const sure = await screen.findByRole("dialog", { name: "Delete list?" });
-    expect(within(sure).getByText(/The list “Peak time” goes\./)).toBeInTheDocument();
+    const sure = await screen.findByRole("dialog", { name: "Delete “Peak time”?" });
+    expect(within(sure).getByText(/The artists stay in your library\. This cannot be undone\./)).toBeInTheDocument();
     fireEvent.click(within(sure).getByRole("button", { name: "Cancel" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete list?" })).toBeNull());
-    expect(within(dialog).getByRole("button", { name: "Delete list" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete “Peak time”?" })).toBeNull());
+    expect(within(dialog).getByRole("button", { name: "Delete list…" })).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Delete list" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete list…" }));
     fireEvent.click(
-      within(await screen.findByRole("dialog", { name: "Delete list?" })).getByRole("button", {
+      within(await screen.findByRole("dialog", { name: "Delete “Peak time”?" })).getByRole("button", {
         name: "Delete list",
       }),
     );
@@ -538,7 +543,7 @@ describe("the list editor", () => {
     expect(
       within(panel).getByText("Choose a saved list of artists, or look for every one."),
     ).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Start looking" })).toBeDisabled();
+    expect(within(panel).getByRole("button", { name: "Start dig" })).toBeDisabled();
   });
 
   it("leaves the scope alone when a list is edited while every artist is chosen", async () => {

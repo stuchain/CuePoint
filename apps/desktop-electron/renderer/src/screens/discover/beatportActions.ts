@@ -51,6 +51,11 @@ interface ActionContext {
   pushReason: string | null;
   /** Rows the table shows, for a playlist of everything shown. */
   total: number;
+  /**
+   * A search's results: the playlist waits for rows like the other two (M189). Absent, as on an
+   * artist's or label's page, it takes every row shown when nothing is selected.
+   */
+  needsRows?: boolean;
 }
 
 function action(
@@ -74,13 +79,14 @@ function needsRows(
 
 /**
  * "Add to a Beatport playlist…" (DSC-7, C156): the one opener, the one dialog title and the
- * words the status strip uses. It stays enabled with nothing selected, and then takes every row
- * the table shows, as the push always did; the dialog says which it will be, so no note sits
- * between the buttons.
+ * words the status strip uses. In a search's results it waits for rows like its two neighbours
+ * (`context.needsRows`, M189); elsewhere it stays enabled with nothing selected, and then takes
+ * every row the table shows; the dialog says which it will be, so no note sits between the buttons.
  */
 function push(count: number, context: ActionContext): BeatportAction {
   const label = ADD_TO_BEATPORT_PLAYLIST;
   if (!context.pushable) return action("push", label, context.pushReason);
+  if (count === 0 && context.needsRows) return action("push", label, SELECT_FIRST);
   if (count === 0 && context.total === 0) {
     return action("push", label, "Nothing to put in a playlist");
   }
@@ -97,8 +103,8 @@ function open(count: number): BeatportAction {
 }
 
 /**
- * A search's table. Always the same three actions (DEC-209): those that need
- * rows are disabled, with the reason, until some are selected.
+ * A search's table. Always the same three actions (DEC-209): those that need rows are disabled,
+ * with the reason, until some are selected; a search's results (`needsRows`) wait for all three (M189).
  */
 export function runActions(count: number, context: ActionContext): BeatportAction[] {
   return [

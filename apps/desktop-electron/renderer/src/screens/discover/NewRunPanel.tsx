@@ -7,10 +7,10 @@
  * and recent releases of the chosen artists and the library's labels — every artist and label, or only those picked from the
  * Library's own facets, with how many tracks each has. Every field starts from the engine's defaults (`options`),
  * and the form refuses what the engine would, from the bounds it sends. One
- * From/To pick in the bar sets the window for charts and releases alike, with
- * the default said in words in the bar's sentence (DSC-5).
+ * From/To pick in the "When" group sets the window for charts and releases alike,
+ * with the default said in words in the bar's sentence (DSC-5).
  *
- * **Start looking** hands the search to the engine as a job: the status strip
+ * **Start dig** hands the search to the engine as a job: the status strip
  * shows it, and the page opens Results on it as soon as the engine begins it.
  */
 import { useRef, useState } from "react";
@@ -28,6 +28,7 @@ import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
 import { usePageSearch } from "../../components/usePageSearch";
 import { countNoun, formatCount } from "../../format/counts";
+import { DateField } from "./DateField";
 import { useIncludeUserCharts } from "./includeUserCharts";
 import { SavedListField } from "./SavedListField";
 import { ScopeDialog } from "./ScopeDialog";
@@ -260,8 +261,8 @@ export function NewRunPanel({
             )}
             <p className="discover-note">
               {includeUserCharts
-                ? "With no artists chosen, this reads charts by artists and by regular Beatport users (Settings → Beatport)."
-                : "With no artists chosen, this reads charts by artists. Settings → Beatport can include charts by regular Beatport users."}
+                ? "Charts by DJs in these genres, and by other Beatport users (Settings → Beatport)."
+                : "Charts by DJs in these genres. Charts by other Beatport users: Settings → Beatport."}
             </p>
           </Card>
 
@@ -290,6 +291,33 @@ export function NewRunPanel({
               onEdit={() => setEditing({ kind: "label", listId: form.labelListId })}
               onNew={() => setEditing({ kind: "label", listId: null })}
             />
+            {/* The window for charts and releases alike, with the other criteria (M181). */}
+            <Card
+              className="discover-new__when"
+              bodyClassName="discover-new__card-body"
+              role="group"
+              aria-label="When"
+              title="When"
+            >
+              <div className="discover-new__dates" role="group" aria-label="Dates">
+                <span className="discover-new__dates-label" aria-hidden="true">
+                  Released
+                </span>
+                <DateField
+                  className="discover-new__date"
+                  label="From"
+                  value={form.chartsFrom}
+                  onChange={(chartsFrom) => change({ chartsFrom })}
+                />
+                <span aria-hidden="true">to</span>
+                <DateField
+                  className="discover-new__date"
+                  label="To"
+                  value={form.chartsTo}
+                  onChange={(chartsTo) => change({ chartsTo })}
+                />
+              </div>
+            </Card>
           </div>
         </div>
 
@@ -315,26 +343,6 @@ export function NewRunPanel({
             >
               {sentence}
             </p>
-            <div className="discover-new__dates" role="group" aria-label="Dates">
-              <span className="discover-new__dates-label" aria-hidden="true">
-                Dates
-              </span>
-              <input
-                type="date"
-                className="cp-field__input discover-new__date"
-                aria-label="From"
-                value={form.chartsFrom}
-                onChange={(event) => change({ chartsFrom: event.target.value })}
-              />
-              <span aria-hidden="true">to</span>
-              <input
-                type="date"
-                className="cp-field__input discover-new__date"
-                aria-label="To"
-                value={form.chartsTo}
-                onChange={(event) => change({ chartsTo: event.target.value })}
-              />
-            </div>
             {!usable && unusableReason && <span className="discover-note">{unusableReason}</span>}
             {usable && busy && !starting && (
               <span className="discover-note">A dig is already running.</span>
@@ -347,7 +355,7 @@ export function NewRunPanel({
               loading={starting}
               disabled={!usable || busy || problems.length > 0}
             >
-              Start looking
+              Start dig
             </Button>
           </Hint>
         </div>

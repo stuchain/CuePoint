@@ -375,7 +375,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         const panel = window.getByRole("region", { name: "New dig" });
         await expect(panel).toBeVisible({ timeout: 30_000 });
         await panel.getByRole("checkbox", { name: "House" }).check();
-        await panel.getByRole("button", { name: "Start looking" }).click();
+        await panel.getByRole("button", { name: "Start dig" }).click();
         // A job the status strip follows (acceptance 2).
         await expect(window.locator(".cp-status")).toContainText(
           /Reading charts|Discovering on Beatport/,
@@ -386,7 +386,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
           "true",
         );
         await expect(
-          window.getByText("Found 4 tracks from 1 chart and 0 releases.", { exact: true }),
+          window.getByText("Dig found 4 tracks from 1 chart.", { exact: true }),
         ).toBeVisible({ timeout: 60_000 });
         // Results opens on rows of cards; Everything is the dig as one table.
         await window.getByRole("button", { name: /^Everything · / }).click();
@@ -410,7 +410,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
 
       await test.step("add a track to the wantlist, and make a playlist of two on Beatport", async () => {
         await bpRow(window, found, "Undertow").locator('[data-column="title"]').click();
-        await window.getByRole("button", { name: "Add to wantlist" }).click();
+        await window.getByRole("button", { name: "Beatport" }).click();
+        await window.getByRole("menuitem", { name: "Add to wantlist" }).click();
         // One track is named, not counted.
         await expect(window.getByText(/Added .*Undertow.* to the wantlist/)).toBeVisible({
           timeout: 15_000,
@@ -419,7 +420,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(bpRow(window, found, "Undertow")).toContainText("On wantlist", { timeout: 15_000 });
         await bpRow(window, found, "Salt Air").locator('[data-column="title"]').click({ modifiers: ["ControlOrMeta"] });
         await window.getByRole("button", { name: "Add to a Beatport playlist…" }).click();
-        const dialog = window.getByRole("dialog", { name: "Make a playlist on Beatport" });
+        const dialog = window.getByRole("dialog", { name: "Send to Beatport" });
         await expect(dialog).toContainText("the 2 selected tracks");
         await dialog.getByLabel("Playlist name").fill("Journey list");
         await dialog.getByRole("button", { name: "Make playlist", exact: true }).click();
@@ -549,7 +550,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
           .getByRole("navigation", { name: "Past digs" })
           .getByRole("button", { name: /4 tracks found/ })
           .click();
-        await expect(window.getByText("Found 4 tracks from 1 chart and 0 releases.")).toBeVisible({
+        await expect(window.getByText("Dig found 4 tracks from 1 chart.")).toBeVisible({
           timeout: 30_000,
         });
         await window.getByRole("button", { name: /^Everything · / }).click();

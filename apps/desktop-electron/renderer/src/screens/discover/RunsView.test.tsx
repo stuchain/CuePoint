@@ -87,7 +87,7 @@ function view(
 describe("a dig that stopped partway", () => {
   const stopped = RUNS.runs.find((run) => run.outcome === "failed")!;
 
-  it("says Stopped and why, and Continue picks it up", async () => {
+  it("says Stopped and why, and Resume picks it up", async () => {
     install(vi.fn(async () => ({ value: RUNS, refusal: null })));
     const onContinue = vi.fn(async () => null);
     render(view({ onContinue }));
@@ -97,7 +97,7 @@ describe("a dig that stopped partway", () => {
       .find((item) => item.textContent?.includes("Stopped"))!;
     expect(card).toHaveTextContent("Stopped because Beatport refused the sign-in.");
     expect(within(card).queryByText("Failed")).toBeNull();
-    fireEvent.click(within(card).getByRole("button", { name: "Continue" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Resume" }));
     expect(onContinue).toHaveBeenCalledWith(stopped.id);
   });
 
@@ -106,7 +106,7 @@ describe("a dig that stopped partway", () => {
     const onContinue = vi.fn(async () => null);
     render(view({ onContinue, continueBlocked: "Another dig is running." }));
     const nav = await screen.findByRole("navigation", { name: "Past digs" });
-    const button = within(nav).getByRole("button", { name: "Continue" });
+    const button = within(nav).getByRole("button", { name: "Resume" });
     expect(button).toBeDisabled();
     fireEvent.click(button);
     expect(onContinue).not.toHaveBeenCalled();
@@ -155,7 +155,7 @@ describe("a dig that stopped partway", () => {
     install(vi.fn(async () => ({ value: { ...RUNS, runs: RUNS.runs.filter((r) => r.outcome === "succeeded"), total: 1 }, refusal: null })));
     render(view());
     const nav = await screen.findByRole("navigation", { name: "Past digs" });
-    expect(within(nav).queryByRole("button", { name: "Continue" })).toBeNull();
+    expect(within(nav).queryByRole("button", { name: "Resume" })).toBeNull();
   });
 });
 

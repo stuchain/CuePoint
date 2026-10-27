@@ -395,10 +395,11 @@ export function BeatportHalf({
         role="status"
         aria-label="Beatport"
       >
-        <p className="discover-empty__headline">{beatportHeadline(half)}</p>
-        {!TOKEN_STATES.has(half.state) && (
-          <p className="discover-note">{half.message.replace(/\.$/, "")}.</p>
-        )}
+        <EmptyState
+          compact
+          headline={beatportHeadline(half)}
+          description={TOKEN_STATES.has(half.state) ? undefined : `${half.message.replace(/\.$/, "")}.`}
+        />
         {shared && links.length > 0 && (
           <ul className="discover-page__links" aria-label={`Beatport ${nounOf(kind)}s with this name`}>
             {links.map((link) => (

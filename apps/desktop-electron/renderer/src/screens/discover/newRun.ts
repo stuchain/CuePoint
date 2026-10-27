@@ -80,9 +80,9 @@ export function formProblems(
   const from = dayOf(form.chartsFrom);
   const to = dayOf(form.chartsTo);
   if (from === null || to === null) {
-    problems.push("Give both dates as dates.");
+    problems.push("Enter both dates.");
   } else if (from > to) {
-    problems.push("The first date is after the last.");
+    problems.push("The start date is after the end date.");
   } else if (to - from + 1 > limits.max_window_days) {
     problems.push(`Dates can span at most ${limits.max_window_days} days.`);
   }

@@ -66,6 +66,8 @@ interface BeatportTableProps<Row> {
   /** The table's filters, after the lead and before the actions (C234). */
   filters?: ReactNode;
   emptyState: ReactNode;
+  /** Add to wantlist and Open on Beatport as one "Beatport" menu button, so the bar stays one row (M174). */
+  beatportMenu?: boolean;
   /**
    * Opens an artist's or label's page: the row menu then offers "Open artist page" and "Open
    * label page" for one track (C196). Names in the table are plain text.
@@ -93,6 +95,7 @@ export function BeatportTable<Row extends BeatportTrackRow>({
   lead,
   filters,
   emptyState,
+  beatportMenu = false,
   onOpenPage,
   previousDefaultOrder,
   resetKey,
@@ -204,31 +207,37 @@ export function BeatportTable<Row extends BeatportTrackRow>({
   // right-click menu (C196). A person with several names gets a submenu to choose from.
   const onlyRow = onOpenPage && selection.count === 1 ? selection.rows[0] : undefined;
   const pageItems = onlyRow && onOpenPage ? beatportPageItems(onlyRow, onOpenPage) : [];
-  // With one track, Open on Beatport and its two pages fold into one visible "Open" menu button
-  // where Open on Beatport stood (new D): three buttons wrapped the bar onto a second line.
+  // Add to wantlist and Open on Beatport fold into one "Beatport" menu button (M174): three buttons
+  // wrapped the bar onto a second line. A table without Add to wantlist (the wantlist itself) keeps
+  // Open on Beatport as a button, which becomes an "Open" menu with one track selected, holding its
+  // artist's and label's pages too (new D).
   const openMenu = useMenuButton();
-  const folded = pageItems.length > 0;
+  const wantAction = beatportMenu ? actions.find((action) => action.id === "add_to_wantlist") : undefined;
   const openAction = actions.find((action) => action.id === "open");
+  const folded = wantAction !== undefined || pageItems.length > 0;
+  const menuItem = (action: (typeof actions)[number]): TrackContextMenuItem => ({
+    id: action.id,
+    label: action.label,
+    disabled: action.disabled || busy,
+    reason: action.reason ?? undefined,
+    onSelect: () => run(action.id),
+  });
   const openItems: TrackContextMenuItem[] = folded
     ? [
-        ...(openAction
-          ? [
-              {
-                id: openAction.id,
-                label: openAction.label,
-                disabled: openAction.disabled || busy,
-                reason: openAction.reason ?? undefined,
-                onSelect: () => run(openAction.id),
-              },
-            ]
-          : []),
-        ...pageItems.map((item, at) => (at === 0 && openAction ? { ...item, separatorBefore: true } : item)),
+        ...(wantAction ? [menuItem(wantAction)] : []),
+        ...(openAction ? [menuItem(openAction)] : []),
+        ...pageItems.map((item, at) => (at === 0 && (wantAction || openAction) ? { ...item, separatorBefore: true } : item)),
       ]
     : [];
+  // With nothing selected every entry waits for rows: the button waits too, and says why.
+  const menuWaits = openItems.length > 0 && openItems.every((item) => item.disabled);
+  const menuReason = menuWaits ? (openAction?.reason ?? wantAction?.reason ?? undefined) : undefined;
   const openButton = (
-    <Button key="open-menu" variant="secondary" menu {...openMenu.buttonProps}>
-      Open
-    </Button>
+    <Hint key="open-menu" text={menuReason}>
+      <Button variant="secondary" menu disabled={menuWaits} {...openMenu.buttonProps}>
+        {wantAction ? "Beatport" : "Open"}
+      </Button>
+    </Hint>
   );
   const openBox = folded && openMenu.open ? openMenu.anchor.current?.getBoundingClientRect() : undefined;
 
@@ -249,7 +258,7 @@ export function BeatportTable<Row extends BeatportTrackRow>({
         )}
         {filters}
         {actions.map((action) =>
-          folded && action.id === "open" ? (
+          wantAction && action.id === "add_to_wantlist" ? null : folded && action.id === "open" ? (
             openButton
           ) : (
             <span key={action.id} className="discover-table__action">
@@ -266,7 +275,7 @@ export function BeatportTable<Row extends BeatportTrackRow>({
             </span>
           ),
         )}
-        {folded && !openAction && openButton}
+        {folded && !openAction && !wantAction && openButton}
       </div>
 
       <div ref={rowsRef} className="discover-table__rows" onKeyDown={onRowKeys}>

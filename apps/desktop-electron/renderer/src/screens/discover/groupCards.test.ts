@@ -47,11 +47,10 @@ describe("what a card says it holds", () => {
     expect(cardId({ kind: "chart", key: "7" })).not.toBe(cardId({ kind: "artist", key: "7" }));
   });
 
-  it("counts a row: charts by card, artists and labels by the new tracks they found", () => {
-    expect(rowCount("charts", [base, base])).toBe(2);
-    expect(rowCount("genre_charts", [base])).toBe(1);
-    expect(rowCount("artists", [artist, { ...artist, new: 1 }])).toBe(5);
-    expect(rowCount("labels", [label])).toBe(6);
+  it("counts a row by its cards, the same in every row (M177)", () => {
+    expect(rowCount([base, base])).toBe(2);
+    expect(rowCount([artist, { ...artist, new: 1 }])).toBe(2);
+    expect(rowCount([label])).toBe(1);
   });
 });
 
@@ -61,7 +60,7 @@ describe("where releases were not looked up (every library artist)", () => {
     expect(rowTitle("artists", "artists")).toBe("Your artists' new releases");
     expect(cardCounts(artist, "library")).toBe("3 charts");
     expect(cardName(artist, "library")).toBe("Artist Argy, 3 charts");
-    expect(rowCount("artists", [artist, artist], "library")).toBe(2);
+    expect(rowCount([artist, artist])).toBe(2);
   });
 });
 

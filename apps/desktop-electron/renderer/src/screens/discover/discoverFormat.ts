@@ -115,25 +115,31 @@ function failedBecause(run: Pick<DiscoverRun, "error" | "error_class">): string 
 
 /** Why a dig stopped partway, for its card: "Stopped because Beatport could not be reached." */
 export function runStopLine(run: Pick<DiscoverRun, "outcome" | "error" | "error_class">): string {
-  if (run.outcome === "cancelled") return "Stopped when asked.";
+  if (run.outcome === "cancelled") return "Stopped.";
   return `Stopped because ${failedBecause(run)}.`;
 }
 
-/** "146 tracks from 3 charts and 12 releases". */
+/**
+ * "146 tracks from 3 charts and 12 releases": what a dig found and what it read. A part that is
+ * nothing is left out ("6 tracks from 1 chart", not "and 0 releases"), as the engine's own line is
+ * (M422).
+ */
 export function runFound(
   run: Pick<DiscoverRun, "tracks_found" | "charts_read" | "releases_read">,
 ): string {
-  return (
-    `${countNoun(run.tracks_found, "track")} from ` +
-    `${countNoun(run.charts_read, "chart")} and ${countNoun(run.releases_read, "release")}`
-  );
+  const found = countNoun(run.tracks_found, "track");
+  const read = [
+    run.charts_read > 0 ? countNoun(run.charts_read, "chart") : null,
+    run.releases_read > 0 ? countNoun(run.releases_read, "release") : null,
+  ].filter((part): part is string => part !== null);
+  return read.length > 0 ? `${found} from ${read.join(" and ")}` : found;
 }
 
 /** How a run ended, as one sentence, or what it is doing while it runs. */
 export function runOutcome(run: DiscoverRun): string {
   if (run.running) return `Running: ${runFound(run)} so far.`;
-  if (run.outcome === "succeeded") return `Found ${runFound(run)}.`;
-  if (run.outcome === "cancelled") return `Stopped when asked, after ${runFound(run)}.`;
+  if (run.outcome === "succeeded") return `Dig found ${runFound(run)}.`;
+  if (run.outcome === "cancelled") return `Stopped after ${runFound(run)}.`;
   return `Stopped because ${failedBecause(run)}, after ${runFound(run)}.`;
 }
 
@@ -193,9 +199,9 @@ export function runScopeLine(run: DiscoverRun, genres: readonly DiscoverGenre[])
 /** What a search's end says, from the run it kept. */
 export function discoveryEnded(result: DiscoveryRunResult): string {
   const found = runFound(result);
-  if (result.outcome === "succeeded") return `The dig found ${found}.`;
-  if (result.outcome === "cancelled") return `The dig stopped when asked, after ${found}.`;
-  return `The dig stopped because ${stoppedBecause(result.error_class)}, after ${found}.`;
+  if (result.outcome === "succeeded") return `Dig found ${found}.`;
+  if (result.outcome === "cancelled") return `Dig stopped after ${found}.`;
+  return `Dig stopped because ${stoppedBecause(result.error_class)}, after ${found}.`;
 }
 
 /** One line for the run list: what the run looked for, briefly. */

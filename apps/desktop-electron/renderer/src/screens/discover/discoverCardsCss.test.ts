@@ -1,6 +1,7 @@
 /**
- * C254: a Discover card without a picture shows the shared placeholder as a short band, not a
- * card-wide empty square, and its tick is the bare standard checkbox, not one in a tile.
+ * C254, M175, M176: every Discover card has one anatomy, a square picture at the left with the
+ * name beside it, the same size with a picture, without one and while it loads; its tick is the
+ * bare standard checkbox, not one in a tile, 12 in from the top right.
  */
 import { describe, expect, it } from "vitest";
 
@@ -11,10 +12,30 @@ const rules = parseRules(stripComments(css));
 const body = (selector: string) => rules.find((rule) => rule.selector === selector)?.body ?? "";
 
 describe("Discover cards (C254)", () => {
-  it("draws a missing picture as a short band, not a square as wide as the card", () => {
-    const placeholder = body(".discover-card__art--placeholder");
-    expect(placeholder).toMatch(/aspect-ratio:\s*auto/);
-    expect(placeholder).toMatch(/height:\s*var\(--discover-card-placeholder\)/);
+  it("draws every picture, placeholder and skeleton as one square beside the name (M175, M176)", () => {
+    const art = body(".discover-card__art");
+    expect(art).toMatch(/width:\s*var\(--discover-card-art\)/);
+    expect(art).toMatch(/height:\s*var\(--discover-card-art\)/);
+    expect(body(".discover-card__open")).toMatch(/grid-template-columns:\s*var\(--discover-card-art\)/);
+    // No kind has a shape of its own: no band, no inset, no round artist.
+    expect(css).not.toMatch(/art--placeholder|art--artist|--discover-card-placeholder/);
+  });
+
+  it("fills the placeholder into the picture's square and fades a picture in (M43, M385)", () => {
+    expect(body(".discover-card__art .cp-artwork-placeholder")).toMatch(/height:\s*100%/);
+    expect(css).toMatch(/data-motion-entrance\] \.discover-card__art img[^}]*cp-fade-in/);
+  });
+
+  it("sets the tick 12 in from the top right corner (M175)", () => {
+    const tick = body(".discover-card__tick");
+    expect(tick).toMatch(/top:\s*var\(--space-lg\)/);
+    expect(tick).toMatch(/right:\s*var\(--space-lg\)/);
+  });
+
+  it("sets card titles in the pixel face at 400, like the run titles (D1, M16)", () => {
+    const title = body(".discover-card__title");
+    expect(title).toMatch(/font-family:\s*var\(--font-voice\)/);
+    expect(title).toMatch(/font-weight:\s*var\(--font-weight-regular\)/);
   });
 
   it("puts no tile behind the tick", () => {

@@ -1,5 +1,5 @@
 /**
- * D5 (C55): a dig's outcome ("Found 6 tracks from 1 chart and 0 releases.") is a sentence, so it
+ * D5 (C55): a dig's outcome ("Dig found 6 tracks from 1 chart.") is a sentence, so it
  * is Inter, like "Duplicates are merged." beside it, and not the pixel face.
  */
 import { describe, expect, it } from "vitest";

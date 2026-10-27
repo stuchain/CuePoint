@@ -38,7 +38,6 @@ import { refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import {
   ROW_LIMIT,
-  ROW_NOTES,
   cardCounts,
   cardId,
   cardName,
@@ -95,11 +94,13 @@ function CardTile({
     <li className={`discover-card discover-card--${card.kind}${ticked ? " discover-card--ticked" : ""}`}>
       <button type="button" className="discover-card__open" aria-label={cardName(card, mode)} onClick={onOpen}>
         <GroupArt runId={runId} kind={card.kind} cardKey={card.key} hasArt={card.has_art} />
-        <span className="discover-card__title">{card.name}</span>
-        {card.kind === "chart" && card.curator && !card.name.includes(card.curator) && (
-          <span className="discover-card__curator">{card.curator}</span>
-        )}
-        <span className="discover-card__counts">{cardCounts(card, mode)}</span>
+        <span className="discover-card__text">
+          <span className="discover-card__title">{card.name}</span>
+          {card.kind === "chart" && card.curator && !card.name.includes(card.curator) && (
+            <span className="discover-card__curator">{card.curator}</span>
+          )}
+          <span className="discover-card__counts">{cardCounts(card, mode)}</span>
+        </span>
       </button>
       <label className="discover-card__tick">
         <input type="checkbox" aria-label={`Tick ${card.name}`} checked={ticked} onChange={onTick} />
@@ -129,15 +130,11 @@ function CardRow({
 }) {
   const overflow = row.cards.length > ROW_LIMIT;
   const shown = all || !overflow ? row.cards : row.cards.slice(0, ROW_LIMIT);
-  const note = ROW_NOTES[row.id];
   return (
     <section className="discover-cards__row" aria-label={rowTitle(row.id, mode)}>
       <header className="discover-cards__row-head">
         <h3 className="discover-cards__row-title">{rowTitle(row.id, mode)}</h3>
-        <span className="discover-note">
-          {formatCount(rowCount(row.id, row.cards, mode))}
-          {note ? ` · ${note}` : ""}
-        </span>
+        <span className="discover-note">{formatCount(rowCount(row.cards))}</span>
         {overflow && (
           <span className="discover-cards__more">
             <ShowMore total={row.cards.length} expanded={all} onToggle={onAll} />

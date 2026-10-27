@@ -97,8 +97,10 @@ function CardsPlaceholder() {
           {Array.from({ length: PLACEHOLDER_CARDS }, (_, index) => (
             <li key={index} className="discover-card discover-card--placeholder">
               <span className="discover-card__art" />
-              <span className="discover-cards__shape discover-cards__shape--line" />
-              <span className="discover-cards__shape discover-cards__shape--short" />
+              <span className="discover-card__text">
+                <span className="discover-cards__shape discover-cards__shape--line" />
+                <span className="discover-cards__shape discover-cards__shape--short" />
+              </span>
             </li>
           ))}
         </ul>

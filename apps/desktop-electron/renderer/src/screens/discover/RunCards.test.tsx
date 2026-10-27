@@ -131,12 +131,12 @@ describe("a dig's results as rows of cards", () => {
     expect(chart.querySelector(".discover-card__curator")).toHaveTextContent(/^Stranger$/);
   });
 
-  it("says which row's count counts what", async () => {
+  it("counts every row's cards the same way (M177)", async () => {
     install();
     renderRun();
     const charts = await screen.findByRole("region", { name: "Your artists' charts" });
-    expect(charts).toHaveTextContent("1 · in your genres");
-    expect(screen.getByRole("region", { name: "Your labels" })).toHaveTextContent("3 · new releases");
+    expect(charts.querySelector(".discover-cards__row-head")).toHaveTextContent(/^Your artists' charts1$/);
+    expect(charts).not.toHaveTextContent("in your genres");
   });
 
   it("calls row one 'Genre charts' when the engine says no artist was chosen", async () => {
@@ -485,23 +485,14 @@ describe("opening a card, and Everything", () => {
     expect(await screen.findByRole("region", { name: "Your labels" })).toBeInTheDocument();
   });
 
-  it("adds a card's whole table to a playlist when nothing in it is ticked", async () => {
+  it("waits for a ticked track before it adds a card's tracks to a playlist (M189)", async () => {
     install();
     renderRun();
     fireEvent.click(await card("Label NIGHTFALL-AUDIO, 3 new"));
     await screen.findByRole("table", { name: "NIGHTFALL-AUDIO" });
-    fireEvent.click(await screen.findByRole("button", { name: "Add to a Beatport playlist…" }));
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Make playlist" }));
-    await waitFor(() =>
-      expect(push).toHaveBeenCalledWith(
-        expect.objectContaining({
-          run_id: 1,
-          groups: [{ kind: "label", key: "nightfall audio" }],
-          include_owned: false,
-        }),
-      ),
-    );
+    // Nothing ticked in the card's table: all of its actions wait for rows.
+    expect(await screen.findByRole("button", { name: "Add to a Beatport playlist…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Beatport" })).toBeDisabled();
   });
 
   it("opens the whole dig as one list, with a From column, from the Everything button", async () => {

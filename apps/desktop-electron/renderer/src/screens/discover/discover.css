@@ -24,8 +24,9 @@
   max-width: none;
 }
 
+/* One waiting gap on every page: 12 under the title (M67). */
 .discover-screen--waiting {
-  gap: var(--space-xl);
+  gap: var(--space-lg);
 }
 
 /* The body scrolls only when the window is too short for a part's header and
@@ -94,7 +95,7 @@
 
 .discover-runs-view {
   display: grid;
-  grid-template-columns: minmax(calc(220px * var(--scale)), 20%) minmax(0, 1fr);
+  grid-template-columns: minmax(calc(220px * var(--scale)), min(20%, calc(300px * var(--scale)))) minmax(0, 1fr);
   /* Room between the cards and the table. */
   column-gap: var(--space-xl);
   flex: 1;
@@ -132,8 +133,11 @@
   gap: var(--space-sm);
   min-height: 0;
   overflow-y: auto;
-  /* Flush left with the tabs, banner and table; the gap to the table is the grid's. */
+  /* Flush left with the tabs, banner and table; the gap to the table is the grid's. The scrollbar
+     keeps its own lane, 8 from the cards (M187). */
   padding: 0;
+  scrollbar-gutter: stable;
+  padding-right: var(--space-md);
 }
 
 /* Scrolls when the run's header and its table's floor do not both fit, so
@@ -192,6 +196,8 @@
   font-family: var(--font-voice);
   grid-column: 1 / -1;
   min-width: 0;
+  /* Room for the ⋯ button; the lines under it use the card's full width (M178). */
+  padding-right: calc(24px * var(--scale));
   font-size: var(--font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -227,6 +233,8 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: 0 0 var(--space-md);
+  /* Its rule clears what follows (the Everything button, the first row) by 8 (M188). */
+  margin-bottom: var(--space-md);
   border-bottom: var(--divider);
 }
 
@@ -288,6 +296,16 @@
   scroll-padding-bottom: calc(var(--toolbar-height) * 2 + var(--space-md));
 }
 
+/* A centred block (M181): the form, what to fix and the dig bar share one column of a readable
+   width, so no list floats 300 px from its scrollbar on a wide window. */
+.discover-new__body > * {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(720px * var(--scale));
+  margin-inline: auto;
+  flex: none;
+}
+
 .discover-new__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(calc(240px * var(--scale)), 1fr));
@@ -297,7 +315,8 @@
 /* The form's sections (Card): the title row and the body come from the component; here they sit on the
    pane with no card of their own (P14). */
 .discover-new__genres,
-.discover-new__scope {
+.discover-new__scope,
+.discover-new__when {
   margin: 0;
   padding: 0;
   background: transparent;
@@ -305,6 +324,13 @@
 
 /* Artists and Labels: two headed sections, a divider between them with 16 either side (P14). */
 .discover-new__scope + .discover-new__scope {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-xl);
+  border-top: var(--divider);
+}
+
+/* The When group is the third section of that column, set off the same way. */
+.discover-new__when {
   margin-top: var(--space-xl);
   padding-top: var(--space-xl);
   border-top: var(--divider);
@@ -351,11 +377,10 @@
   min-width: calc(140px * var(--scale));
 }
 
-/* A LinkButton: only where it sits. */
+/* A quiet small Button (M184): only where it sits, under the radios at the label edge (M182). */
 .discover-new__new-list {
   align-self: flex-start;
-  margin: 0 0 0 var(--space-lg);
-  font-size: var(--font-size-xs);
+  margin-left: calc(var(--check-size) + var(--space-sm));
 }
 
 .discover-new__problems {
@@ -368,7 +393,7 @@
  * The dig bar: the page's one 32-high panel bar (area 61), pinned flush with the foot of what
  * scrolls so Start is always at hand. One line only, to cover no more than a row of the form
  * under it: the summary sentence (cut with an ellipsis; the app hint shows the whole of it), the
- * window's From and To dates, and Start looking at the right.
+ * window's From and To dates, and Start dig at the right.
  */
 .discover-new__bar {
   display: flex;
@@ -426,10 +451,11 @@
   white-space: nowrap;
 }
 
-/* The window's From and To in the bar: one pick for charts and releases (DSC-5). */
+/* The window's From and To in the When group: one pick for charts and releases (DSC-5). */
 .discover-new__dates {
   flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
   color: var(--fg-muted);
@@ -442,6 +468,58 @@
 
 .discover-new__date {
   width: calc(150px * var(--scale));
+}
+
+/* The day field (DateField, M39): the day in the app's format and a pixel calendar button; the
+   browser's own input lies over all of it, invisible, with its indicator hidden. */
+.discover-date {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.discover-date__text {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-data);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discover-date__button {
+  display: inline-flex;
+  flex: none;
+  color: var(--fg-muted);
+}
+
+.discover-date:hover .discover-date__button {
+  color: var(--fg-primary);
+}
+
+.discover-date__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.discover-date__input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+/* The invisible input holds the focus; the field shows it. */
+.discover-date:focus-within {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .discover-genres,
@@ -561,11 +639,9 @@
   background: var(--bg-selected);
 }
 
-/* The headline of the Beatport state box (artist and label pages); empty lists use EmptyState. */
-.discover-empty__headline {
-  margin: 0;
-  font-size: var(--text-heading);
-  font-weight: var(--weight-strong);
+/* The visible caveat over a results table (M520): 8 under the bar above it, 8 above the table. */
+.discover-in-library-note {
+  padding: var(--space-md) 0;
 }
 
 /* ----------------------------------------------------------------- dialogs */
@@ -608,13 +684,6 @@
 .discover-dialog__confirm-actions {
   display: flex;
   gap: var(--space-sm);
-}
-
-.discover-dialog__refusal {
-  margin: 0;
-  color: var(--danger-text);
-  font-size: var(--font-size-xs);
-  font-weight: var(--weight-strong);
 }
 
 /* ------------------------------------------ artist and label pages (DISCOVER-11) */
@@ -804,7 +873,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--space-xs);
+  gap: 0;
   min-width: 0;
   position: relative;
 }
@@ -812,41 +881,29 @@
 .discover-runs__row > .discover-runs__item {
   width: auto;
   min-width: 0;
-  /* Room on the right for the ⋯ menu button. */
-  padding-right: calc(32px * var(--scale));
 }
 
-/* The card's ⋯ menu: top right of the card, a sibling of the card button. */
+/* "Stopped." and Resume belong to the card: its tone, its padding, Resume at its own width (M187). */
+.discover-runs__stopped {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  padding: 0 var(--space-md) var(--space-md);
+  background: var(--bg-panel);
+}
+
+.discover-runs__row:has(.discover-runs__item--selected) > .discover-runs__stopped {
+  background: var(--selected-row-background);
+  background-origin: border-box;
+}
+
+/* The card's ⋯ menu: the shared quiet icon button (M179), at the card's top right, a sibling of the
+   card button. */
 .discover-runs__menu {
   position: absolute;
   top: var(--space-xs);
   right: var(--space-xs);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(2px * var(--scale));
-  width: calc(24px * var(--scale));
-  height: calc(24px * var(--scale));
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--fg-muted);
-  cursor: pointer;
-}
-
-.discover-runs__menu:hover:not(:disabled),
-.discover-runs__menu[aria-expanded="true"] {
-  color: var(--fg-primary);
-}
-
-.discover-runs__menu:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-}
-
-.discover-runs__menu-dot {
-  width: calc(4px * var(--scale));
-  height: calc(4px * var(--scale));
-  background: currentColor;
 }
 
 /* A running dig's progress line: the one shared bar (C148), across the card. */

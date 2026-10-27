@@ -100,7 +100,8 @@ function RunRow({
       </button>
       {run.running && <progress className="cp-progress discover-runs__progress" aria-label={`${name} in progress`} />}
       {canContinueRun(run) && (
-        <>
+        // Inside the card's own tone (M187): what stopped it, and the way to pick it up.
+        <div className="discover-runs__stopped">
           <p className="discover-note">{runStopLine(run)}</p>
           <Hint text={continueBlocked ?? undefined}>
             <Button
@@ -109,15 +110,18 @@ function RunRow({
               disabled={continueBlocked !== null}
               onClick={() => onContinue(run)}
             >
-              Continue
+              Resume
             </Button>
           </Hint>
-        </>
+        </div>
       )}
       <Hint text={run.running ? RUNNING_REASON : undefined}>
-        <button
+        <Button
           ref={anchor}
-          type="button"
+          variant="quiet"
+          size="sm"
+          iconOnly
+          icon="more"
           className="discover-runs__menu"
           aria-label={run.running ? `More for ${name}. ${RUNNING_REASON}` : `More for ${name}`}
           aria-disabled={run.running ? true : undefined}
@@ -133,11 +137,7 @@ function RunRow({
             const rect = event.currentTarget.getBoundingClientRect();
             setMenu({ x: rect.left, y: rect.bottom });
           }}
-        >
-          <span className="discover-runs__menu-dot" aria-hidden="true" />
-          <span className="discover-runs__menu-dot" aria-hidden="true" />
-          <span className="discover-runs__menu-dot" aria-hidden="true" />
-        </button>
+        />
       </Hint>
       {menu && (
         <TrackContextMenu

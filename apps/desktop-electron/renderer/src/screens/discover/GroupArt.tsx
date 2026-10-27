@@ -7,8 +7,8 @@
  * on or near the screen, a few at a time, and keeps it, so a card shown again
  * draws its picture at once; the loader releases it when it is evicted. A card
  * with no picture, or whose picture could not be read, is the shared
- * placeholder; an artist's is round. A picture still coming keeps the card's
- * square, so nothing moves when it arrives.
+ * placeholder. Every card's picture is the same square, so nothing moves when it
+ * arrives.
  *
  * "inspector" is the size asked for: a card is about 150-170 px wide at 1x
  * (more at 1.5x and on a dense screen), and "row" (108 px) would be blurry.
@@ -36,18 +36,14 @@ export function GroupArt({ runId, kind, cardKey, hasArt }: GroupArtProps) {
     [cardKey, kind, runId],
   );
   const { ref, url, settled } = useCover(key, fetch);
-  // The placeholder's band only for a card known to have no picture; one still coming keeps its square.
-  const placeholder = !url && (!asks || settled);
+  // A picture still coming is the empty tone, and fades in when it arrives (M385); a card known to
+  // have none is the shared placeholder, the Track details cover. All are the card's one square
+  // (M43, M175).
+  const empty = !url && asks && !settled;
 
-  // A card without a picture is the shared placeholder whatever its kind (an artist's stays round);
-  // the card's title is the name under it, so there is no initial (C254).
   return (
-    <span
-      ref={ref}
-      className={`discover-card__art discover-card__art--${kind}${placeholder ? " discover-card__art--placeholder" : ""}`}
-      aria-hidden="true"
-    >
-      {url ? <img src={url} alt="" draggable={false} /> : <ArtworkPlaceholder label="" />}
+    <span ref={ref} className={`discover-card__art discover-card__art--${kind}`} aria-hidden="true">
+      {url ? <img src={url} alt="" draggable={false} /> : empty ? null : <ArtworkPlaceholder label="" />}
     </span>
   );
 }

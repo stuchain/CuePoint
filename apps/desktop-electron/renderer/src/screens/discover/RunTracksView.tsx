@@ -37,7 +37,7 @@ import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
 import { beatportRowKey } from "./beatportKey";
-import { HideOwnedSwitch } from "./HideOwnedSwitch";
+import { HideOwnedSwitch, InLibraryNote } from "./HideOwnedSwitch";
 import { useHideOwned } from "./useHideOwned";
 import { beatportSelectedId, useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -151,6 +151,7 @@ export function RunTracksView({
         pushable,
         pushReason: unusableReason(tools.beatportState),
         total: tracks.total,
+        needsRows: true,
       }),
     [pushable, selection.count, tools.beatportState, tracks.total],
   );
@@ -234,8 +235,10 @@ export function RunTracksView({
 
   return (
     <div className="discover-run__tracks">
+      <InLibraryNote />
       <BeatportTable<DiscoverRunTrackRow>
         lead={lead}
+        beatportMenu
         filters={<HideOwnedSwitch hiding={owned === "hide"} onChange={setHiding} />}
         columns={RUN_COLUMNS}
         previousDefaultOrder={RUN_PREVIOUS_DEFAULT_ORDER}

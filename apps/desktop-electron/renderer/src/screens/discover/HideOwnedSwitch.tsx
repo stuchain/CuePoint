@@ -6,10 +6,27 @@
  * user's own list, so it keeps its three-way filter, set to Any.
  */
 import { Hint } from "../../components/Hint";
+import { RouteButton } from "../library/RouteButton";
+import { cleanMatchState } from "../clean/cleanLink";
 
 /** What "in your library" means, said once, where the switch is (DEC-092). */
 export const IN_LIBRARY_EXPLAINER =
   "Tracks you have matched on the Clean page. Match more tracks there to hide more of what you already have.";
+
+/**
+ * What "in your library" means, always in view above a table that hides or marks those tracks, with
+ * the way to Match (M520). The hover text on the switch says it too, for whoever hovers.
+ */
+export function InLibraryNote() {
+  return (
+    <p className="discover-note discover-in-library-note">
+      “In your library” counts tracks you have matched on Beatport.{" "}
+      <RouteButton to="/clean" state={cleanMatchState()} className="cp-link">
+        Match more
+      </RouteButton>
+    </p>
+  );
+}
 
 interface HideOwnedSwitchProps {
   hiding: boolean;

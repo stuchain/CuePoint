@@ -192,9 +192,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
             <span>Include charts by regular Beatport users</span>
           </label>
           <SettingsHint>
-            A Discover dig with no artists chosen reads the charts artists made, as Beatport&apos;s
-            genre charts page lists them. Turn this on to read charts by ordinary Beatport users
-            too; there are many more, so the dig takes longer.
+            Also read charts made by Beatport users who are not artists. Digs take longer.
           </SettingsHint>
         </div>
         <SettingsActions>

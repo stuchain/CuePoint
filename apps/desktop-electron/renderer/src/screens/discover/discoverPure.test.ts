@@ -190,28 +190,38 @@ describe("what a selection offers", () => {
   const labels = (list: Array<{ label: string }>) => list.map((a) => a.label);
 
   it("always shows a run's three actions; those that need rows wait for them (DEC-209)", () => {
-    const none = runActions(0, usable);
+    const none = runActions(0, { ...usable, needsRows: true });
     expect(labels(none)).toEqual([
       "Add to wantlist",
       "Add to a Beatport playlist…",
       "Open on Beatport",
     ]);
-    expect(none.map((a) => a.disabled)).toEqual([true, false, true]);
+    // All three wait for rows (M189).
+    expect(none.map((a) => a.disabled)).toEqual([true, true, true]);
     expect(none[0]!.reason).toBe("Select tracks in the table first");
+    expect(none[1]!.reason).toBe("Select tracks in the table first");
     expect(none[2]!.reason).toBe("Select tracks in the table first");
     const some = runActions(3, usable);
     expect(some.map((a) => a.disabled)).toEqual([false, false, false]);
     expect(some.map((a) => a.reason)).toEqual([null, null, null]);
   });
 
-  it("makes a playlist of every row shown when nothing is selected, with no note between the buttons (C236)", () => {
+  it("makes a playlist of the selected rows only in a search's table, with no note between the buttons (C236, M189)", () => {
     const playlist = (count: number, total: number) =>
-      runActions(count, { ...usable, total }).find((a) => a.id === "push")!;
-    expect(playlist(0, 48)).toMatchObject({ disabled: false, label: "Add to a Beatport playlist…" });
+      runActions(count, { ...usable, total, needsRows: true }).find((a) => a.id === "push")!;
+    expect(playlist(0, 48)).toMatchObject({ disabled: true, label: "Add to a Beatport playlist…" });
+    expect(playlist(3, 48)).toMatchObject({ disabled: false });
     expect(playlist(0, 48).note).toBeNull();
     expect(playlist(3, 48).note).toBeNull();
+  });
+
+  it("keeps the wantlist's playlist open with nothing selected: it takes every row shown", () => {
+    const playlist = (count: number, total: number) =>
+      wantlistActions(Array.from({ length: count }, () => ({ bought_at: null })), { ...usable, total }).find(
+        (a) => a.id === "push",
+      )!;
+    expect(playlist(0, 48)).toMatchObject({ disabled: false });
     expect(playlist(0, 0)).toMatchObject({ disabled: true, reason: "Nothing to put in a playlist" });
-    expect(playlist(0, 0).note).toBeNull();
   });
 
   it("opens at most ten pages at once", () => {
@@ -336,11 +346,11 @@ describe("the New dig form", () => {
 
   it.each([
     [{ genreIds: Array.from({ length: 51 }, (_, i) => i + 1) }, "Choose at most 50 genres."],
-    [{ genreIds: [5], chartsFrom: "2026-02-31" }, "Give both dates as dates."],
-    [{ genreIds: [], chartsFrom: "2026-02-31" }, "Give both dates as dates."],
-    [{ chartsTo: "" }, "Give both dates as dates."],
-    [{ chartsFrom: "soon" }, "Give both dates as dates."],
-    [{ chartsFrom: "2026-09-02", chartsTo: "2026-09-01" }, "The first date is after the last."],
+    [{ genreIds: [5], chartsFrom: "2026-02-31" }, "Enter both dates."],
+    [{ genreIds: [], chartsFrom: "2026-02-31" }, "Enter both dates."],
+    [{ chartsTo: "" }, "Enter both dates."],
+    [{ chartsFrom: "soon" }, "Enter both dates."],
+    [{ chartsFrom: "2026-09-02", chartsTo: "2026-09-01" }, "The start date is after the end date."],
     [
       { genreIds: [], chartsFrom: "2025-01-01", chartsTo: "2026-01-02" },
       "Dates can span at most 366 days.",
@@ -409,17 +419,19 @@ describe("the sentences", () => {
     expect(runStateTone(FAILED)).toBe("warning");
     expect(runStateLabel({ ...FINISHED, running: true })).toBe("Running");
     expect(runStateLabel({ ...FINISHED, outcome: "cancelled" })).toBe("Stopped");
-    expect(runOutcome(FINISHED)).toBe("Found 7 tracks from 3 charts and 2 releases.");
+    expect(runOutcome(FINISHED)).toBe("Dig found 7 tracks from 3 charts and 2 releases.");
     expect(runOutcome(FAILED)).toBe(
-      "Stopped because Beatport refused the sign-in, after 0 tracks from 0 charts and 0 releases.",
+      "Stopped because Beatport refused the sign-in, after 0 tracks.",
     );
     expect(runOutcome({ ...FINISHED, running: true })).toBe(
       "Running: 7 tracks from 3 charts and 2 releases so far.",
     );
-    expect(runOutcome({ ...FINISHED, outcome: "cancelled" })).toMatch(/^Stopped when asked/);
+    expect(runOutcome({ ...FINISHED, outcome: "cancelled" })).toMatch(/^Stopped after/);
     expect(runFound({ tracks_found: 1, charts_read: 1, releases_read: 1 })).toBe(
       "1 track from 1 chart and 1 release",
     );
+    // A part that is nothing is left out (M422).
+    expect(runFound({ tracks_found: 6, charts_read: 1, releases_read: 0 })).toBe("6 tracks from 1 chart");
   });
 
   it("sums a run's scope up in one short line, leaving empty parts out", () => {
@@ -564,7 +576,7 @@ describe("the sentences", () => {
       "Looked up 2 tracks on Beatport.",
     );
     expect(discoveryEnded(fixture.discovery_result as DiscoveryRunResult)).toBe(
-      "The dig found 7 tracks from 3 charts and 2 releases.",
+      "Dig found 7 tracks from 3 charts and 2 releases.",
     );
     expect(stoppedBecause(null)).toBe("of an error");
   });
