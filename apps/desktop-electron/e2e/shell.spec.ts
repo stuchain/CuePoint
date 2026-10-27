@@ -24,6 +24,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chooseMenuItem, menuItems } from "./appMenu";
 import { waitForEngine } from "./engineReady";
+import { showTrackDetails } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -185,6 +186,9 @@ test.describe("Application shell navigation", () => {
     try {
       const window = await first.firstWindow({ timeout: 60_000 });
       await dismissOnboarding(window);
+      // D11: the table keeps its minimum and the panel gets only what is left, so the window is
+      // wide enough for the panel to grow by the drag.
+      await first.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1800, 900));
 
       const panel = window.getByRole("complementary", { name: /track details/i });
       // Nothing is selected, so it starts folded (K1): open it from its tab.
@@ -214,6 +218,8 @@ test.describe("Application shell navigation", () => {
     const second = await launch(userDataDir);
     try {
       const window = await second.firstWindow({ timeout: 60_000 });
+      // As wide as before, so the remembered width is not capped by the table's minimum (D11).
+      await second.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1800, 900));
       const panel = window.getByRole("complementary", { name: /track details/i });
       await expect(panel).toBeVisible({ timeout: 30_000 });
       expect(Math.round((await panel.boundingBox())!.width)).toBe(440);
@@ -482,6 +488,8 @@ ${tracks.join("\n")}
         "Moonlight 07",
         { timeout: 30_000 },
       );
+      // D11, D16: in a window too narrow for the table beside it the panel folds itself.
+      await showTrackDetails(window);
       await expect(window.getByRole("complementary", { name: /track details/i })).toContainText("Moonlight 07", {
         timeout: 30_000,
       });

@@ -385,8 +385,9 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
           "aria-selected",
           "true",
         );
+        // The dig's own outcome line; a toast says the same when the dig ends.
         await expect(
-          window.getByText("Dig found 4 tracks from 1 chart.", { exact: true }),
+          window.locator(".discover-run__outcome").getByText("Dig found 4 tracks from 1 chart.", { exact: true }),
         ).toBeVisible({ timeout: 60_000 });
         // Results opens on rows of cards; Everything is the dig as one table.
         await window.getByRole("button", { name: /^Everything · / }).click();
@@ -410,7 +411,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
 
       await test.step("add a track to the wantlist, and make a playlist of two on Beatport", async () => {
         await bpRow(window, found, "Undertow").locator('[data-column="title"]').click();
-        await window.getByRole("button", { name: "Beatport" }).click();
+        // P13: one Beatport menu over the dig table, beside "Add to a Beatport playlist…".
+        await window.getByRole("button", { name: "Beatport", exact: true }).click();
         await window.getByRole("menuitem", { name: "Add to wantlist" }).click();
         // One track is named, not counted.
         await expect(window.getByText(/Added .*Undertow.* to the wantlist/)).toBeVisible({
@@ -550,7 +552,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
           .getByRole("navigation", { name: "Past digs" })
           .getByRole("button", { name: /4 tracks found/ })
           .click();
-        await expect(window.getByText("Dig found 4 tracks from 1 chart.")).toBeVisible({
+        await expect(window.locator(".discover-run__outcome").getByText("Dig found 4 tracks from 1 chart.")).toBeVisible({
           timeout: 30_000,
         });
         await window.getByRole("button", { name: /^Everything · / }).click();

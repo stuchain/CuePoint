@@ -167,7 +167,8 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       );
 
       // Results opens on it as soon as the engine has made it, and ends with its tracks.
-      await expect(window.getByText("Dig found 3 tracks from 1 chart.", { exact: true })).toBeVisible({
+      // The dig's own outcome line; a toast can say the same when the dig ends.
+      await expect(window.locator(".discover-run__outcome").getByText("Dig found 3 tracks from 1 chart.", { exact: true })).toBeVisible({
         timeout: 60_000,
       });
       // Results opens on rows of cards; "Everything" is the whole dig as one table.
@@ -224,7 +225,8 @@ test.describe("The Discover page (DISCOVER-10)", () => {
 
       await row(window, found, /Harbour Lights/).locator('[data-column="title"]').click();
       await row(window, found, /Low Tide/).locator('[data-column="title"]').click({ modifiers: ["ControlOrMeta"] });
-      await window.getByRole("button", { name: "Beatport" }).click();
+      // P13: one Beatport menu over the dig table, beside "Add to a Beatport playlist…".
+      await window.getByRole("button", { name: "Beatport", exact: true }).click();
       await window.getByRole("menuitem", { name: "Add to wantlist" }).click();
       await expect(window.getByText("Added 2 tracks to the wantlist")).toBeVisible();
       await expect(row(window, found, /Harbour Lights/)).toContainText("On wantlist");

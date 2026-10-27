@@ -194,7 +194,8 @@ test.describe("Quick filters (PAGES-05B)", () => {
       });
 
       await window.locator(".cp-quick").getByRole("button", { name: /^Key\b/ }).click();
-      await window.getByRole("checkbox", { name: /^8A/ }).click();
+      // P8: the Key filter is a grid of chips; the tick is a hidden box inside the chip's label.
+      await window.locator("label.cp-quick__key").filter({ has: window.getByRole("checkbox", { name: /^8A/ }) }).click();
       await window.keyboard.press("Escape");
 
       const chips = window.getByRole("list", { name: "Active filters" });

@@ -48,3 +48,19 @@ export async function clickRowAt(
     .toBe(true);
   await page.mouse.click(found.at!.x, found.at!.y, { button, clickCount });
 }
+
+/**
+ * Brings Track details into view after a row was selected. A selection opens it a moment later,
+ * but in a window too narrow for the table beside it the panel folds itself (D11, D16), and the
+ * page header's Details button, shown only while the panel is hidden, brings it back.
+ */
+export async function showTrackDetails(page: Page): Promise<Locator> {
+  const panel = page.locator(".cp-track-detail:visible").first();
+  const toggle = page.locator('button[aria-label="Track details"]:visible').first();
+  await expect(panel.or(toggle)).toBeVisible({ timeout: 15_000 });
+  // The panel opens 250 ms after a selection; past that, a hidden panel stays folded.
+  await page.waitForTimeout(500);
+  if (!(await panel.isVisible())) await toggle.click();
+  await expect(panel).toBeVisible({ timeout: 15_000 });
+  return panel;
+}

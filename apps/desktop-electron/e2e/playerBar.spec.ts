@@ -64,7 +64,8 @@ test("the player bar fits the shell at every scale", async () => {
     });
     await expect(win.locator(".cp-player-bar")).toContainText("Some Long Track Title 0", { timeout: 10_000 });
     // The first-run guide sits over the bar and takes the point the click-area check lands on.
-    await win.getByRole("dialog", { name: "Getting started" }).getByRole("button", { name: "Skip" }).click();
+    // D24: no Skip button; the × (Close) skips the guide.
+    await win.getByRole("dialog", { name: "Getting started" }).getByRole("button", { name: "Close" }).click();
     await expect(win.getByRole("dialog")).toHaveCount(0);
 
     for (const scale of [1, 1.5, 2, 3]) {
@@ -302,7 +303,7 @@ test("a disabled player-bar control shows the themed tip on a real hover", async
 
     // The first-run guide sits over the bar and would take a real mouse.
     await win.getByRole("dialog", { name: "Getting started" })
-      .getByRole("button", { name: "Skip" }).click();
+      .getByRole("button", { name: "Close" }).click(); // D24: the × skips, no Skip button
     await expect(win.getByRole("dialog")).toHaveCount(0);
 
     await win.evaluate(async (file) => {

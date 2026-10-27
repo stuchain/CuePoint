@@ -195,7 +195,8 @@ test.describe("the tightest rows at 1,024 px wide and 1.5x (P2)", () => {
       });
       await expect(win.locator(".cp-player-bar")).toContainText("Strobe", { timeout: 20_000 });
       const dialog = win.getByRole("dialog", { name: "Getting started" });
-      if (await dialog.count()) await dialog.getByRole("button", { name: "Skip" }).click();
+      // D24: Getting started has no Skip; its × (Close) skips it.
+      if (await dialog.count()) await dialog.getByRole("button", { name: "Close" }).click();
       const meta = await win.evaluate(() => {
         const el = document.querySelector<HTMLElement>(".cp-player-bar__meta")!;
         return {

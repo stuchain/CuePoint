@@ -42,7 +42,7 @@ import { chooseMenuItem } from "./appMenu";
 import { waitForEngine } from "./engineReady";
 import { setInnerSize } from "./windowSizes";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
-import { clickRowAt } from "./rowClick";
+import { clickRowAt, showTrackDetails } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -346,7 +346,8 @@ const setTable = (win: Page) => win.getByRole("table", { name: "Set entries" });
 function setRow(win: Page, title: string, nth = 0) {
   return setTable(win)
     .locator(".track-table__row")
-    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(⚠ )?${title}(Edit…)?$`) }) })
+    // D16: the Play test leaves Warm One in the player, so its title may read "Now playing: " first (R4-6).
+    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(Now playing: )?(⚠ )?${title}(Edit…)?$`) }) })
     .nth(nth);
 }
 
@@ -363,7 +364,8 @@ const libraryTable = (win: Page) => win.getByRole("table", { name: "Library trac
 const libraryRow = (win: Page, title: string) =>
   libraryTable(win)
     .locator('[role="row"][data-index]')
-    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^${title}$`) }) });
+    // D16: with Track details' Play gone, the Play test leaves Warm One in the player, so its title reads "Now playing: " first (R4-6).
+    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(Now playing: )?${title}$`) }) });
 
 /**
  * Select Library rows with a click (the selection is the input; the action is the test). The
@@ -432,7 +434,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     for (const dir of [userDataDir, cuepointHome, workspace]) rmSync(dir, { recursive: true, force: true });
   });
 
-  test("Play, Play next and Add to queue: the selection bar's Play, and Track details", async () => {
+  test("Play, Play next and Add to queue: the selection bar's Play (Track details has none, D16)", async () => {
     test.skip(!hasPlayer, NO_PLAYER);
     await openLibrary(win);
     // The tones last a quarter of a second and mpv walks into the entry preloaded after the
@@ -462,30 +464,12 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, playMenu(), "the bar's Play");
     await choose(win, "Play next");
     await expect.poll(async () => (await queueState(win)).titles.length, { timeout: 15_000 }).toBe(length + 1);
-    let queue = await queueState(win);
+    const queue = await queueState(win);
     expect(queue.titles[queue.at + 1]).toBe("Close");
     length += 1;
 
-    // Track details has Play, and the other two under Queue ▾ (K5).
-    const details = win.getByRole("complementary", { name: "Track details" });
-    const queueButton = () => details.getByRole("button", { name: "Queue", exact: true });
-    await pick(win, "Warm Two");
-    await use(win, queueButton(), "Track details' Queue");
-    await choose(win, "Add to queue");
-    await expect.poll(async () => (await queueState(win)).titles.length, { timeout: 15_000 }).toBe(length + 1);
-    expect((await queueState(win)).titles.at(-1)).toBe("Warm Two");
-    length += 1;
-    await pick(win, "Bridge Spare");
-    await use(win, queueButton(), "Track details' Queue");
-    await choose(win, "Play next");
-    await expect.poll(async () => (await queueState(win)).titles.length, { timeout: 15_000 }).toBe(length + 1);
-    queue = await queueState(win);
-    expect(queue.titles[queue.at + 1]).toBe("Bridge Spare");
-    await pick(win, "Other Spare");
-    await use(win, details.getByRole("button", { name: "Play", exact: true }), "Track details' Play");
-    // Track details' Play plays that one track, so the queue is now just it (the fixture's files
-    // last about a second, so it may already have finished).
-    await expect.poll(async () => (await queueState(win)).titles, { timeout: 30_000 }).toEqual(["Other Spare"]);
+    // D16: Track details has no Play, Queue or Similar buttons; the bar above is their one place.
+    await expect(win.getByRole("complementary", { name: "Track details" }).getByRole("button", { name: "Queue", exact: true })).toHaveCount(0);
     await win.evaluate(async () => {
       const player = (window as never as Bridge).cuepoint.player;
       await player.stop();
@@ -504,9 +488,9 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     await pick(win, "Build");
     const more = () => toolbar(win).getByRole("button", { name: "More", exact: true });
-    // Copy is Organize's now.
-    await use(win, toolbar(win).getByRole("button", { name: "Organize", exact: true }), "the bar's Organize");
-    await choose(win, "Copy");
+    // P8 (M412): Copy is More's again, and the entry says what it copies.
+    await use(win, more(), "the bar's More");
+    await choose(win, "Copy as text");
     await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText()), { timeout: 15_000 }).toContain("Build");
 
     await use(win, more(), "the bar's More");
@@ -515,13 +499,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     expect((await shownFiles())[0]).toMatch(/3\.mp3$/);
   });
 
-  test("Similar tracks: Track details, and the selection bar's More", async () => {
-    await openLibrary(win);
-    await pick(win, "Build");
-    const details = win.getByRole("complementary", { name: "Track details" });
-    await use(win, details.getByRole("link", { name: "Similar tracks" }).or(details.getByRole("button", { name: "Similar tracks" })).first(), "Track details' Similar tracks");
-    await expect(win).toHaveURL(/#\/discover\/similar\/3$/, { timeout: 15_000 });
-
+  test("Similar tracks: the selection bar's More (Track details has none, D16)", async () => {
     await openLibrary(win);
     await pick(win, "Close");
     await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
@@ -546,7 +524,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     await pick(win, "Warm One", "Warm Two");
     await use(win, organize(), "the bar's Organize");
-    await choose(win, "Add to Collection…");
+    // P8: one article in the entry.
+    await choose(win, "Add to a Collection…");
     const picker = win.getByRole("dialog");
     await picker.getByRole("searchbox").fill("Organize crate");
     await win.keyboard.press("ArrowDown");
@@ -555,7 +534,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     await pick(win, "Build");
     await use(win, organize(), "the bar's Organize");
-    await choose(win, "Add to Set…");
+    await choose(win, "Add to a Set…"); // P8: one article
     await win.getByRole("dialog").getByRole("searchbox").fill("Organize set");
     await win.keyboard.press("ArrowDown");
     await win.keyboard.press("Enter");
@@ -569,7 +548,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     await pick(win, "Close", "Peak Jump");
     await use(win, organize(), "the bar's Organize");
-    await choose(win, "New Set from these…");
+    await choose(win, "New Set from 2 tracks…"); // P8: the entry counts the tracks
     const dialog = win.getByRole("dialog", { name: "New Set from the 2 selected tracks" });
     await dialog.getByRole("textbox", { name: "Name" }).fill("From the bar");
     await reach(win, dialog.getByRole("button", { name: "Create the Set" }), "Create the Set");
@@ -740,6 +719,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     // Match opens on Playlists (C22): tick the whole library and press Match, none in the header; no window opens.
     await win.getByRole("checkbox", { name: "Match All tracks" }).check();
     await use(win, win.getByRole("button", { name: "Match ticked playlists" }), "Match whole library");
+    // M506: not signed in to Beatport, so Match asks first.
+    await win.getByRole("button", { name: "Match anyway" }).click();
     await expect(win.getByRole("dialog", { name: "Match on Beatport" })).toHaveCount(0);
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
     // Nothing here reaches Beatport for real: stop what started, and wait until it has stopped,
@@ -1007,6 +988,8 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     // One track: the editor is Track details'.
     await openLibrary(win);
     await pick(win, "Build");
+    // D11, D16: in a window too narrow for the table beside it the panel folds itself.
+    await showTrackDetails(win);
     const details = win.getByRole("complementary", { name: "Track details" });
     // Edit values… is under the Yours tab.
     await details.getByRole("tab", { name: "Yours" }).click();

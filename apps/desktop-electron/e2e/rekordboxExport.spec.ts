@@ -290,7 +290,8 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         const dialog = exportDialog(window);
         await saveDialogAnswers(app, library.xml);
         await dialog.getByRole("button", { name: "Choose file…" }).click();
-        await expect(dialog.getByText(path.basename(library.xml))).toBeVisible();
+        // P10: the note under the title names the source file too, so the chosen path is read where it is shown.
+        await expect(dialog.locator(".rekordbox-export__path")).toContainText(path.basename(library.xml));
         await dialog.getByRole("button", { name: "Export 3 tracks and 1 playlist" }).click();
 
         const refused = dialog.getByRole("region", { name: "Refused" });
@@ -303,7 +304,10 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         const dialog = exportDialog(window);
         await saveDialogAnswers(app, destination);
         await dialog.getByRole("button", { name: "Choose another file…" }).click();
-        await expect(dialog.getByText(destination, { exact: true })).toBeVisible();
+        // M500: a path is shown name first, then its folder ("CuePoint Export.xml — …/Exports").
+        await expect(dialog.locator(".rekordbox-export__path")).toHaveText(
+          `${path.basename(destination)} — ${path.dirname(destination)}`,
+        );
         const confirm = dialog.getByRole("button", { name: "Export 3 tracks and 1 playlist" });
         await expect(confirm).toBeEnabled({ timeout: 30_000 });
         await confirm.click();
@@ -373,7 +377,8 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await openDetails(dialog);
         await expect(dialog.getByRole("checkbox", { name: /^Techno/ })).toBeChecked();
         await expect(dialog.getByRole("checkbox", { name: /^Saturday/ })).not.toBeChecked();
-        await expect(dialog.getByText(new RegExp(`the save dialog opens in ${exports.replace(/\\/g, "\\\\")}`))).toBeVisible();
+        // M512: the unchosen destination names the one file, name first, in the folder the save dialog opens in.
+        await expect(dialog.locator(".rekordbox-export__path")).toHaveText(`CuePoint Export.xml — ${exports}`);
 
         await dialog.getByRole("combobox", { name: /Key notation/ }).selectOption("camelot");
         await expect(dialog.getByTestId("export-key-consequence")).toContainText("Camelot keys (8A)");

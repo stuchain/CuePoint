@@ -220,6 +220,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await expect(journey).toHaveAttribute("data-status", "not_matched", { timeout: 15_000 });
         await window.getByRole("checkbox", { name: "Match Journey" }).check();
         await window.getByRole("button", { name: "Match ticked playlists" }).click();
+        // M506: not signed in to Beatport (the fixture answers for it), so Match asks first.
+        await window.getByRole("button", { name: "Match anyway" }).click();
         await expect(window.getByText("Matching 3 tracks on Beatport", { exact: true })).toBeVisible({ timeout: 30_000 });
         // The run lands on its Review when it ends: every track, with where each stands and a tick.
         // There is no Review tab (D13): the area's row keeps its two sub-tabs and offers a way back.

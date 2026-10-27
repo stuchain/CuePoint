@@ -31,7 +31,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
-import { pressFilterRowAction } from "./filterRow";
+import { selectAllMatching } from "./filterRow";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -203,11 +203,12 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await openLibrary(window);
 
       await expect(window.getByTestId("library-track-count")).toHaveText("6 tracks");
-      // The header shows the file's name; the whole path is in its hint.
+      // The header shows the file's name; the whole path is in the "last read" words' hint (D14: the
+      // name is the file menu's button, whose Copy path gives the path).
       const header = window.locator(".library-header");
       const file = header.getByText(path.basename(xmlPath), { exact: true });
       await expect(file).toBeVisible();
-      expect(await file.getAttribute("title")).toContain(xmlPath);
+      expect(await header.locator(".library-header__read").getAttribute("title")).toContain(xmlPath);
       await expect(header.getByText("Up to date")).toBeVisible();
     } finally {
       await app.close();
@@ -221,6 +222,9 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await importCollection(window, writeExport(workspace, [0, 1, 2, 3, 4, 5]));
       await openLibrary(window);
       await expect(window.getByTestId("library-track-count")).toHaveText("6 tracks");
+      // M106-M108 put the file menu, its state and "last read …" beside the title, and the header
+      // drops the chip first where they do not fit (A1); this looks at a window with room for all.
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1600, 900));
 
       const chip = window.locator(".library-header").getByRole("button", { name: /^First steps/ });
       await expect(chip).toBeVisible();
@@ -275,10 +279,10 @@ test.describe("The Library page (LIBRARY-11)", () => {
       }
       expect(Math.max(...tops) - Math.min(...tops), `button centres ${tops} (${shown})`).toBeLessThanOrEqual(2);
       console.log("PAGES-05A header labels:", shown);
-      // Nothing selected: no bar above the table. Select all and the count are in the filter row,
-      // and Columns is the table header's corner (FLW-8, C9).
+      // Nothing selected: no bar above the table, and no Select all (M116: it is "Select all N" in
+      // the selection bar once something is selected); Columns is the table header's corner (FLW-8, C9).
       await expect(window.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
-      await expect(window.getByRole("button", { name: "Select all" })).toBeVisible();
+      await expect(window.getByRole("button", { name: /^Select all/ })).toHaveCount(0);
       await expect(
         // M404/D33: the corner button is "Columns", without "…".
         window.getByRole("table", { name: "Library tracks" }).getByRole("button", { name: "Columns", exact: true }),
@@ -414,8 +418,8 @@ test.describe("The Library page (LIBRARY-11)", () => {
         // The rows the page keeps are counted with nothing selected: the bar is only there while
         // tracks are selected, and then it covers the bottom rows instead of moving them.
         const idle = await measure();
-        // On the row, or in its More menu when Track details leaves the row too little room (W1).
-        await pressFilterRowAction(window, "Select all");
+        // Ctrl+A: the filter row has no Select all any more (M116).
+        await selectAllMatching(window);
         await expect(window.getByRole("toolbar", { name: "Selection" })).toBeVisible();
         const after = await shape();
         expect(after.row, "the filter row's height, with and without a selection").toBe(before.row);
@@ -527,7 +531,8 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await expect(window.getByTestId("library-track-count")).toHaveText("5 tracks", {
         timeout: 30_000,
       });
-      await expect(window.getByText(/2 removed/)).toBeVisible();
+      // The header's facts line says it, and so does the toast (P8): read the header's.
+      await expect(window.locator(".library-header").getByText(/2 removed/)).toBeVisible();
       await expect(window.getByText("Up to date")).toBeVisible();
     } finally {
       await app.close();

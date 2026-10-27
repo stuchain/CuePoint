@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url";
 
 import { resolvePlayerBinary } from "../electron/playerLaunch";
 import { waitForEngine } from "./engineReady";
+import { showTrackDetails } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -53,8 +54,10 @@ async function expectReading(window: Page, line: string, timeout = 15_000): Prom
     await expect(fact.locator("dd")).toHaveText(value!.replace(/^Loudness /, ""), { timeout });
     // The hint is the value's own title at rest (the shared Hint).
     expect(await fact.locator("dd span:not(.cp-hint)").getAttribute("title")).toContain(line);
-    // The peak stays drawn under the waveform.
-    await expect(window.getByTestId("inspector-loudness")).toHaveText(peak!);
+    // M129, M130: the facts line holds the value, so under the waveform is only what the strip is.
+    expect(peak).toMatch(/^Peak /);
+    await expect(window.getByTestId("inspector-loudness")).toHaveCount(0);
+    await expect(window.getByTestId("inspector-caption")).toHaveText(/^Whole track/);
     return;
   }
   await expect(window.getByTestId("inspector-loudness")).toHaveText(line, { timeout });
@@ -214,6 +217,8 @@ async function inspect(window: Page, title: string) {
   const search = window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" });
   await search.fill(title);
   await window.locator(".track-table__row").filter({ hasText: title }).first().click();
+  // D11: Track details folds itself in a window narrower than the table and the panel need.
+  await showTrackDetails(window);
   await expect(window.locator("[data-testid=inspector-waveform]")).toBeVisible({ timeout: 20_000 });
 }
 
@@ -278,8 +283,8 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       // --- a copy: each row's loudness with its unit -----------------------
       await window.locator(".track-table__row").filter({ hasText: "Bands" }).first().click();
       await window.keyboard.press("Control+A");
-      // Copy is Organize's (trackActionGroups), not More's.
-      await window.getByRole("button", { name: "Organize", exact: true }).click();
+      // P8 (M412): Copy is More's (trackActionGroups), not Organize's.
+      await window.getByRole("toolbar", { name: "Selection" }).getByRole("button", { name: "More", exact: true }).click();
       await window.getByRole("menuitem", { name: /^Copy/ }).click();
       await expect(window.getByText(`Copied ${TRACKS.length} tracks`)).toBeVisible({ timeout: 15_000 });
       const copied = (await app.evaluate(({ clipboard }) => clipboard.readText())).replace(/\r\n/g, "\n");

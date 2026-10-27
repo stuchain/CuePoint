@@ -19,6 +19,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { showTrackDetails } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -276,6 +277,8 @@ test.describe("The Clean page (CLEAN-12)", () => {
         // Match starts a run and opens no window, C22).
         await window.getByRole("link", { name: "Library", exact: true }).click();
         await window.getByRole("table", { name: "Library tracks" }).getByText("Present One").first().click();
+        // D11, D16: Track details folds itself when the window is too narrow for the table beside it.
+        await showTrackDetails(window);
         await window.getByRole("tab", { name: "Beatport" }).click();
         await window.getByRole("button", { name: "Match on Beatport", exact: true }).first().click();
         const matching = window.getByRole("dialog", { name: "Match on Beatport" });

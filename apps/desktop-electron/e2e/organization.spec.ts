@@ -51,7 +51,7 @@ import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 import { openAddFilter } from "./addFilter";
-import { pressFilterRowAction } from "./filterRow";
+import { pressFilterRowAction, selectAllMatching } from "./filterRow";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -421,7 +421,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
       // ---------------------------------------------------------------- 8
       // Selected a moment ago, so its row menu has Freeze (K14, C15).
-      await rowAction(window, "House only", "Freeze to a Collection…");
+      // P8: the row menu's freeze is "Save as a Collection…"; its dialog still freezes.
+      await rowAction(window, "House only", "Save as a Collection…");
       const freeze = window.getByRole("dialog");
       await expect(freeze).toContainText(/matches right now/);
       await freeze.getByRole("button", { name: "Freeze it" }).click();
@@ -712,12 +713,13 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(table).toBeVisible({ timeout: 30_000 });
 
       // Everything matching, which is never a list of ids.
-      await pressFilterRowAction(window, "Select all");
+      await selectAllMatching(window);
       await expect(window.getByRole("toolbar", { name: "Selection" })).toContainText("50,000 selected");
       await expect(window.getByText("The selection is everything matching")).toBeAttached();
 
       await window.getByRole("button", { name: "Organize", exact: true }).click();
-      await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
+      // P8: the entry names what it does.
+      await window.getByRole("menuitem", { name: "Add to favorites", exact: true }).click();
 
       // Above the threshold it asks first, with the number, and says the batch
       // can be reverted as one from Activity (DEC-008, CLEAN-13).
@@ -775,13 +777,18 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // M283: toasts float over the page's bottom right, where the selection bar's buttons are;
       // the stopped job's message (it can arrive a moment after the stop) is closed first, as a
       // person would.
+      // The menu's entry is part of the retry: a message that lands after the menu opened sits
+      // over it (toasts are above menus), and is closed on the next pass.
+      const favorite = window.getByRole("menuitem", { name: "Add to favorites", exact: true });
       await expect(async () => {
         for (const close of await window.locator(".cp-toast").getByRole("button", { name: "Close message" }).all()) {
           await close.click({ timeout: 2_000 });
         }
-        await window.getByRole("button", { name: "Organize", exact: true }).click({ timeout: 2_000 });
+        if (!(await favorite.isVisible())) {
+          await window.getByRole("button", { name: "Organize", exact: true }).click({ timeout: 2_000 });
+        }
+        await favorite.click({ timeout: 2_000 });
       }).toPass({ timeout: 30_000 });
-      await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
       await window.getByRole("dialog").getByRole("button", { name: "Change 50,000 tracks" }).click();
 
       await expect.poll(favorited, { timeout: 180_000 }).toBe(50_000);

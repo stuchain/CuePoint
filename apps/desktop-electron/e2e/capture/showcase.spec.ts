@@ -515,7 +515,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         const panel = window.getByRole("region", { name: "New dig" });
         await expect(panel).toBeVisible({ timeout: 30_000 });
         await panel.getByRole("checkbox", { name: "House", exact: true }).check();
-        await panel.getByRole("button", { name: "Start looking" }).click();
+        await panel.getByRole("button", { name: "Start dig" }).click();
         await expect(window.getByText(/^Found \d+ tracks from 1 chart/)).toBeVisible({ timeout: 90_000 });
         // The shot of the table: Everything, after the cards.
         await window.getByRole("button", { name: /^Everything · / }).click();

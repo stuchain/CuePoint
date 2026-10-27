@@ -15,6 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
+import { showTrackDetails } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -266,6 +267,8 @@ test.describe("Alignment (L9)", () => {
 
         // --- L1, L7: Track details keeps one left edge --------------------------------------
         await rows.first().click();
+        // D11, D16: at this size the panel folds itself below the table's minimum; Details shows it.
+        await showTrackDetails(win);
         const inspector = win.locator(".cp-inspector").first();
         await expect(inspector.locator(".cp-track-detail__title")).toBeVisible({ timeout: 15_000 });
         await win.mouse.move(0, 0);
@@ -274,15 +277,9 @@ test.describe("Alignment (L9)", () => {
           [".cp-inspector__header", ".cp-inspector .cp-track-detail__title", ".cp-inspector .cp-track-section__title", ".cp-inspector .cp-track-detail__factlabel"],
           [],
         );
-        const play = await inspector.getByRole("button", { name: "Play", exact: true }).first().evaluate((b) => {
-          const range = document.createRange();
-          range.selectNodeContents(b);
-          const words = [...range.getClientRects()].filter((r) => r.width > 1 && r.width < b.getBoundingClientRect().width - 1);
-          return Math.min(...words.map((r) => r.left));
-        });
-        oneEdge(`${WINDOWS_INNER.width} px, ${scale}x: Track details: panel title, track title, Play, section titles and labels`, [
+        // D16: Track details has no Play button any more, so its words are no longer measured here.
+        oneEdge(`${WINDOWS_INNER.width} px, ${scale}x: Track details: panel title, track title, section titles and labels`, [
           ...Object.values(details).flatMap((list) => list.map((t) => t.left)),
-          play,
         ]);
 
         // --- L1, L4: Prepare's side panel ---------------------------------------------------

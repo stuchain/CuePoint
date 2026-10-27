@@ -20,6 +20,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { openAddFilter } from "./addFilter";
+import { selectAllMatching } from "./filterRow";
+import { showTrackDetails } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -201,7 +203,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       // The file says 8A, but no Beatport match or correction gives a key.
       await expect(tone.locator('[data-column="key"]')).toHaveText("—");
       await tone.getByText("Tone One").click();
-      const inspector = window.locator(".cp-track-detail");
+      const inspector = await showTrackDetails(window);
       await expect(inspector.getByTestId("track-key")).toContainText("—");
       const resolved = await window.evaluate(async () => {
         const rows = await window.cuepoint!.browseLibrary!({ limit: 10 });
@@ -221,7 +223,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.getByRole("link", { name: "Library" }).click();
       await row(window, "Tone One").getByText("Tone One").click();
 
-      const inspector = window.locator(".cp-track-detail");
+      const inspector = await showTrackDetails(window);
       // Edit values… is under the Yours tab.
       await inspector.getByRole("tab", { name: "Yours" }).click();
       await inspector.getByRole("button", { name: "Edit values…" }).click();
@@ -271,7 +273,8 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.getByRole("link", { name: "Library" }).click();
       await expect(row(window, "Tone Two")).toBeVisible({ timeout: 30_000 });
 
-      await window.getByRole("button", { name: "Select all" }).click();
+      // M116: no Select all in the filter row; Ctrl+A selects everything the view matches.
+      await selectAllMatching(window);
       // The bar's groups hold the entries the right-click menu does (FLW-8): Beatport ▸
       // opens Clean with the selection, and More ▸ holds Edit values….
       const bar = window.getByRole("toolbar", { name: "Selection" });
@@ -371,16 +374,18 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       seedMatch(cuepointHome);
       await window.getByRole("link", { name: "Library" }).click();
       await row(window, "Tone One").getByText("Tone One").click();
+      await showTrackDetails(window);
 
       // Overview says how the match stands; the Beatport tab says the rest.
       await expect(window.getByTestId("track-fact-beatport")).toContainText("Confirmed", { timeout: 15_000 });
       await window.getByRole("tab", { name: "Beatport" }).click();
       const zone = window.getByRole("tabpanel", { name: "Beatport" });
       await expect(zone).toContainText("Confirmed automatically", { timeout: 15_000 });
-      // Only a field that differs is drawn in full: what is used, and what Beatport has.
+      // D16: a table of Rekordbox's values against Beatport's, the Beatport cell marked where it differs.
       const genre = zone.locator('[data-field="genre"]');
-      await expect(genre).toContainText("Beatport Melodic House & Techno");
-      await expect(genre).toContainText("Using House (from Rekordbox)");
+      await expect(genre.locator("td").nth(0)).toHaveText("House");
+      await expect(genre.locator("td").nth(1)).toHaveText("Melodic House & Techno");
+      await expect(genre.locator("td").nth(1)).toHaveClass(/cp-track-beatport__differs/);
       // Applying Beatport's values is Match's and the Library's Beatport menu's job, not this panel's.
       await expect(zone.getByRole("button", { name: /^Apply/ })).toHaveCount(0);
 
@@ -392,15 +397,17 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.getByRole("link", { name: "Clean" }).click();
       await window.getByRole("link", { name: "Library" }).click();
       await row(window, "Tone One").getByText("Tone One").click();
-      // Used now equals Beatport's, so the field agrees and is said once, not drawn three times.
+      await showTrackDetails(window);
+      // Used now equals Beatport's: Rekordbox's cell says what is used, and Beatport's no longer differs (D16).
       await window.getByRole("tab", { name: "Beatport" }).click();
-      await expect(zone).toContainText(/genre applied from Beatport/i, { timeout: 15_000 });
-      await expect(genre).toHaveCount(0);
+      await expect(genre.locator("td").nth(0)).toContainText("Using Melodic House & Techno", { timeout: 15_000 });
+      await expect(genre.locator("td").nth(1)).not.toHaveClass(/cp-track-beatport__differs/);
       await expect(
         row(window, "Tone One").getByRole("img", { name: /^Genre applied from Beatport\. In Rekordbox it is House\./ }),
       ).toBeAttached();
 
-      await zone.getByRole("button", { name: /^Compare all on the Clean page/ }).click();
+      // D16: the tab's link to Clean is "Open in Clean".
+      await zone.getByRole("button", { name: "Open in Clean" }).click();
       // It opens Match, on the library's review, with the track's details beside the list.
       await expect(window.getByRole("tab", { name: /^Match/, selected: true })).toBeVisible({ timeout: 15_000 });
       // No Review tab (D13): the review fills the body, with a way back in the row above it.
