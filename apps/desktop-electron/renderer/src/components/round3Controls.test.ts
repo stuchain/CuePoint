@@ -18,6 +18,9 @@ import textField from "./TextField.css?raw";
 import textarea from "./Textarea.css?raw";
 import index from "../index.css?raw";
 
+/** Every renderer stylesheet, keyed by its path from here ("../index.css"). */
+const ALL_SHEETS = import.meta.glob<string>("../**/*.css", { query: "?raw", import: "default", eager: true });
+
 /** The body of every rule whose selector list names `selector` exactly, joined. */
 function body(css: string, selector: string): string {
   return parseRules(stripComments(css))
@@ -126,6 +129,38 @@ describe("the state language (D30, D31, D29)", () => {
     }
     expect(body(index, ":where(input[type=\"checkbox\"], input[type=\"radio\"])")).toMatch(/cursor:\s*default/);
     expect(stripComments(index)).not.toMatch(/not-allowed/);
+  });
+
+  // M339 tail: the hand is for links only, and no sheet shows "not-allowed". A new hand must be
+  // recorded here with its reason; the guard reads every renderer stylesheet.
+  it("keeps the hand for links and never shows not-allowed, in every sheet (M339)", () => {
+    const HAND_ALLOWED: ReadonlyArray<{ sheet: string; selector: string; reason: string }> = [
+      {
+        sheet: "../index.css",
+        selector: '.cp-link:where(:not(:disabled, [aria-disabled="true"]))',
+        reason: "the one link, while it can be followed",
+      },
+      { sheet: "../screens/library/CreditLinks.css", selector: ".cp-credit-link", reason: "an artist or label credit is a link" },
+    ];
+    const found: string[] = [];
+    for (const [sheet, css] of Object.entries(ALL_SHEETS)) {
+      for (const rule of parseRules(stripComments(css))) {
+        const cursor = /cursor:\s*([a-z-]+)/.exec(rule.body)?.[1];
+        if (cursor === "not-allowed") found.push(`${sheet} ${rule.selector.trim()}: not-allowed`);
+        if (cursor !== "pointer") continue;
+        const selector = rule.selector.replace(/\s+/g, " ").trim();
+        if (!HAND_ALLOWED.some((entry) => entry.sheet === sheet && entry.selector === selector)) {
+          found.push(`${sheet} ${selector}: pointer`);
+        }
+      }
+    }
+    expect(found).toEqual([]);
+    // The allowlist stays honest: each entry still sets the hand.
+    for (const entry of HAND_ALLOWED) {
+      expect(body(ALL_SHEETS[entry.sheet] ?? "", entry.selector), entry.sheet).toMatch(/cursor:\s*pointer/);
+    }
+    // A disabled link shows the arrow.
+    expect(body(index, ".cp-link")).toMatch(/cursor:\s*default/);
   });
 
   it("makes quiet mean frameless, not grey, with the one hover of fill and frame (M342)", () => {

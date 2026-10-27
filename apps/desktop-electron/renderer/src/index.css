@@ -286,6 +286,12 @@ legend,
   font-family: var(--font-data);
   font-weight: var(--control-font-weight);
   text-decoration: none;
+  /* The hand is a link's alone (M339, D30), and only while it can be followed: a disabled
+     link-looking button shows the arrow, as every disabled control does (D31). */
+  cursor: default;
+}
+
+.cp-link:where(:not(:disabled, [aria-disabled="true"])) {
   cursor: pointer;
 }
 
