@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import socket
+import time
 import urllib.error
 import urllib.request
 
@@ -76,11 +77,23 @@ def _warnings(caplog) -> list[str]:
     ]
 
 
+def _logged_warnings(caplog) -> list[str]:
+    """The slow-request lines, once the server has written one.
+
+    The server logs in ``track``'s ``finally``, after the answer has gone out, so
+    the client can read its answer before the line exists.
+    """
+    deadline = time.monotonic() + 5.0
+    while not _warnings(caplog) and time.monotonic() < deadline:
+        time.sleep(0.01)
+    return _warnings(caplog)
+
+
 def test_slow_request_logs_one_line_without_the_query(port, monkeypatch, caplog):
     monkeypatch.setattr(request_timing, "_clock", _SlowClock(0.6))
     with caplog.at_level(logging.DEBUG):
         status = _get(port, f"/api/v1/jobs/{JOB_ID}/results?q=secretvalue")
-    lines = _warnings(caplog)
+    lines = _logged_warnings(caplog)
     assert len(lines) == 1
     line = lines[0]
     assert line.startswith("[engine] slow request GET /api/v1/jobs/{id}/results ")
@@ -96,7 +109,7 @@ def test_slow_request_that_raises_is_logged_with_status_500(port, monkeypatch, c
     monkeypatch.setattr(request_timing, "_clock", _SlowClock(0.6))
     with caplog.at_level(logging.DEBUG):
         assert _get(port, f"/api/v1/jobs/{JOB_ID}/results") == 500
-    lines = _warnings(caplog)
+    lines = _logged_warnings(caplog)
     assert len(lines) == 1
     assert " GET /api/v1/jobs/{id}/results 500 600 ms" in lines[0]
 
