@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, type CSSProperties } from "react";
+import { useScaleFactor } from "../../tokens/ScaleContext";
 import { PlayerRegion } from "../shell/PlayerRegion";
 import { PlayerAnnouncer } from "./PlayerAnnouncer";
 import { PlayerBar } from "./PlayerBar";
 import { WaveformDetailStrip } from "../waveform/WaveformDetailStrip";
+import { STRIP_MAX_SCALE, useContentEdge, useStripPage } from "../waveform/stripPlaces";
 import { useWaveformPrefetch } from "../waveform/useWaveformPrefetch";
 import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
 import { markPlayed, selectCurrentTrackId } from "./playedTracks";
@@ -39,7 +41,7 @@ import "./PlayerSlot.css";
  * table the queue was built from. This slot only holds the bar's toggle, whose
  * state is `queuePanelState`.
  *
- * Above the bar sits the zoomed waveform (T4), while the track
+ * Above the bar sits the zoomed waveform (T4, D27), on Library, Prepare and Keys only and below 2x, while the track
  * in the player is in the library and Settings › Waveforms has it on. The bar
  * itself is not touched: the strip is a row of the slot, above it.
  */
@@ -65,7 +67,10 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   // early return, since a selection is made before anything has played.
   // Not in the compact bar (a window under 700px tall): the strip is not drawn there, so nothing is made for it.
   const compact = useCompactBar();
-  const stripOn = detailOn && !compact;
+  const onStripPage = useStripPage();
+  const collapsed = useScaleFactor() >= STRIP_MAX_SCALE;
+  const stripOn = detailOn && !compact && onStripPage && !collapsed;
+  const edge = useContentEdge();
   useWaveformPrefetch({ enabled: stripOn });
   const trackId = usePlayerValue(selectCurrentTrackId);
 
@@ -79,7 +84,7 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   // never jumps by the bar's height when something starts.
   return (
     <PlayerRegion>
-      <div className="cp-player-slot">
+      <div className="cp-player-slot" style={{ "--detail-strip-inset": `${edge}px` } as CSSProperties}>
         <PlayerAnnouncer />
         {stripOn && trackId !== null ? <WaveformDetailStrip key={trackId} trackId={trackId} /> : null}
         <PlayerBar

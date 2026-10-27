@@ -201,11 +201,14 @@ test.describe("The zoomed waveform above the player (T4)", () => {
       const box = window.getByRole("checkbox", { name: "Zoomed waveform above the player" });
       await box.scrollIntoViewIfNeeded();
       await expect(box).toBeChecked();
+      // Settings is not a place for the strip (D27, M318): it is off the page though the setting is on.
+      await expect(window.locator(".cp-detail-strip")).toHaveCount(0);
       await box.uncheck();
       await expect(window.locator(".cp-detail-strip")).toHaveCount(0);
       await expect(window.locator(".cp-player-bar")).toBeVisible();
 
       await box.check();
+      await window.getByRole("link", { name: "Library" }).click();
       await expect(window.locator(".cp-detail-strip")).toBeVisible({ timeout: 20_000 });
       await expect(window.locator(".cp-detail-strip")).toHaveAttribute("data-detail", "ready", { timeout: 60_000 });
       await expect.poll(() => painted(window), { timeout: 15_000 }).toBeGreaterThan(0);

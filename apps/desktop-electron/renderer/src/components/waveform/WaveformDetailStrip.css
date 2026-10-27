@@ -50,7 +50,9 @@
  */
 .cp-player-slot > .cp-hint:has(> .cp-detail-strip) {
   display: flex;
-  /* The full window width, under the sidebar too, so no empty box sits at its left. */
+  /* From the content's edge (M315): PlayerSlot measures where the page starts, so no grey box sits
+     under the sidebar column; it ends at the window's edge as the bar does. */
+  margin-left: var(--detail-strip-inset, 0px);
   width: auto;
   min-height: 0;
 }

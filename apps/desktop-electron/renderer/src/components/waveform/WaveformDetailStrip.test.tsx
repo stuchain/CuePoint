@@ -531,7 +531,8 @@ describe("frames", () => {
     expect(scheduled()).toBe(settled);
   });
 
-  it("under reduced motion draws the true stop at once, so a click lands on it", async () => {
+  // M376: reduced motion no longer holds the playhead between snapshots; the stop is reached by the short glide.
+  it("under reduced motion still lands a click on the true stop", async () => {
     document.documentElement.removeAttribute("data-motion-scroll");
     const now = vi.spyOn(performance, "now").mockReturnValue(1_000);
     const { push, player } = install();
@@ -541,8 +542,7 @@ describe("frames", () => {
     await push(snapshot(item(), { playing: false, paused: true, positionSeconds: 30.1 }));
     now.mockReturnValue(1_250);
     fireEvent.click(strip(), { clientX: 300 });
-    expect(player.seek.mock.calls[0]![0] as number).toBeCloseTo(30.1, 3);
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+    expect(player.seek.mock.calls[0]![0] as number).toBeCloseTo(30.1, 1);
   });
 
   it("schedules none while the document is hidden", async () => {
@@ -568,27 +568,26 @@ describe("frames", () => {
     expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(scheduled);
   });
 
-  it("is not moved by the other motion switches", async () => {
+  it("runs a frame while playing whatever the motion switches say (M376)", async () => {
     document.documentElement.removeAttribute("data-motion-scroll");
-    document.documentElement.setAttribute("data-motion-state", "on");
+    document.documentElement.removeAttribute("data-motion-state");
     install();
     render(<Slot />);
     await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
-    document.documentElement.removeAttribute("data-motion-state");
+    await waitFor(() => expect(window.requestAnimationFrame).toHaveBeenCalled());
   });
 
-  it("starts when the scroll switch is turned on, and stops when it is turned off", async () => {
+  it("is not stopped by turning the scroll switch off, nor started by turning it on (M376)", async () => {
     document.documentElement.removeAttribute("data-motion-scroll");
     install();
     render(<Slot />);
-    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
-    document.documentElement.setAttribute("data-motion-scroll", "on");
     await waitFor(() => expect(window.requestAnimationFrame).toHaveBeenCalled());
+    const scheduled = (window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+    document.documentElement.setAttribute("data-motion-scroll", "on");
     document.documentElement.removeAttribute("data-motion-scroll");
-    await waitFor(() => expect(window.cancelAnimationFrame).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(window.cancelAnimationFrame).not.toHaveBeenCalled();
+    expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(scheduled);
   });
 
   it("cancels its frame when it unmounts", async () => {
@@ -618,17 +617,15 @@ describe("frames", () => {
     expect(clears).toBeGreaterThan(before);
   });
 
-  it("under reduced motion schedules none, and draws again only on a snapshot", async () => {
+  it("under reduced motion extrapolates between snapshots too, and draws on a snapshot (M376)", async () => {
     document.documentElement.removeAttribute("data-motion-scroll");
     const { push } = install();
     render(<Slot />);
     await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+    await waitFor(() => expect(window.requestAnimationFrame).toHaveBeenCalled());
     const before = clears;
     await push(snapshot(item(), { positionSeconds: 30.25 }));
     expect(clears).toBeGreaterThan(before);
-    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
   });
 });
 

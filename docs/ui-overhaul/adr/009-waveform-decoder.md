@@ -273,6 +273,14 @@ The same decode now also makes the zoomed waveform's 75-a-second detail (ADR-012
 plays. One decode writes both streams; a detail request on a track whose overview is current
 decodes the file once more, on its own single worker at the same lowered priority.
 
+## Amendment (round 3, D27, M317, M318, 2026-10-27): the colours are fixed, the strip has places
+
+The waveform's low, mid and high bands stay the same colours in every theme (blue, amber, white),
+as in Rekordbox: a DJ reads a band by its colour, and a theme colour for the low band would make
+the same track look different from one theme to the next. This is on purpose, not an omission.
+The zoomed strip is drawn on Library, Prepare and Keys only, from the content's edge, and not at
+2x text size or above; the overview in the player bar is drawn everywhere.
+
 ## Signals to revisit
 
 - **A pinned build changes behaviour:** `--check-analysis` fails on a new pin,

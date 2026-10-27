@@ -23,11 +23,11 @@
  *
  * **When it draws.** The player reports a position four times a second; a
  * `requestAnimationFrame` loop extrapolates between snapshots
- * (`playheadClock.ts`), and runs only while a track plays, the document is
- * visible and motion is on. After a pause it keeps going only until the glide
- * to the stop has faded (`PAUSE_BLEND_MS` at most), then stops; hidden, no frame
- * is scheduled. Under reduced motion (`data-motion-scroll` absent from the root)
- * there is no glide and it redraws only on a snapshot, at the true position.
+ * (`playheadClock.ts`), and runs only while a track plays and the document is
+ * visible, under reduced motion too (M376: a playhead that waited for the next
+ * snapshot jumped ~19 columns four times a second). After a pause it keeps going
+ * only until the glide to the stop has faded (`PAUSE_BLEND_MS` at most), then
+ * stops; hidden, no frame is scheduled.
  *
  * `aria-hidden`: the bar's slider stays the control, as in the Inspector. A
  * click seeks to the time under it through the player bridge.
@@ -139,7 +139,6 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   const theme = useThemeRevision();
   const [mode] = useWaveformColour();
   const [spanMs, setSpanMs] = useWaveformDetailSpan();
-  const motion = useMotionOn();
   // The cross-fade is a state change (Settings, Motion, "State changes"), not scrolling.
   const fadeMotion = useMotionOn("data-motion-state");
   const hidden = useHidden();
@@ -179,9 +178,6 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   /** Drawing the smoothed overview because the detail is not ready. */
   const standIn = source?.smooth === true;
 
-  // Without motion no frame follows a snapshot, so there is no glide: draw the truth.
-  const motionRef = useRef(motion);
-  motionRef.current = motion;
   const fadeMotionRef = useRef(fadeMotion);
   fadeMotionRef.current = fadeMotion;
   const drawRef = useRef<() => void>(() => undefined);
@@ -351,7 +347,7 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   // A snapshot from the player: anchor the clock, and draw where it says.
   useLayoutEffect(() => {
     const now = performance.now();
-    clock.current.snapshot(position, playing, now, motionRef.current);
+    clock.current.snapshot(position, playing, now);
     setGliding(!playing && clock.current.settling(now));
     if (!document.hidden) drawRef.current();
   }, [position, playing]);
@@ -362,7 +358,8 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   }, [hidden]);
 
   // Between snapshots, only while a frame can be seen and is wanted.
-  const animate = (playing || gliding) && !hidden && motion;
+  // Under reduced motion too (M376): a playhead that waits for the next snapshot jumps ~19 columns four times a second.
+  const animate = (playing || gliding) && !hidden;
   useEffect(() => {
     if (!animate) return undefined;
     let frame = 0;
