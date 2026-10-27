@@ -26,7 +26,7 @@ export const KEYS = {
  */
 export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Everywhere", action: "Import a Rekordbox file…", shortcut: "Ctrl+O" },
-  { context: "Everywhere", action: "Settings…", shortcut: "Ctrl+," },
+  { context: "Everywhere", action: "Settings", shortcut: "Ctrl+," },
   { context: "Everywhere", action: "Bigger", shortcut: "Ctrl+=" },
   { context: "Everywhere", action: "Smaller", shortcut: "Ctrl+-" },
   { context: "Everywhere", action: "Default size", shortcut: "Ctrl+0" },

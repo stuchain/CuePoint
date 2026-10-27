@@ -138,7 +138,7 @@
  */
 .cp-status__running {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-activity);
   box-sizing: border-box;
   min-width: calc(260px * var(--scale));
   max-width: min(calc(480px * var(--scale)), calc(100vw - 2 * var(--space-xs)));

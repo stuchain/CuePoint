@@ -26,8 +26,6 @@
   /* The page scroller keeps the scrollbar's room, so the header's Details button stays put between a page that scrolls and one that does not (C219). */
   scrollbar-gutter: stable;
   width: 100%;
-  /* The room a showing toast takes (Toast.tsx), so it never covers the page's last row (C122). */
-  padding-bottom: var(--toast-room, 0px);
 
   /*
    * The content region is a query container, so the layout rules inside it can

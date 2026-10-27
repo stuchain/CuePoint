@@ -53,7 +53,7 @@
   max-width: 100%;
 }
 
-@container content (max-width: 600px) {
+@container content (max-width: 40em) {
   .settings-form {
     max-width: 100%;
   }

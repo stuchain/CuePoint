@@ -9,7 +9,7 @@
   right: calc(var(--space-lg) + var(--scrollbar-size, 0px));
   /* Above the player and the status strip: AppShellLayout measures them. */
   bottom: calc(var(--shell-bottom-inset, 0px) + var(--space-lg) + var(--space-sm));
-  z-index: 1100;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);

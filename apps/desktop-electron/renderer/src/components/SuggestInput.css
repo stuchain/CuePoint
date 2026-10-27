@@ -15,7 +15,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 940;
+  z-index: var(--z-popover);
   min-width: 100%;
   max-width: calc(320px * var(--scale));
   max-height: calc(160px * var(--scale));

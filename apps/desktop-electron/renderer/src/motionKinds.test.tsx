@@ -722,16 +722,6 @@ perKind(
 
 perKind(
   "feedback",
-  "new search results pulse",
-  () => ({ ui: <ul className="cp-global-search__list cp-global-search__list--fresh" />, target: first("ul") }),
-  (m) => {
-    expect(m.animation).toMatch(/cp-rise [^,]*steps\(/);
-    expect(m.animation).toMatch(/cp-pulse [^,]*linear/);
-  },
-);
-
-perKind(
-  "feedback",
   "a job finishing pulses the strip",
   () => ({
     ui: (

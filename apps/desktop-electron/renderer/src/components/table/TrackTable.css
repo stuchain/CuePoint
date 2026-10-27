@@ -471,7 +471,7 @@
 }
 
 .track-table__row:hover .track-table__end {
-  background: var(--row-hover);
+  background: var(--row-hover-solid);
 }
 
 .track-table__row--cursor:not(.track-table__row--selected):hover .track-table__end {

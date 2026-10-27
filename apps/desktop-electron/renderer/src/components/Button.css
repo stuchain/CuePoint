@@ -121,9 +121,9 @@
    it still reads as the page's one primary. A colour mix, never opacity (T6). */
 .cp-btn--primary:disabled:not(.cp-btn--loading),
 .cp-btn--primary[aria-disabled="true"]:not(.cp-btn--loading) {
-  background: color-mix(in srgb, var(--accent-fill) 22%, var(--bg-panel));
+  background: var(--disabled-primary-fill);
   border-color: transparent;
-  color: color-mix(in srgb, var(--fg-on-accent) 55%, var(--bg-panel));
+  color: var(--disabled-primary-text);
 }
 
 /* M345: a disabled green write button is the write green mixed into the panel, so "Export 300 tracks"
@@ -152,9 +152,10 @@
     .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
     .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
     .prepare-heading__buttons, .prepare-row-buttons)
-  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]),
+  .cp-btn--secondary:not(.cp-btn--framed):not(.cp-close):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]),
 :where(.track-table, .cp-data-table, .cp-card)
-  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]) {
+  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not(.cp-close):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]) {
+  /* A close button keeps its own muted × (M357); CloseButton.css gives it the hover. */
   background: transparent;
   border-color: transparent;
   color: var(--fg-primary);

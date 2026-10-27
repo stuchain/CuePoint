@@ -183,7 +183,7 @@ visible rather than silently patched over.
 ### When CuePoint stops in the background
 
 One banner appears above the page, not above the sidebar: **CuePoint stopped working
-in the background. Your library and files are safe.** Beside it is **Start it
+in the background. Nothing was changed.** Beside it is **Start it
 again**, and **Library loaded at 5:17 PM** is the time CuePoint last heard from its background process, so you know how old what you see on the page is. While it
 starts again the banner says **CuePoint stopped working in the background. Starting
 it again (1 of 3)…** If that does not work it says **CuePoint could not start in the

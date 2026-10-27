@@ -41,7 +41,7 @@
 }
 
 .cp-empty-state--clear .cp-empty-state__icon {
-  color: var(--success-text);
+  color: var(--fg-muted);
 }
 
 /* A short pixel headline at the regular weight, the page's label voice (M19, D1). */

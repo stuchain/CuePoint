@@ -1,7 +1,7 @@
 .cp-modal__backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal);
   display: flex;
   /* A fixed top, not the middle: a dialog that loads or grows grows downward, so its title and
      close button stay where the eye is (M375). */

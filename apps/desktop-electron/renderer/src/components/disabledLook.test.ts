@@ -84,7 +84,8 @@ describe("disabled colours (P38)", () => {
   });
 
   it("allows two exceptions: the disabled primary and write buttons are an accent mix on the panel, with mixed words", () => {
-    const exceptions = rules.filter((r) => /color:\s*color-mix\(/.test(r.body.replace(/background:[^;]*;/g, "").replace(/border-color:[^;]*;/g, "")));
+    // M324: the primary's words are the --disabled-primary-text token, the write button's an inline mix.
+    const exceptions = rules.filter((r) => /color:\s*(color-mix\(|var\(--disabled-primary-text\))/.test(r.body.replace(/background:[^;]*;/g, "").replace(/border-color:[^;]*;/g, "")));
     expect(exceptions).toHaveLength(2);
     const write = exceptions.find((r) => r.selector.includes(".cp-btn--write:disabled"))!;
     expect(write.body).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-write\) 22%, var\(--bg-panel\)\)/);
@@ -92,8 +93,9 @@ describe("disabled colours (P38)", () => {
     expect(write.body).not.toMatch(/opacity/);
     const primary = exceptions.find((r) => r.selector.includes(".cp-btn--primary:disabled"))!;
     expect(primary.selector).toContain(".cp-btn--primary:disabled");
-    expect(primary.body).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-fill\) 22%, var\(--bg-panel\)\)/);
-    expect(primary.body).toMatch(/color:\s*color-mix\(in srgb, var\(--fg-on-accent\) 55%, var\(--bg-panel\)\)/);
+    // M324: the primary's mix lives in tokens (--disabled-primary-fill / -text), the write button's stays inline.
+    expect(primary.body).toMatch(/background:\s*var\(--disabled-primary-fill\)/);
+    expect(primary.body).toMatch(/color:\s*var\(--disabled-primary-text\)/);
     expect(primary.body).not.toMatch(/opacity/);
   });
 

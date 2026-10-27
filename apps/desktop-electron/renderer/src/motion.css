@@ -256,15 +256,14 @@
     cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
 }
 
-/* One popover motion: a menu, a dropdown list or filter panel, the wheel, search, a hint tip and
-   the running list hang from their control, easing down a unit while they fade in. */
+/* One popover motion: a menu, a dropdown list or filter panel, the wheel, search and the running
+   list hang from their control, easing down a unit while they fade in. */
 :root[data-motion-entrance] .cp-track-menu,
 :root[data-motion-entrance] .cp-track-menu__submenu,
 :root[data-motion-entrance] .cp-global-search__panel,
 :root[data-motion-entrance] .cp-status__running,
 :root[data-motion-entrance] .cp-wheel-pop,
 :root[data-motion-entrance] .cp-suggest__list,
-:root[data-motion-entrance] .cp-hint__tip,
 :root[data-motion-entrance] .cp-quick__panel,
 :root[data-motion-entrance] .first-steps-note__popover,
 :root[data-motion-entrance] .cp-popover {
@@ -419,13 +418,6 @@
 :root[data-motion-feedback] .prepare-header__refusal,
 :root[data-motion-feedback] .cp-notice--field-error {
   animation: cp-shake var(--motion-slow) steps(1, end);
-}
-
-/* New search results pulse once. */
-:root[data-motion-feedback] .cp-global-search__list--fresh {
-  animation:
-    cp-rise var(--motion-base) steps(var(--motion-steps-short)),
-    cp-pulse var(--motion-slow) var(--motion-fade);
 }
 
 /* A job that finishes pulses the strip's words; odd and even finishes name different ones. */

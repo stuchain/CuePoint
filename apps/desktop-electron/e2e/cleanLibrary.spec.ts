@@ -402,7 +402,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       // It opens Match, on the library's review, with the track's details beside the list.
       await expect(window.getByRole("tab", { name: /^Match/, selected: true })).toBeVisible({ timeout: 15_000 });
       // No Review tab (D13): the review fills the body, with a way back in the row above it.
-      await expect(window.getByRole("region", { name: "Review Whole library" })).toBeVisible({
+      await expect(window.getByRole("region", { name: "Review All tracks" })).toBeVisible({
         timeout: 15_000,
       });
       const details = window.getByRole("complementary", { name: /^Candidates for / });

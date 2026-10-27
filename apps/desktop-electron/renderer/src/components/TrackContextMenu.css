@@ -11,7 +11,7 @@
      hover, violet only for what is selected (M289, D26). */
   --menu-active-fill: color-mix(in srgb, var(--fg-primary) 16%, var(--bg-panel));
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-menu);
   min-width: calc(140px * var(--scale));
   /* A long name (Remove from “…”) is cut with an ellipsis, not allowed to widen the menu (M295). */
   max-width: min(calc(360px * var(--scale)), calc(100vw - 2 * var(--space-lg)));
@@ -181,7 +181,7 @@
 .cp-track-menu__submenu {
   --menu-active-fill: color-mix(in srgb, var(--fg-primary) 16%, var(--bg-panel));
   position: fixed;
-  z-index: 61;
+  z-index: var(--z-submenu);
   max-width: min(calc(360px * var(--scale)), calc(100vw - 2 * var(--space-lg)));
   max-height: min(60vh, calc(480px * var(--scale)));
   overflow-y: auto;

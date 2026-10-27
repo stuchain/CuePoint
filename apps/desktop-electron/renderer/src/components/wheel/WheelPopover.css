@@ -4,7 +4,7 @@
  */
 .cp-wheel-pop {
   position: fixed;
-  z-index: 940;
+  z-index: var(--z-popover);
   box-sizing: border-box;
   /* The wheel's 48 cells, then the padding and the border around them. */
   width: calc(48 * 4px * var(--scale) + 2 * var(--space-lg) + 2 * var(--control-border-width));

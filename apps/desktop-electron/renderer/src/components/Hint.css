@@ -20,7 +20,7 @@
 .cp-hint__tip {
   position: fixed;
   /* Above dialogs (1000) and toasts (1100): a hint inside a dialog must be readable. */
-  z-index: 1300;
+  z-index: var(--z-hint);
   /* Its own text's width, whatever its left edge: an automatic width would
      shrink to the room right of it, and change as the tip is pulled in. */
   width: max-content;

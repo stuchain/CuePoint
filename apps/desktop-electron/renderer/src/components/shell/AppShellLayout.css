@@ -64,7 +64,7 @@
  */
 .app-shell__veil {
   grid-area: content;
-  z-index: 50;
+  z-index: var(--z-banner);
   pointer-events: none;
   background: color-mix(in srgb, var(--bg-app) var(--dim-veil), transparent);
 }

@@ -22,7 +22,8 @@ as they are replaced.
 | CuePoint's background process | not named: "CuePoint stopped working in the background" | "library service", "engine" (only Diagnostics and the log viewer keep it) |
 | A value that isn't there | **—** in tables and cards, **not set** in sentences | "empty", "none", "No value", "(not used)" |
 | Looking for text in a list | **Search** | "search" for a Discover run, which is a **dig** |
-| A failure CuePoint can't reach its background process for | "CuePoint lost touch with its background process. Nothing was changed." | "Fetch failed" |
+| A failure CuePoint can't reach its background process for | "CuePoint stopped working in the background. Nothing was changed." | "CuePoint lost touch with its background process", "Fetch failed" |
+| The scope that is every track in the library | **All tracks** | "Whole library", "The whole library" |
 | Something only the desktop app can do | "This needs the CuePoint desktop app." | "needs the desktop app with CuePoint's library service running" |
 
 ## Terms

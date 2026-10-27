@@ -270,7 +270,7 @@ describe("only shortcuts that work (PAGES-03B)", () => {
   it("names each menu key with the menu item's own words (W1)", () => {
     const menu: Array<[shortcut: string, accelerator: string, label: string]> = [
       ["Ctrl+O", "CmdOrCtrl+O", "Import a Rekordbox file…"],
-      ["Ctrl+,", "CmdOrCtrl+,", "Settings…"],
+      ["Ctrl+,", "CmdOrCtrl+,", "Settings"],
       ["Ctrl+=", "CmdOrCtrl+=", "Bigger"],
       ["Ctrl+-", "CmdOrCtrl+-", "Smaller"],
       ["Ctrl+0", "CmdOrCtrl+0", "Default size"],
@@ -278,8 +278,9 @@ describe("only shortcuts that work (PAGES-03B)", () => {
       ["Ctrl+B", "CmdOrCtrl+B", "Sidebar"],
     ];
     for (const [shortcut, accelerator, label] of menu) {
-      // The menu item says this label with this accelerator, on one line of appMenu.ts.
-      expect(appMenuSource, shortcut).toMatch(new RegExp(`"${label}"[^\\n]*accelerator: "${accelerator.replace("+", "\\+")}"`));
+      // The menu item says this label with this accelerator, on one line of appMenu.ts (M404: the item's
+      // trailing "…" goes with the package that owns appMenu.ts, so it is optional there).
+      expect(appMenuSource, shortcut).toMatch(new RegExp(`"${label}…?"[^\\n]*accelerator: "${accelerator.replace("+", "\\+")}"`));
       const row = KEYBOARD_SHORTCUTS.find((entry) => entry.shortcut === shortcut);
       expect(row?.action, shortcut).toBe(label);
     }

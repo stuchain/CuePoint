@@ -200,7 +200,9 @@ async function use(win: Page, target: Locator, what: string, key = "Enter") {
  */
 async function choose(win: Page, name: string | RegExp, max = 30) {
   await expect(win.getByRole("menu").last()).toBeVisible({ timeout: 10_000 });
-  for (let presses = 0; presses < max; presses += 1) {
+  // One press more than the entry's place: a pointer-opened menu starts with no entry marked, so the
+  // first ArrowDown only marks the first one.
+  for (let presses = 0; presses <= max; presses += 1) {
     const at = await win.evaluate(() => {
       // A menu that just closed leaves a still copy of itself for its exit (`useLeaveGhost`), with
       // its own marked entry, for up to 400 ms. It is not the menu the keys move in.
@@ -735,7 +737,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const before = await jobsOf(win, "clean_match");
     await win.getByRole("tab", { name: "Playlists", exact: true }).click();
     // Match opens on Playlists (C22): tick the whole library and press Match, none in the header; no window opens.
-    await win.getByRole("checkbox", { name: "Match Whole library" }).check();
+    await win.getByRole("checkbox", { name: "Match All tracks" }).check();
     await use(win, win.getByRole("button", { name: "Match ticked playlists" }), "Match whole library");
     await expect(win.getByRole("dialog", { name: "Match on Beatport" })).toHaveCount(0);
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
