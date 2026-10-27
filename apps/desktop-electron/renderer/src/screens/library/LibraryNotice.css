@@ -3,7 +3,8 @@
    shown, which is only after an import. */
 /* The notice itself is the shared Notice (C88); this is only where it sits on the page. */
 .library-notice {
-  margin: var(--space-xs) var(--space-sm);
+  /* Flush with the page, as Discover's notice is (M287). */
+  margin: 0;
 }
 
 .library-notice__line,

@@ -1,6 +1,12 @@
+/*
+ * The toasts float over the content, bottom right, above the player: the stack takes no room from
+ * the page (M283), and it clips nothing, so each toast's shadow is whole (M284). The stack itself
+ * takes no clicks; the toasts do.
+ */
 .cp-toast-stack {
   position: fixed;
-  right: var(--space-lg);
+  /* The page's right edge: its gutter plus the scrollbar column, where the table's content ends (M286). */
+  right: calc(var(--space-lg) + var(--scrollbar-size, 0px));
   /* Above the player and the status strip: AppShellLayout measures them. */
   bottom: calc(var(--shell-bottom-inset, 0px) + var(--space-lg) + var(--space-sm));
   z-index: 1100;
@@ -10,9 +16,11 @@
   /* 360 times the scale, like every other width (area 88). */
   width: calc(360px * var(--scale));
   max-width: calc(100vw - var(--space-xl));
-  /* Never taller than the room above the player: the oldest scroll instead of leaving the window. */
-  max-height: calc(100vh - var(--shell-bottom-inset, 0px) - 2 * var(--space-lg));
-  overflow-y: auto;
+  pointer-events: none;
+}
+
+.cp-toast-stack > * {
+  pointer-events: auto;
 }
 
 /*
@@ -27,15 +35,26 @@
   background: var(--bg-panel);
   box-shadow: var(--shadow-popover);
   color: var(--fg-primary);
-  /* A toast is the work: the control size and weight (P2). */
-  font-size: var(--control-font-size);
+  /* Body size, like the rows around it (M286). */
+  font-size: var(--text-body);
   font-weight: var(--control-font-weight);
   /* Inter (D5, C55, P2). */
   font-family: var(--font-data);
   display: flex;
-  align-items: center;
+  /* A wrapping message keeps its × and action on the first line (M285). */
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-md);
+}
+
+/* A long name or path breaks inside the toast instead of pushing the × out of it (M247). One line
+   is padded to the × and the action's height, so it sits level with them (M285). */
+.cp-toast__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: var(--line-height-prose);
+  padding-block: max(0px, calc((var(--control-height) - 1lh) / 2));
 }
 
 :root[data-motion-entrance] .cp-toast {
@@ -45,7 +64,8 @@
     cp-toast-fade var(--motion-base) var(--motion-ease-out);
 }
 
-.cp-toast__action {
+.cp-toast__action,
+.cp-toast__close {
   flex: none;
 }
 

@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import toastCss from "./Toast.css?raw";
+import { stripComments } from "../test/cssRules";
 import { ToastProvider, useToast } from "./Toast";
 
 let push: ReturnType<typeof useToast>["push"];
@@ -37,24 +38,77 @@ describe("a toast with an action", () => {
   });
 });
 
-describe("the room it takes", () => {
-  it("keeps the page's bottom free while a toast shows, and gives it back when it goes (C122)", () => {
-    const view = render(
+describe("floating (M283, M284)", () => {
+  it("takes no room from the page: it sets no --toast-room, so the table and the selection bar stay put", () => {
+    render(
       <ToastProvider>
         <Grab />
       </ToastProvider>,
     );
-    const room = () => document.documentElement.style.getPropertyValue("--toast-room");
-    expect(room()).toBe("");
     act(() => push("rekordbox.xml has no changes", "error"));
-    expect(room()).toMatch(/^calc\(\d+px \+ var\(--space-lg\)/);
-    view.unmount();
-    expect(room()).toBe("");
+    expect(document.documentElement.style.getPropertyValue("--toast-room")).toBe("");
   });
 
-  it("is the room the content region pads its bottom by (C122)", async () => {
-    const app = (await import("../App.css?raw")).default;
-    expect(app).toMatch(/\.app-main \{[^}]*padding-bottom:\s*var\(--toast-room, 0px\)/);
+  it("is a fixed region over the content that clips nothing and takes no clicks itself", () => {
+    const stack = stripComments(toastCss);
+    expect(stack).toMatch(/\.cp-toast-stack \{[^}]*position:\s*fixed/);
+    expect(stack).toMatch(/\.cp-toast-stack \{[^}]*pointer-events:\s*none/);
+    expect(stack).toMatch(/\.cp-toast-stack > \* \{[^}]*pointer-events:\s*auto/);
+    expect(stack).not.toMatch(/\.cp-toast-stack \{[^}]*overflow/);
+  });
+
+  it("ends at the page's right edge, in body-size words, with its text able to break and its × on the first line (M247, M285, M286)", () => {
+    const flat = stripComments(toastCss);
+    expect(flat).toMatch(/\.cp-toast-stack \{[^}]*right:\s*calc\(var\(--space-lg\) \+ var\(--scrollbar-size/);
+    expect(flat).toMatch(/\.cp-toast \{[^}]*font-size:\s*var\(--text-body\)/);
+    expect(flat).toMatch(/\.cp-toast \{[^}]*align-items:\s*flex-start/);
+    expect(flat).toMatch(/\.cp-toast__text \{[^}]*min-width:\s*0;[^}]*overflow-wrap:\s*anywhere/);
+  });
+});
+
+describe("the keyboard (M456)", () => {
+  function Keys() {
+    const toast = useToast();
+    return (
+      <>
+        <button type="button" onClick={() => toast.push("Removed 2 tracks", "info", { label: "Undo", onClick: undo })}>
+          push
+        </button>
+        <button type="button" onClick={() => setResult({ focused: toast.focusNewest(), ran: toast.runNewestAction() })}>
+          keys
+        </button>
+      </>
+    );
+  }
+  const undo = vi.fn();
+  let result: { focused: boolean; ran: boolean } | null = null;
+  const setResult = (value: { focused: boolean; ran: boolean }) => {
+    result = value;
+  };
+
+  it("reports nothing to do when no toast shows", () => {
+    result = null;
+    render(
+      <ToastProvider>
+        <Keys />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "keys" }));
+    expect(result).toEqual({ focused: false, ran: false });
+  });
+
+  it("puts focus on the newest toast's Undo and presses it", () => {
+    undo.mockClear();
+    result = null;
+    render(
+      <ToastProvider>
+        <Keys />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "push" }));
+    fireEvent.click(screen.getByRole("button", { name: "keys" }));
+    expect(result).toEqual({ focused: true, ran: true });
+    expect(undo).toHaveBeenCalledTimes(1);
   });
 });
 

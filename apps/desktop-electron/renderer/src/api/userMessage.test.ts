@@ -39,7 +39,7 @@ describe("userMessage", () => {
     expect(userMessage(new Error("fetch failed"), undefined, { partway: true })).toBe(OUTAGE_PARTWAY_MESSAGE);
     expect(userMessage(new Error("fetch failed"), undefined, { partway: false })).toBe(OUTAGE_MESSAGE);
     expect(OUTAGE_PARTWAY_MESSAGE).toBe(
-      "CuePoint stopped responding partway through. Activity shows what was done.",
+      "CuePoint stopped working in the background partway through. Activity shows what was done.",
     );
     expect(userMessage(withFields("No such track", { status: 404 }), undefined, { partway: true })).toBe("No such track");
   });

@@ -3,9 +3,11 @@
  * each message. A screen that needs one of these imports it rather than writing its own.
  *
  * The rules every sentence follows: it ends with a period; it talks to "you"; it never says
- * "Please"; it says "could not", not "couldn't"; names are in curly quotes; a label that
- * opens a dialog ends in "…" (add it with `opensDialog`); a menu button is a noun and an
- * arrow, with no "…".
+ * "Please"; it says "could not", not "couldn't"; names are in curly quotes; a label ends in "…"
+ * only when the dialog it opens asks for input first (a name, a choice, a file; add it with
+ * `opensDialog`), so "Rename…" and "Add to Collection…" have it and "Diagnostics", "Log viewer",
+ * "Settings", "Getting started" and "Columns" do not (D33); a menu button is a noun and an arrow,
+ * with no "…".
  */
 import { countNoun, formatCount } from "./counts";
 
@@ -81,7 +83,10 @@ export function removedFrom(count: number, name: string): string {
 export const CANCEL = "Cancel";
 export const CLEAR_SEARCH = "Clear the search";
 
-/** A label that opens a dialog ends in "…"; one that already does is left alone. */
+/**
+ * A label for a dialog that asks for input first ends in "…"; one that already does is left alone.
+ * A dialog that only shows something (Diagnostics, the log, Settings) is named without it.
+ */
 export function opensDialog(label: string): string {
   return label.endsWith("…") ? label : `${label}…`;
 }
@@ -105,6 +110,11 @@ export function deleteLabel(thing: string): string {
  */
 export function deleteTitle(kind: string, name?: string): string {
   return name ? `Delete ${quoted(name)}?` : `Delete ${kind}?`;
+}
+
+/** The title of a freeze dialog, with the name quoted: `Freeze “Peak time”?` (M451). */
+export function freezeTitle(name?: string): string {
+  return name ? `Freeze ${quoted(name)}?` : "Freeze Collection?";
 }
 
 /** The first line of every delete dialog's body. */
@@ -139,9 +149,10 @@ export function couldNot(action: string, name?: string): string {
 }
 
 /** CuePoint's background part has stopped; said in plain words, with no mention of processes. */
-export const LOST_TOUCH = "CuePoint stopped responding. Nothing was changed.";
-export const LOST_TOUCH_PARTWAY =
-  "CuePoint stopped responding partway through. Activity shows what was done.";
+export const STOPPED_IN_BACKGROUND = "CuePoint stopped working in the background.";
+/** The one sentence for the background stopping: the banner, the toast and the status strip all say it (M401). */
+export const LOST_TOUCH = `${STOPPED_IN_BACKGROUND} Nothing was changed.`;
+export const LOST_TOUCH_PARTWAY = `CuePoint stopped working in the background partway through. Activity shows what was done.`;
 
 /** The waveform analysis cannot run in this version of the app. */
 export const WAVEFORMS_UNAVAILABLE = "Waveforms are not available in this version of CuePoint.";

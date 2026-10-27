@@ -3,7 +3,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -40,6 +39,10 @@ interface ToastContextValue {
   push: (message: string, variant?: ToastVariant, action?: ToastAction, options?: ToastOptions) => void;
   /** Close the toast pushed with this key, if it is still showing. */
   dismissKey: (key: string) => void;
+  /** Moves focus to the newest toast's action (or its close button), so Undo is reachable from the keyboard (M456). False when none shows. */
+  focusNewest: () => boolean;
+  /** Presses the newest toast's action, which is Undo when it has one: Ctrl+Z and Edit › Undo (M456). False when there is none. */
+  runNewestAction: () => boolean;
 }
 
 export interface ToastOptions {
@@ -60,9 +63,6 @@ function lifetime(toast: ToastMessage): number | null {
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
-
-/** The stack floats this far above the player (Toast.css), plus the gap it keeps from the page. */
-const TOAST_GAP = "var(--space-lg) + var(--space-sm) + var(--space-sm)";
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -104,33 +104,35 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.map((t) => (t.dedupeKey === key && !t.closing ? { ...t, closing: true } : t)));
   }, []);
 
-  const value = useMemo(() => ({ push, dismissKey }), [push, dismissKey]);
-
-  // While a toast shows, the page keeps the room under it free (C122): the stack's height and the
-  // gap it floats in go on the root as --toast-room, which the content region pads its bottom by,
-  // so a table's last row and its scrollbar end above the toast instead of under it.
+  // The stack floats over the page (Toast.css): it takes no room from the content, so a table does
+  // not shrink and the selection bar does not jump while a toast shows (M283).
   const stack = useRef<HTMLDivElement>(null);
-  const showing = toasts.length > 0;
-  useLayoutEffect(() => {
-    const root = document.documentElement;
-    const element = stack.current;
-    if (!showing || !element) {
-      root.style.removeProperty("--toast-room");
-      return;
-    }
-    const measure = () =>
-      root.style.setProperty("--toast-room", `calc(${element.offsetHeight}px + ${TOAST_GAP})`);
-    measure();
-    let observer: ResizeObserver | undefined;
-    if (typeof ResizeObserver !== "undefined") {
-      observer = new ResizeObserver(measure);
-      observer.observe(element, { box: "border-box" });
-    }
-    return () => {
-      observer?.disconnect();
-      root.style.removeProperty("--toast-room");
-    };
-  }, [showing]);
+
+  /** The newest toast that is still showing, as an element. */
+  const newestToast = useCallback(() => {
+    const shown = stack.current?.querySelectorAll<HTMLElement>(".cp-toast:not([data-leaving])");
+    return shown && shown.length > 0 ? shown[shown.length - 1] : undefined;
+  }, []);
+
+  const focusNewest = useCallback(() => {
+    const toast = newestToast();
+    if (!toast) return false;
+    // Its action when it has one (Undo), else its close button.
+    toast.querySelector<HTMLElement>(".cp-toast__action, .cp-toast__close")?.focus();
+    return true;
+  }, [newestToast]);
+
+  const runNewestAction = useCallback(() => {
+    const action = newestToast()?.querySelector<HTMLElement>(".cp-toast__action");
+    if (!action) return false;
+    action.click();
+    return true;
+  }, [newestToast]);
+
+  const value = useMemo(
+    () => ({ push, dismissKey, focusNewest, runNewestAction }),
+    [push, dismissKey, focusNewest, runNewestAction],
+  );
 
   return (
     <ToastContext.Provider value={value}>
@@ -195,7 +197,7 @@ function ToastItem({
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
       }}
     >
-      <span>{toast.message}</span>
+      <span className="cp-toast__text">{toast.message}</span>
       {toast.action ? (
         <Button
           variant="secondary"

@@ -78,7 +78,11 @@ describe("Notice styles", () => {
     // P6: the bar is the --notice-bar-width token (3px scaled, rounded) and the box has no frame.
     expect(css).toMatch(/border-left:\s*var\(--notice-bar-width\) solid/);
     expect(css).toMatch(/border:\s*0;/);
-    expect(css).toMatch(/padding:\s*var\(--space-sm\) var\(--space-md\)/);
+    // M68, D10: md above and below, lg at the sides, one height with or without an action.
+    expect(css).toMatch(/padding:\s*var\(--space-md\) var\(--space-lg\)/);
+    expect(css).toMatch(/min-height:\s*var\(--notice-height\)/);
+    // M18: the sentence is body size, like the rows around it.
+    expect(css).toMatch(/\.cp-notice\s*\{[^}]*font-size:\s*var\(--text-body\)/);
     expect(css).toMatch(/color:\s*var\(--fg-primary\)/);
   });
 

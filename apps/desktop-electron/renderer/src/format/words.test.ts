@@ -11,6 +11,17 @@ describe("words", () => {
     expect(words.opensDialog(words.SYNC_TO_FILES)).toBe("Sync to files…");
     expect(words.opensDialog("Sync to files…")).toBe("Sync to files…");
   });
+  it("says the background stopping in one sentence, everywhere (M401)", () => {
+    expect(words.LOST_TOUCH).toBe("CuePoint stopped working in the background. Nothing was changed.");
+    expect(words.LOST_TOUCH.startsWith(words.STOPPED_IN_BACKGROUND)).toBe(true);
+    expect(words.LOST_TOUCH_PARTWAY).toBe(
+      "CuePoint stopped working in the background partway through. Activity shows what was done.",
+    );
+  });
+  it("quotes the name in a freeze title (M451)", () => {
+    expect(words.freezeTitle("Peak time")).toBe("Freeze \u201cPeak time\u201d?");
+    expect(words.freezeTitle()).toBe("Freeze Collection?");
+  });
   it("writes go-to, delete and nothing-found text", () => {
     expect(words.goTo("Keys")).toBe("Open in Keys");
     expect(words.deleteTitle("Set")).toBe("Delete Set?");

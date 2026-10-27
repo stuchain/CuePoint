@@ -4,11 +4,17 @@
  */
 .cp-notice {
   --notice-tone: var(--accent-danger);
+  /* One height with or without an action: the action button plus the padding (M68). */
+  --notice-height: calc(var(--control-height) + 2 * var(--space-md));
   display: flex;
-  align-items: center;
+  /* A wrapping message keeps its action and × on the first line (M285). */
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
+  box-sizing: border-box;
+  min-height: var(--notice-height);
+  /* md above and below, lg at the sides (D10). */
+  padding: var(--space-md) var(--space-lg);
   border: 0;
   border-left: var(--notice-bar-width) solid var(--notice-tone);
   background: color-mix(in srgb, var(--notice-tone) var(--notice-fill-mix), var(--bg-panel));
@@ -16,7 +22,10 @@
   /* P62: the sentence is Inter at the control size. */
   /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
   font-family: var(--font-data);
-  font-size: var(--control-font-size);
+  /* Body size, like the rows around it (M18). */
+  font-size: var(--text-body);
+  /* A long path or name breaks inside the box instead of running out of it (M247). */
+  overflow-wrap: anywhere;
 }
 
 .cp-notice--info {
@@ -32,6 +41,8 @@
   min-width: 0;
   font-family: var(--font-data);
   line-height: var(--line-height-prose);
+  /* One line sits level with the action; more lines grow the box (M285). */
+  padding-block: max(0px, calc((var(--control-height) - 1lh) / 2));
 }
 
 .cp-notice__text > p {
@@ -50,9 +61,14 @@
   gap: var(--space-sm);
 }
 
+.cp-notice--field-error .cp-notice__text {
+  padding-block: 0;
+}
+
 /* A field error: red words under the field, nothing around them. */
 .cp-notice--field-error {
   display: block;
+  min-height: 0;
   padding: 0;
   border: 0;
   background: none;

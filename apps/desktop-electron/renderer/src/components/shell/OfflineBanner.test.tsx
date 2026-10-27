@@ -48,10 +48,21 @@ describe("OfflineBanner", () => {
     render(<OfflineBanner />);
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(
-      "CuePoint stopped working in the background. Your library and files are safe.",
-    );
+    // M401: the one sentence for the background stopping, the toast's too.
+    expect(alert).toHaveTextContent("CuePoint stopped working in the background. Nothing was changed.");
     expect(screen.getByRole("button", { name: "Start it again" })).toBeInTheDocument();
+  });
+
+  it("is the shared danger notice with a grey button, not a copy of it with a violet one (M287)", async () => {
+    getEngineStatus.mockResolvedValue(STOPPED);
+    bridge({ restartEngine: vi.fn() });
+    render(<OfflineBanner />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveClass("cp-notice", "cp-notice--danger", "cp-offline");
+    const button = screen.getByRole("button", { name: "Start it again" });
+    expect(button).toHaveClass("cp-btn--secondary");
+    expect(button).not.toHaveClass("cp-btn--primary");
   });
 
   it("draws its button at the standard height, not the small one (C8)", async () => {
