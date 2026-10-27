@@ -157,7 +157,7 @@ describe("what Delete waveform data asks first", () => {
     expect(lines[0]).toContain("240.3 MB on disk");
     expect(lines[0]).toContain("and the loudness measured with each");
     expect(lines[0]).toContain("Cue points and beat grids come from Rekordbox and are not affected");
-    expect(lines[1]).toBe("The whole library will be analyzed again.");
+    expect(lines[1]).toBe("All tracks will be analyzed again.");
   });
 
   it("says how long that takes when the analysis has a rate", () => {
@@ -165,13 +165,13 @@ describe("what Delete waveform data asks first", () => {
       status({ state: "running", present: 50_000, rate_per_hour: 8_000, store_bytes: 1 }),
     );
     expect(lines[1]).toBe(
-      "The whole library will be analyzed again, which takes about 6 hours at the current rate.",
+      "All tracks will be analyzed again, which takes about 6 hours at the current rate.",
     );
   });
 
   it("says it waits for Resume while paused", () => {
     expect(deleteDataWords(status({ state: "paused", paused: true }))[1]).toBe(
-      "The whole library will be analyzed again when the analysis is resumed.",
+      "All tracks will be analyzed again when the analysis is resumed.",
     );
   });
 

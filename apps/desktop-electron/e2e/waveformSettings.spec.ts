@@ -261,7 +261,7 @@ test.describe("A waveform painted (WAVE-05)", () => {
       await window.getByRole("button", { name: "Delete waveform data…" }).click();
       const dialog = window.getByRole("dialog", { name: "Delete waveform data?" });
       await expect(dialog).toContainText(/ on disk\./);
-      await expect(dialog).toContainText("The whole library will be analyzed again");
+      await expect(dialog).toContainText("All tracks will be analyzed again");
       await dialog.getByRole("button", { name: "Delete waveform data" }).click();
 
       await expect(window.getByText(/^Deleted 1 waveform, freeing /)).toBeVisible({ timeout: 30_000 });

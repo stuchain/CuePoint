@@ -281,7 +281,7 @@ export function sizeWords(bytes: number): string {
 /**
  * What "Delete waveform data…" asks before it deletes (WAVE-05): the size on
  * disk, the loudness measured with each waveform going with it (WAVE-08), and
- * that the whole library will be analyzed again, with how long that takes when
+ * that all tracks will be analyzed again (M388), with how long that takes when
  * the analysis has a rate to say it by.
  */
 export function deleteDataWords(status: WaveformAnalysisStatus | null): string[] {
@@ -292,7 +292,7 @@ export function deleteDataWords(status: WaveformAnalysisStatus | null): string[]
   if (status?.state === "unavailable") {
     lines.push("Waveforms cannot be made again until this build has the player's decoder.");
   } else if (status?.paused) {
-    lines.push("The whole library will be analyzed again when the analysis is resumed.");
+    lines.push("All tracks will be analyzed again when the analysis is resumed.");
   } else {
     const rate = status?.rate_per_hour;
     const present = status?.present ?? 0;
@@ -300,7 +300,7 @@ export function deleteDataWords(status: WaveformAnalysisStatus | null): string[]
       typeof rate === "number" && rate > 0 && present > 0
         ? `, which takes ${aboutDuration((present / rate) * 3600)} at the current rate`
         : "";
-    lines.push(`The whole library will be analyzed again${time}.`);
+    lines.push(`All tracks will be analyzed again${time}.`);
   }
   return lines;
 }

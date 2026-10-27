@@ -24,7 +24,8 @@ const BANNED: Record<string, RegExp> = {
   "Waiting for you": /Waiting for you/,
   "To review": /["'`>]To review["'`<]/,
   // M388: the Library's All tracks has one name; the scope is never "Whole library" or "The whole library".
-  "Whole library": /["'`>](?:The )?[Ww]hole library(?:\b(?! will)|["'`<])/,
+  // M388: the " will" allowance for the waveform deletion line is gone; that line says "All tracks".
+  "Whole library": /["'`>](?:The )?[Ww]hole library\b/,
   // M391: a track in doubt is "to check", never "to review".
   "to review": /\}\s*to review\b|\bNothing to review\b/,
   "Not found": /["'`>]Not found["'`<]/,
@@ -74,7 +75,8 @@ describe("wording guard (D2, D3)", () => {
     expect(BANNED["Matched"]!.test("Matched tracks are kept")).toBe(false);
     expect(BANNED["Whole library"]!.test('label: "Whole library"')).toBe(true);
     expect(BANNED["Whole library"]!.test('label: "The whole library"')).toBe(true);
-    expect(BANNED["Whole library"]!.test("The whole library will be analyzed again")).toBe(false);
+    // M388: tightened; the deletion line is no longer allowed.
+    expect(BANNED["Whole library"]!.test('"The whole library will be analyzed again"')).toBe(true);
     expect(BANNED["to review"]!.test("`${n} to review`")).toBe(true);
     expect(BANNED["contraction"]!.test("Couldn't")).toBe(true);
     for (const text of ["couldn't", "Don’t", "WON'T", "mustn't", "You’re", "we've", "it'll", "I'm"]) {
