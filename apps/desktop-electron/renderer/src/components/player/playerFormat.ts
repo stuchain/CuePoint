@@ -109,6 +109,11 @@ export function selectPlaying(state: PlayerSnapshot | null): boolean {
   return state?.playback.playing === true && state?.playback.paused !== true;
 }
 
+/** True while a track is loaded and paused: a start that is only waiting is neither this nor playing. */
+export function selectPaused(state: PlayerSnapshot | null): boolean {
+  return state?.playback.paused === true;
+}
+
 export function selectPosition(state: PlayerSnapshot | null): number | null {
   return state?.playback.positionSeconds ?? null;
 }

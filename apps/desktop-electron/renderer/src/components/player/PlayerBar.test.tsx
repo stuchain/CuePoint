@@ -583,8 +583,8 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    expect(screen.getByRole("button", { name: "Shuffle off" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Repeat off" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Shuffle: off" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Repeat: off" })).toBeInTheDocument();
   });
 
   it("asks main to shuffle rather than reordering anything itself", async () => {
@@ -592,7 +592,7 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle: off" }));
 
     await waitFor(() => expect(harness.player.setShuffle).toHaveBeenCalledWith(true));
   });
@@ -602,12 +602,12 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
-    expect(screen.getByRole("button", { name: "Shuffle off" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle: off" }));
+    expect(screen.getByRole("button", { name: "Shuffle: off" })).toBeInTheDocument();
 
     harness.push(snapshot({ shuffle: true }));
 
-    expect(await screen.findByRole("button", { name: "Shuffle on" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Shuffle: on" })).toBeInTheDocument();
   });
 
   it("cycles repeat off, all, one", async () => {
@@ -615,15 +615,15 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    fireEvent.click(screen.getByRole("button", { name: "Repeat off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Repeat: off" }));
     await waitFor(() => expect(harness.player.setRepeat).toHaveBeenCalledWith("all"));
 
     harness.push(snapshot({ repeat: "all" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Repeat all" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Repeat: all" }));
     await waitFor(() => expect(harness.player.setRepeat).toHaveBeenCalledWith("one"));
 
     harness.push(snapshot({ repeat: "one" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Repeat one" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Repeat: one" }));
     await waitFor(() => expect(harness.player.setRepeat).toHaveBeenCalledWith("off"));
   });
 
@@ -641,7 +641,7 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle: off" }));
 
     await waitFor(() => expect(localStorage.getItem(PLAYER_SHUFFLE_STORAGE_KEY)).toBe("1"));
     expect(harness.player.setShuffle).toHaveBeenCalledWith(true);
@@ -652,7 +652,7 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    fireEvent.click(screen.getByRole("button", { name: "Repeat off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Repeat: off" }));
 
     await waitFor(() => expect(localStorage.getItem(PLAYER_REPEAT_STORAGE_KEY)).toBe("all"));
   });
@@ -664,7 +664,7 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle: off" }));
 
     await waitFor(() => expect(harness.player.setShuffle).toHaveBeenCalled());
     expect(localStorage.getItem(PLAYER_SHUFFLE_STORAGE_KEY)).toBeNull();
@@ -675,11 +675,11 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    expect(screen.getByRole("button", { name: "Shuffle on" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Shuffle: on" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(screen.getByRole("button", { name: "Repeat all" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Repeat: all" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -795,15 +795,15 @@ describe("every control names itself (BAR-1)", () => {
     expect(titleOf("Previous track")).toBe("Previous track (Ctrl+←)");
     expect(titleOf("Pause")).toBe("Pause (Space)");
     expect(titleOf("Next track")).toBe("Next track (Ctrl+→)");
-    expect(titleOf("Shuffle off")).toBe("Shuffle off");
-    expect(titleOf("Repeat off")).toBe("Repeat off");
+    expect(titleOf("Shuffle: off")).toBe("Shuffle: off");
+    expect(titleOf("Repeat: off")).toBe("Repeat: off");
     expect(titleOf("Show the queue (3 tracks)")).toBe("Show the queue (3 tracks)");
     expect(titleOf("Hide the zoomed waveform")).toBe("Hide the zoomed waveform");
     expect(titleOf("Mute")).toBe("Mute");
     expect(titleOf("Volume", "slider")).toBe("Volume (Ctrl+↑/↓)");
   });
 
-  it("follows the state: Play, Shuffle on, Repeat all and one, Hide, Unmute", async () => {
+  it("follows the state: Play, Shuffle: on, Repeat: all and one, Hide, Unmute", async () => {
     const harness = installBridge(snapshot());
     const { rerender } = render(<PlayerBar queueOpen onToggleQueue={() => undefined} />);
     await screen.findByText("Strobe");
@@ -818,14 +818,14 @@ describe("every control names itself (BAR-1)", () => {
     );
     rerender(<PlayerBar queueOpen onToggleQueue={() => undefined} />);
     expect(await screen.findByRole("button", { name: "Play" })).toHaveAttribute("title", "Play (Space)");
-    expect(titleOf("Shuffle on")).toBe("Shuffle on");
-    expect(titleOf("Repeat all")).toBe("Repeat all");
+    expect(titleOf("Shuffle: on")).toBe("Shuffle: on");
+    expect(titleOf("Repeat: all")).toBe("Repeat: all");
     expect(titleOf("Unmute")).toBe("Unmute");
 
     harness.push(snapshot({ repeat: "one" }));
-    expect(await screen.findByRole("button", { name: "Repeat one" })).toHaveAttribute(
+    expect(await screen.findByRole("button", { name: "Repeat: one" })).toHaveAttribute(
       "title",
-      "Repeat one",
+      "Repeat: one",
     );
   });
 
@@ -1144,5 +1144,99 @@ describe("a bar too narrow for its timeline (item 2, at 2x in 1264x735)", () => 
     } finally {
       width.mockRestore();
     }
+  });
+});
+
+// Round 3 (D27, D32, D34, M377, M378, M383, M479).
+describe("the transport's Play (D27, D32)", () => {
+  it("is the violet fill only while it plays: aria-pressed says which", async () => {
+    const harness = installBridge(snapshot({ playback: { playing: false, paused: true } }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    expect(screen.getByRole("button", { name: "Play" })).toHaveAttribute("aria-pressed", "false");
+    harness.push(snapshot());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pause" })).toHaveAttribute("aria-pressed", "true"));
+  });
+
+  it("looks pending after 150 ms of waiting for a start, and stops when it plays", async () => {
+    const harness = installBridge(snapshot({ playback: { playing: false, paused: true } }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    vi.useFakeTimers();
+    try {
+      const play = screen.getByRole("button", { name: "Play" });
+      fireEvent.click(play);
+      expect(play).not.toHaveAttribute("data-pending");
+      act(() => void vi.advanceTimersByTime(149));
+      expect(play).not.toHaveAttribute("data-pending");
+      act(() => void vi.advanceTimersByTime(2));
+      expect(play).toHaveAttribute("data-pending");
+      expect(play).toHaveAttribute("aria-busy", "true");
+      act(() => harness.push(snapshot()));
+      expect(screen.getByRole("button", { name: "Pause" })).not.toHaveAttribute("data-pending");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("the volume slider is local while it is dragged (M377)", () => {
+  it("shows the dragged value at once and writes to the player at most every 60 ms", async () => {
+    const harness = installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(slider, { target: { value: "30" } });
+      fireEvent.change(slider, { target: { value: "31" } });
+      fireEvent.change(slider, { target: { value: "32" } });
+      // The slider follows the pointer, not the last pushed 80.
+      expect(slider.value).toBe("32");
+      expect(harness.player.setVolume).toHaveBeenCalledTimes(1);
+      act(() => void vi.advanceTimersByTime(61));
+      expect(harness.player.setVolume).toHaveBeenLastCalledWith(32);
+      expect(harness.player.setVolume).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("fills the track to its level", async () => {
+    installBridge(snapshot({ playback: { volume: 40 } }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    expect(screen.getByRole("slider", { name: "Volume" }).style.getPropertyValue("--level")).toBe("40%");
+  });
+});
+
+describe("the seek slider stays quiet (D34, M479)", () => {
+  it("keeps its spoken value while the track plays, and says the place when it is used", async () => {
+    const harness = installBridge(snapshot({ playback: { positionSeconds: 30 } }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    const slider = screen.getByRole("slider", { name: "Seek" });
+    fireEvent.focus(slider);
+    expect(slider).toHaveAttribute("aria-valuetext", "0:30 of 10:00");
+    act(() => harness.push(snapshot({ playback: { positionSeconds: 31 } })));
+    act(() => harness.push(snapshot({ playback: { positionSeconds: 32 } })));
+    expect(slider).toHaveAttribute("aria-valuetext", "0:30 of 10:00");
+    fireEvent.keyDown(slider, { key: "ArrowRight" });
+    expect(slider).toHaveAttribute("aria-valuetext", "0:37 of 10:00");
+  });
+});
+
+describe("adding to the queue shows on its count (M383)", () => {
+  it("marks the count when the queue grows", async () => {
+    const two = [item(), item({ id: "q2", status: "pending" })];
+    const harness = installBridge(snapshot({ items: two }));
+    render(<PlayerBar queueOpen={false} onToggleQueue={() => undefined} />);
+    await screen.findByText("Strobe");
+    const count = () => document.querySelector(".cp-player-bar__count");
+    expect(count()).not.toBeNull();
+    // The first snapshot is a first play, not an add.
+    expect(count()).not.toHaveAttribute("data-pulse");
+    act(() => harness.push(snapshot({ items: [...two, item({ id: "q3", status: "pending" })] })));
+    await waitFor(() => expect(count()).toHaveAttribute("data-pulse"));
   });
 });

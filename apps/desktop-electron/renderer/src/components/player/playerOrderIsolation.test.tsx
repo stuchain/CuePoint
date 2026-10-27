@@ -232,13 +232,13 @@ describe("toggling shuffle leaves the table alone", () => {
     expect(before[0]).toContain("Track 1");
     expect(before.at(-1)).toContain("Track 6");
 
-    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle: off" }));
     await waitFor(() => expect(setShuffle).toHaveBeenCalledWith(true));
     // Even once main reports the queue as shuffled, the view is unchanged.
     pushPlayer(playerSnapshot(true));
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Shuffle on" })).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: "Shuffle: on" })).toBeInTheDocument(),
     );
     expect(visibleRows()).toEqual(before);
   });
@@ -252,7 +252,7 @@ describe("toggling shuffle leaves the table alone", () => {
     await waitFor(() => expect(browseLibrary).toHaveBeenCalled());
     const before = browseLibrary.mock.calls.length;
 
-    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle: off" }));
     await waitFor(() => expect(setShuffle).toHaveBeenCalled());
     pushPlayer(playerSnapshot(true));
 
@@ -266,7 +266,7 @@ describe("toggling shuffle leaves the table alone", () => {
     if (scroller) scroller.scrollTop = 120;
     const before = scroller?.scrollTop ?? 0;
 
-    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle: off" }));
     await waitFor(() => expect(setShuffle).toHaveBeenCalled());
     pushPlayer(playerSnapshot(true));
 
@@ -278,7 +278,7 @@ describe("toggling shuffle leaves the table alone", () => {
     await screen.findByText("Track 1");
     const lastQuery = browseLibrary.mock.calls.at(-1)?.[0] as Record<string, unknown>;
 
-    fireEvent.click(screen.getByRole("button", { name: "Shuffle off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Shuffle: off" }));
     await waitFor(() => expect(setShuffle).toHaveBeenCalled());
     pushPlayer(playerSnapshot(true));
 

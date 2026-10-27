@@ -59,11 +59,14 @@ describe("useCompactBar", () => {
     expect(playerBarCss).toContain(":root[data-short-window]");
   });
 
-  it("gives the transport keys and the utility buttons one size in the compact bar (C207)", () => {
-    const rule = playerBarCss.match(
-      /:root\[data-short-window\] \.cp-player-bar__button,\s*:root\[data-short-window\] \.cp-player-bar__button--standard \{([^}]*)\}/,
-    );
-    expect(rule?.[1]).toMatch(/padding:\s*0;/);
+  // D11, M76: the compact bar keeps the transport at its size (it dropped to 25 px) and folds the right
+  // cluster first (PlayerBar.tsx), so no rule here resizes a button.
+  it("keeps the transport at its size in the compact bar (M76)", () => {
+    const compact = [...playerBarCss.matchAll(/:root\[data-short-window\] ([^{,]*)\{([^}]*)\}/g)];
+    for (const [, selector, body] of compact) {
+      if (/__button(?!--zoom)/.test(selector!)) expect(body, selector).not.toMatch(/min-(width|height)|padding/);
+    }
+    expect(playerBarCss).toMatch(/:root\[data-short-window\] \.cp-player-bar__button--zoom \{\s*display: none;/);
   });
 
   it("reads a platform without matchMedia as tall", () => {

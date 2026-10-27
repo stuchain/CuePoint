@@ -113,8 +113,8 @@ describe("the repeat button's cycle", () => {
   });
 
   it("names each state for a screen reader", () => {
-    expect(repeatLabel("off")).toBe("Repeat off");
-    expect(repeatLabel("all")).toBe("Repeat all");
-    expect(repeatLabel("one")).toBe("Repeat one");
+    expect(repeatLabel("off")).toBe("Repeat: off");
+    expect(repeatLabel("all")).toBe("Repeat: all");
+    expect(repeatLabel("one")).toBe("Repeat: one");
   });
 });

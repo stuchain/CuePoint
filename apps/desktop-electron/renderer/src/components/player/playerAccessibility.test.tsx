@@ -137,7 +137,7 @@ describe("toggles announce their state", () => {
   it("says whether shuffle is on", async () => {
     const { unmount } = renderBar(snapshot({ shuffle: false }));
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Shuffle off" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: "Shuffle: off" })).toHaveAttribute(
         "aria-pressed",
         "false",
       ),
@@ -147,7 +147,7 @@ describe("toggles announce their state", () => {
 
     renderBar(snapshot({ shuffle: true }));
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Shuffle on" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: "Shuffle: on" })).toHaveAttribute(
         "aria-pressed",
         "true",
       ),
@@ -158,9 +158,9 @@ describe("toggles announce their state", () => {
     // Three states on one button. `aria-pressed` alone cannot tell "all" from
     // "one", so the name carries the mode.
     for (const [repeat, label] of [
-      ["off", "Repeat off"],
-      ["all", "Repeat all"],
-      ["one", "Repeat one"],
+      ["off", "Repeat: off"],
+      ["all", "Repeat: all"],
+      ["one", "Repeat: one"],
     ] as const) {
       const { unmount } = renderBar(snapshot({ repeat }));
       await waitFor(() => expect(screen.getByRole("button", { name: label })).toBeInTheDocument());

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { countNoun, formatCount } from "../../format/counts";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
@@ -11,6 +11,7 @@ import { waveformEntryWords } from "../waveform/analysisWords";
 import { useWaveform } from "../waveform/useWaveforms";
 import { useWaveformRequest } from "../waveform/useWaveformRequest";
 import { WaveformCanvas } from "../waveform/WaveformCanvas";
+import { STRIP_MAX_SCALE, useStripPage } from "../waveform/stripPlaces";
 import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
 import { useWaveformBox } from "../waveform/waveformEnvironment";
 import {
@@ -20,6 +21,7 @@ import {
   selectCurrentItem,
   selectDuration,
   selectMuted,
+  selectPaused,
   selectPlaying,
   selectPosition,
   selectQueueLength,
@@ -69,6 +71,16 @@ const SEEK_LANDED_S = 0.75;
 const SEEK_PENDING_MS = 1500;
 /** Arrow-key step on the seek slider, in seconds (the range's own step is `any`). */
 const SEEK_KEY_STEP_S = 5;
+/** How long a start may take before Play shows it is waiting (D32, M378). */
+export const PENDING_PLAY_MS = 150;
+/** A start that has not answered by now is dropped from the waiting look. */
+const PENDING_PLAY_GIVE_UP_MS = 10_000;
+/** The longest between two volume writes to the player while the slider is dragged (M377). */
+const VOLUME_WRITE_MS = 60;
+/** How long a dragged volume is held locally before the player's own value is shown again. */
+const VOLUME_HOLD_MS = 800;
+/** How long the queue count shows that a track was added (M383). */
+const COUNT_PULSE_MS = 600;
 
 interface PlayerBarProps {
   /** Whether the queue panel is open, and how to change that (PLAYER-08). */
@@ -114,6 +126,88 @@ export function PlayerBar({
   const shuffle = usePlayerValue(selectShuffle);
   const repeat = usePlayerValue(selectRepeat);
   const queueLength = usePlayerValue(selectQueueLength);
+  const paused = usePlayerValue(selectPaused);
+
+  // A start that has not answered yet (D32, M378): after ~150 ms Play looks like it is waiting, so a
+  // slow disk or a network drive is not mistaken for a dead button. Dropped when playing starts, the
+  // track fails, or nothing answers in ten seconds.
+  const [waiting, setWaiting] = useState(false);
+  const [pendingPlay, setPendingPlay] = useState(false);
+  useEffect(() => {
+    if (!waiting) {
+      setPendingPlay(false);
+      return undefined;
+    }
+    const show = setTimeout(() => setPendingPlay(true), PENDING_PLAY_MS);
+    const giveUp = setTimeout(() => setWaiting(false), PENDING_PLAY_GIVE_UP_MS);
+    return () => {
+      clearTimeout(show);
+      clearTimeout(giveUp);
+    };
+  }, [waiting]);
+  const itemKey = item?.id ?? null;
+  const itemFailed = item?.status === "failed";
+  useEffect(() => {
+    // A track chosen while nothing plays or is paused on it: the start is on its way.
+    if (itemKey !== null && !playing && !paused && !itemFailed) setWaiting(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new track starts the wait
+  }, [itemKey]);
+  useEffect(() => {
+    if (playing || itemFailed) setWaiting(false);
+  }, [playing, itemFailed]);
+
+  // Adding to the queue shows on its count: it pulses once when the queue grows (M383).
+  const [countPulse, setCountPulse] = useState(false);
+  const lastQueueLength = useRef(queueLength);
+  useEffect(() => {
+    // From nothing is a first play, not an add: only a queue that already had tracks pulses.
+    const grew = lastQueueLength.current > 0 && queueLength > lastQueueLength.current;
+    lastQueueLength.current = queueLength;
+    if (!grew) return undefined;
+    setCountPulse(true);
+    const timer = setTimeout(() => setCountPulse(false), COUNT_PULSE_MS);
+    return () => clearTimeout(timer);
+  }, [queueLength]);
+
+  // The volume the slider shows while it is dragged (M377): a local value, with the writes to the
+  // player throttled, so the slider does not lag behind the pointer or snap back to the last pushed value.
+  const [volumeDraft, setVolumeDraft] = useState<number | null>(null);
+  const volumeWrite = useRef<{ timer: ReturnType<typeof setTimeout> | null; last: number; value: number | null }>({
+    timer: null,
+    last: 0,
+    value: null,
+  });
+  const volumeHold = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sendVolume = useCallback((value: number) => {
+    setVolumeDraft(value);
+    if (volumeHold.current !== null) clearTimeout(volumeHold.current);
+    volumeHold.current = setTimeout(() => setVolumeDraft(null), VOLUME_HOLD_MS);
+    const write = volumeWrite.current;
+    write.value = value;
+    const flush = () => {
+      write.timer = null;
+      if (write.value === null) return;
+      const next = write.value;
+      write.value = null;
+      write.last = Date.now();
+      Promise.resolve(bridge()?.setVolume(next)).catch(() => setVolumeDraft(null));
+    };
+    const wait = VOLUME_WRITE_MS - (Date.now() - write.last);
+    if (wait <= 0) flush();
+    else if (write.timer === null) write.timer = setTimeout(flush, wait);
+  }, []);
+  useEffect(
+    () => () => {
+      if (volumeHold.current !== null) clearTimeout(volumeHold.current);
+      if (volumeWrite.current.timer !== null) clearTimeout(volumeWrite.current.timer);
+    },
+    [],
+  );
+  const shownVolume = volumeDraft ?? (muted ? 0 : volume);
+
+  // The seek slider stays quiet (D34, M479): its spoken value is set when it is used (focus, a key, a
+  // drag), not every second as the track plays.
+  const [spokenSeek, setSpokenSeek] = useState<number | null>(null);
 
   // Only while dragging; null the rest of the time so the slider follows mpv.
   const [scrubSeconds, setScrubSeconds] = useState<number | null>(null);
@@ -153,6 +247,7 @@ export function PlayerBar({
   const onScrub = useCallback((value: number) => {
     scrubbing.current = true;
     setScrubSeconds(value);
+    setSpokenSeek(value);
   }, []);
 
   /**
@@ -330,8 +425,16 @@ export function PlayerBar({
 
   // The strip needs a library track (`PlayerSlot`); the button still keeps the choice.
   const detailWords = `${detailOn ? "Hide" : "Show"} the zoomed waveform`;
+  // It shows on Library, Prepare and Keys, below 2x (D27, D11): elsewhere the choice is kept and the tip says so.
+  const stripPage = useStripPage();
   const detailHint =
-    item !== null && trackId === null ? `${detailWords} · only for tracks in your Library` : detailWords;
+    item !== null && trackId === null
+      ? `${detailWords} · only for tracks in your Library`
+      : scale >= STRIP_MAX_SCALE
+        ? `${detailWords} · not shown at this text size`
+        : !stripPage
+          ? `${detailWords} · shown on Library, Prepare and Keys`
+          : detailWords;
 
   const moreBox = folded && moreMenu.open ? moreMenu.anchor.current?.getBoundingClientRect() : undefined;
   const moreItems: TrackContextMenuItem[] = [
@@ -372,12 +475,17 @@ export function PlayerBar({
           <button
             type="button"
             className="cp-player-bar__button cp-player-bar__button--play"
-            onClick={() => void bridge()?.toggle()}
+            onClick={() => {
+              if (!playing) setWaiting(true);
+              void bridge()?.toggle();
+            }}
             disabled={item === null}
             aria-label={playing ? "Pause" : "Play"}
             aria-pressed={playing}
+            aria-busy={pendingPlay || undefined}
+            data-pending={pendingPlay ? "" : undefined}
           >
-            <PixelIcon name={playing ? "pause" : "play"} />
+            <PixelIcon name={playing ? "pause" : "play"} className={playing ? "" : "cp-player-bar__play-icon--play"} />
           </button>
         </Hint>
         <Hint text="Next track" shortcut="Mod+→">
@@ -462,15 +570,17 @@ export function PlayerBar({
               max={seekMax || 1}
               step="any"
               value={Math.min(shownPosition, seekMax || 1)}
+              style={{ "--level": `${seekMax > 0 ? Math.min(100, (shownPosition / seekMax) * 100) : 0}%` } as CSSProperties}
               disabled={seekMax === 0}
               onChange={(event) => onScrub(Number(event.target.value))}
               onPointerUp={commitScrub}
               onPointerCancel={commitScrub}
               onKeyDown={onSeekKeyDown}
               onKeyUp={commitScrub}
+              onFocus={() => setSpokenSeek(shownPosition)}
               onBlur={commitScrub}
               aria-label="Seek"
-              aria-valuetext={`${formatTime(shownPosition)} of ${formatTime(duration)}`}
+              aria-valuetext={`${formatTime(spokenSeek ?? shownPosition)} of ${formatTime(duration)}`}
             />
           </Hint>
         </div>
@@ -502,12 +612,12 @@ export function PlayerBar({
       )}
       {!folded && (
       <div className="cp-player-bar__order" ref={orderRef}>
-        <Hint text={shuffle ? "Shuffle on" : "Shuffle off"}>
+        <Hint text={shuffle ? "Shuffle: on" : "Shuffle: off"}>
           <button
             type="button"
             className={`cp-player-bar__button cp-player-bar__button--standard${shuffle ? " cp-player-bar__button--on" : ""}`}
             onClick={() => void toggleShuffle()}
-            aria-label={shuffle ? "Shuffle on" : "Shuffle off"}
+            aria-label={shuffle ? "Shuffle: on" : "Shuffle: off"}
             aria-pressed={shuffle}
           >
             <PixelIcon name="shuffle" />
@@ -543,7 +653,7 @@ export function PlayerBar({
             >
               <PixelIcon name="queue" />
               {queueLength > 0 && (
-                <span className="cp-player-bar__count cp-data" aria-hidden="true">
+                <span className="cp-player-bar__count cp-data" aria-hidden="true" data-pulse={countPulse ? "" : undefined}>
                   {formatCount(queueLength)}
                 </span>
               )}
@@ -583,10 +693,11 @@ export function PlayerBar({
             min={0}
             max={100}
             step={1}
-            value={muted ? 0 : volume}
-            onChange={(event) => void bridge()?.setVolume(Number(event.target.value))}
+            value={shownVolume}
+            style={{ "--level": `${shownVolume}%` } as CSSProperties}
+            onChange={(event) => sendVolume(Number(event.target.value))}
             aria-label="Volume"
-            aria-valuetext={`${muted ? 0 : Math.round(volume)}%`}
+            aria-valuetext={`${Math.round(shownVolume)}%`}
           />
         </Hint>
       </div>

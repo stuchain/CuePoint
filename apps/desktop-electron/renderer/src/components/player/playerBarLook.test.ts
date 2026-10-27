@@ -24,21 +24,26 @@ function ruleDecls(css: string, selector: string): Record<string, string> {
 }
 
 describe("the player bar keeps its look", () => {
-  it("draws its transport buttons with a hairline control border, the hit target and the panel fill (P4)", () => {
+  // D27, M304: the transport is ~36 px (it was the 44 px hit target), the same square for all three.
+  it("draws its transport buttons with a hairline control border, the 36 px transport size and the panel fill (P4)", () => {
     const button = ruleDecls(playerBar, ".cp-player-bar__button");
     expect(button["border"]).toBe("var(--hairline) solid var(--border-control)");
-    expect(button["min-width"]).toBe("var(--hit-min)");
-    expect(button["min-height"]).toBe("var(--hit-min)");
+    expect(button["min-width"]).toBe("var(--player-transport)");
+    expect(button["min-height"]).toBe("var(--player-transport)");
+    expect(ruleDecls(playerBar, ".cp-player-bar")["--player-transport"]).toBe("round(nearest, calc(36px * var(--scale)), 1px)");
     expect(button["background"]).toBe("var(--bg-panel)");
   });
 
-  it("draws the other five buttons at the standard control size, only the transport large, and quiet (P22)", () => {
+  // M75, M30 (D3): the right cluster is one square, the control height but never under the lg icon.
+  it("draws the other five buttons as one square the lg icon fits, and quiet (P22)", () => {
     const standard = ruleDecls(playerBar, ".cp-player-bar__button--standard");
     expect(standard["background"]).toBe("transparent");
     expect(standard["border-color"]).toBe("transparent");
     expect(standard["color"]).toBe("var(--fg-muted)");
-    expect(standard["min-width"]).toBe("max(var(--control-height), 24px)");
-    expect(standard["min-height"]).toBe("max(var(--control-height), 24px)");
+    expect(standard["min-width"]).toBe("var(--player-cluster)");
+    expect(standard["min-height"]).toBe("var(--player-cluster)");
+    expect(ruleDecls(playerBar, ".cp-player-bar")["--player-cluster"]).toBe("max(var(--control-height), var(--icon-size-lg))");
+    expect(standard["padding"]).toBe("0");
   });
 
   it("is one compact line in a short window, which the page flag says (C207)", () => {
@@ -62,33 +67,65 @@ describe("the player bar keeps its look", () => {
     expect(Object.fromEntries(declarations(hover!.body))["background"]).toBe("var(--hover-fill)");
   });
 
-  it("greys the transport when nothing is loaded, Play in the mixed accent (M302)", () => {
+  it("greys the transport when nothing is loaded, Play grey like the rest (M302, M326)", () => {
     const off = ruleDecls(playerBar, ".cp-player-bar__button:disabled");
     expect(off["color"]).toBe("var(--fg-disabled)");
     expect(off["border-color"]).toBe("var(--border-disabled)");
     expect(off["background"]).toBe("transparent");
     expect(off["cursor"]).toBe("default");
-    const play = ruleDecls(playerBar, ".cp-player-bar__button--play:disabled");
-    expect(play["background"]).toMatch(/^color-mix\(in srgb, var\(--accent-fill\)/);
-    expect(play["color"]).toMatch(/^color-mix\(in srgb, var\(--fg-on-accent\)/);
+    // No violet is left on a disabled Play: it takes the transport's own disabled rule.
+    expect(ruleDecls(playerBar, ".cp-player-bar__button--play:disabled")).toEqual({});
   });
 
-  it("fills Play with the accent and turns a toggle on with the selected tint and the accent icon (P4, P22)", () => {
+  // D27, M303: Play is framed grey with a violet icon; the violet fill is for while it plays only.
+  it("frames Play grey with a violet icon, fills it with the accent only while it plays (D27, M303)", () => {
     const play = ruleDecls(playerBar, ".cp-player-bar__button--play");
-    expect(play["background"]).toBe("var(--accent-fill)");
-    expect(play["color"]).toBe("var(--fg-on-accent)");
-    expect(play["border-color"]).toBe("var(--accent-fill)");
+    expect(play["background"]).toBeUndefined();
+    expect(play["border-color"]).toBeUndefined();
+    expect(play["color"]).toBe("var(--accent-primary)");
+    const playing = ruleDecls(playerBar, '.cp-player-bar__button--play[aria-pressed="true"]');
+    expect(playing["background"]).toBe("var(--accent-fill)");
+    expect(playing["color"]).toBe("var(--fg-on-accent)");
+    expect(playing["border-color"]).toBe("var(--accent-fill)");
+  });
+
+  // D30, M340: an engaged toggle is the selected tint, the accent icon and the 1px accent line.
+  it("turns a toggle on with the selected tint, the accent icon and the accent line (P22, M340)", () => {
     const on = ruleDecls(playerBar, ".cp-player-bar__button--on");
     expect(on["background"]).toBe("var(--bg-selected)");
     expect(on["color"]).toBe("var(--accent-primary)");
+    expect(on["border-color"]).toBe("var(--accent-primary)");
     expect(on["border"]).toBeUndefined();
     expect(on["box-shadow"]).toBeUndefined();
   });
 
-  it("draws the queue count as semibold text in the button's own colour, with no fill (P22)", () => {
+  it("keeps a line in a system colour for the playing Play and an engaged toggle in forced colours (M303, M340)", () => {
+    const forced = parseRules(stripComments(playerBar)).filter((rule) => rule.context.includes("forced-colors"));
+    const body = (selector: string) => forced.find((rule) => selectorList(rule.selector).includes(selector))?.body ?? "";
+    expect(body('.cp-player-bar__button--play[aria-pressed="true"]')).toMatch(/Highlight/);
+    expect(body(".cp-player-bar__button--on")).toMatch(/border-color:\s*Highlight/);
+  });
+
+  it("has no pixel breakpoint: the width rules are the bar's own fold, in the text size's units", () => {
+    expect(stripComments(playerBar)).not.toMatch(/\(max-width:\s*\d+px\)/);
+  });
+
+  it("nudges the Play triangle to the middle of its cell (M307)", () => {
+    expect(ruleDecls(playerBar, ".cp-player-bar__play-icon--play")["translate"]).toMatch(/^round\(nearest, calc\(2px \* var\(--scale\)\), 1px\) 0$/);
+  });
+
+  it("draws the player's key chip as the tables' chip: its own size, line height 1 (M308)", () => {
+    const chip = ruleDecls(playerBar, ".cp-player-bar__meta .key-chip");
+    expect(chip["font-size"]).toBe("var(--font-size-chip)");
+    expect(chip["line-height"]).toBe("1");
+  });
+
+  // M314: the count is the text colour at full strength (the accent icon's 3.65:1 was too faint), the line's own height.
+  it("draws the queue count as semibold text in the primary colour, with no fill (P22, M314)", () => {
     const count = ruleDecls(playerBar, ".cp-player-bar__count");
     expect(count["font-weight"]).toBe("var(--font-weight-semibold)");
-    expect(count["color"]).toBe("inherit");
+    expect(count["color"]).toBe("var(--fg-primary)");
+    expect(count["line-height"]).toBe("normal");
     expect(count["background"]).toBeUndefined();
     expect(count["--chip-text"]).toBeUndefined();
     expect(count["border"]).toBeUndefined();
@@ -199,8 +236,9 @@ function isAllowed(file: string, selector: string, name: string, value: string):
   );
 }
 
-// P46: the seek and volume sliders are drawn: a 2px muted track and a 10px round thumb. The native
-// input still owns the keys, the drag and the value, and the picture over a waveform is untouched.
+// P46, M305, M34: the seek and volume sliders are drawn: a 2px control-line track with the level in the accent
+// and a 10px square thumb, in a box a control tall. The native input still owns the keys, the drag and the
+// value, and the picture over a waveform is untouched.
 describe("the sliders are drawn (P46)", () => {
   const css = stripComments(playerBar);
   const body = (selector: string) =>
@@ -218,10 +256,18 @@ describe("the sliders are drawn (P46)", () => {
     expect(css).not.toMatch(/accent-color/);
   });
 
-  it("draws the track in the muted line and the thumb round in the accent, centred on the track", () => {
-    expect(body(".cp-player-bar__slider::-webkit-slider-runnable-track")).toMatch(/background:\s*var\(--border-muted\)/);
+  it("takes presses over a control's height, not the 2px strip (M305)", () => {
+    expect(body(".cp-player-bar__slider")).toMatch(/block-size:\s*var\(--control-height\)/);
+  });
+
+  it("draws the track in the control line, the level in the accent, and the thumb square, centred on the track", () => {
+    const track = body(".cp-player-bar__slider::-webkit-slider-runnable-track");
+    expect(track).toMatch(/var\(--accent-primary\) var\(--level\)/);
+    expect(track).toMatch(/var\(--border-control\) var\(--level\)/);
+    expect(track).not.toMatch(/--border-muted/);
     const thumb = body(".cp-player-bar__slider::-webkit-slider-thumb");
-    expect(thumb).toMatch(/border-radius:\s*50%/);
+    expect(thumb).toMatch(/border-radius:\s*0/);
+    expect(thumb).not.toMatch(/50%/);
     expect(thumb).toMatch(/background:\s*var\(--accent-primary\)/);
     expect(thumb).toMatch(/margin-top:\s*round\(nearest,\s*calc\(\(var\(--slider-track\) - var\(--slider-thumb\)\) \/ 2\),\s*1px\)/);
   });

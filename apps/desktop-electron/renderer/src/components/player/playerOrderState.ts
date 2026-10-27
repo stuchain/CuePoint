@@ -79,9 +79,9 @@ export function nextRepeatMode(current: RepeatMode): RepeatMode {
 
 /** How the repeat button describes itself in each state. */
 export function repeatLabel(mode: RepeatMode): string {
-  if (mode === "all") return "Repeat all";
-  if (mode === "one") return "Repeat one";
-  return "Repeat off";
+  if (mode === "all") return "Repeat: all";
+  if (mode === "one") return "Repeat: one";
+  return "Repeat: off";
 }
 
 /**

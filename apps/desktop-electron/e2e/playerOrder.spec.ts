@@ -80,23 +80,23 @@ test("shuffle and repeat reach the queue and survive a restart", async () => {
     await dismissOnboarding(window);
     await queueSomething(window);
 
-    await window.getByRole("button", { name: "Shuffle off" }).click();
-    await window.getByRole("button", { name: "Repeat off" }).click();
+    await window.getByRole("button", { name: "Shuffle: off" }).click();
+    await window.getByRole("button", { name: "Repeat: off" }).click();
 
     // The button says what main says, not what the click implied.
-    await expect(window.getByRole("button", { name: "Shuffle on" })).toBeVisible();
-    await expect(window.getByRole("button", { name: "Repeat all" })).toBeVisible();
+    await expect(window.getByRole("button", { name: "Shuffle: on" })).toBeVisible();
+    await expect(window.getByRole("button", { name: "Repeat: all" })).toBeVisible();
     expect(await orderState(window)).toEqual({ shuffle: true, repeat: "all" });
 
     // Repeat cycles to "one" and shows its own glyph rather than a badge.
-    await window.getByRole("button", { name: "Repeat all" }).click();
-    await expect(window.getByRole("button", { name: "Repeat one" })).toBeVisible();
+    await window.getByRole("button", { name: "Repeat: all" }).click();
+    await expect(window.getByRole("button", { name: "Repeat: one" })).toBeVisible();
     await expect(window.locator('.cp-player-bar [data-icon="repeat-one"]')).toHaveCount(1);
     expect((await orderState(window)).repeat).toBe("one");
 
     // Back to "all" so the restart has something non-default to restore.
-    await window.getByRole("button", { name: "Repeat one" }).click();
-    await window.getByRole("button", { name: "Repeat off" }).click();
+    await window.getByRole("button", { name: "Repeat: one" }).click();
+    await window.getByRole("button", { name: "Repeat: off" }).click();
     expect((await orderState(window)).repeat).toBe("all");
     // Main answers before the renderer saves the preference, so closing now
     // can lose the last click. Wait for the save the restart depends on.
