@@ -85,9 +85,9 @@ describe("TextField with type=number (C25)", () => {
 });
 
 describe("a date field's picker button (C25)", () => {
-  it("is drawn as the app's pixel calendar in the text colour, not Chromium's icon", () => {
+  // D7 (M39): no browser glyph on a main screen; the date is typed in the field's parts.
+  it("hides Chromium's calendar icon", () => {
     const rule = /\.cp-field__input\[type="date"\]::-webkit-calendar-picker-indicator\s*\{([^}]*)\}/.exec(fieldCss);
-    expect(rule?.[1]).toMatch(/background:\s*currentColor/);
-    expect(rule?.[1]).toMatch(/mask:\s*url\("data:image\/svg\+xml/);
+    expect(rule?.[1]).toMatch(/display:\s*none/);
   });
 });

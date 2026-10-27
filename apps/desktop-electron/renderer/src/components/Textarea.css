@@ -1,9 +1,12 @@
-/* The multi-line box: TextField's box (TextField.css) with room to write. */
+/* The multi-line box: TextField's box (TextField.css) with room to write, growing as it fills (D7). */
 .cp-textarea {
   min-height: calc(var(--control-height) * 2);
   padding: var(--space-sm);
   line-height: var(--line-height-body);
-  resize: vertical;
+  /* D7 (M40): no Chromium grip; the box grows with what is written, up to a cap, then scrolls. */
+  resize: none;
+  field-sizing: content;
+  max-height: calc(var(--control-height) * 10);
 }
 
 .cp-textarea::placeholder {

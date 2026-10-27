@@ -15,6 +15,33 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* M328 (D29): a filled button's ring stands one ring width off its edge, so the page ground shows
+     between the fill and the ring and the ring reads in every theme (the accent equals the ring
+     colour in two). */
+  --focus-ring-offset-filled: var(--focus-ring-width);
+  /* The small control (rows, dialogs): 80% of the bar height (D10, M79). */
+  --control-height-sm: round(nearest, calc(var(--control-height) * 0.8), 1px);
+  /* The least a pointer target is (M477): 24 at 1x. A smaller drawn control reaches out to it. */
+  --hit-target: round(nearest, calc(24px * var(--scale)), 1px);
+}
+
+/*
+ * Fields on the page ground (D8, M46): --bg-input is the page tone in four themes, so a field there
+ * would be invisible. The page ground and the screen header give their fields the panel tone; a card
+ * or panel (itself the panel tone) and the Library's panes keep the input tone, which is darker than
+ * them. Select, TextField and SearchField read it as var(--field-fill, var(--bg-input)).
+ */
+.screen:not(.library-screen),
+.cp-screen-header {
+  --field-fill: var(--bg-panel);
+}
+
+.cp-card,
+.cp-panel {
+  --field-fill: var(--bg-input);
+}
+
 a {
   color: inherit;
 }
@@ -29,7 +56,7 @@ select {
  * One pixel checkbox and one round radio everywhere (area 80; P29), not the browser's accent-
  * coloured control. A 14px hairline box on the input colour; checked, the accent fill with a pixel
  * tick at 60% (a round dot at 50% for a radio, a dash for "some"). Hover is the one control hover (a firmer border
- * and a shade). A page may set a bigger width/height (a tick column, a card) or its own hit
+ * and a shade). "On" is one violet, --accent-fill, for box, ring and dot (M334). A page may set a bigger width/height (a tick column, a card) or its own hit
  * area; the look follows the size. :where keeps all of it overridable.
  */
 :where(input[type="checkbox"], input[type="radio"]) {
@@ -49,7 +76,8 @@ select {
   background: var(--bg-input);
   color: var(--fg-on-accent);
   vertical-align: middle;
-  cursor: pointer;
+  /* D31 (M339): the arrow, as in a desktop app; the one disabled cursor is the arrow too. */
+  cursor: default;
 }
 
 :where(input[type="checkbox"], input[type="radio"])::before {
@@ -82,13 +110,13 @@ select {
   background: var(--accent-fill);
 }
 
-/* A radio is not a smaller checkbox: checked, it keeps the empty ring (a 1px --accent-primary
-   line) and puts a small round --accent-primary dot (half the box) in the middle of it (P29),
+/* A radio is not a smaller checkbox: checked, it keeps the empty ring (a 1px --accent-fill
+   line) and puts a small round --accent-fill dot (half the box) in the middle of it (P29, M334),
    where a checkbox fills in and draws the tick. Unselected, the box is --border-control (D6). */
 :where(input[type="radio"]):checked {
-  border-color: var(--accent-primary);
+  border-color: var(--accent-fill);
   background: var(--bg-input);
-  color: var(--accent-primary);
+  color: var(--accent-fill);
 }
 
 :where(input[type="radio"]) {
@@ -117,22 +145,23 @@ select {
 
 /* After the rule above, so a checked radio keeps its own border on hover (all of these have zero specificity). */
 :where(input[type="radio"]):checked:hover:not(:disabled) {
-  border-color: var(--accent-primary);
+  border-color: var(--accent-fill);
 }
 
+/* M354: a disabled box goes transparent with the faint line, as a disabled button or field does. */
 :where(input[type="checkbox"], input[type="radio"]):disabled {
-  border-color: var(--border-muted);
-  background: var(--bg-panel);
+  border-color: var(--border-disabled);
+  background: transparent;
   color: var(--fg-disabled);
-  cursor: not-allowed;
+  cursor: default;
 }
 
 :where(input[type="checkbox"], input[type="radio"]):disabled:checked {
-  background: var(--border-muted);
+  background: var(--border-disabled);
 }
 
 :where(input[type="radio"]):disabled:checked {
-  background: var(--bg-panel);
+  background: transparent;
   color: var(--fg-disabled);
 }
 
@@ -191,20 +220,23 @@ fieldset {
 }
 
 /*
- * One legend style: the label role (10.5, medium, muted; P2). Every <legend> (see components/Fieldset)
- * and every small group title in the app reads like this.
+ * One label role (D1, M1): the pixel face at the control weight (400), muted, at the label size.
+ * Every <legend> (see components/Fieldset), `.cp-text-label`, a fact's `dt`, and the labels of
+ * TextField and Select read like this. The pixel face ships at 400 and 700 only, so 500 is never asked for (M2).
  */
 legend,
 .cp-legend {
   padding: 0;
   color: var(--fg-muted);
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--control-font-weight);
 }
 
 /*
- * Text roles: page 24 / dialog 18 / section 14 / label 10.5 medium muted (P2). The pixel face is the
- * voice (--font-voice: titles and headings); controls and labels are Inter (--font-control); --font-data is for data values (.cp-data), and a
+ * Text roles: page 24 / dialog 18 / section 14 / label 10.5 muted. The pixel face is the voice
+ * (--font-voice: titles and headings) and the face of controls and labels (--font-control, Q4);
+ * --font-data (Inter) is for data values (.cp-data), typed or chosen values and sentences, and a
  * line of facts, counts or notes under a title takes --font-meta, the data face, so it is one font.
  */
 .cp-text-page {
@@ -233,8 +265,9 @@ legend,
 
 .cp-text-label {
   margin: 0;
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--control-font-weight);
   color: var(--fg-muted);
 }
 
@@ -306,8 +339,9 @@ a[href]:where(:not([class])) {
   color: var(--fg-muted);
 }
 
-/* A shortcut drawn as a key cap (components/Kbd): white (--fg-primary) text in the data face, so
-   "O" and "0" and "B" and "8" read apart, and the text holds 4.5:1 on the cap in every theme. */
+/* A shortcut drawn as a key cap (components/Kbd): a key is something you press, so the control face
+   and weight (D1, M10); figures come from the digits family, so "O" and "0" read apart, and the
+   text holds 4.5:1 on the cap in every theme. */
 .cp-kbd {
   display: inline-block;
   padding: 0 var(--space-xs);
@@ -316,9 +350,9 @@ a[href]:where(:not([class])) {
   background: var(--bg-panel-alt);
   box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--border-muted);
   color: var(--fg-primary);
-  font-family: var(--font-data);
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--control-font-weight);
   line-height: var(--line-height-body);
   white-space: nowrap;
 }
@@ -351,8 +385,10 @@ a[href]:where(:not([class])) {
   color: var(--danger-text);
 }
 
+/* All good is quiet (D14, M325): done and success are the muted colour, not green. Colour is for
+   what needs action or went wrong. */
 .cp-status--done {
-  color: var(--success-text);
+  color: var(--fg-muted);
 }
 
 .cp-status--danger {
@@ -364,7 +400,7 @@ a[href]:where(:not([class])) {
 }
 
 .cp-status--success {
-  color: var(--success-text);
+  color: var(--fg-muted);
 }
 
 /* Read by screen readers, not drawn. */
@@ -425,11 +461,20 @@ details > summary:has(.cp-disclosure)::before {
   color: var(--fg-primary);
 }
 
-/* A checkbox or radio beside its words: one gap, --space-sm (6 at 1x), everywhere (C39). */
+/* A checkbox or radio beside its words: one gap, --space-sm (6 at 1x), everywhere (C39). The words
+   are a sentence, so Inter (D1, M11); the column picker alone keeps the pixel face (.cp-check--pixel).
+   One row height, --row-height, which is also a target over 24 px (M78, M477). */
 .cp-check {
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
+  min-height: var(--row-height);
+  font-family: var(--font-data);
+  cursor: default;
+}
+
+.cp-check--pixel {
+  font-family: var(--font-control);
 }
 
 /*
@@ -450,16 +495,22 @@ details > summary:has(.cp-disclosure)::before {
   color: var(--fg-primary);
 }
 
-/* The one sub-heading inside a dialog or panel, above a group that has a name of its own (C58). */
+/* The one sub-heading inside a dialog or panel, above a group that has a name of its own (C58): the
+   pixel face at 400 (D1, M13), with its own space, --space-xl above (unless first) and --space-md below. */
 .cp-text-subhead {
-  margin: 0;
+  margin: 0 0 var(--space-md);
   color: var(--fg-primary);
+  font-family: var(--font-voice);
   font-size: var(--font-size-sm);
-  font-weight: var(--weight-strong);
+  font-weight: var(--control-font-weight);
   line-height: var(--line-height-tight);
 }
 
-/* Label and value facts (C66): a small bold grey label, the value in the data face. */
+.cp-text-subhead:not(:first-child) {
+  margin-top: var(--space-xl);
+}
+
+/* Label and value facts (C66): a small grey label in the label role, the value in the data face. */
 .cp-facts {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -469,8 +520,9 @@ details > summary:has(.cp-disclosure)::before {
 
 .cp-facts dt {
   color: var(--fg-muted);
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--control-font-weight);
 }
 
 .cp-facts dd {
@@ -511,7 +563,10 @@ details > summary:has(.cp-disclosure)::before {
 }
 
 /* The bar above every list (D9, amended by P1): no fill of its own, so it sits on whatever surface
-   holds it; no border, one height, 8 in at the sides, and nothing between it and the list below it. */
+   holds it; no border, one height, and nothing between it and the list below it. With no ground it
+   has no inline padding either (M49, L2): its words and its end buttons (which hang, Button.css) sit
+   on the page edges with the table. A toolbar on a ground of its own (the Library's filter bar, Keys'
+   list head, one inside a card) keeps 8 in at the sides. */
 .cp-toolbar {
   display: flex;
   align-items: center;
@@ -520,9 +575,16 @@ details > summary:has(.cp-disclosure)::before {
   min-height: var(--toolbar-height);
   margin: 0;
   padding-block: 0;
-  padding-inline: var(--space-md);
+  padding-inline: 0;
   border: 0;
   background: transparent;
+}
+
+.cp-toolbar--ground,
+.cp-filter-bar__row.cp-toolbar,
+.keys-tracks__toolbar.cp-toolbar,
+.cp-card .cp-toolbar {
+  padding-inline: var(--space-md);
 }
 
 /* Buttons in a row are 8 apart (C28). */

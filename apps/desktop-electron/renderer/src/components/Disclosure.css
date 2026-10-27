@@ -1,0 +1,73 @@
+/* The one disclosure (M60): see Disclosure.tsx. */
+.cp-fold {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.cp-fold__heading {
+  margin: 0;
+  font: inherit;
+}
+
+/* One control-height target (M477); no padding of its own, so the title is on the content edge. */
+.cp-fold__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+  text-align: start;
+  /* D31: the arrow, not the hand. */
+  cursor: default;
+}
+
+.cp-fold__head:hover {
+  color: var(--fg-primary);
+  background: var(--hover-fill);
+}
+
+.cp-fold__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The answer, right-aligned and in the data face so figures line up. */
+.cp-fold__summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The arrow ends the row (W4): after the answer, or pushed to the end when there is none. */
+.cp-fold__arrow {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size-sm);
+  margin-inline-start: auto;
+}
+
+.cp-fold__summary + .cp-fold__arrow {
+  margin-inline-start: 0;
+}
+
+.cp-fold__body[hidden] {
+  display: none;
+}

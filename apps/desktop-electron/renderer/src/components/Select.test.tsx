@@ -36,10 +36,10 @@ describe("Select", () => {
     expect(rawCss).toMatch(/\.cp-select__chevron \.cp-pixel-icon\s*\{[^}]*var\(--icon-size-sm\)/);
   });
 
-  it("draws the chevron as the small icon, pointing at a pointer cursor (C244)", () => {
+  it("draws the chevron as the small icon, pointing at the arrow cursor (C244, D31)", () => {
     const { container } = render(<Select label="Sort" options={[{ value: "a", label: "A" }]} />);
     expect(container.querySelector('.cp-select__chevron svg')).toHaveAttribute("data-size", "sm");
-    expect(rules.find((r) => r.selector === ".cp-select__control")!.body).toMatch(/cursor:\s*pointer/);
+    expect(rules.find((r) => r.selector === ".cp-select__control")!.body).toMatch(/cursor:\s*default/);
   });
 
   it("draws an inlineLabel inside the box, before the value, as the select's name (C222)", () => {

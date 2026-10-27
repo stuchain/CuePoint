@@ -33,7 +33,8 @@
   flex: none;
   color: var(--fg-muted);
   font-family: var(--font-data);
-  font-size: var(--font-size-sm);
+  /* M17: a unit is small and muted, under the title's size, as the rows below it. */
+  font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
   font-weight: var(--control-font-weight);
 }

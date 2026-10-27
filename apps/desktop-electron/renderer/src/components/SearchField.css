@@ -25,7 +25,8 @@
   padding: 0 calc(var(--icon-size-sm) + var(--space-sm) * 2);
   /* P31: sunken, no frame until hover or focus; the frame is transparent so nothing moves. */
   border: var(--control-border-width) solid transparent;
-  background: var(--bg-input);
+  /* D8 (M46): the page ground and the header set --field-fill so the box shows on them. */
+  background: var(--field-fill, var(--bg-input));
   color: var(--fg-primary);
   /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
   font-family: var(--font-data);
@@ -38,9 +39,19 @@
   border-color: var(--hover-border);
 }
 
-/* The token focus ring stays; the line under it turns violet too (P31). */
+/* One focus rule for every field (M344): the line turns violet while the field has focus, and the
+   keyboard's ring is drawn over it, inside the box. */
 .cp-search-field:focus-within .cp-search-field__input:not(:disabled):not([aria-disabled="true"]) {
   border-color: var(--accent-primary);
+}
+
+.cp-search-field__input:focus-visible {
+  outline-offset: var(--focus-ring-offset-inset);
+}
+
+/* M357: a disabled field greys its magnifier too. */
+.cp-search-field:has(> .cp-search-field__input:is(:disabled, [aria-disabled="true"])) > .cp-search-field__icon {
+  color: var(--fg-disabled);
 }
 
 .cp-search-field__input:disabled,
@@ -62,19 +73,13 @@
   display: none;
 }
 
-.cp-search-field__clear {
+/* The clear mark is the one CloseButton (M357): a small icon button with its hover box and tip, set
+   at the right end of the field, inside its border. */
+.cp-search-field > .cp-hint {
   position: absolute;
   right: var(--space-xs);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-2xs);
-  border: 0;
-  background: none;
-  color: var(--fg-muted);
-  cursor: pointer;
 }
 
-.cp-search-field__clear:hover {
-  color: var(--fg-primary);
+.cp-search-field .cp-close {
+  margin-inline-end: 0;
 }

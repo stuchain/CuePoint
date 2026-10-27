@@ -69,9 +69,10 @@ describe("one disabled look for every control (C2)", () => {
   });
 });
 
-// P38: a disabled control keeps its shape in a faint line and grey words. The one exception to
-// "words are --fg-disabled" is the disabled primary, whose fill and words are colour mixes of the
-// accent (T6: greyed by colour, never by opacity). Nothing else may state its own disabled colour.
+// P38: a disabled control keeps its shape in a faint line and grey words. The exceptions to
+// "words are --fg-disabled" are the disabled primary and (M345, DEC-302) the disabled write button,
+// whose fill and words are colour mixes of their accent (T6: greyed by colour, never by opacity).
+// Nothing else may state its own disabled colour.
 describe("disabled colours (P38)", () => {
   const rules = parseRules(stripComments(button)).filter((r) => selectorList(r.selector).some((s) => /:disabled|\[aria-disabled/.test(s)));
 
@@ -82,10 +83,14 @@ describe("disabled colours (P38)", () => {
     expect(base?.body).toMatch(/color:\s*var\(--fg-disabled\)/);
   });
 
-  it("allows one exception: the disabled primary is an accent mix on the panel, with mixed words", () => {
+  it("allows two exceptions: the disabled primary and write buttons are an accent mix on the panel, with mixed words", () => {
     const exceptions = rules.filter((r) => /color:\s*color-mix\(/.test(r.body.replace(/background:[^;]*;/g, "").replace(/border-color:[^;]*;/g, "")));
-    expect(exceptions).toHaveLength(1);
-    const primary = exceptions[0]!;
+    expect(exceptions).toHaveLength(2);
+    const write = exceptions.find((r) => r.selector.includes(".cp-btn--write:disabled"))!;
+    expect(write.body).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-write\) 22%, var\(--bg-panel\)\)/);
+    expect(write.body).toMatch(/color:\s*color-mix\(in srgb, var\(--fg-on-status\) 55%, var\(--bg-panel\)\)/);
+    expect(write.body).not.toMatch(/opacity/);
+    const primary = exceptions.find((r) => r.selector.includes(".cp-btn--primary:disabled"))!;
     expect(primary.selector).toContain(".cp-btn--primary:disabled");
     expect(primary.body).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-fill\) 22%, var\(--bg-panel\)\)/);
     expect(primary.body).toMatch(/color:\s*color-mix\(in srgb, var\(--fg-on-accent\) 55%, var\(--bg-panel\)\)/);

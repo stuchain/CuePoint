@@ -40,11 +40,17 @@ describe("Badge", () => {
     expect(body).not.toMatch(/fg-on-status|fg-on-accent/);
   });
 
-  it.each(["success", "warning", "danger"])("%s takes its tone from the status colour", (variant) => {
+  // M325 (D14, DEC-302): all good is quiet, so a success chip is the neutral chip.
+  it("success is the neutral chip: colour is for what needs action or went wrong", () => {
+    expect(rule(".cp-badge--success")).toMatch(/--chip-tone:\s*var\(--fg-muted\)/);
+    expect(rule(".cp-badge--success")).not.toMatch(/--chip-text/);
+  });
+
+  it.each(["warning", "danger"])("%s takes its tone from the status colour", (variant) => {
     expect(rule(`.cp-badge--${variant}`)).toMatch(new RegExp(`--chip-tone:\\s*var\\(--accent-${variant}\\)`));
   });
 
-  it.each(["success", "warning", "danger"])("%s words use the status text token", (variant) => {
+  it.each(["warning", "danger"])("%s words use the status text token", (variant) => {
     expect(rule(`.cp-badge--${variant}`)).toMatch(new RegExp(`--chip-text:\\s*var\\(--${variant}-text\\)`));
   });
 

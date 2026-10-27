@@ -18,7 +18,7 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 
 /**
  * The one multi-line text box (area 78): the same box, border, hover, focus ring, label above and
- * hint or error below as TextField, a few lines tall, resizable up and down only. Use it for
+ * hint or error below as TextField, a few lines tall, growing with its text (no resize grip). Use it for
  * every note, message or comment; never a bare `<textarea>` with its own look.
  */
 export function Textarea({

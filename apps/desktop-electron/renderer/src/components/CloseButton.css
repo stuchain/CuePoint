@@ -10,6 +10,9 @@
   min-height: var(--control-height-sm);
   height: var(--control-height-sm);
   padding: 0;
+  /* The × hangs by its inset (D10, M53): the small square is bigger than the glyph, so half the
+     difference goes out into the margin and the glyph, not the box, sits on the edge. */
+  margin-inline-end: calc(-1 * (var(--control-height-sm) - var(--icon-size-sm)) / 2);
 }
 
 /* The same hover the quiet buttons have (Button.css), and none while disabled. */

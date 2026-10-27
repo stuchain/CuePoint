@@ -25,6 +25,8 @@ interface TabsProps {
    * its panels the ids from `tabId` and `panelId`. Absent, no ids are written.
    */
   idPrefix?: string;
+  /** Names the tablist for a screen reader ("Library views"); give one wherever there is more than one strip (M474). */
+  label?: string;
 }
 
 /** The id of a tab's button, for a panel's `aria-labelledby`. */
@@ -47,7 +49,7 @@ function hasMoreToRight(strip: HTMLElement): boolean {
   return strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 1;
 }
 
-export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: TabsProps) {
+export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix, label }: TabsProps) {
   const strip = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState(false);
 
@@ -96,6 +98,7 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: T
       ref={strip}
       className={`cp-tabs ${variant === "sub" ? "cp-tabs--sub" : ""}`.trim()}
       role="tablist"
+      aria-label={label}
       onScroll={measure}
     >
       {tabs.map((tab, index) => (
@@ -106,6 +109,7 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: T
           id={idPrefix ? tabId(idPrefix, tab.id) : undefined}
           aria-controls={idPrefix ? panelId(idPrefix, tab.id) : undefined}
           aria-selected={tab.id === activeId}
+          aria-disabled={tab.disabled ? true : undefined}
           tabIndex={tab.id === stop ? 0 : -1}
           className={`cp-tabs__tab ${tab.id === activeId ? "cp-tabs__tab--active" : ""}`}
           // A plain count is named with its label and a comma ("Missing files, 3"); a chip or other

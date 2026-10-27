@@ -12,7 +12,8 @@
   font-family: var(--font-control);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
-  cursor: pointer;
+  /* D31 (M339): the arrow, as every desktop app draws a button; greyed it is the arrow too. */
+  cursor: default;
   user-select: none;
 }
 
@@ -49,17 +50,20 @@
   color: var(--fg-primary);
 }
 
-/* Quiet: words only. It keeps the standard height, so a row of buttons lines up. */
+/* Quiet: no frame, no fill. It keeps the standard height, so a row of buttons lines up. Quiet means
+   frameless, not grey (D30, M342): its words are the text colour, and grey is for what is greyed. */
 .cp-btn--quiet {
   min-width: 0;
   border-color: transparent;
   background: transparent;
-  color: var(--fg-muted);
+  color: var(--fg-primary);
 }
 
+/* The one hover of every frameless button (D30, M342): the hover fill and the frame, the same as a
+   quiet secondary in a bar below. No underline: that is a link's. */
 .cp-btn--quiet:hover:not(:disabled):not([aria-disabled="true"]) {
-  color: var(--fg-primary);
-  text-decoration: underline;
+  background: var(--hover-fill);
+  border-color: var(--border-control);
 }
 
 /* One hover for every control (area 79): a shade of the text colour over whatever the button is.
@@ -68,10 +72,15 @@
   background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
+/* Fields and buttons take the same border step on hover (D30, M343): a framed grey button firms its
+   line as a field does. A filled one keeps its fill as its line. */
+.cp-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]):not(.cp-btn--loading) {
+  border-color: var(--hover-border);
+}
+
 /* A press is drawn on the first frame, with nothing timed (DEC-134 as amended): the button sits a
    hairline lower and its fill darkens, over whatever variant it is. */
-.cp-btn:active:not(:disabled):not([aria-disabled="true"]),
-.cp-btn--loading {
+.cp-btn:active:not(:disabled):not([aria-disabled="true"]):not(.cp-btn--loading) {
   transform: translate(var(--hairline), var(--hairline));
 }
 
@@ -79,9 +88,11 @@
   background-image: linear-gradient(var(--press-shade), var(--press-shade));
 }
 
-/* A toggle that is on (D1, C4): the selected fill, a 1px accent line and the text colour, in
-   the control weight; the line is what says it is on, so nothing shifts or goes bold (P2). */
-.cp-btn[aria-pressed="true"] {
+/* A toggle that is on (D1, C4; D30, M340): the selected fill, a 1px accent line and the text colour,
+   in the control weight; the line is what says it is on, so nothing shifts or goes bold (P2). A
+   button whose menu is open wears the same look (M341). */
+.cp-btn[aria-pressed="true"],
+.cp-btn[aria-expanded="true"][aria-haspopup] {
   border-color: var(--accent-primary);
   background: var(--bg-selected);
   color: var(--fg-primary);
@@ -97,6 +108,14 @@
   cursor: default;
 }
 
+/* A ring on a filled button stands off its edge (D29, M328): the fill and the ring can be one colour
+   in a theme, so the ground shows between them. */
+.cp-btn--primary:focus-visible,
+.cp-btn--write:focus-visible,
+.cp-btn--danger-confirm:focus-visible {
+  outline-offset: var(--focus-ring-offset-filled);
+}
+
 /* P38, the one documented exception to "disabled words are --fg-disabled" (disabledLook.test.ts): a
    disabled main action is the accent fill mixed into the panel with its words mixed the same way, so
    it still reads as the page's one primary. A colour mix, never opacity (T6). */
@@ -105,6 +124,15 @@
   background: color-mix(in srgb, var(--accent-fill) 22%, var(--bg-panel));
   border-color: transparent;
   color: color-mix(in srgb, var(--fg-on-accent) 55%, var(--bg-panel));
+}
+
+/* M345: a disabled green write button is the write green mixed into the panel, so "Export 300 tracks"
+   still reads as the page's write action, not a grey secondary. Its words are mixed the same way. */
+.cp-btn--write:disabled:not(.cp-btn--loading),
+.cp-btn--write[aria-disabled="true"]:not(.cp-btn--loading) {
+  background: color-mix(in srgb, var(--accent-write) 22%, var(--bg-panel));
+  border-color: transparent;
+  color: color-mix(in srgb, var(--fg-on-status) 55%, var(--bg-panel));
 }
 
 .cp-btn--quiet:disabled:not(.cp-btn--loading),
@@ -213,9 +241,40 @@
   min-height: var(--control-height-sm);
 }
 
-/* A loading button keeps its words and shows the spinner before them (C13). */
+/* A loading button keeps its size (M346): its words stay in the layout, unseen, and the spinner is
+   laid over the middle in the on-fill colour, so the row never shifts and the spinner shows on a
+   primary or write button as well. */
+.cp-btn--loading {
+  position: relative;
+}
+
+.cp-btn--loading > :not(.cp-btn__spinner) {
+  visibility: hidden;
+}
+
 .cp-btn__spinner {
+  position: absolute;
+  inset: 0;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-primary);
+}
+
+.cp-btn--primary .cp-btn__spinner {
+  color: var(--fg-on-accent);
+}
+
+.cp-btn--write .cp-btn__spinner {
+  color: var(--fg-on-status);
+}
+
+.cp-btn__spinner .cp-spinner__block {
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.cp-btn__spinner .cp-spinner__cell {
+  background: currentColor;
 }
 
 /* Icon only (T10): a square at the control height. */
@@ -226,8 +285,16 @@
 }
 
 .cp-btn--icon.cp-btn--sm {
+  position: relative;
   width: var(--control-height-sm);
   min-width: var(--control-height-sm);
+}
+
+/* The small icon button is drawn small and hit at 24 (M477): an invisible square reaches out from it. */
+.cp-btn--icon.cp-btn--sm::after {
+  content: "";
+  position: absolute;
+  inset: min(0px, calc((100% - var(--hit-target)) / 2));
 }
 
 /* Half the icon cell, as in PickerDialog: the glyph sits inside the square, not filling it. */

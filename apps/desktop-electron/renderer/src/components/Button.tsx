@@ -104,13 +104,14 @@ export function Button(props: ButtonProps) {
             aria-haspopup={menu ? "menu" : undefined}
             {...rest}
         >
-            {loading ? (
+            {/* Loading lays the spinner over the unchanged content (hidden, still in the layout), so
+                the button keeps its size (M346). */}
+            {loading && (
                 <span className="cp-btn__spinner">
                     <PixelSpinner label={null} />
                 </span>
-            ) : (
-                icon && <span className="cp-btn__icon">{drawIcon(icon)}</span>
             )}
+            {icon && <span className="cp-btn__icon">{drawIcon(icon)}</span>}
             {!iconOnly && <span className="cp-btn__label">{children}</span>}
             {iconEnd && !iconOnly && <span className="cp-btn__icon cp-btn__icon--end">{drawIcon(iconEnd)}</span>}
             {menu && !iconOnly && (

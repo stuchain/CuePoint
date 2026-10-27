@@ -1,22 +1,4 @@
-.cp-more-about {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-sm);
-}
-
-.cp-more-about__toggle {
-  min-width: 0;
-  /* The folds ("More about this", "Disk space") read as quiet control words (P17). */
-  color: var(--fg-muted);
-  /* The arrow sits on the content edge, not inset by the button's own padding. */
-  padding-inline-start: 0;
-}
-
-.cp-more-about__toggle:hover:not(:disabled) {
-  color: var(--fg-primary);
-}
-
+/* The shared Disclosure (Disclosure.css) holds the head; this is only the muted detail under it. */
 .cp-more-about__body {
   color: var(--fg-muted);
   font-family: var(--font-meta);

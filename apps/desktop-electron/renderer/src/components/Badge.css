@@ -1,6 +1,6 @@
 /*
  * The one chip (status chips, counts, tags): a tinted fill and words, all from one tone, with no
- * line (P6). The fill is the tone's colour at --chip-fill-mix mixed once with a solid ground (Q6a:
+ * line (P6; faces: Q4, the pixel face at the control weight, never 500/600, which do not ship: M2). The fill is the tone's colour at --chip-fill-mix mixed once with a solid ground (Q6a:
  * --chip-ground, set by each table to its own ground; elsewhere the surface shows through), so a chip is the same on a hovered or selected
  * row instead of a tint that changes with what is under it. The words are the colour lifted towards
  * the theme's text colour so they read at 4.5:1 in every theme (themeContrast.test.ts holds the pairs).
@@ -16,11 +16,12 @@
   border-radius: 0;
   background: color-mix(in srgb, var(--chip-tone) var(--chip-fill-mix), var(--chip-ground, transparent));
   color: var(--chip-text, color-mix(in srgb, var(--chip-tone) var(--chip-text-mix), var(--fg-primary)));
-  /* P2: a chip is the work, so Inter at the chip size, semibold; figures stay tabular. */
+  /* Q4 (M6): a chip is interface words, so the pixel face at the chip size and the control weight;
+     figures stay tabular. */
   font-family: var(--font-control);
   font-variant-numeric: tabular-nums;
   font-size: var(--font-size-chip);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--control-font-weight);
   line-height: 1;
   white-space: nowrap;
 }
@@ -30,9 +31,10 @@
   --chip-tone: var(--fg-muted);
 }
 
+/* All good is quiet (D14, M325): a success chip ("Done", "Up to date", "In use") is the neutral chip.
+   Colour is kept for what needs action (warning) or went wrong (danger). */
 .cp-badge--success {
-  --chip-tone: var(--accent-success);
-  --chip-text: var(--success-text);
+  --chip-tone: var(--fg-muted);
 }
 
 .cp-badge--warning {

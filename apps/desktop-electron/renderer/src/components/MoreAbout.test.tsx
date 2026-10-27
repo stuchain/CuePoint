@@ -54,9 +54,10 @@ describe("MoreAbout", () => {
   });
 });
 
-describe("MoreAbout look (C50)", () => {
-  it("puts the arrow flush with the content edge", async () => {
-    const css = (await import("./MoreAbout.css?raw")).default as string;
-    expect(css).toMatch(/\.cp-more-about__toggle\s*\{[^}]*padding-inline-start:\s*0/);
+describe("MoreAbout look (C50, M60)", () => {
+  it("is the shared Disclosure: title on the content edge (no head padding), arrow at the row end", async () => {
+    const css = (await import("./Disclosure.css?raw")).default as string;
+    expect(css).toMatch(/\.cp-fold__head\s*\{[^}]*padding:\s*0;/);
+    expect(css).toMatch(/\.cp-fold__arrow\s*\{[^}]*margin-inline-start:\s*auto/);
   });
 });

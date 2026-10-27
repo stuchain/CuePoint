@@ -54,7 +54,7 @@
   /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
   font-family: var(--font-data);
   font-size: var(--control-font-size);
-  cursor: pointer;
+  cursor: default; /* D31 (M339): the arrow on a selectable row. */
 }
 
 .cp-suggest__option:hover {

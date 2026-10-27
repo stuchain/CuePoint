@@ -25,6 +25,13 @@ describe("Tabs", () => {
     expect(two).toHaveAttribute("aria-controls", panelId("x", "b"));
   });
 
+  // M474: the strip can be named, and a disabled tab says so to assistive tech.
+  it("names the tablist and marks a disabled tab aria-disabled", () => {
+    render(<Tabs tabs={[...TABS, { id: "c", label: "Three", disabled: true }]} activeId="a" onChange={() => {}} label="Views" />);
+    expect(screen.getByRole("tablist", { name: "Views" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Three" })).toHaveAttribute("aria-disabled", "true");
+  });
+
   it("marks the active tab and reports a change", async () => {
     const onChange = vi.fn();
     render(<Tabs tabs={TABS} activeId="a" onChange={onChange} />);
@@ -56,7 +63,8 @@ describe("Tabs", () => {
   });
 
   it("leaves the main variant underlined", () => {
-    expect(css).toMatch(/\.cp-tabs__tab--active\s*\{[^}]*border-bottom-color/);
+    // M52: the bar is drawn under the label only (a pseudo-element), not as the whole tab's border.
+    expect(css).toMatch(/\.cp-tabs:not\(\.cp-tabs--sub\) \.cp-tabs__tab--active::after\s*\{[^}]*background:/);
     expect(/\.cp-tabs\s*\{([^}]*)\}/.exec(css)![1]!).toMatch(/border-bottom:/);
   });
 
@@ -66,7 +74,7 @@ describe("Tabs", () => {
 
   it("has no hard-coded white wash on hover", () => {
     expect(css).not.toMatch(/rgba\(255,\s*255,\s*255/);
-    expect(css).toMatch(/:hover:not\(:disabled\)\s*\{[^}]*var\(--hover-fill\)/);
+    expect(css).toMatch(/:hover:not\(:disabled\):not\(\[aria-disabled="true"\]\):not\(\.cp-tabs__tab--active\)\s*\{[^}]*var\(--hover-fill\)/);
   });
 
   it("keeps the active main tab's weight, so the underline alone says it is active (C26)", () => {

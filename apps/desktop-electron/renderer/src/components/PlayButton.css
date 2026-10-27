@@ -1,6 +1,7 @@
-/* The one row play button (area 12; P53): 18px, round, a hairline ring, the play mark inside it. */
+/* The one row play button (area 12; P53): the small control size, a square (D5, M34) with a hairline
+   frame, the play mark inside it. It is the same size as every small icon button (D10, M79). */
 .cp-play-btn {
-  --play-size: round(nearest, calc(18px * var(--scale)), 1px);
+  --play-size: var(--control-height-sm);
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -10,10 +11,11 @@
   height: var(--play-size);
   padding: 0;
   border: var(--hairline) solid var(--border-control);
-  border-radius: 50%;
+  border-radius: 0;
   background: transparent;
   color: var(--fg-muted);
-  cursor: pointer;
+  /* D31: the arrow, not the hand. */
+  cursor: default;
 }
 
 /* The mark is a whole multiple of the 12-unit grid and always fits the circle. */
@@ -28,8 +30,11 @@
   color: var(--fg-primary);
 }
 
-/* Playing: violet ring and mark on a 12% tint (a colour mix, not opacity). */
-.cp-play-btn--playing {
+/* Playing: violet ring and mark on a 12% tint (a colour mix, not opacity). M356: hovering the playing
+   row's button keeps the violet frame (the plain hover rule above is more specific than the class
+   alone and would turn it grey). */
+.cp-play-btn--playing,
+.cp-play-btn--playing:hover:not(:disabled):not([aria-disabled="true"]) {
   border-color: var(--accent-primary);
   background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
   color: var(--accent-primary);

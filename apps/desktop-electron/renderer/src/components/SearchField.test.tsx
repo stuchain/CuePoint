@@ -25,7 +25,7 @@ describe("SearchField", () => {
     const rules = parseRules(stripComments(css));
     const body = (selector: string) => rules.find((r) => r.selector.split(",").map((x) => x.trim()).includes(selector))?.body ?? "";
     const input = body(".cp-search-field__input");
-    expect(input).toMatch(/background:\s*var\(--bg-input\)/);
+    expect(input).toMatch(/background:\s*var\(--field-fill, var\(--bg-input\)\)/); // D8, M46
     expect(input).toMatch(/border:\s*var\(--control-border-width\) solid transparent/);
     expect(rules.some((r) => r.selector.includes(":hover:not(:disabled)") && /border-color:\s*var\(--hover-border\)/.test(r.body))).toBe(true);
     expect(rules.some((r) => r.selector.includes(":focus-within") && /border-color:\s*var\(--accent-primary\)/.test(r.body))).toBe(true);

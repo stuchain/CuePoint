@@ -21,7 +21,10 @@
 .get-help-dialog__field textarea {
   width: 100%;
   padding: var(--space-sm);
-  resize: vertical;
+  /* D7 (M40): no browser grip; the box grows with what is written. */
+  resize: none;
+  field-sizing: content;
+  max-height: calc(var(--control-height) * 10);
   font: inherit;
   color: var(--fg-primary);
   background: var(--bg-toolbar);

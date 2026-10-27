@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, type InputHTMLAttributes } from "react";
 import { useFitPlaceholder } from "./fitPlaceholder";
+import { CloseButton } from "./CloseButton";
 import { PixelIcon } from "./PixelIcon";
 import "./SearchField.css";
 
@@ -72,9 +73,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
         {...rest}
       />
       {value !== "" && (
-        <button type="button" className="cp-search-field__clear" aria-label="Clear search" onClick={clear}>
-          <PixelIcon name="close" size="sm" />
-        </button>
+        <CloseButton aria-label="Clear search" onClick={clear} />
       )}
     </div>
   );

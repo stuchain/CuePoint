@@ -41,10 +41,11 @@ describe("checkbox and radio marks", () => {
     expect(ruleBody(':where(input[type="radio"])')).toMatch(/border-radius:\s*50%/);
   });
 
-  it("draws a selected radio as an --accent-primary dot in a 1px --accent-primary ring, and an unselected one in --border-control", () => {
+  // M334 (DEC-302): "on" is one violet, --accent-fill, for a checked box, ring and dot.
+  it("draws a selected radio as an --accent-fill dot in a 1px --accent-fill ring, and an unselected one in --border-control", () => {
     const checked = ruleBody(':where(input[type="radio"]):checked');
-    expect(checked).toMatch(/color:\s*var\(--accent-primary\)/);
-    expect(checked).toMatch(/border-color:\s*var\(--accent-primary\)/);
+    expect(checked).toMatch(/color:\s*var\(--accent-fill\)/);
+    expect(checked).toMatch(/border-color:\s*var\(--accent-fill\)/);
     expect(box).toMatch(/border:\s*var\(--hairline\)\s+solid\s+var\(--border-control\)/);
   });
 });
@@ -58,7 +59,7 @@ describe("a checked radio keeps its own border on hover", () => {
     expect(generic).toBeGreaterThan(-1);
     expect(radio).toBeGreaterThan(generic);
     expect(ruleBody(':where(input[type="radio"]):checked:hover:not(:disabled)')).toMatch(
-      /border-color:\s*var\(--accent-primary\)/,
+      /border-color:\s*var\(--accent-fill\)/,
     );
   });
 });

@@ -44,6 +44,30 @@ interface HintProps {
 /** How long the pointer rests on a control before the tip shows. */
 export const HINT_HOVER_DELAY_MS = 400;
 
+/**
+ * After one tip has been up, the next control's tip shows after this much (a warm window, D32,
+ * M386): along a toolbar the first tip waits 400 ms and the rest follow at once, instead of each
+ * waiting its own 400 ms.
+ */
+export const HINT_WARM_DELAY_MS = 40;
+
+/** How long after a tip goes away the next one is still "warm". */
+export const HINT_WARM_WINDOW_MS = 600;
+
+let lastTipShownAt = Number.NEGATIVE_INFINITY;
+let tipsUp = 0;
+
+/** Forgets the warm window (tests, so one test's tip does not shorten the next one's wait). */
+export function resetHintWarmth(): void {
+  lastTipShownAt = Number.NEGATIVE_INFINITY;
+  tipsUp = 0;
+}
+
+/** The delay before a tip, given whether one was up a moment ago. */
+export function hintDelay(): number {
+  return tipsUp > 0 || Date.now() - lastTipShownAt < HINT_WARM_WINDOW_MS ? HINT_WARM_DELAY_MS : HINT_HOVER_DELAY_MS;
+}
+
 /** Keep the tip this far from the control and from the viewport edge. */
 const GAP = 4;
 
@@ -108,6 +132,17 @@ export function Hint({ text, shortcut, children, inline = false, portal = false,
     reason.current = null;
     setPlace(null);
   }, [cancelTimer]);
+
+  // Tells the warm window that a tip is up, and when the last one went.
+  const isUp = place !== null;
+  useEffect(() => {
+    if (!isUp) return;
+    tipsUp += 1;
+    return () => {
+      tipsUp -= 1;
+      lastTipShownAt = Date.now();
+    };
+  }, [isUp]);
 
   useEffect(() => cancelTimer, [cancelTimer]);
 
@@ -187,7 +222,7 @@ export function Hint({ text, shortcut, children, inline = false, portal = false,
     timer.current = setTimeout(() => {
       timer.current = null;
       show("hover");
-    }, HINT_HOVER_DELAY_MS);
+    }, hintDelay());
   };
   const onPointerLeave = () => {
     setHovered(false);

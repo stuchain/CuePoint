@@ -1,6 +1,7 @@
 .cp-saved-tick {
-  color: var(--success-text);
+  /* All good is quiet (D14, M325): the tick and "Saved" are muted, not green. */
+  color: var(--fg-muted);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-regular);
   white-space: nowrap;
 }

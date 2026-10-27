@@ -9,6 +9,13 @@
   display: inline;
 }
 
+/* A tip fades in and does not slide (D32, M386): the shared popover motion also eases down a unit,
+   which on a row of tips looks like a wobble; the hint keeps its fade alone. (motion.css still lists
+   the tip with the popovers; this rule is the more specific one.) */
+:root[data-motion-entrance] body .cp-hint__tip {
+  animation: cp-fade-in var(--motion-base) var(--motion-ease-out);
+}
+
 /* Fixed, so the strip's overflow clipping does not hide it. */
 .cp-hint__tip {
   position: fixed;

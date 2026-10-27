@@ -4,9 +4,11 @@
   gap: var(--space-xs);
 }
 
+/* The label role (D1, M1): pixel, control weight, muted, label size, as TextField's and a legend. */
 .cp-select__label {
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--control-font-weight);
   color: var(--fg-muted);
 }
 
@@ -35,10 +37,14 @@
   /* L4: a surface whose ground is the input tone itself sets --field-fill, so the box still shows. */
   background: var(--field-fill, var(--bg-input));
   color: var(--fg-primary);
-  font-family: var(--font-control);
+  /* M23 (D1): the faces are one rule across fields: a value you typed or chose is Inter, the choices
+     in the list and every label are the pixel face. A select's value is a chosen value, so Inter, as a
+     text field's is. */
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
-  cursor: pointer;
+  /* D31: the arrow, not the hand. */
+  cursor: default;
 }
 
 /* Only the shared Select hides the native arrow; a raw select reusing the class keeps it. */
@@ -69,12 +75,15 @@
   border-color: var(--accent-danger);
 }
 
+/* One focus rule for every field (M344): the line turns violet on any :focus (a click too), and the
+   keyboard's ring is drawn over that line, one ring width inside the box, so it is one edge, not a
+   border plus a ring outside it. */
 .cp-select__control:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
-.cp-select__control:focus-visible:not(.cp-select__control--error) {
+.cp-select__control:focus:not(:disabled):not([aria-disabled="true"]):not(.cp-select__control--error) {
   border-color: var(--accent-primary);
 }
 
@@ -98,7 +107,7 @@
 .cp-select--inline .cp-select__field {
   align-items: center;
   border: var(--control-border-width) solid transparent;
-  background: var(--bg-input);
+  background: var(--field-fill, var(--bg-input));
 }
 
 .cp-select--inline .cp-select__field:where(:has(> .cp-select__control:not(:disabled):not([aria-disabled="true"]))):hover {
@@ -110,10 +119,13 @@
   background: transparent;
 }
 
-.cp-select--inline .cp-select__field:has(> .cp-select__control:focus-visible) {
+.cp-select--inline .cp-select__field:has(> .cp-select__control:focus) {
   border-color: var(--accent-primary);
+}
+
+.cp-select--inline .cp-select__field:has(> .cp-select__control:focus-visible) {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .cp-select--inline .cp-select__control {
@@ -131,7 +143,8 @@
   align-items: center;
   padding-inline-start: var(--space-sm);
   color: var(--fg-muted);
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--control-font-weight);
   white-space: nowrap;
 }

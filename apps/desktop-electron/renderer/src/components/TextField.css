@@ -18,11 +18,11 @@
   max-width: none;
 }
 
-/* The label role: 10, bold, muted, above the box; interface words, so the pixel face (Q4). */
+/* The label role (D1, M1): the pixel face at the control weight, muted, label size, above the box. */
 .cp-field__label {
   font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--control-font-weight);
   color: var(--fg-muted);
 }
 
@@ -45,14 +45,15 @@
   border-color: var(--hover-border);
 }
 
-/* The token ring stays on :focus-visible; the line under it turns violet too (P48). */
+/* One focus rule for every field (M344): the line turns violet on any :focus, and the keyboard's ring
+   is drawn over it, one ring width inside the box: one edge, not a border plus a ring. */
 .cp-field__input:focus:not(:disabled):not([aria-disabled="true"]):not(.cp-field__input--error) {
   border-color: var(--accent-primary);
 }
 
 .cp-field__input:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .cp-field__input:disabled,
@@ -69,7 +70,8 @@
   border-color: var(--accent-danger);
 }
 
-/* A hint or an error is a sentence, so Inter (D5, C55). */
+/* A hint or an error is a sentence, so Inter (D5, C55). The error is also the one look for every
+   inline refusal on a page (M347): red, Inter, extra small, regular; reuse `cp-field__error`. */
 .cp-field__hint,
 .cp-field__error {
   font-family: var(--font-data);
@@ -117,7 +119,7 @@
   background: transparent;
   /* P48: muted until the box is hovered (a colour mix, not opacity). */
   color: color-mix(in srgb, var(--fg-muted) 70%, transparent);
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-field__number:hover .cp-field__step:not(:disabled),
@@ -134,14 +136,8 @@
   cursor: default;
 }
 
-/* A date field's picker button is the app's pixel calendar in the text colour, not Chromium's
-   own icon (C25). It still opens the picker; the date can also be typed. */
+/* A date field has no browser calendar glyph (D7, M39): the indicator is hidden, and the date is
+   typed in the field's own parts. Chromium's own picker popup is accepted for now. */
 .cp-field__input[type="date"]::-webkit-calendar-picker-indicator {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
-  margin: 0;
-  padding: 0;
-  background: currentColor;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M2 1h1v1h-1zM8 1h1v1h-1zM1 2h10v1h-10zM1 3h1v1h-1zM10 3h1v1h-1zM1 4h10v1h-10zM1 5h1v1h-1zM10 5h1v1h-1zM1 6h1v1h-1zM3 6h2v1h-2zM6 6h2v1h-2zM10 6h1v1h-1zM1 7h1v1h-1zM10 7h1v1h-1zM1 8h1v1h-1zM3 8h2v1h-2zM6 8h2v1h-2zM10 8h1v1h-1zM1 9h1v1h-1zM10 9h1v1h-1zM1 10h10v1h-10z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
-  cursor: pointer;
+  display: none;
 }

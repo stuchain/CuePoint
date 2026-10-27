@@ -4,11 +4,11 @@
  * A reason in a `title` shows on hover only, so a keyboard user never sees it.
  * Hint keeps the title and adds a tooltip while the control has focus.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { Hint } from "./Hint";
+import { Hint, HINT_WARM_DELAY_MS, resetHintWarmth } from "./Hint";
 
 describe("Hint", () => {
   it("puts the reason in the control's title, for hover", () => {
@@ -133,6 +133,8 @@ describe("Hint", () => {
 });
 
 describe("Hint on hover", () => {
+  // A tip left up by the test before leaves the next one "warm", which would shorten its wait.
+  beforeEach(() => resetHintWarmth());
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -174,6 +176,32 @@ describe("Hint on hover", () => {
       vi.advanceTimersByTime(1);
     });
     expect(screen.getByRole("tooltip")).toHaveTextContent("Opens the log");
+  });
+
+  // D32 (M386): along a toolbar the first tip waits 400 ms, the next follows at once.
+  it("shows the next control's tip after the short warm delay once one has been up", async () => {
+    const user = setup();
+    render(
+      <>
+        <Hint text="First tip">
+          <button type="button">One</button>
+        </Hint>
+        <Hint text="Second tip">
+          <button type="button">Two</button>
+        </Hint>
+      </>,
+    );
+    await user.hover(screen.getByRole("button", { name: "One" }));
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(screen.getByRole("tooltip")).toHaveTextContent("First tip");
+    await user.unhover(screen.getByRole("button", { name: "One" }));
+    await user.hover(screen.getByRole("button", { name: "Two" }));
+    act(() => {
+      vi.advanceTimersByTime(HINT_WARM_DELAY_MS);
+    });
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Second tip");
   });
 
   it("shows nothing when the pointer leaves before 400 ms", async () => {

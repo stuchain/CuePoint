@@ -1,6 +1,5 @@
-import { useId, useState, type ReactNode } from "react";
-import { Button } from "./Button";
-import { DisclosureArrow } from "./DisclosureArrow";
+import { useState, type ReactNode } from "react";
+import { Disclosure } from "./Disclosure";
 import "./MoreAbout.css";
 
 interface MoreAboutProps {
@@ -14,28 +13,21 @@ interface MoreAboutProps {
 }
 
 /**
- * The detail behind a one-line explanation. A visible secondary button opens
- * it (a quiet, text-only button with the disclosure arrow); nothing is remembered, so it is collapsed on load unless `defaultOpen` says otherwise.
+ * The detail behind a one-line explanation: the shared `Disclosure` (title on the edge, arrow at
+ * the row end) with "More about this" / "Less about this"; nothing is remembered, so it is collapsed
+ * on load unless `defaultOpen` says otherwise.
  */
 export function MoreAbout({ children, label = "More about this", describedBy, defaultOpen = false }: MoreAboutProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const regionId = useId();
   return (
-    <div className="cp-more-about">
-      <Button
-        variant="quiet"
-        className="cp-more-about__toggle"
-        aria-expanded={open}
-        aria-controls={regionId}
-        aria-describedby={describedBy}
-        icon={<DisclosureArrow open={open} />}
-        onClick={() => setOpen((v) => !v)}
-      >
-        {open ? "Less about this" : label}
-      </Button>
-      <div id={regionId} className="cp-more-about__body" hidden={!open}>
-        {children}
-      </div>
-    </div>
+    <Disclosure
+      className="cp-more-about"
+      title={open ? "Less about this" : label}
+      open={open}
+      onOpenChange={setOpen}
+      describedBy={describedBy}
+    >
+      <div className="cp-more-about__body">{children}</div>
+    </Disclosure>
   );
 }

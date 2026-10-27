@@ -50,9 +50,15 @@ describe("one chip box (P30)", () => {
     ] as const) {
       const body = rule(sheet, selector);
       expect(body, `${sheet} ${selector}`).toMatch(/font-size:\s*var\(--font-size-chip\)/);
-      // P51: a filter chip's words are Inter medium; the other chips stay semibold (P30).
-      const weight = selector === ".cp-filter-bar__chip" ? "medium" : "semibold";
-      expect(body, `${sheet} ${selector}`).toMatch(new RegExp(`font-weight:\\s*var\\(--font-weight-${weight}\\)`));
+      // M2 (DEC-302): the pixel face ships at 400 and 700, so the status chip (Badge) is the control weight.
+      // The other chips are moved by their own packages (key chip, filter chip, tags); until they are, each
+      // still states one of its old weights or the control weight.
+      const weight = sheet === "/src/components/Badge.css" ? "control" : null;
+      if (weight) expect(body, `${sheet} ${selector}`).toMatch(/font-weight:\s*var\(--control-font-weight\)/);
+      else
+        expect(body, `${sheet} ${selector}`).toMatch(
+          /font-weight:\s*var\(--(font-weight-(medium|semibold)|control-font-weight)\)/,
+        );
     }
   });
 

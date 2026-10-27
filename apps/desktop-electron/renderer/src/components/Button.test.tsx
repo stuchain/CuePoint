@@ -74,6 +74,18 @@ describe("Button", () => {
     expect(spinner!.compareDocumentPosition(button.querySelector(".cp-btn__label")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  // M346: the spinner is laid over the content, which stays in the layout, so the button keeps its size.
+  it("keeps its icon and label in the markup while loading, the spinner beside them to be overlaid", () => {
+    const { container } = render(
+      <Button loading icon="search">
+        Match
+      </Button>,
+    );
+    expect(container.querySelector(".cp-btn__spinner")).not.toBeNull();
+    expect(container.querySelector(".cp-btn__icon")).not.toBeNull();
+    expect(container.querySelector(".cp-btn__label")).toHaveTextContent("Match");
+  });
+
   it("is not busy when it is not loading", () => {
     render(<Button>Match</Button>);
     expect(screen.getByRole("button")).not.toHaveAttribute("aria-busy");

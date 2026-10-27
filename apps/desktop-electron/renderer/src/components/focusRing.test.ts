@@ -70,7 +70,9 @@ describe("one focus ring (T16)", () => {
   });
 
   it("draws every ring at the one offset, or the one inset (C17)", () => {
-    const allowed = ["var(--focus-ring-offset)", "var(--focus-ring-offset-inset)"];
+    // M328 (D29, DEC-302): a filled button's ring stands one ring width off its edge
+    // (--focus-ring-offset-filled, index.css), so the ground shows between a fill and a ring of its colour.
+    const allowed = ["var(--focus-ring-offset)", "var(--focus-ring-offset-inset)", "var(--focus-ring-offset-filled)"];
     const bad = offsets().filter(({ value }) => !allowed.includes(value));
     expect(bad, JSON.stringify(bad)).toEqual([]);
   });
