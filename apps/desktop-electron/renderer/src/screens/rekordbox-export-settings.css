@@ -9,9 +9,18 @@
   gap: var(--space-lg);
 }
 
-/* The remembered facts are the shared label/value list (.cp-facts, C66). */
-.cp-export-settings .cp-facts dd {
+/* A fact is its label above its value, like every other field on the page (M231). */
+.cp-export-settings__fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.cp-export-settings__value {
   overflow-wrap: anywhere;
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: var(--font-size-sm);
 }
 
 .cp-export-settings__heading {

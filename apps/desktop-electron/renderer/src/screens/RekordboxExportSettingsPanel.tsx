@@ -1,21 +1,32 @@
-import { useId } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
 import { exportHistory, useReportReadError, useSharedRead } from "../api/sharedReads";
-import { Button, Loading, MoreAbout, Notice, Panel } from "../components";
+import { Button, Loading, Notice, Panel } from "../components";
+import { displayPath } from "../format/paths";
 import { RETRY } from "../format/words";
 import { fileName } from "./library/libraryFormat";
 import { libraryImportState } from "./library/libraryLink";
 import {
   historyOutcome,
   historyWhen,
-  keyFormatLabel,
   rememberedFolderLine,
 } from "./library/rekordboxExport";
 import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import "./rekordbox-export-settings.css";
 import { needsDesktopApp, userMessage } from "../api/userMessage";
+
+/** The notation exports are written in, as a sentence (M437). */
+function exportKeyWords(format: string): string {
+  switch (format) {
+    case "camelot":
+      return "Exports write keys as Camelot, like 8A.";
+    case "short":
+      return "Exports write keys in short form, like Amin.";
+    default:
+      return "Exports write keys in Rekordbox\u2019s own notation, like Am or C#.";
+  }
+}
 
 /** How many past exports Settings lists. */
 export const SETTINGS_HISTORY_LIMIT = 10;
@@ -50,7 +61,6 @@ export function RekordboxExportSettingsPanel() {
   const load = read.refresh;
 
   const navigate = useNavigate();
-  const lineId = useId();
   const remembered = history?.remembered ?? null;
 
   return (
@@ -75,29 +85,39 @@ export function RekordboxExportSettingsPanel() {
 
         {loading && !history && <Loading what="past exports" />}
 
-        {remembered && (
-          <dl className="cp-facts">
-            <dt>Save dialog opens in</dt>
-            <dd data-testid="export-remembered-folder" data-hint={remembered.folder ?? undefined}>
-              {rememberedFolderLine(remembered)}
-            </dd>
-            <dt>Key notation</dt>
-            <dd data-testid="export-remembered-notation">{keyFormatLabel(remembered.key_format)}</dd>
-          </dl>
+        {/* One label above its value, as every other section writes a field (M231); the folder in the
+            computer's own separators with "~" for home (M500). */}
+        {remembered?.folder && (
+          <div className="cp-export-settings__fact">
+            <span className="cp-text-label">Save dialog opens in</span>
+            <p
+              className="cp-export-settings__value"
+              data-testid="export-remembered-folder"
+              data-hint={displayPath(remembered.folder, { keepHome: true })}
+            >
+              {remembered.folder_exists ? displayPath(remembered.folder) : rememberedFolderLine(remembered)}
+            </p>
+          </div>
         )}
 
-        <SettingsHint id={lineId}>Remembers your last export.</SettingsHint>
-        <MoreAbout describedBy={lineId}>
-          <SettingsHint>
-            To export, use “Export to Rekordbox…” in the Library or on a Collection&apos;s menu.
+        {/* A sentence, not a second setting beside "Keys written as" (M437): exports keep their own notation. */}
+        {remembered && (
+          <SettingsHint className="cp-export-settings__notation" data-testid="export-remembered-notation">
+            {exportKeyWords(remembered.key_format)}
           </SettingsHint>
-        </MoreAbout>
+        )}
+
+        <SettingsHint>
+          To export, use &ldquo;Export to Rekordbox&hellip;&rdquo; in the Library or on a Collection&apos;s menu.
+        </SettingsHint>
 
         {history && (
           <section aria-label="Recent exports">
             <h3 className="cp-export-settings__heading cp-text-label">Recent exports</h3>
             {history.exports.length === 0 ? (
-              <SettingsHint>No exports yet.</SettingsHint>
+              <SettingsHint>
+                {remembered?.folder ? "No exports yet." : "No exports yet. The first one is saved in Documents."}
+              </SettingsHint>
             ) : (
               <ul className="cp-export-settings__list">
                 {history.exports.map((record) => (
@@ -107,7 +127,7 @@ export function RekordboxExportSettingsPanel() {
                     className="cp-export-settings__item"
                   >
                     <span className="cp-export-settings__when">{historyWhen(record)}</span>
-                    <span className="cp-export-settings__file" data-hint={record.destination_path}>
+                    <span className="cp-export-settings__file" data-hint={displayPath(record.destination_path, { keepHome: true })}>
                       {fileName(record.destination_path)}
                     </span>
                     <span className="cp-export-settings__outcome">{historyOutcome(record)}</span>
@@ -124,7 +144,7 @@ export function RekordboxExportSettingsPanel() {
             variant="secondary"
             onClick={() => navigate("/library", { state: libraryImportState() })}
           >
-            Import a Rekordbox file…
+            Change file…
           </Button>
         </SettingsActions>
       </div>

@@ -19,12 +19,13 @@
   gap: var(--space-md);
 }
 
-/* The version and the state are Inter and muted; the percent is a tabular figure (P63). */
+/* The version and the state read like every other status line here: Inter at body size, muted;
+   the percent is a tabular figure (M15). */
 .about-updates .about-updates__version,
 .about-updates__state {
   color: var(--fg-muted);
-  font-family: var(--font-control);
-  font-size: var(--control-font-size);
+  font-family: var(--font-meta);
+  font-size: var(--text-body);
   font-variant-numeric: tabular-nums;
 }
 

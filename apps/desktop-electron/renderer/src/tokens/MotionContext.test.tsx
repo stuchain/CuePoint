@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MotionProvider, useMotion } from "./MotionContext";
-import { MOTION_KINDS, MOTION_STORAGE_KEY } from "./motion";
+import { MOTION_FOLLOW_SYSTEM_KEY, MOTION_KINDS, MOTION_STORAGE_KEY } from "./motion";
 
 /** A controllable `prefers-reduced-motion` query. */
 function mockMatchMedia(initial: boolean, legacy = false) {
@@ -98,6 +98,42 @@ describe("MotionProvider", () => {
     expect(result.current.systemReduced).toBe(false);
     media.set(true);
     expect(attrs()).toEqual([]);
+  });
+
+  it("lets the switches win over reduced motion once Follow system is turned off (M435)", () => {
+    const media = mockMatchMedia(true);
+    const { result } = renderHook(() => ({ motion: useMotion(), page: useMotion("page") }), { wrapper });
+    expect(result.current.motion.followSystem).toBe(true);
+    expect(result.current.page).toBe(false);
+    act(() => result.current.motion.setFollowSystem(false));
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBe("false");
+    expect(attrs()).toHaveLength(10);
+    expect(result.current.page).toBe(true);
+    // A switch turned off still stays off.
+    act(() => result.current.motion.setKind("page", false));
+    expect(html).not.toHaveAttribute("data-motion-page");
+    act(() => result.current.motion.setFollowSystem(true));
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBeNull();
+    expect(attrs()).toEqual([]);
+    media.set(false);
+    expect(attrs()).toHaveLength(9);
+  });
+
+  it("reads a stored Follow system flag, and reset sets it back with an undo", () => {
+    localStorage.setItem(MOTION_FOLLOW_SYSTEM_KEY, "false");
+    mockMatchMedia(true);
+    const { result } = renderHook(() => useMotion(), { wrapper });
+    expect(result.current.followSystem).toBe(false);
+    expect(attrs()).toHaveLength(10);
+    let undo = () => {};
+    act(() => {
+      undo = result.current.reset();
+    });
+    expect(result.current.followSystem).toBe(true);
+    expect(attrs()).toEqual([]);
+    act(() => undo());
+    expect(result.current.followSystem).toBe(false);
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBe("false");
   });
 
   it("adds its listener and removes it on unmount", () => {

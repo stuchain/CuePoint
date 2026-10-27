@@ -64,25 +64,28 @@ describe("the build", () => {
 });
 
 describe("last checked", () => {
-  it("says never when it has not", async () => {
+  it("says nothing of a check that never happened (the state line says it, M442)", async () => {
     setup({ status: "up-to-date" });
-    expect(await screen.findByText("Never checked")).toBeInTheDocument();
+    await screen.findByText(/\(build abc1234\)/);
+    expect(screen.queryByText(/Never checked|Last checked/)).toBeNull();
   });
 
-  it("writes the time the American way", async () => {
+  it("writes the day and the time, the American way (M425)", async () => {
     setup({ status: "up-to-date", lastCheckedAt: new Date(2026, 8, 2, 15, 5).toISOString() });
-    expect(await screen.findByText("Last checked 3:05 PM")).toBeInTheDocument();
+    expect(await screen.findByText(/^Last checked .*3:05 PM$/)).toBeInTheDocument();
   });
 
-  it("gives the local time", async () => {
-    setup({ status: "up-to-date", lastCheckedAt: new Date(2026, 8, 2, 10, 42).toISOString() });
-    expect(await screen.findByText(/Last checked 10:42/)).toBeInTheDocument();
+  it("gives the local time, with today as a word", async () => {
+    const now = new Date();
+    now.setHours(10, 42, 0, 0);
+    setup({ status: "up-to-date", lastCheckedAt: now.toISOString() });
+    expect(await screen.findByText(/^Last checked today, 10:42/)).toBeInTheDocument();
   });
 });
 
 describe("the state in words", () => {
   it.each([
-    [{ status: "up-to-date" }, "You are up to date"],
+    [{ status: "up-to-date" }, "You have the newest version"],
     [{ status: "checking" }, "Checking for updates…"],
     [{ status: "downloading", version: "1.0.0-test.2", progress: 40 }, "Downloading 1.0.0-test.2…"],
     [{ status: "idle" }, "Not checked yet"],
@@ -119,7 +122,20 @@ describe("the state in words", () => {
       { buildInfo: vi.fn(async () => ({ version: "1.0.0-test.1", release: "r", dist: "abc1234", environment: "development" })) },
     );
     expect(await screen.findByText("Updates are checked in the installed app.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Check for updates" })).toBeDisabled();
+    // One line says it; there is no button to grey and no "Never checked" beside it (M442).
+    expect(screen.queryByRole("button", { name: "Check for updates" })).toBeNull();
+    expect(screen.queryByText(/Never checked/)).toBeNull();
+  });
+
+  it("never writes the words that the Library header's Up to date chip uses (M425)", async () => {
+    setup({ status: "up-to-date" });
+    const words = await screen.findByText("You have the newest version");
+    expect(words.textContent).not.toMatch(/up to date/i);
+  });
+
+  it("does not write a hole where an empty version should be", async () => {
+    setup({ status: "manual", manualReason: "linux", version: "" });
+    expect(await screen.findByText("A new version of CuePoint is out")).toBeInTheDocument();
   });
 
   it("lets an installed app that has not checked yet check, through main", async () => {
@@ -144,14 +160,14 @@ describe("the state in words", () => {
 
   it("follows a push", async () => {
     setup({ status: "up-to-date" });
-    await screen.findByText("You are up to date");
+    await screen.findByText("You have the newest version");
     act(() => fake.push(updateState({ status: "checking" })));
     expect(screen.getByText("Checking for updates…")).toBeInTheDocument();
   });
 
   it("announces politely", async () => {
     setup({ status: "up-to-date" });
-    const words = await screen.findByText("You are up to date");
+    const words = await screen.findByText("You have the newest version");
     expect(words.closest("[aria-live='polite']")).not.toBeNull();
   });
 });

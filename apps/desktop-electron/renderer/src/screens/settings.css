@@ -12,7 +12,24 @@
   margin: 0;
 }
 
+/* The page fills the content region and its sections scroll in `.screen-region` (M225), so the
+   scrollbar sits on the content's edge under the header. The region starts below the header, so
+   nothing is hidden behind it: its height is 0 for the offsets below. */
+.app-main .screen.settings-page {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.settings-page .screen-region {
+  --screen-header-height: 0px;
+}
+
 .settings-page__layout {
+  /* A gap's room above the first section and the rail, the same as the rail's sticky top (M228). */
+  padding-top: var(--gap-box);
   display: grid;
   grid-template-columns: calc(160px * var(--scale)) minmax(0, 1fr);
   gap: var(--space-lg);
@@ -20,11 +37,11 @@
 }
 
 /* One sticky header, one divider: the rail sticks just under the header's divider and leaves the
-   same gap the page leaves below it (C35). Its links start at the title's left edge (C124). */
+   same gap a section's heading lands at (--gap-box), so the rail does not move as the page scrolls
+   (M228). Its links sit on the page edge, tint and bar included (M59). */
 .settings-page__nav {
   position: sticky;
-  top: calc(var(--screen-header-height, 0px) + var(--space-md));
-  margin-inline-start: round(nearest, calc(-1 * var(--space-sm)), 1px);
+  top: calc(var(--screen-header-height, 0px) + var(--gap-box));
 }
 
 .settings-page__nav ul {
@@ -52,9 +69,10 @@
   text-decoration: underline;
 }
 
+/* The current link is its text and a bar on the edge, no fill (M235). */
 .settings-page__nav a[data-current] {
   color: var(--fg-primary);
-  background: var(--selected-row-background);
+  box-shadow: inset round(nearest, calc(3px * var(--scale)), 1px) 0 0 var(--accent-primary);
 }
 
 .settings-page__nav a:focus-visible {
@@ -69,8 +87,23 @@
   min-width: 0;
   /* Room below the last card, so About & updates can scroll up to the top (C124). */
   padding-bottom: 60vh;
-  /* One reading column at wide windows, so a card never stretches past its content (C211). */
+}
+
+/* A field is as wide as its width prop says, so the sections reach the page edge and the header's
+   rule ends where they do, with no dead strip (M229). A status line keeps a readable measure. */
+.settings-page__sections .settings-status {
   max-width: calc(720px * var(--scale));
+}
+
+/* A card's head: title and unit centred on one line a control tall, so title to first field is the
+   same in every section, and the quiet Reset hangs on the edge (M227). */
+.settings-page__section .cp-card__head {
+  align-items: center;
+  min-height: var(--control-height);
+}
+
+.settings-page__section .cp-card__unit .cp-btn--quiet {
+  margin-inline-end: round(nearest, calc(-1 * var(--space-sm)), 1px);
 }
 
 /* The saved tick and the quiet Reset, at the right of a card's title line (C52). */
@@ -151,7 +184,7 @@
 }
 
 /* The About card's own lines; a hint and a greyed button's reason keep their one size (C59). */
-.settings-page__about p:not(.settings-hint):not(.cp-reason) {
+.settings-page__about p:not(.settings-note):not(.cp-reason) {
   margin: 0;
   font-size: var(--font-size-sm);
 }
@@ -201,39 +234,30 @@
   outline: none;
 }
 
-/* The state as a dot before the words (P17): grey by default, the tone's colour where there is one. One
-   per panel, on its first line only: a later status line in the same body is plain words. */
-.settings-status::before {
-  content: "";
+/* The state as a small icon before the words, tinted by the state (M230): muted by default, the
+   tone's colour where there is one. One per panel, on its first line only: a later status line in
+   the same body is plain words. Only a problem colours the words (M325). */
+.settings-status__icon {
   display: inline-block;
-  inline-size: var(--status-dot);
-  block-size: var(--status-dot);
   margin-inline-end: var(--space-sm);
-  border-radius: 50%;
-  background: currentColor;
   color: var(--fg-muted);
   vertical-align: middle;
 }
 
-.settings-status ~ .settings-status::before {
-  content: none;
+.settings-status ~ .settings-status .settings-status__icon {
+  display: none;
 }
 
-.settings-status--success::before {
+.settings-status--success .settings-status__icon {
   color: var(--success-text);
 }
 
-.settings-status--warning::before {
+.settings-status--warning .settings-status__icon {
   color: var(--warning-text);
 }
 
-.settings-status--danger::before {
+.settings-status--danger .settings-status__icon {
   color: var(--danger-text);
-}
-
-.settings-status--success {
-  color: var(--success-text);
-  font-weight: var(--weight-strong);
 }
 
 .settings-status--warning {
@@ -246,15 +270,12 @@
   font-weight: var(--weight-strong);
 }
 
-/* A hint under a setting: one size, and never wider than the standard field above it, so the
-   column has one right edge (C51). */
-.settings-hint {
+/* A hint under a setting (the shared .cp-field__hint look): never wider than the standard field
+   above it, so the column has one right edge (C51), and 4 under its control (M233). */
+.settings-note {
   overflow-wrap: anywhere;
   margin: 0;
   max-width: var(--field-width-standard);
-  color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--text-body);
   line-height: var(--line-height-prose);
 }
 

@@ -89,7 +89,6 @@ describe("the shared page margin", () => {
       ["clean past searches", match, ".match-past"],
       ["clean note", clean, ".clean-note"],
       ["keys top", keys, ".keys-page__top"],
-      ["keys actions", keys, ".keys-page__actions"],
       ["keys tracks", keys, ".keys-page__tracks"],
       ["statistics tab", statistics, ".statistics-tabpanel"],
     ];

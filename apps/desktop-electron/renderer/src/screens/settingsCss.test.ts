@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseRules, stripComments } from "../test/cssRules";
 import css from "./settings.css?raw";
+import errorReportingCss from "./error-reporting-settings.css?raw";
 
 const rules = parseRules(stripComments(css));
 
@@ -18,12 +19,16 @@ function body(selector: string): string {
 
 describe("Settings page CSS", () => {
   it("stops a hint at the standard field width, the width of the select above it (C51)", () => {
-    expect(body(".settings-hint")).toMatch(/max-width:\s*var\(--field-width-standard\)/);
+    expect(body(".settings-note")).toMatch(/max-width:\s*var\(--field-width-standard\)/);
+  });
+
+  it("has one hint look: .settings-hint is retired for .cp-field__hint (M236)", () => {
+    expect(rules.some((r) => r.selector.includes(".settings-hint"))).toBe(false);
   });
 
   it("does not let the About card's paragraph size reach a hint or a reason line (C59)", () => {
     expect(rules.some((r) => /\.settings-page__about p\s*$/.test(r.selector.trim()))).toBe(false);
-    expect(body(".settings-page__about p:not(.settings-hint):not(.cp-reason)")).toMatch(/font-size/);
+    expect(body(".settings-page__about p:not(.settings-note):not(.cp-reason)")).toMatch(/font-size/);
   });
 
   it("lands a section and its heading a box's gap below the sticky header (C124)", () => {
@@ -44,19 +49,59 @@ describe("Settings without cards (P9, P17)", () => {
     expect(card).toMatch(/background:\s*transparent/);
   });
 
-  it("draws a status line's dot with one ::before in the line's own colour (P17)", () => {
-    const dots = rules.filter((r) => r.selector.trim() === ".settings-status::before");
-    expect(dots).toHaveLength(1);
-    expect(dots[0]!.body).toMatch(/inline-size:\s*var\(--status-dot\)/);
-    expect(dots[0]!.body).toMatch(/block-size:\s*var\(--status-dot\)/);
-    expect(dots[0]!.body).toMatch(/background:\s*currentColor/);
-    expect(dots[0]!.body).toMatch(/color:\s*var\(--fg-muted\)/);
-    expect(body(".settings-status--success::before")).toMatch(/color:\s*var\(--success-text\)/);
-    expect(body(".settings-status--warning::before")).toMatch(/color:\s*var\(--warning-text\)/);
-    expect(body(".settings-status--danger::before")).toMatch(/color:\s*var\(--danger-text\)/);
+  it("draws a status line's state as a tinted pixel icon, not a round dot (M230, M34)", () => {
+    expect(rules.some((r) => r.selector.trim() === ".settings-status::before")).toBe(false);
+    expect(body(".settings-status__icon")).toMatch(/color:\s*var\(--fg-muted\)/);
+    expect(body(".settings-status--success .settings-status__icon")).toMatch(/color:\s*var\(--success-text\)/);
+    expect(body(".settings-status--warning .settings-status__icon")).toMatch(/color:\s*var\(--warning-text\)/);
+    expect(body(".settings-status--danger .settings-status__icon")).toMatch(/color:\s*var\(--danger-text\)/);
+    expect(css).not.toMatch(/border-radius:\s*50%/);
   });
 
-  it("puts the dot on the first status line of a panel only (open question 5)", () => {
-    expect(body(".settings-status ~ .settings-status::before")).toMatch(/content:\s*none/);
+  it("keeps an all-good line quiet: only a problem colours the words (M325)", () => {
+    expect(rules.some((r) => r.selector.trim() === ".settings-status--success")).toBe(false);
+    expect(body(".settings-status--danger")).toMatch(/color:\s*var\(--danger-text\)/);
+  });
+
+  it("puts the icon on the first status line of a panel only (open question 5)", () => {
+    expect(body(".settings-status ~ .settings-status .settings-status__icon")).toMatch(/display:\s*none/);
+  });
+});
+
+describe("Settings layout (M226-M229)", () => {
+  it("sticks the rail where a section's heading lands, so it does not move as the page scrolls (M228)", () => {
+    expect(body(".settings-page__nav")).toMatch(/top:\s*calc\(var\(--screen-header-height, 0px\) \+ var\(--gap-box\)\)/);
+  });
+
+  it("marks the current link with text and a bar on the edge, no fill (M235, M59)", () => {
+    const current = body(".settings-page__nav a[data-current]");
+    expect(current).toMatch(/box-shadow:\s*inset/);
+    expect(current).not.toMatch(/background/);
+    expect(body(".settings-page__nav")).not.toMatch(/margin-inline-start/);
+  });
+
+  it("lets the sections reach the page edge: no reading-column cap on them (M229)", () => {
+    expect(body(".settings-page__sections")).not.toMatch(/max-width/);
+    // A status line keeps its measure, scaled with the text.
+    expect(body(".settings-page__sections .settings-status")).toMatch(/max-width:\s*calc\(720px \* var\(--scale\)\)/);
+  });
+
+  it("centres a card head on a control-tall line, so every section's title sits alike (M227)", () => {
+    const head = body(".settings-page__section .cp-card__head");
+    expect(head).toMatch(/align-items:\s*center/);
+    expect(head).toMatch(/min-height:\s*var\(--control-height\)/);
+  });
+
+  it("scrolls the sections in the page's own region, below the header (M225)", () => {
+    expect(body(".app-main .screen.settings-page")).toMatch(/overflow:\s*hidden/);
+    expect(body(".settings-page .screen-region")).toMatch(/--screen-header-height:\s*0px/);
+  });
+
+  it("draws the quit-clearing divider on a wrapper, never as the fieldset's border (M226)", () => {
+    const errorRules = parseRules(stripComments(errorReportingCss));
+    const wrapper = errorRules.find((r) => r.selector.trim() === ".cp-error-reporting__exit");
+    expect(wrapper?.body).toMatch(/border-top:\s*var\(--divider\)/);
+    const fieldset = errorRules.find((r) => r.selector.trim() === ".cp-error-reporting__exit > .cp-fieldset");
+    expect(fieldset?.body).toMatch(/border:\s*0/);
   });
 });

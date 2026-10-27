@@ -20,7 +20,7 @@ beforeEach(() => {
 afterEach(() => localStorage.clear());
 
 const density = () => screen.getByRole("combobox", { name: "Row density" });
-const keys = () => screen.getByRole("checkbox", { name: "Color keys" });
+const keys = () => screen.getByRole("checkbox", { name: "Color key chips" });
 
 describe("Tables settings", () => {
   it("is a group headed Tables, Compact and coloured by default", () => {
@@ -38,7 +38,7 @@ describe("Tables settings", () => {
   it("offers Compact and Roomy", () => {
     render(<TableSettings />);
     const options = Array.from((density() as HTMLSelectElement).options).map((o) => o.textContent);
-    expect(options).toEqual(["Compact (26 px)", "Roomy (32 px)"]);
+    expect(options).toEqual(["Compact", "Roomy"]);
   });
 
   it("applies and remembers Roomy, and says it was saved", async () => {
@@ -66,7 +66,7 @@ describe("Tables settings", () => {
 describe("Keys written as (K1 to K3)", () => {
   const notation = () => screen.getByRole("combobox", { name: "Keys written as" });
 
-  it("is a select after Color keys, Camelot by default, with its three choices", () => {
+  it("is a select after Color key chips, Camelot by default, with its three choices", () => {
     render(<TableSettings />);
     expect(notation()).toHaveValue("camelot");
     const options = Array.from((notation() as HTMLSelectElement).options).map((o) => o.textContent);

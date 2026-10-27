@@ -1,8 +1,8 @@
 /**
  * Settings → Appearance (SET-3, SET-4): theme names a person can read with the
  * ids a stored choice uses unchanged, a custom theme deleted only after a
- * confirm, swatches named in words, and the size select built from the scales
- * the app offers.
+ * confirm from its "..." menu, "In use" on the active one, the editor inline on
+ * the page (M239-M241), and the size select built from the scales the app offers.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -31,7 +31,7 @@ function renderPanel() {
   );
 }
 
-const theme = () => screen.getByRole("combobox", { name: "Active theme" });
+const theme = () => screen.getByRole("combobox", { name: "Theme" });
 const size = () => screen.getByRole("combobox", { name: "Size of text and controls" });
 
 beforeEach(() => {
@@ -179,22 +179,22 @@ describe("size of text and controls", () => {
   });
 });
 
+const MINE = {
+  id: "mine",
+  name: "Mine",
+  colors: { ...NEO_DARK_EDITOR_COLORS },
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
+
 describe("custom themes", () => {
-  it("says what the empty list is for", () => {
+  it("says what the empty list is for, in a few words (M440)", () => {
     renderPanel();
-    expect(
-      screen.getByText("No custom themes yet. Pick nine colors; borders are made from them."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No custom themes yet.")).toBeInTheDocument();
   });
 
   it("draws the swatches as decoration: the theme's name is what names it", () => {
-    saveCustomTheme({
-      id: "mine",
-      name: "Mine",
-      colors: { ...NEO_DARK_EDITOR_COLORS },
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
+    saveCustomTheme(MINE);
     const { container } = renderPanel();
     const swatches = [...container.querySelectorAll(".theme-settings__swatch")];
     expect(swatches).toHaveLength(3);
@@ -204,37 +204,56 @@ describe("custom themes", () => {
     }
   });
 
-  it("deletes only after the confirm", async () => {
-    saveCustomTheme({
-      id: "mine",
-      name: "Mine",
-      colors: { ...NEO_DARK_EDITOR_COLORS },
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
+  it("marks the theme in use with a chip in place of Apply, and offers Apply on the others (M241)", async () => {
+    saveCustomTheme(MINE);
+    saveCustomTheme({ ...MINE, id: "other", name: "Other" });
+    renderPanel();
+    const rows = screen.getAllByRole("listitem");
+    expect(within(rows[0]!).getByRole("button", { name: "Apply" })).toBeInTheDocument();
+    await userEvent.click(within(rows[0]!).getByRole("button", { name: "Apply" }));
+    expect(within(screen.getAllByRole("listitem")[0]!).getByText("In use")).toBeInTheDocument();
+    expect(within(screen.getAllByRole("listitem")[0]!).queryByRole("button", { name: "Apply" })).toBeNull();
+    expect(within(screen.getAllByRole("listitem")[1]!).getByRole("button", { name: "Apply" })).toBeInTheDocument();
+  });
+
+  it("keeps Edit and Delete in a \"...\" menu, not as three framed buttons (M241)", async () => {
+    saveCustomTheme(MINE);
+    renderPanel();
+    expect(screen.queryByRole("button", { name: "Delete…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit…" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "More for Mine" }));
+    const menu = screen.getByRole("menu", { name: "Mine actions" });
+    expect(within(menu).getByRole("menuitem", { name: "Edit…" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Delete…" })).toBeInTheDocument();
+  });
+
+  it("deletes only after the confirm, titled with the theme's name (M451)", async () => {
+    saveCustomTheme(MINE);
     const { container } = renderPanel();
     const listed = () => container.querySelector(".theme-settings__list");
-    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
-    const dialog = screen.getByRole("dialog", { name: "Delete theme?" });
-    expect(within(dialog).getByText("The theme “Mine” will be gone. This cannot be undone.")).toBeInTheDocument();
+    const openDelete = async () => {
+      await userEvent.click(screen.getByRole("button", { name: "More for Mine" }));
+      await userEvent.click(screen.getByRole("menuitem", { name: "Delete…" }));
+    };
+    await openDelete();
+    const dialog = screen.getByRole("dialog", { name: "Delete \u201cMine\u201d?" });
+    expect(within(dialog).getByText("This cannot be undone.")).toBeInTheDocument();
     // Asked, not done: Cancel keeps it.
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(listed()).toHaveTextContent("Mine");
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    await openDelete();
     await userEvent.click(
-      within(screen.getByRole("dialog", { name: "Delete theme?" })).getByRole("button", { name: "Delete theme" }),
+      within(screen.getByRole("dialog", { name: "Delete \u201cMine\u201d?" })).getByRole("button", { name: "Delete theme" }),
     );
     expect(listed()).toBeNull();
-    expect(
-      screen.getByText("No custom themes yet. Pick nine colors; borders are made from them."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No custom themes yet.")).toBeInTheDocument();
   });
 });
 
 describe("Tables", () => {
   const density = () => screen.getByRole("combobox", { name: "Row density" });
-  const keys = () => screen.getByRole("checkbox", { name: "Color keys" });
+  const keys = () => screen.getByRole("checkbox", { name: "Color key chips" });
   const notation = () => screen.getByRole("combobox", { name: "Keys written as" });
 
   it("is part of Appearance, and Reset Appearance puts it back, Undo restores it", async () => {
@@ -246,7 +265,7 @@ describe("Tables", () => {
     expect(document.documentElement.dataset.keyColours).toBe("off");
     expect(document.documentElement.dataset.keyNotation).toBe("both");
 
-    await userEvent.click(screen.getByRole("button", { name: "Reset appearance" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
     expect(density()).toHaveValue("compact");
     expect(keys()).toBeChecked();
     expect(document.documentElement.dataset.rowDensity).toBeUndefined();
@@ -262,31 +281,83 @@ describe("Tables", () => {
 });
 
 describe("Create custom theme", () => {
+  const editor = () => screen.getByRole("region", { name: "Create custom theme" });
+
+  it("opens inline on the page, not in a dialog, so the preview is seen undimmed (M240)", async () => {
+    renderPanel();
+    await userEvent.click(screen.getByRole("button", { name: "Create custom theme…" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(editor()).toBeInTheDocument();
+  });
+
   it("does not restyle the app when the editor opens, only once a color is changed", async () => {
     renderPanel();
     const before = document.documentElement.dataset.theme;
     await userEvent.click(screen.getByRole("button", { name: "Create custom theme…" }));
-    const dialog = screen.getByRole("dialog", { name: "Create custom theme" });
     expect(document.documentElement.dataset.theme).toBe(before);
 
     // The name is not a color.
-    await userEvent.type(within(dialog).getByRole("textbox", { name: "Theme name" }), "Mine");
+    await userEvent.type(within(editor()).getByRole("textbox", { name: "Theme name" }), "Mine");
     expect(document.documentElement.dataset.theme).toBe(before);
 
-    fireEvent.change(within(dialog).getByLabelText("Accent"), { target: { value: "#ff0000" } });
+    fireEvent.change(within(editor()).getByLabelText("Accent swatch"), { target: { value: "#ff0000" } });
     expect(document.documentElement.dataset.theme).toBe("custom:editor-preview");
 
     // Cancel puts the stored theme back.
-    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await userEvent.click(within(editor()).getByRole("button", { name: "Cancel" }));
     expect(document.documentElement.dataset.theme).not.toBe("custom:editor-preview");
+    expect(screen.queryByRole("region", { name: "Create custom theme" })).toBeNull();
   });
 
-  it("draws each color's name above its swatch", async () => {
+  it("takes a typed or pasted hex beside the swatch, and says when it is not one (M41)", async () => {
     renderPanel();
     await userEvent.click(screen.getByRole("button", { name: "Create custom theme…" }));
-    const field = within(screen.getByRole("dialog")).getByLabelText("Accent").closest(".theme-color-field")!;
-    const children = Array.from(field.children).map((child) => child.className);
-    expect(children[0]).toBe("theme-color-field__label");
-    expect(children[1]).toBe("theme-color-field__control");
+    const accent = within(editor()).getByRole("textbox", { name: "Accent" });
+    await userEvent.clear(accent);
+    await userEvent.type(accent, "#ff0000");
+    expect(document.documentElement.dataset.theme).toBe("custom:editor-preview");
+    expect(within(editor()).getByLabelText("Accent swatch")).toHaveValue("#ff0000");
+
+    // A short code is widened on leaving the field, not while it is being typed.
+    await userEvent.clear(accent);
+    await userEvent.type(accent, "0f0");
+    expect(accent).toHaveValue("0f0");
+    await userEvent.tab();
+    expect(accent).toHaveValue("#00ff00");
+    expect(within(editor()).getByLabelText("Accent swatch")).toHaveValue("#00ff00");
+
+    await userEvent.clear(accent);
+    await userEvent.type(accent, "nope");
+    await userEvent.tab();
+    expect(within(editor()).getByText("Use six digits, like #1a1a2e")).toBeInTheDocument();
+    expect(within(editor()).getByLabelText("Accent swatch")).toHaveValue("#00ff00");
+  });
+
+  it("follows the swatch into the hex field", async () => {
+    renderPanel();
+    await userEvent.click(screen.getByRole("button", { name: "Create custom theme…" }));
+    fireEvent.change(within(editor()).getByLabelText("Danger swatch"), { target: { value: "#123456" } });
+    expect(within(editor()).getByRole("textbox", { name: "Danger" })).toHaveValue("#123456");
+  });
+
+  it("draws each color's name above its field and swatch", async () => {
+    renderPanel();
+    await userEvent.click(screen.getByRole("button", { name: "Create custom theme…" }));
+    const field = within(editor()).getByLabelText("Accent swatch").closest(".theme-color-field")!;
+    expect(field.querySelector("label")).toHaveTextContent("Accent");
+    expect(field.firstElementChild?.querySelector("label")).not.toBeNull();
+  });
+
+  it("saves a theme, and an existing one carries its own Delete theme\u2026 at the footer's far left (M250)", async () => {
+    saveCustomTheme(MINE);
+    renderPanel();
+    await userEvent.click(screen.getByRole("button", { name: "More for Mine" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit…" }));
+    const region = screen.getByRole("region", { name: "Edit custom theme" });
+    const footer = region.querySelector(".theme-editor__footer")!;
+    expect(footer.firstElementChild).toHaveTextContent("Delete theme…");
+    await userEvent.click(within(region).getByRole("button", { name: "Save theme" }));
+    expect(screen.queryByRole("region", { name: "Edit custom theme" })).toBeNull();
+    expect(screen.getByText("Saved")).toBeInTheDocument();
   });
 });

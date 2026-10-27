@@ -72,13 +72,13 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
     );
   }
 
-  const { state, masked } = auth;
+  const { state } = auth;
   const signedIn = state === "signed_in" || state === "pasted";
   const env = state === "env";
   // Linked to from somewhere that wants the token field: a signed-in person may replace the token.
   const replacing = signedIn && focusToken !== null;
   const showPaste = signedOutOrEnded || replacing;
-  const line = lineFor(state, masked);
+  const line = lineFor(state);
   const fromConfig = !signedIn && !env && status.configured && status.source === "config";
   const signInLabel = "Sign in to Beatport";
   const noDesktop = !engineAvailable;
@@ -116,10 +116,10 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
   return (
     <Panel
       title="Beatport"
-      badge={<PanelTools reset={<ResetToDefaults section="Beatport" onReset={resetToDefaults} />} />}
+      badge={<PanelTools reset={<ResetToDefaults section="Beatport" onReset={resetToDefaults} atDefaults={!includeUsers} />} />}
     >
       <div className="settings-body">
-        <SettingsStatus id={lineId} ref={lineRef} tabIndex={-1}>
+        <SettingsStatus id={lineId} ref={lineRef} tabIndex={-1} tone={signedIn ? "success" : state === "expired" ? "warning" : undefined}>
           {line}
         </SettingsStatus>
         {fromConfig ? (
@@ -128,9 +128,9 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
           </SettingsStatus>
         ) : null}
         {!env && !auth.secure_storage ? (
-          <SettingsStatus>
+          <Notice kind="warning">
             This system has no secure key store, so you sign in again each time CuePoint starts.
-          </SettingsStatus>
+          </Notice>
         ) : null}
         {noDesktop ? <SettingsStatus>{needsDesktopApp()}</SettingsStatus> : null}
         {signingIn ? <SettingsStatus role="status">Finish signing in in the Beatport window.</SettingsStatus> : null}
@@ -233,16 +233,15 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
 }
 
 /**
- * The one line that says where the sign-in stands. A pasted one reads as the sign-in it is, with
- * how it differs, and not as a token (C178); the masked end tells one sign-in from the next.
+ * The one line that says where the sign-in stands. A pasted one reads as the sign-in it is, and not
+ * as a token (C178, M439): no end of the token is shown.
  */
-function lineFor(state: BeatportAuth["state"], masked: string | null): string {
-  const tail = masked ? ` · ${masked}` : "";
+function lineFor(state: BeatportAuth["state"]): string {
   switch (state) {
     case "signed_in":
-      return `Signed in to Beatport${tail} · renews by itself`;
+      return "Signed in to Beatport · renews by itself";
     case "pasted":
-      return `Signed in to Beatport${tail} · pasted by hand`;
+      return "Signed in to Beatport (pasted sign-in)";
     case "expired":
       return "Beatport sign-in ended";
     case "env":

@@ -1,32 +1,31 @@
 import { useId, useRef, useState } from "react";
 
-import { Button, Panel } from "../components";
+import { Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { MOTION_GROUPS, type MotionKindId, type MotionSwitches } from "../tokens/motion";
 import { useMotion } from "../tokens/MotionContext";
 import { ResetToDefaults } from "./ResetToDefaults";
-import { PanelTools, SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
+import { PanelTools, SettingsHint, SettingsStatus } from "./SettingsParts";
 import "./motion-settings.css";
 
-type MotionMode = "on" | "off" | "custom";
-
-const MODES: readonly { mode: MotionMode; label: string }[] = [
-  { mode: "on", label: "On" },
-  { mode: "off", label: "Off" },
-  { mode: "custom", label: "Custom" },
-];
+/**
+ * `system` is every kind on, which the system's reduced-motion setting still wins over (DEC-134);
+ * `on` is every kind on whatever the system asks (M435, D23).
+ */
+type MotionMode = "system" | "on" | "off" | "custom";
 
 /**
- * Settings → Motion (SET-2, K11): the system's Reduce motion setting, one On,
- * Off or Custom choice, and behind "Choose each kind…" a switch for each of the
- * ten kinds in three plain groups. Beside each switch a small square moves once
- * when that switch is turned on, so a person sees what it does without leaving
- * the page. The choice is worked out from the switches, not stored: On is every
- * kind on (the system's Reduce motion still wins, DEC-134), Off is every kind
- * off, and anything else is Custom.
+ * Settings → Motion (SET-2, K11, M435): one choice, Follow system, On, Off or Custom; Custom shows a
+ * switch for each of the ten kinds in three plain groups. Beside each switch a small square moves once
+ * when that switch is turned on, so a person sees what it does without leaving the page. The choice
+ * is worked out from the switches and the stored Follow system flag: every kind on is Follow system
+ * while the flag is set (the system's setting wins while it asks for less motion, DEC-134) and On
+ * when it is not, Off is every kind off, and anything else is Custom. Only Follow system and On
+ * change the flag, so Custom keeps whichever was chosen last.
  */
 export function MotionSettingsPanel() {
-  const { switches, setKind, setAll, setSwitches, reset, systemReduced } = useMotion();
+  const { switches, setKind, setAll, setSwitches, reset, systemReduced, followSystem, setFollowSystem } =
+    useMotion();
   const [saved, markSaved] = useSavedSignal();
   // How many times each preview has been asked to play; a new count restarts it.
   const [plays, setPlays] = useState<Partial<Record<MotionKindId, number>>>({});
@@ -34,12 +33,14 @@ export function MotionSettingsPanel() {
   const [pickedCustom, setPickedCustom] = useState(false);
   const values = Object.values(switches);
   const differ = values.some(Boolean) && !values.every(Boolean);
-  const mode: MotionMode = pickedCustom || differ ? "custom" : values.every(Boolean) ? "on" : "off";
+  const allOn = values.every(Boolean);
+  const mode: MotionMode =
+    pickedCustom || differ ? "custom" : !allOn ? "off" : followSystem ? "system" : "on";
   // The last hand-made set, so On or Off and back to Custom does not lose it. Not stored.
   const lastCustom = useRef<MotionSwitches | null>(null);
   if (differ) lastCustom.current = switches;
-  // Closed unless the page loads on Custom; not remembered.
-  const [listOpen, setListOpen] = useState(mode === "custom");
+  // Custom is the list: it shows while Custom is chosen and not otherwise.
+  const listOpen = mode === "custom";
   const listId = useId();
 
   const play = (ids: MotionKindId[]) =>
@@ -75,11 +76,11 @@ export function MotionSettingsPanel() {
       } else {
         setPickedCustom(true);
       }
-      setListOpen(true);
       return;
     }
     setPickedCustom(false);
-    turnAll(next === "on");
+    if (next !== "off") setFollowSystem(next === "system");
+    turnAll(next !== "off");
   };
 
   const resetToDefaults = () => {
@@ -92,25 +93,34 @@ export function MotionSettingsPanel() {
     };
   };
 
+  const modes: readonly { mode: MotionMode; label: string }[] = [
+    { mode: "system", label: `Follow system (now: ${systemReduced ? "reduced" : "full"})` },
+    { mode: "on", label: "On" },
+    { mode: "off", label: "Off" },
+    { mode: "custom", label: "Custom" },
+  ];
+
   return (
     <Panel
       title="Motion"
       badge={
         <PanelTools
           saved={<SavedTick signal={saved} />}
-          reset={<ResetToDefaults section="Motion" onReset={resetToDefaults} />}
+          reset={<ResetToDefaults section="Motion" onReset={resetToDefaults} atDefaults={mode === "system"} />}
         />
       }
     >
       <div className="motion-settings">
         <SettingsStatus>
-          Motion follows your system&apos;s Reduce motion setting: {systemReduced ? "on" : "off"}
-          {systemReduced ? ", so nothing moves" : ""}.
+          {!systemReduced
+            ? "Your system allows animations."
+            : followSystem
+              ? "Your system is set to reduce animations, so CuePoint keeps still while Follow system is chosen."
+              : "Your system is set to reduce animations; CuePoint moves anyway, as you chose."}
         </SettingsStatus>
 
-        <fieldset className="motion-settings__modes">
-          <legend>Motion</legend>
-          {MODES.map((option) => (
+        <fieldset className="motion-settings__modes" aria-label="Animations">
+          {modes.map((option) => (
             <label key={option.mode} className="motion-settings__label settings-check">
               <input
                 type="radio"
@@ -159,17 +169,6 @@ export function MotionSettingsPanel() {
             </fieldset>
           ))}
         </div>
-
-        <SettingsActions>
-          <Button
-            variant="secondary"
-            aria-expanded={listOpen}
-            aria-controls={listId}
-            onClick={() => setListOpen((open) => !open)}
-          >
-            Choose each kind…
-          </Button>
-        </SettingsActions>
       </div>
     </Panel>
   );

@@ -14,14 +14,14 @@
   gap: var(--space-md);
 }
 
+/* A custom theme's row: on the page, a hairline between rows, no frame or fill (M241). */
 .theme-settings__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-lg);
-  border: var(--control-border-width) solid var(--border-muted);
-  background: var(--bg-input);
+  padding-block: var(--space-sm);
+  border-bottom: var(--divider);
 }
 
 .theme-settings__swatches {
@@ -47,39 +47,46 @@
   gap: var(--space-md);
 }
 
+/* The inline editor (M240): a titled group on the card tone, so the preview is seen undimmed. */
 .theme-editor {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--bg-panel-alt);
+}
+
+.theme-editor__title {
+  margin: 0;
 }
 
 .theme-editor__colors {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(160px * var(--scale)), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(200px * var(--scale)), 1fr));
   gap: var(--space-lg) var(--space-md);
 }
 
-/* A colour: its name above (the label role), the swatch and the hex under it. */
+.theme-editor__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.theme-editor__spacer {
+  flex: 1;
+}
+
+/* A colour: its name above (the field's label), the hex field and the swatch beside it. The swatch
+   is as tall as the field's box, so it sits on the box's line. */
 .theme-color-field {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xs);
-}
-
-.theme-color-field__label {
-  color: var(--fg-muted);
-  font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
-}
-
-.theme-color-field__control {
-  display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-sm);
 }
 
 .theme-color-field__input {
+  flex: none;
   width: calc(44px * var(--scale));
   height: var(--control-height);
   padding: 0;
@@ -103,17 +110,10 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-.theme-color-field__hex {
-  color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
-  min-width: calc(64px * var(--scale));
-}
-
 /* Settings > Appearance > Tables: a Fieldset (the one legend style), spaced as the panel's own
    controls are. The checkbox row is the shared .settings-check (24px, hit area kept). */
 .theme-settings__group {
-  gap: var(--space-md);
+  gap: var(--space-lg);
   margin: 0;
   padding: 0;
   border: 0;

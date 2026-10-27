@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { AudioDevice } from "../api/cuepointBridge.types";
-import { Loading, MoreAbout, Notice, Panel } from "../components";
+import { Disclosure, Loading, Notice, Panel } from "../components";
 import { needsDesktopApp } from "../api/userMessage";
 import { countNoun } from "../format/counts";
 import { Select } from "../components/Select";
@@ -147,18 +147,24 @@ export function AudioSettingsPanel() {
     };
   };
 
+  const atDefaults = audio.device === SYSTEM_DEFAULT_DEVICE && !(audio.exclusiveSupported && audio.exclusive);
+
   return (
     <Panel
       title="Playback"
       badge={
         <PanelTools
           saved={<SavedTick signal={saved} />}
-          reset={available ? <ResetToDefaults section="Playback" onReset={resetToDefaults} /> : undefined}
+          reset={
+            available ? (
+              <ResetToDefaults section="Playback" onReset={resetToDefaults} atDefaults={atDefaults} />
+            ) : undefined
+          }
         />
       }
     >
       <div className="cp-audio-settings">
-        <SettingsStatus id={outputsId}>
+        <SettingsStatus id={outputsId} tone={available && devices.length > 0 && !(loading && !listed) ? "success" : undefined}>
           {loading && !listed ? (
             <Loading what="the output devices" />
           ) : available ? (
@@ -186,10 +192,9 @@ export function AudioSettingsPanel() {
                 : []),
             ]}
           />
+          {/* Short enough to say outright, with no fold (M237). */}
           {available && !(loading && !listed) && (
-            <MoreAbout describedBy={outputsId}>
-              <SettingsHint>If the chosen one is unplugged, CuePoint switches to System default.</SettingsHint>
-            </MoreAbout>
+            <SettingsHint>If the chosen one is unplugged, CuePoint switches to System default.</SettingsHint>
           )}
         </div>
 
@@ -208,13 +213,13 @@ export function AudioSettingsPanel() {
             <SettingsHint id={exclusiveId}>
               Plays straight to your audio interface. Other apps cannot use it meanwhile.
             </SettingsHint>
-            <MoreAbout describedBy={exclusiveId}>
+            <Disclosure title="Who needs exclusive output" describedBy={exclusiveId}>
               <SettingsHint>
                 Leave it off unless you use an audio interface. CuePoint bypasses the system mixer
                 (no resampling, no outside volume), and uses shared output if another app already
                 has the device.
               </SettingsHint>
-            </MoreAbout>
+            </Disclosure>
           </div>
         )}
 

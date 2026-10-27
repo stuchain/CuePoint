@@ -5,8 +5,17 @@ import { useEffect, useState } from "react";
  * scroll (Scrolling, PAGES-12: the Settings section links). The current link is
  * marked whatever the motion setting is (T15); only its slide belongs to the scroll kind.
  */
-/** The height of the page's sticky header in px (`--screen-header-height`, set by ScreenHeader), or 0. */
+/** What scrolls the page's sections: the page's own scroll region (M225), else the shell's content region. */
+function scroller(section: HTMLElement): Element | null {
+  return section.closest(".screen-region") ?? section.closest(".app-main");
+}
+
+/**
+ * The height of the page's sticky header in px (`--screen-header-height`, set by ScreenHeader), or 0.
+ * A page whose sections scroll in their own region sits wholly below the header, which covers nothing.
+ */
 function headerHeight(section: HTMLElement): number {
+  if (section.closest(".screen-region")) return 0;
   const host = section.closest<HTMLElement>(".screen");
   const value = host?.style.getPropertyValue("--screen-header-height") ?? "";
   const px = Number.parseFloat(value);
@@ -54,7 +63,7 @@ export function useSectionInView(ids: readonly string[], requested: RequestedSec
       // "in view" once its top is in it. What the header covers does not count, or the section
       // above the one a link scrolled to (whose end is still behind the header) stayed current.
       {
-        root: sections[0]!.closest(".app-main"),
+        root: scroller(sections[0]!),
         rootMargin: `${-headerHeight(sections[0]!)}px 0px -66% 0px`,
       },
     );
@@ -66,7 +75,8 @@ export function useSectionInView(ids: readonly string[], requested: RequestedSec
   const asked = requested?.n ?? null;
   useEffect(() => {
     if (asked === null) return;
-    const root = document.getElementById(requested!.id)?.closest(".app-main");
+    const target = document.getElementById(requested!.id);
+    const root = target ? scroller(target) : null;
     if (!root) return;
     const release = () => setReleased(asked);
     // The jump the ask itself made (a smooth scroll) is over after a moment; any scroll after that

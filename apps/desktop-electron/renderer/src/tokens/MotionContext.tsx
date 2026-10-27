@@ -11,7 +11,9 @@ import {
   MOTION_KINDS,
   clearStoredMotion,
   mergeMotion,
+  readFollowSystem,
   readMotionOverrides,
+  writeFollowSystem,
   writeMotionOverrides,
   type MotionKindId,
   type MotionOverrides,
@@ -28,8 +30,11 @@ interface MotionContextValue {
   setSwitches: (next: MotionSwitches) => void;
   /** Back to the defaults; returns the way to put back what was there. */
   reset: () => () => void;
-  /** The system's Reduce motion setting. While it is on, nothing is switched on. */
+  /** The system's Reduce motion setting. While it and `followSystem` are on, nothing moves. */
   systemReduced: boolean;
+  /** Follow system chosen (M435): the system's setting wins. "On" clears it. Stored. */
+  followSystem: boolean;
+  setFollowSystem: (follow: boolean) => void;
 }
 
 const MotionContext = createContext<MotionContextValue | null>(null);
@@ -44,12 +49,16 @@ function reducedQuery(): MediaQueryList | null {
 
 /**
  * Writes `data-motion-<kind>="on"` on `<html>` for every kind that is on, and
- * none while the system asks for reduced motion, whatever the switches say.
+ * none while the system asks for reduced motion and Follow system is chosen
+ * (the default), whatever the switches say. "On" (M435) lets the switches win.
  * Every animation's CSS is gated on one of these (see `motionRules.test.ts`).
  */
 export function MotionProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<MotionOverrides>(() => readMotionOverrides());
   const [systemReduced, setSystemReduced] = useState<boolean>(() => reducedQuery()?.matches ?? false);
+  const [followSystem, setFollowState] = useState<boolean>(() => readFollowSystem());
+  // The system stills motion only while it is followed.
+  const stilled = systemReduced && followSystem;
 
   useEffect(() => {
     const query = reducedQuery();
@@ -70,10 +79,10 @@ export function MotionProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     for (const kind of MOTION_KINDS) {
       const name = `data-motion-${kind.id}`;
-      if (switches[kind.id] && !systemReduced) root.setAttribute(name, "on");
+      if (switches[kind.id] && !stilled) root.setAttribute(name, "on");
       else root.removeAttribute(name);
     }
-  }, [switches, systemReduced]);
+  }, [switches, stilled]);
 
   const commit = useCallback((next: MotionOverrides) => {
     if (Object.keys(next).length === 0) clearStoredMotion();
@@ -93,15 +102,25 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 
   const setSwitches = useCallback((next: MotionSwitches) => commit({ ...next }), [commit]);
 
+  const setFollowSystem = useCallback((follow: boolean) => {
+    writeFollowSystem(follow);
+    setFollowState(follow);
+  }, []);
+
   const reset = useCallback(() => {
     const before = overrides;
+    const followedBefore = followSystem;
     commit({});
-    return () => commit(before);
-  }, [commit, overrides]);
+    setFollowSystem(true);
+    return () => {
+      commit(before);
+      setFollowSystem(followedBefore);
+    };
+  }, [commit, overrides, followSystem, setFollowSystem]);
 
   const value = useMemo(
-    () => ({ switches, setKind, setAll, setSwitches, reset, systemReduced }),
-    [switches, setKind, setAll, setSwitches, reset, systemReduced],
+    () => ({ switches, setKind, setAll, setSwitches, reset, systemReduced, followSystem, setFollowSystem }),
+    [switches, setKind, setAll, setSwitches, reset, systemReduced, followSystem, setFollowSystem],
   );
 
   return <MotionContext.Provider value={value}>{children}</MotionContext.Provider>;
@@ -110,7 +129,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 /**
  * Without a kind: the switches and their setters (Settings → Motion). With one:
  * whether that kind may move right now, which is its switch on and the system not
- * asking for reduced motion. Outside a provider that is false, so a component
+ * stilling it (asking for reduced motion while Follow system is chosen). Outside a provider that is false, so a component
  * rendered alone (a test, a story) shows its still state.
  *
  * Motion written in script asks this; motion written in CSS is gated on the
@@ -120,7 +139,7 @@ export function useMotion(): MotionContextValue;
 export function useMotion(kind: MotionKindId): boolean;
 export function useMotion(kind?: MotionKindId): MotionContextValue | boolean {
   const ctx = useContext(MotionContext);
-  if (kind !== undefined) return ctx ? ctx.switches[kind] && !ctx.systemReduced : false;
+  if (kind !== undefined) return ctx ? ctx.switches[kind] && !(ctx.systemReduced && ctx.followSystem) : false;
   if (!ctx) throw new Error("useMotion must be used within MotionProvider");
   return ctx;
 }

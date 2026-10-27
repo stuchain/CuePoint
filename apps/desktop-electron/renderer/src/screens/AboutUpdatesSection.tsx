@@ -1,12 +1,11 @@
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type { AppBuildInfo, UpdateState, WhatsNew as WhatsNewNotes } from "../api/cuepointBridge.types";
 import { appVersion, versionWords } from "../components/AboutDialog";
 import { Button } from "../components/Button";
 import { Notice } from "../components/Notice";
-import { ReasonLine } from "../components/ReasonLine";
 import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
-import { formatTimeOfDay } from "../format/dates";
+import { formatDayTimeInSentence } from "../format/dates";
 import { WhatsNew } from "../components/updates/WhatsNew";
 import { useRestartFlow } from "../components/updates/useRestartFlow";
 import { useUpdateState } from "../components/updates/useUpdateState";
@@ -18,11 +17,11 @@ function isTestVersion(version: string | null | undefined): boolean {
   return version !== null && version !== undefined && /-test\.\d+$/.test(version);
 }
 
-/** "Last checked 10:42" in the person's own clock, or that it never has. */
-function lastCheckedWords(iso: string | null): string {
-  if (iso === null) return "Never checked";
-  const when = formatTimeOfDay(iso);
-  return when === "" ? "Never checked" : `Last checked ${when}`;
+/** "Last checked today, 10:42 AM" in the person's own clock; nothing when it never has (the state says so, M425). */
+function lastCheckedWords(iso: string | null): string | null {
+  if (iso === null) return null;
+  const when = formatDayTimeInSentence(iso);
+  return when === "" ? null : `Last checked ${when}`;
 }
 
 /** The state in words, and the second line some states add. */
@@ -37,14 +36,15 @@ function stateWords(state: UpdateState | null, installed: boolean | null): { mai
     case "checking":
       return { main: "Checking for updates…" };
     case "up-to-date":
-      return { main: "You are up to date" };
+      // Not "up to date": the Library header says that, and two lines with the words collide (M425).
+      return { main: "You have the newest version" };
     case "downloading":
-      return { main: `Downloading ${state.version ?? ""}…` };
+      return { main: state.version ? `Downloading ${state.version}…` : "Downloading the update…" };
     case "ready":
       return { main: "Update ready" };
     case "manual":
       return {
-        main: `CuePoint ${state.version ?? ""} is out`,
+        main: state.version ? `CuePoint ${state.version} is out` : "A new version of CuePoint is out",
         more:
           state.manualReason === "linux"
             ? "Updates on Linux are installed by hand."
@@ -145,12 +145,12 @@ export function AboutUpdatesSection({ actions }: { actions?: ReactNode } = {}) {
   const installed = !buildKnown ? null : build ? build.environment === "production" : true;
   const words = stateWords(state, installed);
   const status = state?.status ?? "idle";
-  const version = state?.currentVersion ?? build?.version ?? null;
+  // `||`, not `??`: a version that came through empty is no version.
+  const version = state?.currentVersion || build?.version || null;
   const checkable = status !== "idle" || installed === true;
   const busy = status === "checking" || status === "downloading";
-  // Why Check for updates is greyed, in the one reason line above the buttons (area 93).
-  const reasonId = useId();
-  const reason = !checkable && words.main !== "" ? words.main : null;
+  // Where nothing can be checked (a run from source), one line says so and there is no button to grey (M442).
+  const lastChecked = checkable ? lastCheckedWords(state?.lastCheckedAt ?? null) : null;
 
   return (
     <div className="about-updates">
@@ -161,7 +161,7 @@ export function AboutUpdatesSection({ actions }: { actions?: ReactNode } = {}) {
       </SettingsStatus>
       <div className="about-updates__state">
         {/* Announced politely. The percentage is beside the words, so it does not repeat them as it moves. */}
-        {reason === null && (
+        {words.main !== "" && (
           <SettingsStatus aria-live="polite" tone={status === "failed" ? "warning" : undefined}>
             {words.main}
           </SettingsStatus>
@@ -171,18 +171,14 @@ export function AboutUpdatesSection({ actions }: { actions?: ReactNode } = {}) {
         )}
         {words.more && <SettingsHint>{words.more}</SettingsHint>}
       </div>
-      <SettingsHint>{lastCheckedWords(state?.lastCheckedAt ?? null)}</SettingsHint>
+      {lastChecked !== null && <SettingsHint>{lastChecked}</SettingsHint>}
       {status === "ready" && <ReadyActions />}
-      <ReasonLine id={reasonId}>{reason}</ReasonLine>
       <SettingsActions>
-        <Button
-          variant="secondary"
-          disabled={busy || !checkable}
-          aria-describedby={reason !== null ? reasonId : undefined}
-          onClick={() => void bridge?.check().catch(() => undefined)}
-        >
-          Check for updates
-        </Button>
+        {checkable && (
+          <Button variant="secondary" disabled={busy} onClick={() => void bridge?.check().catch(() => undefined)}>
+            Check for updates
+          </Button>
+        )}
         {status === "manual" && (
           <Button variant="primary" onClick={() => void bridge?.openReleasePage("update")}>
             Download

@@ -2,12 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   MOTION_DEFAULTS,
+  MOTION_FOLLOW_SYSTEM_KEY,
   MOTION_GROUPS,
   MOTION_KINDS,
   MOTION_STORAGE_KEY,
   clearStoredMotion,
   readMotion,
+  readFollowSystem,
   readMotionOverrides,
+  writeFollowSystem,
   writeMotionOverrides,
 } from "./motion";
 
@@ -108,5 +111,24 @@ describe("the stored value", () => {
     expect(readMotion()).toEqual(MOTION_DEFAULTS);
     expect(() => writeMotionOverrides({ page: false })).not.toThrow();
     expect(() => clearStoredMotion()).not.toThrow();
+    expect(readFollowSystem()).toBe(true);
+    expect(() => writeFollowSystem(false)).not.toThrow();
+    expect(() => writeFollowSystem(true)).not.toThrow();
+  });
+});
+
+describe("the Follow system flag (M435)", () => {
+  it("follows by default and on anything but a stored false", () => {
+    expect(readFollowSystem()).toBe(true);
+    localStorage.setItem(MOTION_FOLLOW_SYSTEM_KEY, "nonsense");
+    expect(readFollowSystem()).toBe(true);
+  });
+
+  it("stores only not following, and removes it when following again", () => {
+    writeFollowSystem(false);
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBe("false");
+    expect(readFollowSystem()).toBe(false);
+    writeFollowSystem(true);
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBeNull();
   });
 });

@@ -7,7 +7,7 @@
  * start an export, which DEC-087 keeps where the scope is in view.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
@@ -48,42 +48,40 @@ afterEach(() => {
 });
 
 describe("the Rekordbox export in Settings", () => {
-  it("offers Import a Rekordbox file\u2026, which opens the Library on its import", async () => {
+  it("offers Change file\u2026, which opens the Library on its import", async () => {
     renderPanel();
     expect(
       screen.getByText("Read a different Rekordbox file in place of the current one."),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Import a Rekordbox file\u2026" }));
+    await userEvent.click(screen.getByRole("button", { name: "Change file\u2026" }));
     expect(arrived?.pathname).toBe("/library");
     expect(arrived?.state).toEqual(libraryImportState());
     expect(importOpening({ state: arrived?.state, key: arrived?.key ?? "" })).not.toBeNull();
   });
 
-  it("says it remembers the last export, and where to export from under More about this", async () => {
+  it("says where to export from, outright and with no fold or \"Remembers\" line (M237, M438)", async () => {
     renderPanel();
-    expect(await screen.findByText("Remembers your last export.")).toBeInTheDocument();
-    const where = screen.getByText(
-      "To export, use “Export to Rekordbox…” in the Library or on a Collection's menu.",
-    );
-    expect(where).not.toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "More about this" }));
-    expect(where).toBeVisible();
+    expect(
+      await screen.findByText("To export, use \u201cExport to Rekordbox\u2026\u201d in the Library or on a Collection's menu."),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "More about this" })).toBeNull();
+    expect(screen.queryByText("Remembers your last export.")).toBeNull();
   });
 
-  it("calls the notation Key notation", async () => {
+  it("writes the notation as a sentence, not as a second setting (M437)", async () => {
     renderPanel();
-    expect(await screen.findByText("Key notation")).toBeInTheDocument();
+    expect(await screen.findByTestId("export-remembered-notation")).toHaveTextContent("Exports write keys as Camelot, like 8A.");
+    expect(read).toHaveBeenCalledWith({ limit: SETTINGS_HISTORY_LIMIT });
+    expect(screen.queryByText("Key notation")).toBeNull();
     expect(screen.queryByText("Keys written as")).toBeNull();
   });
 
-  it("shows the folder and notation the last written export used", async () => {
+  it("puts the label above the folder, in the computer's separators with ~ for home (M231, M500)", async () => {
     renderPanel();
-
-    expect(await screen.findByTestId("export-remembered-folder")).toHaveTextContent(
-      "C:\\Users\\dj\\Music\\Exports",
-    );
-    expect(screen.getByTestId("export-remembered-notation")).toHaveTextContent("Camelot (8A, 12B)");
-    expect(read).toHaveBeenCalledWith({ limit: SETTINGS_HISTORY_LIMIT });
+    const folder = await screen.findByTestId("export-remembered-folder");
+    expect(folder).toHaveTextContent("~\\Music\\Exports");
+    expect(folder.previousElementSibling).toHaveTextContent("Save dialog opens in");
+    expect(document.querySelector("dl")).toBeNull();
   });
 
   it("lists recent exports newest first, each by how it ended", async () => {
@@ -99,29 +97,23 @@ describe("the Rekordbox export in Settings", () => {
     expect(items[1]).toHaveTextContent("4 tracks · 3 with new tags · 4 playlists · Camelot (8A)");
   });
 
-  it("says where the first export will go when there has been none", async () => {
+  it("says once that there has been no export, and where the first goes (M438)", async () => {
     read.mockResolvedValue(EMPTY);
     renderPanel();
 
-    expect(await screen.findByTestId("export-remembered-folder")).toHaveTextContent(
-      "Nothing exported yet",
-    );
-    expect(screen.getByTestId("export-remembered-notation")).toHaveTextContent(
-      "Rekordbox's own (Am, C#)",
-    );
-    expect(screen.getByText("No exports yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No exports yet. The first one is saved in Documents.")).toBeInTheDocument();
+    expect(screen.queryByTestId("export-remembered-folder")).toBeNull();
+    expect(screen.queryByText(/Nothing exported yet/)).toBeNull();
+    expect(screen.getByTestId("export-remembered-notation")).toHaveTextContent("in Rekordbox\u2019s own notation, like Am or C#");
   });
 
   it("offers no way to start an export, and says where export lives (DEC-087)", async () => {
     renderPanel();
     await screen.findByRole("list");
 
-    // Nothing starts an export: the buttons are the import and "More about this".
-    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "More about this",
-      "Import a Rekordbox file…",
-    ]);
-    expect(screen.getByText(/To export, use “Export to Rekordbox…” in the Library/)).toBeInTheDocument();
+    // Nothing starts an export: the one button is the file change.
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Change file\u2026"]);
+    expect(screen.getByText(/To export, use .Export to Rekordbox.. in the Library/)).toBeInTheDocument();
   });
 
   it("offers editing neither value: both change by exporting", async () => {
@@ -130,7 +122,6 @@ describe("the Rekordbox export in Settings", () => {
 
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.getByText("Remembers your last export.")).toBeInTheDocument();
   });
 
   it("says why it cannot read the history, and reads it again when asked", async () => {
@@ -155,14 +146,14 @@ describe("revisiting Settings (C19d)", () => {
   it("revisit shows the old value immediately and refetches after an announce", async () => {
     read.mockResolvedValue(EMPTY);
     const first = renderPanel();
-    expect(await screen.findByText("No exports yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No exports yet. The first one is saved in Documents.")).toBeInTheDocument();
     first.unmount();
     const before = read.mock.calls.length;
 
     renderPanel();
     // The first render: no "Loading past exports…", the history is already there.
     expect(screen.queryByText("Loading past exports…")).toBeNull();
-    expect(screen.getByText("No exports yet.")).toBeInTheDocument();
+    expect(screen.getByText("No exports yet. The first one is saved in Documents.")).toBeInTheDocument();
     await act(async () => {});
     expect(read.mock.calls.length).toBe(before);
 

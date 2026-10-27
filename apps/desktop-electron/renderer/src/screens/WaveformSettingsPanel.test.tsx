@@ -189,13 +189,13 @@ describe("the zoomed waveform switch (T4)", () => {
 });
 
 describe("the page's words (SET-6)", () => {
-  it("has no purpose line, and keeps the colors explanation under More about this", async () => {
+  it("has no purpose line, and keeps the colors explanation under a fold named for it (M237)", async () => {
     install();
     renderPanel();
     expect(screen.queryByText(/drawn from your audio files/)).toBeNull();
     const detail = screen.getByText(/Three bands draws the lows, mids and highs/);
     expect(detail).not.toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "More about this" }));
+    fireEvent.click(screen.getByRole("button", { name: "What the colors mean" }));
     expect(detail).toBeVisible();
   });
 
@@ -211,8 +211,8 @@ describe("the page's words (SET-6)", () => {
     const fold = screen.getByRole("button", { name: "Disk space" });
     expect(fold).toHaveAttribute("aria-expanded", "false");
     expect(container.querySelector("details")).toBeNull();
-    // The very button "More about this" is: quiet, grey, the same size (C117).
-    const more = screen.getByRole("button", { name: "More about this" });
+    // The very button the colors fold is: one Disclosure (C117, M60).
+    const more = screen.getByRole("button", { name: "What the colors mean" });
     expect(fold.className).toBe(more.className);
     // Closed, the body is not drawn at all, so it leaves no gap (C117).
     expect(screen.queryByRole("button", { name: "Delete waveform data…" })).toBeNull();
@@ -261,7 +261,8 @@ describe("the analysis's state", () => {
       "Pause",
     ],
     [status({ state: "paused", paused: true, analysed: 1_234 }), "Paused · 48,766 to go", "Resume"],
-    [status({ analysed: 49_997, failed: 3 }), "All 50,000 analyzed · 3 could not be read", "Analyze waveforms"],
+    [status({ analysed: 49_997, failed: 3 }), "All 50,000 analyzed · 3 could not be read", "Analyze again"],
+    [status({ analysed: 40_000 }), "40,000 of 50,000 analyzed · 10,000 waiting", "Analyze 10,000 waveforms"],
   ])("says %#: %s", async (analysis, words, button) => {
     install({ analysis });
     renderPanel();
@@ -405,7 +406,7 @@ describe("the preview", () => {
     expect(await screen.findByText(PREVIEW_EMPTY_WORDS)).toBeInTheDocument();
   });
 
-  it("draws the track in the player, with its cues and grid", async () => {
+  it("draws the track the way the player overview does, with no cues or grid (M238)", async () => {
     const bridge = install({ current: item() });
     renderPanel();
 
@@ -413,7 +414,7 @@ describe("the preview", () => {
       expect(screen.getByTestId("waveform-preview").querySelector("canvas")).not.toBeNull(),
     );
     expect(screen.getByText(/Fixture – Bands/)).toBeInTheDocument();
-    expect(bridge.get).toHaveBeenCalledWith(expect.objectContaining({ track_ids: [7], marks: true }));
+    expect(bridge.get).toHaveBeenCalledWith(expect.objectContaining({ track_ids: [7] }));
   });
 
   it("says why a track has no waveform yet", async () => {

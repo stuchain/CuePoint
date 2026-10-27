@@ -1,11 +1,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-import { LinkButton, MoreAbout, Notice, Panel } from "../components";
+import { Disclosure, LinkButton, Notice, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { reportUnexpected, setReportingChoice } from "../reporting/reporting";
 import { ResetToDefaults } from "./ResetToDefaults";
 import { PanelTools, SettingsHint } from "./SettingsParts";
-import { readExitClearing, saveExitClearing } from "./exitClearing";
+import { onExitClearingChanged, readExitClearing, saveExitClearing } from "./exitClearing";
 import "./error-reporting-settings.css";
 import { needsDesktopApp, userMessage } from "../api/userMessage";
 
@@ -42,6 +42,9 @@ export function ErrorReportingSettingsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, markSaved] = useSavedSignal();
+  // What clears when CuePoint quits is the child's to change; the Reset here follows it (M436).
+  const [clearing, setClearing] = useState(readExitClearing);
+  useEffect(() => onExitClearingChanged(() => setClearing(readExitClearing())), []);
 
   useEffect(() => {
     const bridge = window.cuepoint?.errorReporting;
@@ -112,11 +115,22 @@ export function ErrorReportingSettingsPanel({
   return (
     <Panel
       title="Privacy"
-      badge={<PanelTools reset={<ResetToDefaults section="Privacy" onReset={resetToDefaults} />} />}
+      badge={
+        <PanelTools
+          saved={<SavedTick signal={saved} />}
+          reset={
+            <ResetToDefaults
+              section="Privacy"
+              onReset={resetToDefaults}
+              atDefaults={enabled && !clearing.clearCache && !clearing.clearLogs}
+            />
+          }
+        />
+      }
     >
       <div className="cp-error-reporting">
         <div className="settings-option">
-        <div className="cp-error-reporting__row">
+          <div className="cp-error-reporting__row">
           <label className="cp-error-reporting__toggle settings-check">
             <input
               id={ERROR_REPORTING_FIELD_ID}
@@ -128,20 +142,19 @@ export function ErrorReportingSettingsPanel({
             />
             <span>Send error reports</span>
           </label>
-          <SavedTick signal={saved} />
+          </div>
+          <SettingsHint id={lineId}>Sends what went wrong, never your track or file names.</SettingsHint>
+          <Disclosure title="What a report contains" describedBy={lineId}>
+            <SettingsHint>
+              A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to
+              it. It is built not to carry your file, folder, track, artist, label or playlist names,
+              your notes, tags or Beatport sign-in: they are removed on your computer before it is sent.
+            </SettingsHint>
+            <LinkButton className="cp-error-reporting__link" onClick={() => onOpenPrivacy?.()}>
+              Privacy details
+            </LinkButton>
+          </Disclosure>
         </div>
-        <SettingsHint id={lineId}>Sends what went wrong, never your track or file names.</SettingsHint>
-        </div>
-        <MoreAbout describedBy={lineId}>
-          <SettingsHint>
-            A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to
-            it. It is built not to carry your file, folder, track, artist, label or playlist names,
-            your notes, tags or Beatport sign-in: they are removed on your computer before it is sent.
-          </SettingsHint>
-          <LinkButton className="cp-error-reporting__link" onClick={() => onOpenPrivacy?.()}>
-            Privacy details
-          </LinkButton>
-        </MoreAbout>
         {!available && (
           <SettingsHint>{needsDesktopApp("Changing this")}</SettingsHint>
         )}

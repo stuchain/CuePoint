@@ -1,7 +1,8 @@
 import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Button, Disclosure, Loading, Modal, MoreAbout, Panel } from "../components";
+import { Button, Disclosure, Loading, Modal, Panel } from "../components";
+import { countNoun } from "../format/counts";
 import { needsDesktopApp } from "../api/userMessage";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { selectCurrentItem, selectPosition } from "../components/player/playerFormat";
@@ -33,15 +34,16 @@ import { PanelTools, SettingsActions, SettingsHint, SettingsStatus } from "./Set
 import "./waveform-settings.css";
 
 /**
- * The color choice, shown on the track in the player: the waveform a person
- * knows, rather than a made-up one, with its cues, grid and playhead.
+ * The color choice, drawn on the track in the player by the same renderer, from the same data and
+ * with the same marks as the player's overview (the playhead, no cues or grid), so what is chosen
+ * here is what the bar shows (M238).
  */
 function WaveformPreview() {
   const item = usePlayerValue(selectCurrentItem);
   const position = usePlayerValue(selectPosition);
   const { box, width } = useWaveformBox<HTMLDivElement>();
   const trackId = item?.trackId ?? null;
-  const entry = useWaveform(trackId, width, { marks: true });
+  const entry = useWaveform(trackId, width);
 
   let words: string | null = null;
   if (!item) words = PREVIEW_EMPTY_WORDS;
@@ -65,8 +67,7 @@ function WaveformPreview() {
           <WaveformCanvas
             data={track.data}
             durationMs={track.duration_ms ?? 0}
-            cues={track.marks?.cues}
-            grid={track.marks?.grid}
+            cueLabels={false}
             playheadMs={position === null ? null : position * 1000}
           />
         ) : (
@@ -75,6 +76,12 @@ function WaveformPreview() {
       </div>
     </div>
   );
+}
+
+/** The analysis button's words: "Analyze 12 waveforms" while some wait, "Analyze again" once all are done (M441). */
+function startLabel(status: { present: number; remaining: number } | null): string {
+  if (!status || status.present === 0) return ACTION_LABELS.start;
+  return status.remaining > 0 ? `Analyze ${countNoun(status.remaining, "waveform")}` : "Analyze again";
 }
 
 /**
@@ -144,7 +151,13 @@ export function WaveformSettingsPanel() {
       badge={
         <PanelTools
           saved={<SavedTick signal={saved} />}
-          reset={<ResetToDefaults section="Waveforms" onReset={resetColors} />}
+          reset={
+            <ResetToDefaults
+              section="Waveforms"
+              onReset={resetColors}
+              atDefaults={mode === WAVEFORM_COLOUR_DEFAULT && detailOn === WAVEFORM_DETAIL_DEFAULT}
+            />
+          }
         />
       }
     >
@@ -152,7 +165,11 @@ export function WaveformSettingsPanel() {
         {!analysis.supported ? (
           <SettingsStatus>{needsDesktopApp("Analyzing waveforms")}</SettingsStatus>
         ) : (
-          <SettingsStatus role="status" data-testid="waveform-analysis-state">
+          <SettingsStatus
+            role="status"
+            data-testid="waveform-analysis-state"
+            tone={status && status.state === "idle" && status.present > 0 && status.remaining === 0 ? "success" : undefined}
+          >
             {analysis.error ??
               (nothingToAnalyze ? (
                 <>
@@ -180,12 +197,12 @@ export function WaveformSettingsPanel() {
               <span>{option.label}</span>
             </label>
           ))}
-          <MoreAbout describedBy={colorsId}>
+          <Disclosure title="What the colors mean" describedBy={colorsId}>
             <SettingsHint>
               Three bands draws the lows, mids and highs in colors of their own, as Rekordbox does.
               One color draws the whole sound in one.
             </SettingsHint>
-          </MoreAbout>
+          </Disclosure>
         </fieldset>
 
         <div className="cp-waveform-settings__choice settings-option">
@@ -232,7 +249,7 @@ export function WaveformSettingsPanel() {
         <SettingsActions>
           {analysis.supported && action ? (
             <Button variant="secondary" loading={analysis.busy} onClick={() => void runAction()}>
-              {ACTION_LABELS[action]}
+              {action === "start" ? startLabel(status) : ACTION_LABELS[action]}
             </Button>
           ) : null}
         </SettingsActions>

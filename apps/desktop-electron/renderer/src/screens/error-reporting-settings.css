@@ -20,14 +20,19 @@
   font-size: var(--font-size-xs);
 }
 
-/* "When CuePoint quits": a Fieldset (the one legend style) under a divider, rows 0 apart. */
+/* "When CuePoint quits": a divider on this wrapper (never a fieldset border, whose top edge the legend
+   sits in, M226), then the Fieldset: the legend is the ordinary group label, rows 0 apart. */
 .cp-error-reporting__exit {
-  gap: 0;
-  margin: 0;
   padding: var(--space-lg) 0 0;
-  border: 0;
   border-top: var(--divider);
   font-size: var(--font-size-sm);
+}
+
+.cp-error-reporting__exit > .cp-fieldset {
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .cp-error-reporting__row {

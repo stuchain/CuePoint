@@ -29,43 +29,43 @@ export const MOTION_KINDS: readonly MotionKind[] = [
   {
     id: "micro",
     label: "Button presses",
-    description: "A button moves down a notch while you press it.",
+    description: "Checkboxes, choices and stars sit lower while you press them, and “Saved” steps into place.",
     group: "When you act",
   },
   {
     id: "interaction",
     label: "Things you drag and drop",
-    description: "Rows and items move as you pick them up and put them down.",
+    description: "Rows lift when you pick them up and settle where you drop them.",
     group: "When you act",
   },
   {
     id: "state",
     label: "Changing state",
-    description: "A control shifts when it turns on, off, selected or disabled.",
+    description: "Counts and badges step when they change, and a tab’s underline grows.",
     group: "When things change",
   },
   {
     id: "page",
     label: "Changing page",
-    description: "The page slides or fades in when you go to another one.",
+    description: "A page’s content moves in when you go to it; the sidebar and player stay still.",
     group: "When things change",
   },
   {
     id: "entrance",
     label: "Opening and closing panels and dialogs",
-    description: "Dialogs, panels and messages slide in and out instead of appearing at once.",
+    description: "Dialogs, menus, panels and messages ease in and out instead of appearing at once.",
     group: "When things change",
   },
   {
     id: "hover",
     label: "Hover and keyboard focus",
-    description: "Things react when the pointer is over them or the keyboard lands on them.",
+    description: "A row shows a bar on its edge under the pointer, and a control steps into its focus ring.",
     group: "When you act",
   },
   {
     id: "scroll",
     label: "Scrolling",
-    description: "The Settings links follow the scroll and headings settle in. Tables never move.",
+    description: "Settings headings settle in as they come into view, and the zoomed waveform fades as it moves. Tables never move.",
     group: "While you wait or scroll",
   },
   {
@@ -77,13 +77,13 @@ export const MOTION_KINDS: readonly MotionKind[] = [
   {
     id: "shared",
     label: "Moving between views",
-    description: "An item glides to its place when you open it in another view.",
+    description: "A search result glides into its row in the Library.",
     group: "When things change",
   },
   {
     id: "feedback",
     label: "Alerts and confirmations",
-    description: "A time or length that is refused shakes, and new results and finished tasks pulse.",
+    description: "A refused time or length shakes, and a finished task and “Saved” pulse.",
     group: "When things change",
   },
 ];
@@ -172,6 +172,31 @@ export function readMotion(): MotionSwitches {
 export function writeMotionOverrides(overrides: MotionOverrides): void {
   try {
     localStorage.setItem(MOTION_STORAGE_KEY, JSON.stringify(overrides));
+  } catch {
+    // Not remembered across a restart.
+  }
+}
+
+/**
+ * Whether Follow system is chosen (M435, D23): while it is, the system's reduced-motion setting
+ * stills every kind; "On" turns it off so every kind moves whatever the system asks. Missing,
+ * unreadable or anything but "false" reads as following, the default.
+ */
+export const MOTION_FOLLOW_SYSTEM_KEY = "cuepoint-motion-follow-system";
+
+export function readFollowSystem(): boolean {
+  try {
+    return localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+/** Only "not following" is stored; following is the default and leaves nothing behind. */
+export function writeFollowSystem(follow: boolean): void {
+  try {
+    if (follow) localStorage.removeItem(MOTION_FOLLOW_SYSTEM_KEY);
+    else localStorage.setItem(MOTION_FOLLOW_SYSTEM_KEY, "false");
   } catch {
     // Not remembered across a restart.
   }

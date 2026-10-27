@@ -3,10 +3,10 @@ import { useKeyColours } from "../components/wheel/keyColourSetting";
 import { saveKeyNotation, useKeyNotation, type KeyNotation } from "../components/wheel/keyNotationSetting";
 import { useRowDensity, type RowDensity } from "../tokens/rowDensity";
 
-/** The two row heights at the default size (they follow the text size): 26 and 32 px. */
+/** The two row heights. Named by feel, not in pixels: the rows measure what the text size makes them (M244). */
 export const DENSITIES: readonly { value: RowDensity; label: string }[] = [
-  { value: "compact", label: "Compact (26 px)" },
-  { value: "roomy", label: "Roomy (32 px)" },
+  { value: "compact", label: "Compact" },
+  { value: "roomy", label: "Roomy" },
 ];
 
 /** How a key is written everywhere it is shown (K1 to K3); the long names carry their example. */
@@ -49,7 +49,7 @@ export function TableSettings({ onChange }: { onChange?: () => void } = {}) {
             onChange?.();
           }}
         />
-        <span>Color keys</span>
+        <span>Color key chips</span>
       </label>
       <Select
         label="Keys written as"

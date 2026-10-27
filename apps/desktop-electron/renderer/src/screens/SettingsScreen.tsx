@@ -2,10 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 import { ScreenHeader } from "../components/shell/ScreenHeader";
 import { useLocation } from "react-router-dom";
 
-import { appVersion, versionWords } from "../components/AboutDialog";
 import { Button, Panel } from "../components";
-import { opensDialog } from "../format/words";
-import type { AppBuildInfo } from "../api/cuepointBridge.types";
 import { AboutUpdatesSection } from "./AboutUpdatesSection";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
 import { BeatportSettingsPanel } from "./BeatportSettingsPanel";
@@ -40,39 +37,36 @@ function Section({ id, children }: { id: SettingsSectionId; children: ReactNode 
   );
 }
 
-/** The app's own version comes from Electron main (REPORT-07); an older main has none. */
-function useBuildInfo(): AppBuildInfo | null {
-  const [build, setBuild] = useState<AppBuildInfo | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    void window.cuepoint
-      ?.buildInfo?.()
-      .then((info) => {
-        if (live) setBuild(info);
-      })
-      .catch(() => {
-        // The desktop version still shows.
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  return build;
+interface AboutHandlers {
+  onOpenOnboarding?: () => void;
+  onOpenHelp?: () => void;
+  onOpenShortcuts?: () => void;
+  onOpenAbout?: () => void;
 }
 
-function AboutSection({ onOpenOnboarding }: { onOpenOnboarding?: () => void }) {
+/**
+ * The help entries the native menu holds, here too (M489): Windows and Linux people often hide the
+ * menu bar. Each is drawn only where the app gave it a way to open. Names with no "…" (D33).
+ */
+function AboutSection({ onOpenOnboarding, onOpenHelp, onOpenShortcuts, onOpenAbout }: AboutHandlers) {
+  const entries: [string, (() => void) | undefined][] = [
+    ["Get help", onOpenHelp],
+    ["Keyboard shortcuts", onOpenShortcuts],
+    ["About CuePoint", onOpenAbout],
+    ["Getting started", onOpenOnboarding],
+  ];
   return (
     <Panel title={titleOf("settings-about")}>
       <div className="settings-page__about">
         <div data-slot="updates">
           <AboutUpdatesSection
-            actions={
-              <Button variant="secondary" onClick={() => onOpenOnboarding?.()}>
-                {opensDialog("Getting started")}
-              </Button>
-            }
+            actions={entries.map(([label, open]) =>
+              open ? (
+                <Button key={label} variant="secondary" onClick={open}>
+                  {label}
+                </Button>
+              ) : null,
+            )}
           />
         </div>
       </div>
@@ -90,10 +84,10 @@ function AboutSection({ onOpenOnboarding }: { onOpenOnboarding?: () => void }) {
 export function SettingsScreen({
   onOpenPrivacy,
   onOpenOnboarding,
-}: {
-  onOpenPrivacy?: () => void;
-  onOpenOnboarding?: () => void;
-} = {}) {
+  onOpenHelp,
+  onOpenShortcuts,
+  onOpenAbout,
+}: { onOpenPrivacy?: () => void } & AboutHandlers = {}) {
   // Discover's "no token" and "token rejected" states link here, to the token
   // field (DISCOVER-10); Help → Privacy links to the error-reporting switch and
   // to the Privacy section. The Beatport and error-reporting panels focus their
@@ -132,15 +126,16 @@ export function SettingsScreen({
   const requests = useRef(0);
   const request = (id: string) => setRequested({ id, n: (requests.current += 1) });
   const inView = useSectionInView(SECTION_IDS, requested);
-  const build = useBuildInfo();
 
   return (
     <div className="screen screen--stack screen--scroll settings-page">
       <ScreenHeader
         title="Settings"
-        facts={{ count: SETTINGS_SECTIONS.length, noun: "section", facts: [`Version ${versionWords(appVersion(build), build)}`] }}
+        facts={{ count: SETTINGS_SECTIONS.length, noun: "section" }}
       />
 
+      {/* The page's own scroll region (M225): the bar sits on the content's edge under the header. */}
+      <div className="screen-region">
       <div className="settings-page__layout">
         <nav aria-label="Settings sections" className="settings-page__nav">
           <ul>
@@ -190,9 +185,15 @@ export function SettingsScreen({
           </Section>
 
           <Section id="settings-about">
-            <AboutSection onOpenOnboarding={onOpenOnboarding} />
+            <AboutSection
+              onOpenOnboarding={onOpenOnboarding}
+              onOpenHelp={onOpenHelp}
+              onOpenShortcuts={onOpenShortcuts}
+              onOpenAbout={onOpenAbout}
+            />
           </Section>
         </div>
+      </div>
       </div>
     </div>
   );

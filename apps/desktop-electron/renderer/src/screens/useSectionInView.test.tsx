@@ -40,6 +40,22 @@ describe("the section the side menu marks", () => {
     expect(FakeObserver.last?.options?.rootMargin).toBe("-64px 0px -66% 0px");
   });
 
+  it("has no header offset in the page's own scroll region, which starts below the header (M225)", () => {
+    vi.stubGlobal("IntersectionObserver", FakeObserver);
+    render(
+      <div className="app-main">
+        <div className="screen" style={{ ["--screen-header-height" as string]: "64px" }}>
+          <div className="screen-region" data-testid="region">
+            <section id="a" />
+            <Probe ids={["a"]} />
+          </div>
+        </div>
+      </div>,
+    );
+    expect(FakeObserver.last?.options?.rootMargin).toBe("0px 0px -66% 0px");
+    expect(FakeObserver.last?.options?.root).toBe(screen.getByTestId("region"));
+  });
+
   it("has no header offset where there is no header", () => {
     vi.stubGlobal("IntersectionObserver", FakeObserver);
     render(

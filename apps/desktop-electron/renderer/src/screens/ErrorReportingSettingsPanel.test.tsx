@@ -52,10 +52,10 @@ describe("the error-reporting switch", () => {
     expect(
       screen.getByText("Sends what went wrong, never your track or file names."),
     ).toBeInTheDocument();
-    // The full paragraph is behind "More about this", closed on load.
+    // The full paragraph is behind "What a report contains", closed on load.
     const detail = screen.getByText(/built not to carry your file, folder, track/);
     expect(detail).not.toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "More about this" }));
+    fireEvent.click(screen.getByRole("button", { name: "What a report contains" }));
     expect(detail).toBeVisible();
     expect(screen.getByText(/the steps that led to it/)).toBeInTheDocument();
   });
@@ -108,18 +108,19 @@ describe("the error-reporting switch", () => {
   it("opens Help → Privacy from its link", async () => {
     const onOpenPrivacy = vi.fn();
     render(<ErrorReportingSettingsPanel onOpenPrivacy={onOpenPrivacy} />);
-    // The link sits inside "More about this", so it is reached by opening that.
-    await userEvent.click(screen.getByRole("button", { name: "More about this" }));
+    // The link sits inside "What a report contains", so it is reached by opening that.
+    await userEvent.click(screen.getByRole("button", { name: "What a report contains" }));
     await userEvent.click(screen.getByRole("button", { name: "Privacy details" }));
     expect(onOpenPrivacy).toHaveBeenCalledTimes(1);
   });
 
-  it("has one \"More about this\", holding the paragraph and the Privacy details link", async () => {
+  it("has one named fold (M237), holding the paragraph and the Privacy details link", async () => {
     render(<ErrorReportingSettingsPanel />);
-    expect(screen.getAllByRole("button", { name: "More about this" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "More about this" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "What a report contains" })).toHaveLength(1);
     // Closed, the link is not on the page to be found.
     expect(screen.queryByRole("button", { name: "Privacy details" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "More about this" }));
+    await userEvent.click(screen.getByRole("button", { name: "What a report contains" }));
     const link = screen.getByRole("button", { name: "Privacy details" });
     expect(link).toBeVisible();
     expect(screen.getByText(/built not to carry your file, folder, track/)).toBeVisible();
@@ -156,7 +157,7 @@ describe("without the desktop bridge", () => {
   });
 });
 
-describe("Reset privacy", () => {
+describe("Reset to defaults", () => {
   beforeEach(() => {
     localStorage.clear();
     install(false);
@@ -169,7 +170,7 @@ describe("Reset privacy", () => {
     const toggle = screen.getByRole("checkbox", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
 
-    await userEvent.click(screen.getByRole("button", { name: "Reset privacy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
     await waitFor(() => expect(toggle).toBeChecked());
     expect(readExitClearing()).toEqual({ clearCache: false, clearLogs: false });
 

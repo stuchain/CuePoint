@@ -1,14 +1,13 @@
 /**
- * Settings → Motion (SET-2, K11): the system's Reduce motion line, one On, Off
- * or Custom choice, behind "Choose each kind…" ten switches in three groups,
- * and a reset that acts at once and can be undone.
+ * Settings → Motion (SET-2, K11, M435): one Follow system, On, Off or Custom choice, under Custom ten
+ * switches in three groups, and a reset that acts at once, can be undone and is hidden at defaults.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ToastProvider } from "../components";
-import { MOTION_KINDS, MOTION_STORAGE_KEY } from "../tokens/motion";
+import { MOTION_FOLLOW_SYSTEM_KEY, MOTION_KINDS, MOTION_STORAGE_KEY } from "../tokens/motion";
 import { MotionProvider } from "../tokens/MotionContext";
 import { MotionSettingsPanel } from "./MotionSettingsPanel";
 
@@ -23,9 +22,10 @@ function renderPanel() {
 }
 
 const stored = () => JSON.parse(localStorage.getItem(MOTION_STORAGE_KEY) ?? "{}");
-const mode = (name: "On" | "Off" | "Custom") => screen.getByRole("radio", { name });
-const chooseEach = () => screen.getByRole("button", { name: /Choose each kind/ });
-const openList = () => userEvent.click(chooseEach());
+const mode = (name: "Follow system" | "On" | "Off" | "Custom") =>
+  screen.getByRole("radio", { name: name === "Follow system" ? /^Follow system/ : name });
+// Custom is what shows the list of kinds.
+const openList = () => userEvent.click(mode("Custom"));
 const kindBoxes = () => screen.queryAllByRole("checkbox");
 
 function reduceSystemMotion() {
@@ -46,15 +46,17 @@ afterEach(() => {
 });
 
 describe("the Motion choice", () => {
-  it("is one radio group of On, Off and Custom, with On chosen by default", () => {
+  it("is one radio group of Follow system, On, Off and Custom, with Follow system chosen by default", () => {
     renderPanel();
-    const group = screen.getByRole("group", { name: "Motion" });
+    const group = screen.getByRole("group", { name: "Animations" });
+    // M435, D23: "On" is its own choice beside Follow system.
     expect(within(group).getAllByRole("radio").map((r) => r.getAttribute("value"))).toEqual([
+      "system",
       "on",
       "off",
       "custom",
     ]);
-    expect(mode("On")).toBeChecked();
+    expect(mode("Follow system")).toBeChecked();
     expect(mode("Off")).not.toBeChecked();
     expect(mode("Custom")).not.toBeChecked();
   });
@@ -75,8 +77,8 @@ describe("the Motion choice", () => {
     await openList();
     expect(kindBoxes().every((b) => !(b as HTMLInputElement).checked)).toBe(true);
 
-    await userEvent.click(mode("On"));
-    expect(mode("On")).toBeChecked();
+    await userEvent.click(mode("Follow system"));
+    expect(mode("Follow system")).toBeChecked();
     expect(Object.values(stored()).every((v) => v === true)).toBe(true);
     expect(kindBoxes().every((b) => (b as HTMLInputElement).checked)).toBe(true);
   });
@@ -85,7 +87,7 @@ describe("the Motion choice", () => {
     renderPanel();
     await userEvent.click(mode("Off"));
     expect(document.documentElement).not.toHaveAttribute("data-motion-hover");
-    await userEvent.click(mode("On"));
+    await userEvent.click(mode("Follow system"));
     for (const k of MOTION_KINDS) {
       expect(document.documentElement).toHaveAttribute(`data-motion-${k.id}`, "on");
     }
@@ -95,9 +97,45 @@ describe("the Motion choice", () => {
     reduceSystemMotion();
     renderPanel();
     await userEvent.click(mode("Off"));
+    await userEvent.click(mode("Follow system"));
+    expect(mode("Follow system")).toBeChecked();
+    expect(document.documentElement).not.toHaveAttribute("data-motion-hover");
+  });
+
+  it("On moves every kind even while the system asks for less, and remembers it (M435)", async () => {
+    reduceSystemMotion();
+    renderPanel();
+    expect(document.documentElement).not.toHaveAttribute("data-motion-hover");
     await userEvent.click(mode("On"));
     expect(mode("On")).toBeChecked();
+    expect(mode("Follow system")).not.toBeChecked();
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBe("false");
+    for (const k of MOTION_KINDS) {
+      expect(document.documentElement).toHaveAttribute(`data-motion-${k.id}`, "on");
+    }
+    expect(screen.getByText(/CuePoint moves anyway/)).toBeInTheDocument();
+    // Follow system gives the system back its say.
+    await userEvent.click(mode("Follow system"));
+    expect(mode("Follow system")).toBeChecked();
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBeNull();
     expect(document.documentElement).not.toHaveAttribute("data-motion-hover");
+  });
+
+  it("is On on load when Follow system was turned off with every kind on", () => {
+    localStorage.setItem(MOTION_FOLLOW_SYSTEM_KEY, "false");
+    renderPanel();
+    expect(mode("On")).toBeChecked();
+  });
+
+  it("Off keeps the Follow system flag, so Custom after it still gives way to the system", async () => {
+    reduceSystemMotion();
+    localStorage.setItem(MOTION_STORAGE_KEY, JSON.stringify({ page: false }));
+    renderPanel();
+    await userEvent.click(mode("Off"));
+    await userEvent.click(mode("Custom"));
+    expect(mode("Custom")).toBeChecked();
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBeNull();
+    expect(document.documentElement).not.toHaveAttribute("data-motion-micro");
   });
 
   it("becomes Custom by itself when one kind is off", async () => {
@@ -105,11 +143,11 @@ describe("the Motion choice", () => {
     await openList();
     await userEvent.click(screen.getByRole("checkbox", { name: "Hover and keyboard focus" }));
     expect(mode("Custom")).toBeChecked();
-    expect(mode("On")).not.toBeChecked();
+    expect(mode("Follow system")).not.toBeChecked();
     expect(stored()).toEqual({ hover: false });
     // With that kind back on, every kind is on again, which is On.
     await userEvent.click(screen.getByRole("checkbox", { name: "Hover and keyboard focus" }));
-    expect(mode("On")).toBeChecked();
+    expect(mode("Follow system")).toBeChecked();
   });
 
   it("is Custom on load when the stored kinds differ", () => {
@@ -137,8 +175,8 @@ describe("the Motion choice", () => {
     }
     expect(kindBoxes()).toHaveLength(10);
     // Choosing On or Off leaves Custom again.
-    await userEvent.click(mode("On"));
-    expect(mode("On")).toBeChecked();
+    await userEvent.click(mode("Follow system"));
+    expect(mode("Follow system")).toBeChecked();
   });
 });
 
@@ -150,7 +188,7 @@ describe("Custom", () => {
     await userEvent.click(box);
     expect(mode("Custom")).toBeChecked();
     await userEvent.click(box);
-    expect(mode("On")).toBeChecked();
+    expect(mode("Follow system")).toBeChecked();
     expect(mode("Custom")).not.toBeChecked();
   });
 
@@ -164,32 +202,37 @@ describe("Custom", () => {
     expect(stored()).toMatchObject({ page: false, hover: false, micro: true, state: true });
     expect(document.documentElement).not.toHaveAttribute("data-motion-page");
     expect(document.documentElement).toHaveAttribute("data-motion-micro", "on");
-    await userEvent.click(mode("On"));
+    await userEvent.click(mode("Follow system"));
     await userEvent.click(mode("Custom"));
     expect(screen.getByRole("checkbox", { name: "Changing page" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Button presses" })).toBeChecked();
   });
 
-  it("names the radio group by its legend alone", () => {
+  it("names the radio group Animations, not Motion again (the card title)", () => {
     renderPanel();
-    expect(screen.getByRole("group", { name: "Motion" })).not.toHaveAttribute("aria-labelledby");
+    expect(screen.getByRole("group", { name: "Animations" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Motion" })).toBeNull();
+  });
+
+  it("says what the system is doing in the choice itself", () => {
+    reduceSystemMotion();
+    renderPanel();
+    expect(screen.getByRole("radio", { name: "Follow system (now: reduced)" })).toBeChecked();
   });
 });
 
 describe("the per-kind list", () => {
-  it("is hidden until asked for, behind a visible Choose each kind button", async () => {
+  it("is hidden until Custom is chosen, with no Choose each kind button", async () => {
     renderPanel();
-    expect(chooseEach()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: /Choose each kind/ })).toBeNull();
     expect(kindBoxes()).toHaveLength(0);
     await openList();
-    expect(chooseEach()).toHaveAttribute("aria-expanded", "true");
     expect(kindBoxes()).toHaveLength(10);
   });
 
   it("opens by itself when Custom is the state on load", () => {
     localStorage.setItem(MOTION_STORAGE_KEY, JSON.stringify({ page: false }));
     renderPanel();
-    expect(chooseEach()).toHaveAttribute("aria-expanded", "true");
     expect(kindBoxes()).toHaveLength(10);
   });
 
@@ -248,31 +291,46 @@ describe("the per-kind list", () => {
 });
 
 describe("the system line", () => {
-  it("says the system setting is off, with no reduced-motion note", () => {
+  it("says the system allows animations", () => {
     renderPanel();
-    expect(screen.getByText(/Motion follows your system's Reduce motion setting: off/)).toBeInTheDocument();
-    expect(screen.queryByText(/so nothing moves/)).not.toBeInTheDocument();
+    expect(screen.getByText("Your system allows animations.")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Follow system (now: full)" })).toBeChecked();
   });
 
-  it("says the system setting is on, and that nothing moves", () => {
+  it("says the system is reducing them, in plain words with no OS-specific setting name", () => {
     reduceSystemMotion();
     renderPanel();
-    expect(
-      screen.getByText(/Motion follows your system's Reduce motion setting: on, so nothing moves/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Your system is set to reduce animations, so CuePoint keeps still/)).toBeInTheDocument();
+    expect(screen.queryByText(/Reduce motion/)).toBeNull();
   });
 });
 
-describe("Reset motion", () => {
+describe("Reset to defaults", () => {
+  it("is not drawn while every kind is at its default (M436)", async () => {
+    renderPanel();
+    expect(screen.queryByRole("button", { name: "Reset to defaults" })).toBeNull();
+    await userEvent.click(mode("Off"));
+    expect(screen.getByRole("button", { name: "Reset to defaults" })).toBeInTheDocument();
+  });
+
   it("resets at once, with no question, and Undo puts the switches back", async () => {
     renderPanel();
     await userEvent.click(mode("Off"));
-    await userEvent.click(screen.getByRole("button", { name: "Reset motion" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(mode("On")).toBeChecked();
+    expect(mode("Follow system")).toBeChecked();
     expect(localStorage.getItem(MOTION_STORAGE_KEY)).toBeNull();
     expect(screen.getByText("Motion reset")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(mode("Off")).toBeChecked();
+  });
+  it("is drawn after On, and puts Follow system back (M435)", async () => {
+    renderPanel();
+    await userEvent.click(mode("On"));
+    await userEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    expect(mode("Follow system")).toBeChecked();
+    expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(mode("On")).toBeChecked();
   });
 });

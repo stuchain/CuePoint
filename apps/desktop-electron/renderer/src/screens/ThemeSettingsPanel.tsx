@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, ConfirmDialog, Modal, Panel, Select, TextField } from "../components";
+import { Badge, Button, ConfirmDialog, Panel, Select, TextField, TrackContextMenu } from "../components";
 import { PanelTools, SettingsActions, SettingsHint } from "./SettingsParts";
 import { colorsInUse } from "./themeSeed";
-import { deleteLabel, deleteTitle, opensDialog, quoted } from "../format/words";
+import { deleteLabel, deleteLead, deleteTitle, opensDialog } from "../format/words";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import {
   createEmptyCustomTheme,
@@ -32,6 +32,17 @@ const COLOR_FIELDS: { key: keyof CustomThemeColors; label: string }[] = [
   { key: "accentDanger", label: "Danger" },
 ];
 
+/** A colour written as #rrggbb (three digits are widened), or null when it is not one (M41). */
+function parseHex(text: string): string | null {
+  const bare = text.trim().replace(/^#/, "");
+  if (/^[0-9a-f]{3}$/i.test(bare)) return `#${[...bare].map((c) => c + c).join("")}`.toLowerCase();
+  return /^[0-9a-f]{6}$/i.test(bare) ? `#${bare}`.toLowerCase() : null;
+}
+
+/**
+ * One colour: its name above, the app's own hex field and the swatch beside it (M41, D7 B). A code
+ * can be typed or pasted; the swatch still opens the system colour dialog, which stays native.
+ */
 function ColorField({
   label,
   value,
@@ -41,20 +52,115 @@ function ColorField({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [text, setText] = useState(value);
+  const [touched, setTouched] = useState(false);
+  // The swatch (or a reset) moved the colour: the text follows it.
+  useEffect(() => setText(value), [value]);
+  const valid = parseHex(text) !== null;
   return (
-    <label className="theme-color-field">
-      <span className="theme-color-field__label">{label}</span>
-      <span className="theme-color-field__control">
-        <input
-          type="color"
-          aria-label={label}
-          className="theme-color-field__input"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+    <div className="theme-color-field">
+      <TextField
+        label={label}
+        width="short"
+        value={text}
+        spellCheck={false}
+        autoComplete="off"
+        placeholder="#rrggbb"
+        error={touched && !valid ? "Use six digits, like #1a1a2e" : undefined}
+        onChange={(e) => {
+          setText(e.target.value);
+          // Only a whole code applies while typing: a three-digit one is widened on leaving the field,
+          // or "#ff0" on the way to "#ff0000" would rewrite itself under the cursor.
+          if (/^#?[0-9a-f]{6}$/i.test(e.target.value.trim())) onChange(parseHex(e.target.value)!);
+        }}
+        onBlur={() => {
+          setTouched(true);
+          const hex = parseHex(text);
+          if (hex) {
+            setText(hex);
+            onChange(hex);
+          }
+        }}
+      />
+      <input
+        type="color"
+        aria-label={`${label} swatch`}
+        className="theme-color-field__input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+/**
+ * One custom theme: its swatches and name, "In use" in place of Apply on the theme on screen, and
+ * Edit and Delete in a "..." menu (M241), as a dig's card does.
+ */
+function ThemeRow({
+  theme,
+  inUse,
+  onApply,
+  onEdit,
+  onDelete,
+}: {
+  theme: CustomTheme;
+  inUse: boolean;
+  onApply: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const anchor = useRef<HTMLButtonElement>(null);
+  return (
+    <li className="theme-settings__row">
+      <div className="theme-settings__swatches">
+        {(["bgApp", "bgPanel", "accentPrimary"] as const).map((key) => (
+          <span key={key} className="theme-settings__swatch" style={{ background: theme.colors[key] }} aria-hidden="true" />
+        ))}
+      </div>
+      <span className="theme-settings__name">{theme.name}</span>
+      <div className="theme-settings__row-actions">
+        {inUse ? (
+          <Badge variant="accent">In use</Badge>
+        ) : (
+          <Button variant="secondary" size="sm" onClick={onApply}>
+            Apply
+          </Button>
+        )}
+        <Button
+          ref={anchor}
+          variant="quiet"
+          size="sm"
+          iconOnly
+          icon="more"
+          aria-label={`More for ${theme.name}`}
+          aria-haspopup="menu"
+          aria-expanded={menu !== null}
+          onClick={(event) => {
+            if (menu) {
+              setMenu(null);
+              return;
+            }
+            const rect = event.currentTarget.getBoundingClientRect();
+            setMenu({ x: rect.left, y: rect.bottom });
+          }}
         />
-        <span className="theme-color-field__hex">{value}</span>
-      </span>
-    </label>
+      </div>
+      {menu && (
+        <TrackContextMenu
+          x={menu.x}
+          y={menu.y}
+          label={`${theme.name} actions`}
+          anchor={anchor}
+          onClose={() => setMenu(null)}
+          items={[
+            { id: "edit", label: opensDialog("Edit"), onSelect: onEdit },
+            { id: "delete", label: opensDialog("Delete"), danger: true, onSelect: onDelete },
+          ]}
+        />
+      )}
+    </li>
   );
 }
 
@@ -167,7 +273,11 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
   };
 
   const confirmDelete = () => {
-    if (deleting) deleteCustomTheme(deleting.id);
+    if (deleting) {
+      deleteCustomTheme(deleting.id);
+      // The theme being edited is gone: the editor goes with it.
+      if (deleting.id === editingId) closeEditor();
+    }
     setDeleting(null);
     markSaved();
   };
@@ -198,13 +308,25 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
       badge={
         <PanelTools
           saved={<SavedTick signal={saved} />}
-          reset={<ResetToDefaults section="Appearance" onReset={resetToDefaults} />}
+          reset={
+            <ResetToDefaults
+              section="Appearance"
+              onReset={resetToDefaults}
+              atDefaults={
+                activeThemeId === DEFAULT_THEME &&
+                scale === DEFAULT_SCALE &&
+                density === "compact" &&
+                coloured &&
+                notation === "camelot"
+              }
+            />
+          }
         />
       }
     >
       <div className="theme-settings">
         <Select
-          label="Active theme"
+          label="Theme"
           width="standard"
           value={activeThemeId}
           onChange={(e) => {
@@ -214,110 +336,109 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
           options={themeOptions.map((o) => ({ value: o.id, label: o.label }))}
         />
 
-        <Select
-          id={SIZE_FIELD_ID}
-          label="Size of text and controls"
-          width="standard"
-          value={String(scale)}
-          onChange={(e) => {
-            setScale(Number(e.target.value) as ScaleFactor);
-            markSaved();
-          }}
-          aria-describedby={tooBig.length > 0 ? SIZE_HINT_ID : undefined}
-          options={sizes.map((option) => ({
-            value: String(option.value),
-            label: option.label,
-            disabled: option.disabled,
-          }))}
-        />
-        {tooBig.length > 0 ? (
-          <SettingsHint id={SIZE_HINT_ID}>
-            {tooBigNames(tooBig.map((size) => size.value))} for this screen: not enough rows would
-            fit in the Library.
-          </SettingsHint>
-        ) : null}
+        <div className="settings-option">
+          <Select
+            id={SIZE_FIELD_ID}
+            label="Size of text and controls"
+            width="standard"
+            value={String(scale)}
+            onChange={(e) => {
+              setScale(Number(e.target.value) as ScaleFactor);
+              markSaved();
+            }}
+            aria-describedby={tooBig.length > 0 ? SIZE_HINT_ID : undefined}
+            options={sizes.map((option) => ({
+              value: String(option.value),
+              label: option.label,
+              disabled: option.disabled,
+            }))}
+          />
+          {tooBig.length > 0 ? (
+            <SettingsHint id={SIZE_HINT_ID}>
+              {tooBigNames(tooBig.map((size) => size.value))} for this screen: not enough rows would
+              fit in the Library.
+            </SettingsHint>
+          ) : null}
+        </div>
 
-        <TableSettings onChange={markSaved} />
-
-        {customThemes.length > 0 ? (
+        {customThemes.length > 0 && (
           <ul className="theme-settings__list">
             {customThemes.map((theme) => (
-              <li key={theme.id} className="theme-settings__row">
-                <div className="theme-settings__swatches">
-                  {(["bgApp", "bgPanel", "accentPrimary"] as const).map((key) => (
-                    <span
-                      key={key}
-                      className="theme-settings__swatch"
-                      style={{ background: theme.colors[key] }}
-                      aria-hidden="true"
-                    />
-                  ))}
-                </div>
-                <span className="theme-settings__name">{theme.name}</span>
-                <div className="theme-settings__row-actions">
-                  <Button variant="secondary" onClick={() => setTheme(`custom:${theme.id}`)}>
-                    Apply
-                  </Button>
-                  <Button variant="secondary" onClick={() => openEdit(theme)}>
-                    {opensDialog("Edit")}
-                  </Button>
-                  <Button variant="danger" onClick={() => setDeleting(theme)}>
-                    {opensDialog("Delete")}
-                  </Button>
-                </div>
-              </li>
+              <ThemeRow
+                key={theme.id}
+                theme={theme}
+                inUse={activeThemeId === `custom:${theme.id}`}
+                onApply={() => setTheme(`custom:${theme.id}`)}
+                onEdit={() => openEdit(theme)}
+                onDelete={() => setDeleting(theme)}
+              />
             ))}
           </ul>
-        ) : (
-          <SettingsHint>No custom themes yet. Pick nine colors; borders are made from them.</SettingsHint>
         )}
 
-        <SettingsActions>
-          <Button variant="secondary" onClick={openCreate}>
-            Create custom theme…
-          </Button>
-        </SettingsActions>
+        {editorOpen ? (
+          // Inline, on the page, so the live preview is seen undimmed and nothing can drop the
+          // nine colours with a stray click (M239, M240).
+          <section className="theme-editor" aria-label={editingId ? "Edit custom theme" : "Create custom theme"}>
+            <h3 className="theme-editor__title cp-text-subhead">{editingId ? "Edit custom theme" : "Create custom theme"}</h3>
+            <TextField
+              label="Theme name"
+              width="standard"
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              placeholder="My theme"
+              autoFocus
+            />
+            <div className="theme-editor__colors">
+              {COLOR_FIELDS.map(({ key, label }) => (
+                <ColorField key={key} label={label} value={draftColors[key]} onChange={(v) => updateColor(key, v)} />
+              ))}
+            </div>
+            <SettingsHint>Once you change a color, the app previews it live while you edit.</SettingsHint>
+            <div className="theme-editor__footer">
+              {editingId ? (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    const existing = customThemes.find((t) => t.id === editingId);
+                    if (existing) setDeleting(existing);
+                  }}
+                >
+                  {deleteLabel("theme") + "…"}
+                </Button>
+              ) : null}
+              <span className="theme-editor__spacer" />
+              <Button variant="secondary" onClick={closeEditor}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleSave}>
+                Save theme
+              </Button>
+            </div>
+          </section>
+        ) : (
+          <SettingsActions>
+            <Button variant="secondary" onClick={openCreate}>
+              Create custom theme…
+            </Button>
+          </SettingsActions>
+        )}
+
+        {customThemes.length === 0 && !editorOpen ? <SettingsHint>No custom themes yet.</SettingsHint> : null}
+
+        <TableSettings onChange={markSaved} />
       </div>
 
       <ConfirmDialog
         open={deleting !== null}
-        title={deleteTitle("theme")}
+        title={deleteTitle("theme", deleting?.name)}
         confirmLabel={deleteLabel("theme")}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
         danger
       >
-        The theme {quoted(deleting?.name ?? "")} will be gone. This cannot be undone.
+        {deleteLead}
       </ConfirmDialog>
-
-      <Modal
-        open={editorOpen}
-        title={editingId ? "Edit custom theme" : "Create custom theme"}
-        onClose={closeEditor}
-        secondaryAction={{ label: "Cancel", onClick: closeEditor }}
-        primaryAction={{ label: "Save theme", onClick: handleSave }}
-      >
-        <div className="theme-editor">
-          <TextField
-            label="Theme name"
-            width="standard"
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            placeholder="My theme"
-          />
-          <div className="theme-editor__colors">
-            {COLOR_FIELDS.map(({ key, label }) => (
-              <ColorField
-                key={key}
-                label={label}
-                value={draftColors[key]}
-                onChange={(v) => updateColor(key, v)}
-              />
-            ))}
-          </div>
-          <SettingsHint>Once you change a color, the app previews it live while this dialog is open.</SettingsHint>
-        </div>
-      </Modal>
     </Panel>
   );
 }

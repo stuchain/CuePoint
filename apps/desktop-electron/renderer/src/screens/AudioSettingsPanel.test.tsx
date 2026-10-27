@@ -1,5 +1,5 @@
 import { Activity } from "react";
-import { fireEvent, render as baseRender, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as baseRender, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -118,20 +118,15 @@ describe("the panel's words", () => {
     expect(screen.queryByRole("heading", { name: "Audio" })).toBeNull();
   });
 
-  it("counts outputs in one line, with the unplug detail under More about this", async () => {
+  it("counts outputs in one line, with the unplug detail said outright (M237)", async () => {
     install();
     renderPanel();
     expect(await screen.findByText("3 outputs found")).toBeInTheDocument();
     const detail = screen.getByText(
       "If the chosen one is unplugged, CuePoint switches to System default.",
     );
-    expect(detail).not.toBeVisible();
-    fireEvent.click(
-      within(detail.closest(".cp-more-about") as HTMLElement).getByRole("button", {
-        name: "More about this",
-      }),
-    );
     expect(detail).toBeVisible();
+    expect(screen.queryByRole("button", { name: "More about this" })).toBeNull();
   });
 
   it("shows the last device list at once on a revisit while it asks the player again", async () => {
@@ -207,7 +202,7 @@ describe("the panel's words", () => {
     expect(await screen.findByText("1 output found")).toBeInTheDocument();
   });
 
-  it("says exclusive output in one line, with the detail under More about this", async () => {
+  it("says exclusive output in one line, with the detail under a fold named for it (M237)", async () => {
     install();
     renderPanel();
     expect(
@@ -218,9 +213,7 @@ describe("the panel's words", () => {
     const detail = screen.getByText(/Leave it off unless you use an audio interface/);
     expect(detail).not.toBeVisible();
     expect(document.querySelector("details")).toBeNull();
-    const toggle = within(detail.closest(".cp-more-about") as HTMLElement).getByRole("button", {
-      name: "More about this",
-    });
+    const toggle = screen.getByRole("button", { name: "Who needs exclusive output" });
     expect(toggle).toHaveAccessibleDescription(
       "Plays straight to your audio interface. Other apps cannot use it meanwhile.",
     );

@@ -32,7 +32,13 @@ const TITLES = [
 ];
 
 function renderSettings(
-  props: { state?: unknown; onOpenOnboarding?: () => void } = {},
+  props: {
+    state?: unknown;
+    onOpenOnboarding?: () => void;
+    onOpenHelp?: () => void;
+    onOpenShortcuts?: () => void;
+    onOpenAbout?: () => void;
+  } = {},
 ) {
   return render(
     <ThemeProvider>
@@ -40,7 +46,12 @@ function renderSettings(
         <MotionProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={[{ pathname: "/settings", state: props.state ?? null }]}>
-              <SettingsScreen onOpenOnboarding={props.onOpenOnboarding} />
+              <SettingsScreen
+                onOpenOnboarding={props.onOpenOnboarding}
+                onOpenHelp={props.onOpenHelp}
+                onOpenShortcuts={props.onOpenShortcuts}
+                onOpenAbout={props.onOpenAbout}
+              />
             </MemoryRouter>
           </ToastProvider>
         </MotionProvider>
@@ -245,24 +256,35 @@ describe("the Beatport test result", () => {
 });
 
 describe("Motion and About & updates", () => {
-  it("holds the On, Off and Custom choice", () => {
+  it("holds the Follow system, On, Off and Custom choice", () => {
     renderSettings();
-    expect(within(region("Motion")).getAllByRole("radio")).toHaveLength(3);
+    // M435, D23: "On" is a choice of its own beside Follow system.
+    expect(within(region("Motion")).getAllByRole("radio")).toHaveLength(4);
   });
 
   it("shows the version, opens Getting started, and keeps a slot for updates", async () => {
     const onOpenOnboarding = vi.fn();
-    renderSettings({ onOpenOnboarding });
+    const onOpenHelp = vi.fn();
+    const onOpenShortcuts = vi.fn();
+    const onOpenAbout = vi.fn();
+    renderSettings({ onOpenOnboarding, onOpenHelp, onOpenShortcuts, onOpenAbout });
     const about = region("About & updates");
     await waitFor(() => expect(within(about).getByTestId("settings-version")).toHaveTextContent("9.8.7"));
-    await userEvent.click(within(about).getByRole("button", { name: "Getting started…" }));
+    await userEvent.click(within(about).getByRole("button", { name: "Getting started" }));
     expect(onOpenOnboarding).toHaveBeenCalledTimes(1);
+    // The native menu's help entries, here too for people who hide the menu bar (M489).
+    await userEvent.click(within(about).getByRole("button", { name: "Get help" }));
+    await userEvent.click(within(about).getByRole("button", { name: "Keyboard shortcuts" }));
+    await userEvent.click(within(about).getByRole("button", { name: "About CuePoint" }));
+    expect(onOpenHelp).toHaveBeenCalledTimes(1);
+    expect(onOpenShortcuts).toHaveBeenCalledTimes(1);
+    expect(onOpenAbout).toHaveBeenCalledTimes(1);
     expect(about.querySelector('[data-slot="updates"]')).not.toBeNull();
   });
 });
 
 describe("Reset section", () => {
-  const theme = () => within(region("Appearance")).getByRole("combobox", { name: "Active theme" });
+  const theme = () => within(region("Appearance")).getByRole("combobox", { name: "Theme" });
   const size = () =>
     within(region("Appearance")).getByRole("combobox", { name: "Size of text and controls" });
 
@@ -271,7 +293,7 @@ describe("Reset section", () => {
     await userEvent.selectOptions(theme(), "retro16");
     await userEvent.selectOptions(size(), "3");
 
-    await userEvent.click(within(region("Appearance")).getByRole("button", { name: "Reset appearance" }));
+    await userEvent.click(within(region("Appearance")).getByRole("button", { name: "Reset to defaults" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText("Appearance reset")).toBeInTheDocument();
     expect(theme()).toHaveValue("neoDark");
@@ -288,7 +310,7 @@ describe("Reset section", () => {
     await userEvent.click(within(waveforms).getByRole("radio", { name: "One color" }));
     expect(within(waveforms).getByRole("radio", { name: "One color" })).toBeChecked();
 
-    await userEvent.click(within(waveforms).getByRole("button", { name: "Reset waveforms" }));
+    await userEvent.click(within(waveforms).getByRole("button", { name: "Reset to defaults" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(within(waveforms).getByRole("radio", { name: "Three bands" })).toBeChecked();
 
@@ -296,35 +318,41 @@ describe("Reset section", () => {
     expect(within(waveforms).getByRole("radio", { name: "One color" })).toBeChecked();
   });
 
-  it("is offered by every section that has settings, and by About and Rekordbox never", () => {
+  const resets = () =>
+    TITLES.filter((title) => within(region(title)).queryByRole("button", { name: "Reset to defaults" }) !== null);
+
+  it("is drawn by no section while every value is its default (M436)", () => {
     renderSettings();
-    const holders = TITLES.filter(
-      (title) => within(region(title)).queryByRole("button", { name: `Reset ${title === "Beatport" ? title : title.toLowerCase()}` }) !== null,
-    );
-    expect(holders).toEqual(expect.arrayContaining(["Appearance", "Motion", "Waveforms", "Privacy"]));
-    expect(holders).not.toContain("Rekordbox");
-    expect(holders).not.toContain("About & updates");
+    expect(resets()).toEqual([]);
   });
 
-  it("puts Reset at the right of the card's title line in every section, quiet (C52)", () => {
+  it("is offered once a value differs, by every section that has settings, and by About and Rekordbox never", async () => {
     renderSettings();
-    for (const [title, name] of [
-      ["Appearance", "Reset appearance"],
-      ["Motion", "Reset motion"],
-      ["Waveforms", "Reset waveforms"],
-      ["Beatport", "Reset Beatport"],
-      ["Privacy", "Reset privacy"],
-    ] as const) {
-      const reset = within(region(title)).getByRole("button", { name });
+    await userEvent.selectOptions(within(region("Appearance")).getByRole("combobox", { name: "Theme" }), "retro16");
+    await userEvent.click(within(region("Motion")).getByRole("radio", { name: "Off" }));
+    await userEvent.click(within(region("Waveforms")).getByRole("radio", { name: "One color" }));
+    await userEvent.click(within(region("Beatport")).getByRole("checkbox", { name: /charts by regular Beatport users/ }));
+    await userEvent.click(within(region("Privacy")).getByRole("checkbox", { name: "Clear cache" }));
+    expect(resets()).toEqual(expect.arrayContaining(["Appearance", "Motion", "Waveforms", "Beatport", "Privacy"]));
+    expect(resets()).not.toContain("Rekordbox");
+    expect(resets()).not.toContain("About & updates");
+  });
+
+  it("puts Reset at the right of the card's title line, quiet, the same words everywhere (C52, M436)", async () => {
+    renderSettings();
+    await userEvent.selectOptions(within(region("Appearance")).getByRole("combobox", { name: "Theme" }), "retro16");
+    await userEvent.click(within(region("Motion")).getByRole("radio", { name: "Off" }));
+    for (const title of ["Appearance", "Motion"]) {
+      const reset = within(region(title)).getByRole("button", { name: "Reset to defaults" });
       expect(reset.closest(".settings-page__tools"), title).not.toBeNull();
       expect(reset.closest(".settings-actions"), title).toBeNull();
       expect(reset).toHaveClass("cp-btn--quiet");
     }
   });
 
-  it("states the header as a count and a fact, and the version one way (C233, C118)", () => {
+  it("states the header as a count only, and writes the version once, in About (C233, C118, M434)", () => {
     renderSettings();
-    expect(screen.getByText(/^\d+ sections? · Version /)).toBeInTheDocument();
+    expect(screen.getByText(/^\d+ sections?$/)).toBeInTheDocument();
     expect(within(region("About & updates")).getByTestId("settings-version")).toHaveTextContent(/^Version \d/);
   });
 });
@@ -333,7 +361,7 @@ describe("Saved", () => {
   it("shows beside Appearance after a change", async () => {
     renderSettings();
     await userEvent.selectOptions(
-      within(region("Appearance")).getByRole("combobox", { name: "Active theme" }),
+      within(region("Appearance")).getByRole("combobox", { name: "Theme" }),
       "mutedPro",
     );
     expect(within(region("Appearance")).getByRole("status")).toHaveTextContent("Saved");

@@ -29,7 +29,9 @@ export function ExitClearingSettings() {
   };
 
   return (
-    <Fieldset legend="When CuePoint quits" className="cp-error-reporting__exit">
+    // The divider is the wrapper's, so the legend is an ordinary group label, not a word in a border (M226).
+    <div className="cp-error-reporting__exit">
+    <Fieldset legend="When CuePoint quits">
       <label className="cp-error-reporting__toggle settings-check">
         <input
           type="checkbox"
@@ -48,5 +50,6 @@ export function ExitClearingSettings() {
       </label>
       <SavedTick signal={saved} />
     </Fieldset>
+    </div>
   );
 }
