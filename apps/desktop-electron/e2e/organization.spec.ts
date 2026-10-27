@@ -772,7 +772,15 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // the tracks — so this picks up where the last one left off.
       await expect(window.getByRole("toolbar", { name: "Selection" })).toContainText("50,000 selected");
       await expect(window.getByText("The selection is everything matching")).toBeAttached();
-      await window.getByRole("button", { name: "Organize", exact: true }).click();
+      // M283: toasts float over the page's bottom right, where the selection bar's buttons are;
+      // the stopped job's message (it can arrive a moment after the stop) is closed first, as a
+      // person would.
+      await expect(async () => {
+        for (const close of await window.locator(".cp-toast").getByRole("button", { name: "Close message" }).all()) {
+          await close.click({ timeout: 2_000 });
+        }
+        await window.getByRole("button", { name: "Organize", exact: true }).click({ timeout: 2_000 });
+      }).toPass({ timeout: 30_000 });
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
       await window.getByRole("dialog").getByRole("button", { name: "Change 50,000 tracks" }).click();
 

@@ -38,6 +38,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { chooseMenuItem } from "./appMenu";
 import { waitForEngine } from "./engineReady";
 import { setInnerSize } from "./windowSizes";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
@@ -1030,7 +1031,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await win.keyboard.press("Escape");
   });
 
-  test("Export to Rekordbox is the Library's and the tree's, and Prepare's for a Set; never the menu bar", async () => {
+  test("Export to Rekordbox is the Library's and the tree's, and Prepare's for a Set; the File menu opens the Library's", async () => {
     // One dialog from the Library header, the tree's bar and Prepare's Export menu.
     await openLibrary(win);
     const exporting = win.getByRole("dialog", { name: "Export to Rekordbox" });
@@ -1058,7 +1059,8 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await expect(exporting).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
 
-    // Not in the menu bar (DEC-087): no entry in any menu says so.
+    // M497 (amends DEC-087): one entry in the menu bar, File ▸ Export to Rekordbox…, which opens
+    // the Library's own export, not a fourth dialog.
     const labels = await app.evaluate(({ Menu }) => {
       const found: string[] = [];
       const walk = (items: Electron.MenuItem[]) => {
@@ -1071,7 +1073,16 @@ test.describe("FLW-2: each function has one home, and the other places link to i
       return found;
     });
     expect(labels.length).toBeGreaterThan(5);
-    expect(labels.filter((label) => /export to rekordbox/i.test(label))).toEqual([]);
+    expect(labels.filter((label) => /export to rekordbox/i.test(label))).toEqual(["Export to Rekordbox…"]);
+    const file = await app.evaluate(({ Menu }) =>
+      (Menu.getApplicationMenu()?.items.find((item) => item.label === "File")?.submenu?.items ?? []).map((item) => item.id),
+    );
+    expect(file).toContain("export-rekordbox");
+    await chooseMenuItem(app, "export-rekordbox");
+    await expect(exporting).toBeVisible({ timeout: 15_000 });
+    await expect(win).toHaveURL(/#\/library/);
+    await win.keyboard.press("Escape");
+    await expect(exporting).toBeHidden();
   });
 
   test("Checking every file is Clean's, on its Missing files tab", async () => {

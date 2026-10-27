@@ -306,7 +306,8 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
         .getByRole("listitem")
         .filter({ hasText: /Set the BPM to 126(\.0)? on 3 tracks/ })
         .filter({ hasNotText: "changes of" });
-      await entry.getByRole("button", { name: "Undo this batch" }).click();
+      // M450: the batch button reads "Undo all of these".
+      await entry.getByRole("button", { name: "Undo all of these" }).click();
       await entry.getByRole("button", { name: "Undo", exact: true }).click();
       await expect(entry).toContainText("Undid 3 changes.", { timeout: 15_000 });
       await window.keyboard.press("Escape");
@@ -315,7 +316,8 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(row(window, "Tone Two").getByRole("img")).toHaveCount(0);
 
       // The Clean columns, as the engine answers them.
-      await window.getByRole("button", { name: "Columns…" }).click();
+      // M404/D33: the corner button is "Columns", without "…".
+      await window.getByRole("button", { name: "Columns", exact: true }).click();
       const picker = window.getByRole("dialog");
       await picker.getByRole("checkbox", { name: "Match" }).check();
       await picker.getByRole("checkbox", { name: "File status" }).check();

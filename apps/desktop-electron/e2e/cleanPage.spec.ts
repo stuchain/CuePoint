@@ -188,9 +188,8 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await expect(window.getByRole("checkbox", { name: /^Match / })).toHaveCount(1);
       await expect(window.getByRole("checkbox", { name: "Match All tracks" })).toBeEnabled();
       await expect(window.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
-      // The header has only the Details toggle, the last button of the row.
-      await expect(window.getByTestId("clean-header").getByRole("button")).toHaveCount(1);
-      await expect(window.getByTestId("clean-header").getByRole("button", { name: "Track details", exact: true })).toBeVisible();
+      // M490: no track list on this view, so not even the Details toggle: the header has no button.
+      await expect(window.getByTestId("clean-header").getByRole("button")).toHaveCount(0);
     } finally {
       await app.close();
     }

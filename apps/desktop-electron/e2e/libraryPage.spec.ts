@@ -276,11 +276,12 @@ test.describe("The Library page (LIBRARY-11)", () => {
       expect(Math.max(...tops) - Math.min(...tops), `button centres ${tops} (${shown})`).toBeLessThanOrEqual(2);
       console.log("PAGES-05A header labels:", shown);
       // Nothing selected: no bar above the table. Select all and the count are in the filter row,
-      // and Columns… is the table header's corner (FLW-8, C9).
+      // and Columns is the table header's corner (FLW-8, C9).
       await expect(window.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
       await expect(window.getByRole("button", { name: "Select all" })).toBeVisible();
       await expect(
-        window.getByRole("table", { name: "Library tracks" }).getByRole("button", { name: "Columns…" }),
+        // M404/D33: the corner button is "Columns", without "…".
+        window.getByRole("table", { name: "Library tracks" }).getByRole("button", { name: "Columns", exact: true }),
       ).toBeVisible();
       // The notice line is not on the page while someone works in the table.
       await expect(window.getByRole("status", { name: "Getting your library ready" })).toHaveCount(0);

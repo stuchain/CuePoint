@@ -273,7 +273,8 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       // --- 3. the Library column draws each row's waveform ------------------
       await window.getByRole("link", { name: "Library" }).click();
       await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
-      await window.getByRole("button", { name: "Columns…" }).click();
+      // M404/D33: the corner button is "Columns", without "…".
+      await window.getByRole("button", { name: "Columns", exact: true }).click();
       await window.getByRole("dialog").getByRole("checkbox", { name: "Waveform" }).check();
       await window.keyboard.press("Escape");
       const cells = window.locator(".track-table__cell[data-column=waveform]");

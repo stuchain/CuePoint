@@ -332,7 +332,8 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await time("Warm Two", "", "5:00");
       await expect(facts(win)).toContainText("9:00 planned", { timeout: 15_000 });
       // "Starts at" is hidden until it is chosen in the table's Columns.
-      await setTable(win).getByRole("button", { name: "Columns…" }).click();
+      // M404/D33: the corner button is "Columns", without "…".
+      await setTable(win).getByRole("button", { name: "Columns", exact: true }).click();
       await win.getByRole("dialog").getByRole("checkbox", { name: "Starts at" }).check();
       await win.keyboard.press("Escape");
       await expect(startsOf(win, "Build")).toHaveText("9:00");

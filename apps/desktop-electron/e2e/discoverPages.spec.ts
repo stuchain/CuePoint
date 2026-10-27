@@ -490,6 +490,10 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect
           .poll(() => titlesIn(window, "Similar tracks"), { timeout: 30_000 })
           .toEqual(["Harbour Lights", "Night Bus", "Low Tide"]);
+        // M85/D12: Label waits in the Columns list; shown, the row carries it.
+        await window.getByRole("table", { name: "Similar tracks" }).getByRole("button", { name: "Columns", exact: true }).click();
+        await window.getByRole("dialog").getByRole("checkbox", { name: "Label", exact: true }).check();
+        await window.keyboard.press("Escape");
         await expect(row(window, "Similar tracks", "Night Bus")).toContainText("Cold Room");
         await row(window, "Similar tracks", "Low Tide").click({ button: "right" });
         await window.getByRole("menu").getByRole("menuitem", { name: "Add to queue" }).click();
@@ -558,6 +562,10 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(3, {
           timeout: 15_000,
         });
+        // M85/D12: "From" waits in the Columns list; shown, it says why each was found.
+        await window.getByRole("table", { name: found }).getByRole("button", { name: "Columns", exact: true }).click();
+        await window.getByRole("dialog").getByRole("checkbox", { name: "From", exact: true }).check();
+        await window.keyboard.press("Escape");
         await expect(bpRow(window, found, "Undertow")).toContainText("Harbour Selects");
       } finally {
         await again.close();

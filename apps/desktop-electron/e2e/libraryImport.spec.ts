@@ -151,7 +151,8 @@ test.describe("Library import from the renderer (LIBRARY-06)", () => {
 
       const summary = await window.evaluate(() => window.cuepoint!.getLibrarySummary!());
       expect(summary.track_count).toBe(40);
-      expect(summary.playlist_count).toBe(2);
+      // M523: the playlists the pane lists; ROOT is a folder and is not counted.
+      expect(summary.playlist_count).toBe(1);
       expect(summary.library_empty).toBe(false);
       expect(summary.source).not.toBeNull();
       expect(summary.source!.exists).toBe(true);

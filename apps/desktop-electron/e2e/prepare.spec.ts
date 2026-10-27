@@ -625,11 +625,17 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       // Phase 8 found a double-click defeated where a row straddles the bottom of
       // what is shown. Rows now follow the text (R4-1), so the Library's page fits
       // at this size; the same situation is made by scrolling the table's own
-      // scroller half a row, as a person scrolling its rows would.
+      // scroller until its bottom edge cuts a row through the middle, as a person
+      // scrolling its rows would. Measured, not a fixed half row: where the edge
+      // falls depends on the window's height (M496 hides the menu bar, so the page
+      // is 27 px taller), and half a row from there landed on a row's boundary.
       await win.evaluate(() => {
         const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
         const row = table.querySelector<HTMLElement>(".track-table__row")!;
-        table.scrollTop += row.getBoundingClientRect().height / 2;
+        const height = row.getBoundingClientRect().height;
+        const bottom = table.getBoundingClientRect().top + table.clientTop + table.clientHeight;
+        const into = (((bottom - row.getBoundingClientRect().top) % height) + height) % height;
+        table.scrollTop += (height / 2 - into + height) % height;
       });
       const shown = await measure(win, "Library tracks");
       expect(shown.partial, "a Library row is cut by the table's edge").not.toBeNull();

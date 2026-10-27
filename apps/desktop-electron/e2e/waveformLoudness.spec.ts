@@ -258,7 +258,8 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       await window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" }).fill("");
 
       // --- the Library's column: the number alone --------------------------
-      await window.getByRole("button", { name: "Columns…" }).click();
+      // M404/D33: the corner button is "Columns", without "…".
+      await window.getByRole("button", { name: "Columns", exact: true }).click();
       await window.getByRole("dialog").getByRole("checkbox", { name: "Loudness" }).check();
       await window.keyboard.press("Escape");
       for (const track of TRACKS) {

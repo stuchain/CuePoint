@@ -66,9 +66,10 @@ test("the queue panel shows the real queue and edits it", async () => {
       await bridge.player.pause();
     }, FIXTURES.map((file) => path.join(AUDIO, file)));
     await window.waitForSelector(".cp-player-bar", { timeout: 15_000 });
-    // The status strip is drawn while the engine starts (30 high); measured only once it has gone idle.
+    // The status strip is drawn while the engine starts; measured only once it says Ready. D25: the
+    // strip is always one row and never goes idle, so Ready is its resting state.
     await waitForEngine(window);
-    await window.locator(".cp-status[data-idle]").waitFor({ state: "attached", timeout: 30_000 });
+    await expect(window.locator(".cp-status")).toContainText("Ready", { timeout: 30_000 });
 
     // The bar's toggle opens it, and it lists what main is actually holding.
     const mainBefore = await window.locator("main.app-main").boundingBox();

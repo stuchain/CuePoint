@@ -178,6 +178,10 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       const found = "Tracks this dig found";
       await expect(row(window, found, /Harbour Lights/)).toBeVisible({ timeout: 15_000 });
       await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(4);
+      // M85/D12: "From" waits in the Columns list; shown, it says why the dig found the track.
+      await window.getByRole("table", { name: found }).getByRole("button", { name: "Columns", exact: true }).click();
+      await window.getByRole("dialog").getByRole("checkbox", { name: "From", exact: true }).check();
+      await window.keyboard.press("Escape");
       await expect(row(window, found, /Harbour Lights/)).toContainText("On a chart by Mara Veil: “Journey Selects”");
 
       // Phase 14: at 1,280 × 800 and 1.5×, the run card's ⋯ menu button sits clear of its text

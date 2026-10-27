@@ -5,8 +5,9 @@
  * else 1.5×; Small where even 1.25× is too big). At 1.25× and 1.5× no border width or
  * shadow length on the Library or Settings is fractional (the pixel style stays sharp).
  * In the default 1,280 × 800 window nothing scrolls sideways at any of the five sizes,
- * and the Library's table rows are the size's `--row-height` (26, 33, 39, 52 and 78
- * pixels: 2.6 times the extra-small text, the one row height of every track list),
+ * and the Library's table rows are the size's `--row-height` (26, 34, 39, 52 and 78
+ * pixels: 2.6 times the extra-small text, a whole pixel since M4, the one row height of every
+ * track list),
  * the header's height too, with no cell's text cut.
  *
  * Sizes are applied the way someone applies them: the stored value, then a reload.
@@ -28,7 +29,8 @@ const TONE = path.join(REPO_ROOT, "src", "tests", "fixtures", "audio", "tone.mp3
 
 const SIZES = [
   { scale: 1, row: 26 },
-  { scale: 1.25, row: 33 },
+  // M4: the extra-small text rounds to 13 px at 1.25×, so its row is round(13 × 2.6) = 34.
+  { scale: 1.25, row: 34 },
   { scale: 1.5, row: 39 },
   { scale: 2, row: 52 },
   { scale: 3, row: 78 },

@@ -415,7 +415,8 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
       await window.getByRole("link", { name: "Library" }).click();
       await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
 
-      await window.getByRole("button", { name: "Columns…" }).click();
+      // M404/D33: the corner button is "Columns", without "…".
+      await window.getByRole("button", { name: "Columns", exact: true }).click();
       await window.getByRole("dialog").getByRole("checkbox", { name: "Waveform" }).check();
       await window.keyboard.press("Escape");
       await expect(window.locator(".track-table__cell[data-column=waveform] canvas").first()).toBeVisible({
