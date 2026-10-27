@@ -15,8 +15,10 @@
   gap: var(--space-md);
   min-height: var(--selection-bar-height);
   /* The count starts where the table's cell text starts, and the last button ends where the rows'
-     end inset does, so the bar's words sit on the columns above and below it (M54, M56). */
-  padding-inline: var(--space-sm) var(--row-end-inset);
+     end inset does, so the bar's words sit on the columns above and below it (M54, M56). The end
+     also holds the last button's frame line, which the hang (L2) pulls out past its padding: with
+     the inset alone the frame ran a hairline past the bar and cut it. */
+  padding-inline: var(--space-sm) calc(var(--row-end-inset) + var(--control-border-width));
   background: var(--bg-toolbar);
   color: var(--fg-primary);
   font-size: var(--text-body);
@@ -61,6 +63,14 @@
 .cp-selection-bar__actions > :last-child > .cp-btn:not(.cp-btn--framed):nth-last-child(2):has(+ .cp-visually-hidden),
 .cp-selection-bar__actions > :last-child > .cp-hint:nth-last-child(2):has(+ .cp-visually-hidden) {
   margin-inline-end: calc(-1 * (var(--space-sm) + var(--control-border-width)));
+}
+
+/* The hung last button keeps its own width when the bar is short of room (Track details open, wide
+   scrollbars): squeezed, its menu arrow ran out of it and, hung, past the bar's end. The buttons
+   before it give the room instead. */
+.cp-selection-bar__actions > :last-child > :is(.cp-btn, .cp-hint):last-child,
+.cp-selection-bar__actions > :last-child > :is(.cp-btn, .cp-hint):nth-last-child(2):has(+ .cp-visually-hidden) {
+  flex-shrink: 0;
 }
 
 .cp-selection-bar--overlay[data-armed="false"] {

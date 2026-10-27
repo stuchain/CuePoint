@@ -104,7 +104,14 @@ describe("SelectionBar look (M20, M54, M56, M117)", () => {
   });
 
   it("starts the count on the cell inset and ends the last button on the rows' end inset (M54, M56)", () => {
-    expect(flat).toMatch(/\.cp-selection-bar \{[^}]*padding-inline:\s*var\(--space-sm\) var\(--row-end-inset\)/);
+    // Plus the hung last button's frame line, so the bar is never cut (e2e libraryPage, barCut).
+    expect(flat).toMatch(
+      /\.cp-selection-bar \{[^}]*padding-inline:\s*var\(--space-sm\) calc\(var\(--row-end-inset\) \+ var\(--control-border-width\)\)/,
+    );
+  });
+
+  it("keeps the hung last button's width, so its arrow never runs past the bar (M56)", () => {
+    expect(flat).toMatch(/:nth-last-child\(2\):has\(\+ \.cp-visually-hidden\) \{\s*flex-shrink:\s*0;/);
   });
 
   it("lifts off the rows with a hard hairline, not a blur (M117, D4)", () => {
