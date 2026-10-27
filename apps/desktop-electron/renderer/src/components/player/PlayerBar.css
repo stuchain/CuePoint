@@ -81,6 +81,20 @@
   white-space: pre;
 }
 
+/* W3: the key chip stands between its neighbours with one chip padding of air on each side and
+   no dot, except at the line's start, where it sits on the edge with the title. */
+.cp-player-bar__meta-fixed--chip {
+  padding-inline: var(--chip-pad);
+}
+
+.cp-player-bar__meta > .cp-player-bar__meta-fixed--chip:first-child {
+  padding-inline-start: 0;
+}
+
+.cp-player-bar__meta > .cp-player-bar__meta-fixed--chip:last-child {
+  padding-inline-end: 0;
+}
+
 /* Never narrower than its times and the timeline's floor (item 2): the track name gives way
    first, and the utility buttons fold into More before the timeline is squeezed. */
 .cp-player-bar__seek {

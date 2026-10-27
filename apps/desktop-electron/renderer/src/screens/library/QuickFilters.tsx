@@ -14,6 +14,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "../../components/Button";
+import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { formatBpm } from "../../components/format/bpm";
 import { Loading } from "../../components/Loading";
 import { TextField } from "../../components/TextField";
@@ -50,6 +51,13 @@ interface QuickFiltersProps {
   onOpen: () => void;
   /** Open the Keys page on this view's playlist or Collection (PAGES-16). */
   onOpenKeys?: () => void;
+  /**
+   * The row has no room for three buttons (W1): one Filters menu names them, and the one chosen
+   * opens under it as it would under its own button.
+   */
+  folded?: boolean;
+  /** Folded, more entries for the same menu after the three (W1: the row's More menu at 3x). */
+  extraItems?: TrackContextMenuItem[];
 }
 
 const LABELS: Record<QuickKind, string> = { key: "Key", bpm: "BPM", genre: "Genre" };
@@ -77,8 +85,11 @@ export function QuickFilters({
   loading = false,
   onOpen,
   onOpenKeys,
+  folded = false,
+  extraItems = [],
 }: QuickFiltersProps) {
   const [open, setOpen] = useState<QuickKind | null>(null);
+  const menu = useMenuButton();
   const root = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
@@ -108,27 +119,7 @@ export function QuickFilters({
     onOpen();
   };
 
-  return (
-    <div className="cp-quick" ref={root}>
-      {(Object.keys(LABELS) as QuickKind[]).map((kind) => {
-        const count = quickCount(filters, FIELDS[kind]);
-        const shown = open === kind;
-        return (
-          <div className="cp-quick__item" key={kind}>
-            {/* The toggle look (D1): pressed while the filter has a choice in it (C4, C14). */}
-            <Button
-              variant="secondary"
-              menu
-              aria-haspopup="dialog"
-              aria-pressed={count > 0}
-              aria-expanded={shown}
-              aria-controls={shown ? panelId : undefined}
-              onClick={() => toggle(kind)}
-            >
-              {LABELS[kind]}
-              {count > 0 && <span className="cp-quick__count">{count}</span>}
-            </Button>
-            {shown && (
+  const panelFor = (kind: QuickKind) => (
               <div className="cp-quick__panel" role="dialog" aria-label={LABELS[kind]} id={panelId}>
                 {kind === "key" && (
                   <KeyList
@@ -164,7 +155,65 @@ export function QuickFilters({
                   />
                 )}
               </div>
-            )}
+  );
+
+  if (folded) {
+    const total = (Object.keys(LABELS) as QuickKind[]).reduce((sum, kind) => sum + quickCount(filters, FIELDS[kind]), 0);
+    const box = menu.open ? menu.anchor.current?.getBoundingClientRect() : undefined;
+    return (
+      <div className="cp-quick" ref={root}>
+        <div className="cp-quick__item">
+          <Button variant="secondary" menu aria-pressed={total > 0} {...menu.buttonProps}>
+            Filters
+            {total > 0 && <span className="cp-quick__count">{total}</span>}
+          </Button>
+          {menu.open && box && (
+            <TrackContextMenu
+              x={box.left}
+              y={box.bottom}
+              anchor={menu.anchor}
+              onClose={menu.close}
+              label="Filters"
+              items={[
+                ...(Object.keys(LABELS) as QuickKind[]).map((kind) => {
+                  const count = quickCount(filters, FIELDS[kind]);
+                  return {
+                    id: kind,
+                    label: count > 0 ? `${LABELS[kind]} (${count})` : LABELS[kind],
+                    onSelect: () => toggle(kind),
+                  };
+                }),
+                ...extraItems.map((item, index) => ({ ...item, separatorBefore: index === 0 })),
+              ]}
+            />
+          )}
+          {open && panelFor(open)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="cp-quick" ref={root}>
+      {(Object.keys(LABELS) as QuickKind[]).map((kind) => {
+        const count = quickCount(filters, FIELDS[kind]);
+        const shown = open === kind;
+        return (
+          <div className="cp-quick__item" key={kind}>
+            {/* The toggle look (D1): pressed while the filter has a choice in it (C4, C14). */}
+            <Button
+              variant="secondary"
+              menu
+              aria-haspopup="dialog"
+              aria-pressed={count > 0}
+              aria-expanded={shown}
+              aria-controls={shown ? panelId : undefined}
+              onClick={() => toggle(kind)}
+            >
+              {LABELS[kind]}
+              {count > 0 && <span className="cp-quick__count">{count}</span>}
+            </Button>
+            {shown && panelFor(kind)}
           </div>
         );
       })}

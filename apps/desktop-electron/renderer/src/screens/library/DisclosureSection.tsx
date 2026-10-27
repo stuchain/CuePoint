@@ -105,9 +105,6 @@ export function DisclosureSection({
           aria-controls={bodyId}
           onClick={toggle}
         >
-          <span aria-hidden className="cp-track-section__chevron">
-            <DisclosureArrow open={open} />
-          </span>
           <span className="cp-track-section__title">{title}</span>
           {summary ? (
             // On the right, where it is read as the section's answer. The dot is
@@ -124,6 +121,11 @@ export function DisclosureSection({
               )}
             </span>
           ) : null}
+          {/* W4 (amends DEC-301 L7): the arrow ends the row, after the answer, so nothing sits in the
+              panel's inset or touches its edge. */}
+          <span aria-hidden className="cp-track-section__chevron">
+            <DisclosureArrow open={open} />
+          </span>
         </button>
         </Hint>
       </Heading>

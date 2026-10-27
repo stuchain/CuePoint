@@ -316,6 +316,9 @@ export function PlayerBar({
   if (keyText !== null) tailParts.push(<WheelButton source="player" keyName={keyText} />);
   if (facts.bpm !== "") tailParts.push(facts.bpm);
   if (facts.year !== "") tailParts.push(facts.year);
+  // W3: the key chip is its own separator. No dot touches its fill: a plain space and one chip
+  // padding of air either side instead, so the words still read apart ("deadmau5 8A 128 BPM").
+  const chipAt = keyText !== null ? 0 : -1;
 
   // The waveform's reason (WAVE-06) is the slider's Hint, on hover and on
   // keyboard focus: the slider is the one focusable piece.
@@ -416,12 +419,15 @@ export function PlayerBar({
                 </Fragment>
               ))}
               {/* The separator belongs to the lead, so a lead squeezed to nothing leaves none behind. */}
-              {tailParts.length > 0 ? " · " : null}
+              {tailParts.length > 0 ? (chipAt === 0 ? " " : " · ") : null}
             </span>
           )}
           {tailParts.map((part, index) => (
-            <span key={index} className="cp-player-bar__meta-fixed">
-              {index > 0 ? " · " : null}
+            <span
+              key={index}
+              className={`cp-player-bar__meta-fixed${index === chipAt ? " cp-player-bar__meta-fixed--chip" : ""}`}
+            >
+              {index > 0 ? (index - 1 === chipAt ? " " : " · ") : null}
               {part}
             </span>
           ))}

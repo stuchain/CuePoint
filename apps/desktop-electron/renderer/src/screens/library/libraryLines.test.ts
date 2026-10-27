@@ -121,12 +121,16 @@ describe("the Library's shared lines", () => {
 describe("the pane's headings in a narrow pane (zoom spot 1C)", () => {
   const head = ".cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head";
 
-  it("wrap a heading that does not fit: + New and from Rekordbox go under the title, at the right", () => {
-    expect(rule(pane, head)).toMatch(/flex-wrap:\s*wrap/);
-    expect(rule(pane, head)).not.toMatch(/nowrap/);
-    for (const item of [".cp-library-pane .cp-collections__create", ".cp-library-pane .cp-playlist-pane__head > .cp-hint"]) {
+  it("keep a heading on one line (W1, was 1C's wrap): a narrow pane shortens + New and hides from Rekordbox", async () => {
+    expect(rule(pane, head)).toMatch(/flex-wrap:\s*nowrap/);
+    for (const item of [".cp-library-pane .cp-collections__create", ".cp-library-pane .cp-playlist-pane__head > .cp-playlist-pane__source-hint"]) {
       expect(rule(pane, item)).toMatch(/margin-inline-start:\s*auto/);
     }
+    const playlists = (await import("./PlaylistPane.css?raw")).default as string;
+    // The query is in the pane's own text size, so it holds at every scale.
+    const narrow = playlists.slice(playlists.indexOf("@container library-pane (max-width: 18em)"));
+    expect(narrow).toMatch(/^@container library-pane \(max-width: 18em\)\s*\{[^{]*\.cp-library-pane \.cp-playlist-pane > \.cp-playlist-pane__head > \.cp-playlist-pane__source-hint\s*\{\s*display:\s*none/);
+    expect(narrow).toMatch(/\.cp-collections__new-word\s*\{[^}]*clip-path:\s*inset\(50%\)/);
   });
 
   it("never ellipsize the title, and keep + New whole", () => {

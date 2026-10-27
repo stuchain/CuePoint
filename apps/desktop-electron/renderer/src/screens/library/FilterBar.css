@@ -163,6 +163,12 @@
   max-width: var(--search-width);
 }
 
+/* W1: with everything else folded into menus, the search gives way further still, down to little
+   more than its icon, so the row stays one line at any size. */
+.cp-filter-bar__row--folded > .cp-search-field {
+  flex-basis: calc(48px * var(--scale));
+}
+
 /* The search box is named by its placeholder and its label; the word "Search" above it cost the
    table a row at the default window (PAGES-05C). The label stays for assistive technology. */
 .cp-filter-bar__row > .cp-field > .cp-field__label {

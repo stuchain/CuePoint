@@ -235,6 +235,14 @@ when you select a row. If the count does not fit it is cut short (ending in
 "…") rather than pushing a button onto a second line. The count is in the same
 figures as the table.
 
+The filter row is always one line. When the window or the text size leaves it
+too little room, its buttons fold away in steps: **Tags…** moves into **Add
+filter**'s menu, then **Select all**, **Clear all filters** and **Save as Smart
+Collection…** into a **More** menu at the row's end (the count stays, as "240
+of 12,000 tracks"), then **Add filter** into **More**, then **Key**, **BPM**
+and **Genre** into one **Filters** menu, and last **More** into **Filters**.
+They come back as soon as there is room.
+
 | Menu | Holds |
 | --- | --- |
 | **Play ▸** | **Play**, **Play next**, **Add to queue**, for the selected tracks in the order the table shows them |

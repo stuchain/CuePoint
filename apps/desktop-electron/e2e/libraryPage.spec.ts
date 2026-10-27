@@ -31,6 +31,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
+import { pressFilterRowAction } from "./filterRow";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -412,7 +413,8 @@ test.describe("The Library page (LIBRARY-11)", () => {
         // The rows the page keeps are counted with nothing selected: the bar is only there while
         // tracks are selected, and then it covers the bottom rows instead of moving them.
         const idle = await measure();
-        await window.getByRole("button", { name: "Select all" }).click();
+        // On the row, or in its More menu when Track details leaves the row too little room (W1).
+        await pressFilterRowAction(window, "Select all");
         await expect(window.getByRole("toolbar", { name: "Selection" })).toBeVisible();
         const after = await shape();
         expect(after.row, "the filter row's height, with and without a selection").toBe(before.row);

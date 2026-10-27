@@ -750,12 +750,17 @@
   display: inline-flex;
   flex: none;
   align-items: center;
-  /* L7: the arrow hangs in the panel's inset, centred in it, so the section title sits on the edge
-     with every label and box (it was 18 px in). The end margin takes back the toggle's gap. */
+  /* W4 (amends DEC-301 L7): the arrow ends the row, after the summary; the title sits on the edge
+     with every label and box, and nothing hangs in the inset against the panel's border. */
   justify-content: center;
+  align-self: center;
   width: var(--icon-size-sm);
-  margin-inline-start: calc(-0.5 * (var(--space-md) + var(--icon-size-sm)));
-  margin-inline-end: calc((var(--space-md) - var(--icon-size-sm)) / 2 - var(--space-xs));
+  margin-inline-start: auto;
+}
+
+/* With a summary, the summary takes the free space and the arrow follows it. */
+.cp-track-section__summary + .cp-track-section__chevron {
+  margin-inline-start: 0;
 }
 
 /* The heading's hover hint wraps the toggle: it takes the full width, so the summary can sit at the
@@ -787,7 +792,13 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-xs);
+  /* W4: one rhythm in Yours: a group's parts are --space-sm apart and groups --space-lg (Add a tag,
+     Edit values, the folding sections). */
+  gap: var(--space-lg);
+}
+
+.cp-track-yours > .cp-track-values {
+  margin-block-start: calc(var(--space-lg) - var(--space-sm));
 }
 
 .cp-track-values .cp-track-section {

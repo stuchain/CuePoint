@@ -25,7 +25,7 @@ import { SearchField } from "../../components/SearchField";
 import { ShowMore } from "../../components/ShowMore";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
-import { TrackContextMenu, useMenuButton } from "../../components/TrackContextMenu";
+import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import type {
   FilterRuleSet,
   LibraryFacet,
@@ -162,10 +162,20 @@ interface FilterBarProps {
   openAddToken?: number;
 
   /**
-   * What sits at the right end of the row, after everything else: Select all and the count
-   * (C215, C80). Absent, the row ends with its last control.
+   * What sits at the right end of the row, after everything else: Select all (C215). Absent, the
+   * row ends with its last control.
    */
   trailing?: ReactNode;
+  /**
+   * What `trailing` offers, as menu entries, for a row too narrow to keep it (W1): the row never
+   * wraps, so Select all moves into the row's More menu instead.
+   */
+  trailingMenu?: TrackContextMenuItem[];
+  /**
+   * The count at the row's very end while a search or filter narrows the view (C80). It never
+   * folds away; a narrow row says it the short way ("6 of 12 tracks").
+   */
+  count?: { long: string; short: string };
   /** The search input, for the page to register with Ctrl+F (C189). */
   searchInputRef?: Ref<HTMLInputElement>;
 }
@@ -195,6 +205,8 @@ export function FilterBar({
   onOpenPage,
   openAddToken = 0,
   trailing,
+  trailingMenu,
+  count,
   searchInputRef,
 }: FilterBarProps) {
   const [adding, setAdding] = useState(false);
@@ -260,49 +272,108 @@ export function FilterBar({
     };
   }, [measureChips, filters]);
 
-  // Tags… folds into Add filter's menu when the row would otherwise wrap it onto a line of its own
-  // (item 12, at 1.5x). Folded, it comes back once the row is wider by the button and a gap again,
-  // so it never flickers between the two at the width where it folded.
+  // The row is one line at every size (W1, after item 12's Tags… fold): when it would wrap, the
+  // next thing in this order folds away, and comes back once the row has room for it again.
+  //   1. Tags… into Add filter's menu (item 12).
+  //   2. Select all and the filter actions (Clear all filters, Save, Update, Keep as a filter) into
+  //      a More menu at the row's end; the count stays, said the short way.
+  //   3. Add filter (with Tags…) into that More menu.
+  //   4. Key, BPM and Genre into one Filters menu.
+  //   5. The More menu into that Filters menu, so the row is the search and one menu.
+  // The width each level needs on one line is measured when it wraps, so a level comes back only
+  // when it fits, and never flickers between two at the width where it folded.
   const rowRef = useRef<HTMLDivElement>(null);
-  const tagsRef = useRef<HTMLButtonElement>(null);
-  const [tagsFolded, setTagsFolded] = useState(false);
-  const unfoldAt = useRef(0);
+  const [fold, setFold] = useState(0);
+  const needs = useRef<number[]>([]);
   const addMenu = useMenuButton();
+  const moreMenu = useMenuButton();
+  const rules = filters?.rules ?? [];
+  /** The Collection whose rules have been changed, when there is one. */
+  const modified = smart && isModified(smart, filters) ? smart : null;
+  const ruleActions: TrackContextMenuItem[] = [
+    ...(ruleCount(filters) > 0
+      ? [{ id: "clear", label: "Clear all filters", onSelect: () => onFiltersChange(null) }]
+      : []),
+    ...(onSaveSmart && rules.length > 0
+      ? [
+          {
+            id: "save",
+            label: smart ? "Save as a new Smart Collection…" : "Save as Smart Collection…",
+            onSelect: onSaveSmart,
+          },
+        ]
+      : []),
+    ...(modified && onUpdateSmart
+      ? [{ id: "update", label: `Update “${modified.name}”`, onSelect: onUpdateSmart }]
+      : []),
+    ...(modified && onDetachSmart
+      ? [{ id: "detach", label: "Keep as a filter", onSelect: onDetachSmart }]
+      : []),
+  ];
+  const hasTrailingMenu = (!!trailingMenu && trailingMenu.length > 0) || ruleActions.length > 0;
   const measureRow = useCallback(() => {
     const row = rowRef.current;
-    if (!row || !onManageTags) return;
-    if (tagsFolded) {
-      if (row.clientWidth >= unfoldAt.current) setTagsFolded(false);
+    if (!row) return;
+    if (fold > 0 && row.clientWidth >= (needs.current[fold - 1] ?? Infinity)) {
+      setFold(fold - 1);
       return;
     }
     // Show all puts every chip on a line of its own on purpose; that is not a wrap.
     if (chipsOpen) return;
-    const items = Array.from(row.children).map((child) => {
-      const box = child as HTMLElement;
-      return { top: box.offsetTop, height: box.offsetHeight };
-    });
-    if (!rowWraps(items)) return;
-    const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-    unfoldAt.current = row.clientWidth + Math.max(1, (tagsRef.current?.offsetWidth ?? 0) + gap);
-    setTagsFolded(true);
-  }, [onManageTags, tagsFolded, chipsOpen]);
+    const children = Array.from(row.children) as HTMLElement[];
+    if (!rowWraps(children.map((box) => ({ top: box.offsetTop, height: box.offsetHeight })))) return;
+    let next = fold + 1;
+    while (next <= 5 && ((next === 1 && !onManageTags) || (next === 2 && !hasTrailingMenu))) next += 1;
+    if (next > 5 || (next === 5 && !onRequestQuickFacets)) return;
+    const style = getComputedStyle(row);
+    const gap = parseFloat(style.columnGap) || 0;
+    const pad = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    const drawn = children.filter((box) => box.offsetHeight > 0);
+    // What this level needs on one line, plus a pixel so rounding never brings it straight back.
+    const one = drawn.reduce((sum, box) => sum + box.offsetWidth, 0) + gap * Math.max(0, drawn.length - 1) + pad;
+    for (let level = fold; level < next; level += 1) needs.current[level] = Math.max(one, row.clientWidth + 1);
+    setFold(next);
+  }, [fold, chipsOpen, onManageTags, hasTrailingMenu, onRequestQuickFacets]);
   useLayoutEffect(measureRow, [measureRow, filters, smart]);
   useEffect(() => {
     const row = rowRef.current;
-    if (!row || !onManageTags || typeof ResizeObserver === "undefined") return;
+    if (!row || typeof ResizeObserver === "undefined") return;
     const watcher = new ResizeObserver(measureRow);
     watcher.observe(row);
     return () => watcher.disconnect();
-  }, [measureRow, onManageTags]);
-  const foldTags = tagsFolded && !!onManageTags;
+  }, [measureRow]);
+  const foldTrailing = fold >= 2 && hasTrailingMenu;
+  const foldAdd = fold >= 3;
+  const foldQuick = fold >= 4;
+  const foldMore = fold >= 5;
+  const foldTags = fold >= 1 && !!onManageTags;
   const addBox = foldTags && addMenu.open ? addMenu.anchor.current?.getBoundingClientRect() : undefined;
+  const moreBox = moreMenu.open ? moreMenu.anchor.current?.getBoundingClientRect() : undefined;
+  const moreItems: TrackContextMenuItem[] = [
+              ...(foldAdd
+                ? [
+                    {
+                      id: "add",
+                      label: "Add a filter…",
+                      onSelect: () => {
+                        setProblem(null);
+                        setAdding(true);
+                      },
+                    },
+                    ...(onManageTags ? [{ id: "tags", label: "Tags…", onSelect: () => onManageTags() }] : []),
+                  ]
+                : []),
+              ...(foldTrailing
+                ? [...ruleActions, ...(trailingMenu ?? [])].map((item, index) => ({
+                    ...item,
+                    separatorBefore: foldAdd && index === 0,
+                  }))
+                : []),
+  ];
 
   const field = fieldOf(vocabulary, draft.field);
   const arity = arityOf(vocabulary, draft.operator);
-  const rules = filters?.rules ?? [];
   const status = smartStatus(smart, filters);
-  /** The Collection whose rules have been changed, when there is one. */
-  const modified = smart && isModified(smart, filters) ? smart : null;
 
   const submit = () => {
     const built = buildRule(vocabulary, draft);
@@ -540,7 +611,7 @@ export function FilterBar({
 
   return (
     <div className="cp-filter-bar">
-      <div className="cp-filter-bar__row cp-toolbar" ref={rowRef}>
+      <div className={`cp-filter-bar__row cp-toolbar${foldQuick ? " cp-filter-bar__row--folded" : ""}`} ref={rowRef}>
         <SearchField
           ref={searchInputRef}
           thing="these tracks"
@@ -558,12 +629,14 @@ export function FilterBar({
             loading={quickFacetsLoading}
             onOpen={onRequestQuickFacets}
             onOpenKeys={onOpenKeys}
+            folded={foldQuick}
+            extraItems={foldMore ? moreItems : undefined}
           />
         )}
 
         {/* The label never changes; Cancel is inside the builder it opens (C19). With Tags…
             folded into it (item 12) it is a menu of the two. */}
-        {foldTags ? (
+        {foldAdd ? null : foldTags ? (
           <Button variant="secondary" menu {...addMenu.buttonProps}>
             Add filter
           </Button>
@@ -579,7 +652,7 @@ export function FilterBar({
             Add filter
           </Button>
         )}
-        {foldTags && addMenu.open && addBox && (
+        {foldTags && !foldAdd && addMenu.open && addBox && (
           <TrackContextMenu
             x={addBox.left}
             y={addBox.bottom}
@@ -647,14 +720,14 @@ export function FilterBar({
           </div>
         )}
 
-        {ruleCount(filters) > 0 && (
+        {ruleCount(filters) > 0 && !foldTrailing && (
           <Button variant="secondary" onClick={() => onFiltersChange(null)}>
             Clear all filters
           </Button>
         )}
 
         {onManageTags && !foldTags && (
-          <Button variant="secondary" ref={tagsRef} onClick={onManageTags}>
+          <Button variant="secondary" onClick={onManageTags}>
             Tags…
           </Button>
         )}
@@ -676,25 +749,50 @@ export function FilterBar({
             A modified one is offered both ways instead, because "make a
             second Collection out of this" and "change the one I opened" are
             different intentions and neither is the obvious default. */}
-        {onSaveSmart && rules.length > 0 && (
+        {onSaveSmart && rules.length > 0 && !foldTrailing && (
           <Button variant="secondary" onClick={onSaveSmart}>
             {smart ? "Save as a new Smart Collection…" : "Save as Smart Collection…"}
           </Button>
         )}
 
-        {modified && onUpdateSmart && (
+        {modified && onUpdateSmart && !foldTrailing && (
           <Button variant="secondary" onClick={onUpdateSmart}>
             Update “{modified.name}”
           </Button>
         )}
 
-        {modified && onDetachSmart && (
+        {modified && onDetachSmart && !foldTrailing && (
           <Button variant="secondary" onClick={onDetachSmart}>
             Keep as a filter
           </Button>
         )}
 
-        {trailing && <div className="cp-filter-bar__trailing">{trailing}</div>}
+        {/* W1: what the row has no room for goes into one More menu, before the count. */}
+        {((trailing && !foldTrailing) || ((foldAdd || foldTrailing) && !foldMore) || count) && (
+          <div className="cp-filter-bar__trailing">
+            {!foldTrailing && trailing}
+            {(foldAdd || foldTrailing) && !foldMore && (
+              <Button variant="secondary" menu {...moreMenu.buttonProps}>
+                More
+              </Button>
+            )}
+            {count && (
+              <span className="cp-count" role="status">
+                {foldTrailing ? count.short : count.long}
+              </span>
+            )}
+          </div>
+        )}
+        {(foldAdd || foldTrailing) && !foldMore && moreMenu.open && moreBox && (
+          <TrackContextMenu
+            x={moreBox.left}
+            y={moreBox.bottom}
+            anchor={moreMenu.anchor}
+            onClose={moreMenu.close}
+            label="More"
+            items={moreItems}
+          />
+        )}
       </div>
 
       {adding && (

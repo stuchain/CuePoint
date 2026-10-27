@@ -51,6 +51,7 @@ import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 import { openAddFilter } from "./addFilter";
+import { pressFilterRowAction } from "./filterRow";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -389,11 +390,12 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.getByRole("listbox", { name: "Suggestions" }).getByRole("option", { name: /^House/ }).click();
       await expect(value).toHaveValue("House");
       await window.getByRole("button", { name: "Add", exact: true }).click();
-      await expect(window.locator(".cp-count")).toContainText("Showing 6 of 12 tracks", {
+      // Said the short way when the row is folded (W1).
+      await expect(window.locator(".cp-count")).toContainText("6 of 12 tracks", {
         timeout: 30_000,
       });
 
-      await window.getByRole("button", { name: /Save as Smart Collection/i }).click();
+      await pressFilterRowAction(window, /Save as Smart Collection/i);
       const save = window.getByRole("dialog");
       await save.getByLabel("Name").fill("House only");
       await save.getByRole("button", { name: "Save" }).click();
@@ -710,7 +712,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(table).toBeVisible({ timeout: 30_000 });
 
       // Everything matching, which is never a list of ids.
-      await window.getByRole("button", { name: "Select all" }).click();
+      await pressFilterRowAction(window, "Select all");
       await expect(window.getByRole("toolbar", { name: "Selection" })).toContainText("50,000 selected");
       await expect(window.getByText("The selection is everything matching")).toBeAttached();
 

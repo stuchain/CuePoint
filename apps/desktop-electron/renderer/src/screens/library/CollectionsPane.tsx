@@ -567,7 +567,7 @@ export function CollectionsPane({
                 setNewMenu({ x: rect.left, y: rect.bottom });
               }}
             >
-              + New
+              +<span className="cp-collections__new-word"> New</span>
             </Button>
           </div>
         )}

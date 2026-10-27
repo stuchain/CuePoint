@@ -8431,3 +8431,16 @@ libraryLines, sheetRules, motionRules, motionKinds, Badge, Hint, detailsRound4, 
 words are wider than Inter at the same size; the narrow-width e2e (1024 px at 1.5x) still fits.
 
 **Decided with**: User ("Go with all recommended", every ★ of Q1 to Q6) · **Date**: 2026-10-27
+
+**Amendment (W1 to W4)**: his screenshots at 1.5x showed the rules held only while nothing
+wrapped. **W1** The Library's pane heads and filter row never wrap: a head keeps one line (a pane
+under 18em hides "from Rekordbox" and shows **+ New** as **+**, its name unchanged), and the filter
+row folds in five steps (Tags… into Add filter; Select all and the filter actions into **More**,
+the count staying in short form; Add filter into More; Key, BPM and Genre into **Filters**; More
+into Filters), each coming back once its measured one-line width fits. **W2** All tracks is top
+level, its icon on the fold arrows' column and its name on the section heads' edge. **W3** The
+player's facts line has no dots beside the key chip, which keeps its own padding as the gap.
+**W4** replaces L7: a disclosure's arrow sits at the end of its row (after the summary), and Track
+details leaves `--space-lg` between Edit values and its sections. L9 now measures the Library at
+1,024, 1,366 and 1,920 px from 1x to 3x (3x skipped at 1,024, where the table is 315 px).
+Decided with: User ("go with recommended", Q7 to Q10) · 2026-10-27

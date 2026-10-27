@@ -2081,22 +2081,36 @@ export function LibraryScreen({
                 onOpenEntity ? (page) => onOpenEntity(page.kind, page.ref) : undefined
               }
               openAddToken={openAdd}
+              trailingMenu={
+                window_.total > 0
+                  ? [
+                      {
+                        id: "select-all",
+                        label: "Select all",
+                        onSelect: selection.selectAllMatching,
+                        disabled: selection.count >= window_.total,
+                        reason: "Every track here is selected",
+                      },
+                    ]
+                  : undefined
+              }
               trailing={
-                <>
-                  {window_.total > 0 && (
-                    <SelectAllButton
-                      onSelectAll={selection.selectAllMatching}
-                      disabled={selection.count >= window_.total}
-                    />
-                  )}
-                  {/* The plain count is the facts line's; the row says it only while a search or
-                      filter narrows the view. */}
-                  {scopeTotal > window_.total && (
-                    <span className="cp-count" role="status">
-                      {`Showing ${formatCount(window_.total)} of ${countNoun(scopeTotal, "track")}`}
-                    </span>
-                  )}
-                </>
+                window_.total > 0 && (
+                  <SelectAllButton
+                    onSelectAll={selection.selectAllMatching}
+                    disabled={selection.count >= window_.total}
+                  />
+                )
+              }
+              // The plain count is the facts line's; the row says it only while a search or
+              // filter narrows the view.
+              count={
+                scopeTotal > window_.total
+                  ? {
+                      long: `Showing ${formatCount(window_.total)} of ${countNoun(scopeTotal, "track")}`,
+                      short: `${formatCount(window_.total)} of ${countNoun(scopeTotal, "track")}`,
+                    }
+                  : undefined
               }
             />
             {/* Inside the bar's grid row rather than a row of its own: the

@@ -157,6 +157,12 @@
   padding-bottom: 0;
 }
 
+/* W2: All tracks is top level, as the section heads are: no twisty space, so its icon starts where
+   their fold arrows start and its name on their titles' edge. */
+.cp-library-pane__all .cp-playlist-pane__twisty {
+  display: none;
+}
+
 .cp-library-pane__all .cp-playlist-pane__row {
   /* Shrink to the pane: the name ellipsises, the count (flex: none) stays whole. */
   min-width: 0;
@@ -164,21 +170,19 @@
   min-height: calc(var(--toolbar-height) - var(--hairline));
 }
 
-/* A heading that does not fit wraps (zoom spot 1C): "+ New" and "from Rekordbox" go under the
-   title, at the right, and the title is never ellipsised. Only a heading that does not fit grows a
-   line, which is the one case where the pane's lines leave the table's grid. */
+/* A heading is one line at every size (W1, replacing zoom spot 1C's wrap): a narrow pane shortens
+   "+ New" and hides "from Rekordbox" (PlaylistPane.css), and the title is never ellipsised. */
 .cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head {
   box-sizing: border-box;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  row-gap: var(--space-xs);
   /* "+ New" hangs out by its padding and border (L2) so its words end on the counts' edge; its
      border would reach 1px past the pane, so the head clips it rather than the pane scrolling. */
   overflow-x: clip;
 }
 
-/* "from Rekordbox" ends in "..." only when even a line of its own is too narrow for it. */
-.cp-library-pane .cp-playlist-pane__head > .cp-hint {
+/* "from Rekordbox" ends on the counts' edge, and in "..." only if the pane is narrower still. */
+.cp-library-pane .cp-playlist-pane__head > .cp-playlist-pane__source-hint {
   display: block;
   flex: 0 1 auto;
   min-width: 0;

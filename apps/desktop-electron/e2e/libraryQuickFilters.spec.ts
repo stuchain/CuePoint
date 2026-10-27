@@ -23,6 +23,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { pressFilterRowAction } from "./filterRow";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -203,7 +204,7 @@ test.describe("Quick filters (PAGES-05B)", () => {
         .toEqual(["Track 2", "Track 5"]);
 
       // Save it; the open playlist is added as an In playlist rule.
-      await window.getByRole("button", { name: /Save as Smart Collection/i }).click();
+      await pressFilterRowAction(window, /Save as Smart Collection/i);
       const save = window.getByRole("dialog");
       await save.getByLabel("Name").fill("Warmup mid tempo");
       await save.getByRole("button", { name: "Save" }).click();
@@ -266,12 +267,19 @@ test.describe("Quick filters (PAGES-05B)", () => {
         // header overlaps the row, so the controls are pressed without a mouse.
         const press = (target: ReturnType<Page["locator"]>) =>
           withPlaylist ? target.click() : target.dispatchEvent("click");
-        await press(window.locator(".cp-quick").getByRole("button", { name: /^BPM\b/ }));
+        // W1: a row too narrow for Key, BPM and Genre folds them into one Filters menu.
+        const quick = async (name: RegExp) => {
+          const direct = window.locator(".cp-quick").getByRole("button", { name });
+          if (await direct.count()) return press(direct);
+          await press(window.locator(".cp-quick").getByRole("button", { name: /^Filters/ }));
+          await press(window.getByRole("menuitem", { name }));
+        };
+        await quick(/^BPM\b/);
         const bpm = window.getByRole("dialog", { name: "BPM" });
         await bpm.getByLabel("From").fill("121");
         await bpm.getByLabel("To").fill("128");
         await press(bpm.getByRole("button", { name: "Apply" }));
-        await press(window.locator(".cp-quick").getByRole("button", { name: /^Genre\b/ }));
+        await quick(/^Genre\b/);
         await press(window.getByRole("checkbox", { name: /^House/ }));
         await window.keyboard.press("Escape");
         await expect(
@@ -292,8 +300,13 @@ test.describe("Quick filters (PAGES-05B)", () => {
         const more = window.locator(".cp-filter-bar__chips-wrap").getByRole("button", { name: /^Show (all|less)/ });
         const seen = (await inside(first)) || ((await more.count()) > 0 && (await inside(more)));
         expect(seen, "the first chip or +N more is on screen").toBe(true);
-        expect(await inside(window.getByRole("button", { name: /Save as Smart Collection/ }))).toBe(true);
-        expect(await inside(window.getByRole("button", { name: "Select all" }))).toBe(true);
+        // On the row, or in the menu the row folds them into (W1): More, or Filters past that.
+        for (const name of [/Save as Smart Collection/, /^Select all$/]) {
+          const button = window.getByRole("button", { name });
+          const menu = window.locator(".library-screen .cp-filter-bar__row").getByRole("button", { name: /^(More|Filters)/ });
+          const shown = (await button.count()) > 0 ? button : menu.last();
+          expect(await inside(shown), `${name} or the menu holding it is on screen`).toBe(true);
+        }
       };
 
       expect(

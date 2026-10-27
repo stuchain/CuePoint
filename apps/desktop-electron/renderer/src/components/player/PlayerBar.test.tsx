@@ -214,7 +214,7 @@ describe("what it shows", () => {
     installBridge(snapshot());
     render(<PlayerBar />);
     expect(await screen.findByText("Strobe")).toBeInTheDocument();
-    expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128 BPM");
+    expect(metaLine()).toHaveTextContent("deadmau5 8A 128 BPM");
   });
 
   it("writes the key in the chosen notation (K1), the chip keeping its Camelot colour", async () => {
@@ -223,7 +223,7 @@ describe("what it shows", () => {
       installBridge(snapshot());
       render(<PlayerBar />);
       expect(await screen.findByText("Strobe")).toBeInTheDocument();
-      expect(metaLine()).toHaveTextContent("deadmau5 · Am · 128 BPM");
+      expect(metaLine()).toHaveTextContent("deadmau5 Am 128 BPM");
       expect(metaLine().querySelector(".key-chip--8A")).not.toBeNull();
     } finally {
       localStorage.clear();
@@ -927,7 +927,7 @@ describe("the title and artist open things (BAR-4)", () => {
     await screen.findByText("Strobe");
     expect(screen.queryByRole("button", { name: "Strobe" })).toBeNull();
     expect(screen.queryByRole("button", { name: "deadmau5" })).toBeNull();
-    expect(metaLine()).toHaveTextContent("deadmau5 · 8A");
+    expect(metaLine()).toHaveTextContent("deadmau5 8A");
   });
 
   it("keeps the track line as it was, key and tempo included", async () => {
@@ -935,7 +935,7 @@ describe("the title and artist open things (BAR-4)", () => {
     render(<PlayerBar onOpenTrack={() => undefined} onOpenArtist={() => undefined} />);
     await screen.findByRole("button", { name: "Strobe" });
 
-    expect(metaLine()).toHaveTextContent("8A · 128 BPM");
+    expect(metaLine()).toHaveTextContent("8A 128 BPM");
   });
 });
 
@@ -954,7 +954,7 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     expect(key).toHaveClass("key-chip", "key-chip--8A");
     expect(key.querySelector("svg")).toBeNull();
     expect(key).toHaveAttribute("title", "Show 8A on the Camelot wheel");
-    expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128 BPM");
+    expect(metaLine()).toHaveTextContent("deadmau5 8A 128 BPM");
     expect(screen.queryByRole("button", { name: "Camelot wheel" })).toBeNull();
     expect(document.querySelector(".cp-player-bar__wheel")).toBeNull();
 
@@ -985,7 +985,7 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     render(<PlayerBar />);
     const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
     expect(key).toBeInTheDocument();
-    expect(metaLine()).toHaveTextContent("8A · 8A · 128 BPM");
+    expect(metaLine()).toHaveTextContent("8A 8A 128 BPM");
     // Only the key is a button: the artist, with no track to open, is text.
     expect(metaLine().querySelectorAll("button")).toHaveLength(1);
     expect(metaLine().querySelector("button")).toBe(key);
