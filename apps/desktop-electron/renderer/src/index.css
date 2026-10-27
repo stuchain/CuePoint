@@ -437,12 +437,12 @@ details > summary::before {
   margin-right: var(--space-sm);
   vertical-align: middle;
   background: currentColor;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M3 2h2v1h-2zM4 3h2v1h-2zM5 4h2v1h-2zM6 5h2v1h-2zM6 6h2v1h-2zM5 7h2v1h-2zM4 8h2v1h-2zM3 9h2v1h-2z'/%3E%3C/svg%3E")
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M4 3h2v1h-2zM5 4h2v1h-2zM6 5h2v1h-2zM6 6h2v1h-2zM5 7h2v1h-2zM4 8h2v1h-2z'/%3E%3C/svg%3E")
     center / 100% 100% no-repeat;
 }
 
 details[open] > summary::before {
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M2 3h1v1h-1zM9 3h1v1h-1zM2 4h2v1h-2zM8 4h2v1h-2zM3 5h2v1h-2zM7 5h2v1h-2zM4 6h4v1h-4zM5 7h2v1h-2z'/%3E%3C/svg%3E")
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M3 4h1v1h-1zM8 4h1v1h-1zM3 5h2v1h-2zM7 5h2v1h-2zM4 6h4v1h-4zM5 7h2v1h-2z'/%3E%3C/svg%3E")
     center / 100% 100% no-repeat;
 }
 

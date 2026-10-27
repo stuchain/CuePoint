@@ -30,12 +30,11 @@ describe("hint (P39)", () => {
 });
 
 describe("sticky shadow (P40)", () => {
-  it("defines the hairline plus a soft shadow once, in px that scale", () => {
+  // Round 3 (M33, D4): the soft shadow is gone; the sticky edge is one hard hairline.
+  it("defines the sticky edge once, as a hard hairline in the row line", () => {
     const tokens = stripComments(sheets["/src/tokens/tokens.css"] ?? "");
     const token = /--shadow-sticky:\s*([^;]+);/.exec(tokens)?.[1] ?? "";
-    expect(token).toContain("var(--row-line)");
-    expect(token).toMatch(/round\(nearest, calc\(6px \* var\(--scale\)\), 1px\)/);
-    expect(token).toMatch(/round\(nearest, calc\(-6px \* var\(--scale\)\), 1px\)/);
+    expect(token.trim()).toBe("0 var(--hairline) 0 var(--row-line)");
   });
 
   it.each([
@@ -48,9 +47,10 @@ describe("sticky shadow (P40)", () => {
 });
 
 describe("empty state (P41)", () => {
-  it("starts 48 down, with a 24 icon and a 14 headline", () => {
-    expect(body("/src/components/EmptyState.css", ".cp-empty-state:not(.cp-empty-state--compact)")).toMatch(
-      /padding-top:\s*calc\(var\(--unit\) \* 12\)/,
+  // Round 3 (M353, D32): the block starts a third of the free room down, not a fixed 48.
+  it("starts a third of the free room down, with a 24 icon and a 14 headline", () => {
+    expect(body("/src/components/EmptyState.css", ".cp-empty-state:not(.cp-empty-state--compact)::before")).toMatch(
+      /flex:\s*0 0 max\(0px, calc\(100% \/ 3 - 2 \* var\(--space-2xl\)\)\)/,
     );
     expect(body("/src/components/EmptyState.css", ".cp-empty-state__icon .cp-pixel-icon")).toMatch(/width:\s*var\(--icon-size-lg\)/);
     expect(body("/src/components/EmptyState.css", ".cp-empty-state__headline")).toMatch(/font-size:\s*var\(--font-size-section\)/);
@@ -97,11 +97,14 @@ describe("status strip and offline banner (P45)", () => {
     expect(body("/src/components/shell/StatusStrip.css", ".cp-status__engine--ok")).toMatch(/color:\s*var\(--fg-muted\)/);
   });
 
+  // Round 3 (M287): the banner is the shared danger Notice, so its look lives in Notice.css only.
   it("draws the offline banner as a notice: a danger bar over an 8% tint, no framed row", () => {
+    const notice = body("/src/components/Notice.css", ".cp-notice");
+    expect(notice).toMatch(/--notice-tone:\s*var\(--accent-danger\)/);
+    expect(notice).toMatch(/border-left:\s*var\(--notice-bar-width\) solid var\(--notice-tone\)/);
+    expect(notice).toMatch(/background:\s*color-mix\(in srgb, var\(--notice-tone\) var\(--notice-fill-mix\), var\(--bg-panel\)\)/);
+    expect(notice).toMatch(/border:\s*0/);
     const offline = body("/src/components/shell/OfflineBanner.css", ".cp-offline");
-    expect(offline).toMatch(/border-left:\s*var\(--notice-bar-width\) solid var\(--accent-danger\)/);
-    expect(offline).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-danger\) var\(--notice-fill-mix\), var\(--bg-panel\)\)/);
-    expect(offline).toMatch(/border:\s*0/);
-    expect(offline).not.toMatch(/border-bottom/);
+    expect(offline).not.toMatch(/border|background/);
   });
 });

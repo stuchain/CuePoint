@@ -15,6 +15,7 @@ export { Button } from "./Button";
 export { Card } from "./Card";
 export { CloseButton } from "./CloseButton";
 export { ConfirmDialog } from "./ConfirmDialog";
+export { Disclosure } from "./Disclosure";
 export { DisclosureArrow } from "./DisclosureArrow";
 export { EmptyState } from "./EmptyState";
 export { Fieldset } from "./Fieldset";

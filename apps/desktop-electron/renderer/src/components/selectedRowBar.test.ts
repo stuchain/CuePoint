@@ -57,9 +57,10 @@ describe("the selected-row bar", () => {
 
   it("is never drawn by every cell of a row, which put a bar at each column edge", () => {
     // The subject compound itself must say :first-child: a `:first-child` further up the selector
-    // (`tr:first-child td`) selects the row, not the one cell.
+    // (`tr:first-child td`) selects the row, not the one cell. `:first-of-type` counts too: a row's
+    // grip span comes before its cells, so the pinned cell is the first cell, not the first child (M202).
     const everyCell = painters.filter(
-      ({ selector }) => paintsAPartOfARow(selector) && !/:first-child/.test(subject(selector)),
+      ({ selector }) => paintsAPartOfARow(selector) && !/:first-(child|of-type)/.test(subject(selector)),
     );
     expect(everyCell.map(({ file, selector }) => `${file}: ${selector}`)).toEqual([]);
   });

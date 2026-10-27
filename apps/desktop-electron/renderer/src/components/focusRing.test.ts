@@ -89,9 +89,10 @@ describe("one focus ring (T16)", () => {
     expect(tokens).toMatch(/--focus-ring-offset-inset:\s*calc\(-1 \* var\(--focus-ring-width\)\)/);
   });
 
-  // P28: one list hover, the --hover-fill step; never a hover under the keyboard's ring.
-  it("makes the one row hover --hover-fill and keeps it off the keyboard's row (P28, P64)", () => {
-    expect(sheets["/src/tokens/tokens.css"]).toMatch(/--row-hover:\s*var\(--hover-fill\)/);
+  // P28: one list hover; never a hover under the keyboard's ring. Round 3 (M337, D30): a 6% shade
+  // of the text colour, quieter than the old --hover-fill step.
+  it("makes the one row hover a 6% shade and keeps it off the keyboard's row (P28, P64, D30)", () => {
+    expect(sheets["/src/tokens/tokens.css"]).toMatch(/--row-hover:\s*color-mix\(in srgb, var\(--fg-primary\) 6%, transparent\)/);
     expect(sheets["/src/components/table/TrackTable.css"]).toMatch(
       /\.track-table__row--cursor:not\(\.track-table__row--selected\):hover\s*\{\s*background:\s*none/,
     );

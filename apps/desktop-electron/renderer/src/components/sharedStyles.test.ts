@@ -77,7 +77,8 @@ describe("one focus ring (area 22)", () => {
     for (const [file, css] of Object.entries(sheets)) {
       for (const match of stripComments(css).matchAll(/outline-offset\s*:\s*([^;}]+)/g)) {
         // The table's keyboard row is a dashed line one ring in from its edge, so it shows on a selected row.
-        expect(["var(--focus-ring-offset)", "var(--focus-ring-offset-inset)", "calc(-2 * var(--focus-ring-width))"], `${file}: ${match[1]}`).toContain(
+        // A filled button keeps its ring off its own fill (round 3, P2): --focus-ring-offset-filled.
+        expect(["var(--focus-ring-offset)", "var(--focus-ring-offset-inset)", "var(--focus-ring-offset-filled)", "calc(-2 * var(--focus-ring-width))"], `${file}: ${match[1]}`).toContain(
           match[1]!.trim(),
         );
       }
@@ -109,7 +110,8 @@ describe("text roles and the one legend (area 4)", () => {
     expect(rootDecl(tokens, "--font-weight-bold")).toBe("700");
     const label = parseRules(stripComments(indexCss)).find((r) => r.selector === ".cp-text-label")!;
     expect(Object.fromEntries(declarations(label.body))).toMatchObject({
-      "font-weight": "var(--font-weight-medium)", // P2
+      "font-weight": "var(--control-font-weight)", // round 3 (M19, P2): the control face at its weight
+      "font-family": "var(--font-control)",
       color: "var(--fg-muted)",
     });
   });
@@ -118,7 +120,8 @@ describe("text roles and the one legend (area 4)", () => {
     const legend = parseRules(stripComments(indexCss)).find((r) => selectorList(r.selector).includes("legend"))!;
     expect(Object.fromEntries(declarations(legend.body))).toMatchObject({
       "font-size": "var(--font-size-label)",
-      "font-weight": "var(--font-weight-medium)", // P2: the label role is medium, not bold
+      "font-weight": "var(--control-font-weight)", // round 3 (M19, P2): the label role, in the control face
+      "font-family": "var(--font-control)",
       color: "var(--fg-muted)",
     });
   });
@@ -144,8 +147,9 @@ describe("text roles and the one legend (area 4)", () => {
 });
 
 describe("greyed means unavailable, by colour (area 11)", () => {
-  /** Components whose opacity is not a control's state: a transparent overlay, a paused picture. */
-  const NOT_A_STATE = new Set(["./player/PlayerBar.css", "./waveform/WaveformDetailStrip.css", "./charts/PixelBars.css"]);
+  /** Components whose opacity is not a control's state: a transparent overlay, a paused picture, a
+   *  loading line that holds its room unseen for its first 300 ms (M371). */
+  const NOT_A_STATE = new Set(["./player/PlayerBar.css", "./waveform/WaveformDetailStrip.css", "./charts/PixelBars.css", "./Loading.css"]);
 
   it("dims no control with opacity", () => {
     const found: string[] = [];

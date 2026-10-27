@@ -41,8 +41,9 @@ describe("the default columns at 1264 x 735, scale 1.25, with Details open", () 
   const widths = defaultWidths(visibleByDefault, scale);
   const ids = visibleByDefault.map((column) => column.id);
 
-  it("shows #, Title, Artist, Key, BPM, Plays for and Mix in", () => {
-    expect(ids).toEqual(["position", "title", "artist", "key", "bpm", "planned", "in"]);
+  // Round 3 (M85, D12): BPM sits before Key on every page.
+  it("shows #, Title, Artist, BPM, Key, Plays for and Mix in", () => {
+    expect(ids).toEqual(["position", "title", "artist", "bpm", "key", "planned", "in"]);
   });
 
   it("do not fit whole, and fit once Artist is dropped", () => {

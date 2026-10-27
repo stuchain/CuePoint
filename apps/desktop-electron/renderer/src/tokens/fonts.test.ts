@@ -36,7 +36,9 @@ describe("bundled pixel font", () => {
   it("imports every font weight the stylesheets use", () => {
     const used = new Set<string>(["400", "700"]); // body text, and default bold elements
     for (const css of Object.values(STYLESHEETS)) {
-      for (const m of stripComments(css).matchAll(/font-weight:\s*([a-z0-9]+)/gi)) {
+      // An @font-face weight range says what a face covers, not a weight a rule asks for (M7's signs).
+      const rules = stripComments(css).replace(/@font-face\s*\{[^}]*\}/g, "");
+      for (const m of rules.matchAll(/font-weight:\s*([a-z0-9]+)/gi)) {
         const value = m[1].toLowerCase();
         if (value === "bold") used.add("700");
         else if (value === "normal") used.add("400");

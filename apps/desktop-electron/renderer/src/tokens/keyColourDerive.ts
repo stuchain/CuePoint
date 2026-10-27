@@ -17,8 +17,8 @@ import { KEY_TOKEN_KEYS } from "./keyTokenKeys";
 
 export { KEY_TOKEN_KEYS };
 
-/** How much of the key colour the chip's background is (CSS `color-mix(... N%, transparent)`). */
-export const KEY_CHIP_TINT = 18;
+/** How much of the key colour the chip's background is: the one chip fill, `--chip-fill-mix` (M3, D2). */
+export const KEY_CHIP_TINT = 16;
 
 /** The least contrast the code keeps on its own tint over the input background and the panel. */
 const KEY_TEXT_CONTRAST = 4.5;

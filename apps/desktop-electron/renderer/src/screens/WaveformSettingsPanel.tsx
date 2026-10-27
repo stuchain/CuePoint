@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Button, DisclosureArrow, Loading, Modal, MoreAbout, Panel } from "../components";
+import { Button, Disclosure, Loading, Modal, MoreAbout, Panel } from "../components";
 import { needsDesktopApp } from "../api/userMessage";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { selectCurrentItem, selectPosition } from "../components/player/playerFormat";
@@ -92,7 +92,6 @@ export function WaveformSettingsPanel() {
   const colorsId = useId();
   const [confirming, setConfirming] = useState(false);
   const [diskOpen, setDiskOpen] = useState(false);
-  const diskId = useId();
   const [message, setMessage] = useState<string | null>(null);
   const [saved, markSaved] = useSavedSignal();
   const { status } = analysis;
@@ -209,19 +208,9 @@ export function WaveformSettingsPanel() {
 
         {analysis.supported ? (
           <div className="cp-waveform-settings__disk">
-            {/* The very button "More about this" is: quiet, grey, the shared arrow (C117). */}
-            <Button
-              variant="quiet"
-              className="cp-more-about__toggle"
-              aria-expanded={diskOpen}
-              aria-controls={diskId}
-              icon={<DisclosureArrow open={diskOpen} />}
-              onClick={() => setDiskOpen((open) => !open)}
-            >
-              Disk space
-            </Button>
-            {diskOpen ? (
-              <div id={diskId} className="cp-waveform-settings__delete">
+            {/* The one disclosure, the very head "More about this" is (C117, M60). */}
+            <Disclosure title="Disk space" open={diskOpen} onOpenChange={setDiskOpen}>
+              <div className="cp-waveform-settings__delete">
                 <SettingsHint>{status ? `Waveforms take ${sizeWords(status.store_bytes)}.` : null}</SettingsHint>
                 <Button
                   variant="danger"
@@ -234,7 +223,7 @@ export function WaveformSettingsPanel() {
                   Delete waveform data…
                 </Button>
               </div>
-            ) : null}
+            </Disclosure>
           </div>
         ) : null}
 

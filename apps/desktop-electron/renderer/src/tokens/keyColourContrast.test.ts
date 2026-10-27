@@ -60,7 +60,9 @@ function holds(tokens: Record<string, string>, backgrounds: ReturnType<typeof ba
 
 describe("the chip tint", () => {
   it("is the number the stylesheet mixes", () => {
-    expect(chipCss).toContain(`color-mix(in srgb, var(--key) ${KEY_CHIP_TINT}%, transparent)`);
+    // Round 3 (M3, D2): the key chip takes the one chip fill, --chip-fill-mix, like a Badge.
+    expect(chipCss).toContain("color-mix(in srgb, var(--key) var(--chip-fill-mix), var(--chip-ground, transparent))");
+    expect(TOKENS_CSS).toMatch(new RegExp(`--chip-fill-mix:\\s*${KEY_CHIP_TINT}%;`));
   });
 
   it("is mixed over the selected fill the way tokens.css makes it", () => {

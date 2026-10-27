@@ -84,10 +84,11 @@ describe("every count is a tabular figure (P34)", () => {
     expect(body).toMatch(/font-variant-numeric:\s*tabular-nums/);
   });
 
-  it("keeps 'N selected' in the text colour, semibold; the others are muted", () => {
+  // Round 3 (M20, P2): the count is in the control face at the control weight, like its buttons.
+  it("keeps 'N selected' in the text colour, at the control weight; the others are muted", () => {
     const body = rule("/src/components/SelectionBar.css", ".cp-selection-bar__count");
     expect(body).toMatch(/color:\s*var\(--fg-primary\)/);
-    expect(body).toMatch(/font-weight:\s*var\(--font-weight-semibold\)/);
+    expect(body).toMatch(/font-weight:\s*var\(--control-font-weight\)/);
     expect(rule("/src/screens/library/PlaylistPane.css", ".cp-playlist-pane__count")).toMatch(/color:\s*var\(--fg-muted\)/);
   });
 });

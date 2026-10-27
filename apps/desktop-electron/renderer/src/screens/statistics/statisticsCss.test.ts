@@ -26,8 +26,8 @@ describe("Library figures (P15)", () => {
     expect(value).toMatch(/font-weight:\s*var\(--font-weight-semibold\)/);
     expect(value).toMatch(/font-size:\s*var\(--font-size-figure\)/);
     expect(value).toMatch(/font-variant-numeric:\s*tabular-nums/);
-    // 26 at 1.5x is 39, whole, so it needs no round().
-    expect(tokens).toMatch(/--font-size-figure:\s*calc\(26px \* var\(--scale\)\)/);
+    // Round 3 (M2): every text size lands on a whole pixel at every scale, so it is rounded.
+    expect(tokens).toMatch(/--font-size-figure:\s*round\(nearest, calc\(26px \* var\(--scale\)\), 1px\)/);
   });
 });
 
