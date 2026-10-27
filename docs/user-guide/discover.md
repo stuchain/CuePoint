@@ -23,13 +23,14 @@ See [Where inCrate went](#where-incrate-went) if you used it.
 
 ## New dig
 
-**New dig** asks what to look for, starting from your defaults. The tab is the heading; when you are not signed in, the sign-in banner sits under the tabs, and with no library the same **No library yet** block as the other pages sits above the form (a dig of genre charts works without one). A bar right under the
-form says in a sentence what the dig will cover ("Look for charts in 2 genres,
-releases by 25 artists and 9 labels from the last 30 days."), with the **Dates**
-(a **From** and a **To** date) beside it and **Start looking** at the right. The bar is the same plain 32-high bar the other pages use, and it sits flush
-with the bottom of the page: the form scrolls behind it, never beneath a gap. The
-genre and the artist and label choices are cards; the sentence, when it is cut short,
-shows in full when you rest the pointer on it.
+**New dig** asks what to look for, starting from your defaults. The tab is the heading; when you are not signed in, the sign-in banner sits under the tabs, and with no library the same **No library yet** block as the other pages sits above the form (a dig of genre charts works without one). The form is
+centred on the page: the genres on the left, and **Artists**, **Labels** and **When**
+on the right, each a card. A bar right under the form says in a sentence what the dig
+will cover ("Look for charts in 2 genres, releases by 25 artists and 9 labels from the
+last 30 days."), with **Start dig** at the right. The bar is the same plain 32-high bar
+the other pages use, and it sits flush with the bottom of the page: the form scrolls
+behind it, never beneath a gap. The sentence, when it is cut short, shows in full when
+you rest the pointer on it.
 
 - **Genres for DJ charts.** On Beatport, artists publish charts, which are short
   lists of tracks they play. Which charts CuePoint reads depends on the artists
@@ -42,12 +43,12 @@ shows in full when you rest the pointer on it.
   by regular Beatport users** in **Settings → Beatport**. The note under the
   genres says which it will read. A dig records which it read.
   Tick no genre and it reads no charts. The heading says how many genres you
-  ticked; the dates are the **Dates** in the bar, below. Until you sign in to Beatport, the genres
+  ticked; the dates are the ones under **When**, below. Until you sign in to Beatport, the genres
   read "Genres appear after you sign in."
 - **Artists** and **Labels.** Each is every artist or label in your library
   (with how many), **a saved list** of them, or none. A saved list is picked
   from the drop-down beside it, which says how many names each list holds.
-- **Dates** (**From** and **To**, in the bar beside **Start looking**). One window
+- **When** (**Released** **From** and **To**, each picked from a calendar). One window
   for the whole dig, the last 30 days to start with: the charts are read from these
   dates, and so are the new releases on your labels and on the artists you chose from
   a saved list. The sentence in the bar says the window ("from the last 30 days", or
@@ -68,7 +69,7 @@ each time you open it.
   you untick it.
 - **Delete list** (inside the chooser, after asking once) removes the list. The
   artists or labels stay in your library. If the dig was using that list, it
-  keeps "a saved list" with none chosen, and **Start looking** waits until you
+  keeps "a saved list" with none chosen, and **Start dig** waits until you
   pick another list or choose every one yourself.
 - A list's name must be different from your other lists of the same kind (capital
   letters do not count). Artist lists and label lists are separate.
@@ -80,7 +81,7 @@ picked is lost.
 A dig that uses a list looks for the names in it, exactly as a dig where you
 ticked the same names would.
 
-**Start looking** hands the dig to CuePoint, which does it in the
+**Start dig** hands the dig to CuePoint, which does it in the
 background. The status strip shows how far it has got, with a **Stop** button,
 and you can keep working; the page opens **Results** on the new dig as soon
 as it begins. A dig you stop keeps what it had found. The form keeps what you
@@ -428,8 +429,8 @@ needs Beatport.
 
 ## Similar tracks
 
-**Similar** in a track's details in the Library (and on its right-click
-menu), lists the tracks in your library that **mix well** with it, best match
+**Similar tracks** on a track's right-click menu in the Library (and in **More ▸** in the
+selection bar) lists the tracks in your library that **mix well** with it, best match
 first, and says why each one is there. It works offline, needs no sign-in, and only
 ever suggests your own tracks.
 

@@ -270,46 +270,49 @@ Mara Veil", offers **Open page**.
 
 ### Track details
 
-Selecting one track opens Track details, and clearing the selection folds it away. The **Details** button, last in the page header, shows or hides it, as
-does **Ctrl+I**; closing it yourself on the Library keeps it closed
-there until you open it again. From the top:
+Track details opens a moment after you first select a track, and then stays open
+while you click around, even with nothing selected. Its **×** closes it; the
+**Details** button, last in the page header, brings it back (the button shows only
+while the panel is hidden), as does **Ctrl+I**. Closing it yourself on the Library
+keeps it closed there until you open it again. When the window is too narrow for the
+table and the panel side by side, the panel folds itself; **Details** still opens it.
+From the top:
 
 - **A small cover**, or *No artwork* when it has none, beside the title, the
   artists and the label. Each artist in the credit, and the label, is a link to
   their page (see [Discover](discover.md#artist-and-label-pages)).
-- **Three buttons**: **Play**, **Queue ▾** (a small menu with **Play next** and
-  **Add to queue**) and **Similar** (similar tracks). With several tracks selected,
-  Play and the Queue menu act on all of them; **Similar** uses the first. To show a
-  track's file in its folder, use **Show in folder** in the More menu or
-  right-click menu. With several tracks selected, a line under the title reads
-  "3 selected · Edit values…"; **Edit values…** edits all of them, while the fields
-  below still change only the track shown.
-Under the buttons are four tabs: **Overview**, **Beatport**, **Where** and **Yours**.
+- With several tracks selected, a line under the title reads "3 selected · Edit
+  values…"; **Edit values…** edits all of them, while the fields below still change
+  only the track shown.
+
+Track details has no Play, Queue or Similar buttons: play, queue and find similar
+tracks from the selection bar or a row's right-click menu, where **Show in folder** is
+too.
+
+Under the title are three tabs: **Overview**, **Beatport** and **Yours**.
 The panel remembers the tab you last chose and opens on **Overview** the first time.
 
 - **Overview** — a labelled grid of facts: **Key** (the chip, the Camelot wheel
   button beside it, and the key's name; the key chip is itself the button that opens the
   wheel, and resting the pointer on the key's name shows where it came from, Beatport or you; a track with none shows a dash and **Match on
-  Beatport**, which matches this one track in Clean's match window), **BPM**,
-  **Genre**, **Loudness** ("−8.4 LUFS"; the peak is in its hover text and under the
-  waveform), **Cue points** ("4 hot · grid 128") and **Beatport** (how the match
-  stands). Then **its waveform**, a short strip with its cue points, loops and
-  beat grid; when the track is the one playing, a click on it seeks. Under it, the
-  loudest peak: "Peak −0.3 dBFS" (a track whose loudness could not be measured
-  says why here). See [Waveforms](waveforms.md). At the foot, two sections that
+  Beatport**, which opens Clean to match this one track), **BPM**,
+  **Genre**, **Loudness** ("−8.4 LUFS"), **Peak** ("−0.3 dBFS") and **Beatport** (how
+  the match stands, a link to the Beatport tab), then **In playlists**, **In Collections** and **In Sets**: where the track
+  is, each a link that opens it (a Set opens in Prepare), with **Add to…** after the
+  Collections to add the track to one. Then **its waveform**, a short strip with its cue points, loops and
+  beat grid; when the track is the one playing, a click on it seeks (a track whose
+  loudness could not be measured says why under it). See [Waveforms](waveforms.md). At the foot, two sections that
   start folded and stay as you leave them:
   - **Cue points**, from Rekordbox and read-only: every hot cue, memory cue, loop,
     fade and load point, one line each in the order the track plays them, and the
     beat grid's tempo. See
     [Cue points and beat grids](#cue-points-and-beat-grids-come-from-rekordbox--and-stay-there).
-  - **Details from Rekordbox** — everything the import captured: remixer, album,
+  - **From your Rekordbox file** — everything the import captured: remixer, album,
     label, genre, BPM, year, length, rating, plays, color, comment, bitrate, when
     it was added and where the file is. **This part is read-only.** It is what
     Rekordbox sent, and a refresh replaces it.
 - **Beatport** — where the track stands with its Beatport match. See
   [The Beatport tab](#the-beatport-tab).
-- **Where** — the Collections, Sets and playlists the track is in. Click one to
-  jump to it. A track in no Collection says so.
 - **Yours** — what you have added in CuePoint: your rating, favorite (the heart
   beside the stars), notes, tags (the **Add a tag** label sits above its field
   and **Add** button), and **Edit values…**, a standard button, for your key, BPM,
@@ -589,16 +592,16 @@ Beatport's values, and they become your values — Rekordbox's stay underneath.
 
 ### The Beatport tab
 
-Track details' **Beatport** tab says where the track stands and which Beatport
-track was decided: the release on one line ("Don't Make Me (Original Mix) ·
-ISOLATE"), then how it was decided and where the cover came from ("Confirmed
-automatically · artwork in the file"). Fields that agree are said once ("BPM,
-label and year match", with a tick). Only a field that differs is shown in full, with what
-**Using** now (Rekordbox's value, one applied from Beatport, or one you typed) and
-what **Beatport** has. A track not looked up yet gets one sentence and **Match on
-Beatport**. Copying Beatport's values is done in Review and from the Library's
-Beatport menu, not here. **Compare all on the Clean page** takes you to the track's
-side-by-side review.
+Track details' **Beatport** tab says how strong the match is and how it was decided,
+in one line ("Strong match · Confirmed automatically"; rest the pointer on it for the
+score). Under it a table puts **Rekordbox**'s values beside **Beatport**'s, for the
+title, artist, key, BPM, genre, label and year either side has. Where the value in use
+is not Rekordbox's (one applied from Beatport, or one you typed), Rekordbox's cell
+says **Using** with that value; a Beatport value that differs from the one in use is
+marked. A track not looked up yet gets one sentence and **Match on Beatport**. Copying
+Beatport's values is done in Review and from the Library's Beatport menu, not here.
+**Open in Clean** takes you to the track's side-by-side review, and **Open on
+Beatport** to its page there.
 
 ### Your own values
 
@@ -677,8 +680,8 @@ here to match.
 
 After a sync, the dialog offers **Undo this sync**, and so does the
 sync's entry in the **Activity** panel. Track details' History offers
-**Undo this save** for one track. Undoing puts back every tag value
-the save replaced, and removes a picture it added.
+**Undo this sync** for one track. Undoing puts back every tag value
+the sync replaced, and removes a picture it added.
 
 A value you or another program changed in the file since the save is left
 alone, and the undo says so.
