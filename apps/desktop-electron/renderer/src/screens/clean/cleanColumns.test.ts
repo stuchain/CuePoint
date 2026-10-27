@@ -38,7 +38,7 @@ describe("the Match cell", () => {
   it("says where a track stands, and when a newer match disagrees", () => {
     expect(matchCell(row({ match_state: "needs_review" }))).toBe("To check");
     expect(matchCell(row({ match_state: "accepted", match_disputed: true }))).toBe(
-      "Confirmed · changed since you decided",
+      "Confirmed · changed after you confirmed",
     );
     expect(matchCell(row({ match_state: null }))).toBe("");
   });

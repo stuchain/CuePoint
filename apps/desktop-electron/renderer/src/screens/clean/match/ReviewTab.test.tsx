@@ -208,25 +208,28 @@ describe("the table", () => {
 });
 
 describe("the selected row's look (C82)", () => {
-  it("is the Library's tint and bar: a selected row draws no outline, and the keyboard's row is dashed", async () => {
+  it("is the Library's tint and bar, and the keyboard's row is dashed even when it is selected (M476)", async () => {
     const css = (await import("./match.css?raw")).default;
-    const ring = /\.review-row:focus-visible\s*\{([^}]*)\}/.exec(css);
-    expect(ring, "a full focus outline on every focused row").toBeNull();
-    const cursor = /\.review-row:focus-visible:not\(\[aria-selected="true"\]\)\s*\{([^}]*)\}/.exec(css)![1]!;
-    expect(cursor).toMatch(/outline:\s*var\(--focus-ring-width\) dashed var\(--focus-ring\)/);
-    expect(css).toMatch(/\.review-row:focus-visible\[aria-selected="true"\]\s*\{[^}]*outline:\s*none/);
+    const ring = /\.review-row:focus-visible\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(ring).toMatch(/outline:\s*var\(--focus-ring-width\) dashed var\(--focus-ring\)/);
+    expect(css).not.toMatch(/\.review-row:focus-visible\[aria-selected="true"\]\s*\{[^}]*outline:\s*none/);
   });
 });
 
 describe("the tick boxes' look (item 9a)", () => {
   it("keeps a ticked box grey-outlined with a violet tick, and fills it violet only when focused", async () => {
     const css = (await import("./match.css?raw")).default;
-    const ticked = /\.review-col--check input\[type="checkbox"\]:checked:not\(:disabled\),[^{]*\{([^}]*)\}/.exec(css)![1]!;
+    const ticked = /\.review-col--check input\[type="checkbox"\]:checked:not\(:disabled\)\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(ticked).toMatch(/border-color:\s*var\(--border-control\)/);
     expect(ticked).toMatch(/background-color:\s*var\(--bg-input\)/);
     expect(ticked).toMatch(/color:\s*var\(--accent-primary\)/);
     const focused = /\.review-row:focus-visible \.review-col--check input\[type="checkbox"\]:checked,[^{]*\{([^}]*)\}/.exec(css)![1]!;
     expect(focused).toMatch(/background-color:\s*var\(--accent-fill\)/);
+  });
+
+  it("gives the mixed box the global look, not a hollow one of its own (M140)", async () => {
+    const css = (await import("./match.css?raw")).default;
+    expect(css).not.toMatch(/indeterminate/);
   });
 });
 
@@ -559,16 +562,30 @@ describe("keys and selection follow the Library's table (C190, C191)", () => {
     await waitFor(() => expect(screen.getByText("3 selected")).toBeInTheDocument());
   });
 
-  it("leaves the arrows on a candidate's radio to the radio: they change the pick, not the track", async () => {
+  it("moves along the rows with Up and Down from a candidate's radio, and picks with Left, Right and numbers (M508)", async () => {
     renderTab();
     await loaded();
     fireEvent.click(rowOf(1));
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
     const radios = await within(panel).findAllByRole("radio");
     radios[0]!.focus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(within(screen.getByRole("complementary")).getByText("1 of 5")).toBeInTheDocument();
+    await userEvent.keyboard("{ArrowRight}");
     expect(radios[1]).toBeChecked();
+    await userEvent.keyboard("2");
+    expect(radios[1]).toBeChecked();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(await within(screen.getByRole("complementary")).findByText("2 of 5")).toBeInTheDocument();
+  });
+
+  it("filters to the tracks to check, and goes to the next one with the button and the N key (M508)", async () => {
+    renderTab();
+    await loaded();
+    const only = screen.getByRole("checkbox", { name: /^To check only/ });
+    expect(only).not.toBeChecked();
+    await userEvent.click(only);
+    expect(order()).toEqual([1]);
+    await userEvent.click(screen.getByRole("button", { name: "Next to check" }));
+    expect(rowOf(1)).toHaveAttribute("aria-selected", "true");
   });
 
   it("offers Try again when the table cannot be read, but not when there is no desktop app", async () => {
@@ -665,7 +682,7 @@ describe("selecting rows and the right-click menu", () => {
     fireEvent.contextMenu(rowOf(2));
     expect(rowOf(2)).toHaveAttribute("aria-selected", "true");
     const menu = await screen.findByRole("menu");
-    for (const name of ["Play", "Play next", "Add to queue", "Tick to sync", "Leave out", "Choose a match", "More"]) {
+    for (const name of ["Play", "Play next", "Add to queue", "Tick to sync", "Leave out", "Check the match", "More"]) {
       expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
     }
     expect(within(menu).getByText("This page")).toBeInTheDocument();

@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import * as links from "./cleanLink";
-import { cleanMatchOpening, cleanMatchState, cleanRedirect } from "./cleanLink";
+import { cleanMatchOpening, cleanMatchState, cleanRedirect, openClean } from "./cleanLink";
 import { statisticsFocus } from "../statistics/statisticsLink";
 
 const at = (state: unknown) => ({ state, key: "k1" });
@@ -77,5 +77,22 @@ describe("cleanMatchState / cleanMatchOpening", () => {
       tracks: null,
       token: "k1",
     });
+  });
+});
+
+describe("openClean (M505)", () => {
+  it("opens Clean with the tracks chosen, as every other page's menu does", () => {
+    const calls: unknown[][] = [];
+    openClean((...args) => calls.push(args), [3, 4]);
+    expect(calls).toEqual([["/clean", { state: cleanMatchState([3, 4]) }]]);
+    expect(cleanMatchOpening({ state: (calls[0]![1] as { state: unknown }).state, key: "k" })?.tracks).toEqual({
+      ids: [3, 4],
+    });
+  });
+
+  it("opens on the tracks not looked up yet with none", () => {
+    const calls: unknown[][] = [];
+    openClean((...args) => calls.push(args));
+    expect(cleanMatchOpening({ state: (calls[0]![1] as { state: unknown }).state, key: "k" })?.tracks).toBeNull();
   });
 });

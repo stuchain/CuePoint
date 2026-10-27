@@ -40,7 +40,7 @@ describe("the review scopes", () => {
   it("are named in the words CLN-4 chose, the stored states unchanged", () => {
     expect(REVIEW_SCOPES.map((scope) => [scope.id, scope.label])).toEqual([
       ["needs_review", "To check"],
-      ["disputed", "Changed since you decided"],
+      ["disputed", "Changed after you confirmed"],
       ["accepted", "Confirmed"],
       ["rejected", "Rejected"],
       ["no_match", "No match"],

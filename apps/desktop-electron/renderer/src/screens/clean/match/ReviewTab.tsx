@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { LibraryTrackRow, MatchSearchAnswer, ReviewTrack } from "../../../api/cuepointBridge.types";
 import { needsDesktopApp, userMessage } from "../../../api/userMessage";
-import { Button, Hint, Notice, useToast } from "../../../components";
+import { Button, Hint, Kbd, Notice, useToast } from "../../../components";
 import { Loading } from "../../../components/Loading";
 import { SelectionBar } from "../../../components/SelectionBar";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../../components/TrackContextMenu";
@@ -35,9 +35,9 @@ import { reportUnexpected } from "../../../reporting/reporting";
 import { CandidatePanel } from "./CandidatePanel";
 import { ReviewTable } from "./ReviewTable";
 import { SyncPlaylistDialog } from "./SyncPlaylistDialog";
-import { isSelectAll, matchCommand } from "./matchKeyboard";
+import { NEXT_TO_CHECK_KEY, isSelectAll, matchCommand } from "./matchKeyboard";
 import { reviewMenuItems } from "./reviewMenu";
-import { allTickedLine, barFacts, reviewCandidateOf, tickedLine } from "./reviewList";
+import { allTickedLine, barFacts, nextToCheck, reviewCandidateOf, tickedLine, toCheckOnlyLabel } from "./reviewList";
 import { useMatchReview, type ReviewSource } from "./useMatchReview";
 import { useReviewTicks } from "./useReviewTicks";
 
@@ -56,12 +56,23 @@ interface ReviewTabProps {
   initialTrackId?: number;
   /** Whether the panel is open, so a match that ends does not replace what is being read. */
   onPanelChange?: (open: boolean) => void;
+  /** Open with "To check only" on (D17): Match opens on the tracks that wait for a decision. */
+  startOnToCheck?: boolean;
 }
 
 /** The most tracks one Play, Play next or Add to queue reads from the Library at once. */
 const QUEUE_CAP = 200;
 
-export function ReviewTab({ source, name, version, matching, onChanged, initialTrackId, onPanelChange }: ReviewTabProps) {
+export function ReviewTab({
+  source,
+  name,
+  version,
+  matching,
+  onChanged,
+  initialTrackId,
+  onPanelChange,
+  startOnToCheck = false,
+}: ReviewTabProps) {
   const { push } = useToast();
   const [reads, setReads] = useState(0);
   const { review, loading, error, hasMore, loadMore, loadAll, patchTrack } = useMatchReview(source, version + reads);
@@ -75,11 +86,21 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
   const ticks = useReviewTicks(source, patchTrack, reread);
   const [choosing, setChoosing] = useState(false);
 
-  const rows = useMemo(() => review?.tracks ?? [], [review]);
+  // "To check only" (M508): the tracks that wait for a decision, out of however many were matched.
+  const [onlyToCheck, setOnlyToCheck] = useState(startOnToCheck);
+  const rows = useMemo(
+    () => (review?.tracks ?? []).filter((row) => !onlyToCheck || row.status === "to_check"),
+    [review, onlyToCheck],
+  );
   const counts = review?.counts ?? { matched: 0, to_check: 0, not_found: 0, search_failed: 0 };
   const total = review?.total ?? 0;
   const ticked = review?.ticked ?? 0;
   const tickable = counts.matched + counts.to_check;
+
+  // A filter looks at every track: the pages still to come are read, so none that waits is missed.
+  useEffect(() => {
+    if (onlyToCheck && hasMore) loadAll();
+  }, [hasMore, loadAll, onlyToCheck]);
 
   // The row the panel is open on. A re-read that no longer holds it must not close the panel or
   // empty what is being read: the last row seen stands in for it until the panel is closed.
@@ -193,6 +214,24 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
     [current, hasMore, loadMore, panel, rows, select],
   );
 
+  /**
+   * Go to the next track still to check (M508): the cursor, the selection and the panel (when it is
+   * open) move to it. `from` is the track to count on from; with none, the cursor's.
+   */
+  const goToNextToCheck = useCallback(
+    (from: number | null = null) => {
+      const target = nextToCheck(rows, from ?? current ?? panel);
+      if (!target) return false;
+      setCurrent(target.track_id);
+      setSelected(new Set([target.track_id]));
+      anchor.current = target.track_id;
+      if (panel !== null) setPanel(target.track_id);
+      else setFocusToken((token) => token + 1);
+      return true;
+    },
+    [current, panel, rows],
+  );
+
   // A layout effect would be too early for a key pressed as the table appears; a window listener
   // with the shared rules (not in a field, a dialog or a menu, never a modified key) is enough.
   useEffect(() => {
@@ -218,6 +257,10 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
         }
         return;
       }
+      if (which === "next-to-check") {
+        if (goToNextToCheck()) event.preventDefault();
+        return;
+      }
       event.preventDefault();
       move(
         which === "next-track" ? 1 : which === "previous-track" ? -1 : which === "first-track" ? "first" : "last",
@@ -226,7 +269,7 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [move, panel, rows, selected.size]);
+  }, [goToNextToCheck, move, panel, rows, selected.size]);
 
   // ----------------------------------------------------------- ticking and choosing
 
@@ -272,7 +315,7 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
 
   /** Use this match: accept that candidate for the track, which ticks it. The table reads again for what it now shows. */
   const chooseCandidate = useCallback(
-    async (row: ReviewTrack, candidateId: number) => {
+    async (row: ReviewTrack, candidateId: number, stay = false) => {
       const decide = window.cuepoint?.decideMatch;
       if (!decide) {
         push(needsDesktopApp(), "warning");
@@ -284,6 +327,8 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
         setSaid(`Using this match for “${row.title}”: it will be synced.`);
         reread();
         onChanged();
+        // The decision is made: the panel moves on to the next track that waits (Shift stays on this one).
+        if (!stay && panel !== null) goToNextToCheck(row.track_id);
       } catch (cause) {
         reportUnexpected(cause);
         push(userMessage(cause), "warning");
@@ -291,7 +336,7 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
         setChoosing(false);
       }
     },
-    [onChanged, push, reread],
+    [goToNextToCheck, onChanged, panel, push, reread],
   );
 
   // A hand search stored an attempt: the row takes what it found, in place, and the page's counts
@@ -464,6 +509,30 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
         {said}
       </p>
 
+      {/* The filter and the way to the next track that waits (M508). */}
+      <div className="cp-toolbar review__filter" role="toolbar" aria-label="What to show">
+        <label className="clean-toolbar__check">
+          <input
+            type="checkbox"
+            checked={onlyToCheck}
+            disabled={!onlyToCheck && counts.to_check === 0}
+            onChange={(event) => setOnlyToCheck(event.target.checked)}
+          />
+          {toCheckOnlyLabel(counts.to_check)}
+        </label>
+        <Hint text={counts.to_check === 0 ? "Nothing is waiting to be checked" : undefined}>
+          <Button
+            variant="secondary"
+            icon="chevron-right"
+            disabled={counts.to_check === 0}
+            onClick={() => goToNextToCheck()}
+          >
+            Next to check
+          </Button>
+        </Hint>
+        <Kbd keys={NEXT_TO_CHECK_KEY} />
+      </div>
+
       {/* The selection bar sits above the list (C215), in standard-height buttons (C8). */}
       <SelectionBar count={selected.size} onClear={() => setSelected(new Set())}>
         <Button variant="secondary" disabled={ticks.busy || toTick.length === 0} onClick={() => void tickThese(toTick, true)}>
@@ -503,7 +572,8 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
             busy={ticks.busy || choosing}
             matching={matching}
             onClose={() => setPanel(null)}
-            onUse={(candidateId) => void chooseCandidate(panelRow, candidateId)}
+            onUse={(candidateId, stay) => void chooseCandidate(panelRow, candidateId, stay)}
+            onMove={(step) => move(step, false)}
             onLeaveOut={() => void tick(panelRow, false)}
             onSearched={searched}
             onMessage={(text) => push(text, "info")}

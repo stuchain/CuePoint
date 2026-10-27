@@ -48,12 +48,12 @@ describe("duplicates with none found", () => {
   it("says there are none once a scan found none", () => {
     expect((fixture.scanned.duplicates as DuplicateGroupList).total).toBe(0);
     const view = duplicatesEmptyState(SCANNED, null, false);
-    expect(view.headline).toBe("No possible duplicates");
+    expect(view.headline).toBe("No duplicates found");
     expect(view.offer).toBeNull();
   });
 
   it("mentions dismissed groups when they are being shown", () => {
-    expect(duplicatesEmptyState(SCANNED, null, true).hint).toMatch(/not duplicates/);
+    expect(duplicatesEmptyState(SCANNED, null, true).hint).toMatch(/no group is dismissed/);
   });
 });
 

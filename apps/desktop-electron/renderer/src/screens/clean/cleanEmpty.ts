@@ -69,16 +69,16 @@ export function duplicatesEmptyState(
   if (health && lastRun(health, "duplicates") === null) {
     return view(
       "Duplicates have not been looked for yet",
-      "Find duplicates to group tracks that share a file, a Beatport track, or " +
+      "Check for duplicates to group tracks that share a file, a Beatport track, or " +
         "an artist, title and length.",
       "find_duplicates",
     );
   }
   return view(
-    "No possible duplicates",
+    "No duplicates found",
     showingDismissed
-      ? "Nothing was found, and nothing is marked as not duplicates."
-      : "Nothing was found the last time CuePoint looked.",
+      ? "Nothing was found, and no group is dismissed."
+      : "Nothing was found the last time CuePoint checked.",
   );
 }
 

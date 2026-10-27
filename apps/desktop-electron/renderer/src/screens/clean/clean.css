@@ -60,11 +60,6 @@
   font-size: var(--text-body);
 }
 
-/* A tab's count after its name: grey, amber when it is work waiting (area 58). */
-.clean-tab-count {
-  color: var(--warning-text);
-}
-
 /* Tab toolbar lines are laid out one way (area 67): the count, its options, the actions at the right. */
 .clean-toolbar__check {
   margin-inline-end: auto;
@@ -164,7 +159,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   padding: var(--space-md) 0;
 }
 
@@ -176,7 +171,7 @@
 .clean-groups {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   width: 100%;
   margin: 0;
   padding: 0;
@@ -219,16 +214,25 @@
   list-style: none;
 }
 
+/* One row of the table look (M141, M154): the row height, the row line drawn inside it, the title
+   with its facts beside it, the file name first under it, and the row's buttons at the end. */
 .clean-group__member {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
   grid-template-areas:
-    "track facts reveal"
-    "path path reveal";
+    "track facts actions"
+    "path path actions";
   align-items: center;
   gap: var(--space-2xs) var(--space-md);
-  padding-bottom: var(--space-xs);
-  border-bottom: var(--hairline) solid var(--border-muted);
+  min-height: var(--row-height);
+  padding-block: var(--space-xs);
+  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
+}
+
+.clean-group__signal {
+  color: var(--fg-muted);
+  font-family: var(--font-meta);
+  font-size: var(--font-size-xs);
 }
 
 .clean-group__track {
@@ -252,6 +256,10 @@
 
 .clean-group__path {
   grid-area: path;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
@@ -264,9 +272,10 @@
   gap: var(--space-md);
 }
 
-/* The row's own button sits in the fixed end column, right-aligned (C76). */
-.clean-group__member > .cp-btn {
-  grid-area: reveal;
+/* The row's buttons sit in the fixed end column, right-aligned (C76). */
+.clean-group__row-actions {
+  grid-area: actions;
+  flex-wrap: nowrap;
   justify-self: end;
 }
 

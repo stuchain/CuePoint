@@ -350,7 +350,7 @@ describe("the Beatport tab", () => {
     bridge.getTrackMatches.mockResolvedValue(matches({ disputed: true, newer_attempt_id: 9 }));
     beatportPanel();
     expect(
-      await screen.findByText(/Confirmed by you — changed since you decided/),
+      await screen.findByText(/Confirmed by you — changed after you confirmed/),
     ).toBeInTheDocument();
   });
 

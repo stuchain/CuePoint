@@ -784,3 +784,28 @@ describe("the tight rail at 3x (zoom spot 3A)", () => {
     }
   });
 });
+
+describe("the Clean count (M507)", () => {
+  it("says how many tracks wait, beside the name and in its label", async () => {
+    (window as unknown as { cuepoint?: unknown }).cuepoint = {
+      getLibraryHealth: vi.fn().mockResolvedValue({
+        counts: [
+          { id: "needs_review", count: 40 },
+          { id: "disputed", count: 2 },
+        ],
+        detections: [],
+      }),
+    };
+    renderSidebar("/");
+    const link = await within(nav()).findByRole("link", { name: "Clean, 42 to check" });
+    expect(link.querySelector(".cp-sidebar__count")).toHaveTextContent("42");
+  });
+
+  it("says nothing when nothing waits", async () => {
+    (window as unknown as { cuepoint?: unknown }).cuepoint = {
+      getLibraryHealth: vi.fn().mockResolvedValue({ counts: [], detections: [] }),
+    };
+    renderSidebar("/");
+    expect(await within(nav()).findByRole("link", { name: "Clean" })).not.toHaveTextContent(/\d/);
+  });
+});

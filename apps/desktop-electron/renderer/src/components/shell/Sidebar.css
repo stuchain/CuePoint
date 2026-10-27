@@ -329,6 +329,19 @@
   line-height: 1;
 }
 
+/* How many tracks wait on this page (Clean's "to check"): muted, at the row's right (M507). */
+.cp-sidebar__count {
+  flex: none;
+  margin-inline-start: auto;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-sidebar__link--active .cp-sidebar__count {
+  color: var(--fg-primary);
+}
+
 .cp-sidebar__label {
   font-family: var(--font-voice);
   white-space: nowrap;

@@ -131,3 +131,21 @@ describe("the facts line under the title (area 59)", () => {
     expect(factsLine(null, {})).toBeUndefined();
   });
 });
+
+describe("how many tracks wait for a decision (M507)", () => {
+  it("is null before Health is read, and zero when nothing waits", () => {
+    expect(sections.toCheckCount(null)).toBeNull();
+    expect(sections.toCheckCount({ counts: [], detections: [] } as never)).toBe(0);
+  });
+
+  it("adds to check and changed after you confirmed, as the tab does", () => {
+    const health = {
+      counts: [
+        { id: "needs_review", count: 40 },
+        { id: "disputed", count: 2 },
+      ],
+      detections: [],
+    } as never;
+    expect(sections.toCheckCount(health)).toBe(42);
+  });
+});

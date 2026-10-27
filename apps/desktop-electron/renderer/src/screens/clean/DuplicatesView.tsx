@@ -17,6 +17,7 @@ import type {
   CleanJobStarted,
   CollectionNode,
   LibraryHealth,
+  LibraryTrackRow,
   ListedDuplicateGroup,
   TagUsage,
 } from "../../api/cuepointBridge.types";
@@ -37,7 +38,18 @@ import { formatDuration } from "../library/trackValues";
 import { batchConsequence } from "../library/libraryBatch";
 import { useLibraryBatch, type BatchRun } from "../library/useLibraryBatch";
 import { duplicatesEmptyState } from "./cleanEmpty";
-import { fileStatusLabel, signalExplanation, signalLabel, trackCount } from "./cleanFormat";
+import {
+  MIXES_DIFFER_LINE,
+  differingParts,
+  duplicateCountLine,
+  fileStatusLabel,
+  signalExplanation,
+  signalLabel,
+  trackCount,
+} from "./cleanFormat";
+import { displayPathNameFirst } from "../../format/paths";
+import { toQueueItem } from "../library/useLibraryPlayback";
+import { checkedLine, lastRun } from "./cleanEmpty";
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -53,63 +65,121 @@ interface GroupCardProps {
   onTag: (group: ListedDuplicateGroup) => void;
   onCollect: (group: ListedDuplicateGroup) => void;
   onReveal: (trackId: number) => void;
+  onPlay: (member: LibraryTrackRow) => void;
+  onKeep: (group: ListedDuplicateGroup, member: LibraryTrackRow) => void;
+  onCheckMatch?: (trackId: number) => void;
 }
 
-function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupCardProps) {
-  const heading = `${signalLabel(group.signal)} · ${trackCount(group.track_ids.length)}`;
+function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal, onPlay, onKeep, onCheckMatch }: GroupCardProps) {
+  const first = group.members[0];
+  // The group is named for its track, and the signal that put it together is said at its right (D18).
+  const heading = first ? trackIdentity(first.title, first.artist) : signalLabel(group.signal);
+  const count = group.track_count ?? group.track_ids.length;
+  const differing = new Map((group.differing ?? []).map((entry) => [entry.track_id, entry.words]));
   return (
-    <li className="clean-group-item" aria-label={heading}>
+    <li className="clean-group-item" aria-label={`${heading}, ${trackCount(count)}`}>
       <Card
         className={`clean-group${group.dismissed ? " clean-group--dismissed" : ""}`}
         title={heading}
-        unit={group.dismissed ? <Badge>Marked not duplicates</Badge> : undefined}
+        unit={
+          <>
+            {group.dismissed && <Badge>Dismissed</Badge>}
+            <span className="clean-group__signal">{signalLabel(group.signal)}</span>
+          </>
+        }
         bodyClassName="clean-group__body"
       >
-      <p className="clean-group__why">{signalExplanation(group.signal)}</p>
-      <ul className="clean-group__members">
-        {group.members.map((member) => (
-          <li key={member.id ?? member.file_path} className="clean-group__member">
-            <span className="clean-group__track">
-              <span className="clean-group__name">{trackIdentity(member.title, member.artist)}</span>
-            </span>
-            <span className="clean-group__facts">
-              {[
-                formatDuration(member.duration_seconds),
-                member.bitrate ? `${member.bitrate} kbps` : "",
-                fileStatusLabel(member.file_status),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
-            <span className="clean-group__path">{member.file_path}</span>
-            <Button
-              size="sm"
-              variant="secondary"
-              aria-label={`Show ${member.title} in its folder`}
-              onClick={() => member.id != null && onReveal(member.id)}
-            >
-              Show in folder
-            </Button>
-          </li>
-        ))}
-      </ul>
-      <div className="clean-group__actions" role="group" aria-label="What to do with this group">
-        {group.dismissed ? (
-          <Button variant="secondary" loading={busy} onClick={() => onAnswer(group, "restore")}>
-            Show as duplicates again
-          </Button>
+        {group.mixes_differ ? (
+          <Notice
+            kind="warning"
+            action={
+              onCheckMatch && first?.id != null ? (
+                <Button variant="quiet" size="sm" onClick={() => onCheckMatch(first.id!)}>
+                  Check the match
+                </Button>
+              ) : undefined
+            }
+          >
+            {MIXES_DIFFER_LINE}
+          </Notice>
         ) : (
-          <Button variant="secondary" loading={busy} onClick={() => onAnswer(group, "dismiss")}>
-            Not duplicates
-          </Button>
+          <p className="clean-group__why">{signalExplanation(group.signal)}</p>
         )}
-        <Button variant="secondary" onClick={() => onTag(group)}>
-          Tag these tracks…
-        </Button>
-        <Button variant="secondary" onClick={() => onCollect(group)}>
-          Add to a Collection…
-        </Button>
-      </div>
+        <ul className="clean-group__members">
+          {group.members.map((member) => {
+            const status = member.file_status && member.file_status !== "present" ? fileStatusLabel(member.file_status) : "";
+            const parts = differingParts(member.title, differing.get(member.id ?? -1) ?? []);
+            return (
+              <li key={member.id ?? member.file_path} className="clean-group__member">
+                <span className="clean-group__track">
+                  <span className="clean-group__name">
+                    {parts.map((part, index) => (
+                      <span key={index} className={part.differs ? "review-part--differs" : undefined}>
+                        {part.text}
+                      </span>
+                    ))}
+                    {member.artist ? ` · ${member.artist}` : ""}
+                  </span>
+                </span>
+                <span className="clean-group__facts">
+                  {[formatDuration(member.duration_seconds), member.bitrate ? `${member.bitrate} kbps` : "", status]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+                <span className="clean-group__path" data-cut-hint>
+                  {displayPathNameFirst(member.file_path)}
+                </span>
+                <span className="clean-group__row-actions cp-button-row">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon="play"
+                    aria-label={`Play ${member.title}`}
+                    onClick={() => onPlay(member)}
+                  >
+                    Play
+                  </Button>
+                  {!group.dismissed && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      aria-label={`Keep ${member.title}: mark this group as not duplicates`}
+                      disabled={busy}
+                      onClick={() => onKeep(group, member)}
+                    >
+                      Keep this one
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    aria-label={`Show ${member.title} in its folder`}
+                    onClick={() => member.id != null && onReveal(member.id)}
+                  >
+                    Show in folder
+                  </Button>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="clean-group__actions" role="group" aria-label="What to do with this group">
+          {group.dismissed ? (
+            <Button variant="secondary" loading={busy} onClick={() => onAnswer(group, "restore")}>
+              Show as duplicates again
+            </Button>
+          ) : (
+            <Button variant="secondary" loading={busy} onClick={() => onAnswer(group, "dismiss")}>
+              Not duplicates
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => onTag(group)}>
+            Tag these tracks…
+          </Button>
+          <Button variant="secondary" onClick={() => onCollect(group)}>
+            Add to a Collection…
+          </Button>
+        </div>
       </Card>
     </li>
   );
@@ -118,6 +188,8 @@ function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupC
 interface DuplicatesViewProps {
   health: LibraryHealth | null;
   onHealthChanged: () => void;
+  /** Open a track's match for checking in Match (D18): different mixes under one Beatport track. */
+  onCheckMatch?: (trackId: number) => void;
 }
 
 /**
@@ -141,7 +213,7 @@ function confirmWordsFor(pending: BatchRun | null): { title: string; button: str
   }
 }
 
-export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps) {
+export function DuplicatesView({ health, onHealthChanged, onCheckMatch }: DuplicatesViewProps) {
   const { push } = useToast();
   const message = useCallback(
     (text: string, tone: CleanMessageTone) => push(text, tone),
@@ -152,6 +224,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
 
   const [groups, setGroups] = useState<ListedDuplicateGroup[]>([]);
   const [total, setTotal] = useState(0);
+  const [trackTotal, setTrackTotal] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [includeDismissed, setIncludeDismissed] = useState(false);
@@ -188,6 +261,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         if (cancelled) return;
         setGroups(payload.groups);
         setTotal(payload.total);
+        setTrackTotal(payload.track_total);
         setError(null);
       })
       .catch((cause: unknown) => {
@@ -213,6 +287,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
       });
       setGroups((previous) => [...previous, ...payload.groups]);
       setTotal(payload.total);
+      setTrackTotal(payload.track_total);
     } catch (cause) {
       reportUnexpected(cause);
       push(userMessage(cause), "warning");
@@ -263,6 +338,54 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
       }
     },
     [includeDismissed, onHealthChanged, push],
+  );
+
+  /** Play one copy, to judge it by ear (D18). */
+  const play = useCallback(
+    (member: LibraryTrackRow) => {
+      const player = window.cuepoint?.player;
+      if (!player?.playQueue) return;
+      void player
+        .playQueue([toQueueItem(member)], 0)
+        .then((result) => {
+          if (result && !result.ok) push(result.error, "warning");
+        })
+        .catch(() => undefined);
+    },
+    [push],
+  );
+
+  /**
+   * Keep this one (M153): nothing is deleted. The group is marked as not duplicates, as "Not
+   * duplicates" does, and the toast says so and offers Undo.
+   */
+  const keep = useCallback(
+    async (group: ListedDuplicateGroup, member: LibraryTrackRow) => {
+      const bridge = window.cuepoint?.keepDuplicateTrack;
+      if (!bridge || member.id == null) return;
+      setActing(group.id);
+      try {
+        await bridge({ group_id: group.id, track_id: member.id });
+        setReloads((value) => value + 1);
+        push(
+          `Kept ${quoted(member.title)}. Nothing was deleted; the group is marked as not duplicates.`,
+          "success",
+          {
+            label: UNDO,
+            onClick: () => {
+              void answer(group, "restore").then(() => setReloads((value) => value + 1));
+            },
+          },
+        );
+        onHealthChanged();
+      } catch (cause) {
+        reportUnexpected(cause);
+        push(userMessage(cause), "warning");
+      } finally {
+        setActing(null);
+      }
+    },
+    [answer, onHealthChanged, push],
   );
 
   const openPicker = useCallback(
@@ -366,21 +489,31 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
   );
 
   const empty = duplicatesEmptyState(health, error, includeDismissed);
+  const lastChecked = health ? lastRun(health, "duplicates") : undefined;
+  const checked = lastChecked ? checkedLine(lastChecked) : "";
 
   return (
     <div className="clean-duplicates">
       <div className="cp-toolbar" role="toolbar" aria-label="Duplicates">
         <span className="cp-count clean-toolbar__count" role="status">
-          {plural(total, "group")}
+          {duplicateCountLine(total, trackTotal)}
         </span>
-        <label className="clean-toolbar__check">
-          <input
-            type="checkbox"
-            checked={includeDismissed}
-            onChange={(event) => setIncludeDismissed(event.target.checked)}
-          />
-          Show groups marked not duplicates
-        </label>
+        {/* Nothing to include until there is something: the option waits for a group (M150). */}
+        {(total > 0 || includeDismissed) && (
+          <label className="clean-toolbar__check">
+            <input
+              type="checkbox"
+              checked={includeDismissed}
+              onChange={(event) => setIncludeDismissed(event.target.checked)}
+            />
+            Show dismissed groups
+          </label>
+        )}
+        {checked && (
+          <span className="clean-toolbar__status" role="status">
+            {checked}
+          </span>
+        )}
         <Button
           variant="secondary"
           className="cp-btn--framed"
@@ -388,8 +521,8 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
           loading={jobs.running === "scan"}
           onClick={scan}
         >
-          {/* One "<verb> again" pattern for a re-run (C180). */}
-          {empty.offer === "find_duplicates" ? "Find duplicates" : "Find again"}
+          {/* One "<verb> again" pattern for a re-run, the same as Missing files' (C180, M397). */}
+          {empty.offer === "find_duplicates" ? "Check for duplicates" : "Check again"}
         </Button>
       </div>
 
@@ -411,13 +544,14 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         ) : groups.length === 0 ? (
           // The page's own empty state, icon and all, as Missing files draws its own (C140).
           <EmptyState
-            icon="clean"
+            // The check mark is for a clean result; "nothing yet" has a neutral icon (M159).
+            icon={empty.offer === null && !error ? "clean" : "search"}
             tone={empty.offer === null && !error ? "clear" : "empty"}
             headline={empty.headline}
             description={empty.hint ?? undefined}
             action={
               empty.offer === "find_duplicates"
-                ? { label: "Find duplicates", onClick: scan, disabled: jobs.running !== null }
+                ? { label: "Check for duplicates", onClick: scan, disabled: jobs.running !== null }
                 : undefined
             }
           />
@@ -432,6 +566,9 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
                 onTag={(target) => void openPicker("tag", target)}
                 onCollect={(target) => void openPicker("collection", target)}
                 onReveal={reveal}
+                onPlay={play}
+                onKeep={(target, member) => void keep(target, member)}
+                onCheckMatch={onCheckMatch}
               />
             ))}
           </ul>

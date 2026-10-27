@@ -69,8 +69,13 @@ interface CandidatePanelProps {
   /** A match runs: searching waits, and says why. */
   matching: boolean;
   onClose: () => void;
-  /** Use this match: accept that candidate, which ticks the track. */
-  onUse: (candidateId: number) => void;
+  /**
+   * Use this match: accept that candidate, which ticks the track. The panel then moves on to the
+   * next track that waits, unless `stay` (Shift was held).
+   */
+  onUse: (candidateId: number, stay?: boolean) => void;
+  /** Up or Down inside the candidates: the review moves along its rows, as it does from the table (M508). */
+  onMove?: (step: -1 | 1) => void;
   /** None of these: untick the track. */
   onLeaveOut: () => void;
   /** A search stored a new attempt for this track: the row takes what it found, in place. */
@@ -269,6 +274,7 @@ export function CandidatePanel({
   matching,
   onClose,
   onUse,
+  onMove,
   onLeaveOut,
   onSearched,
   onMessage,
@@ -358,6 +364,26 @@ export function CandidatePanel({
         : (inUseShown ?? otherId);
   const pickedInUse = pickedId !== null && row.ticked && pickedId === inUseId;
 
+  // The keys read the latest state through refs, so the handler on the panel never goes stale.
+  // Left and right move the pick by one, a number picks that candidate (M508).
+  const pickBy = useRef<(by: number, absolute?: boolean) => void>(() => undefined);
+  pickBy.current = (by, absolute = false) => {
+    if (shown.length === 0) return;
+    const at = shown.findIndex((entry) => entry.id === pickedId);
+    const next = absolute ? by - 1 : Math.max(0, Math.min(shown.length - 1, (at === -1 ? 0 : at) + by));
+    const candidate = shown[next];
+    if (candidate) setPicked(candidate.id);
+  };
+  const takePicked = useRef<(stay: boolean) => void>(() => undefined);
+  takePicked.current = (stay) => {
+    if (busy || pickedId === null || pickedInUse) return;
+    onUse(pickedId, stay);
+  };
+  const leaveOutRef = useRef<() => void>(() => undefined);
+  leaveOutRef.current = () => {
+    if (!busy && row.ticked) onLeaveOut();
+  };
+
   // A double-click on a candidate: Use this match for it. One function for the panel's life (it
   // reads the latest props), so the memoised rows are not drawn again for a new one.
   const forTake = useRef({ busy, ticked: row.ticked, inUseId, onUse });
@@ -428,12 +454,8 @@ export function CandidatePanel({
       ? attempt?.outcome === "error"
         ? {
             headline: couldNot("search Beatport for this track").replace(/[.]$/, ""),
-            // The plain sentence says it; the matcher's own reason is only in the hint.
-            description: (
-              <Hint text={attempt.error ?? "No reason was recorded"} inline portal>
-                <span className="cp-link" tabIndex={0}>Details</span>
-              </Hint>
-            ),
+            // The reason is printed, not hidden behind a hover: it is the thing to read (M160).
+            description: attempt.error ?? "No reason was recorded",
           }
         : { headline: "Beatport has no candidates for this track yet", description: "Search below" }
       : null;
@@ -446,12 +468,41 @@ export function CandidatePanel({
       aria-label={`Candidates for ${row.title}`}
       aria-busy={busy || undefined}
       onKeyDown={(event) => {
-        // Esc closes the panel from inside it too (C29); a field keeps its own Esc.
-        if (event.key !== "Escape" || event.defaultPrevented) return;
-        // A radio or a tick is not a text field: Esc from a candidate's radio closes the panel.
-        if ((event.target as HTMLElement).closest("textarea, select, input:not([type=radio]):not([type=checkbox])")) return;
-        event.preventDefault();
-        onClose();
+        if (event.defaultPrevented) return;
+        const target = event.target as HTMLElement;
+        // A text field, a menu and a button keep their own keys.
+        const inField = target.closest("textarea, select, input:not([type=radio]):not([type=checkbox])");
+        if (inField) return;
+        // Esc closes the panel from inside it too (C29). A radio or a tick is not a text field:
+        // Esc from a candidate's radio closes the panel.
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onClose();
+          return;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        const onButton = target.closest("button, a");
+        const arrow = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+        if (arrow !== 0 && !onButton) {
+          // Left and right pick the previous or next candidate (M508).
+          event.preventDefault();
+          pickBy.current(arrow);
+        } else if ((event.key === "ArrowUp" || event.key === "ArrowDown") && !onButton) {
+          // Up and down move along the rows, not between radios: the radios' own arrows would
+          // change the pick behind the person's back.
+          event.preventDefault();
+          onMove?.(event.key === "ArrowUp" ? -1 : 1);
+        } else if (/^[1-9]$/.test(event.key) && !onButton) {
+          event.preventDefault();
+          pickBy.current(Number(event.key), true);
+        } else if (event.key === "Enter" && !onButton) {
+          // Enter uses the picked match (Shift stays on this track).
+          event.preventDefault();
+          takePicked.current(event.shiftKey);
+        } else if (event.key === "Backspace" && !onButton) {
+          event.preventDefault();
+          leaveOutRef.current();
+        }
       }}
     >
       {/* The frame is the panel's own layout root (match.css): what changes in it lays out the panel alone. */}
@@ -470,7 +521,10 @@ export function CandidatePanel({
         </header>
 
         <div className="review-panel__scroll">
-          <p className="review-panel__hint">Up and Down move · Double-click uses a match · Esc closes</p>
+          <p className="review-panel__hint">
+            Up and Down move along the tracks · 1–9 or ←/→ choose a match · Enter uses it · Backspace leaves the track
+            out · Esc closes
+          </p>
 
           <section className="review-card" aria-label="Your track">
             <Art src={yourArt} />
@@ -559,7 +613,7 @@ export function CandidatePanel({
               {payloadAttempts.length > 1 && (
                 <Select
                   className="review-panel__attempts"
-                  label="Attempt"
+                  label="Search try"
                   id="review-attempt"
                   value={String(matches.attemptId ?? "")}
                   onChange={(event) => {
@@ -611,7 +665,7 @@ export function CandidatePanel({
             <Button
               variant="secondary"
               disabled={busy || pickedId === null || pickedInUse}
-              onClick={() => pickedId !== null && onUse(pickedId)}
+              onClick={(event) => pickedId !== null && onUse(pickedId, event.shiftKey)}
             >
               {USE_MATCH}
             </Button>

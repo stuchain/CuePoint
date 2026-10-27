@@ -40,14 +40,14 @@ interface ScoreRow {
 /** How the matcher scored each candidate: only candidates have these. */
 export const SCORE_ROWS: readonly ScoreRow[] = [
   { id: "score", label: "Score", candidate: (c) => formatMatchScore(c.score) },
-  { id: "base_score", label: "Before bonuses", candidate: (c) => cellText(formatMatchScore(c.base_score)) },
+  { id: "base_score", label: "Score before bonuses", candidate: (c) => cellText(formatMatchScore(c.base_score)) },
   { id: "title_sim", label: "Title similarity", candidate: (c) => whole(c.title_sim) },
   { id: "artist_sim", label: "Artist similarity", candidate: (c) => whole(c.artist_sim) },
   { id: "bonus_year", label: "Year bonus", candidate: (c) => signed(c.bonus_year) },
   { id: "bonus_key", label: "Key bonus", candidate: (c) => signed(c.bonus_key) },
   {
     id: "guard",
-    label: "Guards",
+    label: "Checks",
     candidate: (c) => (c.guard_ok ? "Passed" : rejectReasonText(c.reject_reason)),
   },
   { id: "query", label: "Found by", candidate: (c) => cellText(c.query_text) },

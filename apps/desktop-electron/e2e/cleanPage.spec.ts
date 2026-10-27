@@ -183,7 +183,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
         { timeout: 30_000 },
       );
       // The export has no playlists: the view says so in one line. Only the whole library has a tick,
-      // one Match button under the list starts a match, and there is no button in the header (C22).
+      // one Match button in the area's toolbar starts a match, and there is no button in the header (C22).
       await expect(window.locator("p:visible", { hasText: "No playlists yet" })).toBeVisible();
       await expect(window.getByRole("checkbox", { name: /^Match / })).toHaveCount(1);
       await expect(window.getByRole("checkbox", { name: "Match All tracks" })).toBeEnabled();
@@ -202,7 +202,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await importAndCheck(window, writeExport(workspace));
       await window.getByRole("link", { name: "Clean" }).click();
       await window.getByRole("tab", { name: "Duplicates" }).click();
-      await expect(window.getByRole("button", { name: /^Find (duplicates|again)$/ }).first()).toBeVisible();
+      await expect(window.getByRole("button", { name: /^Check (for duplicates|again)$/ }).first()).toBeVisible();
 
       // A renderer reload in the middle of a session keeps the tab (a fresh start is a new launch).
       await window.reload();

@@ -19,20 +19,35 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* The table is as wide as its pane: a pixel or two of cell border must not raise a sideways bar (M142). */
+  overflow-x: hidden;
 }
 
-/* The tick column is the same 32 wide in every step of the flow, with one checkbox look (C77). */
+/* The tick column is the same in every step of the flow, with the global checkbox (C77, M139): a
+   minimum width and the cell's padding, so the box sits in from the table's edge like "Playlist". */
 .cp-data-table .playlists__tick {
+  box-sizing: border-box;
   width: calc(32px * var(--scale));
-  padding-inline: 0;
+  min-width: calc(32px * var(--scale));
+  padding-inline: var(--space-sm);
   text-align: center;
 }
 
 .playlists__tick input[type="checkbox"] {
-  width: calc(16px * var(--scale));
-  height: calc(16px * var(--scale));
   margin: 0;
   vertical-align: middle;
+}
+
+/* "To check": what waits in each playlist, as a link to it, or a dash (M146). */
+.cp-data-table .playlists__review {
+  width: 1%;
+  max-width: none;
+  text-align: right;
+  text-overflow: clip;
+}
+
+.playlists__to-check {
+  color: var(--accent-primary);
 }
 
 /* The row's own buttons: one fixed end column, right-aligned (C76). */
@@ -75,8 +90,7 @@
   white-space: nowrap;
 }
 
-.playlists__path,
-.playlists__next {
+.playlists__path {
   color: var(--fg-muted);
 }
 
@@ -101,25 +115,9 @@
   gap: var(--space-xs);
 }
 
-/* The bar under the list: what is ticked on the left, Match at the bottom right (C216, C235). */
-.playlists__footer {
-  flex: none;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  /* The between-tone under a divider (P25). */
-  background: var(--bg-between);
-  border-top: var(--divider);
-  font-family: var(--font-data);
-}
-
-.playlists__next {
-  margin-inline-end: auto;
-  font-family: var(--font-meta);
-}
-
-/* Both lines sit at the left (item 11): the shared count pushes itself right (margin-inline-start:
-   auto), which centred this one between the edge and the Match button once tracks were ticked. */
+/* What is ticked, beside Match ticked playlists in the area's toolbar (D17). The shared count
+   pushes itself right with auto margins; here it sits next to the button. */
 .playlists__choice {
-  margin-inline: 0 auto;
+  margin-inline: 0;
   color: var(--fg-primary);
 }

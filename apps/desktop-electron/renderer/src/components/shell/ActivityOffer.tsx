@@ -277,7 +277,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       {record && record.restorable > 0 &&
         (asking ? (
           <>
-            <span>Undo these saves? Every value they replaced goes back.</span>
+            <span>Undo these syncs? Every value they replaced goes back.</span>
             <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
               Keep
             </Button>

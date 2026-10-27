@@ -178,7 +178,7 @@ describe("the candidates", () => {
     const own = list.getAllByRole("radio").find((radio) => (radio as HTMLInputElement).checked)!;
     expect(own).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Use this match" }));
-    expect(props.onUse).toHaveBeenCalledWith(1001);
+    expect(props.onUse).toHaveBeenCalledWith(1001, false);
   });
 
   it("says the match is already in use when it is the only candidate", async () => {
@@ -208,7 +208,7 @@ describe("the candidates", () => {
     expect(screen.getByRole("button", { name: "Use this match" })).toBeEnabled();
     await userEvent.click(list.getAllByRole("radio")[1]!);
     await userEvent.click(screen.getByRole("button", { name: "Use this match" }));
-    expect(props.onUse).toHaveBeenCalledWith(expect.any(Number));
+    expect(props.onUse).toHaveBeenCalledWith(expect.any(Number), false);
   });
 
   it("will not use the match that is already in use", async () => {
@@ -249,9 +249,9 @@ describe("the candidates", () => {
     expect(props.onUse).not.toHaveBeenCalled();
   });
 
-  it("says a double-click uses a match", () => {
+  it("says the keys of the panel (M508)", () => {
     renderPanel();
-    expect(screen.getByText("Up and Down move · Double-click uses a match · Esc closes")).toBeInTheDocument();
+    expect(screen.getByText(/Enter uses it · Backspace leaves the track out/)).toBeInTheDocument();
   });
 
   it("waits while a choice is being sent", async () => {
@@ -277,9 +277,9 @@ describe("the candidates", () => {
     });
     renderPanel({ row: reviewTrack(5, "search_failed") });
     expect(await screen.findByText(/Could not search Beatport for this track/)).toBeInTheDocument();
-    // The matcher's raw reason is not in the line; it is the hint on Details.
-    expect(screen.queryByText(/Beatport could not be reached/)).toBeNull();
-    expect(screen.getByText("Details")).toBeInTheDocument();
+    // The reason is printed under it, not hidden behind a hover, and there is no "Details" to focus (M160).
+    expect(screen.getByText("Beatport could not be reached")).toBeInTheDocument();
+    expect(screen.queryByText("Details")).toBeNull();
   });
 });
 
@@ -368,13 +368,13 @@ describe("More", () => {
     });
     renderPanel();
     await candidates();
-    expect(screen.queryByRole("combobox", { name: "Attempt" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Search try" })).toBeNull();
     expect(screen.queryByRole("table", { name: /scored/ })).toBeNull();
     const more = screen.getByRole("button", { name: "More" });
     expect(more).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(more);
     expect(screen.getByRole("button", { name: "More" })).toHaveAttribute("aria-expanded", "true");
-    expect(await screen.findByRole("combobox", { name: "Attempt" })).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: "Search try" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Why this score?" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "How the matcher scored this candidate" })).toBeInTheDocument();
     expect(screen.getByText("Title similarity")).toBeInTheDocument();

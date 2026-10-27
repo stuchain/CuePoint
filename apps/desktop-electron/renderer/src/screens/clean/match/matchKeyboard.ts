@@ -14,7 +14,16 @@
  * A candidate's radio group owns its arrows: they change the pick, not the track.
  */
 
-export type MatchCommand = "previous-track" | "next-track" | "first-track" | "last-track" | "close";
+export type MatchCommand =
+  | "previous-track"
+  | "next-track"
+  | "first-track"
+  | "last-track"
+  | "next-to-check"
+  | "close";
+
+/** The key that goes to the next track still to check (M508); a bare key, like the arrows. */
+export const NEXT_TO_CHECK_KEY = "N";
 
 export interface KeyLike {
   key: string;
@@ -84,6 +93,10 @@ export function matchCommand(event: KeyLike): MatchCommand | null {
       return "last-track";
     case "Escape":
       return "close";
+    case "n":
+    case "N":
+      // Bare only: Shift+N is not this key.
+      return event.shiftKey ? null : "next-to-check";
     default:
       return null;
   }

@@ -1,17 +1,18 @@
 /**
- * Past searches: every match run, newest first (C14, DEC-065).
+ * Past matches: every match run, newest first (C14, DEC-065, D33).
  *
  * A run is the first search and the resumes that finished it, so a match that was stopped and
  * resumed twice is one row. The counts are what the tracks are now, which is what still needs the
  * reader: "42 to check" goes down as tracks are corrected. It stays a table (D8) in the shared
  * look, and a row opens like a Discover run: click it, or press Enter on it, and its review opens.
- * Each row has its buttons in one fixed column at the right, small and grey: **Resume** (a stopped
- * one, only what it had not reached), **Save review list…** (that run's list as a file, K12) and
- * **Match again**, so nothing is hidden behind a hover or a menu.
+ * Each row is named for its source (the playlist, "All tracks") and has one action slot at the
+ * right: **Resume** for a stopped run (only what it had not reached) and a **More** menu with
+ * **Save review list…** (that run's list as a file, K12) and **Match again** (M150, M151). The
+ * row is one button for the keyboard: it opens the review; the menu is its own stop (M475).
  *
  * The search is the Match area's one search, on its row; this list reads what it holds.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
 import { needsDesktopApp } from "../../../api/userMessage";
@@ -20,6 +21,7 @@ import { Button } from "../../../components/Button";
 import { EmptyState } from "../../../components/EmptyState";
 import { Loading } from "../../../components/Loading";
 import { Notice } from "../../../components/Notice";
+import { TrackContextMenu } from "../../../components/TrackContextMenu";
 import { formatCount } from "../../../format/counts";
 import { formatDayTime } from "../../../format/dates";
 import { RETRY, nothingMatches, quoted } from "../../../format/words";
@@ -48,6 +50,8 @@ interface PastSearchesProps {
   onMatchAgain: (run: MatchRun) => void;
   /** The empty state's button: back to the Playlists sub-tab, where a match is started. */
   onGoToPlaylists: () => void;
+  /** How many runs are listed, so the area can hide its search until there is something to search (M150). */
+  onCount?: (count: number) => void;
 }
 
 export function PastSearches({
@@ -59,6 +63,7 @@ export function PastSearches({
   onResume,
   onMatchAgain,
   onGoToPlaylists,
+  onCount,
 }: PastSearchesProps) {
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState<{ run: MatchRun; open: boolean } | null>(null);
@@ -69,12 +74,19 @@ export function PastSearches({
   }, [search]);
 
   const jobs = useMatchJobs(query, version);
+  // A search that finds nothing is not "no runs": only an unfiltered list says whether there are any.
+  const listed = jobs.runs.length;
+  useEffect(() => {
+    if (query.trim() === "" && jobs.answered && !jobs.loading) onCount?.(listed);
+  }, [jobs.answered, jobs.loading, listed, onCount, query]);
+  const [menu, setMenu] = useState<{ run: MatchRun; x: number; y: number } | null>(null);
+  const menuAnchor = useRef<HTMLElement | null>(null);
   const canResumeHere = Boolean(window.cuepoint?.resumeCleanMatch);
   const now = new Date();
   const searching = query.trim() !== "";
 
   return (
-    <section className="match-past" aria-label="Past searches">
+    <section className="match-past" aria-label="Past matches">
       {jobs.error && (
         <Notice
           kind="danger"
@@ -88,13 +100,13 @@ export function PastSearches({
         </Notice>
       )}
       {!jobs.available && <EmptyState compact headline={needsDesktopApp()} />}
-      {jobs.available && jobs.loading && jobs.runs.length === 0 && <Loading what="past searches" />}
+      {jobs.available && jobs.loading && jobs.runs.length === 0 && <Loading what="past matches" />}
       {jobs.available && !jobs.error && jobs.runs.length === 0 && !jobs.loading && (
         // The whole view is empty, so the full empty state with its icon, as on the other tabs (C140).
         <EmptyState
-          icon="clean"
-          headline={searching ? nothingMatches(query.trim()).replace(/[.]$/, "") : "No searches yet"}
-          description={searching ? undefined : "Each Match on Beatport is kept here, so you can see what it found."}
+          icon="search"
+          headline={searching ? nothingMatches(query.trim()).replace(/[.]$/, "") : "No past matches yet"}
+          description={searching ? undefined : "Each match on Beatport is kept here, so you can see what it found."}
           action={searching ? undefined : { label: "Go to Playlists", onClick: onGoToPlaylists }}
         />
       )}
@@ -105,12 +117,10 @@ export function PastSearches({
             <caption className="match-visually-hidden">Every match run, newest first</caption>
             <thead>
               <tr>
-                {/* When, Tracks, Results and Status fit their words; What was matched gives way (new H). */}
+                {/* When, Results and Status fit their words; What was matched gives way (new H). The
+                    rows are named for their source, so there is no Tracks column (M151). */}
                 <th scope="col" className="match-past__fit">When</th>
                 <th scope="col">What was matched</th>
-                <th scope="col" className="num match-past__fit">
-                  Tracks
-                </th>
                 <th scope="col" className="match-past__fit">Results</th>
                 <th scope="col" className="match-past__fit">Status</th>
                 <th scope="col" className="match-past__end">
@@ -145,8 +155,9 @@ export function PastSearches({
                     }}
                   >
                     <td className="match-past__when match-past__fit">{formatDayTime(run.created_at, { now }) || run.created_at || ""}</td>
-                    <td className="match-past__what">{what}</td>
-                    <td className="num match-past__fit">{formatCount(run.planned)}</td>
+                    <td className="match-past__what" data-cut-hint>
+                      {what}
+                    </td>
                     <td className="match-past__fit">
                       {resultParts(run).map((part, index) => (
                         <span key={part.text} className={`match-result match-result--${part.tone}`}>
@@ -174,23 +185,22 @@ export function PastSearches({
                         )}
                         <Button
                           size="sm"
-                          variant="secondary"
-                          aria-label={`Save review list of ${named} as a file…`}
-                          onClick={() => setSaving({ run, open: true })}
+                          variant="quiet"
+                          aria-label={`More for ${named}`}
+                          aria-haspopup="menu"
+                          aria-expanded={menu?.run.job_id === run.job_id}
+                          onClick={(event) => {
+                            menuAnchor.current = event.currentTarget;
+                            if (menu?.run.job_id === run.job_id) {
+                              setMenu(null);
+                              return;
+                            }
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            setMenu({ run, x: rect.left, y: rect.bottom });
+                          }}
                         >
-                          Save review list…
+                          More
                         </Button>
-                        {run.status !== "running" && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            aria-label={`Match ${named} again`}
-                            disabled={matching}
-                            onClick={() => onMatchAgain(run)}
-                          >
-                            Match again
-                          </Button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -205,6 +215,31 @@ export function PastSearches({
             </p>
           )}
         </div>
+      )}
+
+      {menu && (
+        <TrackContextMenu
+          x={menu.x}
+          y={menu.y}
+          label="Match actions"
+          anchor={menuAnchor}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              id: "save",
+              label: "Save review list…",
+              onSelect: () => setSaving({ run: menu.run, open: true }),
+            },
+            {
+              id: "again",
+              label: "Match again",
+              // A second match queues behind the running one (M510), so only a run still going is refused.
+              disabled: menu.run.status === "running",
+              reason: "This match is still running",
+              onSelect: () => onMatchAgain(menu.run),
+            },
+          ]}
+        />
       )}
 
       <ReviewListSave

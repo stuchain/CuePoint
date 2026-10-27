@@ -61,7 +61,7 @@ export function reviewMenuItems(state: ReviewMenuState, handlers: ReviewMenuHand
         reason: "None of them is ticked",
         onSelect: handlers.onLeaveOut,
       },
-      { id: "choose", label: "Choose a match", disabled: count !== 1, reason: "Choose one track at a time", onSelect: handlers.onChoose },
+      { id: "choose", label: "Check the match", disabled: count !== 1, reason: "Check one track at a time", onSelect: handlers.onChoose },
     ]),
     ...moreSubmenu(more),
   ];

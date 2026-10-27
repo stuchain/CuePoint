@@ -107,12 +107,12 @@ describe("the scoring rows folded under Why this score?", () => {
   it("hold everything the plain line leaves out, the key bonus included", () => {
     expect(SCORE_ROWS.map((row) => row.label)).toEqual([
       "Score",
-      "Before bonuses",
+      "Score before bonuses",
       "Title similarity",
       "Artist similarity",
       "Year bonus",
       "Key bonus",
-      "Guards",
+      "Checks",
       "Found by",
     ]);
   });

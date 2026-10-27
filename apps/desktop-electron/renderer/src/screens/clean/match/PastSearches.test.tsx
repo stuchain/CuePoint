@@ -1,5 +1,5 @@
 /**
- * Past searches (C14, DEC-065): every match run, one row each, with its buttons.
+ * Past matches (C14, DEC-065): every match run, one row each, with its buttons.
  *
  * Opened inside the real area so that "Open sets From" and "Match again sends
  * the run's own rule" are tested where they happen. The engine's counts are
@@ -65,6 +65,12 @@ function element(props: Props) {
   );
 }
 
+/** Opens a run's More menu and picks an item, as the row's one action slot works (M151). */
+function pickMore(named: string, item: string) {
+  fireEvent.click(screen.getByRole("button", { name: `More for ${named}` }));
+  fireEvent.click(screen.getByRole("menuitem", { name: item }));
+}
+
 function renderPast(overrides: Partial<Props> = {}) {
   localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
   const props: Props = {
@@ -121,12 +127,11 @@ describe("the list", () => {
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     const [head, first] = screen.getAllByRole("row");
     const cells = [...first!.querySelectorAll("td")];
-    // When, Tracks, Results and Status fit their words; What was matched takes what is left.
-    expect(cells.map((cell) => cell.classList.contains("match-past__fit"))).toEqual([true, false, true, true, true, false]);
+    // When, Results and Status fit their words; What was matched takes what is left (no Tracks column).
+    expect(cells.map((cell) => cell.classList.contains("match-past__fit"))).toEqual([true, false, true, true, false]);
     expect([...head!.querySelectorAll("th")].map((cell) => cell.classList.contains("match-past__fit"))).toEqual([
       true,
       false,
-      true,
       true,
       true,
       false,
@@ -147,7 +152,7 @@ describe("the list", () => {
 
     const first = within(rows[0]!);
     expect(first.getByText('Playlist "all"')).toBeInTheDocument();
-    expect(first.getByText("179")).toBeInTheDocument();
+    expect(first.queryByText("179")).toBeNull();
     // The same words a track's state has everywhere (D2).
     expect(first.getByText(/131 confirmed/)).toBeInTheDocument();
     expect(first.getByText(/42 to check/)).toBeInTheDocument();
@@ -163,7 +168,7 @@ describe("the list", () => {
     expect(within(rows[2]!).getByText("Running")).toBeInTheDocument();
   });
 
-  it("offers Resume only on a run that stopped, and Match again on none that is running", async () => {
+  it("offers Resume only on a run that stopped, and one More on every row", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     expect(screen.getAllByRole("button", { name: /^Resume / })).toHaveLength(1);
@@ -171,7 +176,9 @@ describe("the list", () => {
     // The row is the way in: no Open button (C230).
     expect(screen.queryByRole("button", { name: /^Open / })).toBeNull();
     expect(screen.getAllByRole("row", { name: /^Open / })).toHaveLength(3);
-    expect(screen.getAllByRole("button", { name: /again$/ })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /^More for / })).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "More for 1 track" }));
+    expect(screen.getByRole("menuitem", { name: "Match again" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("says why a run stopped after its Stopped status, on the same row", async () => {
@@ -195,10 +202,10 @@ describe("the list", () => {
   it("says nothing has been matched yet, and that a search found nothing", async () => {
     world.runs = [];
     const { unmount } = renderPast();
-    expect(await screen.findByText("No searches yet", undefined, LOADED)).toBeInTheDocument();
-    expect(screen.getByText("Each Match on Beatport is kept here, so you can see what it found.")).toBeInTheDocument();
+    expect(await screen.findByText("No past matches yet", undefined, LOADED)).toBeInTheDocument();
+    expect(screen.getByText("Each match on Beatport is kept here, so you can see what it found.")).toBeInTheDocument();
     // The full empty state with its icon, as the other tabs show (C140).
-    const state = screen.getByText("No searches yet").closest(".cp-empty-state");
+    const state = screen.getByText("No past matches yet").closest(".cp-empty-state");
     expect(state).not.toHaveClass("cp-empty-state--compact");
     expect(state?.querySelector(".cp-empty-state__icon")).not.toBeNull();
     // The button goes to the Playlists sub-tab.
@@ -210,14 +217,14 @@ describe("the list", () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     world.runs = [];
-    fireEvent.change(screen.getByLabelText("Search past searches"), { target: { value: "zzz" } });
+    fireEvent.change(screen.getByLabelText("Search past matches"), { target: { value: "zzz" } });
     expect(await screen.findByText("Nothing matches \u201czzz\u201d", undefined, LOADED)).toBeInTheDocument();
   });
 
   it("asks the engine to search, after a pause in typing", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.change(screen.getByLabelText("Search past searches"), { target: { value: "friday" } });
+    fireEvent.change(screen.getByLabelText("Search past matches"), { target: { value: "friday" } });
     await waitFor(() => expect(bridge.getMatchJobs).toHaveBeenLastCalledWith({ limit: 20, q: "friday" }), LOADED);
   });
 
@@ -297,7 +304,7 @@ describe("Opening a run", () => {
   it("opens on Enter on the row, and not on a click inside one of its buttons", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: `Save review list of ${WHOLE} as a file…` }));
+    fireEvent.click(screen.getByRole("button", { name: `More for ${WHOLE}` }));
     expect(screen.queryByRole("region", { name: "Review All tracks" })).toBeNull();
     fireEvent.keyDown(screen.getByRole("row", { name: `Open ${WHOLE}` }), { key: "Enter" });
     expect(await screen.findByRole("region", { name: "Review All tracks" })).toBeInTheDocument();
@@ -316,7 +323,7 @@ describe("Resume and Match again", () => {
   it("matches a run again with the run's own rule, looking up even what is matched, under its label", async () => {
     const { props } = renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: `Match ${ALL} again` }));
+    pickMore(ALL, "Match again");
     expect(props.match.start).toHaveBeenCalledWith(
       "rematch-run",
       { query: { filters: { match: "all", rules: [{ field: "match_run", operator: "is", value: "job-1" }] } } },
@@ -325,10 +332,11 @@ describe("Resume and Match again", () => {
     );
   });
 
-  it("will not start another search while one is running", async () => {
-    renderPast({ match: stubMatch({ matching: true }) });
+  it("queues Match again behind a running match, but will not resume into one", async () => {
+    const { props } = renderPast({ match: stubMatch({ matching: true }) });
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    expect(screen.getByRole("button", { name: `Match ${ALL} again` })).toBeDisabled();
+    pickMore(ALL, "Match again");
+    expect(props.match.start).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: `Resume ${WHOLE}` })).toBeDisabled();
   });
 });
@@ -348,7 +356,7 @@ describe("Save review list (K12)", () => {
     install(vi.fn().mockResolvedValue({ canceled: false, filePath: "C:\\out\\review-list.xlsx" }));
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: `Save review list of ${ALL} as a file…` }));
+    pickMore(ALL, "Save review list…");
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Saves the tracks of this search");
@@ -377,8 +385,8 @@ describe("Save review list (K12)", () => {
     install(vi.fn().mockResolvedValue({ canceled: false, filePath: "C:\\out\\review-list.csv" }));
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    expect(screen.getAllByRole("button", { name: /^Save review list of/ })).toHaveLength(RUNS.length);
-    fireEvent.click(screen.getByRole("button", { name: `Save review list of ${WHOLE} as a file…` }));
+    expect(screen.getAllByRole("button", { name: /^More for / })).toHaveLength(RUNS.length);
+    pickMore(WHOLE, "Save review list…");
     fireEvent.click(await screen.findByRole("button", { name: "Choose where to save…" }));
     await waitFor(() => expect(bridge.exportReviewList).toHaveBeenCalled());
     const selection = bridge.exportReviewList!.mock.calls[0]![0].selection;
@@ -389,7 +397,7 @@ describe("Save review list (K12)", () => {
     install(vi.fn().mockResolvedValue({ canceled: true }));
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: `Save review list of ${ALL} as a file…` }));
+    pickMore(ALL, "Save review list…");
     fireEvent.click(await screen.findByRole("button", { name: "Choose where to save…" }));
     await waitFor(() => expect(bridge.saveExportFileDialog).toHaveBeenCalled());
     expect(bridge.exportReviewList).not.toHaveBeenCalled();

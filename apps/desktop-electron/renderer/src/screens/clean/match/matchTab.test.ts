@@ -10,7 +10,7 @@ describe("the remembered tab", () => {
     expect(loadMatchTab()).toBe("playlists");
   });
 
-  it("remembers Past searches", () => {
+  it("remembers Past matches", () => {
     saveMatchTab("past");
     expect(loadMatchTab()).toBe("past");
   });
@@ -37,7 +37,7 @@ describe("the step caption", () => {
     expect(stepCaption("review", true, "Fresh picks")).toBe("Step 3 of 3 · Check and sync Fresh picks");
   });
 
-  it("says nothing on Past searches, which is not a step", () => {
+  it("says nothing on Past matches, which is not a step", () => {
     expect(stepCaption("past", false)).toBeNull();
   });
 });

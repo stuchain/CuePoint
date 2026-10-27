@@ -35,7 +35,7 @@ const artist: TrackColumnDef<LibraryTrackRow> = {
 /** Where a track stands, and when a newer match disagrees: the Library's Match column reads it too. */
 export function matchCell(track: LibraryTrackRow): string {
   const label = matchStateLabel(track.match_state);
-  return track.match_disputed ? `${label} · changed since you decided` : label;
+  return track.match_disputed ? `${label} · changed after you confirmed` : label;
 }
 
 export const MISSING_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [

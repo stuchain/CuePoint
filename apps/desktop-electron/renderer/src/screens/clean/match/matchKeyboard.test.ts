@@ -30,9 +30,16 @@ describe("matchCommand", () => {
   });
 
   it("no longer answers the decision keys: a tick is the decision", () => {
-    for (const key of ["Enter", "n", "s", "b", "y", "ArrowLeft", "ArrowRight"]) {
+    for (const key of ["Enter", "s", "b", "y", "ArrowLeft", "ArrowRight"]) {
       expect(matchCommand(press(key))).toBeNull();
     }
+  });
+
+  it("answers a bare N as the next track to check (M508), but not Shift+N or one typed in a field", () => {
+    expect(matchCommand(press("n"))).toBe("next-to-check");
+    expect(matchCommand(press("N", { shiftKey: true }))).toBeNull();
+    expect(matchCommand(press("n", { target: document.createElement("input") }))).toBeNull();
+    expect(matchCommand(press("n", { ctrlKey: true }))).toBeNull();
   });
 
   it("leaves a modified key to the shell", () => {

@@ -161,7 +161,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         onOpen={open}
         rows={[
           { id: "duplicates", label: "Duplicates", count: other.duplicates.count, todo: "warning", place: clean("duplicates") },
-          { id: "disputed", label: "Changed since you decided", count: other.disputed.count, todo: "warning", place: clean("review") },
+          { id: "disputed", label: "Changed after you confirmed", count: other.disputed.count, todo: "warning", place: clean("review") },
           { id: "no_artwork", label: "No artwork", count: other.no_artwork.count, place: { page: "Library", rules: other.no_artwork.rules } },
         ]}
       >
@@ -189,7 +189,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
           { id: "rejected", label: MATCH_STATE.rejected, count: beatport.rejected.count, swatch: "danger" },
           { id: "no_match", label: MATCH_STATE.noMatch, count: beatport.no_match.count, swatch: "neutral", place: clean("review") },
           { id: "not_matched", label: MATCH_STATE.notLookedUp, count: beatport.not_matched.count, swatch: "muted", place: clean("review") },
-          { id: "not_synced", label: "Not synced to files", count: health.not_synced.count, place: { page: "Library", rules: health.not_synced.rules } },
+          { id: "not_synced", label: "Not synced", count: health.not_synced.count, place: { page: "Library", rules: health.not_synced.rules } },
         ]}
       />
       <HealthCard

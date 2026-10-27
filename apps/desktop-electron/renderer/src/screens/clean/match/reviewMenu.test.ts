@@ -50,8 +50,8 @@ describe("the review menu", () => {
     expect(last.items?.some((item) => item.label === "Copy as text")).toBe(true);
   });
 
-  it("names Choose a match without an ellipsis: it opens a panel, not a dialog", () => {
+  it("names Check the match without an ellipsis: it opens a panel, not a dialog", () => {
     const items = reviewMenuItems({ count: 1, canTick: true, canLeaveOut: true }, handlers);
-    expect(items.find((item) => item.id === "choose")?.label).toBe("Choose a match");
+    expect(items.find((item) => item.id === "choose")?.label).toBe("Check the match");
   });
 });

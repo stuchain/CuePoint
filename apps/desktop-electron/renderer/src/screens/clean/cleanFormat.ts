@@ -45,7 +45,7 @@ export function matchStateLabel(state: MatchState | null | undefined): string {
   }
 }
 
-/** What "changed since you decided" means, where a hint can say it. */
+/** What "changed after you confirmed" means, where a hint can say it. */
 export const DISPUTED_HINT = "A newer search found a different best match than the one you chose";
 
 /** Where a track stands and who put it there, in one line. */
@@ -68,7 +68,7 @@ export function decisionLine(state: TrackMatchState): string {
     default:
       line = MATCH_STATE.notLookedUp;
   }
-  return state.disputed ? `${line} — changed since you decided` : line;
+  return state.disputed ? `${line} — changed after you confirmed` : line;
 }
 
 /**
@@ -150,8 +150,11 @@ export function fileStatusHint(status: FileStatus | null | undefined): string {
 }
 
 /** A match that started, and what it left out (DEC-065). */
-export function matchStartedLine(started: Pick<MatchStarted, "planned" | "excluded">): string {
-  const head = `Matching ${count(started.planned, "track")} on Beatport.`;
+export function matchStartedLine(started: Pick<MatchStarted, "planned" | "excluded" | "queued">): string {
+  // A second match waits for the one running and starts by itself (M510).
+  const head = started.queued
+    ? `Queued: ${count(started.planned, "track")} will be matched on Beatport after the running match.`
+    : `Matching ${count(started.planned, "track")} on Beatport.`;
   if (started.excluded <= 0) return head;
   const verb = started.excluded === 1 ? "is" : "are";
   return `${head} ${formatCount(started.excluded)} already matched or decided ${verb} left out.`;
@@ -187,6 +190,46 @@ export function exportedLine(count_: number, filePath: string): string {
   const name = filePath.split(/[\\/]/).pop() ?? filePath;
   return `Exported ${count(count_, "track")} to ${name}.`;
 }
+
+/**
+ * A title cut into the words that differ from the group's other tracks and the rest, so
+ * "Touch Me (Hotlap Remix)" lights "Hotlap Remix" (M152). The engine decides which words differ;
+ * a word the title does not hold marks nothing.
+ */
+export function differingParts(title: string, words: readonly string[]): Array<{ text: string; differs: boolean }> {
+  const lower = title.toLowerCase();
+  const spans: Array<[number, number]> = [];
+  for (const word of words) {
+    const at = word === "" ? -1 : lower.indexOf(word.toLowerCase());
+    if (at >= 0) spans.push([at, at + word.length]);
+  }
+  if (spans.length === 0) return [{ text: title, differs: false }];
+  spans.sort((a, b) => a[0] - b[0]);
+  // Overlapping or touching spans are one lit part.
+  const merged: Array<[number, number]> = [];
+  for (const span of spans) {
+    const last = merged[merged.length - 1];
+    if (last && span[0] <= last[1]) last[1] = Math.max(last[1], span[1]);
+    else merged.push([span[0], span[1]]);
+  }
+  const parts: Array<{ text: string; differs: boolean }> = [];
+  let cursor = 0;
+  for (const [from, to] of merged) {
+    if (from > cursor) parts.push({ text: title.slice(cursor, from), differs: false });
+    parts.push({ text: title.slice(from, to), differs: true });
+    cursor = to;
+  }
+  if (cursor < title.length) parts.push({ text: title.slice(cursor), differs: false });
+  return parts;
+}
+
+/** "2 duplicate groups (4 tracks)": the same count wherever duplicates are counted (M155). */
+export function duplicateCountLine(groups: number, tracks: number | undefined): string {
+  const head = count(groups, "duplicate group");
+  return tracks === undefined ? head : `${head} (${count(tracks, "track")})`;
+}
+
+export const MIXES_DIFFER_LINE = "Different mixes matched to one Beatport track: check the match";
 
 export function trackCount(number: number): string {
   return count(number, "track");

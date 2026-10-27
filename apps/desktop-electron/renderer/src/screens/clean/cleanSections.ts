@@ -78,6 +78,16 @@ export function sectionCounts(
   return counts;
 }
 
+/**
+ * How many tracks wait for a decision in Match: to check plus changed since you decided. The
+ * sidebar's Clean entry shows it (M507) and Match opens on that list when it is above zero (D17),
+ * so every place that says "N to check" counts the same tracks. Null before Health is read.
+ */
+export function toCheckCount(health: LibraryHealth | null): number | null {
+  if (!health) return null;
+  return sectionCounts(health).review ?? 0;
+}
+
 /** The facts line under the title: how many tracks, and what waits in each part. */
 export function factsLine(
   tracks: number | null,

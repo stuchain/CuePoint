@@ -4,6 +4,8 @@ import type { TrackMatchState } from "../../api/cuepointBridge.types";
 import {
   clampLabel,
   decisionLine,
+  differingParts,
+  duplicateCountLine,
   attemptLabel,
   exportedLine,
   fileStatusHint,
@@ -54,7 +56,7 @@ describe("where a track stands", () => {
 
   it("says when a newer match disagrees", () => {
     expect(decisionLine(state({ decided_by: "user", disputed: true }))).toBe(
-      "Confirmed by you — changed since you decided",
+      "Confirmed by you — changed after you confirmed",
     );
   });
 
@@ -124,5 +126,36 @@ describe("sentences about what was done", () => {
       "<recorded> — no match",
     );
     expect(attemptLabel({ ...attempt, outcome: "error" }, 2, null)).toBe("<recorded> — search failed");
+  });
+});
+
+describe("duplicates, by track (D18)", () => {
+  it("lights the words that differ, wherever they sit in the title", () => {
+    expect(differingParts("Touch Me (Hotlap Remix)", ["Hotlap Remix"])).toEqual([
+      { text: "Touch Me (", differs: false },
+      { text: "Hotlap Remix", differs: true },
+      { text: ")", differs: false },
+    ]);
+    expect(differingParts("Touch Me", [])).toEqual([{ text: "Touch Me", differs: false }]);
+    expect(differingParts("Touch Me", ["Remix"])).toEqual([{ text: "Touch Me", differs: false }]);
+  });
+
+  it("joins words that overlap or touch into one lit part", () => {
+    expect(differingParts("A Extended Mix", ["Extended", "Extended Mix"])).toEqual([
+      { text: "A ", differs: false },
+      { text: "Extended Mix", differs: true },
+    ]);
+  });
+
+  it("counts groups and tracks the same everywhere", () => {
+    expect(duplicateCountLine(2, 4)).toBe("2 duplicate groups (4 tracks)");
+    expect(duplicateCountLine(1, 2)).toBe("1 duplicate group (2 tracks)");
+    expect(duplicateCountLine(3, undefined)).toBe("3 duplicate groups");
+  });
+
+  it("says a queued match waits for the running one (M510)", () => {
+    expect(matchStartedLine({ planned: 5, excluded: 0, queued: true })).toBe(
+      "Queued: 5 tracks will be matched on Beatport after the running match.",
+    );
   });
 });

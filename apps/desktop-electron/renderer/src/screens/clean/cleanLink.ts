@@ -182,3 +182,16 @@ export function cleanMatchOpening(location: {
   // tracks not looked up yet, which is safe, rather than not opening at all.
   return { tracks: tracksFrom((carried as Record<string, unknown>).tracks), token: location.key };
 }
+
+/**
+ * Start a match from another page (M505, D17): Clean is the one place a match starts, so a menu
+ * that used to open its own match window opens Clean with the tracks chosen instead. With no
+ * tracks it opens on the tracks not looked up yet. The Library, Track details, the Keys page and
+ * Prepare call this with their router's `navigate`.
+ */
+export function openClean(
+  navigate: (to: string, options: { state: Record<string, unknown> }) => void,
+  tracks?: readonly number[] | CleanTracks,
+): void {
+  navigate("/clean", { state: cleanMatchState(tracks) });
+}

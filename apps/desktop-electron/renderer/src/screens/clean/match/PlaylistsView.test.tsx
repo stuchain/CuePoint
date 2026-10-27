@@ -2,7 +2,7 @@
  * The Playlists view (C22): a tick on every playlist, the whole library as its own choice, one
  * Match N playlists button, and a Review button on what has been matched.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 
@@ -38,8 +38,20 @@ const DATA: CleanPlaylists = {
   ],
 };
 
+/** The Match area's toolbar slot, where the step draws its action (D17). */
+function makeHost(): HTMLElement {
+  const host = document.createElement("div");
+  host.setAttribute("data-testid", "action-host");
+  document.body.append(host);
+  return host;
+}
+
+afterEach(() => {
+  document.querySelectorAll('[data-testid="action-host"]').forEach((node) => node.remove());
+});
+
 function renderView(overrides: Partial<Props> = {}) {
-  const props: Props = { data: DATA, onMatch: vi.fn(), onReview: vi.fn(), ...overrides };
+  const props: Props = { data: DATA, onMatch: vi.fn(), onReview: vi.fn(), actionHost: makeHost(), ...overrides };
   return { props, ...render(<PlaylistsView {...props} />) };
 }
 
@@ -137,7 +149,8 @@ describe("the list", () => {
       "Playlist",
       "Tracks",
       "In your files",
-      "Review",
+      "To check",
+      "Actions",
     ]);
   });
 
@@ -158,7 +171,7 @@ describe("the list", () => {
     expect(screen.getByText("Nothing matches \u201czzz\u201d")).toBeInTheDocument();
   });
 
-  it("gives only the running playlist a bar, its count, the time left and a Stop; a queued one says Waiting", () => {
+  it("gives only the running playlist a bar, its count, the time left and a Stop; a queued one says Queued", () => {
     const onStop = vi.fn();
     // The job has twice the running playlist's 72 tracks left, so the row has half its time.
     renderView({ secondsLeft: 120, progress: { done: 108, total: 252 }, onStop });
@@ -169,7 +182,7 @@ describe("the list", () => {
     fireEvent.click(within(row).getByRole("button", { name: "Stop matching hj" }));
     expect(onStop).toHaveBeenCalledWith("j");
     const queued = screen.getByText("Queued one").closest("tr")!;
-    expect(within(queued).getByText("Waiting")).toBeInTheDocument();
+    expect(within(queued).getByText("Queued")).toBeInTheDocument();
     expect(within(queued).queryByRole("progressbar")).toBeNull();
     expect(within(queued).queryByRole("button", { name: /Stop/ })).toBeNull();
     expect(screen.getByRole("checkbox", { name: "Match Queued one" })).toBeDisabled();
@@ -189,10 +202,15 @@ describe("a playlist's time left", () => {
   });
 });
 
-describe("the bar under the list", () => {
-  it("says to tick something while nothing is ticked", () => {
+describe("the step's action, in the area's toolbar (D17)", () => {
+  it("draws nothing there while the view is not the one showing", () => {
+    renderView({ active: false });
+    expect(screen.queryByRole("button", { name: "Match ticked playlists" })).toBeNull();
+  });
+
+  it("says why Match waits while nothing is ticked", () => {
     renderView();
-    expect(screen.getByText("Tick one or more playlists")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
   });
 
   it("counts the ticked playlists and their tracks", () => {
@@ -200,7 +218,6 @@ describe("the bar under the list", () => {
     tick("Peak time");
     tick("Warmup");
     expect(screen.getByText("2 playlists \u00b7 80 tracks")).toBeInTheDocument();
-    expect(screen.queryByText("Tick one or more playlists")).toBeNull();
   });
 
   it("counts the whole library by its tracks", () => {
@@ -249,32 +266,37 @@ describe("matching what is ticked", () => {
     expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeEnabled();
   });
 
-  it("waits while a match runs, and says why", () => {
-    renderView({ matching: true });
+  it("queues behind a match that runs: the button stays enabled (M510)", () => {
+    const { props } = renderView({ matching: true });
     tick("Peak time");
-    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
-    // The reason is a hint on the button now, not a line in the bar.
-    expect(screen.queryByText(/One match at a time/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Match ticked playlists" }));
+    expect(props.onMatch).toHaveBeenCalledTimes(1);
   });
 });
 
-describe("Review", () => {
-  it("is offered on what has been matched, and opens that playlist", () => {
+describe("To check, per row (M146)", () => {
+  it("says how many wait in a playlist, as the way to its review, and opens that playlist", () => {
     const { props } = renderView();
-    fireEvent.click(screen.getByRole("button", { name: "Review all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review all: 18 to check" }));
     expect(props.onReview).toHaveBeenCalledWith(DATA.playlists[2]);
-    expect(screen.queryByRole("button", { name: "Review Warmup" })).toBeNull();
+    expect(screen.getByText("18 to check")).toBeInTheDocument();
+  });
+
+  it("still opens a matched playlist with nothing waiting, as Review, and draws a dash where nothing was matched", () => {
+    const { props } = renderView();
+    fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
+    expect(props.onReview).toHaveBeenCalledWith(DATA.playlists[0]);
+    expect(screen.queryByRole("button", { name: /Review Warmup/ })).toBeNull();
+    expect(within(screen.getByText("Warmup").closest("tr")!).getAllByRole("cell")[4]).toHaveTextContent("\u2014");
   });
 
   it("opens the whole library with null", () => {
-    const { props } = renderView();
-    fireEvent.click(screen.getByRole("button", { name: "Review All tracks" }));
+    const { props } = renderView({
+      data: { ...DATA, whole_library: { ...COUNTS, track_count: 1234, waiting: 23, accepted: 1211 } },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Review All tracks: 23 to check" }));
     expect(props.onReview).toHaveBeenCalledWith(null);
-  });
-
-  it("is offered on a playlist the search found nothing for", () => {
-    renderView();
-    expect(screen.getByRole("button", { name: "Review Found nothing" })).toBeInTheDocument();
   });
 });
 
@@ -316,11 +338,14 @@ describe("the rows stay one line", () => {
     expect(end).toMatch(/white-space:\s*nowrap/);
   });
 
-  it("keeps the footer's status at the left, beside the Match button at the right", () => {
-    expect(css).toMatch(/\.playlists__next\s*\{[^}]*margin-inline-end:\s*auto/);
-    // The ticked line is also a shared count, which pushes itself right; it must start at the left
-    // in both states, not jump to the middle once tracks are ticked (item 11).
-    expect(css).toMatch(/\.playlists__choice\s*\{[^}]*margin-inline:\s*0 auto/);
+  it("has no bar under the rows: the count sits beside the button in the area's toolbar (D17, M143)", () => {
+    expect(css).not.toMatch(/\.playlists__footer/);
+    // The shared count pushes itself right; beside the button it sits at its own edge.
+    expect(css).toMatch(/\.playlists__choice\s*\{[^}]*margin-inline:\s*0;/);
+  });
+
+  it("raises no sideways bar for a pixel of overflow (M142)", () => {
+    expect(css).toMatch(/\.playlists__scroll\s*\{[^}]*overflow-x:\s*hidden/);
   });
 });
 

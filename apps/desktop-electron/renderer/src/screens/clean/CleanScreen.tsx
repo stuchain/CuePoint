@@ -35,6 +35,7 @@ import { formatCount } from "../../format/counts";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
+import { Badge } from "../../components/Badge";
 import { Tabs } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
 import { MatchWindow } from "./MatchWindow";
@@ -42,6 +43,10 @@ import { MissingFilesView } from "./MissingFilesView";
 import { MatchArea, type ReviewOpening, type ReviewTarget } from "./match/MatchArea";
 import { NothingFoundNote } from "./match/MatchRunLine";
 import { usePageActive } from "../../components/shell/pageActive";
+import { useBeatportSignIn } from "../../components/shell/useBeatportSignIn";
+import { Button } from "../../components/Button";
+import { Notice } from "../../components/Notice";
+import { settingsFocusState } from "../settingsLink";
 import { WHOLE_LIBRARY_NAME, useCleanPlaylists } from "./match/useCleanPlaylists";
 import { matchRequest, type MatchChoice } from "./match/matchPlaylists";
 import type { NothingFound } from "./match/matchDone";
@@ -56,6 +61,7 @@ import {
   loadCleanSection,
   sectionCounts,
   saveCleanSection,
+  toCheckCount,
   type CleanSection,
 } from "./cleanSections";
 import { useCleanHealth } from "./useCleanHealth";
@@ -137,6 +143,10 @@ export function CleanScreen({
   }, [matchWith, openMatch]);
 
   const cleanHealth = useCleanHealth();
+  // Not signed in to Beatport: the searches would all fail, so say so first and let the person
+  // sign in or go on anyway (M506). Null (not known) never blocks.
+  const signedIn = useBeatportSignIn();
+  const [signInAsk, setSignInAsk] = useState<MatchChoice | null>(null);
   const { reload: reloadHealth } = cleanHealth;
   const match = useCleanMatch(reloadHealth);
   // The Playlists view's rows live here: a row's Match starts the page's one run (C22).
@@ -198,6 +208,8 @@ export function CleanScreen({
   if (summary === undefined) {
     return (
       <div className="screen screen--stack clean-screen--waiting">
+        {/* The title is there while the library is read, as Discover's and Prepare's are (M149). */}
+        <ScreenHeader title="Clean" inset />
         <Loading what="your library" />
       </div>
     );
@@ -226,9 +238,15 @@ export function CleanScreen({
     if (!pageShown.current) navigate("/clean");
   };
   // Match what is ticked: one run over all of it, followed here (C22).
-  const startMatch = (choice: MatchChoice) => {
+  const startMatch = (choice: MatchChoice, anyway = false) => {
+    if (signedIn === false && !anyway) {
+      setSignInAsk(choice);
+      return;
+    }
+    setSignInAsk(null);
     const data = playlists.data;
-    if (!data || match.matching) return;
+    // A match started while another runs is queued by the engine and starts by itself (M510).
+    if (!data) return;
     const request = matchRequest(choice, data.whole_library);
     const targets = targetsOf(choice);
     setNothingFound(null);
@@ -261,11 +279,13 @@ export function CleanScreen({
                 return {
                   id: entry.id,
                   label: entry.label,
-                  // The count after the name, in the page's one count style: a grey figure,
-                  // amber when it is work waiting (area 58).
+                  // The count after the name is muted, as every tab's is; only a problem (files
+                  // that are missing) is a warning chip (M148).
                   detail:
-                    waiting === undefined ? undefined : (
-                      <span className="clean-tab-count">{formatCount(waiting)}</span>
+                    waiting === undefined ? undefined : entry.id === "missing" ? (
+                      <Badge tone="warning">{formatCount(waiting)}</Badge>
+                    ) : (
+                      formatCount(waiting)
                     ),
                 };
               })}
@@ -275,6 +295,26 @@ export function CleanScreen({
           }
         />
       </div>
+      {signInAsk && signedIn === false && (
+        <Notice
+          kind="warning"
+          action={
+            <>
+              <Button variant="secondary" onClick={() => navigate("/settings", { state: settingsFocusState("beatport-token") })}>
+                Sign in to Beatport
+              </Button>
+              <Button variant="secondary" onClick={() => startMatch(signInAsk, true)}>
+                Match anyway
+              </Button>
+              <Button variant="quiet" onClick={() => setSignInAsk(null)}>
+                Cancel
+              </Button>
+            </>
+          }
+        >
+          You are not signed in to Beatport, so its searches will fail. Sign in first, or match anyway.
+        </Notice>
+      )}
       {!match.matching && nothingFound && (
         <NothingFoundNote
           name={nothingFound.name}
@@ -298,6 +338,7 @@ export function CleanScreen({
               reviewOpening={reviewOpening}
               onReviewOpened={reviewOpened}
               onViewChange={setMatchView}
+              toCheck={toCheckCount(cleanHealth.health)}
             />
           </Activity>
         )}
@@ -312,7 +353,16 @@ export function CleanScreen({
         )}
         {visited.has("duplicates") && (
           <Activity mode={section === "duplicates" ? "visible" : "hidden"}>
-            <DuplicatesView health={cleanHealth.health} onHealthChanged={reloadHealth} />
+            <DuplicatesView
+              health={cleanHealth.health}
+              onHealthChanged={reloadHealth}
+              onCheckMatch={(trackId) => {
+                // Different mixes under one Beatport track: its match is checked in Match (D18).
+                setSection("review");
+                saveCleanSection("review");
+                setFocus({ trackId, token: `dup:${trackId}:${Date.now()}` });
+              }}
+            />
           </Activity>
         )}
       </div>

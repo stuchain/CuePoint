@@ -18,6 +18,7 @@
  * Waiting. The bar under the rows says what is ticked and holds the Match button.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { CleanPlaylistCounts, CleanPlaylists, CleanPlaylistStatus } from "../../../api/cuepointBridge.types";
 import { Badge } from "../../../components/Badge";
@@ -58,6 +59,13 @@ interface PlaylistsViewProps {
   progress?: { done: number; total: number } | null;
   /** Stop the running match. */
   onStop?: (jobId: string) => void;
+  /**
+   * Where the step's action goes: the Match area's toolbar (D17, M143). The count of what is ticked
+   * and **Match ticked playlists** are drawn there, not in a bar of their own under the rows.
+   */
+  actionHost?: HTMLElement | null;
+  /** Whether this view is the one showing: a hidden view draws no action into the toolbar. */
+  active?: boolean;
 }
 
 /** A running playlist's share of the job's time left: by tracks left in it and in the job. */
@@ -111,6 +119,8 @@ export function PlaylistsView({
   secondsLeft = null,
   progress = null,
   onStop,
+  actionHost = null,
+  active = true,
 }: PlaylistsViewProps) {
   // What is ticked: the whole library, or some playlists by id. Never both.
   const [ticked, setTicked] = useState<ReadonlySet<RowKey>>(new Set());
@@ -265,16 +275,30 @@ export function PlaylistsView({
             <MissingValue />
           )}
         </td>
+        <td className="playlists__review">
+          {/* What waits in this playlist, and the way to it; a matched one with nothing waiting still
+              opens, as "Review"; a dash where nothing was looked up (M146). */}
+          {status.canReview ? (
+            <Button
+              size="sm"
+              variant="quiet"
+              className="playlists__to-check"
+              aria-label={
+                counts.waiting > 0 ? `Review ${name}: ${counts.waiting.toLocaleString()} to check` : `Review ${name}`
+              }
+              onClick={() => onReview(playlist)}
+            >
+              {counts.waiting > 0 ? `${formatCount(counts.waiting)} to check` : "Review"}
+            </Button>
+          ) : (
+            <MissingValue />
+          )}
+        </td>
         <td className="playlists__end">
           <div className="cp-button-row playlists__buttons">
             {status.running && onStop && (
               <Button size="sm" variant="secondary" aria-label={`Stop matching ${name}`} onClick={() => onStop(status.running!.jobId)}>
                 Stop
-              </Button>
-            )}
-            {status.canReview && (
-              <Button size="sm" variant="secondary" aria-label={`Review ${name}`} onClick={() => onReview(playlist)}>
-                Review
               </Button>
             )}
           </div>
@@ -305,8 +329,11 @@ export function PlaylistsView({
                 Tracks
               </th>
               <th scope="col">In your files</th>
+              <th scope="col" className="playlists__review">
+                To check
+              </th>
               <th scope="col" className="playlists__end">
-                <span className="match-visually-hidden">Review</span>
+                <span className="match-visually-hidden">Actions</span>
               </th>
             </tr>
           </thead>
@@ -329,15 +356,24 @@ export function PlaylistsView({
           <EmptyState compact icon="search" headline={nothingMatches(filter.trim()).replace(/[.]$/, "")} />
         )}
       </div>
-      <div className="cp-toolbar playlists__footer">
-        {!choice && <span className="playlists__next">Tick one or more playlists</span>}
-        {choice && <span className="cp-count playlists__choice">{choiceLine}</span>}
-        <Hint text={matching && choice ? "Wait for the match that is running" : undefined}>
-          <Button variant="primary" disabled={!choice || matching} onClick={start}>
-            {MATCH_TICKED_LABEL}
-          </Button>
-        </Hint>
-      </div>
+      {actionHost &&
+        active &&
+        createPortal(
+          <>
+            {choice && <span className="cp-count playlists__choice">{choiceLine}</span>}
+            <Hint
+              text={
+                !choice ? "Tick one or more playlists" : matching ? "Another match is running: this one waits for it" : undefined
+              }
+              portal
+            >
+              <Button variant="primary" disabled={!choice} onClick={start}>
+                {MATCH_TICKED_LABEL}
+              </Button>
+            </Hint>
+          </>,
+          actionHost,
+        )}
     </div>
   );
 }

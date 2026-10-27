@@ -61,6 +61,8 @@ interface Reviewing {
   name: string;
   /** A track to open the panel on once the table is read (the Inspector's link). */
   trackId?: number;
+  /** Open with "To check only" on: Match opens on the tracks that wait (D17). */
+  toCheckOnly?: boolean;
 }
 
 interface MatchAreaProps {
@@ -79,6 +81,11 @@ interface MatchAreaProps {
   onReviewOpened?: () => void;
   /** What is showing, and whether a review's panel is open, said up so a match that ends knows where it may land. */
   onViewChange?: (view: { tab: MatchView; panelOpen: boolean }) => void;
+  /**
+   * How many tracks wait for a decision, once Health is read (null before). Above zero, Match opens
+   * on that list, with "To check only" on, instead of on the playlists (D17, M507).
+   */
+  toCheck?: number | null;
 }
 
 export function MatchArea({
@@ -90,6 +97,7 @@ export function MatchArea({
   reviewOpening = null,
   onReviewOpened,
   onViewChange,
+  toCheck = null,
 }: MatchAreaProps) {
   const [tab, setTab] = useState<MatchTab>(loadMatchTab);
   const [review, setReview] = useState<Reviewing | null>(null);
@@ -98,6 +106,8 @@ export function MatchArea({
   // The one search of the row filters the list shown; each list keeps its own text.
   const [filter, setFilter] = useState("");
   const [pastText, setPastText] = useState("");
+  // How many past matches there are (null until read): the search waits for one (M150).
+  const [pastCount, setPastCount] = useState<number | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   // Panes already opened stay mounted (hidden) when another is shown, so coming back finds the
   // same scroll and ticks. A pane never opened is not drawn.
@@ -109,6 +119,13 @@ export function MatchArea({
   }, [onViewChange, panelOpen, view]);
   usePageSearch(review ? undefined : searchRef);
 
+  // Where the Playlists step draws its action: the area's one toolbar (D17).
+  const [actionHost, setActionHost] = useState<HTMLElement | null>(null);
+
+  // Once Health says tracks wait, Match opens on them, unless something else already opened or the
+  // person has chosen a tab. Decided once per visit, so going back to the playlists stays there.
+  const decided = useRef(false);
+
   const closeReview = useCallback(() => {
     setReview(null);
     setPanelOpen(false);
@@ -117,6 +134,7 @@ export function MatchArea({
   /** A sub-tab: also the way out of a review, which belongs to Playlists. */
   const chooseTab = useCallback(
     (id: string) => {
+      decided.current = true;
       const next: MatchTab = id === "past" ? "past" : "playlists";
       setTab(next);
       saveMatchTab(next);
@@ -126,11 +144,20 @@ export function MatchArea({
   );
 
   /** Show this review, replacing any other. */
-  const showReview = useCallback((entry: { source: ReviewSource; name: string; trackId?: number }) => {
+  const showReview = useCallback((entry: { source: ReviewSource; name: string; trackId?: number; toCheckOnly?: boolean }) => {
+    decided.current = true;
     openings.current += 1;
     setReview({ ...entry, key: String(openings.current) });
     setPanelOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (decided.current || toCheck === null) return;
+    decided.current = true;
+    if (toCheck > 0 && tab === "playlists" && !focus && !reviewOpening) {
+      showReview({ source: {}, name: WHOLE_LIBRARY_NAME, toCheckOnly: true });
+    }
+  }, [focus, reviewOpening, showReview, tab, toCheck]);
 
   // The Inspector's link: the library's review, on that track.
   const focusToken = useRef<string | null>(null);
@@ -186,27 +213,29 @@ export function MatchArea({
 
   const tabs = [
     { id: "playlists", label: "Playlists" },
-    { id: "past", label: "Past searches" },
+    { id: "past", label: "Past matches" },
   ];
   const caption = stepCaption(view, match.matching, review?.name);
   const shown = (visible: boolean) => (visible ? "visible" : "hidden");
 
   return (
     <div className="match-area">
-      {/* One row (D13): the sub-tabs, the search and the step caption; a review adds a back line.
-          The search follows the sub-tabs at the left, where the Library's search sits (C223). */}
-      <div className="match-area__row">
+      {/* One toolbar (D13, M147): the sub-tabs, the search, the step's action and the step caption at
+          its right; a review adds a back line. The search follows the sub-tabs at the left, where
+          the Library's search sits (C223). */}
+      <div className="cp-toolbar match-area__row">
         <Tabs tabs={tabs} activeId={review ? "playlists" : tab} onChange={chooseTab} variant="sub" />
-        {!review && (
+        {!review && (tab !== "past" || pastCount !== 0) && (
           <SearchField
             ref={searchRef}
-            thing={tab === "past" ? "past searches" : "playlists"}
-            label={tab === "past" ? "Search past searches" : "Filter playlists"}
+            thing={tab === "past" ? "past matches" : "playlists"}
+            label={tab === "past" ? "Search past matches" : "Filter playlists"}
             className="match-area__search"
             value={tab === "past" ? pastText : filter}
             onValueChange={tab === "past" ? setPastText : setFilter}
           />
         )}
+        <div className="match-area__actions" ref={setActionHost} />
         {caption && <span className="match-area__caption">{caption}</span>}
       </div>
       {/* The way back is a quiet line of its own under the row, as the D13 mockup draws it. */}
@@ -233,6 +262,8 @@ export function MatchArea({
               secondsLeft={match.secondsLeft}
               progress={match.progress}
               onStop={match.stop}
+              actionHost={actionHost}
+              active={!review && tab === "playlists"}
             />
           </Activity>
         )}
@@ -246,6 +277,7 @@ export function MatchArea({
             onPanelChange={setPanelOpen}
             onChanged={onHealthChanged}
             initialTrackId={review.trackId}
+            startOnToCheck={review.toCheckOnly}
           />
         )}
         {opened.has("past") && (
@@ -259,6 +291,7 @@ export function MatchArea({
               onResume={resumeRun}
               onMatchAgain={matchAgain}
               onGoToPlaylists={() => chooseTab("playlists")}
+              onCount={setPastCount}
             />
           </Activity>
         )}

@@ -117,6 +117,11 @@ export function announceRunEnd({
       return;
     }
     // Every track of a finished run is reviewed, not only the ones to check: Review is always offered.
-    push(matchDoneLine(label, found), "success", { label: "Review", onClick: () => onReview(found) });
+    // Tracks waiting for a decision keep the toast until it is closed (a warning stays), so a run that
+    // finished while you were away is still there when you come back (M507).
+    push(matchDoneLine(label, found), found.waiting > 0 ? "warning" : "success", {
+      label: "Review",
+      onClick: () => onReview(found),
+    });
   });
 }

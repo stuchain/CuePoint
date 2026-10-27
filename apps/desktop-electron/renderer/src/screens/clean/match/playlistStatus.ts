@@ -15,7 +15,7 @@ export interface PlaylistStatus {
   kind: PlaylistStatusKind;
   /** How far a running match is on this playlist's own tracks; the row draws the bar and "12 of 24". */
   running: { jobId: string; done: number; total: number } | null;
-  /** The row's words while it runs ("12 of 24") or waits ("Waiting"). */
+  /** The row's words while it runs ("12 of 24") or waits ("Queued"). */
   text: string;
   /** Whether the row has something to review: some track has been looked up. */
   canReview: boolean;
@@ -37,7 +37,7 @@ export function playlistStatus(counts: CleanPlaylistCounts): PlaylistStatus {
     };
   }
   if (queued) {
-    return { ...base, kind: "queued", text: "Waiting", canTick: false };
+    return { ...base, kind: "queued", text: "Queued", canTick: false };
   }
   if (tracks === 0) {
     return { ...base, kind: "empty", canTick: false };

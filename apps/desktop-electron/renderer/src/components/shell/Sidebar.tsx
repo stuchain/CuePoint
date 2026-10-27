@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import appIcon from "../../assets/cuepoint-icon.png";
+import { LIBRARY_HEALTH, useSharedRead } from "../../api/sharedReads";
+import { formatCount } from "../../format/counts";
+import { toCheckCount } from "../../screens/clean/cleanSections";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import {
@@ -39,30 +42,49 @@ import "./Sidebar.css";
  * tooltip, with the label in front of it when the rail is collapsed. An empty library dims
  * nothing: each page explains itself (C144).
  */
-function DestinationLink({ destination, collapsed, lit }: {
+function DestinationLink({ destination, collapsed, lit, waiting = 0 }: {
   destination: NavDestination;
   collapsed: boolean;
   /** Whether this entry is the one lit for the current page (C221). */
   lit: boolean;
+  /** Tracks waiting here for a decision: the Clean entry says how many (M507). */
+  waiting?: number;
 }) {
   const { hint } = destination;
+  const said = waiting > 0 ? `${formatCount(waiting)} to check` : "";
   return (
-    <Hint text={collapsed ? `${destination.label}: ${hint}` : hint} portal placement="right">
+    <Hint
+      text={collapsed ? `${destination.label}: ${hint}${said ? `. ${said}` : ""}` : hint}
+      portal
+      placement="right"
+    >
       <Link
         to={destination.path}
         className={`cp-sidebar__link${lit ? " cp-sidebar__link--active" : ""}`}
         aria-current={lit ? "page" : undefined}
         // The accessible name has to survive collapsing: with labels hidden the
         // link would otherwise announce as its glyph, or as nothing at all.
-        aria-label={destination.label}
+        aria-label={said ? `${destination.label}, ${said}` : destination.label}
       >
         <span className="cp-sidebar__icon" aria-hidden>
           {destination.icon ? <PixelIcon name={destination.icon} /> : <span className="cp-sidebar__glyph">{destination.glyph}</span>}
         </span>
         {!collapsed && <span className="cp-sidebar__label">{destination.label}</span>}
+        {!collapsed && waiting > 0 && (
+          <span className="cp-sidebar__count" aria-hidden>
+            {formatCount(waiting)}
+          </span>
+        )}
       </Link>
     </Hint>
   );
+}
+
+/** The Clean entry: the same link, with how many tracks wait for a decision beside it (M507). */
+function CleanLink({ destination, collapsed, lit }: { destination: NavDestination; collapsed: boolean; lit: boolean }) {
+  const read = useSharedRead(LIBRARY_HEALTH);
+  const waiting = toCheckCount(read.value ?? null) ?? 0;
+  return <DestinationLink destination={destination} collapsed={collapsed} lit={lit} waiting={waiting} />;
 }
 
 /** The brand (HDR-6): the pixel logo and the name, or the logo alone when the rail is closed. */
@@ -197,9 +219,12 @@ export function Sidebar() {
     </Hint>
   );
 
-  const renderLink = (destination: NavDestination) => (
-    <DestinationLink key={destination.id} destination={destination} collapsed={collapsed} lit={destination.id === lit} />
-  );
+  const renderLink = (destination: NavDestination) =>
+    destination.id === "clean" ? (
+      <CleanLink key={destination.id} destination={destination} collapsed={collapsed} lit={destination.id === lit} />
+    ) : (
+      <DestinationLink key={destination.id} destination={destination} collapsed={collapsed} lit={destination.id === lit} />
+    );
 
   const renderGroup = (entry: (typeof groups)[number]) => {
     const label =

@@ -32,7 +32,7 @@ describe("playlistStatus", () => {
   it("says a playlist started in the same match but not reached yet is waiting, and cannot be ticked", () => {
     expect(playlistStatus(counts({ queued: true }))).toMatchObject({
       kind: "queued",
-      text: "Waiting",
+      text: "Queued",
       running: null,
       canReview: false,
       canTick: false,

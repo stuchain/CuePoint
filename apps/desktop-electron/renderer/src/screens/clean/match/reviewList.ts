@@ -5,7 +5,7 @@
  * differs from the match it found, and how many hold each status; this only chooses the words and
  * cuts the match into the parts the table draws. No rule about a match lives here.
  */
-import type { MatchCandidate, ReviewCandidate, ReviewStatus } from "../../../api/cuepointBridge.types";
+import type { MatchCandidate, ReviewCandidate, ReviewStatus, ReviewTrack } from "../../../api/cuepointBridge.types";
 import type { BadgeVariant } from "../../../components/Badge";
 import { formatCount, plural } from "../../../format/counts";
 import { MATCH_STATE, noMatchCount, quoted } from "../../../format/words";
@@ -138,4 +138,24 @@ export function reviewCandidateOf(candidate: MatchCandidate): ReviewCandidate {
     score: candidate.score,
     guard_ok: candidate.guard_ok,
   };
+}
+
+/**
+ * The next track still to check after `fromId`, wrapping round to the start (M508). `fromId` itself
+ * is never the answer, so after "Use this match" (which settles it) the next one is a different
+ * track. Null when no other track is waiting.
+ */
+export function nextToCheck(rows: readonly ReviewTrack[], fromId: number | null): ReviewTrack | null {
+  if (rows.length === 0) return null;
+  const at = fromId === null ? -1 : rows.findIndex((row) => row.track_id === fromId);
+  for (let step = 1; step <= rows.length; step += 1) {
+    const row = rows[(at + step + rows.length) % rows.length]!;
+    if (row.track_id !== fromId && row.status === "to_check") return row;
+  }
+  return null;
+}
+
+/** "To check only (9)": the review's filter, with how many it keeps. */
+export function toCheckOnlyLabel(count: number): string {
+  return `To check only (${formatCount(count)})`;
 }

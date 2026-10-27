@@ -370,7 +370,7 @@ describe("the page", () => {
       "Duplicates",
       // The Match area's own sub-tabs: no One at a time and no Table, the review list is their job.
       "Playlists",
-      "Past searches",
+      "Past matches",
     ]);
     expect(screen.getByRole("tab", { name: "Match" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
@@ -397,7 +397,7 @@ describe("the page", () => {
         "Missing files, 3",
         "Duplicates",
         "Playlists",
-        "Past searches",
+        "Past matches",
       ]),
     );
   });
@@ -484,10 +484,9 @@ describe("the Match tab", () => {
       jobs: [run({ job_id: "job-1", label: 'Playlist "all"' })],
       total: 1,
     });
-    fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
-    expect(
-      await screen.findByRole("button", { name: `Save review list of ${quoted('Playlist "all"')} as a file…` }),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Past matches" }));
+    fireEvent.click(await screen.findByRole("button", { name: `More for ${quoted('Playlist "all"')}` }));
+    expect(screen.getByRole("menuitem", { name: "Save review list…" })).toBeInTheDocument();
   });
 
   it("matches the chosen tracks as a job, names the run, and says what it left out", async () => {
@@ -563,9 +562,9 @@ describe("the Match tab", () => {
     expect(within(row).getByRole("button", { name: "Stop matching hj" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
 
-    // One run at a time: on the rows every Match waits for it, and says why.
+    // A second match queues behind the running one (M510): Match stays available.
     fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
-    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeEnabled();
   });
 
   it("says why the engine refused a match", async () => {
@@ -617,7 +616,8 @@ describe("the Match tab", () => {
     });
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
     renderClean();
-    fireEvent.click(await screen.findByRole("button", { name: `Match ${quoted('Playlist "Friday"')} again` }));
+    fireEvent.click(await screen.findByRole("button", { name: `More for ${quoted('Playlist "Friday"')}` }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Match again" }));
     await waitFor(() =>
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
         selection: {
@@ -638,7 +638,8 @@ describe("the Match tab", () => {
     });
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
     renderClean();
-    fireEvent.click(await screen.findByRole("button", { name: /^Match \u201cp+\u201d again$/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^More for \u201cp+\u201d$/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Match again" }));
     await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalled());
     const sent = bridge.startCleanMatch!.mock.calls[0]![0] as { label: string };
     expect(sent.label).toBe(`${"p".repeat(199)}…`);
@@ -670,10 +671,10 @@ describe("missing files", () => {
     const items = within(steps).getAllByRole("listitem");
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent("In Rekordbox, right-click the track, choose Relocate and point it at the file.");
-    expect(items[1]).toHaveTextContent("In Rekordbox, choose File, then Export Collection in xml format.");
-    expect(items[2]).toHaveTextContent("Here, Check for changes.");
+    expect(items[1]).toHaveTextContent("In Rekordbox, choose File, then Export Collection in xml format, saving over");
+    expect(items[2]).toHaveTextContent("Here, Check for changes in the Library.");
 
-    fireEvent.click(within(items[2]!).getByRole("button", { name: "Check for changes" }));
+    fireEvent.click(within(items[2]!).getByRole("button", { name: "Check for changes in the Library" }));
     const location = JSON.parse((await screen.findByTestId("location")).textContent ?? "{}");
     expect(location).toEqual({ pathname: "/library", state: libraryRefreshState() });
   });
@@ -748,8 +749,10 @@ describe("missing files", () => {
 describe("duplicates", () => {
   it("lists each group with its signal and its tracks", async () => {
     renderClean("duplicates");
-    const group = await screen.findByRole("listitem", { name: /Same artist and title · 2 tracks/ });
-    expect(within(group).getAllByText(/^Twin \u00b7 Artist/)).toHaveLength(2);
+    const group = await screen.findByRole("listitem", { name: /Twin.*2 tracks/ });
+    // Titled by its first track; each member is a row of its own (D18).
+    expect(within(group).getByRole("heading", { name: /^Twin \u00b7 Artist/ })).toBeInTheDocument();
+    expect(within(group).getAllByRole("listitem")).toHaveLength(2);
     expect(within(group).getByText(/256 kbps/)).toBeInTheDocument();
     expect(within(group).getByText(/within two seconds/)).toBeInTheDocument();
     expect(bridge.getDuplicateGroups).toHaveBeenCalledWith({
@@ -768,6 +771,15 @@ describe("duplicates", () => {
       expect(control.textContent ?? "").not.toMatch(/delete|remove|trash/i);
       expect(control.getAttribute("aria-label") ?? "").not.toMatch(/delete|remove|trash/i);
     }
+  });
+
+  it("keeps one track of a group without deleting anything, and can undo it (M153)", async () => {
+    bridge.keepDuplicateTrack = vi.fn().mockResolvedValue({ group: { ...GROUP, dismissed: true }, kept_track_id: 7 });
+    renderClean("duplicates");
+    fireEvent.click((await screen.findAllByRole("button", { name: /^Keep Twin/ }))[0]!);
+    await waitFor(() => expect(bridge.keepDuplicateTrack).toHaveBeenCalledWith({ group_id: 55, track_id: 7 }));
+    expect(await screen.findByText(/Nothing was deleted/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
   });
 
   it("marks a group not duplicates", async () => {
@@ -834,7 +846,7 @@ describe("duplicates", () => {
     bridge.getDuplicateGroups!.mockResolvedValue(fixture.untouched.duplicates);
     renderClean("duplicates");
     expect(await screen.findByText("Duplicates have not been looked for yet")).toBeInTheDocument();
-    const offers = screen.getAllByRole("button", { name: "Find duplicates" });
+    const offers = screen.getAllByRole("button", { name: "Check for duplicates" });
     fireEvent.click(offers[offers.length - 1]!);
     await waitFor(() => expect(bridge.startDuplicateScan).toHaveBeenCalledWith({}));
     await waitFor(() => expect(bridge.getDuplicateGroups).toHaveBeenCalledTimes(2));
@@ -844,9 +856,9 @@ describe("duplicates", () => {
     bridge.getLibraryHealth!.mockResolvedValue(fixture.scanned.health as LibraryHealth);
     bridge.getDuplicateGroups!.mockResolvedValue(fixture.scanned.duplicates);
     renderClean("duplicates");
-    expect(await screen.findByText("No possible duplicates")).toBeInTheDocument();
+    expect(await screen.findByText("No duplicates found")).toBeInTheDocument();
     // The full empty state with its icon, as Missing files shows (C140).
-    const state = screen.getByText("No possible duplicates").closest(".cp-empty-state");
+    const state = screen.getByText("No duplicates found").closest(".cp-empty-state");
     expect(state).not.toHaveClass("cp-empty-state--compact");
     expect(state?.querySelector(".cp-empty-state__icon")).not.toBeNull();
   });
@@ -1011,11 +1023,11 @@ describe("matching what is ticked (C22)", () => {
 
   it("opens Review on that playlist's tracks, all of them, in a tab named for it", async () => {
     renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("button", { name: "Review all" }));
-    expect(await screen.findByRole("region", { name: "Review all" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /^Review all/ }));
+    expect(await screen.findByRole("region", { name: /^Review all/ })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /^Review/ })).toBeNull();
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 14, limit: 2000 }));
-    expect(await screen.findByRole("region", { name: "Review all" })).toHaveTextContent(/3 tracks \u00b7 2 ticked to sync/);
+    expect(await screen.findByRole("region", { name: /^Review all/ })).toHaveTextContent(/3 tracks \u00b7 2 ticked to sync/);
     // Every track, not only the ones to check.
     expect(await screen.findByText("Track 3 · Artist 3")).toBeInTheDocument();
   });
@@ -1027,7 +1039,7 @@ describe("matching what is ticked (C22)", () => {
       whole_library: { ...PLAYLISTS.whole_library, not_matched: 0, accepted: 50 },
     });
     renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("button", { name: "Review All tracks" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Review All tracks/ }));
     expect(await screen.findByRole("region", { name: "Review All tracks" })).toBeInTheDocument();
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ limit: 2000 }));
     bridge.correctMatches = vi.fn().mockResolvedValue({ applied: { batch_id: "values", changed: 2 } });
@@ -1094,8 +1106,8 @@ describe("when a match ends (C22)", () => {
     renderClean(undefined, "playlists");
     await startMatching("hj");
     // While it runs, the person reviews another playlist and opens a track's panel.
-    fireEvent.click(await screen.findByRole("button", { name: "Review all" }));
-    await screen.findByRole("region", { name: "Review all" });
+    fireEvent.click(await screen.findByRole("button", { name: /^Review all/ }));
+    await screen.findByRole("region", { name: /^Review all/ });
     const row = (await screen.findAllByRole("row")).find((entry) => entry.getAttribute("data-track-id") === "1")!;
     fireEvent.click(row);
     await screen.findByRole("complementary", { name: /^Candidates for / });
@@ -1104,7 +1116,7 @@ describe("when a match ends (C22)", () => {
     act(() => releases.forEach((release) => release()));
     expect(await screen.findByText("hj matched · 15 confirmed · 9 to check")).toBeInTheDocument();
     // What is being read stays; Review on the toast is the way to the new one.
-    expect(screen.getByRole("region", { name: "Review all" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /^Review all/ })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Review hj" })).toBeNull();
     expect(screen.getByRole("complementary", { name: /^Candidates for / })).toBeInTheDocument();
   });
@@ -1239,7 +1251,7 @@ describe("a match that finds nothing", () => {
       ),
     });
     renderClean(undefined, "playlists");
-    expect(await screen.findByRole("button", { name: "Review hj" })).toBeEnabled();
+    expect(await screen.findByRole("button", { name: /^Review hj/ })).toBeEnabled();
     expect(screen.queryByText("10 not found")).toBeNull();
     // The list says only what is in the files: Closing was synced.
     expect(screen.getByText("Synced Mar 4, 2020")).toBeInTheDocument();
@@ -1247,7 +1259,7 @@ describe("a match that finds nothing", () => {
 });
 
 describe("after leaving the page and coming back", () => {
-  it("enables Match again, and says no match runs, when the run ended while the page was away", async () => {
+  it("says no match runs, when the run ended while the page was away", async () => {
     // The job's own follower never sees its end: the page was hidden, as another page is shown.
     bridge.getJob!.mockResolvedValue({ id: "job-match", state: "running" });
     const page = (mode: "visible" | "hidden") => (
@@ -1265,7 +1277,8 @@ describe("after leaving the page and coming back", () => {
     const view = render(page("visible"));
     await startMatching("Peak time");
     fireEvent.click(screen.getByRole("checkbox", { name: "Match Warmup" }));
-    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
+    // While it runs, a second match is queued, not refused (M510).
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeEnabled();
 
     // Away, and the match ends there: the engine lists no running job.
     view.rerender(page("hidden"));

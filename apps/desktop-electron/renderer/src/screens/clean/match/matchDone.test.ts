@@ -87,7 +87,8 @@ describe("announceRunEnd", () => {
     await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(1));
     const [message, variant, action] = push.mock.calls[0]!;
     expect(message).toBe("hJ matched · 15 confirmed · 9 to check");
-    expect(variant).toBe("success");
+    // Tracks to check keep the toast until it is closed (a warning stays), so it is there on return (M507).
+    expect(variant).toBe("warning");
     expect(action.label).toBe("Review");
     action.onClick();
     expect(onReview).toHaveBeenCalledWith(RUN);

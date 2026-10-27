@@ -7,6 +7,7 @@ import {
   leftOutWords,
   matchParts,
   matchText,
+  nextToCheck,
   reviewCandidateOf,
   barFacts,
   statusIsQuiet,
@@ -14,7 +15,9 @@ import {
   statusTone,
   summaryWords,
   tickedLine,
+  toCheckOnlyLabel,
 } from "./reviewList";
+import { reviewTrack } from "../../../test/matchFixtures";
 
 function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
   return {
@@ -144,5 +147,31 @@ describe("reviewCandidateOf", () => {
       guard_ok: true,
     } as never);
     expect(drawn).toMatchObject({ id: 9, mix: null, bpm: 125, score: 91 });
+  });
+});
+
+describe("the next track to check (M508)", () => {
+  const rows = [
+    reviewTrack(1, "matched"),
+    reviewTrack(2, "to_check"),
+    reviewTrack(3, "matched"),
+    reviewTrack(4, "to_check"),
+  ];
+
+  it("is the next one after this track, and wraps round to the start", () => {
+    expect(nextToCheck(rows, 1)?.track_id).toBe(2);
+    expect(nextToCheck(rows, 2)?.track_id).toBe(4);
+    expect(nextToCheck(rows, 4)?.track_id).toBe(2);
+    expect(nextToCheck(rows, null)?.track_id).toBe(2);
+  });
+
+  it("is never the track it counts on from, and is null when nothing else waits", () => {
+    expect(nextToCheck([reviewTrack(1, "to_check")], 1)).toBeNull();
+    expect(nextToCheck([reviewTrack(1, "matched")], null)).toBeNull();
+    expect(nextToCheck([], null)).toBeNull();
+  });
+
+  it("names the filter with how many it keeps", () => {
+    expect(toCheckOnlyLabel(1234)).toBe("To check only (1,234)");
   });
 });

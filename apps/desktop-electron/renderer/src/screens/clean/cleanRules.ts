@@ -40,7 +40,7 @@ interface ReviewScopeOption {
 /** In the order a reviewer works through them: what needs a person first. */
 export const REVIEW_SCOPES: readonly ReviewScopeOption[] = [
   { id: "needs_review", label: matchStateLabel("needs_review") },
-  { id: "disputed", label: "Changed since you decided", hint: DISPUTED_HINT },
+  { id: "disputed", label: "Changed after you confirmed", hint: DISPUTED_HINT },
   { id: "accepted", label: matchStateLabel("accepted") },
   { id: "rejected", label: matchStateLabel("rejected") },
   { id: "no_match", label: matchStateLabel("no_match") },

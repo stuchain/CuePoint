@@ -32,6 +32,9 @@ import type {
 import { Button, EmptyState, Notice, useToast } from "../../components";
 import { formatCount, plural } from "../../format/counts";
 import { RETRY, couldNot } from "../../format/words";
+import { formatDayTimeInSentence } from "../../format/dates";
+import { displayPathNameFirst } from "../../format/paths";
+import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -91,6 +94,13 @@ export function MissingFilesView({
     [push],
   );
   const jobs = useCleanJob(message);
+  // Step 2 names the file to save over, so the person need not remember it (M158).
+  const sourcePath = useSharedRead(LIBRARY_SUMMARY).value?.source?.xml_path ?? null;
+  const copySourcePath = useCallback(async () => {
+    if (!sourcePath) return;
+    const wrote = await writeClipboard(sourcePath);
+    push(wrote ? "Copied the path" : couldNot("copy to the clipboard"), wrote ? "success" : "warning");
+  }, [push, sourcePath]);
 
   const reveal = useCallback(
     (id: number | null) => {
@@ -238,7 +248,12 @@ export function MissingFilesView({
             tone="clear"
             icon="clean"
             headline="No missing files"
-            description={`All ${plural(found, "file")} ${found === 1 ? "was" : "were"} where your library says.`}
+            // Said with when it was true: a check from last month is not a statement about today (M156).
+            description={
+              lastChecked && formatDayTimeInSentence(lastChecked)
+                ? `All ${plural(found, "file")} ${found === 1 ? "was" : "were"} where your library says ${formatDayTimeInSentence(lastChecked)}. Check again to be sure.`
+                : `All ${plural(found, "file")} ${found === 1 ? "was" : "were"} where your library says.`
+            }
           />
         )}
       </div>
@@ -251,7 +266,7 @@ export function MissingFilesView({
       {window_.error}
     </Notice>
   ) : (
-    <EmptyState compact headline={empty.headline} description={empty.hint ?? undefined} />
+    <EmptyState compact icon={neverChecked ? "search" : undefined} headline={empty.headline} description={empty.hint ?? undefined} />
   );
 
   return (
@@ -261,14 +276,25 @@ export function MissingFilesView({
           <li>
             In Rekordbox, right-click the track, choose Relocate and point it at the file.
           </li>
-          <li>In Rekordbox, choose File, then Export Collection in xml format.</li>
+          <li>
+            In Rekordbox, choose File, then Export Collection in xml format
+            {sourcePath ? (
+              <>
+                , saving over <strong>{displayPathNameFirst(sourcePath)}</strong>{" "}
+                <Button variant="quiet" size="sm" onClick={() => void copySourcePath()}>
+                  Copy path
+                </Button>
+              </>
+            ) : null}
+            .
+          </li>
           <li>
             Here,{" "}
             <Button
               variant="secondary"
               onClick={() => navigate("/library", { state: libraryRefreshState() })}
             >
-              Check for changes
+              Check for changes in the Library
             </Button>
             .
           </li>

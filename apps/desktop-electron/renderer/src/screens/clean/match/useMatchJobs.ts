@@ -1,5 +1,5 @@
 /**
- * Past searches, read from the engine (C14, DEC-065).
+ * Past matches, read from the engine (C14, DEC-065).
  *
  * One read of `getMatchJobs`, newest first, searchable by what was matched or
  * when. Read again whenever `version` changes — the page bumps it when a match
@@ -18,6 +18,8 @@ interface MatchJobsState {
   runs: MatchRun[];
   total: number;
   loading: boolean;
+  /** True once the engine has answered at least once: before that, "no runs" is only not knowing yet. */
+  answered: boolean;
   error: string | null;
   /** False when this build cannot list them. */
   available: boolean;
@@ -28,6 +30,7 @@ export function useMatchJobs(query = "", version = 0): MatchJobsState {
   const [runs, setRuns] = useState<MatchRun[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [answered, setAnswered] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloads, setReloads] = useState(0);
   const available = Boolean(window.cuepoint?.getMatchJobs);
@@ -47,6 +50,7 @@ export function useMatchJobs(query = "", version = 0): MatchJobsState {
         if (cancelled) return;
         setRuns(answer.jobs);
         setTotal(answer.total);
+        setAnswered(true);
         setError(null);
       })
       .catch((cause: unknown) => {
@@ -62,5 +66,5 @@ export function useMatchJobs(query = "", version = 0): MatchJobsState {
   }, [query, version, reloads]);
 
   const reload = useCallback(() => setReloads((value) => value + 1), []);
-  return { runs, total, loading, error, available, reload };
+  return { runs, total, loading, answered, error, available, reload };
 }

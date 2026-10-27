@@ -18,12 +18,18 @@
 /* One row (D13): the sub-tabs, the step caption and the search, with 12 between it and the list
    (C31). The caption is Inter and muted; the search is on the right at its one width (C223). */
 .match-area__row {
+  /* A `.cp-toolbar`: the same bar, height and gaps as Missing files' and Duplicates' (M147). */
+  flex: none;
+  min-width: 0;
+}
+
+/* The step's action (Match ticked playlists and what is ticked) at the toolbar's right (D17). */
+.match-area__actions {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--space-xl);
-  min-width: 0;
-  margin: 0 0 var(--space-lg);
+  gap: var(--space-md);
+  margin-inline-start: auto;
 }
 
 .match-area__row > .cp-tabs--sub {
@@ -37,7 +43,7 @@
 }
 
 .match-area__caption {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   color: var(--fg-muted);
@@ -266,16 +272,17 @@
   --chip-ground: var(--bg-app);
 }
 
-/* One tick column, the same 32 wide as the Playlists step (C77). */
+/* One tick column, the same as the Playlists step's (C77, M139): a minimum width and the cell's own
+   padding, and the box at the global size, not its own. */
 .cp-data-table .review-col--check {
+  box-sizing: border-box;
   width: calc(32px * var(--scale));
-  padding-inline: 0;
+  min-width: calc(32px * var(--scale));
+  padding-inline: var(--space-sm);
   text-align: center;
 }
 
 .review-col--check input[type="checkbox"] {
-  width: calc(16px * var(--scale));
-  height: calc(16px * var(--scale));
   margin: 0;
   vertical-align: middle;
 }
@@ -283,16 +290,14 @@
 /* A column of ticks is not a stripe of violet (item 9a): a ticked box keeps its grey outline and
    draws only the tick in violet; the solid violet box is the focused one's (the row the keys are
    on, or the box itself), as a control the keyboard is on reads everywhere. */
-.review-col--check input[type="checkbox"]:checked:not(:disabled),
-.review-col--check input[type="checkbox"]:indeterminate:not(:disabled) {
+.review-col--check input[type="checkbox"]:checked:not(:disabled) {
   border-color: var(--border-control);
   background-color: var(--bg-input);
   color: var(--accent-primary);
 }
 
 .review-row:focus-visible .review-col--check input[type="checkbox"]:checked,
-.review-col--check input[type="checkbox"]:focus-visible:checked,
-.review-col--check input[type="checkbox"]:focus-visible:indeterminate {
+.review-col--check input[type="checkbox"]:focus-visible:checked {
   border-color: var(--accent-fill);
   background-color: var(--accent-fill);
   color: var(--fg-on-accent);
@@ -324,11 +329,7 @@
 /* Selected is the Library's look, the tint and the bar on the left, never an outline (C82). A
    focused row that is not selected (the keyboard's place) is marked as the Library marks it: a
    dashed ring inset from the edge. */
-.review-row:focus-visible[aria-selected="true"] {
-  outline: none;
-}
-
-.review-row:focus-visible:not([aria-selected="true"]) {
+.review-row:focus-visible {
   outline: var(--focus-ring-width) dashed var(--focus-ring);
   outline-offset: var(--focus-ring-offset-inset);
 }
@@ -436,8 +437,10 @@
   gap: var(--space-md);
   min-width: 0;
   padding: var(--space-md);
-  border: var(--control-border-width) solid var(--border-muted);
+  /* A sunken card without a frame; only the bar on its left says it is yours (M141). */
+  border: 0;
   border-left: calc(4px * var(--scale)) solid var(--accent-primary);
+  background: var(--bg-input);
 }
 
 .review-card__facts {
@@ -491,7 +494,8 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  border: var(--control-border-width) solid var(--border-muted);
+  /* A sunken list, no frame (M141). */
+  background: var(--bg-input);
 }
 
 .review-candidate {
@@ -499,12 +503,12 @@
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
   border-left: calc(4px * var(--scale)) solid transparent;
+  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
 }
 
 .review-candidate:last-child {
-  border-bottom: 0;
+  box-shadow: none;
 }
 
 /* The one in use: the green bar and its "In use" chip, on the card's own fill (item 9b). */
@@ -598,7 +602,7 @@
 
 /* A narrow page has no room for the table and its panel side by side: the panel lies over the
    table's right side instead, so the table keeps every column and the panel keeps its width. */
-@container review-body (max-width: 720px) {
+@container review-body (max-width: 45em) {
   .review-panel {
     position: absolute;
     inset-block: 0;
@@ -634,7 +638,7 @@
 .review-panel__score-table th,
 .review-panel__score-table td {
   padding: var(--space-xs) var(--space-md);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
+  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
   text-align: left;
 }
 
