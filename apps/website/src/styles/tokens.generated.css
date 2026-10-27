@@ -121,7 +121,6 @@
   --check-size: 1.125rem;
   --icon-size-sm: max(calc(12px / var(--dpr, 1)), calc(round(down, calc(16px * var(--scale) * var(--dpr, 1)), 12px) / var(--dpr, 1)));
   --icon-size-lg: max(calc(12px / var(--dpr, 1)), calc(round(down, calc(24px * var(--scale) * var(--dpr, 1)), 12px) / var(--dpr, 1)));
-  --icon-size-md: var(--icon-size-lg);
   --focus-ring-offset: 0px;
   --focus-ring-offset-inset: -2px;
   --danger-text: color-mix(in srgb, var(--accent-danger) 60%, var(--fg-primary));
@@ -144,7 +143,6 @@
   --tree-indent: 0.9375rem;
   --gap-box: var(--space-xl);
   --resizer-hover: linear-gradient( to right, transparent calc(50% - var(--selected-bar-width) / 2), var(--accent-primary) 0 calc(50% + var(--selected-bar-width) / 2), transparent 0 );
-  --resizer-edge-hover: var(--resizer-hover);
   --row-end-inset: var(--space-sm);
   --search-width: 16rem;
   --health-ok: var(--fg-disabled);
