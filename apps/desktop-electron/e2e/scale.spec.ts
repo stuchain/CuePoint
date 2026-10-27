@@ -236,8 +236,9 @@ test.describe("the sizes (PAGES-14)", () => {
 
           const rows = await win.evaluate(() => {
             const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
-            // The header row's cells; its own box adds the border under it.
-            const header = table.querySelector<HTMLElement>(".track-table__header-cell")!;
+            // The header row with the line under it is one row tall, as a body row is (L3, DEC-301):
+            // the line is inside that height, so the pane's lines beside it meet the table's.
+            const header = table.querySelector<HTMLElement>(".track-table__header")!;
             const bodyRows = [...table.querySelectorAll<HTMLElement>(".track-table__row")];
             const cells = [...table.querySelectorAll<HTMLElement>(".track-table__cell")];
             return {
