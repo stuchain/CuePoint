@@ -246,37 +246,51 @@ function field(zone: HTMLElement, name: string): HTMLElement {
 describe("the Beatport tab", () => {
   const beatportPanel = (props: Partial<Parameters<typeof TrackDetailPanel>[0]> = {}) => panel(props, "beatport");
 
-  it("says the matched release, how it was decided, and what agrees on one line each", async () => {
+  it("leads with how strong the match is and how it was decided, in words (M133, M134)", async () => {
     beatportPanel();
     const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
-    expect(await within(zone).findByText(/Confirmed by you/)).toHaveTextContent(
-      "Confirmed by you · score 96.5 · artwork from Beatport",
-    );
-    expect(within(zone).getByText("deadmau5 – Strobe (Original Mix) · mau5trap")).toBeInTheDocument();
-    // Genre and label agree; BPM (typed) and year differ.
-    expect(within(zone).getByText(/Genre and label match/)).toBeInTheDocument();
+    expect(await within(zone).findByText(/Confirmed by you/)).toHaveTextContent("Strong match · Confirmed by you");
+    // The score's number is for the hover, never the line.
+    expect(within(zone).queryByText(/score 96/i)).toBeNull();
+    expect(within(zone).getByText("Artwork from Beatport")).toBeInTheDocument();
     expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 12 });
   });
 
-  it("shows only the fields that differ, with what is used and what Beatport has", async () => {
+  it("draws Rekordbox's values against Beatport's, one row per field, never repeating the header's title line", async () => {
     beatportPanel();
     const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
     await within(zone).findByText(/Confirmed by you/);
-    // The key is not one of the rows: an accepted match gives it (DEC-201).
-    expect(field(zone, "key")).toBeNull();
-    expect(field(zone, "bpm")).toHaveTextContent("Rekordbox 128");
-    expect(field(zone, "bpm")).toHaveTextContent("Using 126 (typed by you)");
-    expect(field(zone, "bpm")).toHaveTextContent("Beatport 128");
-    expect(field(zone, "year")).toHaveTextContent("Beatport 2010");
-    expect(field(zone, "year")).toHaveTextContent("Using 2009 (from Rekordbox)");
-    // Rekordbox's value is the same as the one used, so it is not said a second time.
-    expect(field(zone, "year")).not.toHaveTextContent("Rekordbox 2009");
-    // Equal fields are said once, not drawn three times.
-    expect(field(zone, "genre")).toBeNull();
-    expect(field(zone, "label")).toBeNull();
+    const table = within(zone).getByRole("table", { name: "Rekordbox against Beatport" });
+    expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["Rekordbox", "Beatport"]);
+    expect(within(table).getAllByRole("rowheader").map((cell) => cell.textContent)).toEqual([
+      "Title",
+      "Artist",
+      "Key",
+      "BPM",
+      "Genre",
+      "Label",
+      "Year",
+    ]);
+    expect(within(zone).queryByText(/Original Mix/)).toBeNull();
   });
 
-  it("counts a value applied from Beatport as agreeing, and shows Rekordbox's value for a real difference", async () => {
+  it("names what is used where it is not Rekordbox's, and marks the Beatport values that differ from it", async () => {
+    beatportPanel();
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    await within(zone).findByText(/Confirmed by you/);
+    // The key is Beatport's own through the accepted match (DEC-201): used 9A, Rekordbox 8A.
+    expect(field(zone, "key")).toHaveTextContent("8AUsing 9A9A");
+    // BPM was typed: Rekordbox 128, used 126, Beatport 128 (so Beatport's is the one that differs).
+    expect(field(zone, "bpm")).toHaveTextContent("128Using 126128");
+    expect(field(zone, "bpm").querySelector(".cp-track-beatport__differs")).not.toBeNull();
+    expect(field(zone, "year")).toHaveTextContent("20092010");
+    expect(field(zone, "year").querySelector(".cp-track-beatport__differs")).not.toBeNull();
+    // Equal fields are plain.
+    expect(field(zone, "genre").querySelector(".cp-track-beatport__differs")).toBeNull();
+    expect(field(zone, "label").querySelector(".cp-track-beatport__differs")).toBeNull();
+  });
+
+  it("counts a genre applied from Beatport as agreeing", async () => {
     const applied = {
       ...TRACK,
       genre: "House",
@@ -290,13 +304,11 @@ describe("the Beatport tab", () => {
     beatportPanel({ detail: detailOf(applied) });
     const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
     await within(zone).findByText(/Confirmed by you/);
-    expect(within(zone).getByText(/genre applied from Beatport/i)).toBeInTheDocument();
-    expect(field(zone, "genre")).toBeNull();
-    // BPM was typed: Rekordbox's own 128 is shown beside what is used.
-    expect(field(zone, "bpm")).toHaveTextContent("Rekordbox 128");
+    expect(field(zone, "genre")).toHaveTextContent("HouseUsing Progressive HouseProgressive House");
+    expect(field(zone, "genre").querySelector(".cp-track-beatport__differs")).toBeNull();
   });
 
-  it("lists the other genres Beatport has when the one used is among them", async () => {
+  it("counts the used genre among Beatport's several as agreeing", async () => {
     const many = matches();
     many.candidate = {
       ...CANDIDATE,
@@ -305,8 +317,17 @@ describe("the Beatport tab", () => {
     bridge.getTrackMatches.mockResolvedValue(many);
     beatportPanel();
     const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
-    expect(await within(zone).findByText("Beatport also lists Melodic Techno, Afro House")).toBeInTheDocument();
-    expect(field(zone, "genre")).toBeNull();
+    await within(zone).findByText(/Confirmed by you/);
+    expect(field(zone, "genre").querySelector(".cp-track-beatport__differs")).toBeNull();
+  });
+
+  it("opens the Beatport page of the match, and says why when it cannot (M133)", async () => {
+    bridge.openBeatportPage = vi.fn().mockResolvedValue(false);
+    const handlers = beatportPanel();
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    await userEvent.click(await within(zone).findByRole("button", { name: "Open on Beatport" }));
+    expect(bridge.openBeatportPage).toHaveBeenCalledWith("https://www.beatport.com/track/strobe/1");
+    await waitFor(() => expect(handlers.onError).toHaveBeenCalledWith(expect.stringContaining("could not be opened")));
   });
 
   it("never applies a field from here: that is Review's and Fix values' job (FLW-2)", async () => {
@@ -336,7 +357,7 @@ describe("the Beatport tab", () => {
   it("links to the full comparison on the Clean page", async () => {
     const handlers = beatportPanel();
     const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
-    await userEvent.click(within(zone).getByRole("button", { name: /^Compare all on the Clean page/ }));
+    await userEvent.click(within(zone).getByRole("button", { name: "Open in Clean" }));
     expect(handlers.onOpenInClean).toHaveBeenCalledWith(12);
   });
 
@@ -403,7 +424,8 @@ describe("your five values (DEC-205)", () => {
 
   it("lists what you edited, with where it came from, and not a key Beatport gave", async () => {
     panel();
-    const list = (await screen.findByRole("region", { name: "Your values" })) as HTMLElement;
+    const heading = await screen.findByRole("button", { name: /^Your values/ });
+    const list = document.getElementById(heading.getAttribute("aria-controls") ?? "") as HTMLElement;
     // BPM was typed by you. The key is Beatport's own, which is the track's key, not an edit.
     expect(within(list).getByText("typed by you")).toBeInTheDocument();
     expect(within(list).getByText("126")).toBeInTheDocument();
@@ -524,15 +546,15 @@ describe("values saved into the music file", () => {
       "2 syncs may not have finished, and 1 value was synced. Undoing the sync puts every one back as it was.",
     );
     expect(note.textContent).not.toMatch(/3 values? (were )?saved/);
-    expect(screen.getByRole("button", { name: "Undo this save" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Undo this sync" })).toBeEnabled();
   });
 
   it("restores this track's file and reads again", async () => {
     const handlers = panel();
-    await userEvent.click(await screen.findByRole("button", { name: "Undo this save" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo this sync" }));
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledWith({ track_id: 12 }));
     await waitFor(() =>
-      expect(handlers.onMessage).toHaveBeenCalledWith("Save undone."),
+      expect(handlers.onMessage).toHaveBeenCalledWith("Sync undone."),
     );
     expect(handlers.onTrackChanged).toHaveBeenCalled();
     await waitFor(() => expect(bridge.getTagWrites).toHaveBeenCalledTimes(2));
@@ -541,7 +563,7 @@ describe("values saved into the music file", () => {
   it("say a failed restore in the engine's words", async () => {
     bridge.getJob.mockResolvedValue({ id: "r-1", state: "failed", error: { message: "The file is locked" } });
     const handlers = panel();
-    await userEvent.click(await screen.findByRole("button", { name: "Undo this save" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo this sync" }));
     await waitFor(() => expect(handlers.onError).toHaveBeenCalledWith(expect.stringContaining("The file is locked")));
   });
 

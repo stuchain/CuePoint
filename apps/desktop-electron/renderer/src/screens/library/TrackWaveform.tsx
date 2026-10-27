@@ -47,7 +47,7 @@ export function TrackWaveform({
 }: {
   trackId: number;
   /**
-   * The panel's facts line already reads the loudness value, so the line under the
+   * The panel's facts already read the loudness value and its peak, so the line under the
    * picture is kept only for a track with no value, where it says why.
    */
   loudnessInFacts?: boolean;
@@ -75,13 +75,19 @@ export function TrackWaveform({
   useEffect(() => {
     onReading?.(reading);
   }, [onReading, reading]);
-  // With the value on the facts line, what stays here is the peak; a track with no
-  // value keeps the whole line, which says why.
+  // With the value on the facts (beside its peak, M130), what stays here is why a track has no value.
   const line = loudnessLine(track);
-  const loudness =
-    loudnessInFacts && loudnessShort(track) !== null
-      ? (line?.split(" · ").find((part) => part.startsWith("Peak ")) ?? null)
-      : line;
+  const loudness = loudnessInFacts && loudnessShort(track) !== null ? null : line;
+  // The third strip says what it is and what its marks are (M129, D16).
+  const caption = picture
+    ? [
+        "Whole track",
+        track?.marks?.grid?.length ? "lines mark bars" : null,
+        track?.marks?.cues?.length ? "flags mark cues" : null,
+      ]
+        .filter(Boolean)
+        .join(" \u00b7 ")
+    : null;
 
   const seek = (event: MouseEvent<HTMLDivElement>) => {
     if (!playing || !picture) return;
@@ -94,25 +100,32 @@ export function TrackWaveform({
   return (
     <section className="cp-track-detail__waveform" aria-label="Waveform">
       <div
-        ref={box}
         className={`cp-track-waveform${playing && picture ? " cp-track-waveform--seekable" : ""}`}
         data-testid="inspector-waveform"
         data-playing={playing ? "true" : undefined}
         data-hint={picture ? (playing ? INSPECTOR_SEEK_TITLE : INSPECTOR_PICTURE_TITLE) : (words ?? undefined)}
         onClick={seek}
       >
-        {picture ? (
-          <WaveformCanvas
-            data={picture}
-            durationMs={durationMs}
-            cues={track?.marks?.cues}
-            grid={track?.marks?.grid}
-            playheadMs={playing && position !== null ? position * 1000 : null}
-          />
-        ) : (
-          <p className="cp-track-waveform__words">{words}</p>
-        )}
+        {/* The measured box is inside the frame's padding, so the canvas is drawn at its own width. */}
+        <div ref={box} className="cp-track-waveform__inner">
+          {picture ? (
+            <WaveformCanvas
+              data={picture}
+              durationMs={durationMs}
+              cues={track?.marks?.cues}
+              grid={track?.marks?.grid}
+              playheadMs={playing && position !== null ? position * 1000 : null}
+            />
+          ) : (
+            <p className="cp-track-waveform__words">{words}</p>
+          )}
+        </div>
       </div>
+      {caption ? (
+        <p className="cp-track-waveform__loudness" data-testid="inspector-caption">
+          {caption}
+        </p>
+      ) : null}
       {loudness ? (
         <Hint text={LOUDNESS_LINE_TITLE}>
           <p className="cp-track-waveform__loudness" data-testid="inspector-loudness">

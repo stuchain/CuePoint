@@ -31,6 +31,7 @@ export function TrackMarksSection({ marks }: TrackMarksSectionProps) {
       {!marks.read && marks.cues.length === 0 && (
         <p className="cp-track-detail__marks-note">{MARKS_NOT_READ}</p>
       )}
+      {marks.read && marks.cues.length === 0 && <p className="cp-track-detail__marks-note">No cues</p>}
       {cues.length > 0 && (
         <ul className="cp-track-detail__cues">
           {cues.map((cue, index) => (

@@ -107,7 +107,7 @@ describe("the cue points", () => {
 describe("the beat grid", () => {
   it("gives a constant grid's tempo", () => {
     render(<TrackMarksSection marks={MARKS} />);
-    expect(screen.getByText("Beat grid · 128 BPM")).toBeInTheDocument();
+    expect(screen.getByText("Beat grid 128 BPM")).toBeInTheDocument();
   });
 
   it("calls a grid that changes tempo variable", () => {
@@ -119,7 +119,7 @@ describe("the beat grid", () => {
         }}
       />,
     );
-    expect(screen.getByText("Beat grid · variable, 121–124 BPM")).toHaveAttribute(
+    expect(screen.getByText("Beat grid 121–124 BPM, variable")).toHaveAttribute(
       "title",
       "The tempo changes during the track",
     );
@@ -177,14 +177,14 @@ describe("in the Inspector", () => {
 
   it("lists the cues in the imported record, before Rekordbox's fields", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    const fromRekordbox = screen.getByRole("heading", { name: "Details from Rekordbox" });
-    const cues = screen.getByRole("heading", { name: "Cue points" });
-    // The count and grid are Overview's fact, said once.
-    expect(screen.getByTestId("track-fact-cues")).toHaveTextContent("2 hot, 1 memory");
+    const fromRekordbox = screen.getByRole("heading", { name: "From your Rekordbox file" });
+    const cues = screen.getByRole("heading", { name: /^Cue points/ });
+    // The count is the heading's answer, and the grid is inside it (M126).
+    expect(within(cues).getByRole("button")).toHaveTextContent("2 hot, 1 memory");
     // The heading explains the two kinds on hover (INS-9).
-    expect(within(cues).getByRole("button")).toHaveAttribute(
+    expect(cues.querySelector(".cp-hint > span")).toHaveAttribute(
       "title",
-      "Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable.",
+      expect.stringContaining("Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable."),
     );
     // At the foot of Overview, the cues first, then Rekordbox's own fields.
     expect(
@@ -204,6 +204,6 @@ describe("in the Inspector", () => {
   it("shows nothing from an engine older than the marks", () => {
     const { marks: _omitted, ...older } = DETAIL;
     render(<TrackDetailPanel detail={older} />);
-    expect(screen.queryByRole("region", { name: "Cue points" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Cue points/ })).toBeNull();
   });
 });

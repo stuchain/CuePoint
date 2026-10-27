@@ -74,23 +74,6 @@ export function cuesSummary(marks: TrackMarksSummary): string | null {
   return parts.join(", ");
 }
 
-/**
- * The folded Cue points heading's answer: the cues, then the grid's tempo
- * ("none · grid 124", "2 hot, 1 memory · grid 120–128"). Null before the marks are read.
- */
-export function cuesHeaderSummary(marks: TrackMarksSummary): string | null {
-  const cues = cuesSummary(marks);
-  const grid = marks.beat_grid;
-  let gridWords: string | null = null;
-  if (grid) {
-    gridWords = grid.variable
-      ? `grid ${formatBpm(grid.min_bpm)}–${formatBpm(grid.max_bpm)}`
-      : `grid ${formatBpm(grid.bpm)}`;
-  }
-  const parts = [cues, gridWords].filter((part): part is string => Boolean(part));
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
-
 /** The Cue points heading's tooltip: what the two kinds are, and that they are not editable here. */
 export const CUES_HINT = "Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable.";
 
@@ -105,9 +88,9 @@ export const VARIABLE_GRID_HINT = "The tempo changes during the track";
 export const MARKS_NOT_READ =
   "Cue points and the beat grid are read from Rekordbox. They appear after you Check for changes.";
 
-/** The grid in one line: "Beat grid · 128 BPM", or a variable grid's range. */
+/** The grid in one line: "Beat grid 128 BPM", or a variable grid's range (M126: the grid sits inside Cue points). */
 export function beatGridLine(grid: TrackBeatGridSummary | null, read: boolean): string | null {
   if (grid == null) return read ? "No beat grid" : null;
-  if (!grid.variable) return `Beat grid · ${formatBpm(grid.bpm)} BPM`;
-  return `Beat grid · variable, ${formatBpmRange(grid.min_bpm, grid.max_bpm)} BPM`;
+  if (!grid.variable) return `Beat grid ${formatBpm(grid.bpm)} BPM`;
+  return `Beat grid ${formatBpmRange(grid.min_bpm, grid.max_bpm)} BPM, variable`;
 }

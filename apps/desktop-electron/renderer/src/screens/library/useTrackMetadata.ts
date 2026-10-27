@@ -51,6 +51,11 @@ interface TrackMetadataEditor {
   editNotes: (text: string) => void;
   /** Send a pending note now — what blur does. */
   flushNotes: () => void;
+  /**
+   * Bumped each time the engine accepts a rating or a favorite (M382): what a page's inline
+   * "Saved" tick follows, so a rating is optimistic and still says it stuck.
+   */
+  ratingSaved: number;
 }
 
 interface TrackMetadataOptions {
@@ -97,6 +102,7 @@ export function useTrackMetadata({
   const [shown, setShown] = useState<TrackMetadata>(metadata);
   const [notes, setNotes] = useState<string>(metadata.notes ?? "");
   const [notesState, setNotesState] = useState<NotesState>("idle");
+  const [ratingSaved, setRatingSaved] = useState(0);
 
   const confirmed = useRef<TrackMetadata>(metadata);
   const alive = useRef(true);
@@ -148,6 +154,9 @@ export function useTrackMetadata({
         if (showing) {
           confirmed.current = payload.metadata;
           if (alive.current) setShown(payload.metadata);
+        }
+        if (showing && alive.current && ("rating" in patch || "favorite" in patch)) {
+          setRatingSaved((n) => n + 1);
         }
         onSaved?.();
       } catch (cause) {
@@ -248,5 +257,6 @@ export function useTrackMetadata({
     setFavorite,
     editNotes,
     flushNotes,
+    ratingSaved,
   };
 }

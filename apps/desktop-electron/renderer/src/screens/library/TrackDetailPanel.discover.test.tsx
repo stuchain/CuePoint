@@ -70,8 +70,8 @@ describe("the Inspector's credits as links", () => {
   it("links a track's remixers and a label known only by name", () => {
     const open = vi.fn();
     render(<TrackDetailPanel detail={UNRESOLVED} onOpenEntity={open} />);
-    // Details from Rekordbox starts folded (K5).
-    fireEvent.click(screen.getByRole("button", { name: /Details from Rekordbox/ }));
+    // From your Rekordbox file starts folded (K5).
+    fireEvent.click(screen.getByRole("button", { name: /From your Rekordbox file/ }));
     const remixer = screen.getByText("Remixer").closest(".cp-track-detail__row") as HTMLElement;
     fireEvent.click(within(remixer).getByRole("button", { name: "DJEFF" }));
     fireEvent.click(

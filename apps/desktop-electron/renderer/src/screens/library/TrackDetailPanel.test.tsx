@@ -248,7 +248,7 @@ describe("the imported zone is still read-only (DEC-047, ORG-10)", () => {
 
   it("says whose these fields are, so the two zones are never one", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.getByText("Details from Rekordbox")).toBeInTheDocument();
+    expect(screen.getByText("From your Rekordbox file")).toBeInTheDocument();
     expect(screen.getByText("Yours")).toBeInTheDocument();
   });
 
@@ -277,9 +277,9 @@ describe("the editable zone (ORG-10)", () => {
   openOn("yours");
   it("offers the four things CuePoint owns", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Rating" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Favorite" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Your notes")).toBeInTheDocument();
+    expect(screen.getByLabelText("Notes")).toBeInTheDocument();
     expect(screen.getByLabelText("Add a tag")).toBeInTheDocument();
   });
 
@@ -301,7 +301,7 @@ describe("the editable zone (ORG-10)", () => {
       "aria-checked",
       "true",
     );
-    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute(
+    expect(screen.getByRole("radiogroup", { name: "Rating" })).toHaveAttribute(
       "data-hint",
       "From Rekordbox",
     );
@@ -319,7 +319,7 @@ describe("the editable zone (ORG-10)", () => {
       />,
     );
     expect(within(rowFor("Comment")).getByText("from the CDJ")).toBeInTheDocument();
-    expect(screen.getByLabelText("Your notes")).toHaveValue("intro is long");
+    expect(screen.getByLabelText("Notes")).toHaveValue("intro is long");
   });
 
   it("starts over when the panel moves to another track", async () => {
@@ -345,23 +345,23 @@ describe("the editable zone (ORG-10)", () => {
     render(
       <TrackDetailPanel detail={{ ...DETAIL, track: { ...TRACK, id: null } }} />,
     );
-    expect(screen.queryByRole("radiogroup", { name: "Your rating" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Rating" })).not.toBeInTheDocument();
   });
 });
 
 describe("where the track sits in the collection", () => {
-  openOn("where");
+  openOn("overview");
   it("lists the playlists holding it", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.getByText("In 1 playlist")).toBeInTheDocument();
+    expect(screen.getByText("In playlists")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /warmup/ })).toBeInTheDocument();
   });
 
-  it("says when it is in none", () => {
+  it("says None when it is in none", () => {
     render(
       <TrackDetailPanel detail={{ ...DETAIL, playlists: [], playlist_count: 0 }} />,
     );
-    expect(screen.getByText("Not in any Rekordbox playlist.")).toBeInTheDocument();
+    expect(screen.getByTestId("track-fact-playlists")).toHaveTextContent("In playlistsNone");
   });
 
   it("scopes the table to a playlist that is clicked", () => {
@@ -377,7 +377,7 @@ describe("where the track sits in the collection", () => {
 });
 
 describe("the Collections holding it (ORG-09, ORG-10)", () => {
-  openOn("where");
+  openOn("overview");
   const COLLECTIONS = [
     { id: 4, name: "Closers", kind: "collection" as const },
     { id: 5, name: "Over 128", kind: "smart" as const },
@@ -385,21 +385,22 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
 
   it("lists them", () => {
     render(<TrackDetailPanel detail={{ ...DETAIL, collections: COLLECTIONS }} />);
-    expect(screen.getByText("In 2 Collections")).toBeInTheDocument();
+    expect(screen.getByText("In Collections")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Closers/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Over 128/ })).toBeInTheDocument();
   });
 
-  it("counts one as one", () => {
+  it("draws one on its own line, with no count to read (M132)", () => {
     render(
       <TrackDetailPanel detail={{ ...DETAIL, collections: [COLLECTIONS[0]!] }} />,
     );
-    expect(screen.getByText("In 1 Collection")).toBeInTheDocument();
+    expect(within(screen.getByTestId("track-fact-collections")).getAllByRole("listitem")).toHaveLength(1);
   });
 
   it("says what it holds, and has no sentence about Collections for a track in none", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.getByText("In 1 playlist")).toBeInTheDocument();
-    expect(screen.queryByText("Not in any Collection.")).not.toBeNull();
+    expect(screen.getByTestId("track-fact-playlists")).toHaveTextContent("warmup");
+    expect(screen.getByTestId("track-fact-collections")).toHaveTextContent("None");
     expect(screen.queryByText(/Select the track and choose/)).toBeNull();
   });
 
@@ -420,11 +421,12 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
   });
 
   it("keeps them apart from the Rekordbox playlists", () => {
-    // Two lists, two headings. One list would say Rekordbox gave the user
+    // Two lines, two labels. One list would say Rekordbox gave the user
     // something they made themselves.
     render(<TrackDetailPanel detail={{ ...DETAIL, collections: COLLECTIONS }} />);
-    expect(screen.getByText("In 2 Collections")).toBeInTheDocument();
-    expect(screen.getByText("In 1 playlist")).toBeInTheDocument();
+    expect(within(screen.getByTestId("track-fact-collections")).getByRole("button", { name: /Closers/ })).toBeInTheDocument();
+    expect(within(screen.getByTestId("track-fact-playlists")).getByRole("button", { name: /warmup/ })).toBeInTheDocument();
+    expect(within(screen.getByTestId("track-fact-playlists")).queryByRole("button", { name: /Closers/ })).toBeNull();
   });
 });
 

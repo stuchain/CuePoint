@@ -84,7 +84,10 @@ async function inspect(window: Page, title: string) {
   await row.click();
   const inspector = window.locator(".cp-inspector").first();
   await expect(inspector.getByRole("heading", { name: title })).toBeVisible({ timeout: 30_000 });
-  const marks = inspector.getByRole("region", { name: "Cue points" });
+  // The shared Disclosure (M60): one block holding the head and its body.
+  const marks = inspector.locator(".cp-track-section").filter({
+    has: window.getByRole("button", { name: /^Cue points/ }),
+  });
   // Every section starts folded, with its answer on the heading's right: open this one.
   const toggle = marks.getByRole("button", { name: /^Cue points/ });
   if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
@@ -125,8 +128,9 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
 
       // --- every kind of mark, in the order the track plays them ---------
       let marks = await inspect(window, "Every Mark");
-      await expect(marks.getByRole("heading")).toHaveText(/^Cue points$/);
-      await expect(inspector(window).getByTestId("track-fact-cues")).toContainText("4 hot, 5 memory · grid 128");
+      // M126: the count is the heading's answer, and the grid is inside it; no facts row.
+      await expect(marks.getByRole("heading")).toHaveText(/^Cue points.*4 hot, 5 memory$/);
+      await expect(inspector(window).getByTestId("track-fact-cues")).toHaveCount(0);
       await expect(marks.getByRole("listitem")).toHaveText([
         "Memory · 0:00.0 · Intro",
         "Memory · 0:01.5 · Fade-in · Fade in",
@@ -138,7 +142,7 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
         "H · 5:00.0 · H cue",
         "Memory · 6:00.2 · Fade-out · Fade out",
       ]);
-      await expect(marks).toContainText("Beat grid · 128 BPM");
+      await expect(marks).toContainText("Beat grid 128 BPM");
       // Rekordbox's own colour beside the cue that has one.
       await expect(
         marks.locator('.cp-track-detail__cue-colour[data-colour="#28e214"]'),
@@ -149,15 +153,15 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
       await expect(marks.getByRole("textbox")).toHaveCount(0);
 
       marks = await inspect(window, "Variable Grid");
-      await expect(marks).toContainText("Beat grid · variable, 121–124 BPM");
+      await expect(marks).toContainText("Beat grid 121–124 BPM, variable");
 
       // Refused marks are skipped, never shown under a guess.
       marks = await inspect(window, "Malformed Marks");
       await expect(marks.getByRole("listitem")).toHaveText(["Memory · 0:20.0 · Kept"]);
 
       marks = await inspect(window, "No Marks");
-      await expect(marks.getByRole("heading")).toHaveText(/^Cue points$/);
-      await expect(inspector(window).getByTestId("track-fact-cues")).toContainText("none");
+      await expect(marks.getByRole("heading")).toHaveText(/^Cue points.*none$/);
+      await expect(marks).toContainText("No cues");
       await expect(marks).toContainText("No beat grid");
 
       // --- a refresh that moves one cue ---------------------------------

@@ -34,7 +34,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  padding-bottom: var(--space-md);
+  /* M64: the same room either side of the divider: --space-lg under the words, and --space-lg above
+     the tabs (the sticky head's own margin plus the column's gap), with no margin of its own on top. */
+  padding-bottom: var(--space-lg);
+  margin-bottom: calc(var(--space-lg) - var(--space-md));
 }
 
 .cp-track-detail__art {
@@ -119,6 +122,36 @@
   overflow-wrap: anywhere;
 }
 
+/* M131: every fact row is at least a chip tall, so the Key row (a chip and the wheel's button) is
+   no taller than BPM or Genre; a value that wraps simply grows. */
+.cp-track-detail__facts {
+  align-items: start;
+}
+
+.cp-track-detail__facts .cp-track-detail__factlabel,
+.cp-track-detail__facts .cp-track-detail__factvalue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: var(--chip-height);
+}
+
+/* The track's playlists, Collections and Sets, wrapped on one line each (M132, D16). */
+.cp-track-detail__lists {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The previous track stays on screen while the next is read; after a beat it reads as stale (M379). */
+.cp-track-detail--stale > :not(.cp-track-detail__head) {
+  opacity: 0.55;
+}
+
 /* Sub-tabs (T8): one framed strip as wide as the panel, its four parts sharing the width, so they
    are not squeezed into a short box and each sits apart from the next (C260). One line always, even
    --space-sm padding; at the narrowest the strip scrolls sideways rather than wrap or crush (M120). */
@@ -152,7 +185,6 @@
   min-width: 0;
 }
 
-.cp-track-beatport__field,
 .cp-track-history__entry {
   display: grid;
   grid-template-columns: var(--facts-label) minmax(0, 1fr);
@@ -231,7 +263,13 @@
   height: round(nearest, calc(44px * var(--scale)), 1px);
   border: var(--hairline) solid var(--border-muted);
   background: var(--bg-panel);
+  /* M128: half a cue marker of room each side, so the last marker is not cut by the frame. */
+  padding-inline: var(--space-xs);
   overflow: hidden;
+}
+
+.cp-track-waveform__inner {
+  height: 100%;
 }
 
 .cp-track-waveform--seekable {
@@ -373,6 +411,15 @@
   margin-left: var(--space-xs);
 }
 
+/* M382: the inline tick after the stars: muted like every "all is well" (D14), and it only fills
+   the row's line, so it never moves it. */
+.cp-track-yours__saved {
+  margin-inline-start: var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
 .cp-track-yours__source {
   margin: 0;
   color: var(--fg-muted);
@@ -380,17 +427,15 @@
   font-size: var(--font-size-xs);
 }
 
-/* An icon toggle beside the stars (DEC-246), on the DEC-241 control look. */
+/* An icon toggle beside the stars (DEC-246): the stars' own size and gap (M136), a hair of padding
+   like a star, so the heart reads as a sixth mark and not a separate control. */
 .cp-track-yours__favorite {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: var(--control-height);
-  min-height: var(--control-height);
-  margin-left: var(--space-xs);
-  padding: 0 var(--space-xs);
-  /* A quiet icon button (P13): no frame or fill until the pointer is over it. */
-  border: var(--control-border-width) solid transparent;
+  margin-left: var(--space-2xs);
+  padding: 0 var(--hairline);
+  border: 0;
   background: transparent;
   color: var(--fg-muted);
   font-family: var(--font-control);
@@ -401,8 +446,7 @@
 }
 
 .cp-track-yours__favorite:hover:not(:disabled) {
-  border-color: var(--border-control);
-  background: var(--hover-fill);
+  color: var(--fg-primary);
 }
 
 .cp-track-yours__favorite--on {
@@ -497,6 +541,16 @@
 .cp-track-yours__add > .cp-field {
   flex: 1 1 auto;
   min-inline-size: 0;
+}
+
+/* The tag field's label is the Tags heading above it: read, not drawn, so the box is as tall as Add (M136). */
+.cp-track-yours__tagfield .cp-field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .cp-track-yours__add > .cp-btn {
@@ -594,67 +648,71 @@
 }
 
 .cp-track-beatport__state,
-.cp-track-beatport__release,
-.cp-track-beatport__also,
-.cp-track-beatport__agree {
+.cp-track-beatport__also {
   margin: 0;
+  color: var(--fg-muted);
   font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
-.cp-track-beatport__release {
+/* The match in words leads the tab, in the primary colour (M133). */
+.cp-track-beatport__state--lead {
+  color: var(--fg-primary);
   font-family: var(--font-data);
   font-weight: var(--font-weight-bold);
-  overflow-wrap: anywhere;
-}
-
-.cp-track-beatport__state {
-  color: var(--fg-muted);
-}
-
-.cp-track-beatport__also {
-  color: var(--fg-muted);
-}
-
-.cp-track-beatport__agree {
-  color: var(--success-text);
 }
 
 .cp-track-beatport__state--disputed {
   color: var(--warning-text);
 }
 
-.cp-track-beatport__fields {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin: 0;
-}
-
-.cp-track-beatport__values {
-  display: flex;
-  flex-direction: column;
-  gap: var(--hairline);
-  margin: 0;
-  min-width: 0;
+/* Rekordbox's values against Beatport's (M134, D16): a label column, then two equal columns. */
+.cp-track-beatport__table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
+}
+
+.cp-track-beatport__table th,
+.cp-track-beatport__table td {
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) 0;
+  text-align: start;
+  vertical-align: top;
   overflow-wrap: anywhere;
 }
 
-.cp-track-beatport__layer {
-  display: inline-block;
-  min-width: calc(48px * var(--scale));
-  color: var(--fg-muted);
+.cp-track-beatport__table tbody tr {
+  border-top: var(--divider);
 }
 
-.cp-track-beatport__now {
+.cp-track-beatport__table thead th,
+.cp-track-beatport__table tbody th {
+  color: var(--fg-muted);
+  font-weight: var(--font-weight-regular);
+}
+
+.cp-track-beatport__table thead td:first-child,
+.cp-track-beatport__table tbody th {
+  width: round(nearest, calc(56px * var(--scale)), 1px);
+}
+
+/* A Beatport value that is not what is used is the one to look at. */
+.cp-track-beatport__differs {
   font-weight: var(--font-weight-bold);
 }
 
-.cp-track-beatport__source {
+.cp-track-beatport__using {
+  display: block;
   color: var(--fg-muted);
-  font-weight: var(--font-weight-regular);
+}
+
+.cp-track-beatport__links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
 }
 
 .cp-track-history__revert {
@@ -680,100 +738,15 @@
 }
 
 /*
- * PAGES-06: the buttons under the title, the folding sections, and the values
+ * PAGES-06: the folding sections and the values
  * disclosure. Every size is a token, so the panel scales with the app.
  */
-
-/* One row of three buttons (K5, was five short names in DEC-246), sized to their
-   content: the standard grey Button, Play, Queue and Similar side by side (round 8). */
-.cp-track-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-top: var(--space-xs);
-  min-width: 0;
-}
-
-.cp-track-section__toggle:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
-}
 
 .cp-track-section {
   min-width: 0;
 }
 
-.cp-track-section__heading {
-  margin: 0 0 var(--space-xs);
-}
-
-.cp-track-section__toggle {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-xs);
-  width: 100%;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-/* The title yields before it overflows; the summary keeps what is left of the line. */
-.cp-track-section__title {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-/* The answer, right-aligned, in the data face so figures line up. */
-.cp-track-section__summary {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin-inline-start: auto;
-  overflow: hidden;
-  color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cp-track-section__toggle:hover {
-  color: var(--fg-primary);
-}
-
-.cp-track-section__chevron {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  /* W4 (amends DEC-301 L7): the arrow ends the row, after the summary; the title sits on the edge
-     with every label and box, and nothing hangs in the inset against the panel's border. */
-  justify-content: center;
-  align-self: center;
-  width: var(--icon-size-sm);
-  margin-inline-start: auto;
-}
-
-/* With a summary, the summary takes the free space and the arrow follows it. */
-.cp-track-section__summary + .cp-track-section__chevron {
-  margin-inline-start: 0;
-}
-
-/* The heading's hover hint wraps the toggle: it takes the full width, so the summary can sit at the
-   right edge (L7) instead of beside the title. */
-.cp-track-section__heading > .cp-hint {
-  display: flex;
-  width: 100%;
-}
-
-.cp-track-section__body[hidden] {
-  display: none;
-}
-
+/* The shared Disclosure's body: its own column, stepping in once the toggle has been used. */
 .cp-track-section__body {
   display: flex;
   flex-direction: column;

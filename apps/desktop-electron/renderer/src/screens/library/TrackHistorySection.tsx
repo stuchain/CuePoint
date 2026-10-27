@@ -122,7 +122,7 @@ export function TrackHistorySection({
               disabled={restoring}
               onClick={onRestore}
             >
-              {restoring ? "Undoing…" : "Undo this save"}
+              {restoring ? "Undoing…" : "Undo this sync"}
             </button>
           )}
         </div>

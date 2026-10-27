@@ -1,16 +1,18 @@
 /**
- * A heading that folds what is under it (INS-3).
+ * A heading that folds what is under it (INS-3), on the one shared `Disclosure` (M60).
  *
  * Track details has many sections and a reader wants a few of them at a time,
  * so every heading is a button, and the panel remembers which ones were folded
  * in one key. What is folded stays in the page (`hidden`), so a note being
- * typed or a read in flight is not thrown away by a click.
+ * typed or a read in flight is not thrown away by a click. This adds only what
+ * Track details needs on top of the shared head: the remembered fold, the hover
+ * hint and a spoken summary.
  *
  * Storage is a convenience: it can be blocked or full, and then folds last as
  * long as the section does.
  */
-import { useCallback, useId, useState, type ReactNode } from "react";
-import { DisclosureArrow } from "../../components/DisclosureArrow";
+import { useCallback, useState, type ReactNode } from "react";
+import { Disclosure } from "../../components/Disclosure";
 import { Hint } from "../../components/Hint";
 
 export const TRACK_DETAILS_SECTIONS_KEY = "cuepoint-ui-track-details-sections";
@@ -79,63 +81,49 @@ export function DisclosureSection({
   children,
 }: DisclosureSectionProps) {
   const [open, setOpen] = useState(() => (remember ? (readFolds()[id] ?? defaultOpen) : defaultOpen));
-  const bodyId = useId();
   // The body steps open once the person has used the toggle, never as the panel loads
   // (Changing state, PAGES-12).
   const [used, setUsed] = useState(false);
 
-  const toggle = useCallback(() => {
-    setUsed(true);
-    setOpen(!open);
-    if (remember) rememberFold(id, !open);
-  }, [id, open, remember]);
+  const onOpenChange = useCallback(
+    (next: boolean) => {
+      setUsed(true);
+      setOpen(next);
+      if (remember) rememberFold(id, next);
+    },
+    [id, remember],
+  );
 
-  const Heading = level === 3 ? "h3" : "h4";
+  const shownTitle = (
+    <Hint text={[hint, summary].filter(Boolean).join(" \u2014 ") || undefined} inline>
+      <span>{title}</span>
+    </Hint>
+  );
+  // The dot is kept for the accessible name, which reads "Beatport · Confirmed".
+  const shownSummary = summary ? (
+    <>
+      <span className="cp-visually-hidden"> · </span>
+      {summarySpoken ? (
+        <>
+          <span aria-hidden>{summary}</span>
+          <span className="cp-visually-hidden">{summarySpoken}</span>
+        </>
+      ) : (
+        summary
+      )}
+    </>
+  ) : null;
+
   return (
-    <section
+    <Disclosure
+      title={shownTitle}
+      summary={shownSummary}
+      open={open}
+      onOpenChange={onOpenChange}
+      level={level}
       className={`cp-track-section${className ? ` ${className}` : ""}`}
-      aria-label={title}
     >
-      <Heading className="cp-track-detail__subtitle cp-track-section__heading">
-        <Hint text={[hint, summary].filter(Boolean).join(" — ") || undefined}>
-        <button
-          type="button"
-          className="cp-track-section__toggle"
-          aria-expanded={open}
-          aria-controls={bodyId}
-          onClick={toggle}
-        >
-          <span className="cp-track-section__title">{title}</span>
-          {summary ? (
-            // On the right, where it is read as the section's answer. The dot is
-            // kept for the accessible name, which reads "Beatport · Confirmed".
-            <span className="cp-track-section__summary">
-              <span className="cp-visually-hidden"> · </span>
-              {summarySpoken ? (
-                <>
-                  <span aria-hidden>{summary}</span>
-                  <span className="cp-visually-hidden">{summarySpoken}</span>
-                </>
-              ) : (
-                summary
-              )}
-            </span>
-          ) : null}
-          {/* W4 (amends DEC-301 L7): the arrow ends the row, after the answer, so nothing sits in the
-              panel's inset or touches its edge. */}
-          <span aria-hidden className="cp-track-section__chevron">
-            <DisclosureArrow open={open} />
-          </span>
-        </button>
-        </Hint>
-      </Heading>
-      <div
-        id={bodyId}
-        className={`cp-track-section__body${used ? " cp-track-section__body--used" : ""}`}
-        hidden={!open}
-      >
-        {children}
-      </div>
-    </section>
+      <div className={`cp-track-section__body${used ? " cp-track-section__body--used" : ""}`}>{children}</div>
+    </Disclosure>
   );
 }

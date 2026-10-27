@@ -8,7 +8,6 @@ import {
   cueSlot,
   cueTime,
   cuesSummary,
-  cuesHeaderSummary,
   CUES_HINT,
   VARIABLE_GRID_HINT,
   cuesInTrackOrder,
@@ -140,40 +139,11 @@ describe("cuesSummary", () => {
   });
 });
 
-describe("cuesHeaderSummary", () => {
-  const grid = (overrides: Record<string, unknown> = {}) => ({
-    markers: 1,
-    bpm: 124,
-    min_bpm: 124,
-    max_bpm: 124,
-    variable: false,
-    ...overrides,
-  });
-
-  it("puts the grid's tempo after the cues", () => {
-    expect(cuesHeaderSummary(marks({ hot_cues: 2, cues: [cue()], beat_grid: grid() as never }))).toBe(
-      "2 hot · grid 124",
-    );
-    expect(cuesHeaderSummary(marks({ beat_grid: grid() as never }))).toBe("none · grid 124");
-  });
-
-  it("gives a variable grid's range", () => {
-    expect(
-      cuesHeaderSummary(marks({ beat_grid: grid({ variable: true, min_bpm: 121, max_bpm: 124 }) as never })),
-    ).toBe("none · grid 121–124");
-  });
-
-  it("says only the cues without a grid, and nothing before the marks are read", () => {
-    expect(cuesHeaderSummary(marks({ beat_grid: null }))).toBe("none");
-    expect(cuesHeaderSummary(marks({ read: false, beat_grid: null }))).toBeNull();
-  });
-});
-
 describe("beatGridLine", () => {
   const grid = { markers: 1, bpm: 128, min_bpm: 128, max_bpm: 128, variable: false };
 
   it("gives a constant grid's tempo in the one BPM format", () => {
-    expect(beatGridLine(grid, true)).toBe("Beat grid · 128 BPM");
+    expect(beatGridLine(grid, true)).toBe("Beat grid 128 BPM");
   });
 
   it("calls a grid that changes tempo variable, with its range", () => {
@@ -182,7 +152,7 @@ describe("beatGridLine", () => {
         { markers: 3, bpm: 121, min_bpm: 121, max_bpm: 124, variable: true },
         true,
       ),
-    ).toBe("Beat grid · variable, 121–124 BPM");
+    ).toBe("Beat grid 121–124 BPM, variable");
   });
 
   it("says there is none only when the marks have been read", () => {

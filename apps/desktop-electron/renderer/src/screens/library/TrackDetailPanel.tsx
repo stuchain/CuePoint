@@ -25,17 +25,21 @@
  * grid (`TrackMarksSection`), read-only like the rest of it (DEC-118). WAVE-06
  * draws them on the track's waveform under the header (`TrackWaveform`).
  *
+ * D16 (round 3) makes it three tabs and takes the buttons off the head: Overview says where the
+ * track lives (Collections, playlists, Sets, with Add to…), Beatport compares Rekordbox's values
+ * with Beatport's, Yours is rating, notes and tags. Play, Queue and Similar are the selection
+ * bar's and the row's menu, so a track has one home for its actions.
+ *
  * **A field Rekordbox did not supply reads as absent, not as zero.** That is
  * why LIBRARY-01 made those columns nullable (DEC-034): unrated and rated-zero
  * are different facts, and so are "never played" and "no play count recorded".
  */
-import { Fragment, useCallback, useId, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
-import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { WheelButton } from "../../components/wheel";
 import { formatBpm } from "../../components/format/bpm";
-import { LOUDNESS_LINE_TITLE, loudnessLine, loudnessShort } from "../../components/waveform/loudnessWords";
+import { LOUDNESS_LINE_TITLE, loudnessLine, loudnessShort, peakShort } from "../../components/waveform/loudnessWords";
 import type {
   CollectionNode,
   EntityKind,
@@ -49,19 +53,16 @@ import type {
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { matchStateLabel } from "../clean/cleanFormat";
 import { useTrackMatches } from "../clean/useTrackMatches";
-import { originState, similarPath } from "../discover/discoverLinks";
 import { CreditLinks } from "./CreditLinks";
 import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { DisclosureSection } from "./DisclosureSection";
-import { RouteButton } from "./RouteButton";
 import { followJob } from "./followJob";
 import { jobErrorMessage } from "./libraryFormat";
 import { TrackArtwork } from "./TrackArtwork";
 import { MatchOnBeatport, TrackBeatportSection } from "./TrackBeatportSection";
 import { TrackHistorySection } from "./TrackHistorySection";
 import { TrackMarksSection } from "./TrackMarksSection";
-import { availableQueueActions, runQueueAction, type QueueAction } from "./trackDetailsActions";
-import { cuesHeaderSummary, CUES_HINT } from "./trackMarks";
+import { CUES_HINT, cuesSummary } from "./trackMarks";
 import { TrackWaveform } from "./TrackWaveform";
 import { TrackYours } from "./TrackYours";
 import { useTrackHistory } from "./useTrackHistory";
@@ -116,12 +117,13 @@ interface TrackDetailPanelProps {
    * the label are text, as they always were.
    */
   onOpenEntity?: (kind: EntityKind, ref: string) => void;
-  /**
-   * The tracks selected, read out when the selection is more than the one
-   * shown: what Play, Play next and Add to queue act on (FLW-9). Absent, they
-   * act on the track shown.
-   */
+  /** Unused since D16 took Play, Queue and Similar off the panel; pages still pass it. */
   gatherSelectedRows?: (limit?: number) => Promise<LibraryTrackRow[]>;
+  /**
+   * Opens the page's "Add to Collection" picker for the track shown: the **Add to…** beside the
+   * track's Collections on Overview (D16). Absent, it is not offered.
+   */
+  onAddToCollection?: () => void;
   /**
    * Opens the edit dialog for the whole selection, for **Edit values for 4
    * tracks…** (INS-11, K4): in place on the page that hosts the panel, not on
@@ -215,14 +217,16 @@ function collectionIcon(kind: TrackCollectionRef["kind"]) {
 }
 
 /** The panel's tabs, in the order they are read. */
-type DetailTab = "overview" | "beatport" | "where" | "yours";
+type DetailTab = "overview" | "beatport" | "yours";
 
 const TAB_LABELS: Record<DetailTab, string> = {
   overview: "Overview",
   beatport: "Beatport",
-  where: "Where",
   yours: "Yours",
 };
+
+/** How long a read of another track runs before the track on screen reads as stale (D32, M379). */
+const STALE_AFTER_MS = 300;
 
 /** The tab the person last chose, remembered like the panel's folds (storage can be blocked). */
 export const TRACK_DETAILS_TAB_KEY = "cuepoint-ui-track-details-tab";
@@ -230,7 +234,7 @@ export const TRACK_DETAILS_TAB_KEY = "cuepoint-ui-track-details-tab";
 function readTab(): DetailTab {
   try {
     const stored = localStorage.getItem(TRACK_DETAILS_TAB_KEY);
-    if (stored === "overview" || stored === "beatport" || stored === "where" || stored === "yours") return stored;
+    if (stored === "overview" || stored === "beatport" || stored === "yours") return stored;
   } catch {
     // Blocked: the panel opens on Overview.
   }
@@ -258,8 +262,8 @@ export function TrackDetailPanel({
   onOpenInClean,
   onMessage,
   onOpenEntity,
-  gatherSelectedRows,
   onEditValues,
+  onAddToCollection,
   leadZone,
 }: TrackDetailPanelProps) {
   // Bumped by every accepted write, which is what makes the History section
@@ -282,13 +286,22 @@ export function TrackDetailPanel({
   const history = useTrackHistory(trackId, written);
   const writes = useTrackWrites(trackId, written);
   const matches = useTrackMatches(trackId, written);
-  const [acting, setActing] = useState<QueueAction | null>(null);
-  // Where the Queue ▾ menu is open, under its button (K5).
-  const [queueMenu, setQueueMenu] = useState<{ x: number; y: number } | null>(null);
   const [reverting, setReverting] = useState<number | null>(null);
   const [restoring, setRestoring] = useState(false);
   const onSaved = useCallback(() => setWritten((n) => n + 1), []);
   const report = useCallback((message: string) => onError?.(message), [onError]);
+  // The previous track stays on screen while the next one is read; after a beat it reads as stale
+  // rather than as the new track's, and a quick re-read of the same track never flickers (M379).
+  const [stale, setStale] = useState(false);
+  const readingAnother = loading && detail !== null;
+  useEffect(() => {
+    if (!readingAnother) {
+      setStale(false);
+      return;
+    }
+    const timer = setTimeout(() => setStale(true), STALE_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [readingAnother]);
 
   /** A write that changed a value the table shows, not only CuePoint's notes. */
   const onChanged = useCallback(() => {
@@ -325,7 +338,7 @@ export function TrackDetailPanel({
       const started = await bridge({ track_id: trackId });
       const finished = await followJob(started.job_id).finished;
       if (finished.state === "failed") report(jobErrorMessage(finished.error));
-      else onMessage?.("Save undone.");
+      else onMessage?.("Sync undone.");
     } catch (cause) {
       reportUnexpected(cause);
       report(userMessage(cause));
@@ -335,35 +348,6 @@ export function TrackDetailPanel({
       announceLibraryChange();
     }
   }, [onChanged, onMessage, report, trackId]);
-
-  const act = async (action: QueueAction) => {
-    if (!detail) return;
-    setActing(action);
-    try {
-      let rows: LibraryTrackRow[] = [];
-      if (selectionCount > 1 && gatherSelectedRows) rows = await gatherSelectedRows();
-      if (rows.length === 0) rows = [detail.track];
-      const outcome = await runQueueAction(action, rows);
-      if (outcome?.failed) report(outcome.message);
-      else if (outcome) onMessage?.(outcome.message);
-    } catch (cause) {
-      reportUnexpected(cause);
-      report(userMessage(cause));
-    } finally {
-      setActing(null);
-    }
-  };
-
-  /** The first track selected, for Similar tracks; the one shown when that is not known. */
-  const similarTarget = async (): Promise<string | null> => {
-    if (!detail || detail.track.id == null) return null;
-    if (selectionCount > 1 && gatherSelectedRows) {
-      const rows = await gatherSelectedRows(1);
-      const first = rows.find((row) => row.id != null)?.id;
-      if (first != null) return similarPath(first);
-    }
-    return similarPath(detail.track.id);
-  };
 
   if (error) {
     return (
@@ -394,7 +378,6 @@ export function TrackDetailPanel({
   const sets = detail.collections.filter((node) => node.kind === "set");
 
   const key = keyDetail(track);
-  const queue = availableQueueActions();
   const matchState = matches.matches?.state?.state ?? null;
   // A track with no key is offered the match right where the absence is read (the Key
   // fact on Overview); the Beatport tab offers it again to a track not looked up yet.
@@ -403,6 +386,7 @@ export function TrackDetailPanel({
   const editable = track.id != null && window.cuepoint?.setTrackOverrides;
   const loudnessTrack = reading.trackId !== null && reading.trackId === track.id ? reading.track : null;
   const lufs = loudnessShort(loudnessTrack);
+  const peak = peakShort(loudnessTrack);
   const bpm = formatBpm(track.bpm);
   const genre = track.genre ? track.genre : null;
 
@@ -413,7 +397,6 @@ export function TrackDetailPanel({
   const tabs: { id: DetailTab; label: string }[] = [
     { id: "overview", label: TAB_LABELS.overview },
     ...(track.id != null && !matches.unavailable ? [{ id: "beatport" as const, label: TAB_LABELS.beatport }] : []),
-    { id: "where", label: TAB_LABELS.where },
     ...(track.id != null ? [{ id: "yours" as const, label: TAB_LABELS.yours }] : []),
   ];
   // A remembered tab this track does not offer (Beatport off, no id) reads as Overview.
@@ -438,8 +421,8 @@ export function TrackDetailPanel({
   );
 
   return (
-    <div className="cp-track-detail">
-      {/* The art scrolls away; the words that name the track and the buttons stay (C35). */}
+    <div className={`cp-track-detail${stale ? " cp-track-detail--stale" : ""}`} aria-busy={loading || undefined}>
+      {/* The art scrolls away; the words that name the track stay (C35). */}
       {track.id != null && window.cuepoint?.getTrackArtwork && (
         <div className="cp-track-detail__art">
           <TrackArtwork trackId={track.id} version={written} />
@@ -484,60 +467,6 @@ export function TrackDetailPanel({
               </>
             )}
           </p>
-        )}
-        {/* Three buttons (K5, DEC-285, amending DEC-246): Play, Queue (a menu) with
-            the two that never interrupt, and Similar. The aria-labels and titles
-            keep the full names. Show in folder lives in the row's menus. */}
-        <div className="cp-track-actions" role="group" aria-label="Actions for this track">
-          {queue.play && (
-            <Button variant="secondary" size="sm" disabled={acting !== null} onClick={() => void act("play")}>
-              Play
-            </Button>
-          )}
-          {(queue.next || queue.end) && (
-            <Button
-              variant="secondary"
-              aria-label="Queue"
-              size="sm"
-              menu
-              aria-expanded={queueMenu !== null}
-              disabled={acting !== null}
-              onClick={(event) => {
-                const rect = event.currentTarget.getBoundingClientRect();
-                setQueueMenu({ x: rect.left, y: rect.bottom });
-              }}
-            >
-              Queue
-            </Button>
-          )}
-          {track.id != null && (
-            <RouteButton
-              to={selectionCount > 1 && gatherSelectedRows ? similarTarget : similarPath(track.id)}
-              state={originState("library")}
-              aria-label="Similar tracks"
-              title="Similar tracks"
-              variant="secondary"
-              size="sm"
-            >
-              Similar
-            </RouteButton>
-          )}
-        </div>
-        {queueMenu && (
-          <TrackContextMenu
-            x={queueMenu.x}
-            y={queueMenu.y}
-            label="Queue"
-            onClose={() => setQueueMenu(null)}
-            items={[
-              ...(queue.next
-                ? [{ id: "next", label: "Play next", onSelect: () => void act("next") }]
-                : []),
-              ...(queue.end
-                ? [{ id: "end", label: "Add to queue", onSelect: () => void act("end") }]
-                : []),
-            ]}
-          />
         )}
       </header>
 
@@ -598,20 +527,102 @@ export function TrackDetailPanel({
                 </dd>
               </div>
             )}
-            {detail.marks && cuesHeaderSummary(detail.marks) !== null && (
-              <div className="cp-track-detail__fact" data-testid="track-fact-cues">
-                <dt className="cp-track-detail__factlabel">Cue points</dt>
-                <dd className="cp-track-detail__factvalue cp-data">
-                  <Hint text={CUES_HINT} inline>
-                    <span>{cuesHeaderSummary(detail.marks)}</span>
-                  </Hint>
-                </dd>
+            {/* The peak beside the loudness (M130), signed above zero. */}
+            {lufs && peak && (
+              <div className="cp-track-detail__fact" data-testid="track-fact-peak">
+                <dt className="cp-track-detail__factlabel">Peak</dt>
+                <dd className="cp-track-detail__factvalue cp-data">{peak}</dd>
               </div>
             )}
             {track.id != null && !matches.unavailable && matchWord !== "" && (
               <div className="cp-track-detail__fact" data-testid="track-fact-beatport">
                 <dt className="cp-track-detail__factlabel">Beatport</dt>
-                <dd className="cp-track-detail__factvalue">{matchWord}</dd>
+                <dd className="cp-track-detail__factvalue">
+                  {/* The state is a link to the tab that explains it (M127). */}
+                  <button type="button" className="cp-link cp-link--go" onClick={() => choose("beatport")}>
+                    {matchWord}
+                  </button>
+                </dd>
+              </div>
+            )}
+            {/* Where the track lives (M132, D16): the lines the Where tab held, with Add to…. */}
+            <div className="cp-track-detail__fact" data-testid="track-fact-playlists">
+              <dt className="cp-track-detail__factlabel">In playlists</dt>
+              <dd className="cp-track-detail__factvalue">
+                {playlists.length === 0 ? (
+                  <span className="cp-track-detail__none">None</span>
+                ) : (
+                  <ul className="cp-track-detail__lists">
+                    {playlists.map((playlist) => (
+                      <li key={playlist.id}>
+                        <Hint text={playlist.path}>
+                          <button
+                            type="button"
+                            className="cp-link cp-track-detail__playlist"
+                            onClick={() => onSelectPlaylist?.(playlist)}
+                          >
+                            <PixelIcon name="playlist" className="cp-track-detail__icon" />
+                            {playlist.name}
+                          </button>
+                        </Hint>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </dd>
+            </div>
+            <div className="cp-track-detail__fact" data-testid="track-fact-collections">
+              <dt className="cp-track-detail__factlabel">In Collections</dt>
+              <dd className="cp-track-detail__factvalue">
+                <ul className="cp-track-detail__lists">
+                  {collections.length === 0 && (
+                    <li>
+                      <span className="cp-track-detail__none">None</span>
+                    </li>
+                  )}
+                  {collections.map((collection) => (
+                    <li key={collection.id}>
+                      <button
+                        type="button"
+                        className="cp-link cp-track-detail__playlist"
+                        onClick={() => onSelectCollection?.(collection)}
+                      >
+                        <PixelIcon name={collectionIcon(collection.kind)} className="cp-track-detail__icon" />
+                        {collection.name}
+                      </button>
+                    </li>
+                  ))}
+                  {onAddToCollection && track.id != null && (
+                    <li>
+                      <button type="button" className="cp-link" onClick={onAddToCollection}>
+                        Add to…
+                      </button>
+                    </li>
+                  )}
+                </ul>
+              </dd>
+            </div>
+            {sets.length > 0 && (
+              <div className="cp-track-detail__fact" data-testid="track-fact-sets">
+                <dt className="cp-track-detail__factlabel">In Sets</dt>
+                <dd className="cp-track-detail__factvalue">
+                  <ul className="cp-track-detail__lists">
+                    {sets.map((set) => (
+                      <li key={set.id}>
+                        <Hint text={onOpenInPrepare ? `Open ${set.name} in Prepare` : undefined}>
+                          <button
+                            type="button"
+                            className="cp-link cp-track-detail__playlist"
+                            onClick={() => (onOpenInPrepare ? onOpenInPrepare(set) : onSelectCollection?.(set))}
+                          >
+                            <PixelIcon name={collectionIcon(set.kind)} className="cp-track-detail__icon" />
+                            {set.name}
+                          </button>
+                        </Hint>
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
               </div>
             )}
           </dl>
@@ -628,6 +639,7 @@ export function TrackDetailPanel({
             <DisclosureSection
               id="cues"
               title="Cue points"
+              summary={cuesSummary(detail.marks)}
               hint={CUES_HINT}
               defaultOpen={false}
             >
@@ -635,7 +647,7 @@ export function TrackDetailPanel({
             </DisclosureSection>
           )}
 
-          <DisclosureSection id="details" title="Details from Rekordbox" defaultOpen={false}>
+          <DisclosureSection id="details" title="From your Rekordbox file" defaultOpen={false}>
             <dl className="cp-facts cp-track-detail__fields">
               <Row
                 label="Remixer"
@@ -680,93 +692,13 @@ export function TrackDetailPanel({
         !matches.unavailable &&
         panel(
           "beatport",
-          <TrackBeatportSection track={{ ...track, id: track.id }} matches={matches} onOpenInClean={onOpenInClean} />,
+          <TrackBeatportSection
+            track={{ ...track, id: track.id }}
+            matches={matches}
+            onOpenInClean={onOpenInClean}
+            onError={report}
+          />,
         )}
-
-      {panel(
-        "where",
-        <>
-            {collections.length === 0 && sets.length === 0 && (
-              <p className="cp-track-detail__none">Not in any Collection.</p>
-            )}
-          {collections.length > 0 && (
-            <section className="cp-track-detail__playlists">
-              <h4 className="cp-track-detail__subtitle">
-                {`In ${countNoun(collections.length, "Collection")}`}
-              </h4>
-              <ul>
-                {collections.map((collection) => (
-                  <li key={collection.id}>
-                    <button
-                      type="button"
-                      className="cp-link cp-track-detail__playlist"
-                      onClick={() => onSelectCollection?.(collection)}
-                    >
-                      <PixelIcon
-                        name={collectionIcon(collection.kind)}
-                        className="cp-track-detail__icon"
-                      />
-                      {collection.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {sets.length > 0 && (
-            <section className="cp-track-detail__playlists" aria-label="Sets">
-              <h4 className="cp-track-detail__subtitle">
-                {`In ${countNoun(sets.length, "Set")}`}
-              </h4>
-              <ul>
-                {sets.map((set) => (
-                  <li key={set.id}>
-                    <Hint text={onOpenInPrepare ? `Open ${set.name} in Prepare` : undefined}>
-                      <button
-                        type="button"
-                        className="cp-link cp-track-detail__playlist"
-                        onClick={() =>
-                          onOpenInPrepare ? onOpenInPrepare(set) : onSelectCollection?.(set)
-                        }
-                      >
-                        <PixelIcon name={collectionIcon(set.kind)} className="cp-track-detail__icon" />
-                        {set.name}
-                      </button>
-                    </Hint>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {playlists.length === 0 ? (
-            <p className="cp-track-detail__none">Not in any Rekordbox playlist.</p>
-          ) : (
-            <section className="cp-track-detail__playlists">
-              <h4 className="cp-track-detail__subtitle">
-                {`In ${countNoun(playlists.length, "playlist")}`}
-              </h4>
-              <ul>
-                {playlists.map((playlist) => (
-                  <li key={playlist.id}>
-                    <Hint text={playlist.path}>
-                      <button
-                        type="button"
-                        className="cp-link cp-track-detail__playlist"
-                        onClick={() => onSelectPlaylist?.(playlist)}
-                      >
-                        <PixelIcon name="playlist" className="cp-track-detail__icon" />
-                        {playlist.name}
-                      </button>
-                    </Hint>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </>,
-      )}
 
       {track.id != null &&
         panel(

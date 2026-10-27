@@ -15,7 +15,7 @@ import { TrackDetailPanel } from "./TrackDetailPanel";
 import { FRIDAY, TRACK_DETAIL, WARMUP } from "./librarySets.testFixture";
 
 afterEach(() => {
-  // Folds are remembered, and every test here opens the Where tab itself.
+  // Folds are remembered, and Overview, where the lists live, is the default tab.
   localStorage.clear();
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 });
@@ -23,14 +23,12 @@ afterEach(() => {
 describe("the Sets a track is in", () => {
   it("lists them beside its Collections, each counted as its own kind", () => {
     render(<TrackDetailPanel detail={TRACK_DETAIL} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Where" }));
-    expect(screen.getByText("In 1 Collection")).toBeInTheDocument();
-    const sets = screen.getByRole("region", { name: "Sets" });
-    expect(within(sets).getByRole("heading", { name: "In 1 Set" })).toBeInTheDocument();
+    const sets = screen.getByTestId("track-fact-sets");
+    expect(within(sets).getByText("In Sets")).toBeInTheDocument();
     const friday = within(sets).getByRole("button", { name: "Friday" });
     expect(friday.querySelector("[data-icon='prepare']")).not.toBeNull();
     // Friday is not counted among the Collections.
-    const collections = screen.getByText("In 1 Collection").closest("section") as HTMLElement;
+    const collections = screen.getByTestId("track-fact-collections");
     expect(within(collections).queryByRole("button", { name: "Friday" })).toBeNull();
     expect(within(collections).getByRole("button", { name: "Warm-up" })).toBeInTheDocument();
   });
@@ -45,8 +43,7 @@ describe("the Sets a track is in", () => {
         onSelectCollection={onSelectCollection}
       />,
     );
-    fireEvent.click(screen.getByRole("tab", { name: "Where" }));
-    const friday = within(screen.getByRole("region", { name: "Sets" })).getByRole("button", {
+    const friday = within(screen.getByTestId("track-fact-sets")).getByRole("button", {
       name: "Friday",
     });
     expect(friday).toHaveAttribute("title", "Open Friday in Prepare");
@@ -58,9 +55,8 @@ describe("the Sets a track is in", () => {
   it("scopes the table to a Set where there is no Prepare, as to a Collection", () => {
     const onSelectCollection = vi.fn();
     render(<TrackDetailPanel detail={TRACK_DETAIL} onSelectCollection={onSelectCollection} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Where" }));
     fireEvent.click(
-      within(screen.getByRole("region", { name: "Sets" })).getByRole("button", { name: "Friday" }),
+      within(screen.getByTestId("track-fact-sets")).getByRole("button", { name: "Friday" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Warm-up" }));
     expect(onSelectCollection.mock.calls).toEqual([
@@ -78,7 +74,7 @@ describe("the Sets a track is in", () => {
         }}
       />,
     );
-    expect(screen.queryByRole("region", { name: "Sets" })).toBeNull();
-    expect(screen.queryByText(/Set/)).toBeNull();
+    expect(screen.queryByTestId("track-fact-sets")).toBeNull();
+    expect(screen.queryByText(/In Sets/)).toBeNull();
   });
 });

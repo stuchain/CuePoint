@@ -83,16 +83,13 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
 
   return (
     <div className="cp-track-values">
-      <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-        Edit values…
-      </Button>
-      {/* A track's own state: it opens itself when a value is edited, and
-          nothing is remembered about it. */}
+      {/* A track's own state, open so Edit values… is always in reach (M136); nothing is
+          remembered about it. */}
       <DisclosureSection
         id="your-values"
         title="Your values"
         summary={edited.length === 0 ? "none edited" : `${edited.length} edited`}
-        defaultOpen={edited.length > 0}
+        defaultOpen
         remember={false}
         level={4}
         // Remounts when the track gains or loses an edited value, so the
@@ -123,6 +120,10 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
             ))}
           </ul>
         )}
+        {/* M136: the button is part of the values it edits, not a line between Tags and them. */}
+        <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+          Edit values…
+        </Button>
       </DisclosureSection>
       <EditValuesDialog
         open={editing}

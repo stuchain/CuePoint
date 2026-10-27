@@ -58,6 +58,9 @@ interface TrackYoursProps {
   onValueSaved?: () => void;
 }
 
+/** How long the inline "Saved" stays after a rating or favorite is accepted (as Settings' tick does). */
+const SAVED_TICK_MS = 2000;
+
 const STARS = Array.from({ length: RATING_STARS }, (_, index) => index + 1);
 
 export function TrackYours({
@@ -78,6 +81,16 @@ export function TrackYours({
   const ratingId = useId();
   const notesId = useId();
   const tagId = useId();
+
+  // M382: the rating shows at once; this says it stuck. `aria-live`, not a second `role="status"`
+  // (see the notes' line below).
+  const [tick, setTick] = useState(false);
+  useEffect(() => {
+    if (editor.ratingSaved === 0) return;
+    setTick(true);
+    const timer = window.setTimeout(() => setTick(false), SAVED_TICK_MS);
+    return () => window.clearTimeout(timer);
+  }, [editor.ratingSaved]);
 
   const record = editor.metadata;
   const shownTags = tagging.tags;
@@ -148,7 +161,7 @@ export function TrackYours({
 
       <div className="cp-track-yours__rating">
         <span className="cp-track-yours__label" id={ratingId}>
-          Your rating
+          Rating
         </span>
         <div className="cp-track-yours__stars">
           {/* The clear control sits beside the group rather than inside it: a
@@ -176,7 +189,7 @@ export function TrackYours({
                 onClick={() => pick(star)}
                 onFocus={() => setFocusStar(star)}
               >
-                <PixelIcon name={star <= lit ? "star" : "star-outline"} size="md" />
+                <PixelIcon name={star <= lit ? "star" : "star-outline"} size="lg" />
               </button>
             ))}
           </div>
@@ -199,20 +212,27 @@ export function TrackYours({
               aria-pressed={record.favorite}
               onClick={() => editor.setFavorite(!record.favorite)}
             >
-              <PixelIcon name={record.favorite ? "heart" : "heart-outline"} size="sm" />
+              <PixelIcon name={record.favorite ? "heart" : "heart-outline"} size="lg" />
             </button>
           </Hint>
+          <span className="cp-track-yours__saved" aria-live="polite">
+            {tick ? (
+              <>
+                <PixelIcon name="check" size="sm" className="cp-pixel-icon--before" /> Saved
+              </>
+            ) : null}
+          </span>
         </div>
       </div>
 
       <div className="cp-track-yours__row">
         <span className="cp-track-yours__label" aria-hidden="true">
-          Your notes
+          Notes
         </span>
         <div className="cp-track-yours__control">
         <Textarea
           id={notesId}
-          label="Your notes"
+          label="Notes"
           hideLabel
           width="full"
           rows={3}
@@ -259,6 +279,9 @@ export function TrackYours({
         <TextField
           id={tagId}
           label="Add a tag"
+          // M136: the row flexes to the panel and the field is as tall as Add (its label is the Tags heading above).
+          width="full"
+          className="cp-track-yours__tagfield"
           suggestions={suggestionItems}
           onPick={setDraftTag}
           value={draftTag}

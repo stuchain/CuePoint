@@ -1,10 +1,9 @@
 /**
- * The Beatport tab (CLEAN-13, DEC-047, DEC-066, INS-5).
+ * The Beatport tab (CLEAN-13, DEC-047, DEC-066, INS-5, then D16).
  *
- * The matched release, how the match was decided, the fields that agree on one line, and in
- * full only the fields where what is used is not what Beatport has (with Rekordbox's own value
- * when that is a third thing). Reading only: applying Beatport's values is Review's and Fix
- * values' work (FLW-2), and the full side-by-side is Clean's, one link away.
+ * How strong the match is in words and how it was decided, then a table of Rekordbox's values
+ * against Beatport's, with what is used named where it is neither. Reading only: applying Beatport's
+ * values is Review's and Fix values' work (FLW-2), and the full side-by-side is Clean's, one link away.
  *
  * A track not looked up yet gets one sentence and one action, not a table of blanks.
  */
@@ -12,8 +11,10 @@ import { cleanMatchState } from "../clean/cleanLink";
 import { decisionLine } from "../clean/cleanFormat";
 import type { TrackMatchesState } from "../clean/useTrackMatches";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
-import { agreeLine, compareBeatportRows, joinLabels, releaseLine, scoreWords } from "./beatportComparison";
-import { beatportFieldRows, coverArtText, fieldSourceText } from "./libraryClean";
+import { comparisonRows, matchStrength, matchStrengthTitle } from "./beatportComparison";
+import { beatportFieldRows, coverArtText } from "./libraryClean";
+import { openOnBeatport } from "../discover/openOnBeatport";
+import { Hint } from "../../components/Hint";
 import { NO_VALUE } from "../../words";
 import { Loading } from "../../components/Loading";
 import { RouteButton } from "./RouteButton";
@@ -23,6 +24,8 @@ interface TrackBeatportSectionProps {
   /** The panel's read of the track's match, shared with the key's line. */
   matches: TrackMatchesState;
   onOpenInClean?: (trackId: number) => void;
+  /** Where a refused "Open on Beatport" says why. Without it that link is not offered. */
+  onError?: (message: string) => void;
 }
 
 function dash(text: string): string {
@@ -49,7 +52,7 @@ export function MatchOnBeatport({ trackId }: { trackId: number }) {
   );
 }
 
-export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBeatportSectionProps) {
+export function TrackBeatportSection({ track, matches, onOpenInClean, onError }: TrackBeatportSectionProps) {
   const state = matches.matches?.state ?? null;
   const candidate = matches.matches?.candidate ?? null;
 
@@ -65,74 +68,78 @@ export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBea
     );
   }
 
-  const { agree, applied, alsoGenres, differ } = compareBeatportRows(beatportFieldRows(track, candidate));
+  const rows = comparisonRows(track, candidate, beatportFieldRows(track, candidate));
   const cover = coverArtText(track.artwork);
-  const release = candidate ? releaseLine(candidate) : "";
-  const agreed = [
-    agreeLine(agree.filter((label) => !applied.includes(label))),
-    applied.length > 0 ? `${joinLabels(applied)} applied from Beatport` : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const statusLine = [state ? decisionLine(state) : "", scoreWords(candidate?.score), cover !== "" && cover !== NO_VALUE ? `artwork ${cover}` : ""]
-    .filter(Boolean)
-    .join(" · ");
+  const strength = matchStrength(candidate?.score);
+  // The match first, in words (M133): "Strong match · Confirmed automatically".
+  const statusLine = [strength, state ? decisionLine(state) : ""].filter(Boolean).join(" \u00b7 ");
+  const pageUrl = candidate?.url || null;
+  const canOpen = Boolean(pageUrl && onError && window.cuepoint?.openBeatportPage);
 
   return (
     <div className="cp-track-beatport">
-      {release !== "" && <p className="cp-track-beatport__release">{release}</p>}
       {statusLine !== "" && (
         <p
-          className={`cp-track-beatport__state${
+          className={`cp-track-beatport__state cp-track-beatport__state--lead${
             state?.disputed ? " cp-track-beatport__state--disputed" : ""
           }`}
         >
-          {statusLine}
-        </p>
-      )}
-      {agreed !== "" && (
-        <p className="cp-track-beatport__agree">
-          {`${agreed.charAt(0).toUpperCase()}${agreed.slice(1)}`}
+          <Hint text={matchStrengthTitle(candidate?.score) || undefined} inline>
+            <span>{statusLine}</span>
+          </Hint>
         </p>
       )}
 
-      {alsoGenres.length > 0 && (
-        <p className="cp-track-beatport__also">Beatport also lists {alsoGenres.join(", ")}</p>
+      {rows.length > 0 && (
+        <table className="cp-track-beatport__table" aria-label="Rekordbox against Beatport">
+          <thead>
+            <tr>
+              <td />
+              <th scope="col">Rekordbox</th>
+              <th scope="col">Beatport</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id} data-field={row.id}>
+                <th scope="row">{row.label}</th>
+                <td>
+                  {dash(row.rekordbox)}
+                  {row.using !== null && (
+                    <span className="cp-track-beatport__using">{`Using ${row.using}`}</span>
+                  )}
+                </td>
+                <td className={row.differs ? "cp-track-beatport__differs" : undefined}>{dash(row.beatport)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
-      {differ.length > 0 && (
-        <dl className="cp-track-beatport__fields">
-          {differ.map((row) => (
-            <div key={row.field} className="cp-track-beatport__field" data-field={row.field}>
-              <dt className="cp-track-detail__label">{row.label}</dt>
-              <dd className="cp-track-beatport__values">
-                {row.imported.trim() !== row.effective.trim() && (
-                  <span>
-                    <span className="cp-track-beatport__layer">Rekordbox</span> {dash(row.imported)}
-                  </span>
-                )}
-                <span className="cp-track-beatport__now">
-                  <span className="cp-track-beatport__layer">Using</span> {dash(row.effective)}{" "}
-                  <span className="cp-track-beatport__source">({fieldSourceText(row.source)})</span>
-                </span>
-                <span>
-                  <span className="cp-track-beatport__layer">Beatport</span> {dash(row.beatport)}
-                </span>
-              </dd>
-            </div>
-          ))}
-        </dl>
+      {cover !== "" && cover !== NO_VALUE && (
+        <p className="cp-track-beatport__also">{`Artwork ${cover}`}</p>
       )}
 
-      {onOpenInClean && (
-        <button
-          type="button"
-          className="cp-link cp-link--go"
-          onClick={() => onOpenInClean(track.id)}
-        >
-          Compare all on the Clean page
-        </button>
-      )}
+      <div className="cp-track-beatport__links">
+        {onOpenInClean && (
+          <button type="button" className="cp-link cp-link--go" onClick={() => onOpenInClean(track.id)}>
+            Open in Clean
+          </button>
+        )}
+        {canOpen && (
+          <button
+            type="button"
+            className="cp-link cp-link--go"
+            onClick={() => {
+              void openOnBeatport([pageUrl as string]).then((refusal) => {
+                if (refusal) onError?.(refusal);
+              });
+            }}
+          >
+            Open on Beatport
+          </button>
+        )}
+      </div>
     </div>
   );
 }

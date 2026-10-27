@@ -120,15 +120,35 @@ function star(count: number): HTMLElement {
 describe("the rating", () => {
   it("is a named radio group, not five buttons nobody can address", () => {
     draw();
-    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Rating" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(5);
   });
 
-  it("draws the stars a step larger, medium (P13)", () => {
+  it("draws the stars and the heart at the large icon size, md being gone (M28, M136)", () => {
     draw();
     for (const radio of screen.getAllByRole("radio")) {
-      expect(radio.querySelector("[data-size]")).toHaveAttribute("data-size", "md");
+      expect(radio.querySelector("[data-size]")).toHaveAttribute("data-size", "lg");
     }
+    expect(screen.getByRole("button", { name: "Favorite" }).querySelector("[data-size]")).toHaveAttribute(
+      "data-size",
+      "lg",
+    );
+  });
+
+  it("says it stuck with an inline Saved tick once the engine accepts the rating (M382)", async () => {
+    draw();
+    expect(screen.queryByText("Saved")).toBeNull();
+
+    fireEvent.click(star(4));
+
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+  });
+
+  it("labels its three parts Rating, Notes and Tags (M132)", () => {
+    draw();
+    expect(screen.getByText("Rating")).toBeInTheDocument();
+    expect(screen.getByText("Tags")).toBeInTheDocument();
+    expect(screen.queryByText("Your rating")).toBeNull();
   });
 
   it("sets a rating of yours", async () => {
@@ -177,7 +197,7 @@ describe("the rating", () => {
   it("says which layer it is showing", () => {
     draw({ rekordbox_rating: 4, effective_rating: 4, rating_source: "rekordbox" });
     // On hover, not as a line of text (DEC-246).
-    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("data-hint", "From Rekordbox");
+    expect(screen.getByRole("radiogroup", { name: "Rating" })).toHaveAttribute("data-hint", "From Rekordbox");
     expect(screen.queryByText("From Rekordbox")).not.toBeInTheDocument();
   });
 
@@ -213,7 +233,7 @@ describe("the rating", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's 4 stars" }));
 
     await waitFor(() =>
-      expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("data-hint", "From Rekordbox"),
+      expect(screen.getByRole("radiogroup", { name: "Rating" })).toHaveAttribute("data-hint", "From Rekordbox"),
     );
     expect(star(4)).toHaveAttribute("aria-checked", "true");
   });
@@ -232,7 +252,7 @@ describe("the rating", () => {
   it("moves and chooses with the arrow keys", async () => {
     draw({ rating: 2, effective_rating: 2, rating_source: "cuepoint" });
 
-    fireEvent.keyDown(screen.getByRole("radiogroup", { name: "Your rating" }), {
+    fireEvent.keyDown(screen.getByRole("radiogroup", { name: "Rating" }), {
       key: "ArrowRight",
     });
 
@@ -243,7 +263,7 @@ describe("the rating", () => {
 
   it("reaches both ends with Home and End", async () => {
     draw({ rating: 3, effective_rating: 3, rating_source: "cuepoint" });
-    const group = screen.getByRole("radiogroup", { name: "Your rating" });
+    const group = screen.getByRole("radiogroup", { name: "Rating" });
 
     fireEvent.keyDown(group, { key: "Home" });
     await waitFor(() =>
@@ -331,7 +351,7 @@ describe("the note", () => {
   });
 
   function type(text: string) {
-    fireEvent.change(screen.getByLabelText("Your notes"), { target: { value: text } });
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: text } });
   }
 
   it("sends one request for a burst of typing", async () => {
@@ -407,7 +427,7 @@ describe("the note", () => {
 
     type("intro is long");
     await act(async () => {
-      fireEvent.blur(screen.getByLabelText("Your notes"));
+      fireEvent.blur(screen.getByLabelText("Notes"));
     });
 
     expect(bridge.setTrackMetadata).toHaveBeenCalledWith({
@@ -476,12 +496,12 @@ describe("the note", () => {
     });
 
     expect(onError).toHaveBeenCalledWith("A note may be at most 10000");
-    expect(screen.getByLabelText("Your notes")).toHaveValue("the note the engine has");
+    expect(screen.getByLabelText("Notes")).toHaveValue("the note the engine has");
   });
 
   it("asks for a note in words that cannot be mistaken for one (M135)", () => {
     draw({ notes: "" });
-    expect(screen.getByLabelText("Your notes")).toHaveAttribute("placeholder", "Add a note…");
+    expect(screen.getByLabelText("Notes")).toHaveAttribute("placeholder", "Add a note…");
   });
 });
 
@@ -650,7 +670,7 @@ describe("a record read again", () => {
     // produce (ORG-11). The engine's answer is newer than anything held here,
     // including a note nobody finished typing.
     const view = draw({ notes: "what it said before" });
-    expect(screen.getByLabelText("Your notes")).toHaveValue("what it said before");
+    expect(screen.getByLabelText("Notes")).toHaveValue("what it said before");
 
     await act(async () => {
       view.rerender(
@@ -670,7 +690,7 @@ describe("a record read again", () => {
       );
     });
 
-    expect(screen.getByLabelText("Your notes")).toHaveValue("what a batch wrote");
+    expect(screen.getByLabelText("Notes")).toHaveValue("what a batch wrote");
     expect(star(4)).toHaveAttribute("aria-checked", "true");
   });
 });

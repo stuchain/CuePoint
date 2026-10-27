@@ -420,12 +420,13 @@ describe("in the Inspector", () => {
 describe("its loudness on the panel's facts line", () => {
   const line = () => screen.queryByTestId("inspector-loudness");
 
-  it("keeps only the peak under the picture when the facts line has the value", async () => {
+  it("says nothing of loudness under the picture when the facts have the value, only what the strip is (M129, M130)", async () => {
     install();
     render(<TrackWaveform trackId={7} loudnessInFacts />);
     await drawn();
 
-    expect(line()).toHaveTextContent(/^Peak −0\.3 dBFS$/);
+    expect(line()).toBeNull();
+    expect(screen.getByTestId("inspector-caption")).toHaveTextContent(/^Whole track/);
   });
 
   it("keeps the whole line for a track with no value, which says why", async () => {
@@ -456,14 +457,18 @@ describe("its loudness on the panel's facts line", () => {
       collections: [],
     } as unknown as LibraryTrackDetail;
 
-    it("reads the value, labelled Loudness, with the peak still shown", async () => {
+    it("reads the value labelled Loudness with its peak in the row beside it (M130)", async () => {
       install();
       render(<TrackDetailPanel detail={DETAIL} />);
       const fact = await screen.findByTestId("track-fact-loudness");
       expect(within(fact).getByText("Loudness")).toBeVisible();
       expect(fact.querySelector("dd")).toHaveTextContent("−8.4 LUFS");
       expect(fact.querySelector(".cp-hint > span")).toHaveAttribute("title", expect.stringContaining("Loudness −8.4 LUFS · Peak −0.3 dBFS"));
-      expect(await screen.findByTestId("inspector-loudness")).toHaveTextContent("Peak −0.3 dBFS");
+      const peak = await screen.findByTestId("track-fact-peak");
+      expect(peak).toHaveTextContent("Peak−0.3 dBFS");
+      // Together: the peak's row is the loudness row's next sibling.
+      expect(fact.nextElementSibling).toBe(peak);
+      expect(screen.queryByTestId("inspector-loudness")).toBeNull();
     });
 
     it("makes one read for a selection, and one for the next", async () => {
