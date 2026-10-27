@@ -215,7 +215,7 @@ export function formatEventFamily(type: string): string {
     return "Collections and Sets";
   }
   if (type.startsWith("rekordbox.")) return "Export";
-  if (type.startsWith("engine.") || type.startsWith("backup.")) return "App";
+  if (/^(?:engine|backup)\./.test(type)) return "App";
   return "Other";
 }
 

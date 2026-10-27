@@ -186,7 +186,7 @@ describe("search and activity", () => {
   it("opens the search dialog", async () => {
     render(<App />);
     command("search-library");
-    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Search library" })).toBeInTheDocument();
   });
 
   it("opens the Activity panel", async () => {

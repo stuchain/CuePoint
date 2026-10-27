@@ -94,7 +94,7 @@ describe("status strip and offline banner (P45)", () => {
     expect(strip).toMatch(/font-size:\s*var\(--font-size-label\)/);
     expect(strip).toMatch(/color:\s*var\(--fg-muted\)/);
     expect(strip).toMatch(/background:\s*var\(--bg-toolbar\)/);
-    expect(body("/src/components/shell/StatusStrip.css", ".cp-status__engine--ok")).toMatch(/color:\s*var\(--success-text\)/);
+    expect(body("/src/components/shell/StatusStrip.css", ".cp-status__engine--ok")).toMatch(/color:\s*var\(--fg-muted\)/);
   });
 
   it("draws the offline banner as a notice: a danger bar over an 8% tint, no framed row", () => {

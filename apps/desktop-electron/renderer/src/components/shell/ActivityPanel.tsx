@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../Button";
 import { Loading } from "../Loading";
 import { Modal } from "../Modal";
@@ -61,8 +61,15 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
   const [limit, setLimit] = useState(ACTIVITY_PAGE);
   const [kind, setKind] = useState(ALL_KINDS);
 
+  // Read through refs so `load` stays one function: the effects below restart on opening and on the
+  // page size, not on every answer.
+  const limitRef = useRef(limit);
+  limitRef.current = limit;
+  const feedRef = useRef(feed);
+  feedRef.current = feed;
+
   const load = useCallback(
-    (quiet = false, take = limit) => {
+    (quiet = false, take = limitRef.current) => {
       const read = window.cuepoint?.getRecentActivity;
       if (!read) {
         setStatus("unavailable");
@@ -79,12 +86,12 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
         .catch((cause: unknown) => {
           reportUnexpected(cause);
           // A failed quiet read keeps the list that is showing; only a first read tells the failure.
-          if (quiet && feed) return;
+          if (quiet && feedRef.current) return;
           setError(userMessage(cause));
           setStatus("error");
         });
     },
-    [limit, feed],
+    [],
   );
 
   // Read when opened, and again at each page size (Show 50 more) and every few seconds while open.
@@ -94,9 +101,8 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
       setKind(ALL_KINDS);
       return;
     }
-    load(feed !== null && limit > ACTIVITY_PAGE);
-    // `load` is rebuilt by its own results; only opening and the page size start a read.
-  }, [open, limit]);
+    load(feedRef.current !== null && limit > ACTIVITY_PAGE);
+  }, [open, limit, load]);
 
   useEffect(() => {
     if (!open) return;

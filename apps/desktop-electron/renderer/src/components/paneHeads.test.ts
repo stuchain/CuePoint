@@ -23,10 +23,15 @@ describe("bars of one height (P32)", () => {
   });
 
   it.each([
-    ["/src/components/shell/TrackInspector.css", ".cp-inspector__header"],
     ["/src/components/player/QueuePanel.css", ".cp-queue__header"],
   ])("%s %s is at least --toolbar-height tall", (sheet, selector) => {
     expect(body(sheet, selector)).toMatch(/min-(block-size|height):\s*var\(--toolbar-height\)/);
+  });
+
+  it("makes the Inspector's head the page header's height, never under one toolbar (D9)", () => {
+    expect(body("/src/screens/screens.css", ".cp-panel-header.cp-side-head")).toMatch(
+      /min-height:\s*var\(--side-head-height, calc\([^;]*var\(--toolbar-height\)/,
+    );
   });
 
   it("centres the pane head's title and its source, not on a text baseline", () => {

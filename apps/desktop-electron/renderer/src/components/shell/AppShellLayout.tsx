@@ -100,6 +100,8 @@ export function AppShellLayout({
   // F6 and Shift+F6 between the panes (M459).
   useEffect(() => installPaneKeys(), []);
 
+  const hasInspector = Boolean(inspector);
+
   // Offline the page's content, and Track details' body, stop answering (M363, M364).
   useEffect(() => {
     if (!offline) return;
@@ -107,7 +109,7 @@ export function AppShellLayout({
     if (content.current) stops.push(keepInert(content.current));
     if (inspectorRegion.current) stops.push(keepInert(inspectorRegion.current, ".cp-inspector__body"));
     return () => stops.forEach((stop) => stop());
-  }, [offline, Boolean(inspector)]);
+  }, [offline, hasInspector]);
 
   useEffect(() => {
     const element = content.current;

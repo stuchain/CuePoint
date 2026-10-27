@@ -128,7 +128,7 @@
   min-height: var(--control-height);
   min-width: 0;
   padding: 0 var(--space-sm);
-  margin-inline-end: calc(-1 * var(--space-sm));
+  margin-inline-end: round(calc(-1 * var(--space-sm)), 1px);
 }
 
 /*

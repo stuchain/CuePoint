@@ -124,7 +124,7 @@ describe("App shell", () => {
   it("opens the search dialog on Ctrl+K from the one host App mounts, outside the sidebar (K8)", async () => {
     render(<App />);
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    const dialog = await screen.findByRole("dialog", { name: "Search" });
+    const dialog = await screen.findByRole("dialog", { name: "Search library" });
     expect(screen.getByRole("navigation", { name: /main navigation/i })).not.toContainElement(dialog);
   });
 
@@ -176,18 +176,15 @@ describe("App shell", () => {
     expect(player).toHaveTextContent("Nothing playing");
   });
 
-  it("puts the Details toggle in the page header and opens Track details with it", async () => {
+  it("offers no Details toggle on a page with nothing to inspect (M490)", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(navLink("Settings"));
     await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
     const header = screen.getByRole("heading", { level: 1, name: "Settings" }).closest(".cp-screen-header")!;
-    const toggle = within(header as HTMLElement).getByRole("button", { name: "Track details" });
-    expect(toggle).toHaveTextContent("Details");
-    await user.click(toggle);
-    expect(screen.getByRole("complementary", { name: "Track details" })).toBeInTheDocument();
-    expect(within(header as HTMLElement).getByRole("button", { name: "Track details" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(header as HTMLElement).queryByRole("button", { name: "Track details" })).toBeNull();
+    expect(screen.queryByRole("complementary", { name: "Track details" })).toBeNull();
   });
 
   it("opens the playing track in the Library, and its artist in Discover, from the bar (BAR-4)", async () => {
