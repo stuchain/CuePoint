@@ -487,8 +487,8 @@ describe("the toolbar row", () => {
     const row = document.querySelector<HTMLElement>(".cp-filter-bar")!;
     // Document order: the filter row, then the table. Select all is at the end of the row (C215).
     expect(row.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(row).queryByRole("button", { name: "Columns…" })).toBeNull();
-    expect(within(table).getByRole("button", { name: "Columns…" })).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Columns" })).toBeNull();
+    expect(within(table).getByRole("button", { name: "Columns" })).toBeInTheDocument();
     // The facts line says "3 tracks"; the row repeats it only while a filter narrows the view (A3).
     expect(within(row).queryByRole("status")).toBeNull();
     expect(within(row).getByRole("button", { name: "Select all" })).toBeInTheDocument();
@@ -624,7 +624,7 @@ describe("the table", () => {
   it("draws the Clean columns once they are chosen", async () => {
     renderScreen();
     await tableReady();
-    await userEvent.click(screen.getByRole("button", { name: "Columns…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Columns" }));
     const picker = await screen.findByRole("dialog");
     for (const name of ["Match", "Score", "File status", "Artwork"]) {
       await userEvent.click(within(picker).getByRole("checkbox", { name }));

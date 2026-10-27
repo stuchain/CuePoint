@@ -509,7 +509,11 @@ describe("opening a card, and Everything", () => {
     renderRun();
     fireEvent.click(await screen.findByRole("button", { name: "Everything · 5 tracks" }));
     const table = await screen.findByRole("table", { name: "Tracks this dig found" });
-    expect(within(table).getByText("From")).toBeInTheDocument();
+    // From waits in the Columns list at the default window (M85, D12): it is one tick away.
+    expect(within(table).queryByText("From")).toBeNull();
+    fireEvent.click(within(table).getByRole("button", { name: "Columns" }));
+    expect(await screen.findByText("From")).toBeInTheDocument();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     expect(bridge.getDiscoveryRunTracks).toHaveBeenCalled();
     expect(bridge.getDiscoveryGroupTracks).not.toHaveBeenCalled();
     // One bar over the table holds the filter, the actions and the count (C224).

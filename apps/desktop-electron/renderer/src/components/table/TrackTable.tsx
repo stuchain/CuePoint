@@ -34,12 +34,12 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { Button } from "../Button";
 import { MissingValue } from "../MissingValue";
-import { PlayButton } from "../PlayButton";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import { Loading } from "../Loading";
 import { useScale } from "../../tokens/ScaleContext";
 import {
+  columnDefaultWidth,
   columnMinWidth,
   gridTemplate,
   growWidths,
@@ -48,6 +48,7 @@ import {
   orderedWidths,
   useRowHeight,
   resolveWidths,
+  shrinkWidths,
   stickyFits,
   stickyLeft,
   totalWidth,
@@ -142,11 +143,12 @@ export interface TrackTableProps<Row> {
   onClearSelection?: () => void;
 
   /**
-   * The round play button at the right end of every row, at `--row-end-inset` (C84). The table
-   * draws the one shared button, its icon following `isPlayingRow`; pressing it plays that row and
-   * selects nothing. `label` names the row for a screen reader and the hover tip.
+   * The Delete key with focus on the table (M483): remove what is selected. Delete is the one
+   * remove key on every list; the screen decides what removing means in its list (out of a
+   * Collection, out of a Set, off the wantlist) and whether it asks first. Never a key pressed in
+   * a field inside a row.
    */
-  playButton?: { label: (row: Row) => string; onPlay: (row: Row, index: number) => void };
+  onDeleteKey?: () => void;
 
   /**
    * Right-click, or the keyboard's menu key on a row (PLAYER-09).
@@ -341,7 +343,11 @@ function sortKeyOf<Row>(column: TrackColumnDef<Row>): string | undefined {
 
 /** Empty values go last, in either direction; numbers by value, words by the locale's order. */
 function compareValues(a: string | number | null | undefined, b: string | number | null | undefined, direction: 1 | -1): number {
-  const empty = (value: string | number | null | undefined) => value === null || value === undefined || value === "";
+  const empty = (value: string | number | null | undefined) =>
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "") ||
+    (typeof value === "number" && Number.isNaN(value));
   if (empty(a) || empty(b)) return empty(a) === empty(b) ? 0 : empty(a) ? 1 : -1;
   if (typeof a === "number" && typeof b === "number") return (a - b) * direction;
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" }) * direction;
@@ -369,6 +375,18 @@ function cellContent<Row>(content: ReactNode, column: TrackColumnDef<Row>): Reac
   return content;
 }
 
+/**
+ * How wide a placeholder bar is in a column (M373): short for a number, long for words, so a
+ * loading table has the shape of the columns it is about to fill, not one bar repeated.
+ */
+function skeletonWidth<Row>(column: TrackColumnDef<Row>): string {
+  if (column.align === "right") return "40%";
+  if (column.id === "title") return "70%";
+  if (column.id === "artist" || column.id === "artists") return "55%";
+  if (column.chips) return "45%";
+  return "50%";
+}
+
 /** How the header labels a sort direction, for a screen reader. */
 function ariaSort(active: boolean, direction: SortDirection): "ascending" | "descending" | "none" {
   if (!active) return "none";
@@ -390,7 +408,7 @@ export function TrackTable<Row>({
   onRowActivate,
   onRowEdit,
   onClearSelection,
-  playButton,
+  onDeleteKey,
   onRowContextMenu,
   onRowMove,
   onRowDragStart,
@@ -467,6 +485,8 @@ export function TrackTable<Row>({
   // Which header is being dragged, for the cursor and the dimmed cell. The
   // move itself is the layout owner's to decide.
   const [dragging, setDragging] = useState<string | null>(null);
+  // The one header that is a Tab stop; Left and Right move between the headings (M460).
+  const [headerStop, setHeaderStop] = useState(0);
   // Where an insertion line is drawn, as an index between rows (ORG-11).
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   // The row picked up (it lifts) and the place a drop landed (it settles), by index: both are
@@ -529,10 +549,18 @@ export function TrackTable<Row>({
   const [viewportWidth, setViewportWidth] = useState(0);
   const [cornerWidth, setCornerWidth] = useState(0);
   const baseWidths = useMemo(() => orderedWidths(columns, effectiveWidths, scale), [columns, effectiveWidths, scale]);
-  const ordered = useMemo(
-    () => growWidths(columns, baseWidths, viewportWidth - cornerWidth),
-    [baseWidths, columns, cornerWidth, viewportWidth],
-  );
+  // Wider than the room, the words give up width first (Title, then Artist), down to their minimums;
+  // narrower, they share what is left (M85, C210). Only a column still at its default width gives
+  // any up: a width the person dragged to is theirs, and overflows into the sideways scroll bar.
+  const ordered = useMemo(() => {
+    const grown = growWidths(columns, baseWidths, viewportWidth - cornerWidth);
+    const mins = columns.map((column, index) =>
+      Math.abs((baseWidths[index] ?? 0) - columnDefaultWidth(column, scale)) <= 1
+        ? columnMinWidth(column, scale)
+        : (grown[index] ?? 0),
+    );
+    return shrinkWidths(columns, grown, mins, viewportWidth - cornerWidth);
+  }, [baseWidths, columns, cornerWidth, scale, viewportWidth]);
   const template = useMemo(() => gridTemplate(ordered), [ordered]);
   const minWidth = useMemo(() => totalWidth(ordered), [ordered]);
   // What each column is drawn at now, which a drag starts from.
@@ -768,6 +796,11 @@ export function TrackTable<Row>({
       onClearSelection();
       return;
     }
+    if (event.key === "Delete" && onDeleteKey && !typing && event.target === event.currentTarget) {
+      event.preventDefault();
+      onDeleteKey();
+      return;
+    }
     if (event.key === "F2" && onRowEdit && current != null && !typing) {
       const row = source.getRow(current);
       if (!row) return;
@@ -851,7 +884,8 @@ export function TrackTable<Row>({
     setKeyboardCursor(true);
     const offset = revealOffset(to, rowHeight, headerHeight, element.scrollTop, element.clientHeight, bottomInset(element));
     if (offset != null) virtualizer.scrollToOffset(offset);
-    if (!moved) return;
+    // Ctrl+Up and Ctrl+Down only move the cursor; Ctrl+Space then ticks the row (M461, D34).
+    if (!moved || command.select === false) return;
     const modifiers = { shiftKey: command.extend, ctrlKey: false, metaKey: false };
     const row = source.getRow(to);
     if (row) onSelect?.(row, to, modifiers);
@@ -869,6 +903,33 @@ export function TrackTable<Row>({
   } as CSSProperties;
 
   const empty = source.total === 0;
+  // The headings a key can reach: the ones that sort or carry a hint. One of them is the Tab stop.
+  const reachable = columns.flatMap((column, index) => (sortable(column) || column.hint ? [index] : []));
+  const headerStopIndex = reachable.includes(headerStop) ? headerStop : (reachable[0] ?? -1);
+  /** Left and Right move between headings; Alt with them moves the heading's edge (the keyboard's drag). */
+  const onHeaderKeyDown = (column: TrackColumnDef<Row>, index: number, event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    if (event.altKey) {
+      resizeByKey(column, event);
+      return;
+    }
+    const at = reachable.indexOf(index);
+    const next = reachable[at + (event.key === "ArrowRight" ? 1 : -1)];
+    if (next === undefined) return;
+    event.preventDefault();
+    setHeaderStop(next);
+    scrollRef.current
+      ?.querySelectorAll<HTMLElement>(".track-table__header-cell-wrap")
+      [next]?.querySelector<HTMLElement>("button.track-table__header-cell")
+      ?.focus();
+  };
+  // The speaker sits in the title cell; a table with no title column marks its first. A table that
+  // can show a playing row keeps room for it in that cell's padding, in every row (M100).
+  const marked = Boolean(isPlayingRow);
+  const markColumn = Math.max(
+    0,
+    columns.findIndex((column) => column.id === "title"),
+  );
 
   /**
    * Where a drag at `clientY` would land, worked out from the pointer and the rows' own top.
@@ -926,6 +987,8 @@ export function TrackTable<Row>({
   const focusWithoutScroll = (event: React.MouseEvent) => {
     if (event.button !== 0) return;
     const element = scrollRef.current;
+    // A click is not the keyboard: the table's ring waits for the first key (M455).
+    element?.setAttribute("data-pointer", "");
     if (!element || document.activeElement === element) return;
     element.focus({ preventScroll: true });
   };
@@ -964,7 +1027,10 @@ export function TrackTable<Row>({
         // context menu without a mouse — and so a menu opened from it has
         // somewhere to give focus back to when it closes.
         tabIndex={0}
-        onKeyDown={onTableKeyDown}
+        onKeyDown={(event) => {
+          scrollRef.current?.removeAttribute("data-pointer");
+          onTableKeyDown(event);
+        }}
         // The whole scroll area is the drop target, so the space below the rows and an empty
         // table's padding take a drop too, and one handler places it from the pointer.
         onDragOver={(event) => {
@@ -1046,11 +1112,14 @@ export function TrackTable<Row>({
                   <Hint text={column.hint ?? (column.headerHidden ? column.header : undefined)}>
                     <button
                       type="button"
-                      className={`track-table__header-cell${column.align === "right" ? " track-table__header-cell--right" : ""}`}
+                      className={`track-table__header-cell${column.align === "right" ? " track-table__header-cell--right" : ""}${column.chips ? " track-table__header-cell--chips" : ""}${marked && index === markColumn ? " track-table__header-cell--mark" : ""}`}
                       // A hinted header stays focusable, so the keyboard reaches
                       // its hint; it just does not sort.
                       disabled={!sortable(column) && !column.hint}
                       aria-disabled={!sortable(column) && column.hint ? true : undefined}
+                      tabIndex={index === headerStopIndex ? 0 : -1}
+                      onFocus={() => setHeaderStop(index)}
+                      onKeyDown={(event) => onHeaderKeyDown(column, index, event)}
                       onClick={() => handleSort(column)}
                     >
                       <span className="track-table__header-label">
@@ -1072,7 +1141,7 @@ export function TrackTable<Row>({
                 ) : (
                   // A heading that cannot sort is plain text, not a button that does nothing.
                   <div
-                    className={`track-table__header-cell track-table__header-cell--plain${column.align === "right" ? " track-table__header-cell--right" : ""}`}
+                    className={`track-table__header-cell track-table__header-cell--plain${column.align === "right" ? " track-table__header-cell--right" : ""}${column.chips ? " track-table__header-cell--chips" : ""}${marked && index === markColumn ? " track-table__header-cell--mark" : ""}`}
                   >
                     <span className="track-table__header-label">
                       {column.headerHidden ? (
@@ -1088,7 +1157,9 @@ export function TrackTable<Row>({
                 <div
                   role="separator"
                   aria-orientation="vertical"
-                  tabIndex={0}
+                  // Not a Tab stop (M460): a heading is one stop, and Alt+Left and Alt+Right on it move
+                  // its edge. The edge is still a mouse handle, and answers the arrows when focused.
+                  tabIndex={-1}
                   className="track-table__col-resizer"
                   aria-label={`Resize ${column.header} column`}
                   aria-valuenow={effectiveWidths[column.id]}
@@ -1105,13 +1176,13 @@ export function TrackTable<Row>({
           })}
           {onColumns && (
             <div className="track-table__corner" role="presentation">
-              <Hint text="Columns…">
+              <Hint text="Columns">
                 <Button
                   variant="secondary"
                   size="sm"
                   iconOnly
                   icon="columns"
-                  aria-label="Columns…"
+                  aria-label="Columns"
                   onClick={onColumns}
                 />
               </Hint>
@@ -1137,33 +1208,10 @@ export function TrackTable<Row>({
               const draggable = Boolean(row && onRowDragStart && (!canDragRow || canDragRow(row)));
               const playing = Boolean(row && isPlayingRow?.(row));
               const played = !playing && Boolean(row && wasPlayedRow?.(row));
-              // The mark sits in the title cell; a table with no title column marks its first.
-              const markColumn = Math.max(
-                0,
-                columns.findIndex((column) => column.id === "title"),
-              );
               const own = row && rowEnd ? rowEnd(row, item.index) : null;
-              const play =
-                row && playButton ? (
-                  <PlayButton
-                    aria-label={playButton.label(row)}
-                    playing={playing}
-                    onMouseDown={(event) => event.stopPropagation()}
-                    onDoubleClick={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      playButton.onPlay(row, item.index);
-                    }}
-                  />
-                ) : null;
               const hasOwn = own != null && own !== false;
-              const hasEnd = hasOwn || play != null;
-              const end = hasOwn || play ? (
-                <>
-                  {hasOwn ? own : null}
-                  {play}
-                </>
-              ) : null;
+              const hasEnd = hasOwn;
+              const end = hasOwn ? own : null;
               return (
                 <div
                   key={key}
@@ -1235,7 +1283,7 @@ export function TrackTable<Row>({
                   {columns.map((column, index) => (
                     <div
                       key={column.id}
-                      className={`track-table__cell${column.sticky && pinned ? " track-table__cell--sticky" : ""}${column.align === "right" ? " track-table__cell--right" : ""}`}
+                      className={`track-table__cell${column.sticky && pinned ? " track-table__cell--sticky" : ""}${column.align === "right" ? " track-table__cell--right" : ""}${marked && index === markColumn ? " track-table__cell--mark" : ""}`}
                       style={{
                         ...(column.sticky && pinned ? { left: stickyLeft(columns, ordered, index) } : null),
                         // The end cell takes the whole first grid row, so the cells are placed by hand.
@@ -1243,6 +1291,7 @@ export function TrackTable<Row>({
                       }}
                       role="cell"
                       data-column={column.id}
+                      data-chips={column.chips ? "" : undefined}
                     >
                       {playing && index === markColumn ? (
                         <>
@@ -1255,7 +1304,11 @@ export function TrackTable<Row>({
                       ) : (
                         // A shape, not a spinner: fifty of them scrolling past
                         // should read as "loading", not as an error.
-                        <span className="track-table__skeleton" aria-hidden />
+                        <span
+                          className="track-table__skeleton"
+                          style={{ ["--skeleton-width" as string]: skeletonWidth(column) }}
+                          aria-hidden
+                        />
                       )}
                     </div>
                   ))}

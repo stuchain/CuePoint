@@ -359,9 +359,11 @@ describe("the ranking, said in the BPM Δ header (C203)", () => {
   });
 });
 
-describe("the source columns put Key before BPM (C70)", () => {
-  it("lists Title, Key, BPM in the Library tab and Title, Key, BPM Δ in Suggestions", () => {
-    expect(SOURCE_LIBRARY_COLUMNS.map((column) => column.id).slice(0, 3)).toEqual(["title", "key", "bpm"]);
+describe("the source columns put BPM before Key, as on every page (C70, D12)", () => {
+  it("lists Title, Artist, BPM, Key in the Library tab and Title, Key, BPM Δ in Suggestions", () => {
+    expect(SOURCE_LIBRARY_COLUMNS.map((column) => column.id).slice(0, 4)).toEqual(["title", "artist", "bpm", "key"]);
+    // The panel is narrow: it opens on Title, BPM and Key (M85).
+    expect(SOURCE_LIBRARY_COLUMNS.filter((column) => !column.hiddenByDefault).map((column) => column.id)).toEqual(["title", "bpm", "key"]);
     expect(SUGGESTION_COLUMNS.map((column) => column.id)).toEqual(["title", "key", "bpm_delta"]);
     expect(SUGGESTION_COLUMNS.find((column) => column.id === "bpm_delta")!.align).toBe("right");
   });

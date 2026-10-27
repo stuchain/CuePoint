@@ -487,12 +487,12 @@ describe("the pages' columns", () => {
       "owned",
       "on_wantlist",
     ]);
-    // Title and Artist, then Key, BPM and Genre (C70), with one heading for one field (C79).
+    // Title and Artist, then BPM, Key and Genre (D12; Key, BPM since C70), with one heading for one field (C79).
     expect(ENTITY_COLUMNS.slice(0, 5).map((column) => column.header)).toEqual([
       "Title",
       "Artist",
-      "Key",
       "BPM",
+      "Key",
       "Genre",
     ]);
     const row = half("half_label_ok").page!.rows[0];

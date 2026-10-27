@@ -158,13 +158,17 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
   },
 ];
 
+/**
+ * The shared order (D12): Title, Artist, BPM, Key, Length, Genre. The panel is narrow, so it opens
+ * on Title, BPM and Key and the rest wait in the Columns list (M85).
+ */
 export const SOURCE_LIBRARY_COLUMNS: readonly TrackColumnDef<SourceLibraryRow>[] = [
   { ...libraryColumn("title"), defaultWidthPx: 170 },
-  libraryColumn("key"),
+  { ...libraryColumn("artist"), hiddenByDefault: true },
   libraryColumn("bpm"),
-  libraryColumn("artist"),
-  libraryColumn("genre"),
-  libraryColumn("duration_seconds"),
+  libraryColumn("key"),
+  { ...libraryColumn("duration_seconds"), hiddenByDefault: true },
+  { ...libraryColumn("genre"), hiddenByDefault: true },
 ];
 
 /** A suggestion as a row the table draws, or null when its track has no id. */

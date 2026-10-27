@@ -608,16 +608,14 @@ describe("the columns", () => {
   });
 
   it("draws the specification's columns for a run", () => {
+    // D12/M85: BPM before Key; Label, Released and From wait in the Columns list.
     expect(RUN_COLUMNS.filter((c) => !c.hiddenByDefault).map((c) => c.header)).toEqual([
       "#",
       "Title",
       "Artist",
-      "Key",
       "BPM",
+      "Key",
       "Genre",
-      "Label",
-      "Released",
-      "From",
       "In your library",
       "Wantlist",
     ]);

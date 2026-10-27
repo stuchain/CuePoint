@@ -75,8 +75,15 @@ const trackIdOf = (row: LibraryTrackRow) => row.id;
 
 /** The keys table keeps a layout of its own, apart from the Library's. */
 const KEYS_TABLE_LAYOUT_KEY = "cuepoint-keys-table-layout";
-/** Key straight after Title, so the pane beside the wheel shows it (C69). */
-const KEYS_COLUMNS = keysColumnOrder(LIBRARY_COLUMNS);
+/** The Library's columns in the Library's order: Title, Artist, BPM, Key, Length (M87, D12). */
+const KEYS_COLUMNS = LIBRARY_COLUMNS;
+/**
+ * What a layout saved on this page held before D12: Key straight after Title (C69), then the
+ * Library's order of the time. One never rearranged moves to the shared order once.
+ */
+const KEYS_PREVIOUS_DEFAULT_ORDER = keysColumnOrder(LIBRARY_PREVIOUS_DEFAULT_ORDER.map((id) => ({ id }))).map(
+  (column) => column.id,
+);
 
 /**
  * The order the Library opens on (by artist, A to Z), not Camelot order: the list is the same
@@ -180,7 +187,7 @@ export function KeysTracks({
     [order.dir, order.sort, rules],
   );
   const columns = useColumnLayout<LibraryTrackRow>(KEYS_TABLE_LAYOUT_KEY, KEYS_COLUMNS, {
-    previousDefaultOrder: LIBRARY_PREVIOUS_DEFAULT_ORDER,
+    previousDefaultOrder: KEYS_PREVIOUS_DEFAULT_ORDER,
   });
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);

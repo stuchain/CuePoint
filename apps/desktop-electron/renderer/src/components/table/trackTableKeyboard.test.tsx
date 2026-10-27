@@ -154,11 +154,17 @@ describe("jumping", () => {
 });
 
 describe("keys that are not the table's", () => {
-  it("leaves Ctrl+Down and Meta+Down to the player and does not prevent them", () => {
+  it("M461 (D34): Ctrl+Down and Ctrl+Up move the cursor without selecting, and Ctrl+Space then ticks the row", () => {
     const { table, onSelect } = draw({ activeIndex: 1 });
-    expect(fireEvent.keyDown(table, { key: "ArrowDown", ctrlKey: true })).toBe(true);
-    expect(fireEvent.keyDown(table, { key: "ArrowDown", metaKey: true })).toBe(true);
+    // Not prevented would let the page scroll; they are the table's now.
+    expect(fireEvent.keyDown(table, { key: "ArrowDown", ctrlKey: true })).toBe(false);
+    expect(fireEvent.keyDown(table, { key: "ArrowDown", ctrlKey: true })).toBe(false);
+    expect(fireEvent.keyDown(table, { key: "ArrowUp", ctrlKey: true })).toBe(false);
     expect(onSelect).not.toHaveBeenCalled();
+    // The cursor is on the row after the first (index 2), the ring is drawn there, and Ctrl+Space ticks it.
+    expect(document.querySelector(".track-table__row--cursor")?.getAttribute("data-index")).toBe("2");
+    fireEvent.keyDown(table, { key: " ", ctrlKey: true });
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 3 }), 2, { shiftKey: false, ctrlKey: true, metaKey: false });
   });
 
   it("ignores Alt+Down, Left, Right, plain Space and Escape without preventing them", () => {

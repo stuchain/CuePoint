@@ -61,11 +61,12 @@ describe("rowKeyCommand", () => {
     expect(rowKeyCommand(key("a", { ctrlKey: true }), empty)).toBeNull();
   });
 
-  it("leaves Ctrl and Cmd with the arrows to the player", () => {
-    expect(rowKeyCommand(key("ArrowDown", { ctrlKey: true }), BASE)).toBeNull();
-    expect(rowKeyCommand(key("ArrowUp", { ctrlKey: true }), BASE)).toBeNull();
-    expect(rowKeyCommand(key("ArrowDown", { ctrlKey: true, shiftKey: true }), BASE)).toBeNull();
-    expect(rowKeyCommand(key("ArrowDown", { metaKey: true }), BASE)).toBeNull();
+  it("moves the cursor on Ctrl and Cmd with Up and Down, without selecting (M461, D34)", () => {
+    const base = { ...BASE, cursor: 5 };
+    expect(rowKeyCommand(key("ArrowDown", { ctrlKey: true }), base)).toEqual({ kind: "move", to: 6, extend: false, select: false });
+    expect(rowKeyCommand(key("ArrowUp", { ctrlKey: true }), base)).toEqual({ kind: "move", to: 4, extend: false, select: false });
+    // With Shift it is no key of the table's.
+    expect(rowKeyCommand(key("ArrowDown", { ctrlKey: true, shiftKey: true }), base)).toBeNull();
   });
 
   it("leaves Alt with the arrows to reordering", () => {

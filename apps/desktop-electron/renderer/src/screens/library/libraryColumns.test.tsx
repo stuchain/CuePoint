@@ -46,40 +46,46 @@ describe("the Title column (FLW-5)", () => {
   });
 });
 
-describe("Rating shown by default (LIB-10)", () => {
+describe("Rating (LIB-10, moved by M85 and D12)", () => {
   const rating = LIBRARY_COLUMNS.find((column) => column.id === "rating")!;
+  const row = (extra: Partial<LibraryTrackRow>) => ({ id: 1, title: "Strobe", ...extra }) as LibraryTrackRow;
 
-  it("is not hidden by default, so a layout never saved opens with it", () => {
-    expect(rating.hiddenByDefault).not.toBe(true);
+  it("waits in the Columns list on a layout never saved: six columns fit the default window", () => {
+    // LIB-10 showed it by default; at the default window Rating sat behind the scroll bar (M85).
+    expect(rating.hiddenByDefault).toBe(true);
     const layout = defaultLayout(LIBRARY_COLUMNS, 1);
-    expect(layout.find((entry) => entry.id === "rating")?.hidden).toBe(false);
+    expect(layout.find((entry) => entry.id === "rating")?.hidden).toBe(true);
   });
 
-  it("is the user's choice in a layout that was saved: hidden stays hidden", () => {
+  it("draws an unrated track as blank, not a dash (M94)", () => {
+    const { container } = render(<div>{rating.render(row({ effective_rating: null }))}</div>);
+    expect(container.textContent).toBe("");
+    const rated = render(<div>{rating.render(row({ effective_rating: 3 }))}</div>);
+    expect(rated.getByRole("img", { name: "3 stars" })).toBeInTheDocument();
+  });
+
+  it("is the user's choice in a layout that was saved: shown stays shown", () => {
     const saved = defaultLayout(LIBRARY_COLUMNS, 1).map((entry) =>
-      entry.id === "rating" ? { ...entry, hidden: true } : entry,
+      entry.id === "rating" ? { ...entry, hidden: false } : entry,
     );
     const reconciled = reconcileLayout(saved, LIBRARY_COLUMNS, 1);
-    expect(reconciled.find((entry) => entry.id === "rating")?.hidden).toBe(true);
+    expect(reconciled.find((entry) => entry.id === "rating")?.hidden).toBe(false);
     // Reloading the saved layout again, as every start does, changes nothing.
     expect(reconcileLayout(reconciled, LIBRARY_COLUMNS, 1)).toEqual(reconciled);
   });
 });
 
 describe("the default column order (DEC-NEW-K1)", () => {
-  it("opens on Title, Artist, Key, BPM, Length, Genre, Label, Rating, Album", () => {
+  it("opens on Title, Artist, BPM, Key, Length, Genre (D12; M85)", () => {
     const layout = defaultLayout(LIBRARY_COLUMNS, 1).filter((entry) => !entry.hidden);
     const headers = layout.map((entry) => LIBRARY_COLUMNS.find((c) => c.id === entry.id)!.header);
     expect(headers).toEqual([
       "Title",
       "Artist",
-      "Key",
       "BPM",
+      "Key",
       "Length",
       "Genre",
-      "Label",
-      "Rating",
-      "Album",
     ]);
     expect(DEFAULT_VISIBLE_COLUMNS).toEqual(layout.map((entry) => entry.id));
   });
@@ -89,13 +95,13 @@ describe("the default column order (DEC-NEW-K1)", () => {
       "title",
       "artist",
       "remixer",
-      "album",
-      "label",
-      "genre",
       "key",
       "bpm",
       "duration_seconds",
+      "genre",
+      "label",
       "rating",
+      "album",
       "year",
       "play_count",
       "date_added",

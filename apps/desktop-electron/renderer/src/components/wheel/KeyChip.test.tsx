@@ -5,9 +5,11 @@ import { CAMELOT_CODES } from "./camelot";
 import { resetKeyNotationForTests, saveKeyNotation } from "./keyNotationSetting";
 import { KeyChip } from "./KeyChip";
 import chipCssRaw from "./KeyChip.css?raw";
+import wheelCssRaw from "./WheelButton.css?raw";
 
 // A Windows checkout gives the stylesheet CRLF line endings.
 const chipCss = chipCssRaw.replace(/\r\n/g, "\n");
+const wheelCss = wheelCssRaw.replace(/\r\n/g, "\n");
 
 describe("a key chip", () => {
   it("writes the Camelot code and names the key in its app hint (data-hint)", () => {
@@ -93,5 +95,27 @@ describe("the chip stylesheet", () => {
 
   it("turns chips into plain text when Colour keys is off", () => {
     expect(chipCss).toMatch(/:root\[data-key-colours="off"\] \.key-chip \{[^}]*color: inherit;[^}]*background: none;[^}]*padding: 0;/);
+  });
+
+  it("M3: the tint is the one chip fill token over the ground, not a literal percentage", () => {
+    const rule = /\.key-chip \{([^}]*)\}/.exec(chipCss)![1]!;
+    expect(rule).toMatch(/background:\s*color-mix\(in srgb, var\(--key\) var\(--chip-fill-mix\), var\(--chip-ground, transparent\)\)/);
+    expect(chipCss).not.toMatch(/var\(--key\) \d+%/);
+    expect(wheelCss).not.toMatch(/var\(--key\) \d+%/);
+  });
+
+  it("M3: every chip is at least as wide as 12A, one weight and one face, so a Key column is not ragged", () => {
+    const rule = /\.key-chip \{([^}]*)\}/.exec(chipCss)![1]!;
+    expect(rule).toMatch(/min-inline-size:\s*calc\(3ch \+ 2 \* var\(--key-chip-pad\)\)/);
+    expect(rule).toMatch(/font-family:\s*var\(--font-data\)/);
+    expect(rule).toMatch(/font-weight:\s*var\(--font-weight-semibold\)/);
+  });
+
+  it("M3/M335: a chip that is a button keeps the chip's size and fill; hover is a frame and open is a line, never a darker tint", () => {
+    const button = /\.key-chip--button \{([^}]*)\}/.exec(wheelCss)![1]!;
+    expect(button).not.toMatch(/font-size/);
+    expect(button).not.toMatch(/background/);
+    expect(wheelCss).toMatch(/\.key-chip--button:hover \{[^}]*box-shadow:\s*inset 0 0 0 var\(--hairline\) var\(--key\)/);
+    expect(wheelCss).toMatch(/\.key-chip--button\[aria-expanded="true"\] \{[^}]*box-shadow/);
   });
 });

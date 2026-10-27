@@ -30,10 +30,10 @@ export const WANTLIST_TABLE_LAYOUT_KEY = "cuepoint-discover-wantlist-table-layou
 export const ENTITY_TABLE_LAYOUT_KEY = "cuepoint-discover-page-beatport-layout";
 
 /**
- * The order the shared columns had before Key, BPM and Genre moved up beside Title and Artist
- * (C70): a layout saved in it is moved once, as the Library's are.
+ * The order the shared columns had before D12 put BPM before Key, as the Library's are (it was
+ * Key, BPM since C70): a layout saved in it is moved once, as the Library's are.
  */
-const PREVIOUS_SHARED_ORDER = ["title", "artists", "label", "release_date", "bpm", "key", "genre", "release"];
+const PREVIOUS_SHARED_ORDER = ["title", "artists", "key", "bpm", "genre", "label", "release_date", "release"];
 export const RUN_PREVIOUS_DEFAULT_ORDER: readonly string[] = [
   "position",
   ...PREVIOUS_SHARED_ORDER,
@@ -84,8 +84,18 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       text: (row) => artistsText(row),
     },
     {
+      id: "bpm",
+      header: "BPM",
+      accessor: (row) => row.bpm,
+      minWidthPx: 56,
+      defaultWidthPx: 60,
+      align: "right",
+      render: (row) => formatBpm(row.bpm) || null,
+    },
+    {
       id: "key",
       header: "Key",
+      chips: true,
       accessor: (row) => beatportRowKey(row),
       minWidthPx: 56,
       defaultWidthPx: 60,
@@ -95,39 +105,33 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       text: (row) => beatportRowKey(row) ?? "",
     },
     {
-      id: "bpm",
-      header: "BPM",
-      accessor: (row) => row.bpm,
-      minWidthPx: 56,
-      defaultWidthPx: 60,
-      align: "right",
-      render: (row) => formatBpm(row.bpm),
-    },
-    {
       id: "genre",
       header: "Genre",
       accessor: (row) => row.genre_name,
       minWidthPx: 90,
       defaultWidthPx: 100,
-      render: (row) => row.genre_name ?? "",
+      render: (row) => row.genre_name || null,
     },
     {
       id: "label",
       header: "Label",
+      // Waits in the Columns list so the dig table's opening columns fit the window (M85, D12).
+      hiddenByDefault: true,
       accessor: (row) => row.label_name,
       minWidthPx: 90,
       defaultWidthPx: 130,
-      render: (row) => row.label_name ?? "",
+      render: (row) => row.label_name || null,
       text: (row) => row.label_name ?? "",
     },
     {
       id: "release_date",
       header: "Released",
+      hiddenByDefault: true,
       sortKey: "release_date",
       accessor: (row) => row.release_date,
       minWidthPx: 90,
       defaultWidthPx: 96,
-      render: (row) => formatIsoDay(row.release_date),
+      render: (row) => formatIsoDay(row.release_date) || null,
     },
     {
       id: "release",
@@ -136,7 +140,7 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       hiddenByDefault: true,
       minWidthPx: 100,
       defaultWidthPx: 170,
-      render: (row) => row.release_name ?? "",
+      render: (row) => row.release_name || null,
     },
   ];
 }
@@ -183,6 +187,7 @@ export const RUN_COLUMNS: readonly TrackColumnDef<DiscoverRunTrackRow>[] = [
   {
     id: "sources",
     header: "From",
+    hiddenByDefault: true,
     minWidthPx: 120,
     defaultWidthPx: 180,
     render: (row) => sourcesText(row.sources),

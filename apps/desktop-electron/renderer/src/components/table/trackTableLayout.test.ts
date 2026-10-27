@@ -10,6 +10,8 @@
 import { describe, expect, it } from "vitest";
 
 import layoutCss from "../../tokens/layout.css?raw";
+import { LIBRARY_COLUMNS } from "../../screens/library/libraryColumns";
+import { defaultLayout, visibleColumns } from "./columnLayout";
 
 import {
   COLUMN_DEFAULT_PX,
@@ -17,6 +19,7 @@ import {
   DEFAULT_WIDTH_PX_BY_ID,
   GROW_WEIGHTS,
   growWidths,
+  shrinkWidths,
   widthsAfterResize,
   ROW_HEIGHT_FALLBACK,
   columnDefaultWidth,
@@ -290,6 +293,51 @@ describe("spare width goes by grow weights (C210)", () => {
       { id: "x", header: "X", grow: 1, render: () => null },
     ];
     expect(growWidths(own, [100, 100], 300)).toEqual([100, 200]);
+  });
+});
+
+describe("a narrow table gives up words first (M85)", () => {
+  const cols: TrackColumnDef<Row>[] = [
+    { id: "title", header: "Title", minWidthPx: 120, render: () => null },
+    { id: "artist", header: "Artist", minWidthPx: 100, render: () => null },
+    { id: "bpm", header: "BPM", minWidthPx: 56, render: () => null },
+    { id: "key", header: "Key", minWidthPx: 56, render: () => null },
+  ];
+  const mins = [120, 100, 56, 56];
+
+  it("takes the shortfall from Title first, down to its minimum, then from Artist", () => {
+    // 532 in 440: 92 short; Title gives 92 (220 -> 128), Artist keeps its width.
+    expect(shrinkWidths(cols, [220, 170, 72, 70], mins, 440)).toEqual([128, 170, 72, 70]);
+    // 532 in 400: 132 short; Title gives its 100, Artist the other 32.
+    expect(shrinkWidths(cols, [220, 170, 72, 70], mins, 400)).toEqual([120, 138, 72, 70]);
+  });
+
+  it("takes from numbers and keys only once the words are at their minimums, the last column first", () => {
+    // 532 in 480: Title gives 52, nothing else is touched.
+    expect(shrinkWidths(cols, [220, 170, 72, 70], mins, 480)).toEqual([168, 170, 72, 70]);
+    // 532 in 340: Title and Artist go to their minimums (170 given), Key then BPM give 14 and 8.
+    expect(shrinkWidths(cols, [220, 170, 72, 70], mins, 340)).toEqual([120, 100, 64, 56]);
+    // Nothing is taken below a minimum: what still does not fit scrolls sideways.
+    expect(shrinkWidths(cols, [220, 170, 72, 70], mins, 100)).toEqual(mins);
+  });
+
+  it("leaves the widths alone with room to spare or no room measured", () => {
+    expect(shrinkWidths(cols, [220, 170, 72, 70], mins, 1200)).toEqual([220, 170, 72, 70]);
+    expect(shrinkWidths(cols, [220, 170, 72, 70], mins, 0)).toEqual([220, 170, 72, 70]);
+  });
+
+  it("M85: the Library's opening columns fit the default window with nothing scrolling, and Title keeps its minimum", () => {
+    const opening = visibleColumns(LIBRARY_COLUMNS, defaultLayout(LIBRARY_COLUMNS, 1));
+    for (const scale of [1, 1.5]) {
+      const widths = opening.map((column) => columnDefaultWidth(column, scale));
+      const minimums = opening.map((column) => columnMinWidth(column, scale));
+      // The default window's table area (767 at 1.5x, in CSS pixels at that size), less the Columns
+      // button's track of about 28 px.
+      const room = Math.round((767 / 1.5) * scale) - Math.round(28 * scale);
+      const fitted = shrinkWidths(opening, widths, minimums, room);
+      expect(fitted.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(room);
+      expect(fitted[0]).toBeGreaterThanOrEqual(minimums[0]!);
+    }
   });
 });
 

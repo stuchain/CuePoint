@@ -14,7 +14,12 @@ export interface ClientSort {
   direction: "asc" | "desc";
 }
 
-const isEmpty = (value: SortValue) => value === null || value === undefined || value === "";
+/** Blank means null, undefined, "" or only spaces, and NaN: every blank goes last, in either direction (M93). */
+const isEmpty = (value: SortValue) =>
+  value === null ||
+  value === undefined ||
+  (typeof value === "string" && value.trim() === "") ||
+  (typeof value === "number" && Number.isNaN(value));
 
 /** The table's own comparison: empty values go last, in either direction. */
 export function compareValues(a: SortValue, b: SortValue, direction: 1 | -1): number {

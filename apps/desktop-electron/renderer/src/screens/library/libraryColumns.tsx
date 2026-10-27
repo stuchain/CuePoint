@@ -12,7 +12,6 @@
  * sees is theirs to decide (DEC-042); the defaults are what a DJ looks at.
  */
 import type { ReactNode } from "react";
-import { MissingValue } from "../../components/MissingValue";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
 import { camelotOf } from "../../components/wheel/keyColour";
@@ -29,11 +28,11 @@ import { formatDuration } from "./trackValues";
 /**
  * Stars, not a number — the parser converted Rekordbox's 0/51/…/255 encoding
  * at import (LIBRARY-02), so the stored value is already a star count. The earned stars are
- * drawn filled and the rest outlined (C104); a track with no rating, or rated zero, shows the
- * muted dash ("unrated" is only a filter's word).
+ * drawn filled and the rest outlined (C104); a track with no rating, or rated zero, is blank:
+ * 185 dashes down a column say nothing ("unrated" is only a filter's word, M94, D12).
  */
 function formatRating(rating: number | null): ReactNode {
-  return rating == null || Math.round(rating) <= 0 ? <MissingValue /> : <RatingStars count={rating} />;
+  return rating == null || Math.round(rating) <= 0 ? "" : <RatingStars count={rating} />;
 }
 
 /** The rating as words, for a copied cell: "3 stars", or nothing when there is none. */
@@ -41,6 +40,11 @@ function ratingText(rating: number | null): string {
   return rating == null || Math.round(rating) <= 0 ? "" : starsFor(rating);
 }
 
+/*
+ * One default order across the pages (D12): Title, Artist, BPM, Key, Length, then the extras. The
+ * opening set is the six that fit the default window with nothing scrolling (M85: Label, Rating and
+ * Album wait in the Columns list; Title and Artist shrink first when the room is short).
+ */
 export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   {
     id: "title",
@@ -79,8 +83,19 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     render: (track) => track.remixer ?? null,
   },
   {
+    id: "bpm",
+    header: "BPM",
+    sortKey: "bpm",
+    minWidthPx: 56,
+    defaultWidthPx: 72,
+    align: "right",
+    render: (track) => <OverriddenValue row={track} field="bpm" />,
+    text: (track) => effectiveText(track, "bpm"),
+  },
+  {
     id: "key",
     header: "Key",
+    chips: true,
     // An empty cell is a dash; this is why (DEC-201).
     hint: "Keys come from Beatport matches",
     sortKey: "key",
@@ -91,16 +106,6 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
       const key = effectiveText(track, "key");
       return camelotOf(key) ?? key;
     },
-  },
-  {
-    id: "bpm",
-    header: "BPM",
-    sortKey: "bpm",
-    minWidthPx: 56,
-    defaultWidthPx: 72,
-    align: "right",
-    render: (track) => <OverriddenValue row={track} field="bpm" />,
-    text: (track) => effectiveText(track, "bpm"),
   },
   {
     id: "duration_seconds",
@@ -122,6 +127,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   },
   {
     id: "label",
+    hiddenByDefault: true,
     header: "Label",
     sortKey: "label",
     minWidthPx: 90,
@@ -131,6 +137,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   },
   {
     id: "rating",
+    hiddenByDefault: true,
     header: "Rating",
     sortKey: "rating",
     minWidthPx: 70,
@@ -140,6 +147,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   },
   {
     id: "album",
+    hiddenByDefault: true,
     header: "Album",
     sortKey: "album",
     minWidthPx: 100,
@@ -278,27 +286,25 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
 ];
 
 /**
- * The column order before the K1 reorder (DEC-NEW-K1), every id as it was
- * declared, hidden ones included.
- *
- * Every current user already has a saved layout, so a new default order alone
- * would reach nobody. A saved layout whose order still equals this one has
- * never been rearranged, and `reconcileLayout` moves it to the order above
- * once, keeping widths and hidden flags; a layout the person reordered is
- * left alone. Once moved, the saved order is the new default and never
- * matches this again.
+ * The column order before D12's one default order (BPM before Key), every id as it was declared,
+ * hidden ones included. Every current user may already have a saved layout, so a new default order
+ * alone would reach nobody. A saved layout whose order still equals this one has never been
+ * rearranged, and `reconcileLayout` moves it to the order above once, keeping widths and hidden
+ * flags; a layout the person reordered is left alone. Once moved, the saved order is the new
+ * default and never matches this again. (The order before DEC-NEW-K1 is no longer moved: a layout
+ * still in it was last changed before that release and keeps its order.)
  */
 export const LIBRARY_PREVIOUS_DEFAULT_ORDER: readonly string[] = [
   "title",
   "artist",
   "remixer",
-  "album",
-  "label",
-  "genre",
   "key",
   "bpm",
   "duration_seconds",
+  "genre",
+  "label",
   "rating",
+  "album",
   "year",
   "play_count",
   "date_added",

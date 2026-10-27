@@ -55,3 +55,33 @@ describe("sortedRows", () => {
     expect(names(sortedRows(ROWS, COLUMNS, { key: "name", direction: "desc" }))).toBe("abcd");
   });
 });
+
+describe("blanks sort last both ways (M93)", () => {
+  interface Blank {
+    id: string;
+    bpm: number | null | undefined;
+    genre: string | null;
+  }
+  const BLANKS: Blank[] = [
+    { id: "a", bpm: null, genre: "" },
+    { id: "b", bpm: 128, genre: "Techno" },
+    { id: "c", bpm: undefined, genre: "  " },
+    { id: "d", bpm: 124, genre: "House" },
+    { id: "e", bpm: Number.NaN, genre: null },
+  ];
+  const BLANK_COLUMNS = [
+    { id: "bpm", accessor: (row: Blank) => row.bpm },
+    { id: "genre", accessor: (row: Blank) => row.genre },
+  ];
+  const ids = (rows: readonly Blank[]) => rows.map((row) => row.id).join("");
+
+  it("puts empty, undefined, null, spaces and NaN after every value, ascending", () => {
+    expect(ids(sortedRows(BLANKS, BLANK_COLUMNS, { key: "bpm", direction: "asc" }))).toBe("dbace");
+    expect(ids(sortedRows(BLANKS, BLANK_COLUMNS, { key: "genre", direction: "asc" }))).toBe("dbace");
+  });
+
+  it("and still last, descending", () => {
+    expect(ids(sortedRows(BLANKS, BLANK_COLUMNS, { key: "bpm", direction: "desc" }))).toBe("bdace");
+    expect(ids(sortedRows(BLANKS, BLANK_COLUMNS, { key: "genre", direction: "desc" }))).toBe("bdace");
+  });
+});

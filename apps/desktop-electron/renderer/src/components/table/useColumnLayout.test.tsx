@@ -143,6 +143,28 @@ describe("remembering", () => {
     expect(render().result.current.widths.bpm).toBe(130);
   });
 
+  it("M86: a layout saved before the unit was recorded is moved to 1x on open, so it follows the text size from then on", () => {
+    // Saved bare at 2x: Title 440 is 220 at 1x. Before the move it stayed bare, so every later size read 440.
+    localStorage.setItem("cuepoint-ui-lab-scale", "2");
+    localStorage.setItem(
+      LIBRARY_TABLE_LAYOUT_KEY,
+      JSON.stringify([
+        { id: "title", width: 440, hidden: false },
+        { id: "bpm", width: 160, hidden: false },
+      ]),
+    );
+    const first = render();
+    expect(first.result.current.widths).toMatchObject({ title: 440, bpm: 160 });
+    expect(JSON.parse(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)!)).toMatchObject({
+      unit: "1x",
+      columns: expect.arrayContaining([expect.objectContaining({ id: "title", width: 220 })]),
+    });
+    first.unmount();
+
+    localStorage.setItem("cuepoint-ui-lab-scale", "1");
+    expect(render().result.current.widths).toMatchObject({ title: 220, bpm: 80 });
+  });
+
   it("forgets the stored layout on reset", () => {
     const { result } = render();
     act(() => result.current.nudge("bpm", -1));
@@ -321,8 +343,8 @@ describe("moving a layout saved in the previous default order (DEC-NEW-K1)", () 
     expect(result.current.layout.map((entry) => entry.id)).toEqual(["title", "artist", "bpm"]);
     expect(result.current.layout[1]).toMatchObject({ width: 150, hidden: true });
     expect(result.current.layout[2]).toMatchObject({ width: 95 });
-    // Loading writes nothing; the move is saved with the person's next change.
-    expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).not.toContain('"unit"');
+    // A bare layout is rewritten once as 1x on open (M86), in the order it now has.
+    expect(JSON.parse(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)!).unit).toBe("1x");
   });
 });
 
@@ -365,11 +387,10 @@ describe("the remembered client sort (S11)", () => {
     expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).toBeNull();
   });
 
-  it("reads a layout saved before sorts were stored as having none, and writes nothing on load", () => {
+  it("reads a layout saved before sorts were stored as having none (M86 moves it to 1x, with no sort)", () => {
     localStorage.setItem(LIBRARY_TABLE_LAYOUT_KEY, JSON.stringify([{ id: "bpm", width: 90, hidden: false }]));
-    const before = localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY);
     const { result } = sorted();
     expect(result.current.sort).toBeNull();
-    expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).toBe(before);
+    expect(JSON.parse(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)!).sort).toBeUndefined();
   });
 });

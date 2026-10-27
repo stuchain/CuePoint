@@ -1919,18 +1919,18 @@ describe("In and Out in the table (FLW-18)", () => {
 // ------------------------------------------------------------------ FLW-19
 
 describe("the Set table's columns (R4-5)", () => {
-  it("shows #, Title, Artist, Key, BPM, Plays for and Mix in, and keeps the rest out of the way (C246)", async () => {
+  it("shows #, Title, Artist, BPM, Key, Plays for and Mix in, and keeps the rest out of the way (C246, D12)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     // Seven columns that fit beside Details at the default size; Fit, Mix out, Starts at, Transition
     // and Note are in the column picker.
-    expect(headers()).toEqual(["#", "Title", "Artist", "Key", "BPM", "Plays for", "Mix in"]);
+    expect(headers()).toEqual(["#", "Title", "Artist", "BPM", "Key", "Plays for", "Mix in"]);
   });
 
   it("opens the column picker from the button in the table's header corner, not from View", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    fireEvent.click(within(table()).getByRole("button", { name: "Columns…" }));
+    fireEvent.click(within(table()).getByRole("button", { name: "Columns" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("checkbox", { name: "Mix out" })).not.toBeChecked();
     expect(within(dialog).getByRole("checkbox", { name: "Mix in" })).toBeChecked();

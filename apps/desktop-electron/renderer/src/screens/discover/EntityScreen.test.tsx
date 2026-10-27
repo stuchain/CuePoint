@@ -578,8 +578,8 @@ describe("the Beatport half, in every state", () => {
     const headings = within(table)
       .getAllByRole("columnheader")
       .map((heading) => heading.textContent?.trim());
-    // Title and Artist, then Key, BPM and Genre, before the label and the date.
-    expect(headings.slice(0, 5)).toEqual(["Title", "Artist", "Key", "BPM", "Genre"]);
+    // Title and Artist, then BPM, Key and Genre (D12); the label and the date wait in the Columns list (M85).
+    expect(headings.slice(0, 5)).toEqual(["Title", "Artist", "BPM", "Key", "Genre"]);
     fireEvent.click(within(table).getByRole("button", { name: "BPM" }));
     expect(
       JSON.parse(localStorage.getItem("cuepoint-discover-page-beatport-layout") ?? "{}").sort,

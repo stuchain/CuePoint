@@ -365,6 +365,25 @@ export function saveColumnLayout(
   }
 }
 
+/**
+ * Move a layout saved before the 1x unit existed (a bare array of widths) to the 1x shape (M86).
+ *
+ * A bare layout's widths were read as the current scale's and stayed bare until the person changed
+ * something, so a later size read the same numbers again (Title 440 at 1x, 1.5x and 2x). Rewritten
+ * once on open, at the scale it is read at, it follows the text size from then on. Nothing else is
+ * rewritten: a layout already in 1x, or none at all, is left alone, and a refusing storage is
+ * ignored.
+ */
+export function migrateBareLayout(storageKey: string, layout: ColumnLayout, scale: number): void {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw || !Array.isArray(JSON.parse(raw))) return;
+    saveColumnLayout(storageKey, layout, scale, null);
+  } catch {
+    // Corrupt or unreadable: the defaults apply and the next change writes a fresh layout.
+  }
+}
+
 /** Forget a stored layout, so the next open uses the defaults. */
 export function clearColumnLayout(storageKey: string): void {
   try {

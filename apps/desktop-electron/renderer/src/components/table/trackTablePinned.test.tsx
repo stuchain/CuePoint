@@ -74,6 +74,25 @@ describe("a pinned cell's row line (new G)", () => {
     const line = new Map(declarations(row.body)).get("box-shadow");
     // P5: the row line is the one --row-line token (the theme's row divider mixed towards the rows).
     expect(line).toBe("inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line)");
-    expect(new Map(declarations(sticky.body)).get("box-shadow")).toBe(line);
+    // D13 (M89): the pinned cell draws that line, and a 1 px edge on its right where the scrolling
+    // columns are cut.
+    const drawn = (new Map(declarations(sticky.body)).get("box-shadow") ?? "").replace(/\s+/g, " ");
+    expect(drawn).toContain(line);
+    expect(drawn).toContain("inset calc(-1 * var(--hairline)) 0 0 0 var(--row-line)");
+  });
+
+  it("M89: the Columns button's track and its cells in the rows end at a 1 px edge on their left", () => {
+    const rules = parseRules(stripComments(tableCss));
+    for (const selector of [".track-table__corner", ".track-table__row-corner"]) {
+      const rule = rules.find((candidate) => candidate.selector === selector && candidate.context === "")!;
+      expect((new Map(declarations(rule.body)).get("box-shadow") ?? "").replace(/\s+/g, " ")).toContain(
+        "inset var(--hairline) 0 0 0 var(--row-line)",
+      );
+    }
+  });
+
+  it("M202: the selected row's bar is drawn on the first pinned cell by `first-of-type`, since a grip span can be the first child", () => {
+    expect(tableCss).toContain(".track-table__row--selected .track-table__cell--sticky:first-of-type");
+    expect(tableCss).not.toMatch(/--sticky:first-child/);
   });
 });

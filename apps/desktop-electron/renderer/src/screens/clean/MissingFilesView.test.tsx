@@ -210,7 +210,7 @@ describe("nothing missing (K13)", () => {
     expect(screen.queryByRole("table", { name: "Missing files" })).toBeNull();
     expect(screen.queryByRole("columnheader")).toBeNull();
     expect(screen.queryByText(/0 tracks/)).toBeNull();
-    expect(screen.queryByRole("button", { name: "Columns…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Columns" })).toBeNull();
   });
 
   it("checks every file again", async () => {
@@ -226,7 +226,7 @@ describe("nothing missing (K13)", () => {
     await screen.findByText("Track 1");
     expect(screen.getByRole("list", { name: "How to fix a missing file" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Missing files" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Columns…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Columns" })).toBeInTheDocument();
     expect(screen.queryByText(/^All \d+ files found/)).toBeNull();
   });
 

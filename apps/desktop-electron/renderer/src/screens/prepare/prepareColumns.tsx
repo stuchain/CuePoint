@@ -11,7 +11,8 @@
  * under Plays for, its BPM range under BPM, its warning count under Fit, its
  * own warnings under Transition and its notes under Note. Nothing sorts: the order is the Set.
  *
- * The table opens on #, Title, Artist, Key, BPM, Plays for and Mix in (C246). Fit (a dot
+ * The table opens on #, Title, Artist, BPM, Key, Plays for and Mix in (C246; BPM before Key as
+ * on every page, D12). Fit (a dot
  * for whether the track mixes in from the one before), Mix out, Starts at, Transition and
  * Note are hidden until asked for (View, Columns…). The two times sit together; when the
  * times end the row, the selected row's buttons end just left of them (option 3A), so a
@@ -105,15 +106,6 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     render: (row) => (row.kind === "entry" ? row.entry.track.artist : ""),
   },
   {
-    id: "key",
-    header: "Key",
-    minWidthPx: 48,
-    defaultWidthPx: 56,
-    render: (row) =>
-      row.kind === "entry" ? <OverriddenValue row={row.entry.track} field="key" /> : "",
-    text: (row) => (row.kind === "entry" ? effectiveText(row.entry.track, "key") : ""),
-  },
-  {
     id: "bpm",
     header: "BPM",
     minWidthPx: 56,
@@ -127,6 +119,16 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
       ),
     text: (row) =>
       row.kind === "heading" ? bpmRangeText(row.chapter) : effectiveText(row.entry.track, "bpm"),
+  },
+  {
+    id: "key",
+    header: "Key",
+    chips: true,
+    minWidthPx: 48,
+    defaultWidthPx: 56,
+    render: (row) =>
+      row.kind === "entry" ? <OverriddenValue row={row.entry.track} field="key" /> : "",
+    text: (row) => (row.kind === "entry" ? effectiveText(row.entry.track, "key") : ""),
   },
   {
     id: "planned",

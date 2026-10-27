@@ -1,4 +1,5 @@
-/* Choosing columns (LIBUI-06). A list of rows, each a choice and two moves. */
+/* Choosing columns (LIBUI-06, D24). The shown columns first, each a grip, a choice and an attached
+   pair of moves; the columns not shown under them as ticks alone. */
 
 .cp-column-picker {
   display: flex;
@@ -22,6 +23,27 @@
 
 .cp-column-picker__row:hover {
   background: var(--row-hover);
+}
+
+.cp-column-picker__row--dragging {
+  background: var(--bg-panel-alt);
+}
+
+/* The grip's room is always there, so a pinned row's tick lines up with the others'. */
+.cp-column-picker__grip {
+  display: inline-flex;
+  flex: none;
+  width: var(--icon-size-sm);
+  color: var(--fg-muted);
+  cursor: grab;
+}
+
+/* The words over the columns that wait: a label, in the label role. */
+.cp-column-picker__heading {
+  margin: var(--space-lg) 0 var(--space-xs);
+  color: var(--fg-muted);
+  font-family: var(--font-control);
+  font-size: var(--font-size-label);
 }
 
 .cp-column-picker__label {
@@ -50,7 +72,8 @@
   display: flex;
   flex-shrink: 0;
   margin-inline-start: auto;
-  gap: var(--space-xs);
+  /* Attached, not 5 px apart: one pair of arrows that read as one control (M256). */
+  gap: 0;
 }
 
 /* What the marks in the cells mean (LIB-9): small, and under the list it is about. */

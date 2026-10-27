@@ -111,6 +111,11 @@ export interface TrackColumnDef<Row> {
   align?: ColumnAlign;
   /** Pinned to the left edge while the table scrolls sideways. */
   sticky?: boolean;
+  /**
+   * The cells are key chips: the chip's text sits on the cell padding and its tint hangs left by one
+   * chip padding, so the heading starts on the chip's edge (M96, D10).
+   */
+  chips?: boolean;
   /** How much of a wide table's spare room this column takes, against the others (0 takes none). */
   grow?: number;
   /**
@@ -238,6 +243,38 @@ export function growWidths<Row>(
   const left = spare - shares.reduce((a, b) => a + b, 0);
   const heaviest = weights.indexOf(Math.max(...weights));
   return widths.map((width, index) => width + shares[index]! + (index === heaviest ? left : 0));
+}
+
+/**
+ * The widths with a narrow table's shortfall taken out of its words (M85): when the columns are
+ * wider than `room`, the column with the heaviest grow weight gives up width first, down to its
+ * minimum (Title), then the next (Artist), then the lightest words; only when the words are at
+ * their minimums do numbers, keys and times give up theirs, the last column first. Returns the
+ * widths unchanged when there is no room measured or no shortfall; what still does not fit scrolls
+ * sideways, as it always did. `mins` are the columns' minimum widths, in column order. Whole pixels.
+ */
+export function shrinkWidths<Row>(
+  columns: readonly TrackColumnDef<Row>[],
+  widths: number[],
+  mins: readonly number[],
+  room: number,
+): number[] {
+  let deficit = widths.reduce((sum, width) => sum + width, 0) - Math.floor(room);
+  if (!(room > 0) || deficit <= 0) return widths;
+  const weight = (column: TrackColumnDef<Row> | undefined) => column?.grow ?? GROW_WEIGHTS[column?.id ?? ""] ?? 0;
+  const indices = widths.map((_, index) => index);
+  const order = [
+    ...indices.filter((index) => weight(columns[index]) > 0).sort((a, b) => weight(columns[b]) - weight(columns[a]) || a - b),
+    ...indices.filter((index) => weight(columns[index]) <= 0).reverse(),
+  ];
+  const next = widths.slice();
+  for (const index of order) {
+    if (deficit <= 0) break;
+    const give = Math.min(deficit, Math.max(0, (next[index] ?? 0) - (mins[index] ?? 0)));
+    next[index] = (next[index] ?? 0) - give;
+    deficit -= give;
+  }
+  return next;
 }
 
 /**

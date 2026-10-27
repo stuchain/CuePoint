@@ -80,9 +80,30 @@ describe("the list", () => {
     expect(within(rowFor("Artist")).getByRole("checkbox")).not.toBeChecked();
   });
 
-  it("says which column is pinned", () => {
+  it("says a pinned column is always shown, and does not offer to hide it (M256)", () => {
     show();
-    expect(within(rowFor("Title")).getByText("Pinned")).toBeInTheDocument();
+    expect(within(rowFor("Title")).getByText("· always shown")).toBeInTheDocument();
+    expect(within(rowFor("Title")).getByRole("checkbox")).toBeDisabled();
+    expect(screen.queryByText("Pinned")).toBeNull();
+  });
+
+  it("lists the shown columns first and the hidden ones under them as ticks alone, with nothing to move (M256)", () => {
+    show(toggleHidden(defaultLayout(COLUMNS, 1), "artist"));
+    const lists = screen.getAllByRole("list");
+    expect(lists).toHaveLength(2);
+    expect(within(lists[0]!).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      expect.stringContaining("Title"),
+      expect.stringContaining("BPM"),
+    ]);
+    const waiting = within(screen.getByRole("list", { name: "Columns not shown" }));
+    expect(waiting.getByText("Artist")).toBeInTheDocument();
+    expect(waiting.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Move Artist up" })).toBeNull();
+  });
+
+  it("draws no second list when every column is shown", () => {
+    show();
+    expect(screen.getAllByRole("list")).toHaveLength(1);
   });
 
   it("renders nothing when closed", () => {
@@ -158,6 +179,47 @@ describe("moving", () => {
     show();
     expect(screen.getByRole("button", { name: "Move Title up" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Move Title down" })).toBeDisabled();
+  });
+});
+
+describe("moving from the keyboard and by drag (M256)", () => {
+  it("moves a column with Alt and Up or Down on its tick", () => {
+    const handlers = show();
+    const tick = within(rowFor("BPM")).getByRole("checkbox");
+    fireEvent.keyDown(tick, { key: "ArrowUp", altKey: true });
+    expect(handlers.onNudge).toHaveBeenCalledWith("bpm", -1);
+    // BPM is last: down is not offered, and nothing is asked.
+    handlers.onNudge.mockClear();
+    fireEvent.keyDown(tick, { key: "ArrowDown", altKey: true });
+    expect(handlers.onNudge).not.toHaveBeenCalled();
+    // Without Alt the arrows are the browser's own.
+    fireEvent.keyDown(tick, { key: "ArrowUp" });
+    expect(handlers.onNudge).not.toHaveBeenCalled();
+  });
+
+  it("moves a column to where it is dropped, one step at a time", () => {
+    const layout: ColumnLayout = [
+      { id: "title", width: 100, hidden: false },
+      { id: "artist", width: 100, hidden: false },
+      { id: "bpm", width: 100, hidden: false },
+    ];
+    const handlers = show(layout);
+    const data = { setData: vi.fn(), getData: vi.fn() };
+    fireEvent.dragStart(rowFor("BPM"), { dataTransfer: data });
+    fireEvent.drop(rowFor("Artist"), { dataTransfer: data });
+    expect(handlers.onNudge).toHaveBeenCalledTimes(1);
+    expect(handlers.onNudge).toHaveBeenCalledWith("bpm", -1);
+  });
+
+  it("does not drag a pinned column", () => {
+    show();
+    expect(rowFor("Title")).toHaveAttribute("draggable", "false");
+    expect(rowFor("Artist")).toHaveAttribute("draggable", "true");
+  });
+
+  it("attaches the pair of arrows: no gap between them", () => {
+    const moves = /\.cp-column-picker__moves\s*\{([^}]*)\}/.exec(pickerCss)![1]!;
+    expect(moves).toMatch(/gap:\s*0/);
   });
 });
 

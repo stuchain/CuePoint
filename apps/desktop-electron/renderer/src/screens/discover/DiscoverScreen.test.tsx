@@ -205,6 +205,15 @@ async function openNewSearch() {
   return screen.findByRole("region", { name: "New dig" });
 }
 
+/** Tick a column in the Columns list: Released waits there at the default window (M85, D12). */
+async function showColumn(tableName: string, column: string) {
+  fireEvent.click(within(table(tableName)).getByRole("button", { name: "Columns" }));
+  const dialog = await screen.findByRole("dialog", { name: "Columns" });
+  fireEvent.click(within(dialog).getByRole("checkbox", { name: column }));
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Columns" })).toBeNull());
+}
+
 function table(name: string) {
   return screen.getByRole("table", { name });
 }
@@ -671,6 +680,7 @@ describe("Results", () => {
     renderDiscover();
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    await showColumn("Tracks this dig found", "Released");
     fireEvent.click(within(table("Tracks this dig found")).getByRole("button", { name: "Released" }));
     await waitFor(() =>
       expect(bridge.getDiscoveryRunTracks).toHaveBeenLastCalledWith(
@@ -680,7 +690,8 @@ describe("Results", () => {
     // A column neither the engine nor the table can order by is plain text, not a button that
     // pretends to; Label, Key and BPM sort in the table over the rows it holds (C193).
     expect(within(table("Tracks this dig found")).queryByRole("button", { name: "From" })).toBeNull();
-    expect(within(table("Tracks this dig found")).getByText("From")).toBeInTheDocument();
+    // From waits in the Columns list at the default window (M85, D12).
+    expect(within(table("Tracks this dig found")).queryByText("From")).toBeNull();
     expect(within(table("Tracks this dig found")).getByRole("button", { name: "BPM" })).toBeInTheDocument();
   });
 
@@ -692,10 +703,10 @@ describe("Results", () => {
     const names = ["Add to wantlist", "Add to a Beatport playlist…", "Open on Beatport"];
     expect(buttonsOf(bar)).toEqual(names);
     // Columns… is the table header's corner icon (K21), not a word in the actions bar.
-    expect(within(bar).queryByRole("button", { name: "Columns…" })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: "Columns" })).toBeNull();
     fireEvent.click(
       screen.getByRole("table", { name: "Tracks this dig found" }).querySelector<HTMLElement>(
-        '[aria-label="Columns…"]',
+        '[aria-label="Columns"]',
       )!,
     );
     expect(await screen.findByRole("dialog", { name: /columns/i })).toBeInTheDocument();
@@ -973,6 +984,7 @@ describe("Results", () => {
     renderDiscover();
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    await showColumn("Tracks this dig found", "Released");
     const released = within(table("Tracks this dig found")).getByRole("button", { name: "Released" });
     fireEvent.click(released);
     fireEvent.click(released);

@@ -22,7 +22,8 @@ export interface RowKeyEvent extends RowSelectModifiers {
 }
 
 export type RowKeyCommand =
-  | { kind: "move"; to: number; extend: boolean }
+  /** `select: false` moves the cursor and reports nothing (Ctrl+Up, Ctrl+Down: M461, D34). */
+  | { kind: "move"; to: number; extend: boolean; select?: boolean }
   | { kind: "toggle" }
   | { kind: "selectAll" }
   | null;
@@ -39,9 +40,9 @@ export interface RowKeyContext {
 /**
  * The command a key stands for, or null when the key is not the table's.
  *
- * Ctrl or Cmd with the arrows belongs to the player, Alt with them to
- * reordering, plain Space to play/pause and Escape to the screen; none is
- * claimed here. A move onto the row the cursor is already on is still a move
+ * Ctrl or Cmd with Up and Down moves the cursor without selecting (D34), and Ctrl+Space then ticks
+ * the row, so a selection that is not one run can be built from the keyboard (M461). Alt with the
+ * arrows is reordering, plain Space play/pause and Escape the screen's; none is claimed here. A move onto the row the cursor is already on is still a move
  * (the table swallows the key so the browser does not scroll) and the table
  * decides it has nothing to report.
  */
@@ -53,6 +54,10 @@ export function rowKeyCommand(event: RowKeyEvent, context: RowKeyContext): RowKe
     if (!hasShortcutModifier(event) || event.shiftKey) return null;
     if (event.key.toLowerCase() === "a") return canSelectAll ? { kind: "selectAll" } : null;
     if (event.key === " ") return cursor == null ? null : { kind: "toggle" };
+    const last = total - 1;
+    const clamp = (row: number) => Math.min(Math.max(row, 0), last);
+    if (event.key === "ArrowDown") return { kind: "move", to: cursor == null ? 0 : clamp(cursor + 1), extend: false, select: false };
+    if (event.key === "ArrowUp") return { kind: "move", to: cursor == null ? 0 : clamp(cursor - 1), extend: false, select: false };
     return null;
   }
 

@@ -1124,8 +1124,12 @@ describe("a column's hint (DEC-201)", () => {
     const user = userEvent.setup();
     renderTable({ columns: WITH_HINT });
 
+    // One Tab stop in the headings (M460): the first. Right Arrow moves on, to Artist and then Key.
     const key = screen.getByRole("button", { name: "Key" });
-    for (let step = 0; step < 10 && document.activeElement !== key; step += 1) await user.tab();
+    for (let step = 0; step < 10 && document.activeElement !== screen.getByRole("button", { name: "Title" }); step += 1) {
+      await user.tab();
+    }
+    await user.keyboard("{ArrowRight}{ArrowRight}");
 
     expect(key).toHaveFocus();
     expect(screen.getByRole("tooltip")).toHaveTextContent("Keys come from Beatport matches");
@@ -1204,17 +1208,17 @@ describe("the playing and played rows (R4-6)", () => {
 describe("the columns button in the header's corner (K21)", () => {
   it("is drawn only when the caller gives a way to open the columns", () => {
     const { unmount } = renderTable();
-    expect(screen.queryByRole("button", { name: "Columns…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Columns" })).toBeNull();
     unmount();
 
     renderTable({ onColumns: vi.fn() });
-    expect(screen.getByRole("button", { name: "Columns…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Columns" })).toBeInTheDocument();
   });
 
   it("calls onColumns when pressed", async () => {
     const onColumns = vi.fn();
     renderTable({ onColumns });
-    await userEvent.click(screen.getByRole("button", { name: "Columns…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Columns" }));
     expect(onColumns).toHaveBeenCalledTimes(1);
   });
 
@@ -1238,13 +1242,13 @@ describe("the columns button in the header's corner (K21)", () => {
     renderTable({ onColumns: vi.fn() });
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-cover")).toBe("var(--track-table-corner)");
-    // The words and the sort arrow are one label, which slides left of the button.
+    // M88: the words and the sort arrow stay in their own column. A label that slid left of the
+    // button sat over the neighbour's cells ("BPM" over an empty column): the column is cut instead.
     const label = screen.getByText("BPM").closest(".track-table__header-label");
     expect(label).not.toBeNull();
     const css = (await import("./TrackTable.css?raw")).default;
     const rule = /\.track-table__header-label\s*\{([^}]*)\}/.exec(css)![1]!;
-    expect(rule).toMatch(/position:\s*sticky/);
-    expect(rule).toMatch(/right:\s*var\(--track-table-cover/);
+    expect(rule).not.toMatch(/position:\s*sticky/);
     // "hidden" would make each heading a scroll container, and the label would stick to it.
     const cell = /\.track-table__header-cell\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(cell).toMatch(/overflow:\s*clip/);
@@ -1270,7 +1274,7 @@ describe("the columns button in the header's corner (K21)", () => {
     renderTable({ onColumns: vi.fn() });
     const headers = screen.getAllByRole("columnheader");
     expect(headers).toHaveLength(COLUMNS.length);
-    const button = screen.getByRole("button", { name: "Columns…" });
+    const button = screen.getByRole("button", { name: "Columns" });
     expect(headers.some((header) => header.contains(button))).toBe(false);
     // It sits in the header row, outside any cell of the ARIA table.
     expect(button.closest(".track-table__header")).not.toBeNull();
@@ -1319,11 +1323,11 @@ describe("a heading follows its column (areas 14, 41)", () => {
 });
 
 describe("the resizer is a separator (C149, C199)", () => {
-  it("is a vertical separator you can reach with Tab", () => {
+  it("is a vertical separator, not a Tab stop of its own: a heading is one stop (M460)", () => {
     renderTable();
     const handle = screen.getByRole("separator", { name: "Resize Title column" });
     expect(handle).toHaveAttribute("aria-orientation", "vertical");
-    expect(handle).toHaveAttribute("tabindex", "0");
+    expect(handle).toHaveAttribute("tabindex", "-1");
     expect(handle).toHaveAttribute("aria-valuenow", "200");
   });
 
@@ -1509,22 +1513,29 @@ describe("a client-only sort is not offered while the rows are not all here (S11
   });
 });
 
-describe("the row's play button (C84)", () => {
-  it("draws the shared play button at the row's end and plays that row", () => {
-    const onPlay = vi.fn();
-    renderTable({ playButton: { label: (t) => `Play ${t.title}`, onPlay } });
-    const button = screen.getByRole("button", { name: "Play Track 2" });
-    expect(button).toHaveClass("cp-play-btn");
-    expect(button.closest(".track-table__end")).not.toBeNull();
-    fireEvent.click(button);
-    expect(onPlay).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), 1);
+describe("no play button in a row (M99, D12)", () => {
+  it("draws no round play button in any row: a double-click or Enter plays", () => {
+    const onRowActivate = vi.fn();
+    renderTable({ onRowActivate });
+    expect(document.querySelector(".cp-play-btn")).toBeNull();
+    expect(document.querySelector(".track-table__end")).toBeNull();
+    fireEvent.doubleClick(screen.getAllByRole("row")[2]!);
+    expect(onRowActivate).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), 1);
+  });
+});
+
+describe("the Delete key (M483)", () => {
+  it("reports Delete on the table, and leaves a key pressed in a field inside a row alone", () => {
+    const onDeleteKey = vi.fn();
+    renderTable({ onDeleteKey });
+    const table = screen.getByRole("table", { name: "Tracks" });
+    fireEvent.keyDown(table, { key: "Delete" });
+    expect(onDeleteKey).toHaveBeenCalledTimes(1);
   });
 
-  it("does not select the row when the button is pressed", () => {
-    const onSelect = vi.fn();
-    renderTable({ onSelect, playButton: { label: (t) => `Play ${t.title}`, onPlay: () => {} } });
-    fireEvent.click(screen.getByRole("button", { name: "Play Track 1" }));
-    expect(onSelect).not.toHaveBeenCalled();
+  it("does nothing without a handler", () => {
+    renderTable({});
+    expect(() => fireEvent.keyDown(screen.getByRole("table", { name: "Tracks" }), { key: "Delete" })).not.toThrow();
   });
 });
 

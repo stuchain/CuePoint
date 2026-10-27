@@ -14,6 +14,7 @@ import {
   defaultLayout,
   loadColumnLayout,
   loadColumnSort,
+  migrateBareLayout,
   moveColumn,
   nudgeColumn,
   reconcileLayout,
@@ -70,6 +71,11 @@ export function useColumnLayout<Row>(
   const sortRef = useRef(sort);
   const layoutRef = useRef(layout);
   const scaleRef = useRef(scale);
+
+  // A layout saved bare (before widths were stored in 1x units) is rewritten once, as read (M86).
+  useEffect(() => {
+    migrateBareLayout(storageKey, layoutRef.current, scaleRef.current);
+  }, [storageKey]);
 
   // The columns can change (a later release adds one) and so can the scale.
   // Widths are held at the scale in force, so a scale change rescales them by

@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.types";
 import { Hint } from "../../components/Hint";
+import { MissingValue } from "../../components/MissingValue";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { waveformEntryWords, waveformStateWord } from "../../components/waveform/analysisWords";
 import { loudnessCell } from "../../components/waveform/loudnessWords";
@@ -27,9 +28,12 @@ export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: O
   const text = effectiveText(row, field);
   // A text value sits in the table's cut-off box, so a long genre or label ends in "…" and shows
   // in full in the app hint, as a plain cell's does (C64).
+  // An empty value is the one muted dash, never a blank box (M92).
   const value =
     field === "key" ? (
       <KeyChip value={text} />
+    ) : text.trim() === "" ? (
+      <MissingValue />
     ) : (
       <span className="track-table__cell-text" data-cut-hint="">
         {text}

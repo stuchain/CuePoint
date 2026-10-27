@@ -28,6 +28,16 @@
   background: var(--bg-input);
   /* Q6a: chips in the rows mix their fill with the table's own ground, not the row's hover. */
   --chip-ground: var(--bg-input);
+  /* M373: the one skeleton tone, for the table's placeholder bars and for every other skeleton to use. */
+  --skeleton-tone: color-mix(in srgb, var(--fg-muted) 25%, transparent);
+  /* The speaker's room in a title cell (M100): the cell's own padding holds it, so no title moves when one plays. */
+  --track-table-mark: round(down, calc(12px * var(--scale)), 12px);
+}
+
+/* M91: the scroll bar's track starts under the header, so the header ends where the track begins
+   and the thumb never rides over the heading row. */
+.track-table__scroll::-webkit-scrollbar-track {
+  margin-top: var(--row-height);
 }
 
 .track-table__scroll {
@@ -44,6 +54,11 @@
    * frame: 8.6 s of the main thread over the scroll, and 2.2 s with this.
    */
   will-change: scroll-position;
+}
+
+/* M455: a click gives the table focus without the keyboard's ring; the first key brings it back. */
+.track-table__scroll[data-pointer]:focus-visible {
+  outline: none;
 }
 
 .track-table__header {
@@ -67,6 +82,8 @@
   position: sticky;
   z-index: 4;
   background: var(--bg-panel);
+  /* D13: the edge the scrolling headings are cut at. */
+  box-shadow: inset calc(-1 * var(--hairline)) 0 0 0 var(--row-line);
 }
 
 /* A header with a hint is wrapped by `Hint`; the button still fills its cell. */
@@ -101,12 +118,10 @@
   overflow: clip;
 }
 
-/* The words and the sort arrow. Sticky on the right, so a column that runs under the Columns…
-   button at the scroll area's edge slides its heading left of the button instead of hiding it
-   (C69); in a column that fits, it sits where it always did. */
+/* The words and the sort arrow. They stay in their own column: a heading that slid left of the
+   Columns… button sat over the neighbour's cells ("BPM" over an empty column, M88). A column that
+   runs under the button is cut at its hard edge, and the narrow-table rule keeps that rare. */
 .track-table__header-label {
-  position: sticky;
-  right: var(--track-table-cover, 0px);
   display: flex;
   align-items: center;
   gap: var(--space-xs);
@@ -127,6 +142,18 @@
   justify-content: flex-end;
   padding: 0 var(--space-sm) 0 var(--space-lg);
   text-align: right;
+}
+
+/* The arrow stands before the words in a number column, so "#" and "BPM" end where the numbers
+   end (M97), and it is centred on the words' line. */
+.track-table__header-cell--right .track-table__header-label {
+  flex-direction: row-reverse;
+}
+
+/* A key column's heading starts on the chip's edge, where the chips' tint starts (M96, D10): the
+   chip's text sits on the cell padding and its tint hangs left by one chip padding. */
+.track-table__header-cell--chips {
+  padding-left: calc(var(--space-sm) - var(--chip-pad));
 }
 
 /* A heading that cannot sort is plain text: no hand, no hover. */
@@ -170,6 +197,8 @@
   padding: 0 var(--space-xs);
   /* Solid, in the header's own tone, so a heading scrolled under it is covered and not shown through (C69, P1). */
   background: var(--bg-panel);
+  /* D13: a column cut by it ends at a 1 px edge, not mid-glyph against nothing. */
+  box-shadow: inset var(--hairline) 0 0 0 var(--row-line);
 }
 
 /* The same track in each row: sticky on the right like the button and in the row's own colour, so
@@ -182,7 +211,9 @@
   right: 0;
   z-index: 1;
   background: inherit;
-  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
+  box-shadow:
+    inset var(--hairline) 0 0 0 var(--row-line),
+    inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
 }
 
 .track-table__header-cell-wrap--dragging {
@@ -191,6 +222,8 @@
 }
 
 .track-table__sort {
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
@@ -274,39 +307,59 @@
 }
 
 /* The keyboard's row, drawn only after a key moved it. Dashed and inset one ring width in
-   from the edge, so on a selected row it stays visible against the selected fill and its bar. */
+   from the edge, so on a selected row it stays visible against the selected fill and its bar.
+   Drawn by a layer of its own above the pinned cells and the Columns… track, so the dashes run the
+   whole row and are not covered from Title to the chooser (M455). */
 .track-table__row--cursor {
-  outline: var(--focus-ring-width) dashed var(--focus-ring);
-  outline-offset: var(--focus-ring-offset-inset);
   z-index: 1;
 }
 
-/* The track in the player (R4-6): its title in the accent colour, and a speaker before the content
-   of the row's title cell (its first cell when there is no title column). The speaker is a flex item
-   after the cell's own padding, so it starts where the text would. A track already played this
-   session has a muted title. Only the title column is coloured, found by its data-column; the other
-   cells keep their colour so a row still reads as a row. */
-.track-table__row--playing .track-table__cell[data-column="title"] {
-  color: var(--accent-primary);
+.track-table__row--cursor::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  box-sizing: border-box;
+  border: var(--focus-ring-width) dashed var(--focus-ring);
+  pointer-events: none;
 }
 
-/* Playing is an accent bar on the left edge and the speaker, never the selected tint (C143). */
-.track-table__row--playing:not(.track-table__row--selected) {
-  box-shadow:
-    inset var(--selected-bar-width) 0 0 0 var(--accent-primary),
-    inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
+/* The track in the player (R4-6): its title in the link colour (M321, D28: the lighter accent each
+   theme holds at 4.5:1 on the row, the selected row and the hovered one), and a speaker in the
+   padding before the title's text. A track already played this session has a muted title. Only the
+   title column is coloured, found by its data-column; the other cells keep their colour so a row
+   still reads as a row. */
+.track-table__row--playing .track-table__cell[data-column="title"] {
+  color: var(--link);
 }
+
+/* Playing is the speaker and the coloured title; the accent bar means selected and nothing else
+   (M366, D30), so a selected row beside the playing one reads as the one that is selected. */
 
 .track-table__row--played .track-table__cell[data-column="title"] {
   color: var(--fg-muted);
 }
 
+/* The cell that carries the speaker has the room for it in its padding, in every row and in the
+   heading above, so the title's text starts in the same place whether or not the row plays (M100,
+   D10). */
+.track-table__cell--mark,
+.track-table__header-cell--mark {
+  padding-left: calc(var(--space-xs) + var(--track-table-mark) + var(--space-xs));
+}
+
+.track-table__cell--mark:not(.track-table__cell--sticky) {
+  position: relative;
+}
+
 .track-table__playing-icon {
-  flex: none;
+  position: absolute;
+  inset-inline-start: var(--space-xs);
+  top: 50%;
+  transform: translateY(-50%);
   /* A multiple of the art's 12-unit grid, so no art pixel is fractional (as --icon-size). */
-  width: round(down, calc(12px * var(--scale)), 12px);
-  height: round(down, calc(12px * var(--scale)), 12px);
-  margin-inline-end: var(--space-xs);
+  width: var(--track-table-mark);
+  height: var(--track-table-mark);
   color: var(--accent-primary);
 }
 
@@ -355,9 +408,15 @@
   white-space: nowrap;
 }
 
-/* A key chip's text lines up with its heading: the chip's tint reaches into the cell's padding. */
+/* A key chip's text sits on the cell padding and its tint reaches into it, so the heading, which
+   starts on the chip's edge (--chips), the tint and the muted dash of a track with no key all start
+   at one x (M96, M92, D10). */
 .track-table__cell .key-chip {
   margin-inline-start: calc(-1 * var(--key-chip-pad));
+}
+
+.track-table__cell[data-chips] > .cp-missing {
+  margin-inline-start: calc(-1 * var(--chip-pad));
 }
 
 .track-table__cell--right {
@@ -372,13 +431,9 @@
   position: sticky;
   z-index: 2;
   background: inherit;
-  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
-}
-
-/* A playing row's accent bar is drawn on its edge, which a pinned first cell covers: it draws both. */
-.track-table__row--playing:not(.track-table__row--selected) .track-table__cell--sticky:first-child {
+  /* D13: the row line, and a 1 px edge on the right where the scrolling columns are cut (M89). */
   box-shadow:
-    inset var(--selected-bar-width) 0 0 0 var(--accent-primary),
+    inset calc(-1 * var(--hairline)) 0 0 0 var(--row-line),
     inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
 }
 
@@ -389,7 +444,9 @@
   background: var(--bg-selected);
 }
 
-.track-table__row--selected .track-table__cell--sticky:first-child {
+/* `first-of-type`, not `first-child`: a row's grip is a span before the cells, so the pinned cell
+   was never the first child and Prepare lost its selected bar (M202). */
+.track-table__row--selected .track-table__cell--sticky:first-of-type {
   background: var(--selected-row-background);
 }
 
@@ -427,11 +484,13 @@
   background: var(--bg-selected);
 }
 
+/* A placeholder bar (M373): the width is the column's own (`--skeleton-width`, set per column in the
+   table), the height a whole number of pixels, and the tone the one skeleton token. */
 .track-table__skeleton {
   display: block;
-  width: 60%;
-  height: calc(6px * var(--scale));
-  background: color-mix(in srgb, var(--fg-muted) 25%, transparent);
+  width: var(--skeleton-width, 60%);
+  height: round(nearest, calc(6px * var(--scale)), 1px);
+  background: var(--skeleton-tone);
 }
 
 .track-table__empty {
@@ -479,7 +538,7 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   right: var(--space-sm);
   padding: 0 var(--space-xs);
   background: var(--accent-primary);
-  color: var(--fg-primary);
+  color: var(--fg-on-accent);
   font-family: var(--font-control);
   font-size: var(--font-size-xs);
   line-height: 1.4;

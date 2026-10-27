@@ -5,7 +5,9 @@
  */
 .key-chip {
   color: var(--key);
-  background: color-mix(in srgb, var(--key) 18%, transparent);
+  /* M3 (D2): the one chip fill, as a Badge's: the key at --chip-fill-mix mixed once with the ground
+     it sits on (a table's own ground, never the row's hover), not a literal 18%. */
+  background: color-mix(in srgb, var(--key) var(--chip-fill-mix), var(--chip-ground, transparent));
   border-radius: 0;
   /* P30: the one chip box (18 high, 6 either side). */
   --key-chip-pad: var(--chip-pad);
@@ -13,6 +15,9 @@
   align-items: center;
   box-sizing: border-box;
   block-size: var(--chip-height);
+  /* "12A" is the widest key, so every chip is at least as wide as it: a Key column is a column of
+     equal tints, not a ragged one (M3). The text stays on the left, on the cell padding. */
+  min-inline-size: calc(3ch + 2 * var(--key-chip-pad));
   padding: 0 var(--key-chip-pad);
   /* P2: key codes are Inter semibold everywhere. */
   font-family: var(--font-data);
@@ -25,6 +30,7 @@
 
 :root[data-key-colours="off"] .key-chip {
   --key-chip-pad: 0px;
+  min-inline-size: 0;
   display: inline;
   block-size: auto;
   color: inherit;

@@ -32,7 +32,8 @@ function track(id: number, title: string, label: string, artist = "Artist"): Dis
     bpm: 124,
     key: null,
     genre_id: 5,
-    genre_name: "House",
+    // The genre carries the sorted word: Label waits in the Columns list at the default window (M85).
+    genre_name: label,
     fetched_at: "2026-10-14T10:00:00+00:00",
     artists: [artist],
     remixers: [],
@@ -43,7 +44,7 @@ function track(id: number, title: string, label: string, artist = "Artist"): Dis
   };
 }
 
-// Sorted by the Label column (no engine key, so the table sorts it): Alpha, Charlie, Bravo.
+// Sorted by the Genre column (no engine key, so the table sorts it): Alpha, Charlie, Bravo.
 const ROWS = [track(1, "Bravo", "Zed"), track(2, "Charlie", "Mid"), track(3, "Alpha", "Aaa")];
 
 const proto = HTMLElement.prototype;
@@ -138,7 +139,7 @@ function bodyTitles() {
 describe("a table sorted by its own header", () => {
   it("keeps the anchor on the displayed row when the rows are loaded again", () => {
     renderTable();
-    fireEvent.click(within(screen.getAllByRole("columnheader")[0]!.closest("[role=row]") as HTMLElement).getByRole("button", { name: /^Label/ }));
+    fireEvent.click(within(screen.getAllByRole("columnheader")[0]!.closest("[role=row]") as HTMLElement).getByRole("button", { name: /^Genre/ }));
     expect(bodyTitles()[0]).toMatch(/^Alpha/);
 
     // The first displayed row is the third source row.
