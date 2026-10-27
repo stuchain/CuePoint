@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Continue a dig that stopped partway.** A dig stopped by Beatport, a refused sign-in, a closed app or your **Stop** now reads "Stopped" (not "Failed"), says why on its card and has a **Continue** button that picks it up where it stopped, skipping the charts, artists and labels already read and adding to the same dig. Clean's Past searches also say why a match stopped ("Stopped: Beatport did not answer."); **Resume** was already there.
 
 ### Fixed
+- **Back from a chart keeps your place.** In a dig, opening a chart, artist or label card and pressing **Back to all results** returned to the top of the cards. It now returns to where you were.
 - **Controls measure the same on every OS.** Inter, the face of every control and figure, now ships with the app (weights 400, 500, 600 and 700) instead of falling back to Segoe UI or the system font on Windows and macOS, so buttons, chips and columns no longer differ in width from one OS to the next.
 - **The queue count on the player bar is readable in the Muted and Classic themes.**
 - **Stop shows as soon as a job starts.** A bulk change, import or other job you start appears in the status strip straight away with its **Stop** button. Before, it could take up to two seconds, so a quick job could end before you could stop it.

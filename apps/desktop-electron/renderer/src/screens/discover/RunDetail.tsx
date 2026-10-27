@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { DiscoverGroupCard, DiscoverRun, DiscoverRunHeader } from "../../api/cuepointBridge.types";
+import { scrollParent } from "../../api/useCover";
 import { Button } from "../../components/Button";
 import { Loading, loadingWords } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
@@ -156,15 +157,18 @@ export function RunDetail({ runId, listed = null, tools, version, onGone }: RunD
     setExpanded(new Set());
   }, [runId]);
 
-  // The page's one scroll is `.app-main`'s (KeptPages): hiding the cards does not keep their place
-  // in it, so the place is kept here when a card (or Everything) opens and put back on Back. A
-  // layout effect, so no frame paints at the top. What opens starts at the top.
+  // Hiding the cards does not keep their place in the panel that scrolls them, so the place is kept
+  // here when a card (or Everything) opens and put back on Back. The scroller is the run's nearest
+  // scrolling ancestor (the dig's detail pane), not `.app-main`, which never scrolls on Discover:
+  // keeping `.app-main`'s place sent Back to the top. A layout effect, so no frame paints at the
+  // top. What opens starts at the top.
   const open = useCallback((next: View) => {
-    cardsTop.current = sectionRef.current?.closest<HTMLElement>(".app-main")?.scrollTop ?? null;
+    const scroller = sectionRef.current ? scrollParent(sectionRef.current) : null;
+    cardsTop.current = scroller?.scrollTop ?? null;
     setView(next);
   }, []);
   useLayoutEffect(() => {
-    const main = sectionRef.current?.closest<HTMLElement>(".app-main");
+    const main = sectionRef.current ? scrollParent(sectionRef.current) : null;
     if (!main) return;
     if (view.kind === "auto") {
       if (cardsTop.current !== null) main.scrollTop = cardsTop.current;

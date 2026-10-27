@@ -290,13 +290,19 @@ describe("coming back from a card", () => {
     const view = render(
       <ScaleProvider>
         <MemoryRouter>
-          <div className="app-main" data-testid="scroller">
-            <RunDetail runId={1} tools={tools} version={0} onGone={() => {}} />
+          {/* The real layout: `.app-main` holds the page but never scrolls on Discover; the dig's
+              detail pane (overflow-y: auto) is what scrolls the cards. */}
+          <div className="app-main" data-testid="page">
+            <div className="discover-runs-view__detail" style={{ overflowY: "auto" }} data-testid="scroller">
+              <RunDetail runId={1} tools={tools} version={0} onGone={() => {}} />
+            </div>
           </div>
         </MemoryRouter>
       </ScaleProvider>,
     );
     const scroller = view.getByTestId("scroller");
+    const page = view.getByTestId("page");
+    page.scrollTop = 0;
     let top = 0;
     Object.defineProperty(scroller, "scrollTop", {
       configurable: true,
@@ -320,6 +326,8 @@ describe("coming back from a card", () => {
     expect(top).toBe(0);
     fireEvent.click(await screen.findByRole("button", { name: "Back to all results" }));
     expect(top).toBe(640);
+    // The page around it is never the one moved.
+    expect(page.scrollTop).toBe(0);
   });
 });
 
