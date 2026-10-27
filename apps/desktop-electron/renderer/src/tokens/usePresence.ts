@@ -2,8 +2,25 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { useMotion } from "./MotionContext";
 import type { MotionKindId } from "./motion";
 
-/** The longest an exit may hold its element: --motion-base, with room for a late frame. */
+/** The longest an exit may hold its element when the CSS names no duration we can read. */
 const EXIT_LIMIT_MS = 400;
+/** Room for a late frame past the animation's own length. */
+const EXIT_SLACK_MS = 120;
+
+/** The exit's own length from its computed `animation-duration` ("80ms", "0.08s, 0.16s"), plus slack. */
+export function exitLimitFor(node: HTMLElement): number {
+  const list = getComputedStyle(node).animationDuration;
+  const lengths = (list ?? "")
+    .split(",")
+    .map((part) => {
+      const text = part.trim();
+      const value = Number.parseFloat(text);
+      if (!Number.isFinite(value)) return 0;
+      return text.endsWith("ms") ? value : value * 1000;
+    })
+    .filter((ms) => ms > 0);
+  return lengths.length > 0 ? Math.max(...lengths) + EXIT_SLACK_MS : EXIT_LIMIT_MS;
+}
 
 export interface Presence<T extends HTMLElement> {
   /** Render the element: it is open, or it is still leaving. */
@@ -49,7 +66,7 @@ export function usePresence<T extends HTMLElement>(open: boolean, kind: MotionKi
     };
     node.addEventListener("animationend", done);
     node.addEventListener("animationcancel", done);
-    const timer = window.setTimeout(() => done(), EXIT_LIMIT_MS);
+    const timer = window.setTimeout(() => done(), exitLimitFor(node));
     return () => {
       node.removeEventListener("animationend", done);
       node.removeEventListener("animationcancel", done);

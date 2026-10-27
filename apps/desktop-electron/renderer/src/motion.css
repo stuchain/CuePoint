@@ -230,7 +230,7 @@
 }
 
 [data-ghost] {
-  z-index: 1200;
+  z-index: var(--z-ghost);
 }
 
 :root[data-motion-entrance] .cp-modal__backdrop {
@@ -278,6 +278,66 @@
   animation:
     cp-lift-out var(--motion-quick) var(--motion-ease-in) forwards,
     cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
+}
+
+/* A popover that opens above its control rises into place and leaves downwards: the motion follows
+   the placement (M380), not always a drop. Components mark `data-placement="top"`. */
+:root[data-motion-entrance] [data-placement="top"].cp-track-menu,
+:root[data-motion-entrance] [data-placement="top"].cp-track-menu__submenu,
+:root[data-motion-entrance] [data-placement="top"].cp-status__running,
+:root[data-motion-entrance] [data-placement="top"].cp-wheel-pop,
+:root[data-motion-entrance] [data-placement="top"].cp-suggest__list,
+:root[data-motion-entrance] [data-placement="top"].cp-hint__tip,
+:root[data-motion-entrance] [data-placement="top"].cp-quick__panel,
+:root[data-motion-entrance] [data-placement="top"].first-steps-note__popover {
+  animation:
+    cp-rise-in var(--motion-base) var(--motion-ease-out),
+    cp-fade-in var(--motion-base) var(--motion-ease-out);
+}
+
+/* Exits for what had none (M380): a popover leaves the way it came, a side panel to its edge. The
+   element must set [data-leaving] through usePresence; the CSS is what gives the exit a length. */
+:root[data-motion-entrance] .cp-track-menu[data-leaving],
+:root[data-motion-entrance] .cp-track-menu__submenu[data-leaving],
+:root[data-motion-entrance] .cp-status__running[data-leaving],
+:root[data-motion-entrance] .cp-suggest__list[data-leaving],
+:root[data-motion-entrance] .cp-hint__tip[data-leaving],
+:root[data-motion-entrance] .cp-quick__panel[data-leaving],
+:root[data-motion-entrance] .first-steps-note__popover[data-leaving] {
+  animation:
+    cp-lift-out var(--motion-quick) var(--motion-ease-in) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
+}
+
+:root[data-motion-entrance] [data-placement="top"][data-leaving].cp-track-menu,
+:root[data-motion-entrance] [data-placement="top"][data-leaving].cp-track-menu__submenu,
+:root[data-motion-entrance] [data-placement="top"][data-leaving].cp-status__running,
+:root[data-motion-entrance] [data-placement="top"][data-leaving].cp-wheel-pop,
+:root[data-motion-entrance] [data-placement="top"][data-leaving].cp-suggest__list,
+:root[data-motion-entrance] [data-placement="top"][data-leaving].cp-hint__tip,
+:root[data-motion-entrance] [data-placement="top"][data-leaving].cp-quick__panel,
+:root[data-motion-entrance] [data-placement="top"][data-leaving].first-steps-note__popover {
+  animation:
+    cp-sink-out var(--motion-quick) var(--motion-ease-in) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
+}
+
+:root[data-motion-entrance] .cp-queue[data-leaving],
+:root[data-motion-entrance] .cp-side-panel[data-leaving] {
+  animation:
+    cp-to-edge var(--motion-quick) var(--motion-ease-in) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
+}
+
+:root[data-motion-entrance] .cp-queue[data-leaving],
+:root[data-motion-entrance] .cp-side-panel[data-leaving],
+:root[data-motion-entrance] .cp-track-menu[data-leaving],
+:root[data-motion-entrance] .cp-status__running[data-leaving],
+:root[data-motion-entrance] .cp-suggest__list[data-leaving],
+:root[data-motion-entrance] .cp-hint__tip[data-leaving],
+:root[data-motion-entrance] .cp-quick__panel[data-leaving],
+:root[data-motion-entrance] .first-steps-note__popover[data-leaving] {
+  pointer-events: none;
 }
 
 /* One side-panel motion: the Inspector, the queue, the activity list and any panel that hangs on
@@ -443,6 +503,25 @@
   }
   to {
     transform: translateY(0);
+  }
+}
+
+/* Up from below, for what rises from a control under it. */
+@keyframes cp-rise-in {
+  from {
+    transform: translateY(var(--motion-move-px));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-sink-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--motion-move-px));
   }
 }
 
