@@ -368,6 +368,8 @@ describe("the source columns put BPM before Key, as on every page (C70, D12)", (
     expect(SOURCE_LIBRARY_COLUMNS.filter((column) => !column.hiddenByDefault).map((column) => column.id)).toEqual(["title", "key"]);
     // Key keeps the Library's min width, so the corner never cuts its heading (M88).
     expect(SOURCE_LIBRARY_COLUMNS.find((column) => column.id === "key")!.minWidthPx).toBe(LIBRARY_COLUMNS.find((column) => column.id === "key")!.minWidthPx);
+    // M85: Title gives way to 100, so Title, Key and the corner (100 + 56 + 24) fit the default panel's 198.
+    expect(SOURCE_LIBRARY_COLUMNS.find((column) => column.id === "title")!.minWidthPx).toBe(100);
     expect(SUGGESTION_COLUMNS.map((column) => column.id)).toEqual(["title", "key", "bpm_delta"]);
     expect(SUGGESTION_COLUMNS.find((column) => column.id === "bpm_delta")!.align).toBe("right");
   });
