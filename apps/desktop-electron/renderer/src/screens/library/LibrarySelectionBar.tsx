@@ -88,6 +88,13 @@ export function LibrarySelectionBar({
         (Number.parseFloat(style.columnGap) || 0);
       // A bar with no layout (a test, a window not yet drawn) folds nothing.
       if (!(room > 0)) return;
+      // The last button hangs past the padding by its frame's inset (L2, M56): that much more room.
+      // Left out, a bar one hang short of room folded Beatport into More at 1280 wide (e2e).
+      const buttons = row.querySelectorAll<HTMLElement>("[data-group]");
+      const last = buttons[buttons.length - 1];
+      const hang = [last, last?.parentElement]
+        .filter((el): el is HTMLElement => el instanceof HTMLElement && el !== row)
+        .reduce((most, el) => Math.max(most, -(Number.parseFloat(getComputedStyle(el).marginRight) || 0)), 0);
       const gap = Number.parseFloat(getComputedStyle(row).columnGap) || 0;
       const order: TrackActionGroupId[] = groups.map((group) => group.id);
       const need = (k: number) => {
@@ -97,7 +104,7 @@ export function LibrarySelectionBar({
         return sum + gap * Math.max(0, ids.length - 1);
       };
       let next = 0;
-      while (next < foldable && need(next) > room) next += 1;
+      while (next < foldable && need(next) > room + hang) next += 1;
       setFolded(next);
     };
     measure();
