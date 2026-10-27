@@ -16,8 +16,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "./TrackContextMenu";
+import { TrackContextMenu, starsItem, useMenuButton, type TrackContextMenuItem } from "./TrackContextMenu";
 import css from "./TrackContextMenu.css?raw";
+import tokensCss from "../tokens/tokens.css?raw";
 import { parseRules, stripComments } from "../test/cssRules";
 
 function items(overrides: Partial<TrackContextMenuItem>[] = []): TrackContextMenuItem[] {
@@ -518,7 +519,9 @@ describe("a submenu inside a submenu (FLW-8)", () => {
     it("highlights the current item with one visible grey step, not the selected-row look or the accent (M289)", () => {
       const active = body('.cp-track-menu__item--active:not([aria-disabled="true"])');
       expect(active).toMatch(/background:\s*var\(--menu-active-fill\)/);
-      expect(body(".cp-track-menu")).toMatch(/--menu-active-fill:\s*color-mix\(in srgb, var\(--fg-primary\) 16%, var\(--bg-panel\)\)/);
+      // M289: the fill is a token now (tokens.css), shared by every list's active option.
+      expect(stripComments(tokensCss)).toMatch(/--menu-active-fill:\s*color-mix\(in srgb, var\(--fg-primary\) 16%, var\(--bg-panel\)\)/);
+      expect(body(".cp-track-menu")).not.toMatch(/--menu-active-fill:/);
       expect(active).not.toMatch(/selected-row-background/);
       expect(active).toMatch(/color:\s*var\(--fg-primary\)/);
       expect(active).not.toMatch(/accent-primary|fg-on-accent/);
@@ -833,6 +836,133 @@ describe("placement under a button (M290, M69)", () => {
       </>,
     );
     expect(parseFloat(screen.getByRole("menu").style.top)).toBe(127);
+  });
+});
+
+describe("glyphs and hints (M298)", () => {
+  it("draws an entry's glyph in a slot before its label, and keeps the slot for entries without one", () => {
+    open({ items: items([{ icon: "folder" }, {}, {}]) });
+    const play = screen.getByRole("menuitem", { name: "Play" });
+    const slot = play.querySelector(".cp-track-menu__icon");
+    expect(slot?.querySelector('svg[data-icon="folder"]')).not.toBeNull();
+    expect(slot?.nextElementSibling).toHaveClass("cp-track-menu__label");
+    // The neighbours keep an empty slot, so the three labels line up.
+    const next = screen.getByRole("menuitem", { name: "Play next" });
+    expect(next.querySelector(".cp-track-menu__icon")).not.toBeNull();
+    expect(next.querySelector(".cp-track-menu__icon svg")).toBeNull();
+  });
+
+  it("adds no slot to a list where no entry has a glyph", () => {
+    open();
+    expect(document.querySelector(".cp-track-menu__icon")).toBeNull();
+  });
+
+  it("draws a hint as a muted line under the label, said as the entry's description", () => {
+    open({ items: items([{ hint: "A list you fill by hand" }, {}, {}]) });
+    const play = screen.getByRole("menuitem", { name: "Play" });
+    const hint = play.querySelector(".cp-track-menu__hint");
+    expect(hint).toHaveTextContent("A list you fill by hand");
+    expect(hint?.previousElementSibling).toHaveClass("cp-track-menu__label");
+    expect(play).toHaveAccessibleDescription("A list you fill by hand");
+    const rule = parseRules(stripComments(css)).find((r) => r.selector.trim() === ".cp-track-menu__hint")!;
+    expect(rule.body).toMatch(/color:\s*var\(--fg-muted\)/);
+    expect(rule.body).toMatch(/font-size:\s*var\(--font-size-label\)/);
+  });
+});
+
+describe("inline stars (M299)", () => {
+  function rateMenu(value: number | null, onRate = vi.fn()) {
+    const onClose = vi.fn();
+    render(
+      <TrackContextMenu
+        x={0}
+        y={0}
+        keyboard
+        onClose={onClose}
+        items={[starsItem({ id: "rate", label: "Rate", value, onRate }), { id: "play", label: "Play", onSelect: vi.fn() }]}
+      />,
+    );
+    return { onRate, onClose };
+  }
+
+  it("draws five star toggles and a clear button on one row, the rating filled", () => {
+    rateMenu(3);
+    const row = screen.getByRole("group", { name: "Rate" });
+    const stars = Array.from(row.querySelectorAll('[role="menuitemradio"]'));
+    expect(stars).toHaveLength(5);
+    expect(stars.map((star) => star.getAttribute("aria-checked"))).toEqual(["false", "false", "true", "false", "false"]);
+    expect(stars.map((star) => star.querySelector("svg")?.getAttribute("data-icon"))).toEqual([
+      "star",
+      "star",
+      "star",
+      "star-outline",
+      "star-outline",
+    ]);
+    expect(screen.getByRole("menuitem", { name: "Clear rating" })).toBeInTheDocument();
+  });
+
+  it("rates with a click and closes the menu", async () => {
+    const { onRate, onClose } = rateMenu(null);
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "4 stars" }));
+    expect(onRate).toHaveBeenCalledWith(4);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("moves between the stars with the arrows and rates with Enter", async () => {
+    const { onRate } = rateMenu(2);
+    // The row is the first entry, and the arrows start from its rating.
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("menuitemradio", { name: "3 stars" })).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("menuitemradio", { name: "4 stars" })).toHaveFocus();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("menuitemradio", { name: "3 stars" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(onRate).toHaveBeenCalledWith(3);
+  });
+
+  it("clears with the button after the stars", async () => {
+    const { onRate } = rateMenu(5);
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("menuitem", { name: "Clear rating" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(onRate).toHaveBeenCalledWith(0);
+  });
+
+  it("is one entry for the up and down arrows", async () => {
+    rateMenu(null);
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: "Play" })).toHaveFocus();
+    await userEvent.keyboard("{ArrowUp}");
+    expect(screen.getByRole("menuitemradio", { name: "1 star" })).toHaveFocus();
+  });
+});
+
+describe("a mixed tick (M194)", () => {
+  it("is the dash, centred in the tick slot", () => {
+    open({ items: items([{ checked: "mixed" }]) });
+    const slot = screen.getByRole("menuitemcheckbox", { name: "Play" }).querySelector(".cp-track-menu__check");
+    expect(slot?.querySelector('svg[data-icon="dash"]')).not.toBeNull();
+    expect(slot?.querySelector('svg[data-icon="dot-half"]')).toBeNull();
+  });
+});
+
+describe("placement mark (M380)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("marks a menu that opens above its point with data-placement=top, one below with bottom", () => {
+    const original = window.innerHeight;
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 400 });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute("role") === "menu") return { left: 0, top: 0, width: 200, height: 150, right: 200, bottom: 150, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+      return { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+    const low = render(<TrackContextMenu x={20} y={350} items={items()} onClose={vi.fn()} />);
+    expect(screen.getByRole("menu")).toHaveAttribute("data-placement", "top");
+    low.unmount();
+    render(<TrackContextMenu x={20} y={20} items={items()} onClose={vi.fn()} />);
+    expect(screen.getByRole("menu")).toHaveAttribute("data-placement", "bottom");
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: original });
   });
 });
 

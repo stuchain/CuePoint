@@ -183,7 +183,20 @@ describe("SuggestInput", () => {
   it("draws the list absolutely, below the field, so nothing moves when it opens", () => {
     const rule = /\.cp-suggest__list\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(rule).toMatch(/position:\s*absolute/);
-    expect(rule).toMatch(/top:\s*100%/);
+    // M69 (D26 A): below the field, 2xs off it, like every menu.
+    expect(rule).toMatch(/top:\s*calc\(100% \+ var\(--space-2xs\)\)/);
+  });
+
+  it("draws the active and hovered option in the one menu fill, a row tall, no violet (M288, M289)", () => {
+    const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    const option = /\.cp-suggest__option\s*\{([^}]*)\}/.exec(flat)![1]!;
+    expect(option).toMatch(/min-height:\s*calc\(var\(--row-height\) \+ var\(--hairline\)\)/);
+    expect(option).toMatch(/padding:\s*0 var\(--space-md\)/);
+    expect(/\.cp-suggest__option:hover\s*\{([^}]*)\}/.exec(flat)![1]).toMatch(/background:\s*var\(--menu-active-fill\)/);
+    expect(/\.cp-suggest__option--active,\s*\.cp-suggest__option--active:hover\s*\{([^}]*)\}/.exec(flat)![1]).toMatch(
+      /background:\s*var\(--menu-active-fill\)/,
+    );
+    expect(flat).not.toMatch(/selected-row-background/);
   });
 
   it("closes when the text is cleared from outside", async () => {

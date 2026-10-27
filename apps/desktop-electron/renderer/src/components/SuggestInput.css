@@ -13,7 +13,8 @@
 
 .cp-suggest__list {
   position: absolute;
-  top: 100%;
+  /* Every menu opens 2xs off its trigger (M69, D26 A). */
+  top: calc(100% + var(--space-2xs));
   left: 0;
   z-index: var(--z-popover);
   min-width: 100%;
@@ -32,7 +33,7 @@
 /* No room below (a panel that scrolls clips it): open upward from the field instead. */
 .cp-suggest__list--above {
   top: auto;
-  bottom: 100%;
+  bottom: calc(100% + var(--space-2xs));
 }
 
 /* The note after a capped list: not an option, so it neither hovers nor selects. */
@@ -47,9 +48,9 @@
   justify-content: space-between;
   gap: var(--space-sm);
   align-items: center;
-  /* A list row: the one row height. */
-  min-height: var(--row-height);
-  padding: 0 var(--space-sm);
+  /* A menu row is a list row (M288): the one row height and a hairline, set in like the menu's. */
+  min-height: calc(var(--row-height) + var(--hairline));
+  padding: 0 var(--space-md);
   color: var(--fg-primary);
   /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
   font-family: var(--font-data);
@@ -57,8 +58,9 @@
   cursor: default; /* D31 (M339): the arrow on a selectable row. */
 }
 
+/* The one active look of every list (M289, D26): the grey step, no violet and no bar. */
 .cp-suggest__option:hover {
-  background: var(--row-hover);
+  background: var(--menu-active-fill);
 }
 
 .cp-suggest__text {
@@ -75,12 +77,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The option ↑/↓ is on, which Enter chooses. */
-.cp-suggest__option--active {
-  background: var(--selected-row-background);
-}
-
-/* The active option wins over the hover that lands on it too. */
+/* The option ↑/↓ is on, which Enter chooses: the same grey step as the hover (M289). */
+.cp-suggest__option--active,
 .cp-suggest__option--active:hover {
-  background: var(--selected-row-background);
+  background: var(--menu-active-fill);
 }

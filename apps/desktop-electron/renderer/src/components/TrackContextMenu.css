@@ -7,9 +7,8 @@
  */
 
 .cp-track-menu {
-  /* The one active look of every list: a visible grey step off the panel, stronger than the row
-     hover, violet only for what is selected (M289, D26). */
-  --menu-active-fill: color-mix(in srgb, var(--fg-primary) 16%, var(--bg-panel));
+  /* The highlighted entry wears --menu-active-fill (tokens.css), the one active look of every list:
+     a visible grey step off the panel, violet only for what is selected (M289, D26). */
   position: fixed;
   z-index: var(--z-menu);
   min-width: calc(140px * var(--scale));
@@ -48,7 +47,8 @@
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   text-align: left;
-  cursor: pointer;
+  /* D31 (M339): the arrow on a menu entry; the hand is for links. */
+  cursor: default;
   white-space: nowrap;
 }
 
@@ -109,7 +109,8 @@
   color: var(--fg-muted);
   font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  /* M2: the control weight, like every pixel-face label. */
+  font-weight: var(--control-font-weight);
   white-space: nowrap;
 }
 
@@ -179,7 +180,6 @@
  * the viewport, which is what `subPos` does.
  */
 .cp-track-menu__submenu {
-  --menu-active-fill: color-mix(in srgb, var(--fg-primary) 16%, var(--bg-panel));
   position: fixed;
   z-index: var(--z-submenu);
   max-width: min(calc(360px * var(--scale)), calc(100vw - 2 * var(--space-lg)));
@@ -204,4 +204,100 @@
 .cp-track-menu__check .cp-pixel-icon {
   width: 100%;
   height: 100%;
+}
+
+/* An entry's glyph (M298): a fixed slot before the label, the small icon size, so labels line up
+   whether an entry has a glyph or not. */
+.cp-track-menu__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  margin-inline-end: var(--space-sm);
+}
+
+.cp-track-menu__icon .cp-pixel-icon {
+  width: 100%;
+  height: 100%;
+}
+
+/* An entry with a hint (M298): the label, and under it one muted line in the label size. */
+.cp-track-menu__item--hinted {
+  padding-block: var(--space-2xs);
+}
+
+.cp-track-menu__words {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  line-height: var(--line-height-tight);
+}
+
+.cp-track-menu__hint {
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-family: var(--font-meta);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-regular);
+  text-overflow: ellipsis;
+}
+
+.cp-track-menu__item--active .cp-track-menu__hint {
+  color: var(--fg-muted-on-slab);
+}
+
+/* A stars row (M299): the label, then five stars and a clear button at the row's end. The row is
+   the highlighted entry; the star its arrows are on carries the active fill as well. */
+.cp-track-menu__stars {
+  gap: 0;
+}
+
+.cp-track-menu__star-row {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-lg);
+}
+
+.cp-track-menu__star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* A star is a square of the row's height, so each is its own target. */
+  width: var(--row-height);
+  height: var(--row-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+.cp-track-menu__star .cp-pixel-icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.cp-track-menu__star[aria-checked="true"] .cp-pixel-icon,
+.cp-track-menu__star:has(> [data-icon="star"]) .cp-pixel-icon {
+  color: var(--fg-primary);
+}
+
+.cp-track-menu__star--active:not([aria-disabled="true"]),
+.cp-track-menu__star:hover:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--fg-primary) 14%, var(--menu-active-fill));
+  color: var(--fg-primary);
+}
+
+.cp-track-menu__star:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
+}
+
+.cp-track-menu__star[aria-disabled="true"] .cp-pixel-icon {
+  color: var(--fg-disabled);
 }

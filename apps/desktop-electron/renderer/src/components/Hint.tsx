@@ -10,6 +10,7 @@ import {
   type ReactElement,
 } from "react";
 import { createPortal } from "react-dom";
+import { usePresence } from "../tokens/usePresence";
 import { Kbd } from "./Kbd";
 import { shortcutLabel } from "./shell/platformKeys";
 import "./Hint.css";
@@ -118,6 +119,11 @@ export function Hint({ text, shortcut, children, inline = false, portal = false,
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
   const [hovered, setHovered] = useState(false);
+  // A tip that goes plays its fade-out (M380): it stays where it was, inert, until the
+  // `[data-leaving]` animation ends. With motion off it goes at once.
+  const presence = usePresence<HTMLSpanElement>(place !== null);
+  const lastPlace = useRef<Place | null>(null);
+  if (place) lastPlace.current = place;
   // What put the tip up, so a pointer leaving does not take down a tip that
   // keyboard focus is still holding.
   const reason = useRef<"hover" | "focus" | null>(null);
@@ -230,10 +236,22 @@ export function Hint({ text, shortcut, children, inline = false, portal = false,
     else hide();
   };
 
-  const tipNode = place ? (
-    <span id={id} role="tooltip" className="cp-hint__tip"
-      style={{ left: place.left, bottom: place.bottom, top: place.top }}
-      ref={tip}
+  const drawn = place ?? (presence.present ? lastPlace.current : null);
+  const leaving = presence.leaving;
+  const tipNode = drawn ? (
+    <span
+      id={leaving ? undefined : id}
+      role={leaving ? undefined : "tooltip"}
+      className="cp-hint__tip"
+      // Over the control or flipped under it; beside it for `placement="right"` (M380).
+      data-placement={placement === "right" ? "right" : drawn.bottom !== undefined ? "top" : "bottom"}
+      data-leaving={leaving ? "" : undefined}
+      aria-hidden={leaving || undefined}
+      style={{ left: drawn.left, bottom: drawn.bottom, top: drawn.top }}
+      ref={(element) => {
+        tip.current = element;
+        presence.ref.current = element;
+      }}
     >
       {text}
       {shortcut ? (

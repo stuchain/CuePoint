@@ -3,6 +3,7 @@ import { useLayerStack } from "../hooks/useLayerStack";
 import { useLeaveGhost } from "../tokens/useLeaveGhost";
 import { Hint } from "./Hint";
 import { PixelIcon } from "./PixelIcon";
+import type { PixelIconName } from "./pixelIcons";
 import "./TrackContextMenu.css";
 
 /**
@@ -79,6 +80,48 @@ export interface TrackContextMenuItem {
    * "F2"): drawn right-aligned in the muted data face. Take the words from that file, not here.
    */
   shortcut?: string;
+  /**
+   * A glyph drawn in a fixed slot before the label (M298): the same names the panes draw for the
+   * thing the entry makes or opens. When one entry of a list has an icon, every entry keeps the
+   * slot, so the labels line up.
+   */
+  icon?: PixelIconName;
+  /** One muted line under the label, in the label size (M298): what the entry is for. */
+  hint?: string;
+  /**
+   * An entry of another kind. `"stars"` (M299) is one row of five star toggles and a clear button,
+   * the rating set in place: ←/→ move between the stars, Enter or a click rates and closes the menu.
+   * Build it with `starsItem`; `onSelect` is not run for it.
+   */
+  kind?: "stars";
+  /** A stars row's rating now: 1 to 5, or 0 / null for none. */
+  value?: number | null;
+  /** A stars row was chosen: 1 to 5, or 0 for the clear button. */
+  onRate?: (value: number) => void;
+}
+
+/** A stars row (M299): five star toggles and a clear button on one row of the menu. */
+export function starsItem(entry: {
+  id: string;
+  label: string;
+  value: number | null | undefined;
+  onRate: (value: number) => void;
+  disabled?: boolean;
+  reason?: string;
+  title?: string;
+  separatorBefore?: boolean;
+  groupTitle?: string;
+}): TrackContextMenuItem {
+  return { ...entry, kind: "stars", value: entry.value ?? null, onSelect: () => {} };
+}
+
+/** How many stars a stars row draws; the clear button is the place after them. */
+const STAR_COUNT = 5;
+
+/** Where a stars row's arrows start: on the rating it has, or the first star. */
+function starHome(item: TrackContextMenuItem): number {
+  const value = item.value ?? 0;
+  return value >= 1 && value <= STAR_COUNT ? value - 1 : 0;
 }
 
 interface TrackContextMenuProps {
@@ -156,11 +199,12 @@ function placeMenu(
   const limit = window.innerHeight - bottomInset() - 4;
   const left = Math.max(4, Math.min(options.right !== undefined ? options.right - width : x, window.innerWidth - width - 4));
   const below = y + options.gap;
-  if (below + height <= limit) return { left, top: below };
+  if (below + height <= limit) return { left, top: below, placement: "bottom" as const };
   const from = options.above ?? y;
   const flipped = from - options.gap - height;
-  if (flipped >= 4) return { left, top: flipped };
-  return { left, top: Math.max(4, limit - height) };
+  // Above: the menu rises into place and leaves downwards (M380, motion.css `data-placement`).
+  if (flipped >= 4) return { left, top: flipped, placement: "top" as const };
+  return { left, top: Math.max(4, limit - height), placement: "top" as const };
 }
 
 /**
@@ -280,11 +324,16 @@ export function TrackContextMenu({
   const [byKey] = useState(() => keyboard ?? openedFromKeyboard());
   // Closing leaves a still copy that fades (Opening and closing panels and dialogs).
   useLeaveGhost(menuRef);
-  const [position, setPosition] = useState({ left: x, top: y });
+  const [position, setPosition] = useState<{ left: number; top: number; placement?: "top" | "bottom" }>({
+    left: x,
+    top: y,
+  });
   /** The parents whose children are showing, outermost first; the keys go to the last. */
   const [path, setPath] = useState<string[]>([]);
   /** The highlighted entry at each depth (-1: none yet); depth 0 is the menu itself. */
   const [actives, setActives] = useState<number[]>([byKey ? 0 : -1]);
+  /** The place a stars row's arrows are on, by `depth:id` (0-4 the stars, 5 the clear button). */
+  const [starAt, setStarAt] = useState<Record<string, number>>({});
   /** Entries by `depth:id`, so a key can put real focus on the highlighted one. */
   const itemEls = useRef(new Map<string, HTMLElement>());
   /** Set by a key that moved the highlight: the next commit moves focus and scrolls to it. */
@@ -318,7 +367,9 @@ export function TrackContextMenu({
     if (!focusActive.current) return;
     focusActive.current = false;
     const entry = listAt(depth)[activeAt(depth)];
-    const element = entry ? itemEls.current.get(`${depth}:${entry.id}`) : undefined;
+    const row = entry ? itemEls.current.get(`${depth}:${entry.id}`) : undefined;
+    // A stars row is one entry; real focus goes to the star its arrows are on.
+    const element = row?.hasAttribute("data-stars") ? (row.querySelector<HTMLElement>('[tabindex="0"]') ?? row) : row;
     if (element) {
       element.focus();
       element.scrollIntoView?.({ block: "nearest" });
@@ -398,6 +449,13 @@ export function TrackContextMenu({
       openParent(item, at, fromKey);
       return;
     }
+    if (item.kind === "stars") {
+      const place = starAt[`${at}:${item.id}`] ?? starHome(item);
+      if (place >= STAR_COUNT && !item.value) return;
+      close();
+      item.onRate?.(place >= STAR_COUNT ? 0 : place + 1);
+      return;
+    }
     if (item.checked !== undefined) {
       item.onSelect();
       return;
@@ -428,6 +486,25 @@ export function TrackContextMenu({
       event.preventDefault();
       close();
       return;
+    }
+    // In a stars row ←/→ move between the stars and the clear button; ← off the first star goes
+    // back out of a submenu as before.
+    const onRow = list[active];
+    if (onRow?.kind === "stars" && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      const key = `${depth}:${onRow.id}`;
+      const place = starAt[key] ?? starHome(onRow);
+      const next = place + (event.key === "ArrowRight" ? 1 : -1);
+      if (next >= 0 && next <= STAR_COUNT) {
+        event.preventDefault();
+        event.stopPropagation();
+        focusActive.current = true;
+        setStarAt((current) => ({ ...current, [key]: next }));
+        return;
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        return;
+      }
     }
     if (event.key === "Escape" || (event.key === "ArrowLeft" && depth > 0)) {
       event.preventDefault();
@@ -489,12 +566,96 @@ export function TrackContextMenu({
 
   const menuId = useId();
 
-  const renderItem = (item: TrackContextMenuItem, at: number): React.ReactNode => {
+  /** A stars row (M299): the label, five star toggles and a clear button, one entry of the list. */
+  const renderStars = (item: TrackContextMenuItem, at: number, index: number, slot: boolean): React.ReactNode => {
+    const key = `${at}:${item.id}`;
+    const unavailable = item.disabled === true;
+    const rating = item.value ?? 0;
+    const place = starAt[key] ?? starHome(item);
+    const activeRow = index === activeAt(at);
+    const reasonId = unavailable && item.reason ? `${menuId}-${at}-${item.id}-reason` : undefined;
+    const rate = (value: number) => {
+      if (unavailable) return;
+      close();
+      item.onRate?.(value);
+    };
+    const hover = (value: number) => {
+      if (index >= 0) setActiveAt(at, index);
+      setStarAt((current) => ({ ...current, [key]: value }));
+      setPath((current) => (current.length > at ? current.slice(0, at) : current));
+    };
+    return (
+      <div key={item.id} className="cp-track-menu__group">
+        <Hint text={unavailable && item.reason ? item.reason : item.title}>
+          <div
+            role="group"
+            aria-label={item.label}
+            aria-describedby={reasonId}
+            aria-disabled={unavailable || undefined}
+            className={`cp-track-menu__item cp-track-menu__stars${activeRow ? " cp-track-menu__item--active" : ""}`}
+            data-stars=""
+            ref={(element) => {
+              if (element) itemEls.current.set(key, element);
+              else itemEls.current.delete(key);
+            }}
+          >
+            {slot && <span className="cp-track-menu__icon" aria-hidden="true" />}
+            <span className="cp-track-menu__label" data-cut-hint="">
+              {item.label}
+            </span>
+            <span className="cp-track-menu__star-row">
+              {Array.from({ length: STAR_COUNT }, (_, star) => {
+                const value = star + 1;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={rating === value}
+                    aria-label={value === 1 ? "1 star" : `${value} stars`}
+                    aria-disabled={unavailable || undefined}
+                    className={`cp-track-menu__star${activeRow && place === star ? " cp-track-menu__star--active" : ""}`}
+                    tabIndex={activeRow && place === star ? 0 : -1}
+                    onMouseEnter={() => hover(star)}
+                    onClick={() => rate(value)}
+                  >
+                    <PixelIcon name={value <= rating ? "star" : "star-outline"} size="sm" />
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                role="menuitem"
+                aria-label="Clear rating"
+                aria-disabled={unavailable || rating === 0 || undefined}
+                className={`cp-track-menu__star cp-track-menu__star--clear${activeRow && place === STAR_COUNT ? " cp-track-menu__star--active" : ""}`}
+                tabIndex={activeRow && place === STAR_COUNT ? 0 : -1}
+                onMouseEnter={() => hover(STAR_COUNT)}
+                onClick={() => rating !== 0 && rate(0)}
+              >
+                <PixelIcon name="close" size="sm" />
+              </button>
+            </span>
+          </div>
+        </Hint>
+        {reasonId && (
+          <span id={reasonId} className="cp-visually-hidden">
+            {item.reason}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const renderItem = (item: TrackContextMenuItem, at: number, slot = false): React.ReactNode => {
     const index = listAt(at).indexOf(item);
+    if (item.kind === "stars") return renderStars(item, at, index, slot);
     const parent = hasChildren(item);
     const showing = parent && path[at] === item.id;
     const unavailable = item.disabled === true;
     const reasonId = unavailable && item.reason ? `${menuId}-${at}-${item.id}-reason` : undefined;
+    const hintId = item.hint ? `${menuId}-${at}-${item.id}-hint` : undefined;
+    const describedBy = [reasonId, hintId].filter(Boolean).join(" ") || undefined;
     return (
       <div key={item.id} className="cp-track-menu__group">
         <Hint text={unavailable && item.reason ? item.reason : item.title}>
@@ -504,9 +665,9 @@ export function TrackContextMenu({
             type="button"
             role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
             aria-checked={item.checked}
-            className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}${showing ? " cp-track-menu__item--open" : ""}${item.danger ? " cp-track-menu__item--danger" : ""}`}
+            className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}${showing ? " cp-track-menu__item--open" : ""}${item.danger ? " cp-track-menu__item--danger" : ""}${item.hint ? " cp-track-menu__item--hinted" : ""}`}
             aria-disabled={unavailable || undefined}
-            aria-describedby={reasonId}
+            aria-describedby={describedBy}
             aria-keyshortcuts={item.shortcut}
             ref={(element) => {
               const key = `${at}:${item.id}`;
@@ -529,12 +690,29 @@ export function TrackContextMenu({
             {item.checked !== undefined && (
               <span className="cp-track-menu__check" aria-hidden="true">
                 {item.checked === true && <PixelIcon name="check" size="sm" />}
-                {item.checked === "mixed" && <PixelIcon name="dot-half" size="sm" />}
+                {/* M194: a mixed tick is the dash, the indeterminate checkbox's bar, centred in the slot. */}
+                {item.checked === "mixed" && <PixelIcon name="dash" size="sm" />}
               </span>
             )}
-            <span className="cp-track-menu__label" data-cut-hint="">
-              {item.label}
-            </span>
+            {(slot || item.icon) && (
+              <span className="cp-track-menu__icon" aria-hidden="true">
+                {item.icon && <PixelIcon name={item.icon} size="sm" />}
+              </span>
+            )}
+            {item.hint ? (
+              <span className="cp-track-menu__words">
+                <span className="cp-track-menu__label" data-cut-hint="">
+                  {item.label}
+                </span>
+                <span id={hintId} className="cp-track-menu__hint" aria-hidden="true">
+                  {item.hint}
+                </span>
+              </span>
+            ) : (
+              <span className="cp-track-menu__label" data-cut-hint="">
+                {item.label}
+              </span>
+            )}
             {item.shortcut && !parent && (
               <span className="cp-track-menu__shortcut" aria-hidden="true">
                 {item.shortcut}
@@ -565,6 +743,8 @@ export function TrackContextMenu({
   const renderList = (list: TrackContextMenuItem[], at: number): React.ReactNode => {
     const out: React.ReactNode[] = [];
     let group: { id: string; title: string; rows: React.ReactNode[] } | null = null;
+    // One entry with a glyph gives the whole list the slot, so the labels line up (M298).
+    const slot = list.some((item) => item.icon !== undefined);
     const close = () => {
       if (!group) return;
       out.push(
@@ -583,7 +763,7 @@ export function TrackContextMenu({
         out.push(<div key={`sep-${item.id}`} className="cp-track-menu__separator" role="separator" />);
       }
       if (item.groupTitle) group = { id: `${menuId}-${at}-${item.id}-title`, title: item.groupTitle, rows: [] };
-      (group ? group.rows : out).push(renderItem(item, at));
+      (group ? group.rows : out).push(renderItem(item, at, slot));
     }
     close();
     return out;
@@ -596,6 +776,7 @@ export function TrackContextMenu({
       role="menu"
       aria-label={label ?? "Track actions"}
       tabIndex={-1}
+      data-placement={position.placement}
       style={{ left: position.left, top: position.top }}
       onKeyDown={onKeyDown}
       // The menu is opened by a right-click; a right-click inside it should not

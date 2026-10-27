@@ -184,6 +184,20 @@ describe("C138 icons: drawn marks for the typed glyphs", () => {
     expect(PIXEL_ICONS["dot-filled"]).not.toEqual(PIXEL_ICONS["dot-half"]);
   });
 
+  it("draws a dash centred in the grid, the indeterminate checkbox's bar (M194)", () => {
+    const art = PIXEL_ICONS.dash;
+    const lit = art.map((row, y) => (row.includes("#") ? y : -1)).filter((y) => y >= 0);
+    expect(lit).toHaveLength(2);
+    expect(Math.min(...lit)).toBe(PIXEL_GRID_SIZE - 1 - Math.max(...lit));
+    for (const y of lit) {
+      expect(art[y]!.indexOf("#")).toBe(PIXEL_GRID_SIZE - 1 - art[y]!.lastIndexOf("#"));
+    }
+  });
+
+  it("draws a Beatport mark, a pixel B (M36)", () => {
+    expect(PIXEL_ICON_NAMES).toContain("beatport");
+  });
+
   it("draws one chevron: the small name is the same art (M44, D3)", () => {
     expect(PIXEL_ICONS["chevron-right-sm"]).toEqual(PIXEL_ICONS["chevron-right"]);
     expect(PIXEL_ICON_ALIASES).toEqual(["chevron-right-sm"]);

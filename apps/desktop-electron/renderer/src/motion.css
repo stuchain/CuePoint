@@ -285,7 +285,6 @@
 :root[data-motion-entrance] [data-placement="top"].cp-status__running,
 :root[data-motion-entrance] [data-placement="top"].cp-wheel-pop,
 :root[data-motion-entrance] [data-placement="top"].cp-suggest__list,
-:root[data-motion-entrance] [data-placement="top"].cp-hint__tip,
 :root[data-motion-entrance] [data-placement="top"].cp-quick__panel,
 :root[data-motion-entrance] [data-placement="top"].first-steps-note__popover {
   animation:
@@ -299,7 +298,6 @@
 :root[data-motion-entrance] .cp-track-menu__submenu[data-leaving],
 :root[data-motion-entrance] .cp-status__running[data-leaving],
 :root[data-motion-entrance] .cp-suggest__list[data-leaving],
-:root[data-motion-entrance] .cp-hint__tip[data-leaving],
 :root[data-motion-entrance] .cp-quick__panel[data-leaving],
 :root[data-motion-entrance] .first-steps-note__popover[data-leaving] {
   animation:
@@ -312,7 +310,6 @@
 :root[data-motion-entrance] [data-placement="top"][data-leaving].cp-status__running,
 :root[data-motion-entrance] [data-placement="top"][data-leaving].cp-wheel-pop,
 :root[data-motion-entrance] [data-placement="top"][data-leaving].cp-suggest__list,
-:root[data-motion-entrance] [data-placement="top"][data-leaving].cp-hint__tip,
 :root[data-motion-entrance] [data-placement="top"][data-leaving].cp-quick__panel,
 :root[data-motion-entrance] [data-placement="top"][data-leaving].first-steps-note__popover {
   animation:
@@ -332,7 +329,6 @@
 :root[data-motion-entrance] .cp-track-menu[data-leaving],
 :root[data-motion-entrance] .cp-status__running[data-leaving],
 :root[data-motion-entrance] .cp-suggest__list[data-leaving],
-:root[data-motion-entrance] .cp-hint__tip[data-leaving],
 :root[data-motion-entrance] .cp-quick__panel[data-leaving],
 :root[data-motion-entrance] .first-steps-note__popover[data-leaving] {
   pointer-events: none;

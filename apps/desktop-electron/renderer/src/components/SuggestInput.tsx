@@ -8,6 +8,7 @@ import {
   type InputHTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { usePresence } from "../tokens/usePresence";
 import { matchSuggestions } from "./suggestMatch";
 import "./SuggestInput.css";
 
@@ -73,7 +74,6 @@ export function SuggestInput({
   const [active, setActive] = useState(-1);
   const [above, setAbove] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
   const lastTyped = useRef(typeof value === "string" ? value : "");
 
   const typed = typeof value === "string" ? value : "";
@@ -81,6 +81,14 @@ export function SuggestInput({
   const shown = useMemo(() => matches.slice(0, MAX_SHOWN), [matches]);
   const more = matches.length - shown.length;
   const showList = open && shown.length > 0;
+  // A closed list plays its exit (M380): it stays, inert, showing what it last held, until the
+  // `[data-leaving]` animation ends. With motion off it goes at once.
+  const presence = usePresence<HTMLUListElement>(showList);
+  const listRef = presence.ref;
+  const lastShown = useRef(shown);
+  if (showList) lastShown.current = shown;
+  const drawn = showList ? shown : lastShown.current;
+  const leaving = presence.leaving;
   // Which options are on offer, by content: a caller that rebuilds an equal array
   // each render must not reset the option someone has moved to.
   const shownKey = shown.map((item) => item.value).join("\u0000");
@@ -101,10 +109,8 @@ export function SuggestInput({
   // Opening: under the field, unless a clipping parent (the panel scrolls) leaves no
   // room for it there and more above. Measured once, as it opens.
   useLayoutEffect(() => {
-    if (!showList) {
-      setAbove(false);
-      return;
-    }
+    // A closing list keeps the side it opened on while it leaves; the next opening measures again.
+    if (!showList) return;
     const root = rootRef.current;
     const list = listRef.current;
     if (!root || !list) return;
@@ -114,7 +120,7 @@ export function SuggestInput({
     const ceiling = Math.max(clip?.top ?? -Infinity, 0);
     const below = floor - field.bottom;
     setAbove(list.getBoundingClientRect().height > below && field.top - ceiling > below);
-  }, [showList]);
+  }, [showList, listRef]);
 
   useEffect(() => {
     if (!showList) return;
@@ -211,32 +217,37 @@ export function SuggestInput({
           onBlur?.(event);
         }}
       />
-      {showList && (
+      {presence.present && (
         <ul
           ref={listRef}
-          id={listId}
+          id={leaving ? undefined : listId}
           className={`cp-suggest__list${above ? " cp-suggest__list--above" : ""}`}
+          // The motion follows the side (M380): above the field it rises in and sinks out.
+          data-placement={above ? "top" : "bottom"}
+          data-leaving={leaving ? "" : undefined}
+          aria-hidden={leaving || undefined}
+          inert={leaving || undefined}
           role="listbox"
           aria-label="Suggestions"
           // A press inside the list must not take focus from the field, or the list
           // would close under the click that was meant for an option.
           onMouseDown={(event) => event.preventDefault()}
         >
-          {shown.map((item, index) => (
+          {drawn.map((item, index) => (
             <li
               key={item.value}
-              id={optionId(index)}
+              id={leaving ? undefined : optionId(index)}
               role="option"
-              aria-selected={index === current}
-              className={`cp-suggest__option${index === current ? " cp-suggest__option--active" : ""}`}
-              onClick={() => choose(item)}
-              onMouseMove={() => index !== current && setActive(index)}
+              aria-selected={!leaving && index === current}
+              className={`cp-suggest__option${!leaving && index === current ? " cp-suggest__option--active" : ""}`}
+              onClick={() => !leaving && choose(item)}
+              onMouseMove={() => !leaving && index !== current && setActive(index)}
             >
               <span className="cp-suggest__text">{item.label ?? item.value}</span>
               {item.detail && <span className="cp-suggest__detail">{item.detail}</span>}
             </li>
           ))}
-          {more > 0 && (
+          {!leaving && more > 0 && (
             <li role="presentation" className="cp-suggest__more">
               Type to narrow {more.toLocaleString()} more
             </li>

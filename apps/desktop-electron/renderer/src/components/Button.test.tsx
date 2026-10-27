@@ -16,6 +16,7 @@ import userEvent from "@testing-library/user-event";
 
 import { Button } from "./Button";
 import css from "./Button.css?raw";
+import tokensCss from "../tokens/tokens.css?raw";
 import { parseRules, stripComments } from "../test/cssRules";
 
 describe("Button", () => {
@@ -231,15 +232,34 @@ describe("the quiet secondary button in bars, rows and cards (P3)", () => {
   const rest = rules.filter((r) => !/:hover|:is\(:disabled/.test(r.selector) && !hangs.includes(r));
   const hover = rules.filter((r) => /:hover/.test(r.selector));
 
-  it("has one rule that strips the fill and frame in the bars and, for small buttons, in tables and cards", () => {
+  // M342 (D30 A): the one rule is now two. A bar's button rests on the faint --bar-btn-rest fill;
+  // a small button in a table or a card still rests bare. Both drop the frame.
+  it("strips the frame in the bars (resting on the faint bar fill) and, for small buttons, in tables and cards", () => {
+    const tokens = parseRules(stripComments(tokensCss)).find((r) => r.selector === ":root")!.body;
+    expect(tokens).toMatch(/--bar-btn-rest:\s*color-mix\(in srgb, var\(--fg-primary\) 4%, transparent\)/);
     expect(rest).toHaveLength(1);
     const selector = rest[0]!.selector;
     for (const container of [".cp-toolbar", ".cp-filter-bar", ".cp-selection-bar", ".cp-track-actions", ".prepare-row-buttons"]) {
       expect(selector, container).toContain(container);
     }
-    expect(selector).toMatch(/:where\(\.track-table, \.cp-data-table, \.cp-card\)\s+\.cp-btn--secondary\.cp-btn--sm/);
-    expect(rest[0]!.body).toMatch(/background:\s*transparent/);
+    expect(rest[0]!.body).toMatch(/background:\s*var\(--bar-btn-rest\)/);
     expect(rest[0]!.body).toMatch(/border-color:\s*transparent/);
+    const rows = parseRules(stripComments(css)).find((r) =>
+      /^:where\(\.track-table, \.cp-data-table, \.cp-card\)\s+\.cp-btn--secondary\.cp-btn--sm:not/.test(r.selector) &&
+      !/:hover|:is\(:disabled|cp-btn__icon/.test(r.selector),
+    )!;
+    expect(rows.body).toMatch(/background:\s*transparent/);
+    expect(rows.body).toMatch(/border-color:\s*transparent/);
+  });
+
+  it("keeps the on look on a button whose menu is open, in every quiet rule (M341)", () => {
+    for (const rule of parseRules(stripComments(css))) {
+      if (!rule.selector.includes(".cp-btn--secondary:not(.cp-btn--framed)") || /margin-inline/.test(rule.body)) continue;
+      for (const part of rule.selector.split(/,\s*(?=:where|\.cp-btn--quiet)/)) {
+        if (!part.includes(".cp-btn--secondary")) continue;
+        expect(part, part).toContain(':not([aria-pressed="true"]):not([aria-expanded="true"])');
+      }
+    }
   });
 
   it("leaves a framed button and a toggle that is on alone", () => {

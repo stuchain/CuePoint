@@ -1,0 +1,12 @@
+/*
+ * A picture that fades in once loaded (M385). Until then it is not drawn, so the box's own empty
+ * tone shows (the cell, the artwork frame or the card's art well): a slow picture never swaps in
+ * hard. With motion on it fades in over that tone; with motion off it is simply there.
+ */
+.cp-art:not([data-loaded]) {
+  visibility: hidden;
+}
+
+:root[data-motion-entrance] .cp-art[data-loaded] {
+  animation: cp-fade-in var(--motion-base) var(--motion-fade);
+}

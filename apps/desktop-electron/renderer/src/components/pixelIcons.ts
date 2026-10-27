@@ -898,6 +898,45 @@ const dotHalf = [
   "............",
 ];
 
+/**
+ * Dash: a bar across the middle, for a state that is partly on (M194). The same bar the
+ * indeterminate checkbox draws (index.css `:indeterminate::before`, 60% wide, 20% tall), so a
+ * mixed menu tick and a mixed checkbox read as one mark.
+ */
+const dash = [
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+  "..########..",
+  "..########..",
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+];
+
+/**
+ * Beatport: a pixel "B" on the grid (M36), for a link or a value that comes from Beatport. Two
+ * cells of stroke throughout so it holds at 1x.
+ */
+const beatport = [
+  "............",
+  "..#######...",
+  "..########..",
+  "..##....##..",
+  "..##....##..",
+  "..#######...",
+  "..########..",
+  "..##....##..",
+  "..##....##..",
+  "..########..",
+  "..#######...",
+  "............",
+];
+
 /** Refresh: an arrow chasing its tail, for check again. */
 const refresh = [
   "............",
@@ -997,6 +1036,9 @@ export const PIXEL_ICONS = {
   grip,
   "dot-filled": dotFilled,
   "dot-half": dotHalf,
+  // M194: the mixed tick in menus. M36: the Beatport mark.
+  dash,
+  beatport,
   refresh,
   more,
 } as const satisfies Record<string, readonly string[]>;

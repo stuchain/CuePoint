@@ -146,16 +146,24 @@
  * Track details' action row, a notice, and the small buttons in a table or a card, a grey secondary
  * button loses its fill and frame. They come back on hover. It keeps its words. The panel's one action
  * wears `cp-btn--framed`; a toggle that is on keeps its violet line and tint (D1). Dialogs and the page
- * header are not in the list, so their buttons stay framed. This is the one rule for all of them.
+ * header are not in the list, so their buttons stay framed. In a bar the button rests on a faint fill
+ * (M342, D30 A), so a bar's buttons read as buttons and not bare words; the small buttons in a table
+ * or a card rest bare, as a fill on every row would be noise. A button that is on, or whose menu is
+ * open (M341), keeps the on look. These two rules are the whole of it.
  */
 :where(.cp-toolbar, .cp-filter-bar, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
     .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
     .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
     .prepare-heading__buttons, .prepare-row-buttons)
-  .cp-btn--secondary:not(.cp-btn--framed):not(.cp-close):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]),
-:where(.track-table, .cp-data-table, .cp-card)
-  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not(.cp-close):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]) {
+  .cp-btn--secondary:not(.cp-btn--framed):not(.cp-close):not([aria-pressed="true"]):not([aria-expanded="true"]):not(:disabled):not([aria-disabled="true"]) {
   /* A close button keeps its own muted × (M357); CloseButton.css gives it the hover. */
+  background: var(--bar-btn-rest);
+  border-color: transparent;
+  color: var(--fg-primary);
+}
+
+:where(.track-table, .cp-data-table, .cp-card)
+  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not(.cp-close):not([aria-pressed="true"]):not([aria-expanded="true"]):not(:disabled):not([aria-disabled="true"]) {
   background: transparent;
   border-color: transparent;
   color: var(--fg-primary);
@@ -165,9 +173,9 @@
     .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
     .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
     .prepare-heading__buttons, .prepare-row-buttons)
-  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):hover:not(:disabled):not([aria-disabled="true"]),
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):not([aria-expanded="true"]):hover:not(:disabled):not([aria-disabled="true"]),
 :where(.track-table, .cp-data-table, .cp-card)
-  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):hover:not(:disabled):not([aria-disabled="true"]) {
+  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):not([aria-expanded="true"]):hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--hover-fill);
   border-color: var(--border-control);
 }
@@ -178,7 +186,7 @@
     .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
     .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
     .prepare-heading__buttons, .prepare-row-buttons)
-  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]) .cp-btn__icon,
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):not([aria-expanded="true"]):not(:disabled):not([aria-disabled="true"]) .cp-btn__icon,
 .cp-btn--quiet:not(:disabled):not([aria-disabled="true"]) .cp-btn__icon {
   color: var(--fg-muted);
 }
@@ -187,7 +195,7 @@
     .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
     .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
     .prepare-heading__buttons, .prepare-row-buttons)
-  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):hover:not(:disabled):not([aria-disabled="true"]) .cp-btn__icon,
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):not([aria-expanded="true"]):hover:not(:disabled):not([aria-disabled="true"]) .cp-btn__icon,
 .cp-btn--quiet:hover:not(:disabled):not([aria-disabled="true"]) .cp-btn__icon {
   color: var(--fg-primary);
 }
@@ -197,9 +205,9 @@
     .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
     .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
     .prepare-heading__buttons, .prepare-row-buttons)
-  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):is(:disabled, [aria-disabled="true"]):not(.cp-btn--loading),
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):not([aria-expanded="true"]):is(:disabled, [aria-disabled="true"]):not(.cp-btn--loading),
 :where(.track-table, .cp-data-table, .cp-card)
-  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):is(:disabled, [aria-disabled="true"]):not(.cp-btn--loading) {
+  .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):not([aria-expanded="true"]):is(:disabled, [aria-disabled="true"]):not(.cp-btn--loading) {
   background: transparent;
   border-color: transparent;
 }

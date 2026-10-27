@@ -279,23 +279,28 @@
      the one place that needs an opaque fill (a sticky cell that hides what scrolls under it). */
   --row-hover: color-mix(in srgb, var(--fg-primary) 6%, transparent);
   --row-hover-solid: color-mix(in srgb, var(--fg-primary) 6%, var(--bg-input));
+  /* The one active look of every list (M289, D26): the option the pointer or the arrows are on in a
+     menu, a suggest list, the picker, quick filters or global search. A visible grey step off the
+     panel, stronger than the row hover; violet is only for what is selected, and there is no bar. */
+  --menu-active-fill: color-mix(in srgb, var(--fg-primary) 16%, var(--bg-panel));
+  /* A quiet button in a bar at rest (M342, D30 A): a faint fill, so the bar's buttons read as
+     buttons and not bare words. Hover adds the hover fill and the frame. */
+  --bar-btn-rest: color-mix(in srgb, var(--fg-primary) 4%, transparent);
   --reading-width: 60ch;
   --tree-indent: calc(12px * var(--scale));
   --gap-box: var(--space-xl);
-  /* P60: a thin violet line, centred on an 8px hit that is invisible until hover or drag. */
+  /* P60, M359: the one resizer hover. A thin violet line, centred on an 8px hit that is invisible
+     until hover or drag. A handle on a panel's edge straddles that edge, so the line lands on the
+     panel's own border (Q6b): one line, in its place. */
   --resizer-hover: linear-gradient(
     to right,
     transparent calc(50% - var(--selected-bar-width) / 2),
     var(--accent-primary) 0 calc(50% + var(--selected-bar-width) / 2),
     transparent 0
   );
-  /* Q6b: a panel's own edge lights up under the resize cursor. The panel's border turns violet
-     and the handle widens it from the inside to the bar width, so one line shows, in its place. */
-  --resizer-edge-hover: linear-gradient(
-    to right,
-    var(--accent-primary) 0 calc(var(--selected-bar-width) - var(--hairline)),
-    transparent 0
-  );
+  /* The old name of the same token (M359), kept until the Inspector and queue handles read
+     --resizer-hover; then delete it. */
+  --resizer-edge-hover: var(--resizer-hover);
   --row-end-inset: var(--space-sm);
   --search-width: round(nearest, calc(205px * var(--scale)), 1px);
 

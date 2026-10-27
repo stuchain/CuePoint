@@ -75,6 +75,9 @@ export function leaveAsGhost(node: HTMLElement, { kind = "entrance", rect }: Lea
   ghost.querySelectorAll("[tabindex]").forEach((el) => el.removeAttribute("tabindex"));
   copyCanvases(node, ghost);
   ghost.setAttribute("data-ghost", "");
+  // The copy is the thing leaving (M380): `[data-leaving]` exits apply to it, and a copy of a menu
+  // that opened above (`data-placement="top"`) sinks out the way it rose in.
+  ghost.setAttribute("data-leaving", "");
   ghost.setAttribute("aria-hidden", "true");
   ghost.setAttribute("inert", "");
   Object.assign(ghost.style, {
