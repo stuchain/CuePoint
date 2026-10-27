@@ -58,8 +58,10 @@
   flex: 1 1 auto;
   max-width: 100%;
   display: flex;
-  /* What sits beside the title shares its last baseline, not its box's centre (M57). */
-  align-items: last baseline;
+  /* What sits beside the title shares its baseline, not its box's centre (M57). The first baseline:
+     what is beside takes it from its first words (the Library's file name), not from whatever comes
+     last (an icon button's bottom edge, or the First steps chip only while it shows). */
+  align-items: baseline;
   gap: var(--space-md);
   min-width: 0;
   min-height: var(--toolbar-height);

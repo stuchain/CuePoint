@@ -200,8 +200,10 @@ describe("the page title type (P47)", () => {
     expect(css.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/letter-spacing/);
   });
 
-  it("sits the title row on the last baseline (M57)", () => {
-    expect(css).toMatch(/align-items:\s*last baseline/);
+  it("sits the title row on the baseline (M57)", () => {
+    // The first baseline, so what is beside the title is placed by its first words (the e2e
+    // libraryPage header check caught the last baseline following the First steps chip).
+    expect(css).toMatch(/\.cp-screen-header__title-row \{[^}]*align-items:\s*baseline;/);
   });
 });
 

@@ -25,7 +25,9 @@
 .library-header .cp-screen-header__main {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  /* The buttons share the title's baseline too, as the file and its state beside it do (M57):
+     centred on a row the baseline made taller, they sat apart from the refresh icon. */
+  align-items: baseline;
   gap: var(--space-xs) var(--space-md);
 }
 
