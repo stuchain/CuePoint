@@ -20,6 +20,10 @@ import {
   referenceWarning,
   removalWarning,
 } from "./libraryFormat";
+// screens.css before library.css, as LibraryScreen has them: Clean imports this dialog before the
+// Library loads, and the sheet first imported is the one first in the bundle, so library.css alone
+// here put the generic `.screen { display: flex }` after the Library's grid and broke its page.
+import "../screens.css";
 import "./library.css";
 
 interface RefreshPreviewDialogProps {
