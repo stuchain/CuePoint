@@ -208,16 +208,16 @@ export function buildMenuTemplate({
     submenu: [
       { label: "Size", enabled: sizeItems.length > 0, submenu: sizeItems },
       { type: "separator" },
-      command("size-bigger", "Bigger", { accelerator: "CmdOrCtrl+=" }),
+      command("size-bigger", "Larger text", { accelerator: "CmdOrCtrl+=" }),
       // Ctrl+Plus is the same key with Shift held; a second, hidden item accepts it.
-      command("size-bigger-plus", "Bigger", {
+      command("size-bigger-plus", "Larger text", {
         accelerator: "CmdOrCtrl+Plus",
         visible: false,
         acceleratorWorksWhenHidden: true,
         click: () => send("size-bigger"),
       }),
-      command("size-smaller", "Smaller", { accelerator: "CmdOrCtrl+-" }),
-      command("size-default", "Default size", { accelerator: "CmdOrCtrl+0" }),
+      command("size-smaller", "Smaller text", { accelerator: "CmdOrCtrl+-" }),
+      command("size-default", "Default text size", { accelerator: "CmdOrCtrl+0" }),
       { type: "separator" },
       // Check marks once the page has said what is open (M497).
       command("toggle-inspector", "Track details", { accelerator: "CmdOrCtrl+I", ...shownOnly, ...panelCheck(view?.inspector) }),

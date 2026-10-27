@@ -246,7 +246,7 @@ describe("View: size, panels, Settings", () => {
   it("steps the size with Ctrl+= (also Ctrl+Plus), Ctrl+- and Ctrl+0", () => {
     const { items, sent } = template("linux");
     const bigger = byId(items, "size-bigger")!;
-    expect(bigger.label).toBe("Bigger");
+    expect(bigger.label).toBe("Larger text");
     expect(bigger.accelerator).toBe("CmdOrCtrl+=");
     click(bigger);
     const plus = walk(items).filter(
@@ -260,7 +260,7 @@ describe("View: size, panels, Settings", () => {
     expect(smaller.accelerator).toBe("CmdOrCtrl+-");
     click(smaller);
     const normal = byId(items, "size-default")!;
-    expect(normal.label).toBe("Default size");
+    expect(normal.label).toBe("Default text size");
     expect(normal.accelerator).toBe("CmdOrCtrl+0");
     click(normal);
 

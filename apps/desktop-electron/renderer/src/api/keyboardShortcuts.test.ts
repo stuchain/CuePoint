@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { filterShortcuts, KEYBOARD_SHORTCUTS, KEYS } from "./keyboardShortcuts";
-import { MATCH_KEYS } from "../screens/clean/match/matchKeyboard";
+import { MATCH_KEYS, NEXT_TO_CHECK_KEY } from "../screens/clean/match/matchKeyboard";
 import reviewTabSource from "../screens/clean/match/ReviewTab.tsx?raw";
 import reviewTableSource from "../screens/clean/match/ReviewTable.tsx?raw";
 import matchKeyboardSource from "../screens/clean/match/matchKeyboard.ts?raw";
+import candidatePanelSource from "../screens/clean/match/CandidatePanel.tsx?raw";
 import appSource from "../App.tsx?raw";
 import modalSource from "../components/Modal.tsx?raw";
 import globalSearchSource from "../components/shell/GlobalSearch.tsx?raw";
@@ -72,10 +73,11 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
     const keys = Object.values(MATCH_KEYS);
 
     // Each command's key appears in the dialog: the arrows as a pair.
-    for (const key of keys) {
+    for (const key of [...keys, NEXT_TO_CHECK_KEY]) {
       expect(clean.some((row) => row.shortcut.split(" / ").includes(key)), key).toBe(true);
     }
-    expect(clean).toHaveLength(6);
+    // Six, and N for the next track still to check (M508, moved from six with no N).
+    expect(clean).toHaveLength(7);
   });
 
   it("lists Enter as Play and Space as Tick, answered on the review's row", () => {
@@ -88,9 +90,14 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
     expect(reviewTableSource).toMatch(/event\.key === " "/);
   });
 
-  it("lists no decision key beyond the tick", () => {
-    expect(clean.map((row) => row.shortcut)).not.toContain("N");
+  it("lists no decision key beyond the tick: N only moves to the next track to check (M508)", () => {
+    expect(clean.find((row) => row.shortcut === "N")?.action).toBe("Next track still to check");
     expect(clean.map((row) => row.shortcut)).not.toContain("S");
+  });
+
+  it("lists the side panel's keys under its own name (M508)", () => {
+    const panel = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Check the match");
+    expect(panel.map((row) => row.shortcut)).toEqual(["Left / Right", "1–9", "Enter", "Shift+Enter", "Backspace"]);
   });
 
   it("binds no modified key but Select all, so none can collide with a shell shortcut", () => {
@@ -135,7 +142,7 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     for (const key of ["Ctrl+O", "Ctrl+,", "Ctrl+=", "Ctrl+-", "Ctrl+0"]) {
       expect(shortcuts, key).toContain(key);
     }
-    expect(KEYBOARD_SHORTCUTS.find((row) => row.shortcut === "Ctrl+0")?.action).toMatch(/default size/i);
+    expect(KEYBOARD_SHORTCUTS.find((row) => row.shortcut === "Ctrl+0")?.action).toMatch(/default text size/i);
     expect(KEYBOARD_SHORTCUTS.find((row) => row.shortcut === "Ctrl+O")?.action).toMatch(/import/i);
   });
 
@@ -190,8 +197,9 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Ctrl+Shift+A", "Everywhere", statusStripSource, /shiftKey && event\.key\.toLowerCase\(\) === "a"/],
     ["F6", "Everywhere", shellKeyboardSource, /key !== "F6"/],
     ["Shift+F6", "Everywhere", shellKeyboardSource, /nextPane\(shownPanes\(\), document\.activeElement, event\.shiftKey\)/],
-    ["Ctrl+?", "Everywhere", appSource, /key === "\?"/],
-    ["F1", "Everywhere", appSource, /key === "F1"/],
+    // One row for the two keys (M444).
+    ["Ctrl+? / F1", "Everywhere", appSource, /key === "\?"/],
+    ["Ctrl+? / F1", "Everywhere", appSource, /key === "F1"/],
     ["Esc", "Everywhere", modalSource, /key === "Escape"/],
     ["Ctrl+F", "Library", pageSearchSource, /key\.toLowerCase\(\) !== "f"/],
     ["Ctrl+A", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "a"/],
@@ -214,6 +222,12 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Menu key / Shift+F10", "Player", queuePanelSource, /key === "ContextMenu"/],
     ["Enter", "Clean", reviewTableSource, /event\.key === "Enter"/],
     ["Space", "Clean", reviewTableSource, /event\.key === " "/],
+    ["N", "Clean", matchKeyboardSource, /case "N":[\s\S]*"next-to-check"/],
+    ["Left / Right", "Check the match", candidatePanelSource, /event\.key === "ArrowLeft" \? -1 : event\.key === "ArrowRight"/],
+    ["1–9", "Check the match", candidatePanelSource, /\/\^\[1-9\]\$\/\.test\(event\.key\)/],
+    ["Enter", "Check the match", candidatePanelSource, /event\.key === "Enter"[\s\S]*takePicked\.current\(event\.shiftKey\)/],
+    ["Shift+Enter", "Check the match", candidatePanelSource, /takePicked\.current\(event\.shiftKey\)/],
+    ["Backspace", "Check the match", candidatePanelSource, /event\.key === "Backspace"/],
   ];
 
   it.each(handlers)("%s (%s) has a handler", (shortcut, context, source, pattern) => {
@@ -271,11 +285,10 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     const menu: Array<[shortcut: string, accelerator: string, label: string]> = [
       ["Ctrl+O", "CmdOrCtrl+O", "Import a Rekordbox file…"],
       ["Ctrl+,", "CmdOrCtrl+,", "Settings"],
-      ["Ctrl+=", "CmdOrCtrl+=", "Bigger"],
-      ["Ctrl+-", "CmdOrCtrl+-", "Smaller"],
-      ["Ctrl+0", "CmdOrCtrl+0", "Default size"],
-      ["Ctrl+I", "CmdOrCtrl+I", "Track details"],
-      ["Ctrl+B", "CmdOrCtrl+B", "Sidebar"],
+      // M444: the size items say what they change, in the menu and here alike.
+      ["Ctrl+=", "CmdOrCtrl+=", "Larger text"],
+      ["Ctrl+-", "CmdOrCtrl+-", "Smaller text"],
+      ["Ctrl+0", "CmdOrCtrl+0", "Default text size"],
     ];
     for (const [shortcut, accelerator, label] of menu) {
       // The menu item says this label with this accelerator, on one line of appMenu.ts (M404: the item's
@@ -284,9 +297,19 @@ describe("only shortcuts that work (PAGES-03B)", () => {
       const row = KEYBOARD_SHORTCUTS.find((entry) => entry.shortcut === shortcut);
       expect(row?.action, shortcut).toBe(label);
     }
+    // The panels are ticked items in the menu, named by what they are; the list says what the key
+    // does to them, naming the same item (M444, moved from the bare menu label).
+    const panels: Array<[shortcut: string, accelerator: string, label: string, action: string]> = [
+      ["Ctrl+I", "CmdOrCtrl+I", "Track details", "Show or hide Track details"],
+      ["Ctrl+B", "CmdOrCtrl+B", "Sidebar", "Show or hide the sidebar"],
+    ];
+    for (const [shortcut, accelerator, label, action] of panels) {
+      expect(appMenuSource, shortcut).toMatch(new RegExp(`"${label}"[^\\n]*accelerator: "${accelerator.replace("+", "\\+")}"`));
+      expect(KEYBOARD_SHORTCUTS.find((entry) => entry.shortcut === shortcut)?.action, shortcut).toBe(action);
+    }
     // Ctrl+? opens what Help calls "Keyboard shortcuts".
     expect(appMenuSource).toContain('"Keyboard shortcuts"');
-    expect(KEYBOARD_SHORTCUTS.find((entry) => entry.shortcut === "Ctrl+?")?.action).toBe("Keyboard shortcuts");
+    expect(KEYBOARD_SHORTCUTS.find((entry) => entry.shortcut === "Ctrl+? / F1")?.action).toBe("Keyboard shortcuts");
   });
 
   it("calls the always-on context Everywhere, not Global (W2)", () => {

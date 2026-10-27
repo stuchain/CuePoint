@@ -127,7 +127,7 @@ the small Help menu CuePoint used to draw inside the window.
 - **Edit**: **Undo**, **Redo**, **Cut**, **Copy**, **Paste** and **Select all**, so
   copying and pasting work in every text field, including the pasted Beatport token.
 - **View**: **Size** (Extra small, Small, Medium, Large and Extra large, with the one in use
-  ticked; a size too big for your screen is greyed), **Bigger** (**Ctrl+=**), **Smaller** (**Ctrl+-**), **Default size**
+  ticked; a size too big for your screen is greyed), **Larger text** (**Ctrl+=**), **Smaller text** (**Ctrl+-**), **Default text size**
   (**Ctrl+0**), **Track details** (**Ctrl+I**), **Sidebar** (**Ctrl+B**), **Search library…**
   (**Ctrl+K**) and **Activity…** (**Ctrl+Shift+A**). These keys change the Size setting, the
   same one as Settings → Appearance; they never zoom the page. **Settings...** (**Ctrl+,**) is
@@ -233,13 +233,13 @@ matches only the tracks it had not reached. See [Clean](clean.md#match).
 
 ## Keyboard shortcuts
 
-To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts…**. The dialog lists them by context (Everywhere, Library, Keys, Prepare, Tables, Clean, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac the list shows the Mac keys (⌘) itself.
+To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts…**. The dialog lists them by context (Everywhere, Library, Keys, Prepare, Tables, Clean, Check the match, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac the list shows the Mac keys (⌘) itself.
 
 | Shortcut | Does |
 | --- | --- |
 | **Ctrl+O** | Import a Rekordbox file |
 | **Ctrl+,** | Open Settings |
-| **Ctrl+=** / **Ctrl+-** / **Ctrl+0** | Bigger, smaller, the default size |
+| **Ctrl+=** / **Ctrl+-** / **Ctrl+0** | Larger text, smaller text, the default text size |
 | **Ctrl+K** | Search your library (**View → Search library…**) |
 | **Ctrl+F** | Search within the table on screen |
 | **Ctrl+A** | Select every track matching what you are looking at |
@@ -272,6 +272,17 @@ In Clean's Match area, in the review table and its side panel:
 | **Esc** | Close the side panel |
 | **Enter** | Play the track |
 | **Space** | Tick or untick the track |
+| **N** | Next track still to check |
+
+In the **Check the match** side panel, with focus in the panel but not on one of its buttons:
+
+| Shortcut | Does |
+| --- | --- |
+| **Left** / **Right** | Pick the previous or next candidate |
+| **1**–**9** | Pick a candidate by its number |
+| **Enter** | Use the picked match and go to the next track |
+| **Shift+Enter** | Use the picked match and stay on the track |
+| **Backspace** | Leave the track out |
 
 In the player's queue, with a queued track focused:
 

@@ -557,7 +557,7 @@ ${tracks.join("\n")}
       await window.getByRole("link", { name: "Settings", exact: true }).click();
       await expect(window.getByLabel("Size of text and controls")).toHaveValue("2", { timeout: 15_000 });
 
-      // Ctrl+0, Ctrl+= and Ctrl+- are the accelerators of Default size, Bigger and Smaller, and
+      // Ctrl+0, Ctrl+= and Ctrl+- are the accelerators of Default text size, Larger text and Smaller text, and
       // those items step the setting; none of them zooms the page. Neither Playwright's key
       // presses nor a synthesized input event reach a native accelerator, so each item is
       // chosen as the accelerator would choose it.

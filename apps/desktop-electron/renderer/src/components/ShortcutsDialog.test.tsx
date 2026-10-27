@@ -9,7 +9,7 @@ describe("ShortcutsDialog", () => {
     render(<ShortcutsDialog open onClose={vi.fn()} />);
     const dialog = screen.getByRole("dialog");
     // One cap per key (M265): "Ctrl" and "O" are two caps, so the row is read by its action.
-    for (const action of ["Import a Rekordbox file…", "Settings", "Bigger", "Smaller", "Default size"]) {
+    for (const action of ["Import a Rekordbox file…", "Settings", "Larger text", "Smaller text", "Default text size"]) {
       expect(within(dialog).getByText(action)).toBeInTheDocument();
     }
     const row = within(dialog).getByText("Import a Rekordbox file…").closest("tr")!;

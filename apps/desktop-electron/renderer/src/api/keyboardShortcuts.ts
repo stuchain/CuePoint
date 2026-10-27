@@ -27,22 +27,23 @@ export const KEYS = {
 export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Everywhere", action: "Import a Rekordbox file…", shortcut: "Ctrl+O" },
   { context: "Everywhere", action: "Settings", shortcut: "Ctrl+," },
-  { context: "Everywhere", action: "Bigger", shortcut: "Ctrl+=" },
-  { context: "Everywhere", action: "Smaller", shortcut: "Ctrl+-" },
-  { context: "Everywhere", action: "Default size", shortcut: "Ctrl+0" },
+  { context: "Everywhere", action: "Larger text", shortcut: "Ctrl+=" },
+  { context: "Everywhere", action: "Smaller text", shortcut: "Ctrl+-" },
+  { context: "Everywhere", action: "Default text size", shortcut: "Ctrl+0" },
   { context: "Everywhere", action: "Search library", shortcut: "Ctrl+K" },
-  { context: "Everywhere", action: "Track details", shortcut: "Ctrl+I" },
-  { context: "Everywhere", action: "Sidebar", shortcut: "Ctrl+B" },
-  { context: "Everywhere", action: "Open activity", shortcut: "Ctrl+Shift+A" },
+  // The panels say what the key does to them; the View menu ticks them by name (M444).
+  { context: "Everywhere", action: "Show or hide Track details", shortcut: "Ctrl+I" },
+  { context: "Everywhere", action: "Show or hide the sidebar", shortcut: "Ctrl+B" },
+  { context: "Everywhere", action: "Activity", shortcut: "Ctrl+Shift+A" },
   // The panes of the window (M459, D34): sidebar, page and its panes, Track details or the queue, player.
   { context: "Everywhere", action: "Go to the next pane", shortcut: "F6" },
   { context: "Everywhere", action: "Go to the previous pane", shortcut: "Shift+F6" },
-  { context: "Everywhere", action: "Keyboard shortcuts", shortcut: "Ctrl+?" },
-  { context: "Everywhere", action: "Open this list", shortcut: "F1" },
+  // Two keys for one action, so one row (M444).
+  { context: "Everywhere", action: "Keyboard shortcuts", shortcut: "Ctrl+? / F1" },
   { context: "Everywhere", action: "Close a dialog, panel or search", shortcut: "Esc" },
   // The Library became a browser in Phase 4 (DEC-039), so it has a context of
   // its own.
-  { context: "Library", action: "Focus search", shortcut: "Ctrl+F" },
+  { context: "Library", action: "Search these tracks", shortcut: "Ctrl+F" },
   { context: "Library", action: "Select all matching tracks", shortcut: KEYS.selectAll },
   { context: "Library", action: "Play the selected track", shortcut: KEYS.play },
   { context: "Library", action: "Clear the selection", shortcut: KEYS.clear },
@@ -80,6 +81,13 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Clean", action: "Close the track's side panel", shortcut: "Esc" },
   { context: "Clean", action: "Play the track", shortcut: "Enter" },
   { context: "Clean", action: "Tick or untick the track", shortcut: "Space" },
+  { context: "Clean", action: "Next track still to check", shortcut: "N" },
+  // The side panel's own keys (M508), answered while focus is in it and not on one of its buttons.
+  { context: "Check the match", action: "Pick the previous or next candidate", shortcut: "Left / Right" },
+  { context: "Check the match", action: "Pick a candidate by its number", shortcut: "1–9" },
+  { context: "Check the match", action: "Use the picked match and go to the next track", shortcut: "Enter" },
+  { context: "Check the match", action: "Use the picked match and stay on the track", shortcut: "Shift+Enter" },
+  { context: "Check the match", action: "Leave the track out", shortcut: "Backspace" },
   // The player (PLAYER-12). Space is bare because it is the one key everyone
   // already tries; the rest are Ctrl-modified because bare arrows belong to the
   // table and the queue panel, which is where a keyboard user spends their time.
