@@ -223,9 +223,10 @@ export function buildMenuTemplate({
       command("toggle-inspector", "Track details", { accelerator: "CmdOrCtrl+I", ...shownOnly, ...panelCheck(view?.inspector) }),
       command("toggle-sidebar", "Sidebar", { accelerator: "CmdOrCtrl+B", ...shownOnly, ...panelCheck(view?.sidebar) }),
       { type: "separator" },
-      // Both open a dialog, so both end in "…" (C166); the page answers Ctrl+K and Ctrl+Shift+A itself.
+      // Search asks for a query first, so it ends in "…"; Activity only shows what ran, so it does
+      // not (D33, M404). The page answers Ctrl+K and Ctrl+Shift+A itself.
       command("search-library", "Search library…", { accelerator: "CmdOrCtrl+K", ...shownOnly }),
-      command("activity", "Activity…", { accelerator: "CmdOrCtrl+Shift+A", ...shownOnly }),
+      command("activity", "Activity", { accelerator: "CmdOrCtrl+Shift+A", ...shownOnly }),
     ],
   });
 
@@ -236,14 +237,15 @@ export function buildMenuTemplate({
   template.push({
     label: "Help",
     submenu: [
-      // An item that opens a dialog ends in "…", and the dialog repeats its words without it: this
-      // one opens the "Keyboard shortcuts" dialog, "Getting started" and "Privacy" likewise (C168).
+      // An item ends in "…" only when the dialog it opens asks for input first (D33, M404). Each
+      // dialog here only shows something, so none has it, and each dialog's title repeats the
+      // item's words.
       command("getting-started", "Getting started"),
       // F1 is the page's own key for the list (it opens it itself), so the menu only shows it.
-      command("shortcuts", "Keyboard shortcuts…", { accelerator: "F1", ...shownOnly }),
-      command("get-help", "Get help…"),
-      command("rekordbox-help", "How to get your Rekordbox file…"),
-      command("privacy", "Privacy…"),
+      command("shortcuts", "Keyboard shortcuts", { accelerator: "F1", ...shownOnly }),
+      command("get-help", "Get help"),
+      command("rekordbox-help", "How to get your Rekordbox file"),
+      command("privacy", "Privacy"),
       ...(mac ? [] : ([{ type: "separator" }, about] as MenuItemConstructorOptions[])),
     ],
   });

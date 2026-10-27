@@ -18,9 +18,10 @@ describe("words", () => {
       "CuePoint stopped working in the background partway through. Activity shows what was done.",
     );
   });
-  it("quotes the name in a freeze title (M451)", () => {
-    expect(words.freezeTitle("Peak time")).toBe("Freeze \u201cPeak time\u201d?");
-    expect(words.freezeTitle()).toBe("Freeze Collection?");
+  it("quotes the name in the Save as a Collection title, with no \"Freeze\" (M451, M409)", () => {
+    expect(words.freezeTitle("Peak time")).toBe("Save \u201cPeak time\u201d as a Collection?");
+    expect(words.freezeTitle()).toBe("Save as a Collection?");
+    expect(words.freezeTitle("Peak time")).not.toMatch(/freeze/i);
   });
   it("writes go-to, delete and nothing-found text", () => {
     expect(words.goTo("Keys")).toBe("Open in Keys");
@@ -87,7 +88,7 @@ describe("match words (D2)", () => {
 describe("other shared words", () => {
   it("names the actions once", () => {
     expect(words.ADD_TO_BEATPORT_PLAYLIST).toBe("Add to a Beatport playlist…");
-    expect(words.COPY_VALUES).toBe("Copy");
+    expect(words.COPY_VALUES).toBe("Use");
     expect(words.CHECK_FOR_CHANGES).toBe("Check for changes");
     expect(words.TRY_AGAIN).toBe("Try again");
     expect(words.CREATE).toBe("Create");

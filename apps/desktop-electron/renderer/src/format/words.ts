@@ -42,8 +42,8 @@ export const TRY_AGAIN = RETRY;
 export const UNDO = "Undo";
 export const BACK = "Back";
 export const CREATE = "Create";
-/** The word for taking values to the clipboard, in every menu and button. */
-export const COPY_VALUES = "Copy";
+/** The word for taking Beatport's values onto your tracks, in every menu and button (M412). */
+export const COPY_VALUES = "Use";
 export const CHECK_FOR_CHANGES = "Check for changes";
 export const ADD_TO_BEATPORT_PLAYLIST = "Add to a Beatport playlist…";
 export const ARTWORK = "Artwork";
@@ -112,9 +112,13 @@ export function deleteTitle(kind: string, name?: string): string {
   return name ? `Delete ${quoted(name)}?` : `Delete ${kind}?`;
 }
 
-/** The title of a freeze dialog, with the name quoted: `Freeze “Peak time”?` (M451). */
+/**
+ * The title of the dialog that keeps a Smart Collection's tracks as a Collection, with the name
+ * quoted: `Save “Peak time” as a Collection?` (M451). It says what "Save as a Collection…"
+ * does, without the retired word "Freeze" (M409).
+ */
 export function freezeTitle(name?: string): string {
-  return name ? `Freeze ${quoted(name)}?` : "Freeze Collection?";
+  return name ? `Save ${quoted(name)} as a Collection?` : "Save as a Collection?";
 }
 
 /** The first line of every delete dialog's body. */

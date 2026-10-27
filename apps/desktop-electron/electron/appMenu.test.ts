@@ -308,7 +308,7 @@ describe("View: size, panels, Settings", () => {
     expect(search.accelerator).toBe("CmdOrCtrl+K");
     expect(search.registerAccelerator).toBe(false);
     const activity = byId(items, "activity")!;
-    expect(activity.label).toBe("Activity…");
+    expect(activity.label).toBe("Activity");
     expect(activity.accelerator).toBe("CmdOrCtrl+Shift+A");
     expect(activity.registerAccelerator).toBe(false);
     click(search);
@@ -330,10 +330,10 @@ describe("Help", () => {
     const help = submenu(top(items, "Help"));
     expect(help.filter((item) => item.type !== "separator").map(labelOf)).toEqual([
       "Getting started",
-      "Keyboard shortcuts…",
-      "Get help…",
-      "How to get your Rekordbox file…",
-      "Privacy…",
+      "Keyboard shortcuts",
+      "Get help",
+      "How to get your Rekordbox file",
+      "Privacy",
       "About CuePoint",
     ]);
     expect(walk(items).some((item) => /troubleshooting/i.test(item.label ?? ""))).toBe(false);
@@ -346,9 +346,20 @@ describe("Help", () => {
     expect(shortcuts.registerAccelerator).toBe(false);
   });
 
-  it("asks for \"…\" only where input comes first (M404): no dots on Settings, Getting started, Diagnostics, Log viewer", () => {
+  it("asks for \"…\" only where input comes first (M404): no dots on an item whose dialog only shows something", () => {
     const labels = walk(template("linux", { packaged: false }).items).map(labelOf);
-    for (const label of ["Settings", "Getting started", "Diagnostics", "Log viewer"]) {
+    expect(labels).toContain("Search library…");
+    for (const label of [
+      "Settings",
+      "Getting started",
+      "Diagnostics",
+      "Log viewer",
+      "Activity",
+      "Keyboard shortcuts",
+      "Get help",
+      "How to get your Rekordbox file",
+      "Privacy",
+    ]) {
       expect(labels, label).toContain(label);
       expect(labels, `${label}…`).not.toContain(`${label}…`);
     }
@@ -589,6 +600,6 @@ describe("the glossary (docs/user-guide/glossary.md)", () => {
     const { items } = template("linux");
     const labels = walk(items).map(labelOf);
     expect(labels).toContain("Import a Rekordbox file…");
-    expect(labels).toContain("How to get your Rekordbox file…");
+    expect(labels).toContain("How to get your Rekordbox file");
   });
 });
