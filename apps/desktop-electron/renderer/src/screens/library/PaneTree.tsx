@@ -8,16 +8,17 @@
  * — the Rekordbox one passes none of the optional handlers and is therefore
  * exactly as read-only as it was.
  *
- * It is a tree by the ARIA definition and behaves like one: arrows move and
- * open, Enter and Space select, and exactly one row is in the tab order, so a
- * keyboard reaches the tree in one Tab and moves inside it with arrows.
+ * It is a tree by the ARIA definition and behaves like one (the APG tree, M466): arrows move and
+ * open, Left goes to the parent, Home and End go to the ends, letters jump to a name (M481), Enter
+ * selects, and exactly one row is in the tab order, so a keyboard reaches the tree in one Tab and
+ * moves inside it with arrows. Space is not the tree's: it reaches the player (M465, D34).
  *
  * Rows are handed in already flattened. Building them from a tree is the
  * caller's, because the two sections identify their nodes differently — a
  * Rekordbox playlist by path, which survives the refresh that renumbers it,
  * and a Collection by id, which survives the rename that moves it.
  */
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
 import type { PixelIconName } from "../../components/pixelIcons";
@@ -72,6 +73,8 @@ interface PaneTreeProps {
   onRenameCommit?: (key: string, name: string) => void;
   onRenameCancel?: () => void;
   onRowKeyDown?: (key: string, event: KeyboardEvent<HTMLElement>) => void;
+  /** Alt+Up and Alt+Down on a row: move it up or down, the keyboard's way to do what a drag does (M462). */
+  onRowMove?: (key: string, delta: 1 | -1) => void;
   /**
    * A row's context menu, asked for with the mouse or the keyboard — the menu
    * key or Shift+F10, as the track table answers them. The section draws the
@@ -96,6 +99,9 @@ interface PaneTreeProps {
   children?: ReactNode;
 }
 
+/** How long letters typed in the tree build one word for type-ahead (M481), in ms; as the queue's. */
+const TYPE_AHEAD_MS = 700;
+
 export function PaneTree({
   label,
   rows,
@@ -107,6 +113,7 @@ export function PaneTree({
   onRenameCommit,
   onRenameCancel,
   onRowKeyDown,
+  onRowMove,
   onRowContextMenu,
   onDragStart,
   onDragEnd,
@@ -144,7 +151,48 @@ export function PaneTree({
     if (next !== undefined) focusRow(next);
   };
 
+  /** The row's parent: the nearest row above it one level up, or "All tracks" for a top row. */
+  const parentOf = (row: PaneTreeRow): string | null => {
+    const index = rows.findIndex((candidate) => candidate.key === row.key);
+    if (index < 0) return null;
+    for (let at = index - 1; at >= 0; at -= 1) {
+      if (rows[at]!.depth === row.depth - 1) return rows[at]!.key;
+    }
+    return row.depth === 0 && leadingRow ? leadingRow.key : null;
+  };
+
+  // Type-ahead (M481, as the queue does): letters build a word that moves to the next row whose name
+  // starts with it; one letter pressed again cycles through the names that start with it.
+  const typed = useRef({ text: "", timer: 0 });
+  useEffect(() => () => window.clearTimeout(typed.current.timer), []);
+  const names = [...(leadingRow ? [leadingRow] : []), ...rows];
+  const typeAhead = (letter: string, from: string) => {
+    window.clearTimeout(typed.current.timer);
+    typed.current.text += letter.toLowerCase();
+    typed.current.timer = window.setTimeout(() => {
+      typed.current.text = "";
+    }, TYPE_AHEAD_MS);
+    const word = typed.current.text;
+    const key = /^(.)\1+$/.test(word) ? word[0]! : word;
+    const index = keys.indexOf(from);
+    const start = key.length === 1 ? index + 1 : index;
+    for (let step = 0; step < names.length; step += 1) {
+      const at = (((start + step) % names.length) + names.length) % names.length;
+      if (names[at]!.name.toLowerCase().startsWith(key)) {
+        focusRow(names[at]!.key);
+        return;
+      }
+    }
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLElement>, row: PaneTreeRow) => {
+    if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+      if (onRowMove && row.key !== leadingRow?.key) {
+        event.preventDefault();
+        onRowMove(row.key, event.key === "ArrowUp" ? -1 : 1);
+      }
+      return;
+    }
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
@@ -159,13 +207,25 @@ export function PaneTree({
         if (row.hasChildren && !row.expanded) onExpand(row.key, true);
         else if (row.hasChildren) move(row.key, 1);
         break;
-      case "ArrowLeft":
+      case "ArrowLeft": {
         event.preventDefault();
-        if (row.hasChildren && row.expanded) onExpand(row.key, false);
-        else move(row.key, -1);
+        // An open folder closes; a closed one or a leaf goes to its parent (APG, M466).
+        if (row.hasChildren && row.expanded) {
+          onExpand(row.key, false);
+          break;
+        }
+        const parent = parentOf(row);
+        if (parent !== null) focusRow(parent);
         break;
+      }
+      case "Home":
+      case "End": {
+        event.preventDefault();
+        const end = event.key === "Home" ? keys[0] : keys[keys.length - 1];
+        if (end !== undefined) focusRow(end);
+        break;
+      }
       case "Enter":
-      case " ":
         event.preventDefault();
         onSelect(row.key);
         break;
@@ -180,6 +240,17 @@ export function PaneTree({
         onRowKeyDown?.(row.key, event);
         break;
       default:
+        if (
+          event.key.length === 1 &&
+          (event.key !== " " || typed.current.text !== "") &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.altKey
+        ) {
+          event.preventDefault();
+          typeAhead(event.key, row.key);
+          break;
+        }
         onRowKeyDown?.(row.key, event);
         break;
     }
@@ -278,6 +349,8 @@ export function PaneTree({
               <button
                 type="button"
                 className="cp-playlist-pane__twisty"
+                // The row is the tree's one stop; Right and Left open and close it (APG, M466).
+                tabIndex={-1}
                 aria-label={`${row.expanded ? "Collapse" : "Expand"} ${row.name}`}
                 onClick={(event) => {
                   event.stopPropagation();

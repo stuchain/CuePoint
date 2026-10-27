@@ -259,11 +259,12 @@ describe("building a clause", () => {
     const { onFiltersChange } = show();
     openBuilder();
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
+    // M110: a typed field starts on "contains".
     expect(onFiltersChange).toHaveBeenCalledWith({
       match: "all",
-      rules: [{ field: "genre", operator: "is", value: "House" }],
+      rules: [{ field: "genre", operator: "contains", value: "House" }],
     });
   });
 
@@ -286,7 +287,7 @@ describe("building a clause", () => {
     chooseOperator("between");
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "120" } });
     fireEvent.change(screen.getByLabelText("To"), { target: { value: "128" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     expect(onFiltersChange).toHaveBeenCalledWith({
       match: "all",
@@ -300,7 +301,7 @@ describe("building a clause", () => {
     chooseOperator("is_empty");
     expect(screen.queryByLabelText("Value")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     expect(onFiltersChange).toHaveBeenCalledWith({
       match: "all",
@@ -316,7 +317,7 @@ describe("building a clause", () => {
     const { onFiltersChange } = show({ filters: existing });
     openBuilder();
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     expect(onFiltersChange.mock.calls[0]![0].rules).toHaveLength(2);
   });
@@ -327,7 +328,7 @@ describe("building a clause", () => {
     chooseField("bpm");
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "fast" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     expect(screen.getByRole("alert")).toHaveTextContent("BPM takes numbers");
     expect(onFiltersChange).not.toHaveBeenCalled();
@@ -337,7 +338,7 @@ describe("building a clause", () => {
     show();
     openBuilder();
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     expect(screen.queryByLabelText("Rule")).not.toBeInTheDocument();
   });
@@ -686,7 +687,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
     it("adds a clause whose value is a boolean, not the word", () => {
       const { onFiltersChange } = openOn("favorite");
       fireEvent.change(screen.getByLabelText("Favorite"), { target: { value: "true" } });
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "favorite", operator: "is", value: true }],
@@ -696,7 +697,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
     it("offers 'no' as well, which is a question of its own", () => {
       const { onFiltersChange } = openOn("favorite");
       fireEvent.change(screen.getByLabelText("Favorite"), { target: { value: "false" } });
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "favorite", operator: "is", value: false }],
@@ -720,7 +721,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
     it("adds a clause carrying the id, not the name", () => {
       const { onFiltersChange } = openOn("tag", { facet: TAG_FACET });
       fireEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "tag", operator: "has_tag", value: 7 }],
@@ -744,7 +745,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
       const { onFiltersChange } = openOn("tag", { facet: TAG_FACET });
       fireEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
       fireEvent.click(screen.getByRole("button", { name: /Closer/ }));
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "tag", operator: "has_tag", value: 9 }],
@@ -756,7 +757,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
       chooseOperator("any_of");
       fireEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
       fireEvent.click(screen.getByRole("button", { name: /Closer/ }));
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "tag", operator: "any_of", value: [7, 9] }],
@@ -767,7 +768,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
       const { onFiltersChange } = openOn("tag", { facet: TAG_FACET });
       chooseOperator("is_empty");
       expect(screen.queryByRole("button", { name: /Peak-time/ })).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "tag", operator: "is_empty" }],
@@ -840,7 +841,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
     it("adds a clause carrying the id", () => {
       const { onFiltersChange } = openOn("collection", { collections: COLLECTIONS });
       fireEvent.change(screen.getByLabelText("Collection"), { target: { value: "4" } });
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "collection", operator: "in_collection", value: 4 }],
@@ -849,7 +850,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
 
     it("says so rather than sending nothing when none was chosen", () => {
       const { onFiltersChange } = openOn("collection", { collections: COLLECTIONS });
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).not.toHaveBeenCalled();
       expect(screen.getByRole("alert")).toHaveTextContent("Choose a collection");
     });
@@ -867,7 +868,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
       ]);
       expect(options[3]).not.toBeDisabled();
       fireEvent.change(screen.getByLabelText("Collection"), { target: { value: "9" } });
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "collection", operator: "in_collection", value: 9 }],
@@ -889,7 +890,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
     it("adds the number behind the stars", () => {
       const { onFiltersChange } = openOn("rating");
       fireEvent.click(screen.getByRole("button", { name: "4 stars" }));
-      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
         rules: [{ field: "rating", operator: "gte", value: 4 }],
@@ -1129,7 +1130,7 @@ describe("an artist or a label by identity (DISCOVER-03)", () => {
     const { onFiltersChange } = show({ vocabulary: NAMES });
     openBuilder();
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "ame" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     expect(onFiltersChange).toHaveBeenCalledWith({
       match: "all",
@@ -1144,7 +1145,7 @@ describe("an artist or a label by identity (DISCOVER-03)", () => {
     fireEvent.change(screen.getByLabelText("Values"), {
       target: { value: "Âme, Mara Veil" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     expect(onFiltersChange).toHaveBeenCalledWith({
       match: "all",
@@ -1225,12 +1226,49 @@ describe("the Add filter form (M110)", () => {
   it("waits for a typed value, says so, and lists Cancel before Add", () => {
     show();
     openBuilder();
-    const add = screen.getByRole("button", { name: "Add" });
+    const add = screen.getAllByRole("button", { name: "Add filter" }).at(-1)!;
     expect(add).toBeDisabled();
     expect(screen.getByPlaceholderText("Type a value")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "Deep" } });
-    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!).toBeEnabled();
     const order = screen.getAllByRole("button").map((button) => button.textContent);
-    expect(order.indexOf("Cancel")).toBeLessThan(order.indexOf("Add"));
+    // The opener is "Add filter" too (M110): the form's own button is the last of the two.
+    expect(order.indexOf("Cancel")).toBeLessThan(order.lastIndexOf("Add filter"));
+  });
+});
+
+describe("the count, for a screen reader (M468)", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("shows the count with no live role, and says it once it has held for half a second", () => {
+    vi.useFakeTimers();
+    const view = render(
+      <FilterBar
+        vocabulary={VOCABULARY}
+        filters={null}
+        onFiltersChange={vi.fn()}
+        query=""
+        onQueryChange={vi.fn()}
+        count={{ long: "12 of 40 tracks", short: "12/40" }}
+      />,
+    );
+    const shown = document.querySelector(".cp-count")!;
+    expect(shown).toHaveTextContent("12 of 40 tracks");
+    expect(shown).not.toHaveAttribute("role");
+    expect(screen.getByRole("status")).toHaveTextContent("12 of 40 tracks");
+
+    view.rerender(
+      <FilterBar
+        vocabulary={VOCABULARY}
+        filters={null}
+        onFiltersChange={vi.fn()}
+        query=""
+        onQueryChange={vi.fn()}
+        count={{ long: "3 of 40 tracks", short: "3/40" }}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("12 of 40 tracks");
+    act(() => vi.advanceTimersByTime(500));
+    expect(screen.getByRole("status")).toHaveTextContent("3 of 40 tracks");
   });
 });

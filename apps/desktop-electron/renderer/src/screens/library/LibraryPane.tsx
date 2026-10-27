@@ -112,7 +112,8 @@ export function LibraryPane({
 }: LibraryPaneProps) {
   const [playlistsFolded, setPlaylistsFolded] = usePlaylistsFold();
   return (
-    <div className="cp-library-pane">
+    // M459: the pane's landmark name for the shell's pane keys.
+    <div className="cp-library-pane" data-pane="tree">
       <div className="cp-library-pane__scroll">
       <div className="cp-playlist-pane cp-library-pane__all">
         <div className="cp-playlist-pane__tree" role="tree" aria-label="Everything">

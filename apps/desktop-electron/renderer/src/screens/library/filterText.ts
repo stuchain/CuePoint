@@ -343,11 +343,21 @@ export interface DraftRule {
   secondValue: string;
 }
 
+/**
+ * The operator a new clause starts on: "contains" where a typed field offers it (M110), else its
+ * first. A field with fixed choices keeps its first, so it opens on the choice list.
+ */
+function firstOperator(field: { operators: readonly string[]; choices?: readonly unknown[] | null } | null | undefined): string {
+  const operators = field?.operators ?? [];
+  const typed = !field?.choices || field.choices.length === 0;
+  return typed && operators.includes("contains") ? "contains" : (operators[0] ?? "");
+}
+
 export function emptyDraft(vocabulary: LibraryFilterVocabulary | null): DraftRule {
   const field = buildableFields(vocabulary)[0];
   return {
     field: field?.name ?? "",
-    operator: field?.operators[0] ?? "",
+    operator: firstOperator(field),
     value: "",
     secondValue: "",
   };
@@ -378,7 +388,7 @@ export function withField(
   const operators = operatorsFor(vocabulary, fieldName);
   const operator = operators.includes(draft.operator)
     ? draft.operator
-    : (operators[0] ?? "");
+    : firstOperator(fieldOf(vocabulary, fieldName));
   const before = fieldOf(vocabulary, draft.field);
   const after = fieldOf(vocabulary, fieldName);
   const keep = before?.type === after?.type;

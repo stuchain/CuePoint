@@ -9,8 +9,10 @@ import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import { defaultLayout, reconcileLayout } from "../../components/table/columnLayout";
 import {
   DEFAULT_VISIBLE_COLUMNS,
+  HEADING_MIN_PX,
   LIBRARY_COLUMNS,
   LIBRARY_PREVIOUS_DEFAULT_ORDER,
+  type ShownTrackRow,
 } from "./libraryColumns";
 
 describe("the Key column", () => {
@@ -126,5 +128,45 @@ describe("the default column order (DEC-NEW-K1)", () => {
     const moved = reconcileLayout(saved, LIBRARY_COLUMNS, 1, LIBRARY_PREVIOUS_DEFAULT_ORDER);
     expect(moved.map((entry) => entry.id)).toEqual(LIBRARY_COLUMNS.map((column) => column.id));
     expect(moved.find((entry) => entry.id === "label")?.hidden).toBe(true);
+  });
+});
+
+describe("the verification round's cells (M88, M94, M95, M382)", () => {
+  const column = (id: string) => LIBRARY_COLUMNS.find((entry) => entry.id === id)!;
+  const row = (extra: Partial<ShownTrackRow>) => ({ id: 1, title: "Strobe", ...extra }) as ShownTrackRow;
+
+  it("M88: keeps Key, BPM and Length at least as wide as their heading and the sort arrow", () => {
+    expect(column("key").minWidthPx).toBe(HEADING_MIN_PX.key);
+    expect(column("bpm").minWidthPx).toBe(HEADING_MIN_PX.bpm);
+    expect(column("duration_seconds").minWidthPx).toBe(HEADING_MIN_PX.duration_seconds);
+    for (const width of Object.values(HEADING_MIN_PX)) expect(width).toBeGreaterThanOrEqual(56);
+  });
+
+  it("M94: draws no rating as an empty cell, not a null", () => {
+    const { container } = render(<div>{column("rating").render(row({ effective_rating: null, rating: null }))}</div>);
+    expect(container.textContent).toBe("");
+  });
+
+  it("M95: shows the first genre, not the whole list", () => {
+    const { container } = render(
+      <div>
+        {column("genre").render(
+          row({ genre: "House, Tech House", effective_genre: "House, Tech House", genre_primary: "House", genres: ["House", "Tech House"] }),
+        )}
+      </div>,
+    );
+    expect(container).toHaveTextContent("House");
+    expect(container).not.toHaveTextContent("Tech House");
+  });
+
+  it("M382: ticks the title of a row whose rating or favorite was just set, and says Saved", () => {
+    render(<div>{column("title").render(row({ just_saved: true }))}</div>);
+    expect(screen.getByRole("status")).toHaveTextContent("Saved");
+    expect(screen.getByText("Strobe")).toBeInTheDocument();
+  });
+
+  it("M382: draws no tick on an ordinary row", () => {
+    render(<div>{column("title").render(row({}))}</div>);
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

@@ -21,6 +21,16 @@
  * **A failure is a state, not a silence.** The status says so and `retry`
  * asks again; the table keeps its placeholders, and the page (LIBUI-10) says
  * what happened.
+ *
+ * **A new question does not blank the table (M369).** The rows and the total
+ * that answered the last question stay on screen, marked `stale` (the table
+ * dims them), until the first page of the new answer lands; a filter or a
+ * search typed letter by letter no longer flashes an empty table.
+ *
+ * **A change can be shown before the engine has it (M382).** `patch` lays a
+ * change over the rows it matches for a while, through reloads, so a rating
+ * or a favorite from a menu is on screen at once; `unpatch` takes it back
+ * when the engine refuses it.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -76,6 +86,19 @@ interface TrackWindow {
   reload: () => void;
   /** How many rows are held in memory, for tests and diagnostics. */
   loadedRows: number;
+  /**
+   * True while the rows shown answer the previous question, kept until the new answer's first page
+   * lands (M369): the table dims them.
+   */
+  stale: boolean;
+  /**
+   * Show a change over the rows `match` picks, at once and for `ms` (M382). Returns the patch's id,
+   * for `unpatch`. The rows the engine sends meanwhile are patched too, so a reload does not flash
+   * the old value back.
+   */
+  patch: (match: (row: LibraryTrackRow) => boolean, change: (row: LibraryTrackRow) => LibraryTrackRow, ms?: number) => number;
+  /** Take a patch back: the engine refused the change. */
+  unpatch: (id: number) => void;
   /**
    * Which question the rows answer: changes with the query and with every
    * reload (CLEAN-12).
@@ -146,6 +169,18 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
   const [libraryEmpty, setLibraryEmpty] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [answeredIdentity, setAnsweredIdentity] = useState<string | null>(null);
+  // The previous question's rows and total, shown dimmed until the new answer lands (M369).
+  const [previous, setPrevious] = useState<{ pages: Map<number, LibraryTrackRow[]>; total: number } | null>(null);
+  const pagesNow = useRef(pages);
+  pagesNow.current = pages;
+  const totalNow = useRef(total);
+  totalNow.current = total;
+  // Changes shown before the engine has them (M382).
+  const [patches, setPatches] = useState<
+    Array<{ id: number; match: (row: LibraryTrackRow) => boolean; change: (row: LibraryTrackRow) => LibraryTrackRow }>
+  >([]);
+  const patchId = useRef(0);
+  const patchTimers = useRef<Map<number, number>>(new Map());
 
   // What is being fetched, and what is worth keeping. Refs rather than state:
   // changing them must not re-render, and the effect that reads them runs
@@ -196,6 +231,10 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     failedPages.current = new Set();
     loadedPages.current = new Set();
     centre.current = 0;
+    // What is on screen stays, dimmed, until the new answer lands (M369). When nothing landed for
+    // the question before this one either, the rows before that are still the ones shown.
+    const held = pagesNow.current;
+    if (held.size > 0) setPrevious({ pages: held, total: totalNow.current });
     setPages(new Map());
     // A reload asks the same question again, so the old answer's total stands
     // until the new one lands. Dropping it to 0 would read an "everything
@@ -263,6 +302,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
             setLibraryEmpty(response.library_empty);
             setLoaded(true);
             setAnsweredIdentity(askedFor);
+            setPrevious(null);
             setError(null);
             setStatus("ready");
             setPages((previous) => {
@@ -292,6 +332,8 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
               failedPages.current.add(page);
             }
             if (askedFor !== queryRef.current) return;
+            // A failure is said over an empty table, not over the last question's rows.
+            setPrevious(null);
             setStatus("error");
             setError(userMessage(cause));
           });
@@ -337,10 +379,43 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     if (!fetchPages([centre.current])) setStatus("ready");
   }, [fetchPages]);
 
+  const stale = previous !== null && answeredIdentity !== identity;
+  const shownPages = stale ? previous.pages : pages;
+  const shownTotal = stale ? previous.total : total;
+
   const getRow = useCallback(
-    (index: number) => pages.get(pageOf(index))?.[index % PAGE_SIZE],
-    [pages],
+    (index: number) => {
+      const row = shownPages.get(pageOf(index))?.[index % PAGE_SIZE];
+      if (!row || patches.length === 0) return row;
+      return patches.reduce((current, entry) => (entry.match(current) ? entry.change(current) : current), row);
+    },
+    [patches, shownPages],
   );
+
+  const unpatch = useCallback((id: number) => {
+    window.clearTimeout(patchTimers.current.get(id));
+    patchTimers.current.delete(id);
+    setPatches((list) => list.filter((entry) => entry.id !== id));
+  }, []);
+
+  const patch = useCallback(
+    (match: (row: LibraryTrackRow) => boolean, change: (row: LibraryTrackRow) => LibraryTrackRow, ms = 2000) => {
+      patchId.current += 1;
+      const id = patchId.current;
+      setPatches((list) => [...list, { id, match, change }]);
+      patchTimers.current.set(id, window.setTimeout(() => unpatch(id), ms));
+      return id;
+    },
+    [unpatch],
+  );
+
+  useEffect(() => {
+    const timers = patchTimers.current;
+    return () => {
+      for (const timer of timers.values()) window.clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
 
   const loadedRows = useMemo(
     () => [...pages.values()].reduce((sum, page) => sum + page.length, 0),
@@ -348,13 +423,13 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
   );
 
   const source = useMemo<TrackTableSource<LibraryTrackRow>>(
-    () => ({ total, getRow, requestWindow, status, error }),
-    [total, getRow, requestWindow, status, error],
+    () => ({ total: shownTotal, getRow, requestWindow, status, error }),
+    [shownTotal, getRow, requestWindow, status, error],
   );
 
   return {
     source,
-    total,
+    total: shownTotal,
     status,
     error,
     libraryEmpty,
@@ -362,6 +437,9 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
     retry,
     reload,
     loadedRows,
+    stale,
+    patch,
+    unpatch,
     identity,
     answered: answeredIdentity === identity,
   };

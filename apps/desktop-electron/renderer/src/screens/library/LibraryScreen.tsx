@@ -48,14 +48,14 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { FilterBar, type FilterCollectionOption, type FilterSourceOption } from "./FilterBar";
 import { LibraryHeader } from "./LibraryHeader";
-import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "./libraryColumns";
+import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER, type ShownTrackRow } from "./libraryColumns";
 import { LibraryPane } from "./LibraryPane";
 import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { RekordboxExportDialog } from "./RekordboxExportDialog";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { LibrarySelectionBar } from "./LibrarySelectionBar";
 import { usePageSearch } from "../../components/usePageSearch";
-import { NO_COLLECTIONS, NO_SETS, UNDO, couldNot, removedFrom } from "../../format/words";
+import { NO_COLLECTIONS, NO_SETS, UNDO, couldNot, quoted, removedFrom } from "../../format/words";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { defaultSortForScope, findByPath, flatten, type PlaylistTreeNode } from "./playlistTree";
@@ -179,6 +179,25 @@ type PickerKind = "collection" | "set" | "tag-add" | "tag-remove";
 
 /** What the header's export opens with ticked: nothing (DEC-087). */
 const NOTHING_TICKED: readonly number[] = [];
+
+/** How long a rating or a favorite from a menu shows its tick by the title (M382); as `SavedTick`'s. */
+const SAVED_SHOWN_MS = 2000;
+
+/** The rule the no-key note's Match opens on (M503): the tracks with no key. */
+const KEY_IS_EMPTY = { match: "all" as const, rules: [{ field: "key", operator: "is_empty" }] };
+
+/** A row as it reads once a rating or a favorite is set, with the tick (M382). */
+function savedRow(row: LibraryTrackRow, action: BatchAction): ShownTrackRow {
+  if (action.kind === "set_favorite") return { ...row, favorite: Boolean(action.value), just_saved: true };
+  const stars = action.value as number | null;
+  // Clearing falls back to Rekordbox's rating (DEC-057).
+  return {
+    ...row,
+    effective_rating: stars ?? row.rating,
+    rating_source: stars == null ? (row.rating == null ? null : "rekordbox") : "cuepoint",
+    just_saved: true,
+  };
+}
 
 const BUSY_LABEL: Record<Exclude<Busy, null>, string> = {
   importing: "Importing…",
@@ -371,6 +390,10 @@ export function LibraryScreen({
     first: number | null;
     /** The first track's credits, for its Artist and Label pages (DISCOVER-11). */
     credits: TrackCreditLinks | null;
+    /** The top of the selection bar a group's menu was opened from, so it opens above the bar (M290). */
+    above?: number;
+    /** Groups the bar had no room for, which its More menu holds (M72). */
+    fold?: TrackActionGroupId[];
   } | null>(null);
   const [picker, setPicker] = useState<{
     kind: PickerKind;
@@ -563,6 +586,31 @@ export function LibraryScreen({
   }, [collections.tree, headerScope.collectionId, headerScope.playlistId, playlists.selected, playlists.tree, smart]);
   const { facts: scopeFacts } = useScopeFacts(headerScope, libraryIdentity);
 
+  /**
+   * M503: on All tracks after an import, how many tracks have no key, for the notice line. Zero
+   * elsewhere, while the list is already filtered to them (that note is the list's own), and when
+   * no track has a key (the key note says that one, DEC-201).
+   */
+  const keylessAfterImport =
+    importedAt !== null &&
+    !keyIsEmptyList &&
+    (scopeFacts?.keys.length ?? 0) > 0 &&
+    query.playlistId == null &&
+    query.collectionId == null &&
+    headerScope.playlistId == null &&
+    headerScope.collectionId == null
+      ? (scopeFacts?.no_key ?? 0)
+      : 0;
+
+  /** The order the scope opens on (N4): what a third click on a sorted heading returns to. */
+  const scopeDefaultSort = (): { sort: string; dir: "asc" | "desc" } => {
+    if (query.collectionId != null) {
+      const node = findCollection(collections.tree, query.collectionId);
+      if (node) return defaultSortForCollection(node);
+    }
+    return { sort: defaultSortForScope(query.playlistId != null ? playlists.selected : null), dir: "asc" };
+  };
+
   const batch = useLibraryBatch({
     onMessage: (message, tone) => push(message, tone),
     onApplied: () => {
@@ -582,6 +630,14 @@ export function LibraryScreen({
       detail.reload();
     },
   });
+
+  // M511: Save to files over the whole library, from the header's "N values not in files".
+  const saveAllToFiles =
+    clean.handlersFor({
+      selection: { query: { playlist_id: null, collection_id: null, filters: null } },
+      count: summary?.track_count ?? 0,
+      trackId: null,
+    }).onWriteTags ?? null;
 
   // A revert or a restore started from Activity changed what this page shows.
   useLibraryChanges(() => {
@@ -828,6 +884,35 @@ export function LibraryScreen({
   );
 
   /**
+   * A rating or a favorite from the menu or the bar (M382): on screen at once, with a tick by the
+   * title, and no question first however many tracks it is. The engine is told behind it; only a
+   * refusal says anything, and it puts the rows back as they were.
+   */
+  const quickWrite = useCallback(
+    (action: BatchAction, target: BatchTarget) => {
+      const ids = target.selection.track_ids ? new Set(target.selection.track_ids) : null;
+      const excluded = new Set(target.selection.exclude_track_ids ?? []);
+      const patchId = window_.patch(
+        (row) => row.id != null && (ids ? ids.has(row.id) : !excluded.has(row.id)),
+        (row) => savedRow(row, action),
+        SAVED_SHOWN_MS,
+      );
+      void batch.run(
+        { action, selection: target.selection, count: target.count },
+        {
+          // Said by the tick, not a toast (M382).
+          onResult: () => undefined,
+          onRefused: (message) => {
+            window_.unpatch(patchId);
+            push(message, "warning");
+          },
+        },
+      );
+    },
+    [batch, push, window_],
+  );
+
+  /**
    * Take tracks out of the open Collection at once, and offer the way back (SB2, C21).
    *
    * No question first: the toast says what happened and carries an Undo, which puts the same
@@ -931,7 +1016,7 @@ export function LibraryScreen({
     // Unmodified again, so the table goes back to asking the engine for the
     // Collection rather than for a copy of its rules.
     setQuery((previous) => ({ ...previous, ...smartQuery(saved, barRules) }));
-    push(`Updated “${smart.name}”.`, "success");
+    push(`Updated ${quoted(smart.name)}`, "success");
   }, [barRules, collections, push, smart]);
 
   /** Save the bar's rules as a new Smart Collection, and open it. */
@@ -972,7 +1057,7 @@ export function LibraryScreen({
         dir: order.dir,
         ...smartQuery(attached, attached.saved),
       }));
-      push(`Saved “${node.name}”.`, "success");
+      push(`Saved ${quoted(node.name)}`, "success");
     },
     [barRules, collections, playlists, push, query.playlistId, scopedCollection],
   );
@@ -1097,6 +1182,13 @@ export function LibraryScreen({
               : null,
           credits,
           revealable: target.count === 1 && Boolean(path),
+          // The stars row starts on the rating the rows share (M299); a selection's are not in hand.
+          rating:
+            kind === "row" && rows.length > 0 && rows.every((row) => row.effective_rating === rows[0]!.effective_rating)
+              ? rows[0]!.effective_rating
+              : null,
+          // Remove tag… is offered only when some track has a tag (M411): the library's tags in use.
+          tagCount: tagsRead.value ? tags.filter((tag) => tag.track_count > 0).length : null,
           // Known from the rows a row's menu is about; a selection's rows are not all in hand (M411).
           favorite:
             kind === "row" && rows.length > 0
@@ -1133,7 +1225,7 @@ export function LibraryScreen({
             onAddTag: () => openPicker("tag-add", target),
             onRemoveTag: () => openPicker("tag-remove", target),
             onRate: (starsWanted) =>
-              runAction(
+              quickWrite(
                 {
                   kind: "set_rating",
                   value: starsWanted,
@@ -1142,7 +1234,7 @@ export function LibraryScreen({
                 target,
               ),
             onFavorite: (favorite) =>
-              runAction({ kind: "set_favorite", value: favorite, target: "favorite" }, target),
+              quickWrite({ kind: "set_favorite", value: favorite, target: "favorite" }, target),
           },
           // Discover's ways out of a track (DISCOVER-11): the first one acted on.
           explore:
@@ -1190,14 +1282,16 @@ export function LibraryScreen({
       openNewSetFromSelection,
       openPicker,
       playback,
+      quickWrite,
       removeFromCollection,
       reveal,
       revealPath,
-      runAction,
       scopedCollection,
       scopedSet,
       selection.selection,
       setList.available,
+      tags,
+      tagsRead.value,
       window_.total,
     ],
   );
@@ -1206,7 +1300,16 @@ export function LibraryScreen({
     if (!menu) return [];
     const groups = groupsFor(menu);
     // The bar opens one group; a row's menu is all of them.
-    if (menu.group) return groups.find((group) => group.id === menu.group)?.items ?? [];
+    if (menu.group) {
+      const own = groups.find((group) => group.id === menu.group)?.items ?? [];
+      // M72: More holds the groups the bar had no room for, as submenus above its own entries.
+      const folded = (menu.fold ?? [])
+        .map((id) => groups.find((group) => group.id === id))
+        .filter((group): group is TrackActionGroup => group !== undefined && group.items.length > 0)
+        .map((group) => ({ id: `group-${group.id}`, label: group.label, onSelect: () => undefined, items: group.items }));
+      if (folded.length === 0) return own;
+      return [...folded, ...own.map((item, at) => (at === 0 ? { ...item, separatorBefore: true } : item))];
+    }
     return menuFromGroups(groups);
   }, [groupsFor, menu]);
 
@@ -1241,10 +1344,16 @@ export function LibraryScreen({
    * pointer: the rows to queue for Play, the first track for Explore and Review.
    */
   const openGroup = useCallback(
-    async (id: TrackActionGroupId, anchor: { x: number; y: number }) => {
+    async (
+      id: TrackActionGroupId,
+      anchor: { x: number; y: number; above?: number },
+      fold: TrackActionGroupId[] = [],
+    ) => {
       const target = barTarget();
-      const needsFirst = id === "more" || id === "beatport";
-      const rows = id === "play" ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [];
+      // A group folded into More (M72) needs what it would need on its own button.
+      const wants = (group: TrackActionGroupId) => id === group || fold.includes(group);
+      const needsFirst = wants("more") || wants("beatport");
+      const rows = wants("play") ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [];
       const first = needsFirst
         ? (target.trackId ?? (await selection.gatherIds(1))[0] ?? null)
         : null;
@@ -1265,6 +1374,8 @@ export function LibraryScreen({
         group: id,
         first,
         credits,
+        above: anchor.above,
+        fold,
       });
     },
     [barTarget, discoverCredits, selection, window_.source, window_.total],
@@ -1344,10 +1455,7 @@ export function LibraryScreen({
         return true;
       } catch (error) {
         reportUnexpected(error);
-        push(
-          userMessage(error, "Could not move that track."),
-          "warning",
-        );
+        push(userMessage(error, couldNot("move", window_.source.getRow(from)?.title ?? undefined)), "warning");
         return false;
       }
     },
@@ -1548,29 +1656,66 @@ export function LibraryScreen({
     }));
   }, [collections.tree, picker, tags]);
 
+  /** Take an add to a Collection or a Set back, by the entries it made (M519). */
+  const undoAdd = useCallback(
+    async (entryIds: number[], name: string) => {
+      const remove = window.cuepoint?.removeCollectionEntries;
+      if (!remove) return;
+      try {
+        const { removed } = await remove({ entry_ids: entryIds });
+        window_.reload();
+        collections.reload();
+        push(removedFrom(removed, name), "info");
+      } catch (error) {
+        reportUnexpected(error);
+        push(userMessage(error, couldNot("take back the add to", name)), "warning");
+      }
+    },
+    [collections, push, window_],
+  );
+
   const choosePicked = useCallback(
     (item: PickerItem) => {
       const current = picker;
       setPicker(null);
       if (!current) return;
-      if (current.kind === "set") {
-        // The same operation as a Collection's (DEC-102): the engine appends
-        // to the Set's last chapter and skips what it already holds (DEC-058).
-        runAction(
-          { kind: "add_to_collection", value: item.id, target: item.label, holder: "set" },
-          current.target,
+      if (current.kind === "set" || current.kind === "collection") {
+        // A Set takes the same operation as a Collection's (DEC-102): the engine appends to the
+        // Set's last chapter and skips what it already holds (DEC-058).
+        const isSetTarget = current.kind === "set";
+        const action: BatchAction = {
+          kind: "add_to_collection",
+          value: item.id,
+          target: item.label,
+          ...(isSetTarget ? { holder: "set" as const } : {}),
+        };
+        void batch.start(
+          { action, selection: current.target.selection, count: current.target.count },
+          {
+            // M519: the toast takes the add back, by the entries it made; a Set it cannot take back
+            // offers the way to Prepare instead (a toast holds one action).
+            onResult: (result) => {
+              const entries = result.added_entry_ids ?? [];
+              const remove = window.cuepoint?.removeCollectionEntries;
+              const undo =
+                remove && result.undoable !== false && entries.length > 0
+                  ? {
+                      label: UNDO,
+                      onClick: () => void undoAdd(entries, item.label),
+                    }
+                  : isSetTarget && onOpenInPrepare
+                    ? { label: "Open in Prepare", onClick: () => onOpenInPrepare(item.id) }
+                    : undefined;
+              push(batchSummary(action, result), "success", undo);
+            },
+          },
         );
         return;
       }
-      const kind =
-        current.kind === "collection"
-          ? "add_to_collection"
-          : current.kind === "tag-add"
-            ? "add_tag"
-            : "remove_tag";
+      const kind = current.kind === "tag-add" ? "add_tag" : "remove_tag";
       runAction({ kind, value: item.id, target: item.label }, current.target);
     },
-    [picker, runAction],
+    [batch, onOpenInPrepare, picker, push, runAction, undoAdd],
   );
 
   const createAndTag = useCallback(
@@ -1678,7 +1823,7 @@ export function LibraryScreen({
     setQuery({ ...DEFAULT_LIBRARY_QUERY });
     window_.reload();
     setImportedAt(rememberImport());
-    push("Rekordbox file imported.", "success");
+    push("Rekordbox file imported", "success");
   }, [loadSummary, pickFile, playlists, push, run, window_]);
 
   const handleCheck = useCallback(async () => {
@@ -2023,8 +2168,30 @@ export function LibraryScreen({
         // The file is All tracks' (D14): a playlist or a Collection is not "from" it.
         showSource={headerScope.playlistId == null && headerScope.collectionId == null}
         pending={pending}
+        // M103: a Set's note is one more part of the facts line, with its way to Prepare.
+        scopeNote={
+          scopedSet ? (
+            <span className="library-screen__scope-note" role="note">
+              {setScopeNote(scopedSet)}
+              {onOpenInPrepare && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="library-screen__scope-link cp-link cp-link--go"
+                    onClick={() => onOpenInPrepare(scopedSet.id)}
+                  >
+                    {goTo("Prepare")}
+                  </button>
+                </>
+              )}
+            </span>
+          ) : null
+        }
+        // M511: "N values not in files" opens Save to files on the library's tracks.
+        onSaveToFiles={saveAllToFiles ?? undefined}
         onCopyPath={(path) => {
-          void writeClipboard(path).then((ok) => push(ok ? "Copied the path." : "Could not copy the path.", ok ? "info" : "warning"));
+          void writeClipboard(path).then((ok) => push(ok ? "Copied the path" : "Could not copy the path", ok ? "info" : "warning"));
         }}
         facts={scopeFacts}
         fallbackCount={
@@ -2062,7 +2229,7 @@ export function LibraryScreen({
           canMakeSets={setList.available}
         />
 
-        <div className="library-screen__main">
+        <div className="library-screen__main" data-pane="tracks">
           <div>
             {/* The notice line: one notice at a time, only after an import (LIB-1,
                 DEC-201). Inside the bar's grid row, as the Set note is, so the table
@@ -2082,6 +2249,29 @@ export function LibraryScreen({
                               query,
                             ),
                             count: window_.total,
+                            trackId: null,
+                          },
+                          (tracks) => onOpenMatch(tracks),
+                        )
+                    : undefined
+                }
+              />
+            )}
+            {/* M503: the first look after an import, on All tracks, says how many tracks have no
+                key and offers to match them, in the notice slot once the ready note has gone. */}
+            {keylessAfterImport > 0 && (!isReadyNoteOpen(importedAt) || readyShown === false) && (
+              <LibraryNoKeyNote
+                count={keylessAfterImport}
+                onMatch={
+                  onOpenMatch
+                    ? () =>
+                        void openInClean(
+                          {
+                            selection: batchSelection(
+                              { all: true, ids: new Set(), excluded: new Set(), anchor: null, lastId: null },
+                              { ...query, q: "", filters: KEY_IS_EMPTY },
+                            ),
+                            count: keylessAfterImport,
                             trackId: null,
                           },
                           (tracks) => onOpenMatch(tracks),
@@ -2158,23 +2348,6 @@ export function LibraryScreen({
                   : undefined
               }
             />
-            {/* Inside the bar's grid row rather than a row of its own: the
-                page's rows are positional, and the table must keep the one
-                that grows. */}
-            {scopedSet && (
-              <p className="library-screen__scope-note" role="note">
-                {setScopeNote(scopedSet)}
-                {onOpenInPrepare && (
-                  <button
-                    type="button"
-                    className="library-screen__scope-link cp-link cp-link--go"
-                    onClick={() => onOpenInPrepare(scopedSet.id)}
-                  >
-                    {goTo("Prepare")}
-                  </button>
-                )}
-              </p>
-            )}
           </div>
 
           <div
@@ -2209,6 +2382,10 @@ export function LibraryScreen({
                   dir: next.direction,
                 }))
               }
+              // N4: a third click on the sorted heading gives the order back: the playlist's or the
+              // Set's own, or the scope's default.
+              onSortClear={() => setQuery((previous) => ({ ...previous, ...scopeDefaultSort() }))}
+              stale={window_.stale}
               selectedKeys={selectedKeys}
               getRowKey={(row) => row.id ?? -1}
               {...playMarks}
@@ -2278,7 +2455,7 @@ export function LibraryScreen({
                     selected={selection.count}
                     describedByQuery={selection.selection.all}
                     openGroup={menu?.kind === "selection" ? menu.group : null}
-                    onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
+                    onOpenGroup={(id, anchor, fold) => void openGroup(id, anchor, fold)}
                     onClear={selection.clear}
                     selectAll={
                       window_.total > 0
@@ -2298,6 +2475,8 @@ export function LibraryScreen({
             <TrackContextMenu
               x={menu.x}
               y={menu.y}
+              // M290: a group's menu opens above the selection bar's top edge, not its button's.
+              above={menu.above}
               items={menuItems}
               onClose={() => setMenu(null)}
               label={
@@ -2312,9 +2491,9 @@ export function LibraryScreen({
             open={picker !== null}
             title={
               picker?.kind === "collection"
-                ? "Add to Collection"
+                ? "Add to a Collection"
                 : picker?.kind === "set"
-                  ? "Add to Set"
+                  ? "Add to a Set"
                   : picker?.kind === "tag-remove"
                     ? "Remove a tag"
                     : "Add a tag"

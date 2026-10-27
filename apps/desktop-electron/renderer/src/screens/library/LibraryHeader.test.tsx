@@ -570,3 +570,39 @@ describe("leanLevel (A1)", () => {
     expect(leanLevel({ ...base, available: 650 })).toBe(2);
   });
 });
+
+describe("the verification round (M73, M103, M374, M500, M511)", () => {
+  it("M73: folds the buttons into one menu when even the title and the buttons do not fit", () => {
+    expect(leanLevel({ title: 200, whole: 300, source: 90, actions: 400, gap: 10, available: 500 })).toBe(3);
+  });
+
+  it("M73: the folded header offers Export from its Library actions menu", async () => {
+    widths = { row: 300, title: 250, beside: 200, source: 50, button: 160 };
+    const handlers = renderHeader();
+    expect(screen.queryByRole("button", { name: "Export to Rekordbox…" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Library actions" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Export to Rekordbox…" }));
+    expect(handlers.onExport).toHaveBeenCalledTimes(1);
+  });
+
+  it("M103: a Set's note is one more part of the facts line", () => {
+    renderHeader({ scopeNote: <span role="note">A Set: 6 tracks, 1 played twice, in play order.</span> });
+    const summary = document.querySelector(".cp-screen-header__summary")!;
+    expect(within(summary as HTMLElement).getByRole("note")).toHaveTextContent("1 played twice");
+  });
+
+  it("M374: holds the facts line with quiet bars while the facts load", () => {
+    renderHeader({ facts: null, fallbackCount: 3880 });
+    expect(document.querySelectorAll(".cp-screen-header__summary .library-header__skeleton")).toHaveLength(2);
+  });
+
+  it("M511: opens Save to files from the values not in files", () => {
+    const onSaveToFiles = vi.fn();
+    renderHeader({
+      pending: { values_not_in_files: 12, changes_not_exported: 0, last_export_at: null },
+      onSaveToFiles,
+    });
+    fireEvent.click(within(screen.getByTestId("library-pending")).getByRole("button", { name: "12 values not in files" }));
+    expect(onSaveToFiles).toHaveBeenCalledTimes(1);
+  });
+});

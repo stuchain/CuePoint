@@ -212,8 +212,8 @@ describe("the vocabulary is the engine's", () => {
     expect(next.operator).toBe("is");
   });
 
-  it("starts a draft on the first field and its first operator", () => {
-    expect(emptyDraft(VOCABULARY)).toMatchObject({ field: "genre", operator: "is" });
+  it("starts a draft on the first field, on contains where it offers it (M110)", () => {
+    expect(emptyDraft(VOCABULARY)).toMatchObject({ field: "genre", operator: "contains" });
   });
 
   it("starts empty when the vocabulary has not arrived", () => {

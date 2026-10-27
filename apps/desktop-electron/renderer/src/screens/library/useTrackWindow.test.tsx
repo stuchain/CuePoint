@@ -257,16 +257,21 @@ describe("memory", () => {
 });
 
 describe("a query that changed", () => {
-  it("throws away the rows that answered the old one", async () => {
+  // Moved guard (M369): the old rows used to be thrown away at once, leaving skeletons; they now
+  // stay, marked stale (the table dims them), until the new query's first page lands.
+  it("keeps the old rows, marked stale, until the new query's answer lands (M369)", async () => {
     const { result, rerender } = renderHook(({ q }) => useTrackWindow(q), {
       initialProps: { q: query() },
     });
     await waitFor(() => expect(result.current.source.getRow(0)).toBeDefined());
+    expect(result.current.stale).toBe(false);
 
     rerender({ q: query({ sort: "bpm" }) });
 
-    expect(result.current.source.getRow(0)).toBeUndefined();
-    expect(result.current.loadedRows).toBe(0);
+    expect(result.current.source.getRow(0)).toBeDefined();
+    expect(result.current.stale).toBe(true);
+    await waitFor(() => expect(result.current.stale).toBe(false));
+    expect(result.current.source.getRow(0)).toBeDefined();
   });
 
   it("asks again for the new one", async () => {
@@ -637,7 +642,9 @@ describe("a page kept alive hidden and shown again (React Activity)", () => {
     await waitFor(() => expect(titles()).toEqual(["Track 1", "Track 2", "Track 3"]));
   });
 
-  it("resets to skeletons when the query changed while hidden", async () => {
+  // Moved guard (M369): a query changed while hidden used to reset to skeletons; the old rows now
+  // stay, dimmed as stale, until the new answer lands, and no skeleton flashes in between.
+  it("keeps the old rows, not skeletons, when the query changed while hidden (M369)", async () => {
     const view = render(<Rows mode="visible" />);
     await waitFor(() => expect(screen.getAllByTestId("row")).toHaveLength(3));
 
@@ -646,8 +653,8 @@ describe("a page kept alive hidden and shown again (React Activity)", () => {
     view.rerender(<Rows mode="visible" q="other" />);
 
     await waitFor(() => expect(browseLibrary).toHaveBeenCalledTimes(2));
-    expect(titles()).toEqual([]);
-    expect(document.querySelectorAll(".track-table__skeleton")).toHaveLength(3);
+    expect(titles()).toEqual(["Track 1", "Track 2", "Track 3"]);
+    expect(document.querySelectorAll(".track-table__skeleton")).toHaveLength(0);
   });
 
   it("replaces the kept rows with the answer to the re-ask, an empty page included", async () => {
@@ -674,5 +681,26 @@ describe("a page kept alive hidden and shown again (React Activity)", () => {
     }));
     view.rerender(<Rows mode="visible" />);
     await waitFor(() => expect(titles()).toEqual([]));
+  });
+});
+
+describe("a change shown before the engine has it (M382)", () => {
+  it("lays the change over the rows it picks, and takes it back on unpatch", async () => {
+    const { result } = renderHook(() => useTrackWindow(query()));
+    await waitFor(() => expect(result.current.source.getRow(0)).toBeDefined());
+    const before = result.current.source.getRow(0)!;
+
+    let id = 0;
+    act(() => {
+      id = result.current.patch(
+        (row) => row.id === before.id,
+        (row) => ({ ...row, favorite: true, title: "Patched" }),
+      );
+    });
+    expect(result.current.source.getRow(0)!.title).toBe("Patched");
+    expect(result.current.source.getRow(1)!.title).not.toBe("Patched");
+
+    act(() => result.current.unpatch(id));
+    expect(result.current.source.getRow(0)!.title).toBe(before.title);
   });
 });

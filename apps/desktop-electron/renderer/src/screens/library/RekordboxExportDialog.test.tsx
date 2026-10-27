@@ -1051,3 +1051,29 @@ describe("the look of the dialog (C61, C88, C39)", () => {
     expect(box("Saturday").closest("label")).toHaveClass("cp-check");
   });
 });
+
+describe("the playlists line and the lead (M513, M514)", () => {
+  it("M513: says how many playlists go, and Change opens the tick list", async () => {
+    const user = userEvent.setup();
+    renderDialog({ initialIds: [7] });
+    await previewed();
+    const chosen = within(dialog()).getByTestId("export-chosen");
+    expect(chosen).toHaveTextContent("1 playlist · Change");
+    expect(detailsButton()).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(within(chosen).getByRole("button", { name: "Change" }));
+
+    expect(detailsButton()).toHaveAttribute("aria-expanded", "true");
+    expect(box("Loose")).toBeChecked();
+  });
+
+  it("M514: says what the file is, beside Save to files", async () => {
+    renderDialog({ initialIds: [7] });
+    await previewed();
+    expect(
+      within(dialog()).getByText(
+        "Makes the file Rekordbox imports. It does not change your music files; Sync to files writes tags into them.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

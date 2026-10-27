@@ -112,11 +112,12 @@ describe("the Library's shared lines", () => {
     expect(rule(pane, ".cp-library-pane")).toContain("border-right: 0");
   });
 
-  it("keeps the pane's floor at 112px times the scale, capped at 45% of the body", () => {
+  it("keeps the pane's floor at 150px times the scale, capped at 45% of the body", () => {
     // A 200px floor (round 8) cost the table two rows with Track details open; names that do not
-    // fit end in "…" (PaneTree), so the table keeps its width.
+    // fit end in "…" (PaneTree), so the table keeps its width. Moved from 112 for M77: 112 cut
+    // "All tracks" and its count to "All tra…" at 2x and 3x.
     const columns = rule(library, ".library-screen__body");
-    expect(columns).toMatch(/clamp\(min\(calc\(112px \* var\(--scale\)\), 45%\)/);
+    expect(columns).toMatch(/clamp\(min\(calc\(150px \* var\(--scale\)\), 45%\)/);
   });
 });
 

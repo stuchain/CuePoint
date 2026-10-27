@@ -65,7 +65,12 @@ describe("EditValuesDialog", () => {
   });
 
   it("names the tracks on the button and greys it, with the reason, until a value is set or cleared", () => {
-    render(<EditValuesDialog open count={3} onClose={vi.fn()} onEdit={vi.fn()} />);
+    const onEdit = vi.fn();
+    render(<EditValuesDialog open count={3} onClose={vi.fn()} onEdit={onEdit} />);
+    // M274: nothing is said on open; the first press with nothing to change says why and greys it.
+    expect(screen.queryByText("Set or clear at least one value.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change 3 tracks" }));
+    expect(onEdit).not.toHaveBeenCalled();
     const button = screen.getByRole("button", { name: "Change 3 tracks" });
     expect(button).toBeDisabled();
     expect(button).toHaveAccessibleDescription("Set or clear at least one value.");
@@ -89,6 +94,8 @@ describe("EditValuesDialog", () => {
 
   it("clearing a field counts as a change", () => {
     render(<EditValuesDialog open count={1} onClose={vi.fn()} onEdit={vi.fn()} />);
+    // M274: greyed once pressed with nothing to change.
+    fireEvent.click(screen.getByRole("button", { name: "Change 1 track" }));
     expect(screen.getByRole("button", { name: "Change 1 track" })).toBeDisabled();
     fireEvent.change(screen.getByRole("combobox", { name: "Genre" }), {
       target: { value: "clear" },

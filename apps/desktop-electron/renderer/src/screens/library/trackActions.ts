@@ -42,6 +42,11 @@ export interface TrackActionGroup {
   items: TrackContextMenuItem[];
   /** Why the group cannot be opened, or null when it can. */
   disabledReason: string | null;
+  /**
+   * Entries the right-click menu lifts to its top level and the bar does not show (M299): Organize's
+   * stars row and Favorite. The bar's Organize keeps seven entries or fewer (D26).
+   */
+  quick?: TrackContextMenuItem[];
 }
 
 export interface TrackActionContext {
@@ -55,6 +60,10 @@ export interface TrackActionContext {
   revealable: boolean;
   /** Whether all the tracks are favorites, none are, or not known (see `trackMenu.ts`). */
   favorite?: boolean | null;
+  /** The rating the tracks share, for the stars row (see `trackMenu.ts`). */
+  rating?: number | null;
+  /** How many tags could be removed, for Remove tag… (see `trackMenu.ts`). */
+  tagCount?: number | null;
 }
 
 export interface TrackActionHandlers {
@@ -166,12 +175,19 @@ export function trackActionGroups(
           { onSimilar: handlers.explore.onSimilar, onOpenPage: handlers.explore.onOpenPage },
         )
       : [];
+  const organize = organizationMenuItems(
+    {
+      count,
+      collection: context.collection,
+      favorite: context.favorite,
+      rating: context.rating,
+      tagCount: context.tagCount,
+    },
+    handlers.organization,
+  );
   const built: Record<TrackActionGroupId, TrackContextMenuItem[]> = {
     play: count > 0 && handlers.play ? playItems(count, handlers.play) : [],
-    organize: organizationMenuItems(
-      { count, collection: context.collection, favorite: context.favorite },
-      handlers.organization,
-    ),
+    organize: organize.filter((item) => !QUICK_IDS.has(item.id)),
     beatport: beatportMenuItems({ count }, handlers.beatport ?? {}),
     more:
       count > 0
@@ -183,12 +199,14 @@ export function trackActionGroups(
         : [],
   };
 
+  const quick = organize.filter((item) => QUICK_IDS.has(item.id));
   return ACTION_GROUPS.map(({ id, label }) => {
     const items = withoutLeadingDivider(built[id]);
     return {
       id,
       label,
       items,
+      ...(id === "organize" && quick.length > 0 ? { quick } : null),
       disabledReason:
         count <= 0 ? SELECT_TRACKS_FIRST : items.length === 0 ? "Not available here" : null,
     };
@@ -221,7 +239,7 @@ export const groupMenuId = (id: TrackActionGroupId) => `group-${id}`;
  * bar's button for it opens. Groups with nothing to offer leave no gap.
  */
 export function menuFromGroups(groups: readonly TrackActionGroup[]): TrackContextMenuItem[] {
-  const filled = groups.filter((group) => group.items.length > 0);
+  const filled = groups.filter((group) => group.items.length > 0 || (group.quick?.length ?? 0) > 0);
   const submenu = (group: TrackActionGroup): TrackContextMenuItem => ({
     id: groupMenuId(group.id),
     label: group.label,
@@ -230,9 +248,10 @@ export function menuFromGroups(groups: readonly TrackActionGroup[]): TrackContex
   });
   // The base track menu every list has is Play, then More. The Library's own groups sit between
   // them, divided and with no heading of their own (M410). Rating and Favorite are among a DJ's most
-  // frequent edits, so they are lifted out of Organize to the top level (D26, M299).
+  // frequent edits, so they are lifted out of Organize to the top level (D26, M299): the stars row
+  // with Favorite beside it, which the group carries apart from the bar's entries.
   const play = filled.filter((group) => group.id === "play").flatMap((group) => group.items);
-  const quick: TrackContextMenuItem[] = [];
+  const quick: TrackContextMenuItem[] = filled.flatMap((group) => group.quick ?? []);
   const page = filled
     .filter((group) => group.id !== "play" && group.id !== "more")
     .map((group) => {
@@ -255,5 +274,5 @@ export function menuFromGroups(groups: readonly TrackActionGroup[]): TrackContex
   return top;
 }
 
-/** Organize's entries that the right-click menu shows at its top level. */
+/** Organize's entries that the right-click menu shows at its top level, and the bar does not (M299). */
 const QUICK_IDS = new Set(["rate", "favorite", "unfavorite"]);

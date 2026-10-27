@@ -121,7 +121,7 @@ export function RefreshPreviewDialog({
             {removed.count > 0 && (
               <section className="library-preview__samples">
                 <h3 className="library-preview__samples-title">
-                  Tracks that would be deleted
+                  Tracks that would be removed
                 </h3>
                 <ul>
                   {removed.items.slice(0, SAMPLE_LIMIT).map((track) => (

@@ -82,6 +82,9 @@
   flex-wrap: nowrap;
   white-space: nowrap;
   gap: var(--space-xs);
+  /* M55 (L2): hung by its padding only, so its words end on the pane's text edge and its box
+     ends at the pane edge, not one border past it. */
+  margin-inline-end: calc(0px - var(--space-sm));
 }
 
 
@@ -100,10 +103,10 @@
   font-weight: var(--font-weight-bold);
 }
 
-/* The row a drop would land on. */
+/* The row a drop would land in (M365, D30): a tint for "into", never the focus outline, which
+   means the keyboard's row. */
 .cp-playlist-pane__row--drop {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
-  outline-offset: var(--focus-ring-offset-inset);
+  background: var(--bg-selected);
 }
 
 /*
@@ -120,8 +123,29 @@
   margin-bottom: calc(-1 * var(--space-md));
 }
 
+/* While a node is dragged (M365, D30): a labelled band a row tall, over the next head, so it
+   moves nothing and can be aimed at. */
+.cp-collections__root-drop--shown {
+  display: flex;
+  align-items: center;
+  height: var(--row-height);
+  margin-bottom: calc(-1 * var(--row-height));
+  padding-inline: calc(var(--space-sm) + var(--pane-edge, 0px));
+  background: var(--bg-panel-alt);
+  color: var(--fg-muted);
+  font-family: var(--font-control);
+  font-size: var(--font-size-label);
+}
+
+.cp-collections__root-drop-label {
+  pointer-events: none;
+}
+
+/* The one insertion line, where the node would go (M365). */
 .cp-collections__root-drop--over {
-  border-top: var(--border-width) dashed var(--accent-primary);
+  background: var(--bg-selected);
+  box-shadow: inset 0 2px 0 var(--accent-primary);
+  color: var(--fg-primary);
 }
 
 .cp-collections__empty {
@@ -137,10 +161,17 @@
   flex: 1 1 auto;
   min-width: 0;
   padding: 0 var(--space-xs);
-  border: var(--border-width) solid var(--accent-primary);
+  /* M360: a field's own border, not a violet one; focus draws the ring inside it. */
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
   font: inherit;
+}
+
+.cp-playlist-pane__rename:focus-visible,
+.cp-playlist-pane__rename:focus {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /*

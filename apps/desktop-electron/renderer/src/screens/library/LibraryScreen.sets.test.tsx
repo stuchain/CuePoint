@@ -7,7 +7,7 @@
  *   Prepare's: no "Remove from" and no row drop inside a Set.
  * - **"Add to a Set…"** joins the operations list, with a picker of Sets, and
  *   says what it skipped. "Add to Collection" no longer offers a Set.
- * - **"New Set from…"** a Collection or a Rekordbox playlist asks a name and a
+ * - **"New Set from a list…"** a Collection or a Rekordbox playlist asks a name and a
  *   place, makes the Set, and opens it; "New Set from these…" takes
  *   the selected tracks in the table's order (PREP-12).
  * - **A Set's menu**: set lists saved and copied, the export with it ticked.
@@ -215,8 +215,9 @@ async function rowMenu(title: string): Promise<HTMLElement> {
   return screen.findByRole("menu");
 }
 
+// M298: an entry with a hint line is named without it.
 const labels = (menu: HTMLElement) =>
-  within(menu).getAllByRole("menuitem").map((item) => item.textContent);
+  within(menu).getAllByRole("menuitem").map((item) => (item.textContent ?? "").replace(item.querySelector(".cp-track-menu__hint")?.textContent ?? "", ""));
 
 /** The entries of a row menu's Organize submenu, which the menu shows as a parent. */
 const organizeLabels = async (menu: HTMLElement) => {
@@ -245,7 +246,7 @@ describe("a Set as the table's scope (DEC-104, fact 3)", () => {
     await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
     const note = await screen.findByRole("note");
     expect(note).toHaveTextContent(
-      "A Set of 6 entries: its 5 tracks once each, in play order.",
+      "A Set: 6 tracks, 1 played twice, in play order.", // M427
     );
     // Nowhere to open it yet, so no link to nowhere.
     expect(within(note).queryByRole("button")).toBeNull();
@@ -333,7 +334,7 @@ describe("Add to a Set… (DEC-104, DEC-058)", () => {
     renderScreen();
     await ready();
     await userEvent.click((await menuItem("Add to a Set…", await rowMenu("Close"))));
-    const dialog = await screen.findByRole("dialog", { name: "Add to Set" });
+    const dialog = await screen.findByRole("dialog", { name: "Add to a Set" });
     const options = within(dialog).getAllByRole("option");
     expect(options.map((option) => option.textContent?.replace(/\d+$/, "").trim())).toEqual([
       "Gigs",
@@ -352,7 +353,7 @@ describe("Add to a Set… (DEC-104, DEC-058)", () => {
     renderScreen();
     await ready();
     await userEvent.click((await menuItem("Add to a Set…", await rowMenu("Close"))));
-    const dialog = await screen.findByRole("dialog", { name: "Add to Set" });
+    const dialog = await screen.findByRole("dialog", { name: "Add to a Set" });
     await userEvent.click(within(dialog).getAllByRole("option")[1]!);
     await waitFor(() =>
       expect(bridge.applyBatch).toHaveBeenCalledWith({
@@ -370,7 +371,7 @@ describe("Add to a Set… (DEC-104, DEC-058)", () => {
     renderScreen();
     await ready();
     await userEvent.click((await menuItem("Add to a Set…", await rowMenu("Close"))));
-    const dialog = await screen.findByRole("dialog", { name: "Add to Set" });
+    const dialog = await screen.findByRole("dialog", { name: "Add to a Set" });
     await userEvent.click(within(dialog).getAllByRole("option")[1]!);
     expect(
       await screen.findByText("Added 40 tracks to “Friday” — 1 were already there."),
@@ -383,7 +384,7 @@ describe("Add to a Set… (DEC-104, DEC-058)", () => {
     await userEvent.click(
       (await menuItem("Add to a Collection…", await rowMenu("Close"))),
     );
-    const dialog = await screen.findByRole("dialog", { name: "Add to Collection" });
+    const dialog = await screen.findByRole("dialog", { name: "Add to a Collection" });
     const option = (name: string) =>
       within(dialog)
         .getAllByRole("option")
@@ -404,7 +405,7 @@ describe("New Set from… (DEC-104)", () => {
     await ready();
     fireEvent.contextMenu(treeRow("Warm-up", "collection"));
     await userEvent.click(
-      within(await screen.findByRole("menu")).getByRole("menuitem", { name: "New Set from…" }),
+      within(await screen.findByRole("menu")).getByRole("menuitem", { name: "New Set from a list…" }),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Warm-up”" });
     expect(dialog).toHaveTextContent(/in its order and with any repeats/);
@@ -432,7 +433,7 @@ describe("New Set from… (DEC-104)", () => {
     await userEvent.click(within(playlists).getByRole("button", { name: "Expand SETS" }));
     fireEvent.contextMenu(within(playlists).getByText("Sunday"));
     await userEvent.click(
-      within(await screen.findByRole("menu")).getByRole("menuitem", { name: "New Set from…" }),
+      within(await screen.findByRole("menu")).getByRole("menuitem", { name: "New Set from a list…" }),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Sunday”" });
     expect(dialog).toHaveTextContent(/refreshing from Rekordbox never changes the Set/);
@@ -518,7 +519,7 @@ describe("New Set from… (DEC-104)", () => {
     await ready();
     fireEvent.contextMenu(treeRow("Warm-up", "collection"));
     await userEvent.click(
-      within(await screen.findByRole("menu")).getByRole("menuitem", { name: "New Set from…" }),
+      within(await screen.findByRole("menu")).getByRole("menuitem", { name: "New Set from a list…" }),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Warm-up”" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Create" }));
@@ -664,12 +665,13 @@ describe("a shell without the Sets bridge", () => {
     fireEvent.contextMenu(treeRow("Friday", "set"));
     expect(labels(await screen.findByRole("menu"))).toEqual([
       "Rename",
+      "Move to folder…", // M462
       "Export to Rekordbox…",
       "Delete…",
     ]);
     await userEvent.keyboard("{Escape}");
     fireEvent.contextMenu(treeRow("Warm-up", "collection"));
-    expect(labels(await screen.findByRole("menu"))).not.toContain("New Set from…");
+    expect(labels(await screen.findByRole("menu"))).not.toContain("New Set from a list…");
   });
 
   it("still offers New Set where it can", async () => {
@@ -677,5 +679,37 @@ describe("a shell without the Sets bridge", () => {
     await ready();
     await userEvent.click(screen.getByRole("button", { name: "+ New" }));
     expect(labels(screen.getByRole("menu"))).toEqual(["Collection", "Set", "Folder"]);
+  });
+});
+
+describe("an add to a Set can be taken back (M519)", () => {
+  async function addToFriday() {
+    await userEvent.click((await menuItem("Add to a Set…", await rowMenu("Close"))));
+    const dialog = await screen.findByRole("dialog", { name: "Add to a Set" });
+    await userEvent.click(within(dialog).getAllByRole("option")[1]!);
+  }
+
+  it("offers Undo on the toast, which removes the entries the add made", async () => {
+    bridge.removeCollectionEntries = vi.fn().mockResolvedValue({ removed: 1 });
+    install();
+    renderScreen();
+    await ready();
+    await addToFriday();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+
+    await waitFor(() => expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [9] }));
+  });
+
+  it("offers the way to Prepare instead where the add cannot be taken back", async () => {
+    bridge.applyBatch.mockResolvedValue({ applied: { ...ADDED_TO_SET, undoable: false } });
+    const onOpenInPrepare = vi.fn();
+    renderScreen({ onOpenInPrepare });
+    await ready();
+    await addToFriday();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Open in Prepare" }));
+
+    expect(onOpenInPrepare).toHaveBeenCalledWith(FRIDAY.id);
   });
 });

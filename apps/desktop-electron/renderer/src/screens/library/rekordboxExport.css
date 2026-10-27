@@ -78,7 +78,8 @@
 .rekordbox-export__playlists {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  /* Whole pixels at every scale (M80). */
+  gap: round(nearest, calc(2px * var(--scale)), 1px);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -115,4 +116,9 @@
   gap: var(--space-sm);
   min-width: 0;
   color: var(--fg-primary);
+}
+
+/* M513: the playlists chosen, in one line with Change. */
+.rekordbox-export__chosen {
+  margin: 0;
 }

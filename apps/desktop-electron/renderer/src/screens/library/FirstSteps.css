@@ -95,7 +95,8 @@
 
 .first-steps-note__popover {
   position: absolute;
-  top: 100%;
+  /* Every menu opens 2xs off its trigger (M69, D26 A). */
+  top: calc(100% + var(--space-2xs));
   left: 0;
   z-index: var(--z-popover);
   width: min(calc(var(--unit) * 120), calc(100vw - var(--space-lg)));
@@ -119,4 +120,9 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-sm);
+}
+
+/* A leaving popover takes no input: what is behind it takes the click (M380). */
+.first-steps-note__popover[data-leaving] {
+  pointer-events: none;
 }

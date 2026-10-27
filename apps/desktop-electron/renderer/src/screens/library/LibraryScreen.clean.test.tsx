@@ -272,14 +272,17 @@ const BETWEEN = [
   "Remove from favorites",
   "Match on Beatport…",
   "Review these matches",
-  "Copy Beatport values…",
+  "Use Beatport values…",
   "Edit values…",
   "Copy as text",
   "Show in folder",
 ];
 
 function labelsOf(menu: HTMLElement): string[] {
-  return within(menu).getAllByRole("menuitem").map((node) => node.textContent ?? "");
+  // The stars row (M299) draws stars, not words: its name is its label.
+  return within(menu)
+    .getAllByRole("menuitem")
+    .map((node) => node.textContent || node.getAttribute("aria-label") || "");
 }
 
 async function openGroup(name: string) {
@@ -297,11 +300,13 @@ describe("the operations list", () => {
     renderScreen();
     await tableReady();
     const menu = await openMenuOn("Track 2");
+    // M299: Rate is the inline stars row, a group of five stars and a clear button.
+    expect(within(menu).getByRole("group", { name: "Rate" })).toBeInTheDocument();
     expect(labelsOf(menu)).toEqual([
       "Play",
       "Play next",
       "Add to queue",
-      "Rate",
+      "Clear rating",
       "Add to favorites",
       "Organize",
       "Beatport",
@@ -327,7 +332,10 @@ describe("the operations list", () => {
       seen.push(...labelsOf(await openGroup(name)));
       await userEvent.keyboard("{Escape}");
     }
-    expect(seen).toEqual(BETWEEN);
+    // M299: Rate and the favorites are the right-click menu's top level; the bar's Organize has
+    // seven or fewer entries without them.
+    const lifted = ["Rate", "Add to favorites", "Remove from favorites"];
+    expect(seen).toEqual(BETWEEN.filter((label) => !lifted.includes(label)));
   });
 
   it("has no Accept, Reject or Actions… any more", async () => {
@@ -378,7 +386,7 @@ describe("what the entries do", () => {
   });
 
   it.each([
-    ["Beatport", "Copy Beatport values…", "Copy Beatport values"],
+    ["Beatport", "Use Beatport values…", "Use Beatport values"],
     ["More", "Edit values…", "Edit values"],
   ] as const)(
     "opens the dialog for %s ▸ %s here, not on Clean (K4)",
@@ -440,7 +448,7 @@ describe("what the entries do", () => {
     );
     await tableReady();
     await select("Track 1", "Track 2");
-    await userEvent.click(await screen.findByRole("button", { name: "Edit values for 2 tracks…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Edit values for 2 tracks" } /* M405 (P3) */));
     expect(await screen.findByRole("dialog", { name: "Edit values" })).toBeInTheDocument();
     expect(OPEN_IN_CLEAN).not.toHaveBeenCalled();
   });
@@ -587,7 +595,10 @@ describe("the table", () => {
     const typed = within(first).getByRole("img", { name: "BPM typed by you. In Rekordbox it is 128." });
     expect(typed.closest(".library-cell__overridden")).toHaveTextContent("126");
     const second = screen.getByText("Track 2").closest("[role=row]") as HTMLElement;
-    expect(within(second).getByRole("img", { name: "Genre applied from Beatport. In Rekordbox it is Techno." })).toHaveTextContent("B");
+    // M36: the Beatport mark is the pixel "B" glyph.
+    expect(
+      within(second).getByRole("img", { name: "Genre applied from Beatport. In Rekordbox it is Techno." }).querySelector(".cp-pixel-icon"),
+    ).not.toBeNull();
     const third = screen.getByText("Track 3").closest("[role=row]") as HTMLElement;
     expect(third.querySelector(".library-cell__mark")).toBeNull();
   });

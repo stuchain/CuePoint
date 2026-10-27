@@ -13,9 +13,8 @@
  * is the kind of thing that is easy to get subtly wrong and impossible to see
  * without opening a menu in each of three states.
  */
-import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
+import { starsItem, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { countNoun } from "../../format/counts";
-import { RATING_STARS } from "./trackEdits";
 
 /** Where the table is scoped, as far as these entries are concerned. */
 interface OrganizationMenuContext {
@@ -36,7 +35,21 @@ interface OrganizationMenuContext {
    * (null or absent). Known, only the entry that applies is offered (M411).
    */
   favorite?: boolean | null;
+  /**
+   * The rating the tracks share, which the stars row starts on (M299): the one track's, or null
+   * when they differ or it is not known.
+   */
+  rating?: number | null;
+  /**
+   * How many tags the tracks could have one removed from (M411): the library's tags that are on any
+   * track. Zero means none of these tracks has a tag, so Remove tag… is offered disabled, with why;
+   * null or absent is not known yet.
+   */
+  tagCount?: number | null;
 }
+
+/** Why Remove tag… is not offered when no track has a tag (M411). */
+export const NO_TAGS_REASON = "These tracks have no tags";
 
 export interface OrganizationMenuHandlers {
   onAddToCollection: () => void;
@@ -56,11 +69,6 @@ export interface OrganizationMenuHandlers {
   /** null clears the CuePoint rating rather than setting it to zero (DEC-057). */
   onRate: (stars: number | null) => void;
   onFavorite: (favorite: boolean) => void;
-}
-
-/** "3 stars", the same words the rest of the app rates with. */
-function stars(count: number): string {
-  return countNoun(count, "star");
 }
 
 /** Favorite, as one entry that names what it will do; both when the tracks differ or are not known (M411). */
@@ -124,30 +132,23 @@ export function organizationMenuItems(
 
   items.push(
     { id: "add-tag", label: "Add tag…", separatorBefore: true, onSelect: handlers.onAddTag },
-    { id: "remove-tag", label: "Remove tag…", onSelect: handlers.onRemoveTag },
     {
+      id: "remove-tag",
+      label: "Remove tag…",
+      disabled: context.tagCount === 0,
+      reason: NO_TAGS_REASON,
+      onSelect: handlers.onRemoveTag,
+    },
+    // One row of five stars and a clear button, not a submenu of star rows (M299, D26). Clearing
+    // falls back to Rekordbox's rating; it does not write a zero, which is a rating of its own
+    // (DEC-057).
+    starsItem({
       id: "rate",
       label: "Rate",
+      value: context.rating ?? null,
       separatorBefore: true,
-      // A parent never acts; the list is what runs. Six flat rows here would
-      // be six more in a menu that already has nine.
-      onSelect: () => undefined,
-      items: [
-        ...Array.from({ length: RATING_STARS }, (_, index) => index + 1).map((count) => ({
-          id: `rate-${count}`,
-          label: stars(count),
-          onSelect: () => handlers.onRate(count),
-        })),
-        {
-          id: "rate-clear",
-          // Clearing falls back to Rekordbox's rating; it does not write a
-          // zero, which is a rating of its own (DEC-057).
-          label: "Clear rating",
-          separatorBefore: true,
-          onSelect: () => handlers.onRate(null),
-        },
-      ],
-    },
+      onRate: (value) => handlers.onRate(value === 0 ? null : value),
+    }),
     ...favoriteItems(context.favorite ?? null, handlers.onFavorite),
   );
 

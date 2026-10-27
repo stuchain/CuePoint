@@ -71,7 +71,7 @@ describe("a selection too large for a Set", () => {
   it("is refused whole, with the numbers, above the limit and not at it", () => {
     expect(selectionTooLarge(SET_ENTRY_LIMIT)).toBeNull();
     expect(selectionTooLarge(1_200)).toBe(
-      "A Set holds at most 1,000 entries, and 1,200 tracks are selected. Select fewer, or add them to a Collection instead.",
+      "A Set holds at most 1,000 tracks, and 1,200 tracks are selected. Select fewer, or add them to a Collection instead.", // M427
     );
   });
 });

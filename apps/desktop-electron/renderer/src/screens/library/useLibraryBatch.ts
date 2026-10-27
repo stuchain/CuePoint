@@ -47,8 +47,11 @@ export interface LibraryBatchController {
   question: string | null;
   /** True while a batch is being applied or followed. */
   busy: boolean;
-  /** Ask for a batch. Confirms first when it is large enough to be a job. */
-  start: (run: BatchRun) => Promise<void>;
+  /**
+   * Ask for a batch. Confirms first when it is large enough to be a job. `onResult`, when given,
+   * says what happened in place of the summary toast (M519: an add with its Undo).
+   */
+  start: (run: BatchRun, options?: { onResult?: (result: BatchResult) => void }) => Promise<void>;
   /**
    * Run a batch a dialog has already confirmed (CLEAN-13), without asking
    * again. A refusal goes to `onRefused` when given — where the dialog shows it
@@ -89,6 +92,8 @@ export function useLibraryBatch({
   onApplied,
 }: LibraryBatchOptions): LibraryBatchController {
   const [pending, setPending] = useState<BatchRun | null>(null);
+  // What the pending batch says when it is done, kept beside it until it is confirmed.
+  const pendingResult = useRef<((result: BatchResult) => void) | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const alive = useRef(true);
   const following = useRef<{ stop: () => void }[]>([]);
@@ -185,23 +190,29 @@ export function useLibraryBatch({
   );
 
   const start = useCallback(
-    async (run: BatchRun) => {
+    async (run: BatchRun, options?: { onResult?: (result: BatchResult) => void }) => {
       if (run.count > BATCH_JOB_THRESHOLD) {
+        pendingResult.current = options?.onResult;
         setPending(run);
         return;
       }
-      await apply(run);
+      await apply(run, undefined, options?.onResult);
     },
     [apply],
   );
 
   const confirm = useCallback(async () => {
     const run = pending;
+    const onResult = pendingResult.current;
+    pendingResult.current = undefined;
     setPending(null);
-    if (run) await apply(run);
+    if (run) await apply(run, undefined, onResult);
   }, [apply, pending]);
 
-  const cancel = useCallback(() => setPending(null), []);
+  const cancel = useCallback(() => {
+    pendingResult.current = undefined;
+    setPending(null);
+  }, []);
 
   const runConfirmed = useCallback(
     (

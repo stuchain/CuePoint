@@ -25,7 +25,9 @@
  * file changed or went missing; otherwise it is a secondary like Export. The
  * labels never shorten. Where the title, the source line with its chips and the buttons
  * (with the Details toggle) do not fit one line, the source badge and the First steps chip
- * go, so the header stays one line. The widths are measured, not guessed (`fitsOneLine`).
+ * go, so the header stays one line; where even the title and the buttons do not fit (1.5x in a
+ * small window, 2x, 3x), the buttons fold into one "more" menu on the title row (M73, D11). The
+ * widths are measured, not guessed (`fitsOneLine`).
  *
  * Before the first import there is one button, **Import your Rekordbox
  * collection…**: nothing to check and nothing to export yet.
@@ -36,6 +38,7 @@ import { Button, Hint } from "../../components";
 import { PixelIcon } from "../../components/PixelIcon";
 import { TrackContextMenu, useMenuButton } from "../../components/TrackContextMenu";
 import { CHECK_FOR_CHANGES, opensDialog } from "../../format/words";
+import { displayPath } from "../../format/paths";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import type { LibraryPending, LibraryQuickFacets, LibrarySummary } from "../../api/cuepointBridge.types";
 import {
@@ -69,6 +72,13 @@ interface LibraryHeaderProps {
   pending?: LibraryPending | null;
   /** Copy the file's path; the header has no toast of its own (the page says "Copied"). */
   onCopyPath?: (path: string) => void;
+  /** Opens Save to files, from "N values not in files" (M511). Absent, the words are plain text. */
+  onSaveToFiles?: () => void;
+  /**
+   * One more part of the facts line, after the facts (M103): a Set's note and its way to Prepare,
+   * which used to be a band of its own between the filter bar and the table.
+   */
+  scopeNote?: ReactNode;
   /** What the scope holds; null while it is being read. */
   facts?: LibraryQuickFacets | null;
   /** The scope's track count as far as the page already knows it. */
@@ -131,9 +141,10 @@ function rowWidth(row: Element, gap: number): number {
  * How much of what sits beside the title goes so the buttons never wrap (A1, round 5):
  * 0 keeps the file's name, its state and the First steps chip; 1 drops the First steps chip;
  * 2 moves the file's name and its state to the end of the facts line, so nothing about the source
- * is lost, only moved.
+ * is lost, only moved; 3 (M73) folds the buttons into one "more" menu on the title row, when even
+ * the title and the buttons alone do not fit.
  */
-export type LeanLevel = 0 | 1 | 2;
+export type LeanLevel = 0 | 1 | 2 | 3;
 
 export function leanLevel(
   widths: Omit<HeaderWidths, "beside"> & { whole: number; source: number },
@@ -141,7 +152,8 @@ export function leanLevel(
   const { whole, source, ...rest } = widths;
   if (fitsOneLine({ ...rest, beside: whole })) return 0;
   if (fitsOneLine({ ...rest, beside: source })) return 1;
-  return 2;
+  if (fitsOneLine({ ...rest, beside: 0 })) return 2;
+  return 3;
 }
 
 /**
@@ -154,7 +166,7 @@ export function leanLevel(
 function useLean(enabled: boolean) {
   const header = useRef<HTMLDivElement>(null);
   const [level, setLevel] = useState<LeanLevel>(0);
-  const kept = useRef({ whole: 0, source: 0 });
+  const kept = useRef({ whole: 0, source: 0, actions: 0 });
 
   useLayoutEffect(() => {
     const box = header.current;
@@ -173,16 +185,25 @@ function useLean(enabled: boolean) {
       const source = box.querySelector<HTMLElement>(".library-header__source");
       // Drawn whole, the widths are the ones to keep; once parts went, the kept widths stand.
       if (beside && source && box.querySelector(".library-header__chip-slot")) {
-        kept.current = { whole: beside.offsetWidth, source: source.offsetWidth };
+        kept.current = { ...kept.current, whole: beside.offsetWidth, source: source.offsetWidth };
       } else if (beside && source && kept.current.whole === 0) {
-        kept.current = { whole: beside.offsetWidth, source: source.offsetWidth };
+        kept.current = { ...kept.current, whole: beside.offsetWidth, source: source.offsetWidth };
+      }
+      // The buttons drawn whole are the width to keep; folded into the menu (M73), the kept width
+      // stands, or the header would unfold and fold again on every measure.
+      const shownActions = box.querySelector<HTMLElement>(".cp-screen-header__actions");
+      if (shownActions && !shownActions.querySelector(".library-header__more")) {
+        kept.current = {
+          ...kept.current,
+          actions: rowWidth(shownActions, pixels(getComputedStyle(shownActions).columnGap)),
+        };
       }
       setLevel(
         leanLevel({
           title: display.scrollWidth,
           whole: kept.current.whole,
           source: kept.current.source,
-          actions: rowWidth(actions, pixels(getComputedStyle(actions).columnGap)),
+          actions: kept.current.actions,
           gap,
           available,
         }),
@@ -194,7 +215,21 @@ function useLean(enabled: boolean) {
     observer.observe(main);
     observer.observe(display);
     observer.observe(actions);
-    return () => observer.disconnect();
+    // What sits beside the title can grow while the header's row keeps its size (the pixel face
+    // arriving, "last read …" filled in): the title row then wraps inside, which these see, so the
+    // buttons are never left on a line of their own (CI wave 2, item 5).
+    const titleRow = box.querySelector<HTMLElement>(".cp-screen-header__title-row");
+    if (titleRow) observer.observe(titleRow);
+    const besideNow = box.querySelector<HTMLElement>(".cp-screen-header__beside");
+    if (besideNow) observer.observe(besideNow);
+    let live = true;
+    void document.fonts?.ready.then(() => {
+      if (live) measure();
+    });
+    return () => {
+      live = false;
+      observer.disconnect();
+    };
   }, [enabled]);
 
   return { header, level };
@@ -208,6 +243,8 @@ export function LibraryHeader({
   showSource = true,
   pending = null,
   onCopyPath,
+  onSaveToFiles,
+  scopeNote = null,
   importInFirstSteps = false,
   facts = null,
   fallbackCount = 0,
@@ -224,6 +261,7 @@ export function LibraryHeader({
   const { header, level } = useLean(summary !== null && source !== null);
 
   const fileMenu = useMenuButton();
+  const moreMenu = useMenuButton();
   // Before the first import: the title, and the one button.
   if (!summary || !source) {
     return (
@@ -255,6 +293,7 @@ export function LibraryHeader({
   // file…, Copy path), its state is the refresh button at chip height, and when it was last read is
   // said in words beside them (M106, M107, M108).
   const fileBox = fileMenu.open ? fileMenu.anchor.current?.getBoundingClientRect() : undefined;
+  const moreBox = moreMenu.open ? moreMenu.anchor.current?.getBoundingClientRect() : undefined;
   const sourceLine = !showSource ? null : (
     <span className="library-header__source">
       <Button
@@ -310,7 +349,7 @@ export function LibraryHeader({
           </button>
         </Hint>
       )}
-      <span className="library-header__read" title={`${source.xml_path}`}>
+      <span className="library-header__read" title={displayPath(source.xml_path, { keepHome: true })}>
         last read {formatWhen(source.imported_at)}
       </span>
     </span>
@@ -357,6 +396,21 @@ export function LibraryHeader({
             </span>
           </span>
           )),
+          // M374: before the scope's facts arrive, the places the running time and the BPM range
+          // will take are held by quiet bars, so the line does not grow under the eye.
+          !folder && facts === null ? (
+            // Bars only, no "·": the line says nothing it does not know yet (K9).
+            <span key="placeholder" className="library-header__placeholder" aria-hidden="true">
+              <span className="library-header__skeleton" />
+              <span className="library-header__skeleton" />
+            </span>
+          ) : null,
+          scopeNote ? (
+            <span key="note" className="library-header__note">
+              <span className="library-header__sep"> · </span>
+              {scopeNote}
+            </span>
+          ) : null,
           // Where the title and the buttons leave no room beside the title, the file and its state
           // are here, on the facts line.
           level >= 2 && sourceLine ? (
@@ -367,6 +421,31 @@ export function LibraryHeader({
           ) : null,
         ]}
         actions={
+          level >= 3 ? (
+            <>
+              <Button
+                variant="quiet"
+                iconOnly
+                icon="more"
+                className="library-header__more"
+                aria-label="Library actions"
+                {...moreMenu.buttonProps}
+              />
+              {moreMenu.open && moreBox && (
+                <TrackContextMenu
+                  x={moreBox.left}
+                  y={moreBox.bottom}
+                  anchor={moreMenu.anchor}
+                  onClose={moreMenu.close}
+                  label="Library actions"
+                  items={[
+                    ...(needsLook ? [{ id: "check", label: LABELS.check, onSelect: onCheck, disabled }] : []),
+                    { id: "export", label: LABELS.export, onSelect: onExport, disabled },
+                  ]}
+                />
+              )}
+            </>
+          ) : (
           <>
             {needsLook && (
               <Button
@@ -383,6 +462,7 @@ export function LibraryHeader({
               {LABELS.export}
             </Button>
           </>
+          )
         }
         tabs={
           (state !== "unchanged" || appliedLine || hasPending) && (
@@ -390,9 +470,15 @@ export function LibraryHeader({
               {/* M511: what is only in CuePoint, what is in the files and what has been exported. */}
               {hasPending && pending && (
                 <p className="library-header__pending" data-testid="library-pending">
-                  {pending.values_not_in_files > 0 && (
-                    <span>{`${formatCount(pending.values_not_in_files)} ${pending.values_not_in_files === 1 ? "value" : "values"} not in files`}</span>
-                  )}
+                  {pending.values_not_in_files > 0 &&
+                    (onSaveToFiles ? (
+                      // M511: the words are the way to Save to files, as "not exported" is to Export.
+                      <button type="button" className="cp-link" onClick={onSaveToFiles} disabled={disabled}>
+                        {`${formatCount(pending.values_not_in_files)} ${pending.values_not_in_files === 1 ? "value" : "values"} not in files`}
+                      </button>
+                    ) : (
+                      <span>{`${formatCount(pending.values_not_in_files)} ${pending.values_not_in_files === 1 ? "value" : "values"} not in files`}</span>
+                    ))}
                   {pending.values_not_in_files > 0 && pending.changes_not_exported > 0 && (
                     <span className="library-header__sep"> · </span>
                   )}

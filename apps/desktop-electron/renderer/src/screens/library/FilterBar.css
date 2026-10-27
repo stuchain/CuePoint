@@ -85,8 +85,8 @@
   color: var(--fg-primary);
   font-family: var(--font-control);
   font-size: var(--font-size-chip);
-  /* P51: the words are Inter medium (the chip is the P30 chip; the cross is quiet until hovered). */
-  font-weight: var(--font-weight-medium);
+  /* P51, M2: the words are in the control weight (the chip is the P30 chip; the cross is quiet until hovered). */
+  font-weight: var(--control-font-weight);
   line-height: 1;
 }
 
@@ -123,8 +123,8 @@
   color: var(--fg-primary);
   font-family: var(--font-control);
   font-size: var(--font-size-chip);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
+  font-weight: var(--control-font-weight);
+  cursor: default;
 }
 
 .cp-filter-bar__tag--on,
@@ -211,6 +211,8 @@
   flex-wrap: nowrap;
   min-width: 0;
   overflow-x: auto;
+  /* Room for a chip's focus ring, which the scroller would otherwise clip (M362). */
+  padding-block: var(--focus-ring-width);
 }
 
 /* Show all: every chip, wrapped, on a line of its own (C18). */
@@ -264,5 +266,5 @@
   align-items: center;
   gap: var(--space-xs);
   padding-inline-start: calc(var(--depth, 0) * var(--space-sm));
-  cursor: pointer;
+  cursor: default;
 }

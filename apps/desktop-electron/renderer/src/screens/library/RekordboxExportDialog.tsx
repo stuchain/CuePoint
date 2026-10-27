@@ -33,6 +33,7 @@ import type {
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { exportHistory, useSharedRead } from "../../api/sharedReads";
 import { Button, Modal, MoreAbout } from "../../components";
+import { countNoun } from "../../format/counts";
 import { displayPath, displayPathNameFirst } from "../../format/paths";
 import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
@@ -67,7 +68,7 @@ import {
   unknownTracksLine,
 } from "./rekordboxExport";
 import { reportUnexpected } from "../../reporting/reporting";
-import { RETRY } from "../../format/words";
+import { RETRY, SYNC_TO_FILES } from "../../format/words";
 import "./cleanDialogs.css";
 import "./rekordboxExport.css";
 import { needsDesktopApp, userMessage } from "../../api/userMessage";
@@ -227,6 +228,18 @@ export function RekordboxExportDialog({
   }, [open, historySettled, remembered, keyFormat]);
 
   const choice = useMemo(() => exportChoice(tree, ticked), [tree, ticked]);
+  // M513: "N playlists · Change" opens the details on the tick list; each press is a new opening.
+  const [detailsAsked, setDetailsAsked] = useState(0);
+  const playlistsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) setDetailsAsked(0);
+  }, [open]);
+  useEffect(() => {
+    if (detailsAsked === 0) return;
+    const part = playlistsRef.current;
+    part?.scrollIntoView?.({ block: "nearest" });
+    part?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
+  }, [detailsAsked]);
   const covered = useMemo(() => coveredByFolder(tree, ticked), [tree, ticked]);
   const choiceKey = choice.join(",");
   const requestKey = `${choiceKey}|${keyFormat}|${asked}`;
@@ -482,6 +495,11 @@ export function RekordboxExportDialog({
             {/* 1. Where it goes: one row, the name and where it will be, then Choose file… / Change…. */}
             <section className="rekordbox-export__part" aria-label="Destination">
               <h3 className="rekordbox-export__heading cp-text-label">Save as</h3>
+              {/* M514: what this is, beside Sync to files (the plan's "Save to files" is a retired
+                  word, D3: the shared one is used). */}
+              <p className="cp-modal__lead">
+                {`Makes the file Rekordbox imports. It does not change your music files; ${SYNC_TO_FILES} writes tags into them.`}
+              </p>
               <div className="rekordbox-export__destination">
                 <Hint text={destination ? displayPath(destination, { keepHome: true }) : undefined} inline>
                   <span className="rekordbox-export__path">
@@ -536,6 +554,22 @@ export function RekordboxExportDialog({
               </p>
             )}
 
+            {/* M513: the playlists chosen, in one line, with the way to the tick list. */}
+            {rows.length > 0 && (
+              <p className="rekordbox-export__chosen" data-testid="export-chosen">
+                {choice.length === 0 ? "No playlists" : countNoun(choice.length, "playlist")}
+                {" · "}
+                <button
+                  type="button"
+                  className="cp-link"
+                  disabled={phase === "exporting"}
+                  onClick={() => setDetailsAsked((asked) => asked + 1)}
+                >
+                  Change
+                </button>
+              </p>
+            )}
+
             {staleness && (
               <section aria-label="Source changed">
                 <Notice
@@ -559,7 +593,7 @@ export function RekordboxExportDialog({
             )}
 
             {/* 3. Everything else DEC-084 asks to be stated, one click away (DEC-247). */}
-            <MoreAbout label="What goes in the file">
+            <MoreAbout key={detailsAsked} label="What goes in the file" defaultOpen={detailsAsked > 0}>
               <div className="rekordbox-export__details">
                 {preview && (
                   <section className="rekordbox-export__part" aria-label="Source">
@@ -594,7 +628,7 @@ export function RekordboxExportDialog({
                 )}
 
                 {/* The playlists: what to tick, and what that appends. */}
-                <section className="rekordbox-export__part" aria-label="Playlists">
+                <section ref={playlistsRef} className="rekordbox-export__part" aria-label="Playlists">
                   <h3 className="rekordbox-export__heading cp-text-label">Playlists</h3>
                   {rows.length === 0 ? (
                     <p className="clean-dialog__note">

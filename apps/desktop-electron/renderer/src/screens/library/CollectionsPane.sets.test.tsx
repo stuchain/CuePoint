@@ -6,7 +6,7 @@
  * - **Made as a node is**: "Set" in the "+ New" menu beside Collection, in the selected
  *   folder, straight into its name — offered only where a Set can be made.
  * - **Its own menu**: "Open in Prepare" (once there is a Prepare), "Duplicate",
- *   the set list and the export; "New Set from…" on a Collection and a Smart
+ *   the set list and the export; "New Set from a list…" on a Collection and a Smart
  *   Collection, and on a Rekordbox playlist beside it.
  * - **It holds tracks**, so a drop lands on it.
  * - **The hook** makes, copies and duplicates Sets through the Sets bridge,
@@ -164,7 +164,8 @@ describe("making a Set", () => {
     paneWith({ canMakeSets: false });
     await userEvent.click(screen.getByRole("button", { name: "+ New" }));
     const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
-    expect(items.map((item) => item.textContent)).toEqual(["Collection", "Folder"]);
+    // M298: each + New entry carries a hint line; the labels are the entries.
+    expect(items.map((item) => item.querySelector(".cp-track-menu__label")?.textContent)).toEqual(["Collection", "Folder"]);
   });
 
   it("makes a Set in an empty tree from New Set over the tree", async () => {
@@ -198,6 +199,7 @@ describe("a Set's menu", () => {
     expect(entries()).toEqual([
       "Duplicate",
       "Rename",
+      "Move to folder…", // M462
       "Save set list…",
       "Copy set list",
       "Export to Rekordbox…",
@@ -251,7 +253,7 @@ describe("a Set's menu", () => {
       onExport: undefined,
     });
     fireEvent.contextMenu(rowFor("Friday", "set"));
-    expect(entries()).toEqual(["Rename", "Delete…"]);
+    expect(entries()).toEqual(["Rename", "Move to folder…", "Delete…"] /* M462 */);
   });
 });
 
@@ -259,27 +261,28 @@ describe("New Set from… in the tree", () => {
   it("is on a Collection and a Smart Collection, and not on a folder or a Set", async () => {
     const { onNewSetFrom } = paneWith();
     fireEvent.contextMenu(rowFor("Warm-up", "collection"));
-    expect(entries()).toContain("New Set from…");
-    await userEvent.click(within(menu()).getByRole("menuitem", { name: "New Set from…" }));
+    expect(entries()).toContain("New Set from a list…");
+    await userEvent.click(within(menu()).getByRole("menuitem", { name: "New Set from a list…" }));
     expect(onNewSetFrom).toHaveBeenCalledWith(expect.objectContaining({ id: WARMUP.id }));
 
     fireEvent.contextMenu(rowFor("Ada", "smart"));
     expect(entries()).toEqual([
       "Duplicate",
       "Save as a Collection…",
-      "New Set from…",
+      "New Set from a list…",
       "Rename",
+      "Move to folder…", // M462
       "Export to Rekordbox…",
       "Delete…",
     ]);
-    await userEvent.click(within(menu()).getByRole("menuitem", { name: "New Set from…" }));
+    await userEvent.click(within(menu()).getByRole("menuitem", { name: "New Set from a list…" }));
     expect(onNewSetFrom).toHaveBeenLastCalledWith(expect.objectContaining({ id: SMART.id }));
 
     fireEvent.contextMenu(rowFor("Gigs", "folder"));
-    expect(entries()).not.toContain("New Set from…");
+    expect(entries()).not.toContain("New Set from a list…");
     await userEvent.keyboard("{Escape}");
     fireEvent.contextMenu(rowFor("Friday", "set"));
-    expect(entries()).not.toContain("New Set from…");
+    expect(entries()).not.toContain("New Set from a list…");
   });
 
   it("is on a Rekordbox playlist and not on its folder, when the page offers it", async () => {
@@ -312,8 +315,8 @@ describe("New Set from… in the tree", () => {
     fireEvent.contextMenu(rowFor("SETS"));
     expect(screen.queryByRole("menu")).toBeNull();
     fireEvent.contextMenu(rowFor("Sunday"));
-    expect(entries()).toEqual(["New Set from…"]);
-    await userEvent.click(within(menu()).getByRole("menuitem", { name: "New Set from…" }));
+    expect(entries()).toEqual(["New Set from a list…"]);
+    await userEvent.click(within(menu()).getByRole("menuitem", { name: "New Set from a list…" }));
     expect(onNewSetFrom).toHaveBeenCalledWith(expect.objectContaining({ id: 2, path: "SETS/Sunday" }));
   });
 

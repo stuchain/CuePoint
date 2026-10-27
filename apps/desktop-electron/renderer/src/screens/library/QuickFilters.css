@@ -19,8 +19,8 @@
 
 .cp-quick__panel {
   position: absolute;
-  /* The trigger's border and the panel's are one line where they meet (M113). */
-  top: calc(100% - var(--control-border-width));
+  /* Every menu opens 2xs off its trigger (M69, D26 A); this replaces M113's shared border. */
+  top: calc(100% + var(--space-2xs));
   left: 0;
   z-index: var(--z-sticky);
   display: flex;
@@ -29,7 +29,8 @@
   min-width: calc(200px * var(--scale));
   max-width: calc(320px * var(--scale));
   max-height: calc(340px * var(--scale));
-  padding: var(--space-md);
+  /* A menu's inset (M288). */
+  padding: var(--space-xs);
   overflow-y: auto;
   /* P50: the popover chrome. */
   background: var(--bg-panel);
@@ -37,10 +38,21 @@
   box-shadow: var(--shadow-popover);
 }
 
+/* The Key grid's twelve columns are wider than a list: the panel takes them whole (M112). */
+.cp-quick__panel:has(.cp-quick__keys) {
+  max-width: none;
+}
+
+/* A leaving list takes no input: what is behind it takes the click (M380). */
+.cp-quick__panel[data-leaving] {
+  pointer-events: none;
+}
+
+/* Rows touch, as a menu's do (M288). */
 .cp-quick__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 0;
 }
 
 /* P50: a list row is the one row height, in Inter, with the one hover. */
@@ -48,15 +60,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  min-height: var(--row-height);
-  padding-inline: var(--space-xs);
+  /* A menu row's height and inset (M288). */
+  min-height: calc(var(--row-height) + var(--hairline));
+  padding-inline: var(--space-md);
   font-family: var(--font-control);
   font-size: var(--control-font-size);
-  cursor: pointer;
+  cursor: default;
 }
 
+/* The one menu fill (M289): no violet, no bar. */
 .cp-quick__choice:hover {
-  background: var(--row-hover);
+  background: var(--menu-active-fill);
 }
 
 .cp-quick__name {
@@ -110,7 +124,7 @@
 .cp-quick__key {
   position: relative;
   display: inline-flex;
-  cursor: pointer;
+  cursor: default;
 }
 
 /* A ticked key is outlined, so the chip's own colour is never the only sign (M111). */

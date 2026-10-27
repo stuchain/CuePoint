@@ -25,7 +25,7 @@ function draw(props: Partial<React.ComponentProps<typeof PickerDialog>> = {}) {
   const view = render(
     <PickerDialog
       open
-      title="Add to Collection"
+      title="Add to a Collection"
       items={ITEMS}
       onChoose={onChoose}
       onClose={onClose}

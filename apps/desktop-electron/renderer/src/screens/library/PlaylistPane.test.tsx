@@ -386,12 +386,14 @@ describe("the keyboard", () => {
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }));
   });
 
-  it("selects with Space", () => {
+  // Moved guard (M465/M482): Space used to select a row; it now reaches the player, as it does
+  // everywhere else in the window. Enter still selects (above).
+  it("leaves Space to the player rather than selecting", () => {
     const { onSelect } = paneWith(["SETS"]);
 
     fireEvent.keyDown(rowFor("ONE-OFFS"), { key: " " });
 
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 5 }));
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("stops at the ends", () => {

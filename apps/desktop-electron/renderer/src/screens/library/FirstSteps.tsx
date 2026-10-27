@@ -24,6 +24,7 @@ import {
 import { useFirstRunProgress, useOnboardingFinished } from "../../components/useFirstRunProgress";
 import { selectHasPlayed } from "../../components/player/playerFormat";
 import { usePlayerValue } from "../../components/player/playerStore";
+import { usePresence } from "../../tokens/usePresence";
 import "./FirstSteps.css";
 
 interface FirstStepsProps {
@@ -185,7 +186,9 @@ export function FirstStepsNote(props: Omit<FirstStepsProps, "imported">) {
 function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "imported">) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
+  // M380: the popover plays its exit, marked [data-leaving], before it goes.
+  const presence = usePresence<HTMLDivElement>(open);
+  const popoverRef = presence.ref;
   const close = useCallback((restoreFocus: boolean) => {
     setOpen(false);
     if (restoreFocus) rootRef.current?.querySelector<HTMLElement>("button")?.focus();
@@ -204,7 +207,7 @@ function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "impo
   // Opening moves focus into the list, so Escape and Tab start where the list is (M301).
   useEffect(() => {
     if (open) popoverRef.current?.focus();
-  }, [open]);
+  }, [open, popoverRef]);
 
   useEffect(() => {
     if (!open) return;
@@ -240,8 +243,16 @@ function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "impo
       >
         First steps {doneCount}/4
       </Button>
-      {open && (
-        <div ref={popoverRef} tabIndex={-1} className="first-steps-note__popover" role="dialog" aria-label="First steps">
+      {presence.present && (
+        <div
+          ref={popoverRef}
+          tabIndex={-1}
+          className="first-steps-note__popover"
+          role="dialog"
+          aria-label="First steps"
+          data-leaving={presence.leaving ? "" : undefined}
+          inert={presence.leaving || undefined}
+        >
           <StepList steps={steps} />
         </div>
       )}

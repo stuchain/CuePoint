@@ -1,5 +1,5 @@
 /**
- * "Copy Beatport values…" over a selection (CLEAN-13, DEC-068, PAGES-07B).
+ * "Use Beatport values…" over a selection (CLEAN-13, DEC-068, PAGES-07B).
  *
  * Accepting a match writes nothing; applying copies the chosen fields from
  * each track's accepted match into CuePoint's layer, as one batch. A track
@@ -14,6 +14,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { OverrideField } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
 import { countNoun } from "../../format/counts";
+import { COPY_VALUES } from "../../format/words";
 import { APPLY_FIELDS, APPLY_FIELD_LABELS } from "../clean/comparison";
 import "./cleanDialogs.css";
 
@@ -87,7 +88,8 @@ export function ApplyValuesDialog({ open, count, onClose, onApply, preview }: Ap
   return (
     <Modal
       open={open}
-      title="Copy Beatport values"
+      // M412: the one verb the menus use (COPY_VALUES).
+      title={`${COPY_VALUES} Beatport values`}
       onClose={onClose}
       primaryAction={{
         label: `Copy to ${tracksWord(together ?? count)}`,

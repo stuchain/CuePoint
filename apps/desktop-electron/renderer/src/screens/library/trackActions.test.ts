@@ -92,11 +92,11 @@ describe("the groups", () => {
       "Remove from “Closers”",
       "Add tag…",
       "Remove tag…",
-      "Rate",
-      "Add to favorites",
-      "Remove from favorites",
     ]);
-    expect(by.beatport).toEqual(["Match on Beatport…", "Review these matches", "Copy Beatport values…"]);
+    // M299: Rate (the stars row) and the favorites are the menu's top level, not the bar's Organize.
+    const organize = groups.find((group) => group.id === "organize")!;
+    expect(labels(organize.quick ?? [])).toEqual(["Rate", "Add to favorites", "Remove from favorites"]);
+    expect(by.beatport).toEqual(["Match on Beatport…", "Review these matches", "Use Beatport values…"]);
     expect(by.more).toEqual([
       "Similar tracks",
       "Artist page",
@@ -181,16 +181,15 @@ describe("one list behind both surfaces", () => {
     for (const group of rest) {
       const parent = menu.find((item) => item.id === groupMenuId(group.id))!;
       expect(parent.label).toBe(group.label);
-      // Organize keeps Rate and the favorites on the bar; the menu shows them one level up.
-      const held = group.items.filter((item) => !["rate", "favorite", "unfavorite"].includes(item.id));
-      expect(parent.items!.map((item) => item.id)).toEqual(held.map((item) => item.id));
-      expect(labels(parent.items!)).toEqual(labels(held));
+      // Rate and the favorites are not in Organize (M299); the menu shows them one level up.
+      expect(parent.items!.map((item) => item.id)).toEqual(group.items.map((item) => item.id));
+      expect(labels(parent.items!)).toEqual(labels(group.items));
     }
   });
 
-  it("lifts Rate, a submenu of its own, and Favorite to the menu's top level and keeps Organize to seven or fewer (D26, M299)", () => {
+  it("lifts Rate, an inline stars row, and Favorite to the menu's top level and keeps Organize to seven or fewer (D26, M299)", () => {
     const menu = menuFromGroups(trackActionGroups(IN_COLLECTION, handlers()));
-    expect(menu.find((item) => item.id === "rate")?.items?.length).toBeGreaterThan(1);
+    expect(menu.find((item) => item.id === "rate")?.kind).toBe("stars");
     expect(menu.some((item) => item.id === "favorite")).toBe(true);
     const organize = menu.find((item) => item.id === groupMenuId("organize"))!;
     expect(organize.items!.length).toBeLessThanOrEqual(7);
@@ -222,9 +221,9 @@ describe("one list behind both surfaces", () => {
     for (const count of [1, 2, 40_000]) {
       const groups = trackActionGroups({ ...IN_COLLECTION, count }, handlers());
       const menu = menuFromGroups(groups);
-      // Same entries; Rate and the favorites sit higher in the menu than in Organize.
+      // Same entries; Rate and the favorites (each group's quick ones) sit at the menu's top.
       expect(leaves(menu).map((item) => item.id).sort()).toEqual(
-        leaves(groups.flatMap((group) => group.items)).map((item) => item.id).sort(),
+        leaves(groups.flatMap((group) => [...(group.quick ?? []), ...group.items])).map((item) => item.id).sort(),
       );
     }
   });
@@ -234,7 +233,8 @@ describe("every entry reaches its action", () => {
   it("calls the handler it is named for", () => {
     const spies = handlers();
     const groups = trackActionGroups(IN_COLLECTION, spies);
-    const pick = (id: string) => leaves(groups.flatMap((group) => group.items)).find((item) => item.id === id)!.onSelect();
+    const all = leaves(groups.flatMap((group) => [...(group.quick ?? []), ...group.items]));
+    const pick = (id: string) => all.find((item) => item.id === id)!.onSelect();
 
     pick("play");
     pick("play-next");
@@ -247,7 +247,8 @@ describe("every entry reaches its action", () => {
     pick("remove-from-collection");
     pick("add-tag");
     pick("remove-tag");
-    pick("rate-3");
+    // The stars row rates through its own callback (M299).
+    all.find((item) => item.id === "rate")!.onRate!(3);
     pick("favorite");
     pick("unfavorite");
     for (const spy of [

@@ -24,6 +24,23 @@ import { OverriddenValue, RowArtwork, RowLoudness, RowWaveform } from "./library
 import { gatherLoudnessText } from "./libraryLoudness";
 import { matchedLabel } from "./searchMatch";
 import { formatDuration } from "./trackValues";
+import { PixelIcon } from "../../components/PixelIcon";
+
+/**
+ * A row as the table may draw it: `just_saved` is the page's own mark, for a rating or a favorite
+ * set from a menu a moment ago (M382). The engine never sends it.
+ */
+export type ShownTrackRow = LibraryTrackRow & { just_saved?: boolean };
+
+/** The tick by the title of a row whose rating or favorite was just set (M382, D-optimistic). */
+function savedTick(track: LibraryTrackRow) {
+  return (track as ShownTrackRow).just_saved ? (
+    <span className="library-saved" role="status">
+      <PixelIcon name="check" size="sm" />
+      <span className="cp-visually-hidden">Saved</span>
+    </span>
+  ) : null;
+}
 
 /**
  * Stars, not a number — the parser converted Rekordbox's 0/51/…/255 encoding
@@ -35,10 +52,34 @@ function formatRating(rating: number | null): ReactNode {
   return rating == null || Math.round(rating) <= 0 ? "" : <RatingStars count={rating} />;
 }
 
+/**
+ * Genre's cell (M95): the primary genre the engine names, falling back to the whole value, and every
+ * genre in a hint when the value names more than one.
+ */
+function genreShown(track: LibraryTrackRow): { shown?: string; hint?: string } {
+  const primary = track.genre_primary?.trim();
+  const all = (track.genres ?? []).filter((genre) => genre.trim() !== "");
+  return {
+    shown: primary ? primary : undefined,
+    hint: all.length > 1 ? all.join(", ") : undefined,
+  };
+}
+
 /** The rating as words, for a copied cell: "3 stars", or nothing when there is none. */
 function ratingText(rating: number | null): string {
   return rating == null || Math.round(rating) <= 0 ? "" : starsFor(rating);
 }
+
+/**
+ * The least a short number or key column is drawn at, before scale (M88): its heading's words plus
+ * the sort arrow, the gap between them and the heading's own padding (`--space-lg` on the arrow's
+ * side, `--space-sm` on the other), so a narrow pane cuts no heading to "Leng" or "Ke". Worked at
+ * 0.5em a Pixelify Sans glyph at the 10.5 px label size ("Length" draws about 31 px):
+ * Key 12 + 6 + 4 + 16 + 6 = 44, BPM 12 + 6 + 4 + 16 + 6 = 44, Length 12 + 6 + 4 + 32 + 6 = 60.
+ * 60, not more: the opening columns must still fit the default window (M85's guard).
+ * Prepare's side panel and the Keys tracks pane use these columns too.
+ */
+export const HEADING_MIN_PX = { bpm: 56, key: 56, duration_seconds: 60 } as const;
 
 /*
  * One default order across the pages (D12): Title, Artist, BPM, Key, Length, then the extras. The
@@ -56,9 +97,16 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     // A row a search found by its key or tempo says so beside its title (FLW-5).
     render: (track) => {
       const matched = matchedLabel(track);
+      const tick = savedTick(track);
       return matched ? (
         <>
           {track.title} <span className="library-matched">{matched}</span>
+          {tick}
+        </>
+      ) : tick ? (
+        <>
+          {track.title}
+          {tick}
         </>
       ) : (
         track.title
@@ -86,7 +134,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     id: "bpm",
     header: "BPM",
     sortKey: "bpm",
-    minWidthPx: 56,
+    minWidthPx: HEADING_MIN_PX.bpm,
     defaultWidthPx: 72,
     align: "right",
     render: (track) => <OverriddenValue row={track} field="bpm" />,
@@ -99,7 +147,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     // An empty cell is a dash; this is why (DEC-201).
     hint: "Keys come from Beatport matches",
     sortKey: "key",
-    minWidthPx: 56,
+    minWidthPx: HEADING_MIN_PX.key,
     defaultWidthPx: 70,
     render: (track) => <OverriddenValue row={track} field="key" />,
     text: (track) => {
@@ -111,7 +159,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     id: "duration_seconds",
     header: "Length",
     sortKey: "duration_seconds",
-    minWidthPx: 56,
+    minWidthPx: HEADING_MIN_PX.duration_seconds,
     defaultWidthPx: 76,
     align: "right",
     render: (track) => formatDuration(track.duration_seconds) || null,
@@ -122,7 +170,8 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "genre",
     minWidthPx: 90,
     defaultWidthPx: 130,
-    render: (track) => <OverriddenValue row={track} field="genre" />,
+    // M95: the first genre, with every genre in the hint when there are more; the mark stays.
+    render: (track) => <OverriddenValue row={track} field="genre" {...genreShown(track)} />,
     text: (track) => effectiveText(track, "genre"),
   },
   {
@@ -142,7 +191,8 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "rating",
     minWidthPx: 70,
     defaultWidthPx: 92,
-    render: (track) => formatRating(track.effective_rating) || null,
+    // "" and not null: null is a missing value, which the table draws as a dash (M94).
+    render: (track) => formatRating(track.effective_rating) || "",
     text: (track) => ratingText(track.effective_rating),
   },
   {

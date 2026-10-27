@@ -13,6 +13,9 @@
  */
 import { useEffect, useId, useRef, useState } from "react";
 
+import { useLayerStack } from "../../hooks/useLayerStack";
+import { usePresence } from "../../tokens/usePresence";
+
 import { Button } from "../../components/Button";
 import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { formatBpm } from "../../components/format/bpm";
@@ -76,6 +79,11 @@ function numberText(value: number | null): string {
   return value === null ? "" : String(value);
 }
 
+/** A button's name with how many choices its filter holds (M470): the count is said, not pressed. */
+function namedWithCount(label: string, count: number): string | undefined {
+  return count > 0 ? `${label}, ${formatCount(count)} chosen` : undefined;
+}
+
 function parse(text: string): number | null {
   const trimmed = text.trim();
   if (trimmed === "") return null;
@@ -100,6 +108,12 @@ export function QuickFilters({
   const panelId = useId();
   /** The button that opened the list, so Escape can give focus back to it (M470). */
   const opener = useRef<HTMLElement | null>(null);
+  // M469: one layer in the stack, so Escape closes a menu or dialog opened over the list first.
+  const isTop = useLayerStack(open !== null);
+  // M380: the list plays its exit, marked [data-leaving], before it goes; the kind it showed is kept.
+  const presence = usePresence<HTMLDivElement>(open !== null);
+  const [lastKind, setLastKind] = useState<QuickKind | null>(open);
+  if (open !== null && open !== lastKind) setLastKind(open);
 
   // Closed by Escape, and by a click anywhere else, as a menu is.
   useEffect(() => {
@@ -108,7 +122,8 @@ export function QuickFilters({
       if (root.current && !root.current.contains(event.target as Node)) setOpen(null);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      // isTop reads the stack when the key arrives.
+      if (event.key !== "Escape" || !isTop()) return;
       setOpen(null);
       // The next Tab starts at the button, not at the top of the window.
       opener.current?.focus();
@@ -119,7 +134,7 @@ export function QuickFilters({
       document.removeEventListener("mousedown", away);
       document.removeEventListener("keydown", escape);
     };
-  }, [open]);
+  }, [open, isTop]);
 
   const toggle = (kind: QuickKind, from?: HTMLElement | null) => {
     if (from) opener.current = from;
@@ -131,8 +146,17 @@ export function QuickFilters({
     onOpen();
   };
 
+  const leaving = presence.leaving;
   const panelFor = (kind: QuickKind) => (
-              <div className="cp-quick__panel" role="dialog" aria-label={LABELS[kind]} id={panelId}>
+              <div
+                className="cp-quick__panel"
+                role="dialog"
+                aria-label={LABELS[kind]}
+                id={leaving ? undefined : panelId}
+                ref={presence.ref}
+                data-leaving={leaving ? "" : undefined}
+                inert={leaving || undefined}
+              >
                 {kind === "key" && (
                   <KeyList
                     filters={filters}
@@ -183,7 +207,7 @@ export function QuickFilters({
     return (
       <div className="cp-quick" ref={root}>
         <div className="cp-quick__item">
-          <Button variant="secondary" menu aria-pressed={total > 0} {...menu.buttonProps}>
+          <Button variant="secondary" menu aria-label={namedWithCount("Filters", total)} {...menu.buttonProps}>
             Filters
             {total > 0 && <span className="cp-quick__count">{total}</span>}
           </Button>
@@ -207,7 +231,7 @@ export function QuickFilters({
               ]}
             />
           )}
-          {open && panelFor(open)}
+          {presence.present && (open ?? lastKind) !== null && panelFor((open ?? lastKind) as QuickKind)}
         </div>
       </div>
     );
@@ -218,14 +242,16 @@ export function QuickFilters({
       {(Object.keys(LABELS) as QuickKind[]).map((kind) => {
         const count = quickCount(filters, FIELDS[kind]);
         const shown = open === kind;
+        // The list stays a moment after it closes, to play its exit (M380).
+        const drawn = shown || (open === null && presence.present && lastKind === kind);
         return (
           <div className="cp-quick__item" key={kind}>
-            {/* The toggle look (D1): pressed while the filter has a choice in it (C4, C14). */}
+            {/* M470: a menu button, not a toggle: it says it is open, and its name says the count. */}
             <Button
               variant="secondary"
               menu
               aria-haspopup="dialog"
-              aria-pressed={count > 0}
+              aria-label={namedWithCount(LABELS[kind], count)}
               aria-expanded={shown}
               aria-controls={shown ? panelId : undefined}
               onClick={(event) => toggle(kind, event.currentTarget)}
@@ -233,7 +259,7 @@ export function QuickFilters({
               {LABELS[kind]}
               {count > 0 && <span className="cp-quick__count">{count}</span>}
             </Button>
-            {shown && panelFor(kind)}
+            {drawn && panelFor(kind)}
           </div>
         );
       })}

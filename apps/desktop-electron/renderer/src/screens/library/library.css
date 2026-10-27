@@ -79,8 +79,10 @@
   color: var(--danger-text);
 }
 
+/* M275: a sunken well, not a framed box that scrolls on its own. */
 .library-preview__samples {
-  border: var(--divider);
+  border: 0;
+  background: var(--bg-input);
   padding: var(--space-md);
 }
 
@@ -97,8 +99,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  max-height: 30vh;
-  overflow-y: auto;
 }
 
 .library-preview__samples li {
@@ -123,7 +123,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-sm);
-  cursor: pointer;
+  cursor: default;
 }
 
 .library-preview__blocked {
@@ -188,8 +188,10 @@
      112 and 220 draw 168 and 330 at the default 1.5× size, so a name and its count
      fit at any text size (a longer name ends in "…"); the floor never takes more than 45% of
      the body, so the table keeps its share in a narrow window. A 200 floor was tried (round 8)
-     and cost the table two rows with Track details open. */
-  grid-template-columns: calc(clamp(min(calc(112px * var(--scale)), 45%), 26%, calc(220px * var(--scale))) + var(--safe-left)) minmax(0, 1fr);
+     and cost the table two rows with Track details open. M77: the floor is 150, which holds the
+     widest top-level row, "All tracks" and its count, at every scale (112 cut it to "All tra…" at
+     2x and 3x), and still leaves the table its rows. */
+  grid-template-columns: calc(clamp(min(calc(150px * var(--scale)), 45%), 26%, calc(220px * var(--scale))) + var(--safe-left)) minmax(0, 1fr);
   /* D36: the pane meets the sidebar's edge, with no strip of page margin between. The body steps out
      over the page's left gutter by --safe-left and the pane's column grows by the same, so the table
      keeps its place and the pane's words keep theirs (rows and heads pad in by --safe-left, below). */
@@ -292,7 +294,7 @@
   background: transparent;
   color: var(--link);
   font: inherit;
-  cursor: pointer;
+  cursor: default;
   text-decoration: underline;
 }
 
@@ -325,8 +327,9 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-width: calc(12px * var(--scale));
-  height: calc(12px * var(--scale));
+  /* M36: the small icon box, snapped as the icons are, so no edge lands between pixels. */
+  min-width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   padding: 0 var(--space-2xs);
   /* The data face: the pixel face has no dot to draw. */
   font-family: var(--font-data);
@@ -336,7 +339,10 @@
   background: var(--accent-primary);
 }
 
+/* Beatport's mark is the pixel "B" glyph (M36), in the one ink every status fill takes. */
 .library-cell__mark--beatport {
+  padding: 0;
+  color: var(--fg-on-status);
   background: var(--accent-info);
 }
 
@@ -393,4 +399,13 @@
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
   white-space: nowrap;
+}
+
+/* M382: a rating or a favorite set from a menu shows a tick by the title until the engine has it. */
+.library-saved {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  margin-inline-start: var(--space-xs);
+  color: var(--success-text);
 }

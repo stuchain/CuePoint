@@ -266,8 +266,9 @@ describe("a broken Smart Collection (ORG-06)", () => {
 
 describe("the + New menu (K14)", () => {
   const newButton = () => screen.getByRole("button", { name: "+ New" });
+  // M298: each + New entry carries a hint line; the labels are the entries.
   const items = () =>
-    within(screen.getByRole("menu")).getAllByRole("menuitem").map((item) => item.textContent);
+    within(screen.getByRole("menu")).getAllByRole("menuitem").map((item) => item.querySelector(".cp-track-menu__label")?.textContent);
 
   it("is one menu button where three buttons stood", () => {
     paneWith(NODES, [1], { canMakeSets: true });
@@ -955,7 +956,7 @@ describe("a Smart Collection's own gestures", () => {
     await pickAction("Save as a Collection…");
 
     expect(onFreezeSmart).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog")).toHaveTextContent(/Freeze “Recent techno”\?/);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Save “Recent techno” as a Collection?");
   });
 
   it("says the copy stops changing, which is the whole point", async () => {
@@ -976,7 +977,7 @@ describe("a Smart Collection's own gestures", () => {
     paneOnSmart({ onFreezeSmart });
 
     await pickAction("Save as a Collection…");
-    await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save as a Collection" }) /* M409 */);
 
     await waitFor(() => expect(onFreezeSmart).toHaveBeenCalledWith(5));
   });
@@ -991,7 +992,7 @@ describe("a Smart Collection's own gestures", () => {
     });
 
     await pickAction("Save as a Collection…");
-    await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save as a Collection" }) /* M409 */);
 
     await waitFor(() =>
       expect(onNotify).toHaveBeenCalledWith(
@@ -1025,7 +1026,7 @@ describe("a Smart Collection's own gestures", () => {
     });
 
     await pickAction("Save as a Collection…");
-    await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save as a Collection" }) /* M409 */);
 
     await waitFor(() =>
       expect(onNotify).toHaveBeenCalledWith("Its rules cannot be run", "warning"),
@@ -1052,7 +1053,7 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
     paneWith(NODES, [1], { onExport });
     fireEvent.contextMenu(rowFor("Warmups"));
 
-    expect(entries()).toEqual(["Rename", "Export to Rekordbox…", "Delete…"]);
+    expect(entries()).toEqual(["Rename", "Move to folder…", "Export to Rekordbox…", "Delete…"] /* M462 */);
   });
 
   it("opens the export with that node, and closes", async () => {
@@ -1076,6 +1077,7 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
       "Duplicate",
       "Save as a Collection…",
       "Rename",
+      "Move to folder…", // M462
       "Export to Rekordbox…",
       "Delete…",
     ]);
@@ -1133,7 +1135,7 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
 
     fireEvent.contextMenu(rowFor("Recent techno"));
     await user.click(within(menu()).getByRole("menuitem", { name: "Save as a Collection…" }));
-    await user.click(await screen.findByRole("button", { name: "Freeze it" }));
+    await user.click(await screen.findByRole("button", { name: "Save as a Collection" } /* M409 */));
     expect(onFreezeSmart).toHaveBeenCalledWith(5);
 
     fireEvent.contextMenu(rowFor("Warmups"));
@@ -1145,5 +1147,31 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
     const { onSelect } = paneWith(NODES, [1], { onExport: vi.fn() });
     fireEvent.contextMenu(rowFor("Warmups"));
     expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe("moving a row without dragging it (M462)", () => {
+  it("offers Move to folder…, which asks where, the current folder drawn and not choosable", async () => {
+    const { onMove } = paneWith(NODES, [1]);
+    fireEvent.contextMenu(rowFor("Warmups"));
+    await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Move to folder…" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Move “Warmups” to" });
+    expect(within(dialog).getByRole("option", { name: /^Sets/ })).toBeDisabled();
+    await userEvent.click(within(dialog).getByRole("option", { name: /^Peak/ }));
+
+    await waitFor(() => expect(onMove).toHaveBeenCalledWith(2, 3));
+  });
+
+  it("moves with Alt+Down to the next place, here from Sets into Peak", async () => {
+    const { onMove } = paneWith(NODES, [1]);
+    fireEvent.keyDown(rowFor("Warmups"), { key: "ArrowDown", altKey: true });
+    await waitFor(() => expect(onMove).toHaveBeenCalledWith(2, 3));
+  });
+
+  it("is not offered where there is nowhere else to go", () => {
+    paneWith([NODES[3]!], []);
+    fireEvent.contextMenu(rowFor("Recent techno"));
+    expect(within(screen.getByRole("menu")).queryByRole("menuitem", { name: "Move to folder…" })).toBeNull();
   });
 });

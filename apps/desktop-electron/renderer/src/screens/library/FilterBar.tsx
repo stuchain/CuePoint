@@ -69,6 +69,19 @@ import { CANCEL, TRY_AGAIN } from "../../format/words";
 import "./FilterBar.css";
 import { Hint } from "../../components/Hint";
 
+/** How long the count must hold before a screen reader is told it (M468). */
+const COUNT_SAID_AFTER_MS = 500;
+
+/** `value` once it has stopped changing for `ms` (M468). */
+function useSettled(value: string, ms: number): string {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(value), ms);
+    return () => window.clearTimeout(timer);
+  }, [value, ms]);
+  return settled;
+}
+
 /** One Collection a membership clause can name. Folders are drawn, not chosen. */
 export interface FilterCollectionOption {
   id: number;
@@ -220,6 +233,7 @@ export function FilterBar({
     if (openAddToken > 0) setAdding(true);
   }, [openAddToken]);
   const [draft, setDraft] = useState<DraftRule>(() => emptyDraft(vocabulary));
+  const countSaid = useSettled(count?.long ?? "", COUNT_SAID_AFTER_MS);
   const [problem, setProblem] = useState<string | null>(null);
 
   // The vocabulary arrives after the first render; a draft built before it can
@@ -783,9 +797,11 @@ export function FilterBar({
                 More
               </Button>
             )}
+            {count && <span className="cp-count">{foldTrailing ? count.short : count.long}</span>}
+            {/* M468: the count is said once it settles, not at every keystroke of the search. */}
             {count && (
-              <span className="cp-count" role="status">
-                {foldTrailing ? count.short : count.long}
+              <span className="cp-visually-hidden" role="status">
+                {countSaid}
               </span>
             )}
           </div>
@@ -862,8 +878,9 @@ export function FilterBar({
               {CANCEL}
             </Button>
             <Hint text={missingValue ? "Type a value first" : undefined}>
+              {/* M110: the button says what it adds. */}
               <Button variant="primary" onClick={submit} disabled={missingValue}>
-                Add
+                Add filter
               </Button>
             </Hint>
           </div>

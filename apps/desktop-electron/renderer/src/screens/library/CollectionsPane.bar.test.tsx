@@ -89,7 +89,8 @@ describe("the + New menu over the tree", () => {
     paneWith(null, { canMakeSets: false });
     await userEvent.click(screen.getByRole("button", { name: "+ New" }));
     const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
-    expect(items.map((item) => item.textContent)).toEqual(["Collection", "Folder"]);
+    // M298: each + New entry carries a hint line; the labels are the entries.
+    expect(items.map((item) => item.querySelector(".cp-track-menu__label")?.textContent)).toEqual(["Collection", "Folder"]);
   });
 });
 
@@ -182,7 +183,7 @@ describe("the selected row's actions menu", () => {
 
   it("offers New Set from…, Rename, Export to Rekordbox… and Delete… on a Collection, and no Duplicate", async () => {
     paneWith(WARMUP);
-    expect(await rowActions()).toEqual(["New Set from…", "Rename", "Export to Rekordbox…", "Delete…"]);
+    expect(await rowActions()).toEqual(["New Set from a list…", "Rename", "Move to folder…", "Export to Rekordbox…", "Delete…"]);
   });
 
   it("puts Delete… last, after a divider, and not as a button of its own", async () => {
@@ -309,7 +310,7 @@ describe("Freeze lives on the row's menu for a Smart Collection (K14)", () => {
     const props = paneWith(SMART);
     await pickAction("Save as a Collection…");
     expect(props.onFreezeSmart).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save as a Collection" }) /* M409 */);
     expect(props.onFreezeSmart).toHaveBeenCalledWith(SMART.id);
   });
 
@@ -325,7 +326,7 @@ describe("Freeze lives on the row's menu for a Smart Collection (K14)", () => {
 describe("one list for both menus", () => {
   it("shows a Smart Collection's New Set from… in the '•••' menu as in the right-click menu", async () => {
     paneWith(SMART);
-    expect(await rowActions()).toContain("New Set from…");
+    expect(await rowActions()).toContain("New Set from a list…");
   });
 
   it("shows a Set's Copy set list in the '•••' menu as in the right-click menu", async () => {

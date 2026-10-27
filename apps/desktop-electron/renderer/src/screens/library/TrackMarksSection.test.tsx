@@ -87,7 +87,7 @@ describe("the cue points", () => {
   it("says a track has none once the library's marks have been read", () => {
     render(<TrackMarksSection marks={{ ...MARKS, hot_cues: 0, memory_cues: 0, cues: [] }} />);
     expect(within(section()).queryByRole("list")).toBeNull();
-    expect(cuesSummary({ ...MARKS, hot_cues: 0, memory_cues: 0, cues: [] })).toBe("none");
+    expect(cuesSummary({ ...MARKS, hot_cues: 0, memory_cues: 0, cues: [] })).toBe("No cues"); // M126 (P3)
   });
 
   it("says the cues are coming, not missing, before the marks have been read", () => {

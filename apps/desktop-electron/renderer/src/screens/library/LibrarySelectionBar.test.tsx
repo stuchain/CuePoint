@@ -89,8 +89,12 @@ describe("the Library's selection bar", () => {
     const button = screen.getByRole("button", { name: "Organize" });
     button.getBoundingClientRect = () =>
       ({ left: 40, bottom: 90, top: 60, right: 100, width: 60, height: 30 }) as DOMRect;
+    const barRoot = button.closest<HTMLElement>(".cp-selection-bar")!;
+    barRoot.getBoundingClientRect = () =>
+      ({ left: 0, bottom: 100, top: 52, right: 600, width: 600, height: 48 }) as DOMRect;
     await userEvent.click(button);
-    expect(onOpenGroup).toHaveBeenCalledWith("organize", { x: 40, y: 90 });
+    // M290: the bar's top edge goes with it, so the menu opens above the bar, not the button.
+    expect(onOpenGroup).toHaveBeenCalledWith("organize", { x: 40, y: 90, above: 52 }, undefined);
   });
 
   it("keeps a disabled group reachable and gives no menu for it", async () => {
@@ -117,7 +121,7 @@ describe("the Library's selection bar", () => {
     await userEvent.keyboard("{ArrowRight}");
     expect(stops[1]).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
-    expect(onOpenGroup).toHaveBeenLastCalledWith("organize", expect.any(Object));
+    expect(onOpenGroup).toHaveBeenLastCalledWith("organize", expect.any(Object), undefined);
     await userEvent.keyboard("{End}");
     expect(stops[3]).toHaveFocus();
     await userEvent.keyboard("{ArrowRight}");

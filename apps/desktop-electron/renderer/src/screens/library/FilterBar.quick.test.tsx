@@ -254,7 +254,7 @@ describe("the quick filters (FLW-4)", () => {
         initial={{ match: "all", rules: [{ field: "key", operator: "is", value: "8a" }] }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Key 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key, 1 chosen" })); // M470
     expect(screen.getByRole("checkbox", { name: /^8A/ })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /^2A/ })).not.toBeChecked();
   });
@@ -362,8 +362,9 @@ describe("the quick filters (FLW-4)", () => {
         }}
       />,
     );
-    expect(screen.getByRole("button", { name: "Key 2" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Key 2" }));
+    // M470: the count is in the name; the button is not a toggle.
+    expect(screen.getByRole("button", { name: "Key, 2 chosen" })).not.toHaveAttribute("aria-pressed");
+    fireEvent.click(screen.getByRole("button", { name: "Key, 2 chosen" }));
     expect(screen.getByRole("dialog", { name: "Key" })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Key" })).toBeNull();
@@ -402,7 +403,7 @@ describe("In playlist (FLW-7)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add filter" }));
     fireEvent.change(screen.getByLabelText("Field"), { target: { value: "in_playlist" } });
     for (const name of names) fireEvent.click(screen.getByRole("checkbox", { name }));
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
   }
 
   it("is a list of playlists, Collections and Sets, under their own headings", () => {

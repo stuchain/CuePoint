@@ -165,7 +165,7 @@ describe("a delete that takes Sets", () => {
 describe("the Set scope's note (fact 3)", () => {
   it("gives the numbers when a Set plays a track twice", () => {
     expect(setScopeNote(FRIDAY)).toBe(
-      "A Set of 6 entries: its 5 tracks once each, in play order.",
+      "A Set: 6 tracks, 1 played twice, in play order.", // M427
     );
   });
 

@@ -34,7 +34,7 @@
   font-family: var(--font-data);
   font-size: var(--control-font-size);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 /* The ring is drawn inside the row: the list's edge would cut an outer one (M282). */

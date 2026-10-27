@@ -84,18 +84,24 @@ describe("what the menu offers", () => {
   });
 });
 
-describe("the rating submenu", () => {
-  it("is a list rather than six more rows", () => {
+describe("the rating row (M299)", () => {
+  it("is one inline stars row rather than a submenu of six", () => {
     const rate = organizationMenuItems(IN_LIBRARY, handlers()).find(
       (item) => item.id === "rate",
     );
-    expect(labels(rate!.items!)).toEqual(["1 star", "2 stars", "3 stars", "4 stars", "5 stars", "Clear rating"]);
+    expect(rate!.kind).toBe("stars");
+    expect(rate!.items).toBeUndefined();
+  });
+
+  it("starts on the rating the rows share", () => {
+    const rate = organizationMenuItems({ ...IN_LIBRARY, rating: 4 }, handlers()).find((item) => item.id === "rate");
+    expect(rate!.value).toBe(4);
   });
 
   it("sets the number of stars that was chosen", () => {
     const spies = handlers();
     const rate = organizationMenuItems(IN_LIBRARY, spies).find((item) => item.id === "rate");
-    rate!.items!.find((item) => item.id === "rate-4")!.onSelect();
+    rate!.onRate!(4);
     expect(spies.onRate).toHaveBeenCalledWith(4);
   });
 
@@ -103,8 +109,16 @@ describe("the rating submenu", () => {
     // Clearing falls back to Rekordbox's rating; zero is a rating of its own.
     const spies = handlers();
     const rate = organizationMenuItems(IN_LIBRARY, spies).find((item) => item.id === "rate");
-    rate!.items!.find((item) => item.id === "rate-clear")!.onSelect();
+    rate!.onRate!(0);
     expect(spies.onRate).toHaveBeenCalledWith(null);
+  });
+
+  it("offers Remove tag only while some track has a tag (M411)", () => {
+    const none = organizationMenuItems({ ...IN_LIBRARY, tagCount: 0 }, handlers()).find((item) => item.id === "remove-tag");
+    expect(none!.disabled).toBe(true);
+    expect(none!.reason).toBe("These tracks have no tags");
+    const some = organizationMenuItems({ ...IN_LIBRARY, tagCount: 2 }, handlers()).find((item) => item.id === "remove-tag");
+    expect(some!.disabled).toBeFalsy();
   });
 
   it("does nothing when the parent itself is chosen", () => {

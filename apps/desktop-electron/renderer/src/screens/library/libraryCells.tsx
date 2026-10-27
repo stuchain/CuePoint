@@ -9,8 +9,10 @@
 import { useEffect, useState } from "react";
 
 import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.types";
+import { Art } from "../../components/Art";
 import { Hint } from "../../components/Hint";
 import { MissingValue } from "../../components/MissingValue";
+import { PixelIcon } from "../../components/PixelIcon";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { waveformEntryWords, waveformStateWord } from "../../components/waveform/analysisWords";
 import { loudnessCell } from "../../components/waveform/loudnessWords";
@@ -23,9 +25,21 @@ import { artworkText, effectiveText, overrideMark } from "./libraryClean";
 import { LOUDNESS_QUERY } from "./libraryLoudness";
 
 /** A value CuePoint may override, marked when it does. */
-export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: OverrideField }) {
+export function OverriddenValue({
+  row,
+  field,
+  shown,
+  hint,
+}: {
+  row: LibraryTrackRow;
+  field: OverrideField;
+  /** What the cell shows in place of the whole value (M95: Genre's first genre). */
+  shown?: string | null;
+  /** Said on hover and focus beside a shortened value (M95: every genre). */
+  hint?: string;
+}) {
   // A track with no Beatport key shows a dash, not a blank (DEC-201).
-  const text = effectiveText(row, field);
+  const text = shown ?? effectiveText(row, field);
   // A text value sits in the table's cut-off box, so a long genre or label ends in "…" and shows
   // in full in the app hint, as a plain cell's does (C64).
   // An empty value is the one muted dash, never a blank box (M92).
@@ -34,6 +48,10 @@ export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: O
       <KeyChip value={text} />
     ) : text.trim() === "" ? (
       <MissingValue />
+    ) : hint ? (
+      <Hint text={hint}>
+        <span className="track-table__cell-text">{text}</span>
+      </Hint>
     ) : (
       <span className="track-table__cell-text" data-cut-hint="">
         {text}
@@ -60,7 +78,7 @@ export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: O
             if (event.key === "Enter" || event.key === "F10") event.stopPropagation();
           }}
         >
-          {mark.source === "beatport" ? "B" : "•"}
+          {mark.source === "beatport" ? <PixelIcon name="beatport" size="sm" /> : "•"}
         </span>
       </Hint>
     </span>
@@ -134,7 +152,8 @@ export function RowArtwork({ row }: { row: LibraryTrackRow }) {
   }, [shown, trackId]);
 
   if (url) {
-    return <img className="library-cell__artwork" src={url} alt={artworkText(row.artwork)} />;
+    // Faded in once loaded, over the cell's empty tone (M385).
+    return <Art className="library-cell__artwork" src={url} alt={artworkText(row.artwork)} />;
   }
   return <span className="library-cell__artwork-none">{shown ? "" : artworkText(row.artwork)}</span>;
 }

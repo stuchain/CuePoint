@@ -881,6 +881,21 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     );
     expect(screen.queryByText(/No tracks have a Beatport key yet/)).toBeNull();
   });
+
+  it("M503: after an import, says how many tracks on All tracks have no key, with the way to match them", async () => {
+    keyFacet([
+      { value: "8A", count: 12 },
+      { value: null, count: 3868 },
+    ]);
+    renderScreen({ onOpenMatch: vi.fn() });
+    await tableReady();
+    await importAnother();
+
+    // The default facts: two keys in use and one track with none.
+    expect(await screen.findByText(/1 track has no Beatport key/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Match 1 track…" })).toBeInTheDocument();
+    expect(screen.queryByText(/No tracks have a Beatport key yet/)).toBeNull();
+  });
 });
 
 describe("an imported library", () => {
@@ -1471,7 +1486,7 @@ describe("nothing to show (LIBUI-10)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
     await screen.findByText("No tracks match these filters");
 
     const table = screen.getByRole("table", { name: "Library tracks" });
@@ -2188,8 +2203,8 @@ describe("organizing a selection (ORG-11)", () => {
       // Playback first: DEC-013 made it the first-class gesture.
       expect(top.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
       expect(top).toContain("Organize");
-      // Rate and Favorite are at the top level, not under Organize (D26).
-      expect(top).toContain("Rate");
+      // Rate and Favorite are at the top level, not under Organize (D26); Rate is the stars row (M299).
+      expect(within(menu).getByRole("group", { name: "Rate" })).toBeInTheDocument();
       expect(top).toContain("Add to favorites");
       await userEvent.click(within(menu).getByRole("menuitem", { name: /^Organize/ }));
       const labels = within(screen.getByRole("menu", { name: "Organize" }))
@@ -2315,25 +2330,23 @@ describe("organizing a selection (ORG-11)", () => {
   });
 
   describe("the operations themselves", () => {
-    it("rates from the submenu", async () => {
+    it("rates from the stars row (M299)", async () => {
       renderScreen();
       await tableReady();
 
-      await openMenuOn("Track 2");
-      await userEvent.click((await menuItem(/Rate/)));
-      await userEvent.click((await menuItem("4 stars")));
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitemradio", { name: "3 stars" }));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
-      expect(lastBatch().operation).toEqual({ kind: "set_rating", value: 4 });
+      expect(lastBatch().operation).toEqual({ kind: "set_rating", value: 3 });
     });
 
     it("clears a rating rather than setting it to zero (DEC-057)", async () => {
       renderScreen();
       await tableReady();
 
-      await openMenuOn("Track 2");
-      await userEvent.click((await menuItem(/Rate/)));
-      await userEvent.click((await menuItem("Clear rating")));
+      const menu = await openMenuOn("Track 2");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: "Clear rating" }));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().operation).toEqual({ kind: "set_rating", value: null });
@@ -2745,11 +2758,26 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
 
+      // A tag asks; a rating or a favorite does not (M382, below).
+      await openMenuOn("Track 2");
+      await userEvent.click((await menuItem("Add tag…")));
+      await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
+
+      expect(await screen.findByText("Tag 47,913 tracks “Peak-time”?")).toBeInTheDocument();
+      expect(bridge.applyBatch).not.toHaveBeenCalled();
+    });
+
+    it("sets a favorite at once, with no question, however many tracks (M382)", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await screen.findByText(/everything matching/);
       await openMenuOn("Track 2");
       await userEvent.click((await menuItem("Add to favorites")));
 
-      expect(await screen.findByText("Favorite 47,913 tracks?")).toBeInTheDocument();
-      expect(bridge.applyBatch).not.toHaveBeenCalled();
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(screen.queryByText("Favorite 47,913 tracks?")).toBeNull();
+      expect(lastBatch().operation).toEqual({ kind: "set_favorite", value: true });
     });
 
     it("says the batch can be undone from Activity (DEC-008, CLEAN-13)", async () => {
@@ -2760,7 +2788,8 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Add to favorites")));
+      await userEvent.click((await menuItem("Add tag…")));
+      await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
 
       expect(await screen.findByText(/undone from Activity/i)).toBeInTheDocument();
       expect(screen.queryByText(/no undo/i)).toBeNull();
@@ -2786,8 +2815,9 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Add to favorites")));
-      await screen.findByText("Favorite 47,913 tracks?");
+      await userEvent.click((await menuItem("Add tag…")));
+      await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
+      await screen.findByText("Tag 47,913 tracks “Peak-time”?");
 
       await userEvent.click(screen.getByRole("button", { name: "Change 47,913 tracks" }));
 
@@ -2800,13 +2830,14 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await openMenuOn("Track 2");
-      await userEvent.click((await menuItem("Add to favorites")));
-      await screen.findByText("Favorite 47,913 tracks?");
+      await userEvent.click((await menuItem("Add tag…")));
+      await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
+      await screen.findByText("Tag 47,913 tracks “Peak-time”?");
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(bridge.applyBatch).not.toHaveBeenCalled();
-      expect(screen.queryByText("Favorite 47,913 tracks?")).not.toBeInTheDocument();
+      expect(screen.queryByText("Tag 47,913 tracks “Peak-time”?")).not.toBeInTheDocument();
     });
   });
 
@@ -2823,16 +2854,14 @@ describe("organizing a selection (ORG-11)", () => {
       const labels = within(menu)
         .getAllByRole("menuitem")
         .map((node) => node.textContent);
+      // M299: Rate and the favorites are the right-click menu's top level, not the bar's Organize.
       expect(labels).toEqual([
         "Add to a Collection…",
         "Add tag…",
         "Remove tag…",
-        "Rate",
-        "Add to favorites",
-        "Remove from favorites",
       ]);
-      // Two dividers inside the group, none along its top.
-      expect(within(menu).getAllByRole("separator")).toHaveLength(2);
+      // One divider inside the group, none along its top.
+      expect(within(menu).getAllByRole("separator")).toHaveLength(1);
     });
 
     it("acts on the selection, not on a row", async () => {
@@ -2844,7 +2873,8 @@ describe("organizing a selection (ORG-11)", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Organize" }));
       await screen.findByRole("menu");
-      await userEvent.click((await menuItem("Add to favorites")));
+      await userEvent.click((await menuItem("Add tag…")));
+      await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().selection).toEqual({ track_ids: [1, 2, 3] });
@@ -2861,7 +2891,8 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.keyboard("{Control>}a{/Control}");
       await screen.findByText(/everything matching/);
       await userEvent.click(screen.getByRole("button", { name: "Organize" }));
-      await userEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Add to favorites" }));
+      await userEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Add tag…" }));
+      await userEvent.click(await screen.findByRole("option", { name: /Peak-time/ }));
 
       const dialog = await screen.findByRole("dialog", { name: "Change 47,913 tracks?" });
       expect(within(dialog).getByText(/you can keep working|runs in the background/i)).toBeInTheDocument();
@@ -3261,7 +3292,7 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value } });
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
   }
 
   it("loads a Smart Collection's rules into the bar", async () => {
@@ -3336,7 +3367,7 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
       expect(lastBrowse().filters).toMatchObject({
         rules: [
           { field: "genre", operator: "is", value: "Techno" },
-          { field: "genre", operator: "is", value: "House" },
+          { field: "genre", operator: "contains", value: "House" } /* M110 */,
         ],
       });
     });
@@ -3357,7 +3388,7 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
           match: "all",
           rules: [
             { field: "genre", operator: "is", value: "Techno" },
-            { field: "genre", operator: "is", value: "House" },
+            { field: "genre", operator: "contains", value: "House" } /* M110 */,
           ],
         },
         sort: undefined,
@@ -3389,7 +3420,7 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
     // No Collection any more — the rules are the user's, unattached.
     expect(screen.queryByText(/Smart Collection “/)).not.toBeInTheDocument();
     expect(
-      within(screen.getByLabelText("Active filters")).getByText("Genre is House"),
+      within(screen.getByLabelText("Active filters")).getByText("Genre contains House") /* M110 */,
     ).toBeInTheDocument();
   });
 
@@ -3425,7 +3456,7 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
         name: "Housey",
         rules: {
           match: "all",
-          rules: [{ field: "genre", operator: "is", value: "House" }],
+          rules: [{ field: "genre", operator: "contains", value: "House" } /* M110 */],
         },
         parent_id: null,
         sort: undefined,
@@ -3536,7 +3567,7 @@ describe("a question the engine refused (ORG-12)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     await waitFor(() =>
       expect(screen.queryByText("No tracks match this search")).not.toBeInTheDocument(),
@@ -3954,7 +3985,7 @@ describe("quick filters and saving (PAGES-05B)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Save as Smart Collection…" }),
@@ -3968,7 +3999,7 @@ describe("quick filters and saving (PAGES-05B)", () => {
           rules: {
             match: "all",
             rules: [
-              { field: "genre", operator: "is", value: "House" },
+              { field: "genre", operator: "contains", value: "House" } /* M110 */,
               {
                 field: "in_playlist",
                 operator: "any_of",
@@ -3987,7 +4018,7 @@ describe("quick filters and saving (PAGES-05B)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Add a filter…" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
     await userEvent.click(
       await screen.findByRole("button", { name: "Save as Smart Collection…" }),
     );

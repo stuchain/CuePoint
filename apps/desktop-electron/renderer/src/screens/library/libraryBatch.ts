@@ -20,6 +20,7 @@ import type {
   OverrideField,
 } from "../../api/cuepointBridge.types";
 import { countNoun, formatCount } from "../../format/counts";
+import { quoted } from "../../format/words";
 import { starsFor } from "./filterText";
 import type { LibraryQuery } from "./libraryQuery";
 import type { Selection } from "./trackSelection";
@@ -236,10 +237,11 @@ function alreadyWere(action: BatchAction): string {
 
 /** Where the batch went, for a toast that names it. */
 function destination(action: BatchAction): string {
-  if (action.kind === "add_to_collection") return ` to “${action.target}”`;
-  if (action.kind === "remove_from_collection") return ` from “${action.target}”`;
-  if (action.kind === "add_tag") return ` “${action.target}”`;
-  if (action.kind === "remove_tag") return ` “${action.target}”`;
+  // M447: names are quoted the one way, through quoted().
+  if (action.kind === "add_to_collection") return ` to ${quoted(action.target)}`;
+  if (action.kind === "remove_from_collection") return ` from ${quoted(action.target)}`;
+  if (action.kind === "add_tag") return ` ${quoted(action.target)}`;
+  if (action.kind === "remove_tag") return ` ${quoted(action.target)}`;
   return "";
 }
 

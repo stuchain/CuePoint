@@ -45,7 +45,7 @@
   font-family: var(--font-control);
   font-size: var(--control-font-size);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 /* The ring is drawn inside the row: the list's edge would cut an outer one (M282). */
@@ -57,9 +57,9 @@
   background: var(--row-hover);
 }
 
-/* One highlight for pointer and keyboard: the chosen row (P61). */
+/* One highlight for pointer and keyboard: the chosen row (P61), in the one menu fill (M289). */
 .cp-picker__item--active:not(:disabled) {
-  background: var(--selected-row-background);
+  background: var(--menu-active-fill);
   color: var(--fg-primary);
 }
 

@@ -47,6 +47,7 @@ import {
   NO_COLLECTIONS,
   couldNot,
   freezeTitle,
+  opensDialog,
   deleteLabel,
   deleteLead,
   deleteTitle,
@@ -61,6 +62,7 @@ import {
 } from "../../components/TrackContextMenu";
 import type { CollectionNode, CollectionSubtree } from "../../api/cuepointBridge.types";
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
+import { PickerDialog, type PickerItem } from "./PickerDialog";
 import {
   canMoveInto,
   describeDeletion,
@@ -209,6 +211,38 @@ const UNTITLED: Record<CreatableKind, string> = {
   set: "New Set",
 };
 
+/** What each "+ New" kind is, in the menu's hint line (M298). */
+const NEW_HINTS: Record<CreatableKind, string> = {
+  collection: "Tracks you add by hand",
+  set: "Tracks in play order, for Prepare",
+  folder: "Holds Collections and Sets",
+};
+
+/** The top level, as a destination in the "Move to folder…" picker and for Alt+Up/Down (M462). */
+const TOP_LEVEL = -1;
+
+/**
+ * Where a node may be moved, in the order the tree draws them (M462): the top level first, then
+ * every folder that is not the node or inside it, with its depth for the picker's indentation.
+ */
+function moveDestinations(
+  tree: readonly CollectionTreeNode[],
+  moving: CollectionTreeNode,
+): Array<{ id: number; name: string; depth: number }> {
+  const out: Array<{ id: number; name: string; depth: number }> = [{ id: TOP_LEVEL, name: "Top level", depth: 0 }];
+  const walk = (list: readonly CollectionTreeNode[], depth: number) => {
+    for (const node of list) {
+      if (node.id === moving.id) continue;
+      if (node.kind === "folder") {
+        out.push({ id: node.id, name: node.name, depth });
+        walk(node.children, depth + 1);
+      }
+    }
+  };
+  walk(tree, 0);
+  return out;
+}
+
 export function CollectionsPane({
   tree,
   rows,
@@ -239,6 +273,8 @@ export function CollectionsPane({
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
+  /** The node "Move to folder…" is choosing a folder for (M462). */
+  const [moving, setMoving] = useState<CollectionTreeNode | null>(null);
   const [pending, setPending] = useState<{
     node: CollectionTreeNode;
     summary: CollectionSubtree | null;
@@ -445,6 +481,25 @@ export function CollectionsPane({
     if (!result.ok) say(result.error ?? couldNot("move", findCollection(tree, movingId)?.name), "warning");
   };
 
+  /** Move a node into a folder, or to the top level, from the picker or the keys (M462). */
+  const moveTo = async (node: CollectionTreeNode, parentId: number | null) => {
+    if ((node.parent_id ?? null) === parentId) return;
+    const folder = parentId === null ? null : findCollection(tree, parentId);
+    if (!canMoveInto(node, folder)) return;
+    const result = await onMove(node.id, parentId);
+    if (!result.ok) say(result.error ?? couldNot("move", node.name), "warning");
+    else say(folder ? `Moved ${node.name} into ${folder.name}.` : `Moved ${node.name} to the top level.`, "info");
+  };
+
+  /** Alt+Up and Alt+Down: the folder before or after the node's own, in the tree's order (M462). */
+  const moveByKey = (node: CollectionTreeNode, delta: 1 | -1) => {
+    const places = moveDestinations(tree, node);
+    const here = places.findIndex((place) => place.id === (node.parent_id ?? TOP_LEVEL));
+    const next = places[here + delta];
+    if (here < 0 || !next) return;
+    void moveTo(node, next.id === TOP_LEVEL ? null : next.id);
+  };
+
   /** One row's menu: what its buttons do, and what has no button (DEC-087). */
   const menuItems = (node: CollectionTreeNode): TrackContextMenuItem[] => {
     const items: TrackContextMenuItem[] = [];
@@ -471,14 +526,17 @@ export function CollectionsPane({
     if ((node.kind === "collection" || node.kind === "smart") && onNewSetFrom) {
       items.push({
         id: "new-set-from",
-        label: "New Set from…",
+        label: opensDialog("New Set from a list"),
         onSelect: () => onNewSetFrom(node),
       });
     }
-    items.push(
-      { id: "rename", label: "Rename", onSelect: () => setRenamingId(node.id) },
-      { id: "delete", label: "Delete…", danger: true, onSelect: () => void askToDelete(node) },
-    );
+    items.push({ id: "rename", label: "Rename", onSelect: () => setRenamingId(node.id) });
+    // The keyboard's and the pointer's way into a folder, beside the drag (M462, WCAG 2.5.7):
+    // offered while there is somewhere else to put the row.
+    if (moveDestinations(tree, node).some((place) => place.id !== (node.parent_id ?? TOP_LEVEL))) {
+      items.push({ id: "move-to-folder", label: opensDialog("Move to folder"), onSelect: () => setMoving(node) });
+    }
+    items.push({ id: "delete", label: "Delete…", danger: true, onSelect: () => void askToDelete(node) });
     if (isSet(node) && onSaveSetList) {
       items.push({
         id: "save-set-list",
@@ -611,6 +669,10 @@ export function CollectionsPane({
           onRenameCommit={(key, name) => void commitRename(Number(key), name)}
           onRenameCancel={() => setRenamingId(null)}
           dropTargetKey={dropTarget === null || dropTarget === -1 ? null : String(dropTarget)}
+          onRowMove={(key, delta) => {
+            const node = nodeFor(key);
+            if (node) moveByKey(node, delta);
+          }}
           onDragStart={(key, event) => {
             const id = Number(key);
             setDragging(id);
@@ -649,14 +711,18 @@ export function CollectionsPane({
       {/* The whole section is a drop target for "move to the top level", so a
           node nested three deep can be pulled back out without a folder to
           aim at. */}
+      {/* M365 (D30): a labelled band while a node is dragged, over the next section's head so
+          it moves nothing; the drop it is over draws the one insertion line. */}
       {!collapsed && (
         <div
-          className={`cp-collections__root-drop${dropTarget === -1 ? " cp-collections__root-drop--over" : ""}`}
+          className={`cp-collections__root-drop${dragging !== null ? " cp-collections__root-drop--shown" : ""}${dropTarget === -1 ? " cp-collections__root-drop--over" : ""}`}
           onDragOver={(event) => onDragOver(null, event)}
           onDragLeave={() => setDropTarget(null)}
           onDrop={(event) => void onDrop(null, event)}
           aria-hidden
-        />
+        >
+          {dragging !== null && <span className="cp-collections__root-drop-label">Drop here for the top level</span>}
+        </div>
       )}
 
       {newMenu && (
@@ -666,11 +732,17 @@ export function CollectionsPane({
           label="New"
           onClose={() => setNewMenu(null)}
           items={[
-            { id: "collection", label: "Collection", onSelect: () => void create("collection") },
+            {
+              id: "collection",
+              label: "Collection",
+              icon: iconForKind("collection"),
+              hint: NEW_HINTS.collection,
+              onSelect: () => void create("collection"),
+            },
             ...(canMakeSets
-              ? [{ id: "set", label: "Set", onSelect: () => void create("set") }]
+              ? [{ id: "set", label: "Set", icon: iconForKind("set"), hint: NEW_HINTS.set, onSelect: () => void create("set") }]
               : []),
-            { id: "folder", label: "Folder", onSelect: () => void create("folder") },
+            { id: "folder", label: "Folder", icon: iconForKind("folder"), hint: NEW_HINTS.folder, onSelect: () => void create("folder") },
           ]}
         />
       )}
@@ -692,11 +764,11 @@ export function CollectionsPane({
         onClose={() => setFreezing(null)}
         size="small"
         primaryAction={{
-          label: "Freeze it",
+          label: "Save as a Collection",
           onClick: () => void confirmFreeze(),
           loading: frozenBusy,
         }}
-        secondaryAction={{ label: "Cancel", onClick: () => setFreezing(null) }}
+        secondaryAction={{ label: CANCEL, onClick: () => setFreezing(null), disabled: frozenBusy }}
       >
         <p>
           This makes a Collection holding the tracks {freezing?.name} matches
@@ -718,7 +790,7 @@ export function CollectionsPane({
           onClick: () => void confirmDelete(),
           loading: deleting,
         }}
-        secondaryAction={{ label: CANCEL, onClick: () => setPending(null) }}
+        secondaryAction={{ label: CANCEL, onClick: () => setPending(null), disabled: deleting }}
       >
         <p>{deleteLead}</p>
         <p>
@@ -727,6 +799,32 @@ export function CollectionsPane({
             : "This removes it and everything filed inside it. No tracks are deleted."}
         </p>
       </Modal>
+      <PickerDialog
+        open={moving !== null}
+        title={moving ? `Move “${moving.name}” to` : "Move to"}
+        thing="folders"
+        items={
+          moving
+            ? moveDestinations(tree, moving).map(
+                (place): PickerItem => ({
+                  id: place.id,
+                  label: place.name,
+                  depth: place.depth,
+                  icon: place.id === TOP_LEVEL ? undefined : "folder",
+                  // Where it is now is drawn and cannot be chosen.
+                  disabled: place.id === (moving.parent_id ?? TOP_LEVEL),
+                  hint: place.id === (moving.parent_id ?? TOP_LEVEL) ? "Here now" : undefined,
+                }),
+              )
+            : []
+        }
+        onChoose={(item) => {
+          const node = moving;
+          setMoving(null);
+          if (node) void moveTo(node, item.id === TOP_LEVEL ? null : item.id);
+        }}
+        onClose={() => setMoving(null)}
+      />
     </nav>
   );
 }

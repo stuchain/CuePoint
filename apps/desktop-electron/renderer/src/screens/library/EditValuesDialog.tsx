@@ -61,12 +61,15 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
   const [saving, setSaving] = useState(false);
   // A big batch is asked about once, with its number, before it runs (LIB-11).
   const [asking, setAsking] = useState(false);
+  // M274: the reason waits for the first press; until then the button is not greyed at all.
+  const [pressed, setPressed] = useState(false);
 
   // A fresh form in the commit that shows the dialog. A passive effect runs
   // after the paint, so a value typed as the dialog appeared was wiped.
   useLayoutEffect(() => {
     if (!open) return;
     setAsking(false);
+    setPressed(false);
     setDraft(emptyEditDraft());
     setProblems({});
     setGeneral(null);
@@ -134,12 +137,15 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
       onClose={onClose}
       primaryAction={{
         label: `Change ${many}`,
-        onClick: () => void save(),
+        onClick: () => {
+          setPressed(true);
+          void save();
+        },
         loading: saving,
-        disabled: nothingToChange,
+        disabled: pressed && nothingToChange,
         // Why it is greyed is the Modal's reason line above the footer, so the fields never move when
-        // typing starts (M274).
-        disabledReason: nothingToChange ? "Set or clear at least one value." : undefined,
+        // typing starts; it is said once the button has been pressed with nothing to change (M274).
+        disabledReason: pressed && nothingToChange ? "Set or clear at least one value." : undefined,
       }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
       // The big-batch question's way back is the Modal's own, between Cancel and the main button.

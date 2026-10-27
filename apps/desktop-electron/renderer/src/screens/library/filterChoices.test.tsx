@@ -125,7 +125,7 @@ describe("the bar", () => {
     expect(onRequestFacet).not.toHaveBeenCalled();
 
     await userEvent.selectOptions(choice, "accepted");
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
     expect(onFiltersChange).toHaveBeenCalledWith({
       match: "all",
       rules: [{ field: "match_state", operator: "is", value: "accepted" }],
@@ -144,7 +144,7 @@ describe("the bar", () => {
       "aria-pressed",
       "true",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Add filter" }).at(-1)!);
     expect(onFiltersChange).toHaveBeenCalledWith({
       match: "all",
       rules: [{ field: "match_state", operator: "any_of", value: ["needs_review", "rejected"] }],

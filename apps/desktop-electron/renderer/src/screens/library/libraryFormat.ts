@@ -112,11 +112,12 @@ interface DiffLine {
  */
 export function diffLines(diff: RefreshDiff): DiffLine[] {
   const lines: DiffLine[] = [
+    // M275: three words, New / Changed / Removed, and one verb for what goes: remove.
     { key: "added", label: "New tracks", count: diff.tracks.added.count },
-    { key: "changed", label: "Updated tracks", count: diff.tracks.changed.count },
+    { key: "changed", label: "Changed tracks", count: diff.tracks.changed.count },
     {
       key: "removed",
-      label: "Tracks removed from Rekordbox",
+      label: "Removed tracks",
       count: diff.tracks.removed.count,
       destructive: true,
     },
@@ -127,8 +128,8 @@ export function diffLines(diff: RefreshDiff): DiffLine[] {
       count: diff.tracks.marks_changed ?? 0,
     },
     { key: "playlists_added", label: "New playlists", count: diff.playlists.added.count },
-    { key: "playlists_changed", label: "Edited playlists", count: diff.playlists.changed.count },
-    { key: "playlists_removed", label: "Deleted playlists", count: diff.playlists.removed.count },
+    { key: "playlists_changed", label: "Changed playlists", count: diff.playlists.changed.count },
+    { key: "playlists_removed", label: "Removed playlists", count: diff.playlists.removed.count },
   ];
   return lines.filter((line) => line.count > 0 || line.destructive);
 }
@@ -144,8 +145,8 @@ export function removalWarning(diff: RefreshDiff): string | null {
   const count = diff.tracks.removed.count;
   if (count === 0) return null;
   return (
-    `${countNoun(count, "track")} in your library are no longer in this Rekordbox file. ` +
-    "Refreshing deletes them, along with any ratings, tags and history CuePoint " +
+    `${countNoun(count, "track")} in your library ${count === 1 ? "is" : "are"} no longer in this Rekordbox file. ` +
+    "Refreshing removes them, along with any ratings, tags and history CuePoint " +
     "has for them. This cannot be undone."
   );
 }
@@ -247,7 +248,7 @@ export function jobErrorMessage(error?: { code?: string; message?: string }): st
     case "LIBRARY_XML_NO_COLLECTION":
       return (
         "That file has no collection in it. In Rekordbox, use " +
-        "File → Export Collection in xml format."
+        "File → Export Collection in XML format."
       );
     default:
       return error?.message || "Something went wrong.";

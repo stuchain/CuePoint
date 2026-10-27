@@ -89,8 +89,11 @@ describe("the edited-value marker", () => {
     });
     render(<OverriddenValue row={applied} field="genre" />);
 
-    expect(screen.getByRole("img")).toHaveTextContent("B");
-    expect(screen.getByRole("img")).toHaveAttribute(
+    // M36: the pixel "B" glyph, not a smooth letter.
+    const mark = screen.getByRole("img", { name: "Genre applied from Beatport. In Rekordbox it is not set." });
+    expect(mark.querySelector('.cp-pixel-icon')).not.toBeNull();
+    expect(mark).not.toHaveTextContent("B");
+    expect(screen.getByRole("img", { name: /Genre applied from Beatport/ })).toHaveAttribute(
       "title",
       "Genre applied from Beatport. In Rekordbox it is not set.",
     );
@@ -170,5 +173,6 @@ describe("the Key cell", () => {
       "Key typed by you. CuePoint uses Beatport's key, not Rekordbox's.",
     );
     expect(screen.getByRole("img")).not.toHaveTextContent("B");
+    expect(screen.getByRole("img").querySelector(".cp-pixel-icon")).toBeNull();
   });
 });

@@ -76,6 +76,7 @@ export function PickerDialog({
   const [text, setText] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -91,6 +92,13 @@ export function PickerDialog({
 
   /** The rows the keyboard can land on. A folder is drawn and skipped. */
   const choosable = useMemo(() => shown.filter((item) => !item.disabled), [shown]);
+
+  // M458: the arrow keys keep the chosen row in view in a long list.
+  useEffect(() => {
+    const row = listRef.current?.querySelector<HTMLElement>("[data-active]");
+    // jsdom has no scrollIntoView.
+    row?.scrollIntoView?.({ block: "nearest" });
+  }, [active, choosable]);
 
   const typed = text.trim();
   const exists = choosable.some(
@@ -154,7 +162,7 @@ export function PickerDialog({
           }}
         />
 
-        <ul className="cp-picker__list" role="listbox" aria-label={title}>
+        <ul ref={listRef} className="cp-picker__list" role="listbox" aria-label={title}>
           {shown.map((item) => {
             const index = choosable.indexOf(item);
             return (
@@ -163,6 +171,7 @@ export function PickerDialog({
                   type="button"
                   role="option"
                   aria-selected={index >= 0 && index === active}
+                  data-active={index >= 0 && index === active ? "" : undefined}
                   disabled={item.disabled}
                   className={`cp-picker__item${
                     index >= 0 && index === active ? " cp-picker__item--active" : ""

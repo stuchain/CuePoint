@@ -31,6 +31,7 @@ import { PaneTree, type PaneTreeRow } from "./PaneTree";
 import { isCuePointDrag } from "./collectionDrag";
 import "./PlaylistPane.css";
 import { Hint } from "../../components/Hint";
+import { opensDialog } from "../../format/words";
 
 interface PlaylistPaneProps {
   rows: VisibleRow[];
@@ -216,7 +217,7 @@ export function PlaylistPane({
           items={[
             {
               id: "new-set-from",
-              label: "New Set from…",
+              label: opensDialog("New Set from a list"),
               onSelect: () => onNewSetFrom(menu.node),
             },
           ]}

@@ -92,7 +92,7 @@
   gap: var(--space-xs);
   font: inherit;
   font-weight: var(--font-weight-bold);
-  cursor: pointer;
+  cursor: default;
 }
 
 .library-header__chip--button:hover:not(:disabled) {
@@ -152,8 +152,9 @@
 /* The trail to the scope, the crumb above the title (new E): names with a chevron between (C44),
    spaced as the Artist, Label and Similar pages' crumb is. */
 .library-header__trail {
-  display: flex;
-  flex-wrap: wrap;
+  /* M102: inline, on the facts line's own line, and never wrapping inside it. */
+  display: inline-flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-sm);
   color: var(--fg-muted);
@@ -174,4 +175,24 @@
 .library-header__pending {
   margin: 0;
   color: var(--fg-muted);
+}
+
+/* M374: the facts line keeps one line's height before the scope's facts arrive, and quiet bars
+   hold the places the running time and BPM range take. */
+.library-header .cp-screen-header__summary {
+  min-height: 1lh;
+}
+
+.library-header__skeleton {
+  display: inline-block;
+  width: calc(36px * var(--scale));
+  height: round(nearest, calc(6px * var(--scale)), 1px);
+  margin-inline-start: var(--space-md);
+  vertical-align: middle;
+  background: color-mix(in srgb, var(--fg-muted) 25%, transparent);
+}
+
+/* M103: a Set's note is one more part of the facts line, with its way to Prepare. */
+.library-header__note {
+  white-space: nowrap;
 }

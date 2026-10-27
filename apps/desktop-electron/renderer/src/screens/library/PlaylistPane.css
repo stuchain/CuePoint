@@ -15,7 +15,8 @@
 
 /* In a narrow pane (Track details open, a small window) a full twisty per level leaves a nested
    name only its first letter: each level then steps in by the chevron's own width. */
-@container library-pane (max-width: 260px) {
+/* M83: in the pane's own text size, so the step follows the text at every scale. */
+@container library-pane (max-width: 20em) {
   .cp-playlist-pane,
   .cp-playlist-pane__tree {
     --tree-step: calc(12px * var(--scale));
@@ -79,7 +80,7 @@
   background: none;
   color: inherit;
   font: inherit;
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-playlist-pane__fold:focus-visible {
@@ -115,7 +116,7 @@
   box-sizing: border-box;
   min-height: var(--row-height);
   padding: 0 var(--space-sm);
-  cursor: pointer;
+  cursor: default;
   user-select: none;
 }
 
@@ -146,7 +147,7 @@
   color: var(--fg-muted);
   font-family: var(--font-control);
   font-size: var(--font-size-xs);
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-playlist-pane__icon {

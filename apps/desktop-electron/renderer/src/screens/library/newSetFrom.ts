@@ -85,7 +85,8 @@ export function newSetFromTitle(source: NewSetSource): string {
 export function selectionTooLarge(count: number, limit: number = SET_ENTRY_LIMIT): string | null {
   if (count <= limit) return null;
   return (
-    `A Set holds at most ${formatCount(limit)} entries, and ${formatCount(count)} ` +
+    // M427: a Set's entries are tracks, in the user's words.
+    `A Set holds at most ${formatCount(limit)} tracks, and ${formatCount(count)} ` +
     `tracks are selected. Select fewer, or add them to a Collection instead.`
   );
 }
