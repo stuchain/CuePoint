@@ -36,7 +36,7 @@ import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
 import { Select } from "../../components/Select";
-import { Tabs } from "../../components/Tabs";
+import { Tabs, panelId } from "../../components/Tabs";
 import { CLEAR_SEARCH, RETRY, nothingMatches } from "../../format/words";
 import { ColumnPicker, inMemorySource, useColumnLayout } from "../../components/table";
 import { parseScope, scopeOptions } from "../clean/cleanRules";
@@ -94,6 +94,9 @@ export const SEARCH_PLACEHOLDER = "Search tracks, a key (8A) or a BPM (124)…";
 
 /** How long the search box waits for typing to stop. */
 const SEARCH_DELAY_MS = 200;
+
+/** The source tabs' id prefix: each tab names its panel (M474). */
+const SOURCE_TABS_ID = "prepare-source";
 
 const TABS: { id: SourceTab; label: string }[] = [
   { id: "suggestions", label: "Suggestions" },
@@ -229,7 +232,8 @@ export function SourcePanel(props: SourcePanelProps) {
     <section className="prepare-source" aria-label="Add to the Set" data-pane="source">
       {/* The head is the Set table's header row high, so its line meets the table's (M193). */}
       <div className="prepare-source__head">
-        <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} variant="sub" />
+        {/* The strip is named and wired to its panels (M474). */}
+        <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} variant="sub" idPrefix={SOURCE_TABS_ID} label="Add from" />
       </div>
       <PointLine words={words} title={pointTitle} />
       <div className="cp-toolbar prepare-source__controls">
@@ -258,6 +262,7 @@ export function SourcePanel(props: SourcePanelProps) {
       <div ref={body} className="prepare-source__body">
         {visited.suggestions && (
           <div
+            id={panelId(SOURCE_TABS_ID, "suggestions")}
             className="prepare-source__pane"
             role="tabpanel"
             aria-label="Suggestions"
@@ -276,6 +281,7 @@ export function SourcePanel(props: SourcePanelProps) {
         )}
         {visited.library && (
           <div
+            id={panelId(SOURCE_TABS_ID, "library")}
             className="prepare-source__pane"
             role="tabpanel"
             aria-label="Library"

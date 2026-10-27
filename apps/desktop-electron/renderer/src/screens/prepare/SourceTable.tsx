@@ -146,7 +146,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
     if (!menu) return [];
     const { rows, index, credits } = menu;
     const one = rows.length === 1 ? rows[0] : null;
-    // The base track menu every list has (Play, then More), with Insert here between, in "This page".
+    // The base track menu every list has (Play, then More), with Insert here between, set off by a line (M410).
     return [
       ...playItems(rows.length, {
         onPlay: () => (one && index >= 0 ? onPlayFrom(index) : onPlayRows(rows)),

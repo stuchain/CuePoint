@@ -18,7 +18,8 @@ describe("the strips above the Set (C251, C49, C259)", () => {
   it("gives the lanes and the transition strip the same top padding, so the lanes' BPM is not clipped", () => {
     expect(rule(".prepare-lanes")).toMatch(/padding-top:\s*var\(--prepare-strip-pad\)/);
     expect(rule(".prepare-transition")).toMatch(/padding-top:\s*var\(--prepare-strip-pad\)/);
-    expect(rule(".prepare-set")).toMatch(/--prepare-strip-pad:\s*calc\(2px \* var\(--scale\)\)/);
+    // M80: the 2 px step is rounded to whole pixels, like every other scaled length.
+    expect(rule(".prepare-set")).toMatch(/--prepare-strip-pad:\s*round\(nearest, calc\(2px \* var\(--scale\)\), 1px\)/);
   });
 
   it("lays a lane's name on one row in the control face, so it cannot be cut at the top (C251, M197)", () => {
@@ -102,5 +103,35 @@ describe("the source panel and its divider (C48, C149, C28)", () => {
 
   it("puts buttons in a row --space-md apart", () => {
     expect(rule(".prepare-source__sides")).toMatch(/gap:\s*var\(--space-md\)/);
+  });
+});
+
+describe("round 3 (M46, M191, M333, M339, M80, M488)", () => {
+  it("gives the source panel's fields the input tone, so they show on the panel (M46, D8 A)", () => {
+    // The page ground's --field-fill is the panel tone (index.css); the panel is that tone itself.
+    expect(rule(".prepare-source")).toMatch(/--field-fill:\s*var\(--bg-input\)/);
+  });
+
+  it("draws the source tabs' slab in the input tone and the picked part lighter than slab and ground (M191)", () => {
+    expect(rule(".prepare-source__head .cp-tabs--sub")).toMatch(/background:\s*var\(--bg-input\)/);
+    expect(rule(".prepare-source__head .cp-tabs--sub .cp-tabs__tab--active")).toMatch(/background:\s*var\(--bg-panel-alt\)/);
+  });
+
+  it("fills the drag chip with the accent and its own ink (M333)", () => {
+    expect(rule(".drag-chip")).toMatch(/background:\s*var\(--accent-fill\)/);
+    expect(rule(".drag-chip")).toMatch(/color:\s*var\(--fg-on-accent\)/);
+  });
+
+  it("uses the arrow pointer everywhere on the page (M339)", () => {
+    expect(css).not.toMatch(/cursor:\s*pointer/);
+  });
+
+  it("rounds the small scaled lengths to whole pixels, and the Fit dot takes the label size (M80)", () => {
+    expect(css).not.toMatch(/:\s*calc\((?:2|10|12)px \* var\(--scale\)\);/);
+    expect(rule(".prepare-fit")).toMatch(/font-size:\s*var\(--font-size-label\)/);
+  });
+
+  it("has no visually-hidden rule of its own: the app's cp-visually-hidden serves (M488)", () => {
+    expect(css).not.toMatch(/\.prepare-visually-hidden/);
   });
 });

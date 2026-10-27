@@ -22,6 +22,7 @@ import {
   clampSourceWidth,
   loadSourceWidth,
   saveSourceWidth,
+  sourceWidthBounds,
 } from "./prepareLayoutState";
 
 interface PrepareLayoutProps {
@@ -73,6 +74,8 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
   }, [hasSource, sourceHidden]);
 
   const width = clampSourceWidth(stored * scale, paneWidth, scale);
+  // The divider says the range it moves in, from the same clamp (M359).
+  const bounds = sourceWidthBounds(paneWidth, scale);
 
   const startResize = useCallback(
     (startX: number) => {
@@ -120,6 +123,8 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
         aria-orientation="vertical"
         aria-label="Resize the source panel"
         aria-valuenow={width}
+        aria-valuemin={bounds.min}
+        aria-valuemax={bounds.max}
         tabIndex={0}
         onMouseDown={(event) => {
           event.preventDefault();

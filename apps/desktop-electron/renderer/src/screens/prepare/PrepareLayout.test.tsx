@@ -88,6 +88,12 @@ describe("the layout", () => {
     expect(layout.style.getPropertyValue("--prepare-source-width")).toBe("400px");
   });
 
+  it("says the range it moves in, from the clamp's own bounds (M359)", () => {
+    renderAtScale(1.5, true, 2400);
+    expect(divider()).toHaveAttribute("aria-valuemin", String(Math.round(SOURCE_MIN_WIDTH * 1.5)));
+    expect(divider()).toHaveAttribute("aria-valuemax", String(Math.floor(2400 * 0.45)));
+  });
+
   it("moves with the arrow keys and remembers where it was left", () => {
     renderAtScale(1);
     expect(divider()).toHaveAttribute("aria-valuenow", String(SOURCE_DEFAULT_WIDTH));

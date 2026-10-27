@@ -205,10 +205,11 @@ function showTimes() {
   fireEvent.click(viewItem("Mix-in and mix-out columns"));
 }
 
-/** The names of the columns the table draws, left to right. */
+/** The names of the columns the table draws, left to right (not the reserved end column the buttons sit on, M192). */
 function headers(): string[] {
   return within(table())
     .getAllByRole("columnheader")
+    .filter((header) => header.getAttribute("data-column") !== "entry_buttons")
     .map((header) => header.textContent?.trim() ?? "");
 }
 
@@ -311,9 +312,11 @@ describe("with no Sets", () => {
   it("says what a Set is and offers to make one", async () => {
     install(noSets);
     renderAt(PREPARE_PATH);
-    expect(await screen.findByText(WHAT_A_SET_IS, {}, LOADED)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New Set" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New Set from a list…" })).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`^${WHAT_A_SET_IS.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), {}, LOADED)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New Set…" })).toBeInTheDocument();
+    // M350: the copy from a list is a link in the sentence, not a second button in the row.
+    const fromList = screen.getByRole("button", { name: "New Set from a list…" });
+    expect(fromList.closest(".cp-empty-state__description")).not.toBeNull();
   });
 
   it("is the shared empty state, with no frame and no card title, and one violet button", async () => {
@@ -323,26 +326,44 @@ describe("with no Sets", () => {
     expect(screen.queryByText("Prepare a Set")).toBeNull();
     expect(container.querySelector(".cp-empty-state")).not.toBeNull();
     expect(container.querySelector(".cp-panel")).toBeNull();
-    expect(screen.getByRole("button", { name: "New Set" }).className).toMatch(/primary/);
-    expect(screen.getByRole("button", { name: "New Set from a list…" }).className).toMatch(/secondary/);
+    // M350: one secondary New Set, no violet button.
+    expect(screen.getByRole("button", { name: "New Set…" }).className).toMatch(/secondary/);
+    expect(container.querySelector(".cp-empty-state .cp-btn--primary")).toBeNull();
   });
 
-  it("makes a Set at once, called New Set, and opens it (one flow with the Library's, M408)", async () => {
+  it("asks for the name first, and makes nothing until Create (D21 A, M408)", async () => {
     install(noSets);
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set" }, LOADED));
+    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
+    const dialog = await screen.findByRole("dialog", { name: "New Set" });
+    expect(sets.create).not.toHaveBeenCalled();
+    const name = within(dialog).getByRole("textbox", { name: "Name" });
+    expect(name).toHaveValue("New Set");
+    fireEvent.change(name, { target: { value: "Saturday" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create" }));
     await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
-    expect(sets.create).toHaveBeenCalledWith({ name: "New Set", parent_id: null });
-    // No dialog asked for its name before the Set existed.
-    expect(screen.queryByRole("dialog", { name: "New Set" })).toBeNull();
+    expect(sets.create).toHaveBeenCalledWith({ name: "Saturday", parent_id: null });
+  });
+
+  it("makes nothing when the name dialog is cancelled", async () => {
+    install(noSets);
+    renderAt(PREPARE_PATH);
+    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
+    const dialog = await screen.findByRole("dialog", { name: "New Set" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "New Set" })).toBeNull());
+    expect(sets.create).not.toHaveBeenCalled();
+    expect(where()).toBe(PREPARE_PATH);
   });
 
   it("says why the engine refused a new Set, and stays where it was", async () => {
     install(noSets);
     sets.create.mockResolvedValue(refused({ code: "INVALID_REQUEST", message: "Too deep", reason: null, path: null }));
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set" }, LOADED));
-    expect(await screen.findByText(/Too deep/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
+    const dialog = await screen.findByRole("dialog", { name: "New Set" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(await within(dialog).findByText(/Too deep/)).toBeInTheDocument();
     expect(where()).toBe(PREPARE_PATH);
   });
 
@@ -392,7 +413,8 @@ describe("the Set's name, the page title with its menu (D21, M201, M408)", () =>
       "Plain",
       "Rename…",
       "Notes (1)…",
-      "New Set",
+      // M408: New Set asks for the name first, so it ends in "…" (D33).
+      "New Set…",
       "New Set from a list…",
       "Delete…",
     ]);
@@ -447,11 +469,13 @@ describe("the Set's name, the page title with its menu (D21, M201, M408)", () =>
     expect(await screen.findByText("Deleted the Set “Friday”")).toBeInTheDocument();
   });
 
-  it("makes a new Set from its menu, at once", async () => {
+  it("makes a new Set from its menu, once it is named (M408)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     openSetMenu();
-    fireEvent.click(await menuItem("New Set"));
+    fireEvent.click(await menuItem("New Set…"));
+    const dialog = await screen.findByRole("dialog", { name: "New Set" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create" }));
     await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
     expect(sets.create).toHaveBeenCalledWith({ name: "New Set", parent_id: null });
   });
@@ -486,7 +510,7 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
     expect(facts).not.toHaveTextContent("planned");
     expect(within(facts).getByText(/ tracks?$/)).toHaveAttribute(
       "title",
-      expect.stringMatching(/^No times planned yet.*Mix in and Mix out in the table/),
+      expect.stringMatching(/^No times planned yet\. Select a track, then type its mix-in and mix-out times in the table/),
     );
   });
 
@@ -1374,7 +1398,9 @@ describe("the entry buttons (FLW-17, C15d)", () => {
   describe("take the form the row has room for (DEC-249)", () => {
     // jsdom lays nothing out, so the widths the browser would measure are stood in for: a Set scroll
     // area `scroll` wide, a number column 50 and a title column 200 (which the buttons may cover); the words 400, the glyphs 150.
-    // The room is the scroll width less the number and the title's minimum (40 at scale 1).
+    // M192: the buttons sit on a reserved end column, so the room is the scroll width less every
+    // other column's least width: #, Title, Artist, BPM, Key, Time, Mix in and Fit are
+    // 40 + 120 + 100 + 56 + 48 + 72 + 48 + 40 = 524 at scale 1, 786 at the tests' 1.5.
     let restore: (() => void)[] = [];
     function layout(scroll: number) {
       const widths = (element: Element) =>
@@ -1414,7 +1440,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     });
 
     it("draws the words where they fit beside the number and the title", async () => {
-      layout(600); // room 600 - (50 + 40) = 510
+      layout(1200); // room 1200 - 786 = 414: the words (400) fit
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
@@ -1428,7 +1454,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     });
 
     it("draws glyphs where only they fit, the full names kept", async () => {
-      layout(400); // room 310: the words (400) do not fit, the glyphs (150) do
+      layout(950); // room 164: the words (400) do not fit, the glyphs (150) do
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
@@ -1438,7 +1464,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     });
 
     it("draws one Actions button that opens the row's menu where not even the glyphs fit", async () => {
-      layout(230); // room 140
+      layout(800); // room 14: not even the glyphs fit
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
@@ -1971,6 +1997,23 @@ describe("the Set table's columns (R4-5)", () => {
     // Fit shows from the start: it is the one column that marks a warning on a row (M199). Mix out,
     // Starts at, Transition and Note are in the column picker.
     expect(headers()).toEqual(["#", "Title", "Artist", "BPM", "Key", "Time", "Mix in", "Fit"]);
+    // M192: after them, the reserved end column the selected row's buttons sit on, with no heading.
+    const all = within(table()).getAllByRole("columnheader");
+    expect(all[all.length - 1]).toHaveAttribute("data-column", "entry_buttons");
+    expect(rowAt(1).querySelector('[data-column="entry_buttons"]')).not.toBeNull();
+    expect(rowAt(1).querySelector('[data-column="entry_buttons"]')?.textContent).toBe("");
+  });
+
+  it("leaves Time, Mix in and Mix out out while no track has a time, and brings them back when asked (D21, M200)", async () => {
+    renderAt(preparePath(IDS.plain));
+    await opened("Plain");
+    expect(headers()).not.toContain("Time");
+    expect(headers()).not.toContain("Mix in");
+    expect(headers()).toContain("Title");
+    // Not ticked while they are left out; choosing the item shows both, with Time.
+    expect(viewItem("Mix-in and mix-out columns")).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(viewItem("Mix-in and mix-out columns"));
+    expect(headers()).toEqual(expect.arrayContaining(["Time", "Mix in", "Mix out"]));
   });
 
   it("opens the column picker from the button in the table's header corner, not from View", async () => {
@@ -1998,6 +2041,9 @@ describe("the Set table's columns (R4-5)", () => {
     expect(headers()).not.toContain("Mix out");
     // Mixed, not unticked: one of the two shows. Choosing it from there shows both.
     expect(viewItem("Mix-in and mix-out columns")).toHaveAttribute("aria-checked", "mixed");
+    // M194: a mixed tick is drawn as the dash (P1 changed the menu), not the half dot.
+    expect(viewItem("Mix-in and mix-out columns").querySelector('[data-icon="dash"]')).not.toBeNull();
+    expect(viewItem("Mix-in and mix-out columns").querySelector('[data-icon="dot-half"]')).toBeNull();
     showTimes();
     expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
     // The menu is still open, and the item is ticked.
@@ -2108,7 +2154,7 @@ describe("the key notice (FLW-19)", () => {
     withoutKeys();
     renderAt(preparePath(IDS.friday));
     await opened();
-    const notice = within(factsLine()).getByText(/^2 without key/);
+    const notice = within(factsLine()).getByText(/^2 without a key/);
     expect(notice).toHaveAttribute("title", expect.stringMatching(/^2 tracks have no Beatport key/));
     expect(factsLine()).toHaveTextContent("5 warnings");
   });
@@ -2118,14 +2164,14 @@ describe("the key notice (FLW-19)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     expect(within(factsLine()).queryByRole("button", { name: /Match tracks/ })).toBeNull();
-    expect(within(factsLine()).getByText(/^2 without key/).closest("button")).toBeNull();
+    expect(within(factsLine()).getByText(/^2 without a key/).closest("button")).toBeNull();
     expect(screen.queryByText(/Match the tracks to get theirs/)).toBeNull();
   });
 
   it("is absent when every entry has a key", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    expect(factsLine()).not.toHaveTextContent("without key");
+    expect(factsLine()).not.toHaveTextContent("without a key");
   });
 });
 

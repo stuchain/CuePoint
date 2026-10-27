@@ -178,7 +178,9 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
 
 /**
  * The shared order (D12): Title, Artist, BPM, Key, Length, Genre. The panel is narrow, so it opens
- * on Title, BPM and Key and the rest wait in the Columns list (M85).
+ * on Title and Key alone and the rest wait in the Columns list (M85): at 270 px nothing scrolls
+ * sideways. Key keeps the Library's own min width, so the corner never cuts its heading (M88).
+ * A saved layout keeps its own columns (M86); this changes the defaults only.
  */
 export const SOURCE_LIBRARY_COLUMNS: readonly TrackColumnDef<SourceLibraryRow>[] = [
   {
@@ -187,7 +189,7 @@ export const SOURCE_LIBRARY_COLUMNS: readonly TrackColumnDef<SourceLibraryRow>[]
     render: (row) => <LibraryTitle row={row}>{libraryColumn("title").render(row)}</LibraryTitle>,
   },
   { ...libraryColumn("artist"), hiddenByDefault: true },
-  libraryColumn("bpm"),
+  { ...libraryColumn("bpm"), hiddenByDefault: true },
   libraryColumn("key"),
   { ...libraryColumn("duration_seconds"), hiddenByDefault: true },
   { ...libraryColumn("genre"), hiddenByDefault: true },

@@ -47,6 +47,11 @@ export interface PrepareEditing {
     openMenu: (row: EntryRow, anchor: { x: number; y: number }) => void;
     /** The least width the selected row's title keeps (about 5 characters), in px at the current scale: the buttons never take it (DEC-249). */
     titleMinWidth: number;
+    /**
+     * The Set table's reserved end column (M192): the other columns' least widths, in drawn px, and
+     * where the width of the form on show is reported, for the column to take.
+     */
+    reserved?: { dataMin: number; onWidth: (px: number) => void };
   };
   /** The chapter heading's Edit… button's action. */
   chapters: {

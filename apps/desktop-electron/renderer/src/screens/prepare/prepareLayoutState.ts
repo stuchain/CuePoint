@@ -12,10 +12,15 @@ const SOURCE_MAX_FRACTION = 0.45;
 /** How far an arrow key moves the divider. */
 export const SOURCE_NUDGE = 16;
 
+/** The least and the most the source panel may be, in drawn pixels: the clamp's own bounds, which the divider reports (M359). */
+export function sourceWidthBounds(paneWidth: number, scale: number = 1): { min: number; max: number } {
+  const min = Math.round(SOURCE_MIN_WIDTH * scale);
+  return { min, max: Math.max(min, Math.floor(paneWidth * SOURCE_MAX_FRACTION)) };
+}
+
 /** `width` and `paneWidth` are drawn pixels; the floor and the default are 1x units times `scale`. */
 export function clampSourceWidth(width: number, paneWidth: number, scale: number = 1): number {
-  const min = Math.round(SOURCE_MIN_WIDTH * scale);
-  const max = Math.max(min, Math.floor(paneWidth * SOURCE_MAX_FRACTION));
+  const { min, max } = sourceWidthBounds(paneWidth, scale);
   if (!Number.isFinite(width)) return Math.min(Math.round(SOURCE_DEFAULT_WIDTH * scale), max);
   return Math.min(max, Math.max(min, Math.round(width)));
 }

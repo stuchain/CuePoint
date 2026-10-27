@@ -37,6 +37,7 @@ import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selec
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TRACK_IDS_MIME } from "../library/collectionDrag";
+import { LIBRARY_COLUMNS } from "../library/libraryColumns";
 import { TRACK_DETAIL } from "../library/librarySets.testFixture";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { PrepareScreen } from "./PrepareScreen";
@@ -363,8 +364,10 @@ describe("the ranking, said in the BPM change header (C203)", () => {
 describe("the source columns put BPM before Key, as on every page (C70, D12)", () => {
   it("lists Title, Artist, BPM, Key in the Library tab and Title, Key, BPM change in Suggestions", () => {
     expect(SOURCE_LIBRARY_COLUMNS.map((column) => column.id).slice(0, 4)).toEqual(["title", "artist", "bpm", "key"]);
-    // The panel is narrow: it opens on Title, BPM and Key (M85).
-    expect(SOURCE_LIBRARY_COLUMNS.filter((column) => !column.hiddenByDefault).map((column) => column.id)).toEqual(["title", "bpm", "key"]);
+    // The panel is narrow: it opens on Title and Key alone, so nothing scrolls sideways at 270 px (M85, round 3).
+    expect(SOURCE_LIBRARY_COLUMNS.filter((column) => !column.hiddenByDefault).map((column) => column.id)).toEqual(["title", "key"]);
+    // Key keeps the Library's min width, so the corner never cuts its heading (M88).
+    expect(SOURCE_LIBRARY_COLUMNS.find((column) => column.id === "key")!.minWidthPx).toBe(LIBRARY_COLUMNS.find((column) => column.id === "key")!.minWidthPx);
     expect(SUGGESTION_COLUMNS.map((column) => column.id)).toEqual(["title", "key", "bpm_delta"]);
     expect(SUGGESTION_COLUMNS.find((column) => column.id === "bpm_delta")!.align).toBe("right");
   });
@@ -752,9 +755,9 @@ describe("inserting", () => {
     fireEvent.contextMenu(rows[0]);
     const menu = await screen.findByRole("menu", {}, LOADED);
     const items = within(menu).getAllByRole("menuitem").map((item) => item.textContent);
-    // The base track menu (Play, then More), with Insert here between under the group title "This page".
+    // The base track menu (Play, then More), with Insert here between, set off by a line (M410: no "This page").
     expect(items).toEqual(["Play", "Play next", "Add to queue", "Insert here", "More"]);
-    expect(within(menu).getByText("This page")).toBeInTheDocument();
+    expect(within(menu).queryByText("This page")).toBeNull();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "More" }));
     expect(await screen.findByRole("menuitem", { name: "Similar tracks" })).toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Insert here" }));
@@ -1054,8 +1057,9 @@ describe("the Library tab", () => {
       ),
     );
     await waitFor(() => expect(rowsOf("Library tracks to add").length).toBe(3), LOADED);
-    fireEvent.click(within(screen.getByRole("table", { name: "Library tracks to add" })).getByRole("button", { name: "BPM" }));
-    await waitFor(() => expect(bridge.browseLibrary).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "bpm" })));
+    // BPM waits in the Columns list in this narrow panel (M85), so the sort is shown on Key.
+    fireEvent.click(within(screen.getByRole("table", { name: "Library tracks to add" })).getByRole("button", { name: "Key" }));
+    await waitFor(() => expect(bridge.browseLibrary).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "key" })));
     await waitFor(() => expect(rowsOf("Library tracks to add").length).toBe(3), LOADED);
     fireEvent.doubleClick(rowsOf("Library tracks to add")[2]);
     await waitFor(() => expect(player.playView).toHaveBeenCalledWith(expect.objectContaining({ scope: "collection" }), 2));

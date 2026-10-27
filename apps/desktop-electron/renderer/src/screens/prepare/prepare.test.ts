@@ -288,15 +288,16 @@ describe("the words", () => {
   it("says once how many entries have no Beatport key, as plain text, and nothing when all do", () => {
     const keyless = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 2 });
     const notice = keyless[keyless.length - 1]!;
-    expect(notice.text).toBe("2 without key");
+    // M399: "without a key".
+    expect(notice.text).toBe("2 without a key");
     expect(notice.action).toBeUndefined();
     expect(notice.actionText).toBeUndefined();
     expect(notice.title).toMatch(/2 tracks have no Beatport key, so no key check applies\.$/);
     const one = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 1 });
-    expect(one[one.length - 1]?.text).toBe("1 without key");
+    expect(one[one.length - 1]?.text).toBe("1 without a key");
     expect(one[one.length - 1]?.title).toMatch(/^1 track has no Beatport key/);
     const all = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 0 });
-    expect(all.some((fact) => fact.text.endsWith("without key"))).toBe(false);
+    expect(all.some((fact) => fact.text.endsWith("without a key"))).toBe(false);
   });
 
   it("does not count a missing key among the warnings (DEC-201)", () => {
@@ -335,8 +336,13 @@ describe("the words", () => {
     const facts = headerFacts(6, none, FRIDAY.analysis);
     expect(facts.map((fact) => fact.text).slice(0, 2)).toEqual(["6 tracks", "5 warnings"]);
     expect(facts[0].title).toBe(
-      "No times planned yet. Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional.",
+      // M427 + M453: "a track", and the times in lower case.
+      "No times planned yet. Select a track, then type its mix-in and mix-out times in the table to plan the Set's length. Times are optional.",
     );
+    // M201: with the tracks' own length, it is the second fact while nothing is planned.
+    const long = headerFacts(6, none, FRIDAY.analysis, 7120);
+    expect(long.map((fact) => fact.text).slice(0, 3)).toEqual(["6 tracks", "1:58:40", "5 warnings"]);
+    expect(headerFacts(0, none, FRIDAY.analysis, 0).map((fact) => fact.text)[1]).not.toMatch(/^\d+:/);
     // One timed entry is a plan; an empty Set has no entries to be untimed.
     const one = headerFacts(6, { seconds: 0, timed: 1, untimed: 5 }, FRIDAY.analysis);
     expect([one[1].text, one[1].title]).toEqual(["0:00:00", "Planned length of the Set. 5 without times."]);
@@ -407,7 +413,7 @@ describe("the menus", () => {
     const items = entryMenuItems({ count: 1, canSplit: true }, handlers, [
       { id: "similar", label: "Similar tracks", onSelect: noop },
     ]);
-    // The base track menu (Play, then More), with the Set's own edits between in "This page".
+    // The base track menu (Play, then More), with the Set's own edits between, set off by a line.
     expect(items.map((item) => item.id)).toEqual([
       "play",
       "play-next",
@@ -418,8 +424,9 @@ describe("the menus", () => {
       "group-more",
     ]);
     expect(items[0].label).toBe("Play");
-    // "This page" is a group title above the first of the Set's edits, not an entry of its own.
-    expect(items.find((item) => item.id === "split")).toMatchObject({ groupTitle: "This page", separatorBefore: true });
+    // M410: a line above the first of the Set's edits, and no "This page" group title.
+    expect(items.find((item) => item.id === "split")).toMatchObject({ separatorBefore: true });
+    expect(items.some((item) => item.groupTitle !== undefined)).toBe(false);
     expect(items.find((item) => item.id === "repeat")?.groupTitle).toBeUndefined();
     expect(items.find((item) => item.id === "group-more")?.items?.map((item) => item.id)).toEqual(["similar"]);
     expect(items.find((item) => item.id === "split")?.disabled).toBe(false);
@@ -442,7 +449,9 @@ describe("the menus", () => {
       "Add to queue",
       "Remove 3 tracks from Set",
     ]);
-    expect(items.find((item) => item.label === "Remove 3 tracks from Set")?.groupTitle).toBe("This page");
+    // M410: no "This page" group title; the line alone sets the block off.
+    expect(items.find((item) => item.label === "Remove 3 tracks from Set")?.groupTitle).toBeUndefined();
+    expect(items.find((item) => item.label === "Remove 3 tracks from Set")?.separatorBefore).toBe(true);
     expect(entryMenuItems({ count: 0, canSplit: true }, handlers)).toEqual([]);
   });
 

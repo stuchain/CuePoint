@@ -224,7 +224,7 @@ export function EntryButtons({ row }: { row: EntryRow }) {
   // plays the row instead of pressing a button. Keys and Tab are not held back.
   const armed = useDoubleClickGrace();
   const measure = useRef<HTMLSpanElement>(null);
-  const form = useEntryButtonsForm(measure, editing?.entryButtons.titleMinWidth ?? 0);
+  const form = useEntryButtonsForm(measure, editing?.entryButtons.titleMinWidth ?? 0, editing?.entryButtons.reserved);
   // A mouse click on Remove waits out a double-click: the first click of one aimed at the row would
   // otherwise remove it. A second click, or the double-click, cancels it. There is no Undo to offer
   // instead (Prepare has none for a remove).
@@ -266,6 +266,12 @@ export function EntryButtons({ row }: { row: EntryRow }) {
         {buttons.map((button) => (
           <MarkButton key={button.id} mark={button.glyph} label={button.label} tabIndex={-1} />
         ))}
+      </span>
+      {/* The one "Actions ▾" button, measured too: the reserved end column takes its width (M192). */}
+      <span className="prepare-row-buttons prepare-row-buttons--measure" aria-hidden="true" data-measure="actions">
+        <Button size="sm" variant="secondary" menu tabIndex={-1}>
+          Actions
+        </Button>
       </span>
       {/* Each is a Tab stop, and its keys stay its own: Enter presses it and does not start typing a time. */}
       <span

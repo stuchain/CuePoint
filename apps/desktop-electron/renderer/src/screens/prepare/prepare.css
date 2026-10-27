@@ -66,7 +66,7 @@
   color: inherit;
   font: inherit;
   line-height: inherit;
-  cursor: pointer;
+  cursor: default;
 }
 
 .prepare-title__name {
@@ -157,7 +157,7 @@
   background: transparent;
   color: var(--link);
   font: inherit;
-  cursor: pointer;
+  cursor: default;
   text-decoration: underline;
 }
 
@@ -176,21 +176,11 @@
   border: none;
   background: transparent;
   font: inherit;
-  cursor: pointer;
+  cursor: default;
   text-decoration: underline;
 }
 
-.prepare-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
+/* Visually hidden text uses the app's one cp-visually-hidden (index.css, M488). */
 
 /* ------------------------------------------------------------------ layout */
 
@@ -253,7 +243,7 @@ body.prepare-resizing {
    keep the height left. */
 .prepare-set {
   /* The lanes and the transition strip start their content the same distance down (C251). */
-  --prepare-strip-pad: calc(2px * var(--scale));
+  --prepare-strip-pad: round(nearest, calc(2px * var(--scale)), 1px);
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -299,7 +289,7 @@ body.prepare-resizing {
   min-width: 0;
   padding: var(--space-sm);
   padding-top: var(--prepare-strip-pad);
-  padding-bottom: calc(2px * var(--scale));
+  padding-bottom: round(nearest, calc(2px * var(--scale)), 1px);
   border-bottom: var(--divider);
   background: var(--bg-between);
 }
@@ -383,7 +373,7 @@ body.prepare-resizing {
 
 .prepare-lanes__hit {
   fill: transparent;
-  cursor: pointer;
+  cursor: default;
 }
 
 /* ... and the hover is the row hover (M358). */
@@ -487,7 +477,7 @@ body.prepare-resizing {
 }
 
 .prepare-transition__half {
-  cursor: pointer;
+  cursor: default;
 }
 
 .prepare-transition__half:hover {
@@ -651,7 +641,7 @@ body.prepare-resizing {
   color: inherit;
   font-size: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 .prepare-heading__name--button:hover {
@@ -678,10 +668,10 @@ body.prepare-resizing {
    those columns in view (entryButtonsRoom). The end cell is sticky; its margin is kept clear too. */
 .track-table__row > .track-table__end:has(> .prepare-row-buttons) {
   margin-right: var(--entry-buttons-clear, 0px);
-  /* An end cell of its own (D21, M192): a gap before the first button and a hairline at its left
-     edge, on the row's flat ground (never see-through), so the data it covers is cut off cleanly
-     ("Na" of a name never shows beside "↑") instead of running into the buttons. The measured form
-     reads this padding as part of the cell. */
+  /* An end cell of its own (D21, M192): it sits on the table's reserved end column (prepareColumns'
+     entryButtonsColumn, as wide as the form on show), so it covers no data. A gap before the first
+     button and a hairline at its left edge, on the row's flat ground; the measured form reads this
+     padding as part of the cell. */
   padding-inline-start: var(--space-lg);
   box-shadow: inset var(--hairline) 0 0 0 var(--row-line);
 }
@@ -750,7 +740,7 @@ body.prepare-resizing {
 /* The Fit column's dot (R4-5): colour and shape both say how the track mixes in. */
 .prepare-fit {
   display: inline-block;
-  font-size: calc(10px * var(--scale));
+  font-size: var(--font-size-label);
   line-height: 1;
 }
 
@@ -758,8 +748,8 @@ body.prepare-resizing {
 .prepare-fit__ring {
   display: inline-block;
   box-sizing: border-box;
-  width: calc(12px * var(--scale));
-  height: calc(12px * var(--scale));
+  width: round(nearest, calc(12px * var(--scale)), 1px);
+  height: round(nearest, calc(12px * var(--scale)), 1px);
   border: round(nearest, calc(2px * var(--scale)), 1px) solid currentColor;
   vertical-align: middle;
 }
@@ -816,7 +806,7 @@ body.prepare-resizing {
 .prepare-entry-zone__field {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: round(nearest, calc(2px * var(--scale)), 1px);
 }
 
 .prepare-entry-zone__times .cp-field {
@@ -907,6 +897,9 @@ body.prepare-resizing {
   padding: 0;
   overflow: hidden;
   background: var(--bg-panel);
+  /* M46 (D8 A, tone only): the panel is the panel tone, so its fields ("From", "Search tracks…")
+     take the input tone, as on a card; the page ground's --field-fill would make them invisible. */
+  --field-fill: var(--bg-input);
 }
 
 .prepare-source > :not(.prepare-source__head) {
@@ -924,8 +917,17 @@ body.prepare-resizing {
   border-bottom: var(--divider);
 }
 
-/* Suggestions | Library are the app's one sub-tab slab (D21, M191): it hugs its words, the picked part
-   is lighter than the slab, and this panel adds nothing to it. */
+/* Suggestions | Library are the app's one sub-tab slab (D21, M191): it hugs its words, and the picked part
+   is lighter than both the slab and the ground. The slab's own --bg-panel-alt and the picked part's
+   --bg-panel would be the panel's tone here, so on this panel the slab is the input tone and the picked
+   part the panel-alt tone (round 3, M191). */
+.prepare-source__head .cp-tabs--sub {
+  background: var(--bg-input);
+}
+
+.prepare-source__head .cp-tabs--sub .cp-tabs__tab--active {
+  background: var(--bg-panel-alt);
+}
 
 /* The pool, and the panel's one action at the end of its line: the select
    gives way, so the button always shows whole. */
@@ -1084,8 +1086,9 @@ body.prepare-resizing {
   top: -100px;
   left: -100px;
   padding: var(--space-xs) var(--space-sm);
-  background: var(--accent-primary);
-  color: var(--fg-primary);
+  /* M333: the accent fill with its own ink, as every accent-filled thing reads. */
+  background: var(--accent-fill);
+  color: var(--fg-on-accent);
   /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
   font-family: var(--font-data);
   font-size: var(--font-size-xs);

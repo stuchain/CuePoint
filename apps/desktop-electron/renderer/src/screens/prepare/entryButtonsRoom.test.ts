@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { entryButtonsForm, keepTimesClear, keepTitleClear, measureForm, roomBesideTitle, timesClearWidth } from "./entryButtonsRoom";
+import { entryButtonsForm, keepTimesClear, keepTitleClear, measureForm, measureFormWidth, roomBesideTitle, timesClearWidth } from "./entryButtonsRoom";
 
 describe("room for the entry buttons (C15d, DEC-249)", () => {
   it("is what is left beside the number and the title's small minimum, not the column's width", () => {
@@ -43,6 +43,31 @@ describe("room for the entry buttons (C15d, DEC-249)", () => {
     expect(measureForm(measure, 56)).toBe("glyphs");
     px('[data-measure="glyphs"]', 600);
     expect(measureForm(measure, 56)).toBe("actions");
+    document.body.innerHTML = "";
+  });
+
+  it("sits on the reserved end column: the room is beyond every other column's least width, and the form's width is told (M192)", () => {
+    document.body.innerHTML = `
+      <div class="track-table__scroll"><div class="track-table__row">
+        <div data-column="position"></div><div data-column="title"></div><div data-column="entry_buttons"></div>
+        <div class="track-table__end"><span data-measure="words"></span><span data-measure="glyphs"></span><span data-measure="actions"></span></div>
+      </div></div>`;
+    const px = (selector: string, width: number) =>
+      Object.defineProperty(document.querySelector(selector), "offsetWidth", { value: width, configurable: true });
+    const measure = document.querySelector<HTMLElement>('[data-measure="words"]')!;
+    Object.defineProperty(document.querySelector(".track-table__scroll"), "clientWidth", { value: 900, configurable: true });
+    px('[data-measure="words"]', 400);
+    px('[data-measure="glyphs"]', 150);
+    px('[data-measure="actions"]', 90);
+    // The other columns need 400 at least: room 500, the words fit, and the column takes their width.
+    expect(measureFormWidth(measure, 56, 0, 400)).toEqual({ form: "words", width: 400 });
+    // They need 700: room 200, the glyphs.
+    expect(measureFormWidth(measure, 56, 0, 700)).toEqual({ form: "glyphs", width: 150 });
+    // They need 850: room 50, one Actions button.
+    expect(measureFormWidth(measure, 56, 0, 850)).toEqual({ form: "actions", width: 90 });
+    // No reserved column in the row: the old room beside the number and the title's minimum.
+    document.querySelector('[data-column="entry_buttons"]')!.remove();
+    expect(measureFormWidth(measure, 56, 0, 850)?.form).toBe("words");
     document.body.innerHTML = "";
   });
 

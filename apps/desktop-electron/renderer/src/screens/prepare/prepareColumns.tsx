@@ -29,6 +29,7 @@ import { bpmRangeText, chapterTimeText, chapterTimeTitle, summarizeWarnings, tim
 import { ChapterName, TimeCell } from "./prepareEditing";
 import { FitDot, WarningCell } from "./WarningCell";
 import { chapterName, type PrepareRow } from "./prepareRows";
+import { ENTRY_BUTTONS_COLUMN } from "./entryButtonsRoom";
 
 // The fourth layout (C246, M199): #, Title, Artist, BPM, Key, Time, Mix in and Fit, which fit beside
 // Details at the default size; a layout saved under an earlier key would keep Fit hidden. Everyone
@@ -242,3 +243,21 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     },
   },
 ];
+
+/**
+ * The Set table's reserved end column (D21 A, M192): the grid's last track, as wide as the selected
+ * row's buttons in the form on show (`width1x`, in px at scale 1), so they sit on it and never over
+ * data. It is no column of the picker's and has no heading of its own; its cells are empty.
+ */
+export function entryButtonsColumn(width1x: number): TrackColumnDef<PrepareRow> {
+  return {
+    id: ENTRY_BUTTONS_COLUMN,
+    header: "Buttons for the selected tracks",
+    headerHidden: true,
+    minWidthPx: width1x,
+    defaultWidthPx: width1x,
+    grow: 0,
+    render: () => null,
+    text: () => "",
+  };
+}

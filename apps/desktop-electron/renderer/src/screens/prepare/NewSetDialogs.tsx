@@ -1,8 +1,8 @@
 /**
  * The Prepare page's two name dialogs (PREP-10, DEC-104, D21 M408).
  *
- * "New Set" has no dialog of its own: the Set is made at once, as the Library's inline row makes
- * one, and the page then asks for its name in `RenameSetDialog`, the same dialog "Rename" opens.
+ * "New Set" asks for the name first in `RenameSetDialog`, the same dialog "Rename" opens, with
+ * "Create" as its primary: nothing is made until Create (D21 A, M408), as the Library's inline row.
  * "New Set from a list" is one dialog: the source, the name it starts with, the place in the tree,
  * and "Create". One dialog per question, so neither grows a mode.
  */
@@ -23,14 +23,16 @@ interface RenameSetDialogProps {
   name: string | null;
   /** The title: "Name the Set" for a new one, "Rename the Set" for an old one. */
   title: string;
+  /** The primary button's words: "Save" for a rename, "Create" for a new Set (M408). */
+  submitLabel?: string;
   busy?: boolean;
   error?: string | null;
   onSave: (name: string) => void;
   onClose: () => void;
 }
 
-/** The one name dialog for a Set that exists: after "New Set", and "Rename…" in the title's menu. */
-export function RenameSetDialog({ name, title, busy = false, error = null, onSave, onClose }: RenameSetDialogProps) {
+/** The one name dialog for a Set: "New Set" (before it is made) and "Rename…" in the title's menu. */
+export function RenameSetDialog({ name, title, submitLabel = "Save", busy = false, error = null, onSave, onClose }: RenameSetDialogProps) {
   const [text, setText] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const id = useId();
@@ -62,7 +64,7 @@ export function RenameSetDialog({ name, title, busy = false, error = null, onSav
       size="small"
       onClose={onClose}
       initialFocus={focusById(`${id}-name`)}
-      primaryAction={{ label: "Save", onClick: submit, loading: busy }}
+      primaryAction={{ label: submitLabel, onClick: submit, loading: busy }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
     >
       <TextField

@@ -2,7 +2,7 @@
  * What a right-click offers on the Set table (PREP-10).
  *
  * An entry's menu is the base track menu every list has (Play, Play next, Add to queue, More)
- * with the Set's own edits in a "This page" block between. A heading's menu is the chapter's: its dialog,
+ * with the Set's own edits in a block between, set off by a line (M410). A heading's menu is the chapter's: its dialog,
  * moving it, deleting it. Pure, so which entry is offered when is a unit test
  * and not a glimpse through a component.
  */
@@ -32,21 +32,14 @@ interface EntryMenuHandlers {
 /** The one name of the chapter action: the menu entry and the dialog it opens. The heading's name is its button (M205). */
 export const CHAPTER_ACTION = "Edit chapter…";
 
-/** The heading of the block of entries only this page has (area 38). */
-export const THIS_PAGE = "This page";
-
 /**
- * A page's own entries as the menu's "This page" block: a label-style group title above the first
- * entry (area 81), then the entries. Every track list's menu is the same base (Play, then More)
- * with the page's own entries between.
+ * A page's own entries as the menu's own block: a line above the first entry, then the entries, with
+ * no group title (M410: a "This page" heading named nothing the person could act on). Every track
+ * list's menu is the same base (Play, then More) with the page's own entries between.
  */
 export function thisPageBlock(items: readonly TrackContextMenuItem[]): TrackContextMenuItem[] {
   if (items.length === 0) return [];
-  return items.map((item, at) =>
-    at === 0
-      ? { ...item, groupTitle: THIS_PAGE, separatorBefore: true }
-      : { ...item, separatorBefore: false },
-  );
+  return items.map((item, at) => (at === 0 ? { ...item, separatorBefore: true } : { ...item, separatorBefore: false }));
 }
 
 /** The base menu's last entry: More, holding the page entries, Copy and Show in folder. */

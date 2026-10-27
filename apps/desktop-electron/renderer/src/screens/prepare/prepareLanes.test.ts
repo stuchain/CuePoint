@@ -58,7 +58,7 @@ describe("the columns", () => {
   it("say what each draws in their titles", () => {
     const layout = laneLayout(shape, titles, 700, 1);
     expect(layout.columns[2].label).toBe("3 · Half Time · 63 BPM · 9A");
-    expect(layout.columns[3].label).toBe("4 · No Tempo · No BPM · no key");
+    expect(layout.columns[3].label).toBe("4 · No Tempo · No BPM · No key");
     expect(columnLabel(0, "X", 124, "Am", { number: 8, letter: "A" })).toBe("1 · X · 124 BPM · 8A");
   });
 });

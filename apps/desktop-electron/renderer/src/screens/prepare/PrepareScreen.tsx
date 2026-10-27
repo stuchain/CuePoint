@@ -69,7 +69,7 @@ import { useLastValue } from "../../hooks/useLastValue";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { formatLength } from "../../format/durations";
 import { countNoun } from "../../format/counts";
-import { NO_SETS, RETRY, UNDO, couldNot, deleteLabel, deleteLead, deleteTitle, opensDialog, quoted, removedFrom } from "../../format/words";
+import { CREATE, NO_SETS, RETRY, UNDO, couldNot, deleteLabel, deleteLead, deleteTitle, dialogTitle, opensDialog, quoted, removedFrom } from "../../format/words";
 import { cleanSectionState } from "../clean/cleanLink";
 import { entityPath, originState, similarPath } from "../discover/discoverLinks";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -87,7 +87,8 @@ import { useTrackDetail } from "../library/useTrackDetail";
 import { ChapterDialog } from "./ChapterDialog";
 import { NewSetFromListDialog, RenameSetDialog } from "./NewSetDialogs";
 import { PrepareLayout } from "./PrepareLayout";
-import { ENTRY_TITLE_KEEP_PX } from "./entryButtonsRoom";
+import { ENTRY_BUTTONS_COLUMN, ENTRY_BUTTONS_DEFAULT_PX, ENTRY_TITLE_KEEP_PX } from "./entryButtonsRoom";
+import { columnMinWidth } from "../../components/table/trackTableLayout";
 import { EntryButtons } from "./prepareEditing";
 import { PrepareEditingContext, type PrepareEditing, type TimeSaveResult } from "./prepareEditingContext";
 import { SetEntryZone } from "./SetEntryZone";
@@ -101,7 +102,7 @@ import { columnsToDrop, useMeasuredWidth } from "./prepareWidthRule";
 import { entryButtonDomId, entryButtons, stepMoves, type EntryButton } from "./entryActions";
 import { nextTimeTarget, timeRefusalWords, timeTexts, timesToSave, type TimeField, type TimeTarget, type TimeTexts } from "./timeEditing";
 import { newSetSources } from "./newSetSources";
-import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
+import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY, entryButtonsColumn } from "./prepareColumns";
 import {
   EMPTY_SET_HEADLINE,
   EMPTY_SET_HELP,
@@ -194,6 +195,9 @@ const idOfRow = (row: PrepareRow) => rowKey(row);
 /** What a new Set is called until the person names it, as the Library's row is (M408). */
 const UNTITLED_SET = "New Set";
 
+/** Left out while no track has a time (M200): they would be empty on every row. */
+const UNTIMED_HIDDEN: readonly string[] = ["planned", "in", "out"];
+
 export function PrepareScreen({
   onOpenInClean,
   onOpenMissingFiles,
@@ -260,9 +264,18 @@ export function PrepareScreen({
   // Mix in and Mix out go together (R4-5). The item is ticked when both show; ticked, it hides both,
   // else it shows both. The two can be out of step (Mix in alone is the default, C246, or after
   // Columns…), so they are set, not each flipped.
+  //
+  // While no track has a time, Time, Mix in and Mix out are empty on every row, so they are left out and
+  // Title takes the room (D21, M200). They come back once a time is typed, or as soon as the person
+  // asks for them: the View menu's item, F2, or a time edit started from a menu.
+  const untimed = (shown?.plan.running_time.timed ?? 0) === 0;
+  const [timesAsked, setTimesAsked] = useState(false);
+  useEffect(() => setTimesAsked(false), [setId]);
+  const hideTimes = untimed && !timesAsked;
   const timeEntries = columns.layout.filter((entry) => entry.id === "in" || entry.id === "out");
-  const timesShown = timeEntries.length === 2 && timeEntries.every((entry) => !entry.hidden);
+  const timesShown = !hideTimes && timeEntries.length === 2 && timeEntries.every((entry) => !entry.hidden);
   const toggleTimes = () => {
+    if (!timesShown) setTimesAsked(true);
     for (const entry of columns.layout) {
       if ((entry.id === "in" || entry.id === "out") && entry.hidden === !timesShown) {
         columns.toggle(entry.id);
@@ -542,13 +555,53 @@ export function PrepareScreen({
   const rowsBox = useRef<HTMLDivElement>(null);
   // Artist gives way when the columns do not fit the pane (C246).
   const [rowsWidth, measureRows] = useMeasuredWidth(rowsBox);
+  // The scale, for what the title keeps free of the entry buttons and for the reserved end column.
+  const scale = useScaleFactor();
+  // The reserved end column's width, as the selected row's buttons last measured it (drawn px); null
+  // until they are first drawn (M192).
+  const [endWidth, setEndWidth] = useState<number | null>(null);
+  const reportEndWidth = useCallback(
+    (px: number) => setEndWidth((previous) => (previous !== null && Math.abs(previous - px) <= 1 ? previous : px)),
+    [],
+  );
+  const endPx = endWidth ?? Math.round(ENTRY_BUTTONS_DEFAULT_PX * scale);
+  // The columns on screen: the times left out while none is typed (M200), then Artist dropped when the rest do not fit.
+  const timedColumns = useMemo(
+    () => (hideTimes ? columns.visible.filter((column) => !UNTIMED_HIDDEN.includes(column.id)) : columns.visible),
+    [columns.visible, hideTimes],
+  );
   const narrowDrop = useMemo(
-    () => columnsToDrop(columns.visible, columns.widths, rowsWidth),
-    [columns.visible, columns.widths, rowsWidth],
+    () => columnsToDrop(timedColumns, columns.widths, rowsWidth > 0 ? rowsWidth - endPx : rowsWidth),
+    [timedColumns, columns.widths, rowsWidth, endPx],
   );
   const fittingColumns = useMemo(
-    () => (narrowDrop.length === 0 ? columns.visible : columns.visible.filter((column) => !narrowDrop.includes(column.id))),
-    [columns.visible, narrowDrop],
+    () => (narrowDrop.length === 0 ? timedColumns : timedColumns.filter((column) => !narrowDrop.includes(column.id))),
+    [timedColumns, narrowDrop],
+  );
+  // The table's columns: those, then the reserved end column the selected row's buttons sit on (M192).
+  const tableColumns = useMemo(
+    () => [...fittingColumns, entryButtonsColumn(endPx / scale)],
+    [fittingColumns, endPx, scale],
+  );
+  // What every other column needs at least: the buttons' room is what the pane has beyond it.
+  const dataMin = useMemo(
+    () => fittingColumns.reduce((sum, column) => sum + columnMinWidth(column, scale), 0),
+    [fittingColumns, scale],
+  );
+  // The reserved column is the page's, not the person's: its width is never stored, and it does not move.
+  const setTableWidths = useCallback(
+    (next: Record<string, number>) => {
+      const { [ENTRY_BUTTONS_COLUMN]: _reserved, ...rest } = next;
+      columns.setWidths(rest);
+    },
+    [columns],
+  );
+  const moveTableColumn = useCallback(
+    (id: string, toIndex: number) => {
+      if (id === ENTRY_BUTTONS_COLUMN) return;
+      columns.move(id, Math.min(toIndex, fittingColumns.length - 1));
+    },
+    [columns, fittingColumns.length],
   );
   useLayoutEffect(() => {
     const last = pressed.current;
@@ -587,6 +640,8 @@ export function PrepareScreen({
   const refusals = useRef(0);
   const startTimeEdit = useCallback((entryId: number, field: TimeField) => {
     setTimeWords(null);
+    // Typing a time asks for the time columns, so the field has a cell (M200).
+    setTimesAsked(true);
     setTimeEditing({ entryId, field });
   }, []);
   // What each save wrote until the Set is read again: the next cell's save is
@@ -950,9 +1005,8 @@ export function PrepareScreen({
     splitAt,
   ]);
 
-  // The Set's pane, for the floor below; the scale, for what the title keeps free of the entry buttons.
+  // The Set's pane, for the floor below.
   const setBox = useRef<HTMLDivElement>(null);
-  const scale = useScaleFactor();
   const titleMinWidth = ENTRY_TITLE_KEEP_PX * scale;
 
   const editing = useMemo(
@@ -969,6 +1023,7 @@ export function PrepareScreen({
         openMenu: (row, anchor) =>
           void openEntryMenu(row, Math.max(0, rows.findIndex((candidate) => candidate === row)), anchor.x, anchor.y),
         titleMinWidth,
+        reserved: { dataMin, onWidth: reportEndWidth },
       },
       chapters: {
         edit: (chapter) => {
@@ -977,7 +1032,7 @@ export function PrepareScreen({
         },
       },
     }),
-    [buttons, commitTime, focused, openEntryMenu, pressEntryButton, rows, startTimeEdit, stopTimeEdit, timeEditing, timeWords, titleMinWidth],
+    [buttons, commitTime, dataMin, focused, openEntryMenu, pressEntryButton, reportEndWidth, rows, startTimeEdit, stopTimeEdit, timeEditing, timeWords, titleMinWidth],
   );
 
   // The buttons are on the focused entry's row, and not while a time on that row is being typed in:
@@ -1037,8 +1092,11 @@ export function PrepareScreen({
     [allNodes],
   );
   const [createError, setCreateError] = useState<string | null>(null);
-  // The Set being named: a new one (made at once, as the Library's row is) or "Rename…" (M408).
+  // The Set being renamed ("Rename…" in the title's menu).
   const [naming, setNaming] = useState<{ id: number; fresh: boolean } | null>(null);
+  // "New Set" asks for the name first, and nothing is made until Create (D21 A, M408), as the
+  // Library's inline row does.
+  const [namingNew, setNamingNew] = useState(false);
   const [deletingSet, setDeletingSet] = useState(false);
   const [choosingSource, setChoosingSource] = useState(false);
   // The Rekordbox playlists the "copy from" dialog offers: read through the
@@ -1050,19 +1108,22 @@ export function PrepareScreen({
   const playlistsSettled = !playlistRead.loading;
   const [busy, setBusy] = useState(false);
 
-  // One flow with the Library's: the Set is made at once, then asks for its name (M408).
-  const makeSet = useCallback(async () => {
-    setBusy(true);
-    const made = await tree.create("set", UNTITLED_SET, null);
-    setBusy(false);
-    if (!made.ok || !made.node) {
-      push(made.error ?? "The Set could not be made.", "warning");
-      return;
-    }
-    setCreateError(null);
-    setNaming({ id: made.node.id, fresh: true });
-    navigate(preparePath(made.node.id));
-  }, [navigate, push, tree]);
+  // One flow with the Library's: the name first, then Create makes the Set (D21 A, M408).
+  const makeSet = useCallback(
+    async (name: string) => {
+      setBusy(true);
+      const made = await tree.create("set", name, null);
+      setBusy(false);
+      if (!made.ok || !made.node) {
+        setCreateError(made.error ?? "The Set could not be made.");
+        return;
+      }
+      setCreateError(null);
+      setNamingNew(false);
+      navigate(preparePath(made.node.id));
+    },
+    [navigate, tree],
+  );
 
   const renameSet = useCallback(
     async (id: number, name: string) => {
@@ -1104,7 +1165,10 @@ export function PrepareScreen({
     setWantsPlaylists(true);
     setAsking(true);
   }, []);
-  const startNewSet = useCallback(() => void makeSet(), [makeSet]);
+  const startNewSet = useCallback(() => {
+    setCreateError(null);
+    setNamingNew(true);
+  }, []);
   useEffect(() => {
     if (!asking || !wantsPlaylists || !playlistsSettled) return;
     setAsking(false);
@@ -1139,6 +1203,15 @@ export function PrepareScreen({
         onSave={(name) => naming && void renameSet(naming.id, name)}
         onClose={() => setNaming(null)}
       />
+      <RenameSetDialog
+        name={namingNew ? UNTITLED_SET : null}
+        title={dialogTitle("New Set…")}
+        submitLabel={CREATE}
+        busy={busy}
+        error={createError}
+        onSave={(name) => void makeSet(name)}
+        onClose={() => setNamingNew(false)}
+      />
       <NewSetFromListDialog
         open={choosingSource}
         groups={newSetSources(tree.tree, playlists)}
@@ -1171,19 +1244,23 @@ export function PrepareScreen({
         <ScreenHeader title="Prepare" />
         {noSets ? (
           <>
+            {/* One secondary button (M350); the copy from a list is a link in the sentence, as the Set
+                menu holds it once there is a Set. */}
             <EmptyState
               icon="prepare"
               headline={NO_SETS}
-              description={WHAT_A_SET_IS}
-              action={
-                <div className="cp-button-row">
-                  <Button variant="primary" onClick={startNewSet} loading={busy}>
-                    New Set
-                  </Button>
-                  <Button variant="secondary" onClick={() => void chooseSource()}>
+              description={
+                <>
+                  {WHAT_A_SET_IS}{" "}
+                  <button type="button" className="prepare-link prepare-link--inline" onClick={() => void chooseSource()}>
                     {opensDialog("New Set from a list")}
-                  </Button>
-                </div>
+                  </button>
+                </>
+              }
+              action={
+                <Button variant="secondary" onClick={startNewSet} loading={busy}>
+                  {opensDialog("New Set")}
+                </Button>
               }
             />
           </>
@@ -1198,7 +1275,7 @@ export function PrepareScreen({
             {tree.error}
           </Notice>
         ) : (
-          <Loading what="your Sets" />
+          <Loading what="your Sets" centered />
         )}
         {dialogs}
       </div>
@@ -1228,7 +1305,7 @@ export function PrepareScreen({
             {prepared.problem}
           </Notice>
         ) : (
-          <Loading what="the Set" />
+          <Loading what="the Set" centered />
         )}
       </div>
     );
@@ -1254,7 +1331,9 @@ export function PrepareScreen({
   const nextEntry = focused ? (entries[indexOfEntry(focused.entry.entry_id) + 1] ?? null) : null;
   const nextRow = nextEntry ? rows.find((row) => isEntryRow(row) && row.entry.entry_id === nextEntry.entry_id) : undefined;
   const stripWarnings = nextRow && isEntryRow(nextRow) ? nextRow.transition : [];
-  const facts = headerFacts(entries.length, plan.running_time, analysis);
+  // The tracks' own length end to end, the header's second fact while nothing is planned (M201).
+  const tracksSeconds = entries.reduce((sum, entry) => sum + (entry.track.duration_seconds ?? 0), 0);
+  const facts = headerFacts(entries.length, plan.running_time, analysis, tracksSeconds);
 
   const table = (
     <div className="prepare-set" ref={setBox}>
@@ -1283,11 +1362,11 @@ export function PrepareScreen({
       <div className="prepare-set__rows" ref={measureRows} onKeyDownCapture={onSetKeys}>
         <PrepareEditingContext.Provider value={editing}>
         <TrackTable<PrepareRow>
-          columns={fittingColumns}
+          columns={tableColumns}
           source={source}
           widths={columns.widths}
-          onWidthsChange={columns.setWidths}
-          onColumnMove={columns.move}
+          onWidthsChange={setTableWidths}
+          onColumnMove={moveTableColumn}
           onColumns={() => setPicking(true)}
           onSelectAll={() => {
             setHeadingAt(null);
@@ -1524,7 +1603,7 @@ export function PrepareScreen({
                 setNotesOpen(true);
               },
             },
-            { id: "new", label: "New Set", onSelect: startNewSet, separatorBefore: true },
+            { id: "new", label: opensDialog("New Set"), onSelect: startNewSet, separatorBefore: true },
             { id: "new-from", label: opensDialog("New Set from a list"), onSelect: () => void chooseSource() },
             { id: "delete", label: opensDialog("Delete"), danger: true, onSelect: () => setDeletingSet(true) },
           ]}
@@ -1556,7 +1635,7 @@ export function PrepareScreen({
           items={[
             { id: "lanes", label: "Tempo and key lane", checked: lanesOpen, onSelect: toggleLanes },
             { id: "transition", label: "Transition strip", checked: transitionOpen, onSelect: toggleTransition },
-            { id: "times", label: "Mix-in and mix-out columns", checked: timesShown ? true : timeEntries.some((entry) => !entry.hidden) ? "mixed" : false, onSelect: toggleTimes },
+            { id: "times", label: "Mix-in and mix-out columns", checked: timesShown ? true : !hideTimes && timeEntries.some((entry) => !entry.hidden) ? "mixed" : false, onSelect: toggleTimes },
           ]}
         />
       )}

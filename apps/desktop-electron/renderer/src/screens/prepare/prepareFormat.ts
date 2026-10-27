@@ -27,7 +27,7 @@ function counted(count: number, one: string, many: string): string {
 
 /** Said in the track count's title while no time is typed, when "0:00 planned" would read as a plan (PRP-3). */
 const NO_TIMES_YET =
-  "No times planned yet. Select an entry and type its Mix in and Mix out in the table to plan the Set's length. Times are optional.";
+  "No times planned yet. Select a track, then type its mix-in and mix-out times in the table to plan the Set's length. Times are optional.";
 
 /**
  * "1:34:20", the Set's planned length, beside the track count (D21, M201); null while no entry has
@@ -96,11 +96,15 @@ const KIND_WORDS: Record<SetWarning["kind"], [string, string]> = {
  * 19 warnings", the running time only once something is planned, each short,
  * the longer sentence in its title. What the line leaves out is in a title: the
  * untimed entries in the time's, the accepted warnings in the warnings'.
+ *
+ * While nothing is planned, the second fact is the tracks' own length end to end, `tracksSeconds`
+ * ("32 tracks · 1:58:40", D21, M201), so the header always says how long the Set runs.
  */
 export function headerFacts(
   entryCount: number,
   running: SetRunningTime,
   analysis: SetAnalysis,
+  tracksSeconds: number | null = null,
 ): HeaderFact[] {
   const planned = runningTimeLine(running);
   const facts: HeaderFact[] = [
@@ -109,6 +113,8 @@ export function headerFacts(
   if (planned) {
     const untimed = withoutTimesLine(running);
     facts.push({ text: planned, title: untimed ? `Planned length of the Set. ${untimed}.` : "Planned length of the Set" });
+  } else if (entryCount > 0 && tracksSeconds !== null && tracksSeconds > 0) {
+    facts.push({ text: formatLength(tracksSeconds), title: "The tracks' full length, end to end" });
   }
   const kinds = (Object.keys(KIND_WORDS) as SetWarning["kind"][])
     .filter((kind) => (analysis.counts[kind] ?? 0) > 0)
@@ -134,7 +140,7 @@ export function headerFacts(
     // Not a warning (DEC-201): said once, as plain text.
     const count = analysis.without_key;
     facts.push({
-      text: `${formatCount(count)} without key`,
+      text: `${formatCount(count)} without a key`,
       title: `${counted(count, "track", "tracks")} ${count === 1 ? "has" : "have"} no Beatport key, so no key check applies.`,
     });
   }

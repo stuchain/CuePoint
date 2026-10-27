@@ -258,7 +258,7 @@ export function columnLabel(
   camelot: { number: number; letter: "A" | "B" } | null,
 ): string {
   const tempo = formatBpmText(bpm);
-  let wheel = "no key";
+  let wheel = "No key";
   if (camelot) {
     // Every key is a Camelot code, never the raw "Am".
     wheel = `${camelot.number}${camelot.letter}`;

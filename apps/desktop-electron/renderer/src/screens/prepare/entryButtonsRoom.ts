@@ -17,6 +17,11 @@
  *
  * Both groups are measured as hidden copies drawn in the end cell, so the form never depends on the
  * one on show. All the widths are what the browser lays out, so the scale is already in them.
+ *
+ * The Set table reserves a real end column for them (D21 A, M192): the last track of its grid, as wide
+ * as the form on show, so the buttons sit on that column and never over data. With it, the room is
+ * what the scroll area has beside every other column at its least width (`dataMin`), and the width of
+ * the form chosen is reported back (`onWidth`) for the column to take.
  */
 import { useLayoutEffect, useState, type RefObject } from "react";
 
@@ -24,6 +29,12 @@ export type EntryButtonsForm = "words" | "glyphs" | "actions";
 
 /** The least the selected row's title keeps, in px at scale 1 (about 5 characters): the buttons never take it. Small enough for the glyphs to fit at Windows' default window (1264 px inside). */
 export const ENTRY_TITLE_KEEP_PX = 32;
+
+/** The Set table's reserved end column, which the buttons sit on (M192). */
+export const ENTRY_BUTTONS_COLUMN = "entry_buttons";
+
+/** The reserved column's width, in px at scale 1, until the buttons are first measured: about the "Actions ▾" form. */
+export const ENTRY_BUTTONS_DEFAULT_PX = 120;
 
 /** The columns the buttons leave clear when they come last: the times a click edits. */
 export const TIME_COLUMNS: readonly string[] = ["in", "out", "starts_at"];
@@ -104,11 +115,19 @@ function widthOf(row: Element | null, column: string): number {
   return cell ? cell.offsetWidth : 0;
 }
 
+/** The form chosen and how wide the end cell is in it, padding included. */
+export interface MeasuredForm {
+  form: EntryButtonsForm;
+  width: number;
+}
+
 /**
- * The form for the end cell `measure` (a hidden copy of the words) is in, or null when the table
- * has no layout to read (a test DOM, a pane not drawn yet).
+ * The form for the end cell `measure` (a hidden copy of the words) is in, with its width, or null
+ * when the table has no layout to read (a test DOM, a pane not drawn yet). With `dataMin` (the other
+ * columns' least widths, M192) and a reserved end column in the row, the room is the scroll area less
+ * those; without, it is the room beside the number and the title's small minimum.
  */
-export function measureForm(measure: HTMLElement, titleMin: number, timesClear = 0): EntryButtonsForm | null {
+export function measureFormWidth(measure: HTMLElement, titleMin: number, timesClear = 0, dataMin = 0): MeasuredForm | null {
   const end = measure.closest<HTMLElement>(".track-table__end");
   const row = measure.closest<HTMLElement>(".track-table__row");
   const scroll = measure.closest<HTMLElement>(".track-table__scroll");
@@ -116,8 +135,21 @@ export function measureForm(measure: HTMLElement, titleMin: number, timesClear =
   if (!end || !row || !scroll || !glyphs || scroll.clientWidth <= 0) return null;
   const style = getComputedStyle(end);
   const padding = (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0);
-  const room = roomBesideTitle(scroll.clientWidth, widthOf(row, "position"), titleMin, timesClear);
-  return entryButtonsForm(room, measure.offsetWidth + padding, glyphs.offsetWidth + padding);
+  const reserved = dataMin > 0 && row.querySelector(`:scope > [data-column="${ENTRY_BUTTONS_COLUMN}"]`) !== null;
+  const room = reserved
+    ? scroll.clientWidth - dataMin
+    : roomBesideTitle(scroll.clientWidth, widthOf(row, "position"), titleMin, timesClear);
+  const words = measure.offsetWidth + padding;
+  const glyphsWidth = glyphs.offsetWidth + padding;
+  const form = entryButtonsForm(room, words, glyphsWidth);
+  const actions = end.querySelector<HTMLElement>('[data-measure="actions"]');
+  const width = form === "words" ? words : form === "glyphs" ? glyphsWidth : (actions?.offsetWidth ?? 0) + padding;
+  return { form, width: Math.ceil(width) };
+}
+
+/** The form alone (see `measureFormWidth`). */
+export function measureForm(measure: HTMLElement, titleMin: number, timesClear = 0, dataMin = 0): EntryButtonsForm | null {
+  return measureFormWidth(measure, titleMin, timesClear, dataMin)?.form ?? null;
 }
 
 /**
@@ -138,7 +170,11 @@ export function keepTitleClear(measure: HTMLElement): void {
  * the scroll area is resized (the pane dragged, the window) or scrolled sideways, and when one of
  * the row's cells changes width (a column resized).
  */
-export function useEntryButtonsForm(measure: RefObject<HTMLElement | null>, titleMin: number): EntryButtonsForm {
+export function useEntryButtonsForm(
+  measure: RefObject<HTMLElement | null>,
+  titleMin: number,
+  reserved?: { dataMin: number; onWidth: (px: number) => void },
+): EntryButtonsForm {
   const [form, setForm] = useState<EntryButtonsForm>("words");
   useLayoutEffect(() => {
     const element = measure.current;
@@ -147,7 +183,10 @@ export function useEntryButtonsForm(measure: RefObject<HTMLElement | null>, titl
     const scroll = element.closest(".track-table__scroll");
     const update = () => {
       const clear = keepTimesClear(element);
-      setForm(measureForm(element, titleMin, clear) ?? "words");
+      const measured = measureFormWidth(element, titleMin, clear, reserved?.dataMin ?? 0);
+      setForm(measured?.form ?? "words");
+      // The reserved end column takes the width of the form on show (M192).
+      if (measured && measured.width > 0) reserved?.onWidth(measured.width);
       keepTitleClear(element);
     };
     update();

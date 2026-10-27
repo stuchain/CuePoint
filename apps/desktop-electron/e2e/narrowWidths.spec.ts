@@ -162,6 +162,24 @@ test.describe("the tightest rows at 1,024 px wide and 1.5x (P2)", () => {
       expect(prepare.past, "nothing in the source toolbar is drawn past its edge").toEqual([]);
       expect(prepare.cut, "no text in the source toolbar is cut").toEqual([]);
 
+      // --- Prepare's side Library table (M85, M88) ----------------------------------------
+      // The narrow panel opens on Title and Key: no sideways scroll, and Key's heading is whole.
+      await win.getByRole("region", { name: "Add to the Set" }).getByRole("tab", { name: "Library" }).click();
+      const side = win.getByRole("table", { name: "Library tracks to add" });
+      await expect(side.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
+      const sideFit = await side.evaluate((el) => ({
+        headers: [...el.querySelectorAll<HTMLElement>(".track-table__header-text")].map((h) => (h.textContent ?? "").trim()),
+        spill: el.scrollWidth - el.clientWidth,
+        cut: [...el.querySelectorAll<HTMLElement>(".track-table__header-text")]
+          .filter((h) => h.scrollWidth > h.clientWidth + 1)
+          .map((h) => (h.textContent ?? "").trim()),
+      }));
+      console.log("Prepare side Library table at 1024 px / 1.5x:", JSON.stringify(sideFit));
+      expect(sideFit.headers, "the side table opens on Title and Key (M85)").toEqual(expect.arrayContaining(["Title", "Key"]));
+      expect(sideFit.headers, "BPM waits in the Columns list (M85)").not.toContain("BPM");
+      expect(sideFit.spill, "the side table does not scroll sideways (M85)").toBeLessThanOrEqual(0);
+      expect(sideFit.cut, "no heading is cut by the corner (M88)").toEqual([]);
+
       // --- the player's meta line ---------------------------------------------------------
       // Start the track and wait until the player really holds it: playQueue answers { ok: false } while
       // the player is still starting, and the result used to be ignored, so the bar sometimes never named
