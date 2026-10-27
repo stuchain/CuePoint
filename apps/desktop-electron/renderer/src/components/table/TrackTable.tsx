@@ -33,6 +33,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { Button } from "../Button";
+import { EmptyState } from "../EmptyState";
 import { MissingValue } from "../MissingValue";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
@@ -90,6 +91,12 @@ export interface TrackTableProps<Row> {
   /** The current ordering, and how to ask for another. Never decided here. */
   sort?: TrackTableSort | null;
   onSortChange?: (sort: TrackTableSort) => void;
+  /**
+   * A third click on the sorted column's header, after ascending and descending, gives the order
+   * back (N4): the caller returns to its own order (a playlist's, a Set's, the scope's default),
+   * and no heading is marked. Absent, a header click only turns the direction over.
+   */
+  onSortClear?: () => void;
 
   /**
    * Where a column was dragged to (LIBUI-06, DEC-042). Absent means headers
@@ -270,6 +277,12 @@ export interface TrackTableProps<Row> {
   rowClassName?: (row: Row) => string | undefined;
 
   /**
+   * The rows answer the previous question while the new answer is on its way (M369): drawn dimmed,
+   * so a filter typed letter by letter keeps the table on screen instead of blanking it.
+   */
+  stale?: boolean;
+
+  /**
    * Whether a row is the track in the player (R4-6): its title takes the accent colour, its first
    * cell gets a small speaker, and a screen reader hears "Now playing". The table does not know
    * what a track is, so the caller says; absent, no row is marked.
@@ -400,6 +413,7 @@ export function TrackTable<Row>({
   onWidthsChange,
   sort = null,
   onSortChange,
+  onSortClear,
   onColumnMove,
   selectedKeys,
   onSelect,
@@ -422,6 +436,7 @@ export function TrackTable<Row>({
   canDragRow,
   showGrip = true,
   rowClassName,
+  stale = false,
   isPlayingRow,
   wasPlayedRow,
   rowEnd,
@@ -712,11 +727,16 @@ export function TrackTable<Row>({
       const key = sortKeyOf(column);
       if (!key || !sortable(column)) return;
       const active = sort?.key === key;
+      // Ascending, descending, then the caller's own order again (N4).
+      if (active && sort?.direction === "desc" && onSortClear) {
+        onSortClear();
+        return;
+      }
       const direction: SortDirection =
         active && sort?.direction === "asc" ? "desc" : "asc";
       onSortChange?.({ key, direction });
     },
-    [onSortChange, sort, sortable],
+    [onSortChange, onSortClear, sort, sortable],
   );
 
   const startResize = useCallback(
@@ -1004,6 +1024,8 @@ export function TrackTable<Row>({
       data-drag-active={dropLabel && dragActive ? "" : undefined}
       data-empty={empty ? "" : undefined}
       data-grip={onRowDragStart && showGrip ? "" : undefined}
+      data-stale={stale ? "" : undefined}
+      aria-busy={stale || undefined}
     >
       {/* The bar over the bottom rows comes first in the DOM, though it is drawn at the bottom: Tab
           reaches it from the page before the table's headers, as when it sat above the table. */}
@@ -1192,7 +1214,8 @@ export function TrackTable<Row>({
 
         {empty ? (
           <div className="track-table__empty">
-            {loading ? <Loading what="tracks" /> : (emptyState ?? "No tracks")}
+            {/* M349: the shared empty state, not bare words, when the caller gives none. */}
+            {loading ? <Loading what="tracks" /> : (emptyState ?? <EmptyState compact headline="No tracks" />)}
           </div>
         ) : (
           <div

@@ -77,7 +77,6 @@ export function ColumnPicker<Row>({
       open={open}
       onClose={onClose}
       title="Columns"
-      closeLabel="Close"
       extraAction={{
         label: "Reset columns",
         onClick: () => {
@@ -116,7 +115,7 @@ export function ColumnPicker<Row>({
               <span className="cp-column-picker__grip" aria-hidden>
                 {draggable ? <PixelIcon name="grip" size="sm" /> : null}
               </span>
-              <label className="cp-column-picker__label">
+              <label className="cp-column-picker__label cp-check--pixel">
                 <input
                   type="checkbox"
                   checked
@@ -170,7 +169,7 @@ export function ColumnPicker<Row>({
               const column = byId.get(entry.id)!;
               return (
                 <li key={entry.id} className="cp-column-picker__row">
-                  <label className="cp-column-picker__label">
+                  <label className="cp-column-picker__label cp-check--pixel">
                     <input type="checkbox" checked={false} onChange={() => onToggle(entry.id)} />
                     <span>{column.header}</span>
                   </label>

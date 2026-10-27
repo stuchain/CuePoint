@@ -52,7 +52,7 @@
   gap: var(--space-sm);
   min-width: 0;
   font-size: inherit;
-  cursor: pointer;
+  cursor: default;
 }
 
 .cp-column-picker__label span {

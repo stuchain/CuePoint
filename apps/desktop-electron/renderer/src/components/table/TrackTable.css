@@ -31,7 +31,10 @@
   /* M373: the one skeleton tone, for the table's placeholder bars and for every other skeleton to use. */
   --skeleton-tone: color-mix(in srgb, var(--fg-muted) 25%, transparent);
   /* The speaker's room in a title cell (M100): the cell's own padding holds it, so no title moves when one plays. */
-  --track-table-mark: round(down, calc(12px * var(--scale)), 12px);
+  --track-table-mark: var(--icon-size-sm);
+  /* M118: the room before the first column's text, the same whether that room holds the speaker or
+     the drag grip, so Title keeps its x in a Collection (grip) and in a playlist or Set (none). */
+  --track-table-lead: calc(var(--space-xs) + var(--track-table-mark) + var(--space-xs));
 }
 
 /* M91: the scroll bar's track starts under the header, so the header ends where the track begins
@@ -108,10 +111,10 @@
   color: var(--fg-muted);
   font-family: var(--font-control);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--control-font-weight);
   line-height: 1.2;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
   white-space: nowrap;
   /* Clipped, not hidden: "hidden" would make the heading a scroll container of its own, and its
      label would stick to it instead of to the table's scroll area (C69). */
@@ -343,9 +346,10 @@
 /* The cell that carries the speaker has the room for it in its padding, in every row and in the
    heading above, so the title's text starts in the same place whether or not the row plays (M100,
    D10). */
-.track-table__cell--mark,
+/* `.track-table__cell.` so it wins over the cell's own padding further down (M100). */
+.track-table__cell.track-table__cell--mark,
 .track-table__header-cell--mark {
-  padding-left: calc(var(--space-xs) + var(--track-table-mark) + var(--space-xs));
+  padding-left: var(--track-table-lead);
 }
 
 .track-table__cell--mark:not(.track-table__cell--sticky) {
@@ -430,11 +434,23 @@
 .track-table__cell--sticky {
   position: sticky;
   z-index: 2;
-  background: inherit;
+  /* N1: an opaque fill of its own, never `inherit`: a hovered row's fill is translucent, and the
+     cells scrolled under Title would show through it. The row states below are opaque too. */
+  background: var(--bg-input);
   /* D13: the row line, and a 1 px edge on the right where the scrolling columns are cut (M89). */
   box-shadow:
     inset calc(-1 * var(--hairline)) 0 0 0 var(--row-line),
     inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
+}
+
+/* N1: the hovered row's sticky cells take the hover tone flat, as the end cell does; the keyboard's
+   row under the pointer keeps the ground (it draws the ring, never a hover, P64). */
+.track-table__row:hover:not(.track-table__row--selected) .track-table__cell--sticky {
+  background: var(--row-hover-solid);
+}
+
+.track-table__row--cursor:not(.track-table__row--selected):hover .track-table__cell--sticky {
+  background: var(--bg-input);
 }
 
 /* Inheriting a selected row's gradient would repeat the accent bar in every sticky cell, so a
@@ -482,6 +498,12 @@
 .track-table__row--selected:hover .track-table__end,
 .track-table__row--selected .track-table__row-corner {
   background: var(--bg-selected);
+}
+
+/* The previous question's rows while the new answer is on its way (M369): dimmed, not blanked. */
+.track-table[data-stale] .track-table__row {
+  /* Greyed by colour, not opacity (area 11's rule). */
+  color: var(--fg-muted);
 }
 
 /* A placeholder bar (M373): the width is the column's own (`--skeleton-width`, set per column in the
@@ -602,12 +624,12 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
 }
 
 .track-table__row--grip > .track-table__cell:first-of-type {
-  padding-left: calc(var(--space-xs) + var(--icon-size-sm) + var(--space-xs));
+  padding-left: var(--track-table-lead);
 }
 
 /* The heading above the grip column has the same leading padding as its rows (C81). */
 .track-table[data-grip] .track-table__header-cell-wrap:first-child .track-table__header-cell {
-  padding-left: calc(var(--space-xs) + var(--icon-size-sm) + var(--space-xs));
+  padding-left: var(--track-table-lead);
 }
 
 /*

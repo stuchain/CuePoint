@@ -1548,3 +1548,45 @@ describe("a drag the table will not take (C187)", () => {
     expect(dataTransfer.dropEffect).toBe("none");
   });
 });
+
+describe("round 4 fixes (N4, M369, M349)", () => {
+  it("N4: a third click on the sorted heading gives the order back, where the page offers it", () => {
+    const onSortChange = vi.fn();
+    const onSortClear = vi.fn();
+    renderTable({ onSortChange, onSortClear, sort: { key: "artist", direction: "desc" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Artist" }));
+
+    expect(onSortClear).toHaveBeenCalledOnce();
+    expect(onSortChange).not.toHaveBeenCalled();
+  });
+
+  it("N4: a table with no order of its own to go back to still turns descending into ascending", () => {
+    const onSortChange = vi.fn();
+    renderTable({ onSortChange, sort: { key: "artist", direction: "desc" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Artist" }));
+
+    expect(onSortChange).toHaveBeenCalledWith({ key: "artist", direction: "asc" });
+  });
+
+  it("M369: marks the table stale and busy while the old rows stand in for the new query's", () => {
+    const { container, rerender } = renderTable({ stale: true });
+    const root = container.querySelector(".track-table")!;
+    expect(root).toHaveAttribute("data-stale");
+    expect(root).toHaveAttribute("aria-busy", "true");
+    rerender(
+      <ScaleProvider>
+        <TrackTable<Track> columns={COLUMNS} source={inMemorySource(tracks(5))} getRowKey={(row) => row.id} />
+      </ScaleProvider>,
+    );
+    expect(container.querySelector(".track-table")).not.toHaveAttribute("data-stale");
+  });
+
+  it("M349: an empty table says so with the shared empty state", () => {
+    const { container } = renderTable({ source: inMemorySource([]) });
+    const empty = container.querySelector(".cp-empty-state")!;
+    expect(empty).toHaveTextContent("No tracks");
+    expect(empty).toHaveClass("cp-empty-state--compact");
+  });
+});

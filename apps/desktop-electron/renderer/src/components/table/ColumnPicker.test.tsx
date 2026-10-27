@@ -294,3 +294,18 @@ describe("the moves column (item 13)", () => {
     expect(moves).toMatch(/flex-shrink:\s*0/);
   });
 });
+
+describe("the verification round (M11, M254)", () => {
+  it("M254: has the × alone, with no footer Close beside it", () => {
+    show();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryAllByRole("button", { name: "Close" })).toHaveLength(1);
+  });
+
+  it("M11: draws its ticks as the pixel check, as every other list of ticks does", () => {
+    show();
+    const labels = document.querySelectorAll(".cp-column-picker__label");
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) expect(label).toHaveClass("cp-check--pixel");
+  });
+});
