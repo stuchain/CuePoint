@@ -299,6 +299,23 @@ export interface JobResultsResponse {
 /** The file type the save dialog filters on; Clean's export names Excel `xlsx` here. */
 export type ExportFormat = "csv" | "json" | "xlsx";
 
+/** What the page tells main about the app theme (M492). */
+export interface WindowThemeChoice {
+  /** `--bg-app`, as `#rgb` or `#rrggbb`. */
+  background: string;
+  scheme: "dark" | "light";
+}
+
+/** What the Log viewer asks the native save dialog to write (M264): text, never a path. */
+export interface LogTextSaveRequest {
+  text: string;
+  /** A few words for the file name, made safe by main. */
+  label?: string | null;
+}
+
+/** The dialog's answer: the file written, or that none was chosen. */
+export type LogTextSaveResult = { canceled: true } | { canceled: false; filePath: string };
+
 export type OpenXmlDialogResult =
   | { canceled: true }
   | { canceled: false; filePath: string };
@@ -402,6 +419,8 @@ export interface MatchProposal {
   key: string | null;
   bpm: number | null;
   genre: string | null;
+  /** M95: the first genre `genre` names ("Indie Dance, House, Indie Dance|Dark Disco" → "Indie Dance"). */
+  genre_primary?: string | null;
   label: string | null;
   year: number | null;
   mix: string | null;
@@ -466,6 +485,13 @@ export interface LibraryTrackRow {
   matched_on?: "key" | "bpm" | null;
   effective_bpm?: number | null;
   effective_genre?: string | null;
+  /**
+   * M95: the genres `effective_genre` names, split on commas and pipes, each once,
+   * and the first of them. The raw string above is kept; a table shows
+   * `genre_primary`, a hint lists `genres`.
+   */
+  genres?: string[];
+  genre_primary?: string | null;
   effective_label?: string | null;
   effective_year?: number | null;
   overridden?: Array<"key" | "bpm" | "genre" | "label" | "year">;
@@ -866,6 +892,8 @@ export interface CollectionAdded {
   skipped: number;
   added_track_ids: number[];
   skipped_track_ids: number[];
+  /** M519: the entries those tracks became; removing them is the undo of the add. */
+  added_entry_ids: number[];
 }
 
 export interface FrozenCollection {
@@ -935,6 +963,12 @@ export interface BatchResult {
   unchanged: number;
   failed: number;
   cancelled: boolean;
+  /**
+   * M519: the entries an add-to-Collection made. Removing them (`removeCollectionEntries`) is
+   * its undo. `undoable` is false for an add too big to list.
+   */
+  added_entry_ids?: number[];
+  undoable?: boolean;
 }
 
 /** Either counts, when it applied inline, or a job to follow (DEC-063). */
@@ -1181,6 +1215,8 @@ export interface RefreshApplied {
   xml_path: string;
   track_count: number;
   tracks_inserted: number;
+  /** M517: the library ids of the tracks the export added, for "Match the 12 new tracks". */
+  new_track_ids?: number[];
   tracks_updated: number;
   /** Reported on its own because it is the irreversible number (DEC-003). */
   tracks_deleted: number;
@@ -1260,6 +1296,8 @@ export interface MatchStarted extends CleanJobStarted {
   excluded: number;
   planned: number;
   resumed_from: string | null;
+  /** M510: another match is running, so this one waits for it (its job state is `queued`). */
+  queued?: boolean;
 }
 
 /** One field Correct copies; the key is never one (it is replaced with `replace_key`). */
@@ -1607,12 +1645,36 @@ export interface DuplicateGroup {
 /** A group as the listing answers it, with its members as Library rows (CLEAN-12). */
 export interface ListedDuplicateGroup extends DuplicateGroup {
   members: LibraryTrackRow[];
+  /** M152: the members now (the group's own `track_ids` is what was stored). */
+  track_count?: number;
+  /** M152: per member, the title words the others lack, in the order they appear. */
+  differing?: Array<{ track_id: number; words: string[] }>;
+  /** M152: a Beatport group whose members name different mixes: one match may be wrong. */
+  mixes_differ?: boolean;
+}
+
+/** What Keep answers (M153): the group, now stored as "not duplicates", and the track kept. */
+export interface DuplicateKept {
+  group: DuplicateGroup;
+  kept_track_id: number;
+}
+
+/** What the Library is holding that is not out in the world yet (M511). */
+export interface LibraryPending {
+  /** Values that differ from what the audio files hold. */
+  values_not_in_files: number;
+  /** Changes to exported fields since the last Rekordbox export wrote its file. */
+  changes_not_exported: number;
+  /** When that export finished; null before the first. */
+  last_export_at: string | null;
 }
 
 export interface DuplicateGroupList {
   groups: ListedDuplicateGroup[];
   /** Every group, whatever page was asked for. */
   total: number;
+  /** M155: the tracks in every group, each once. */
+  track_total?: number;
   /** Null when every group was asked for. */
   limit: number | null;
   offset: number;
@@ -2153,6 +2215,8 @@ export interface RekordboxExportResult {
   export_id: number;
   outcome: "written" | "cancelled" | "failed";
   destination_path: string;
+  /** M512: where the previous file at the destination was kept, or null when there was none. */
+  backup_path: string | null;
   source_path: string;
   source_stale: boolean;
   key_format: RekordboxKeyFormat;
@@ -3966,6 +4030,8 @@ export interface CuePointBridge {
   }) => Promise<DuplicateGroupList>;
   dismissDuplicateGroup?: (params: { group_id: number }) => Promise<{ group: DuplicateGroup }>;
   restoreDuplicateGroup?: (params: { group_id: number }) => Promise<{ group: DuplicateGroup }>;
+  keepDuplicateTrack?: (params: { group_id: number; track_id: number }) => Promise<DuplicateKept>;
+  getLibraryPending?: () => Promise<LibraryPending>;
   startArtworkScan?: (params: {
     selection: BatchSelection;
     fetch_beatport?: boolean;
@@ -4203,9 +4269,18 @@ export interface CuePointBridge {
    */
   menu?: {
     setSizeState: (state: MenuSizeState) => Promise<void>;
+    /** Which panels are open, for the check marks beside Track details and Sidebar (M497). */
+    setViewState?: (state: { inspector: boolean; sidebar: boolean }) => Promise<void>;
     /** Listen for the menu's commands; returns the function that stops listening. */
     onCommand: (listener: (id: string) => void) => () => void;
   };
+  /**
+   * The app theme's colours for the frame around the page (M492, M495, M496): the page's
+   * `--bg-app` as `#rrggbb` and its `color-scheme`. Main sets the window's background and the
+   * system theme the title bar and native menu follow, and remembers both for the next launch.
+   * Answers whether main took it.
+   */
+  setWindowTheme?: (theme: WindowThemeChoice) => Promise<boolean>;
   /** End-to-end runs only: `enabled()` answers true, and the page may be made to throw (REPORT-06). */
   testHooks?: {
     enabled: () => Promise<boolean>;
@@ -4214,7 +4289,11 @@ export interface CuePointBridge {
     jobId: string,
     onEvent: (event: JobStatus) => void,
   ) => () => void;
+  /** The computer's locale for dates (`en-GB`), or null; `format/dates.ts` falls back to en-US (M498). */
+  getSystemLocale?: () => string | null;
   openXmlFileDialog: () => Promise<OpenXmlDialogResult>;
+  /** Save the Log viewer's text through the native dialog (M264, WO-8). */
+  saveLogTextDialog?: (request: LogTextSaveRequest) => Promise<LogTextSaveResult>;
   resolveDroppedFilePath?: (file: File) => string | null;
   saveExportFileDialog: (options: {
     defaultPath?: string;

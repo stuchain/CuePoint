@@ -7,6 +7,9 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
  * the rest is plumbing. Every method's rejection is given its own words back
  * (CLEAN-13), so a refusal shown beside a field reads as the engine said it.
  */
+/** What main said the computer's locale is; read on first use. */
+let systemLocale;
+
 const REMOTE_PREFIX = /^Error invoking remote method '[^']*': (?:[A-Za-z]*Error: )?/;
 
 /**
@@ -317,6 +320,8 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     ipcRenderer.invoke("engine:dismissDuplicateGroup", params),
   restoreDuplicateGroup: (params) =>
     ipcRenderer.invoke("engine:restoreDuplicateGroup", params),
+  keepDuplicateTrack: (params) => ipcRenderer.invoke("engine:keepDuplicateTrack", params),
+  getLibraryPending: () => ipcRenderer.invoke("engine:getLibraryPending"),
   startArtworkScan: (params) => ipcRenderer.invoke("engine:startArtworkScan", params),
   previewTagWrite: (params) => ipcRenderer.invoke("engine:previewTagWrite", params),
   startTagWrite: (params) => ipcRenderer.invoke("engine:startTagWrite", params),
@@ -493,6 +498,12 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   // Nothing of Electron's Menu crosses; the renderer can say what size it is and hear a fixed id.
   menu: {
     setSizeState: (state) => ipcRenderer.invoke("menu:setSizeState", state),
+    // Which panels are open, for the check marks beside View → Track details and Sidebar (M497).
+    setViewState: (state) =>
+      ipcRenderer.invoke("menu:setViewState", {
+        inspector: state?.inspector === true,
+        sidebar: state?.sidebar === true,
+      }),
     onCommand: (listener) => {
       const handler = (_event, id) => {
         if (typeof id === "string") listener(id);
@@ -501,6 +512,11 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
       return () => ipcRenderer.removeListener("menu:command", handler);
     },
   },
+  // The app theme's colours, for the frame around the page (M492, M495, M496): the window's
+  // background, and the system's light or dark for the title bar and the native menu. Only these two
+  // fields cross; main checks them again and applies them to the window it owns.
+  setWindowTheme: (theme) =>
+    ipcRenderer.invoke("window:setTheme", { background: theme?.background, scheme: theme?.scheme }),
   // Whether this run is an end-to-end test (REPORT-06): the page may then be
   // made to throw, to see the error screen. Main answers false for a user.
   testHooks: {
@@ -524,7 +540,20 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
       void ipcRenderer.invoke("engine:unsubscribeJobEvents", jobId);
     };
   },
+  /** The computer's locale for dates, read once and kept (M498); null when main cannot say. */
+  getSystemLocale: () => {
+    if (systemLocale === undefined) {
+      try {
+        const asked = ipcRenderer.sendSync("app:systemLocale");
+        systemLocale = typeof asked === "string" && asked !== "" ? asked : null;
+      } catch {
+        systemLocale = null;
+      }
+    }
+    return systemLocale;
+  },
   openXmlFileDialog: () => ipcRenderer.invoke("dialog:openXml"),
+  saveLogTextDialog: (request) => ipcRenderer.invoke("dialog:saveLogText", request),
   resolveDroppedFilePath: (file) => {
     try {
       return webUtils.getPathForFile(file);

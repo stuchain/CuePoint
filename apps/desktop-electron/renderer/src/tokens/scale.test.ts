@@ -8,8 +8,11 @@ import {
   hasStoredScale,
   initScale,
   scaleChoices,
+  applyDevicePixelRatio,
+  devicePixelRatio,
   scaleOptionLabel,
   suggestedScale,
+  watchDevicePixelRatio,
 } from "./scale";
 
 const ONBOARDING_KEY = "cuepoint-onboarding-complete";
@@ -158,5 +161,80 @@ describe("the first-run size (R2-5, Q1 a)", () => {
     });
     expect(initScale()).toBe(1.5);
     spy.mockRestore();
+  });
+});
+
+describe("a display at a fractional pixel ratio (M493, D35)", () => {
+  it("is unchanged at a whole ratio", () => {
+    for (const height of [600, 700, 859, 860, 1040]) {
+      expect(suggestedScale(height, 1)).toBe(suggestedScale(height));
+      expect(suggestedScale(height, 2)).toBe(suggestedScale(height));
+    }
+  });
+
+  it.each([
+    // [available height, ratio, expected]: the size whose pixels are nearest a whole device pixel.
+    [940, 1.5, 1.25], // 1.25 x 1.5 = 1.875, where 1.5 x 1.5 = 2.25 would blur
+    [1040, 1.25, 1.5], // 1.5 x 1.25 = 1.875
+    [680, 1.5, 1], // only 1 fits; nothing crisp to prefer, so the largest that fits
+    [600, 1.25, 1],
+  ])("suggests for %i at %s: %s", (height, ratio, expected) => {
+    expect(suggestedScale(height, ratio)).toBe(expected);
+  });
+
+  it("never suggests a size too big for the screen, whatever the ratio", () => {
+    for (const ratio of [1, 1.25, 1.5, 1.75, 2, 2.5]) {
+      for (const height of [400, 560, 680, 700, 768, 860, 1080, 1440]) {
+        expect(height / suggestedScale(height, ratio)).toBeGreaterThanOrEqual(
+          Math.min(MIN_ROWS_HEIGHT, height),
+        );
+      }
+    }
+  });
+
+  it("marks the same size as suggested in the choices", () => {
+    expect(scaleChoices(1.5, 940, 1.5).find((c) => c.suggested)!.value).toBe(1.25);
+  });
+
+  it("publishes the ratio as --dpr, and keeps it as it changes", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
+    let ratio = 1.5;
+    Object.defineProperty(window, "devicePixelRatio", { configurable: true, get: () => ratio });
+    try {
+      expect(devicePixelRatio()).toBe(1.5);
+      applyDevicePixelRatio();
+      expect(document.documentElement.style.getPropertyValue("--dpr")).toBe("1.5");
+
+      const listeners: Array<() => void> = [];
+      vi.stubGlobal("matchMedia", () => ({
+        addEventListener: (_: string, listener: () => void) => listeners.push(listener),
+        removeEventListener: (_: string, listener: () => void) => {
+          const at = listeners.indexOf(listener);
+          if (at >= 0) listeners.splice(at, 1);
+        },
+      }));
+      const seen: number[] = [];
+      const stop = watchDevicePixelRatio((value) => seen.push(value));
+      ratio = 1.25;
+      listeners.forEach((listener) => listener());
+      expect(seen).toEqual([1.25]);
+      expect(document.documentElement.style.getPropertyValue("--dpr")).toBe("1.25");
+      stop();
+      expect(listeners).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+      if (original) Object.defineProperty(window, "devicePixelRatio", original);
+      else Reflect.deleteProperty(window, "devicePixelRatio");
+    }
+  });
+
+  it("reads an unusable ratio as 1", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
+    Object.defineProperty(window, "devicePixelRatio", { configurable: true, get: () => 0 });
+    try {
+      expect(devicePixelRatio()).toBe(1);
+    } finally {
+      if (original) Object.defineProperty(window, "devicePixelRatio", original);
+    }
   });
 });

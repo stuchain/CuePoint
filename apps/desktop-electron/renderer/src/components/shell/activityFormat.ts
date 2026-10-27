@@ -79,6 +79,7 @@ const EVENT_WORDS: Record<string, string> = {
   "clean.duplicates.scanned": "Duplicates",
   "clean.duplicates.dismissed": "Duplicates",
   "clean.duplicates.restored": "Duplicates",
+  "clean.duplicates.kept": "Duplicates",
   "clean.artwork.scanned": "Artwork",
   "clean.tags.written": "Synced to files",
   "clean.tags.restored": "Sync undone",

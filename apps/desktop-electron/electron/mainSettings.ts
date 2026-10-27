@@ -8,6 +8,9 @@
  * save but its activity event (DEC-110), so unlike the Rekordbox export's
  * folder (DEC-086) there is no engine record to read it back from.
  *
+ * The window's last size, place and maximised state, and the theme colour it last had, live here
+ * too (M491, M492): both are read before the window is made.
+ *
  * The updater's two notes live here too (DIST-06): when it last checked, and
  * the version "What's new" was last shown for.
  *
@@ -27,6 +30,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { parseVersion } from "./updateRule";
+import { parseWindowState, type WindowState } from "./windowSize";
+import { parseWindowTheme, type WindowTheme } from "./windowTheme";
 
 /** The file's name, in `app.getPath("userData")`. */
 export const MAIN_SETTINGS_FILE = "main-settings.json";
@@ -49,10 +54,28 @@ interface MainSettings {
    * One still set while the app is older means the install failed (DIST-06).
    */
   pendingInstall: string | null;
+  /**
+   * Where the window was and how big when it was last closed, and whether it was maximised, so the
+   * next launch opens the same (M491). Null before the first close.
+   */
+  windowState: WindowState | null;
+  /**
+   * The app theme's background and scheme as the page last reported them, so the next window is
+   * made already in that colour rather than flashing white (M492). Null before the first report.
+   */
+  windowTheme: WindowTheme | null;
 }
 
 function defaults(): MainSettings {
-  return { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null };
+  return {
+    setListFolder: null,
+    errorReporting: true,
+    lastCheckedAt: null,
+    lastSeenVersion: null,
+    pendingInstall: null,
+    windowState: null,
+    windowTheme: null,
+  };
 }
 
 /** An ISO 8601 date-time text, kept as it was written; anything else is null. */
@@ -84,6 +107,8 @@ export function parseMainSettings(text: string): MainSettings {
     lastCheckedAt: isoDate(record.lastCheckedAt),
     lastSeenVersion: schemeVersion(record.lastSeenVersion),
     pendingInstall: schemeVersion(record.pendingInstall),
+    windowState: parseWindowState(record.windowState),
+    windowTheme: parseWindowTheme(record.windowTheme),
   };
 }
 

@@ -7,14 +7,17 @@
  * check in the shell is a suggestion and the one mistake it guards against — a
  * collection written over its own source — costs a user their library.
  *
- * - **Only the folder is remembered, never the file name**, so no export
- *   silently overwrites the previous one. The folder is the one the last export
- *   that wrote went to, read from the engine's record rather than kept here:
- *   the shell holds no path of its own, and the record cannot drift from it.
- * - **The name is dated**: `CuePoint Export YYYY-MM-DD.xml`, in local time,
- *   because that is the date on the person's calendar when they exported.
- * - **Overwriting another existing file is the OS dialog's own confirmation**,
- *   not a second one here.
+ * - **The name is fixed**: `CuePoint Export.xml` (M512, which amends DEC-083's
+ *   dated name). Rekordbox is pointed at one file once, and every export after
+ *   it replaces that file instead of leaving a new one to re-point at. Nothing
+ *   is lost to the replacing: before the engine replaces a file it keeps the
+ *   previous one beside it as `CuePoint Export (backup <local date and time>).xml`,
+ *   written first, and a source Rekordbox file is still refused outright.
+ * - **Only the folder is remembered**, the one the last export that wrote went
+ *   to, read from the engine's record rather than kept here: the shell holds no
+ *   path of its own, and the record cannot drift from it.
+ * - **Replacing the existing file is still the OS dialog's own confirmation**,
+ *   not a second one here; the backup is the engine's and happens either way.
  * - **A cancelled dialog is an answer**, `{ canceled: true }`, and starts
  *   nothing: this module has no way to start an export.
  *
@@ -40,18 +43,10 @@ export interface RekordboxExportDialogDeps {
   /** Where to start when nothing is remembered, or it is gone. */
   fallbackFolder: () => string;
   showSaveDialog: (options: SaveDialogOptions) => Promise<SaveDialogReturnValue>;
-  now: () => Date;
 }
 
-function twoDigits(value: number): string {
-  return String(value).padStart(2, "0");
-}
-
-/** `CuePoint Export 2026-09-21.xml`, dated in local time. */
-export function rekordboxExportFileName(now: Date): string {
-  const date = `${now.getFullYear()}-${twoDigits(now.getMonth() + 1)}-${twoDigits(now.getDate())}`;
-  return `CuePoint Export ${date}.xml`;
-}
+/** The one name every export uses (M512); the engine backs up the file it replaces. */
+export const REKORDBOX_EXPORT_FILE_NAME = "CuePoint Export.xml";
 
 /**
  * A previous choice worth reopening at: an absolute path to an `.xml` file.
@@ -88,7 +83,7 @@ export async function rekordboxExportDialogOptions(
     ? previous
     : path.join(
         (await rememberedFolder(deps)) ?? deps.fallbackFolder(),
-        rekordboxExportFileName(deps.now()),
+        REKORDBOX_EXPORT_FILE_NAME,
       );
   return {
     title: REKORDBOX_EXPORT_DIALOG_TITLE,

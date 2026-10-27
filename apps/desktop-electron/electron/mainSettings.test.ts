@@ -26,7 +26,7 @@ function settingsFile(): string {
 }
 
 const GIGS = path.resolve("/music/gigs");
-const DEFAULTS = { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null };
+const DEFAULTS = { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null, windowState: null, windowTheme: null };
 
 describe("reading", () => {
   it("answers the defaults before anything was written", () => {
@@ -181,5 +181,34 @@ describe("the update fields (DIST-06, DEC-172)", () => {
   it("still drop a key they do not know", () => {
     const read = parseMainSettings(JSON.stringify({ lastSeenVersion: "1.4.0", lastCheckedAt: WHEN, theme: "dark" }));
     expect(read).toEqual({ ...DEFAULTS, lastSeenVersion: "1.4.0", lastCheckedAt: WHEN });
+  });
+});
+
+describe("the window's remembered state (M491, M492)", () => {
+  const STATE = { width: 1400, height: 900, x: 40, y: 30, maximized: true };
+
+  it("round-trips the window state and the theme", () => {
+    const file = settingsFile();
+    const store = new MainSettingsStore(file);
+    store.update({ windowState: STATE });
+    store.update({ windowTheme: { background: "#1e1e1e", scheme: "dark" } });
+    expect(new MainSettingsStore(file).read()).toEqual({
+      ...DEFAULTS,
+      windowState: STATE,
+      windowTheme: { background: "#1e1e1e", scheme: "dark" },
+    });
+  });
+
+  it("reads a hand-edited bad state as none, and keeps the rest", () => {
+    const read = parseMainSettings(
+      JSON.stringify({
+        setListFolder: GIGS,
+        windowState: { width: 10, height: 10 },
+        windowTheme: { background: "red", scheme: "dark" },
+      }),
+    );
+    expect(read.windowState).toBeNull();
+    expect(read.windowTheme).toBeNull();
+    expect(read.setListFolder).toBe(GIGS);
   });
 });

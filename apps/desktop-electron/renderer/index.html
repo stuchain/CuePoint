@@ -5,6 +5,47 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CuePoint</title>
+    <!--
+      The colour of the app before its stylesheets load (M492). The window is made in the theme's
+      colour (main remembers it), and this keeps the page the same colour in the moment between the
+      page loading and the first stylesheet: Neo dark by default, and the stored theme's when there
+      is one. tokens.css paints the body from --bg-app as soon as it loads, which wins from here.
+    -->
+    <style id="boot-background">
+      html {
+        background: #18181b;
+      }
+    </style>
+    <script>
+      (function () {
+        try {
+          var id = localStorage.getItem("cuepoint-ui-lab-theme") || "neoDark";
+          var builtIn = {
+            retro16: "#1a1a2e",
+            neoDark: "#18181b",
+            qtEvolved: "#1e1e1e",
+            clubNeon: "#0a0a0f",
+            mutedPro: "#1c1f26",
+          };
+          var background = builtIn[id];
+          if (!background && id.indexOf("custom:") === 0) {
+            var themes = JSON.parse(localStorage.getItem("cuepoint-ui-lab-custom-themes") || "[]");
+            for (var at = 0; at < themes.length; at += 1) {
+              var theme = themes[at];
+              if (theme && "custom:" + theme.id === id && theme.colors) {
+                var colour = theme.colors.bgApp;
+                if (typeof colour === "string" && /^#[0-9a-fA-F]{3,8}$/.test(colour)) background = colour;
+              }
+            }
+          }
+          if (background) {
+            document.getElementById("boot-background").textContent = "html { background: " + background + "; }";
+          }
+        } catch (error) {
+          // Storage can be unavailable; the default colour stands.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

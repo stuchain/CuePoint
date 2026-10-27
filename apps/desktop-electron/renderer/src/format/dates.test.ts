@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   formatAdded,
   formatChartAxis,
@@ -9,6 +9,8 @@ import {
   formatDayTime,
   formatRange,
   formatTimeOfDay,
+  resetSystemLocale,
+  systemLocale,
 } from "./dates";
 
 const now = new Date(2026, 9, 15, 12, 0);
@@ -111,5 +113,58 @@ describe("formatAdded (C170)", () => {
   it("is the day a track was added: relative for the last two days, a date after", () => {
     expect(formatAdded(new Date(2026, 9, 15, 1, 0), us)).toBe("Today");
     expect(formatAdded(new Date(2026, 8, 3), us)).toBe("Sep 3");
+  });
+});
+
+describe("the computer's locale (M498)", () => {
+  const bridge = (getSystemLocale: unknown) => {
+    (window as unknown as { cuepoint?: unknown }).cuepoint = { getSystemLocale };
+    resetSystemLocale();
+  };
+  afterEach(() => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    resetSystemLocale();
+  });
+
+  it("is en-US when there is no preload (tests, the website)", () => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    resetSystemLocale();
+    expect(systemLocale()).toBe("en-US");
+    expect(formatDay(new Date(2026, 4, 3), { now })).toBe("May 3");
+  });
+
+  it("writes dates in the locale main reported, when none is passed", () => {
+    bridge(() => "de-DE");
+    expect(systemLocale()).toBe("de-DE");
+    expect(formatDay(new Date(2026, 4, 3), { now })).toContain("3.");
+    expect(formatTimeOfDay(new Date(2026, 9, 15, 17, 35), {})).toBe("17:35");
+  });
+
+  it("lets a passed locale win", () => {
+    bridge(() => "de-DE");
+    expect(formatDay(new Date(2026, 4, 3), us)).toBe("May 3");
+  });
+
+  it.each([null, "", "   ", "not a locale!!", 5, undefined])("falls back to en-US for %j", (answer) => {
+    bridge(() => answer);
+    expect(systemLocale()).toBe("en-US");
+  });
+
+  it("falls back when the bridge throws", () => {
+    bridge(() => {
+      throw new Error("no ipc");
+    });
+    expect(systemLocale()).toBe("en-US");
+  });
+
+  it("asks once and keeps the answer", () => {
+    let asked = 0;
+    bridge(() => {
+      asked += 1;
+      return "en-GB";
+    });
+    systemLocale();
+    systemLocale();
+    expect(asked).toBe(1);
   });
 });

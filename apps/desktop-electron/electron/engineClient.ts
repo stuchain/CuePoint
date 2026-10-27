@@ -348,6 +348,8 @@ export interface MatchProposal {
   key: string | null;
   bpm: number | null;
   genre: string | null;
+  /** M95: the first genre `genre` names. */
+  genre_primary?: string | null;
   label: string | null;
   year: number | null;
   mix: string | null;
@@ -389,6 +391,9 @@ export interface LibraryTrackRow {
   matched_on?: "key" | "bpm" | null;
   effective_bpm?: number | null;
   effective_genre?: string | null;
+  /** M95: the genres `effective_genre` names, each once, and the first of them. */
+  genres?: string[];
+  genre_primary?: string | null;
   effective_label?: string | null;
   effective_year?: number | null;
   overridden?: Array<"key" | "bpm" | "genre" | "label" | "year">;
@@ -479,6 +484,8 @@ export interface CollectionAdded {
   skipped: number;
   added_track_ids: number[];
   skipped_track_ids: number[];
+  /** M519: the entries those tracks became; removing them is the undo of the add. */
+  added_entry_ids: number[];
 }
 
 export interface FrozenCollection {
@@ -547,6 +554,12 @@ export interface BatchResult {
   unchanged: number;
   failed: number;
   cancelled: boolean;
+  /**
+   * M519: the entries an add-to-Collection made. Removing them (`removeCollectionEntries`) is
+   * its undo. `undoable` is false for an add too big to list.
+   */
+  added_entry_ids?: number[];
+  undoable?: boolean;
 }
 
 /** Either counts, when it applied inline, or a job to follow (DEC-063). */
@@ -980,6 +993,8 @@ export interface MatchStarted extends CleanJobStarted {
   excluded: number;
   planned: number;
   resumed_from: string | null;
+  /** M510: another match is running, so this one waits for it (its job state is `queued`). */
+  queued?: boolean;
 }
 
 /** One field Correct copies; the key is never one (it is replaced with `replace_key`). */
@@ -1309,11 +1324,35 @@ export interface DuplicateGroup {
 /** A group as the listing answers it: with its members as Library rows. */
 export interface ListedDuplicateGroup extends DuplicateGroup {
   members: LibraryTrackRow[];
+  /** M152: the members now (the group's own `track_ids` is what was stored). */
+  track_count: number;
+  /** M152: per member, the title words the others lack, in the order they appear. */
+  differing: Array<{ track_id: number; words: string[] }>;
+  /** M152: a Beatport group whose members name different mixes: one match may be wrong. */
+  mixes_differ: boolean;
+}
+
+/** What Keep answers (M153): the group, now stored as "not duplicates", and the track kept. */
+export interface DuplicateKept {
+  group: DuplicateGroup;
+  kept_track_id: number;
+}
+
+/** What the Library is holding that is not out in the world yet (M511). */
+export interface LibraryPending {
+  /** Values that differ from what the audio files hold. */
+  values_not_in_files: number;
+  /** Changes to exported fields since the last Rekordbox export wrote its file. */
+  changes_not_exported: number;
+  /** When that export finished; null before the first. */
+  last_export_at: string | null;
 }
 
 export interface DuplicateGroupList {
   groups: ListedDuplicateGroup[];
   total: number;
+  /** M155: the tracks in every group, each once. */
+  track_total: number;
   limit: number | null;
   offset: number;
 }
@@ -1787,6 +1826,8 @@ export interface RekordboxExportResult {
   export_id: number;
   outcome: "written" | "cancelled" | "failed";
   destination_path: string;
+  /** M512: where the previous file at the destination was kept, or null when there was none. */
+  backup_path: string | null;
   source_path: string;
   source_stale: boolean;
   key_format: RekordboxKeyFormat;
@@ -3220,6 +3261,14 @@ export class EngineClient {
     return readJson(res);
   }
 
+  /** Values not in the files and changes not exported, for the Library's footer (M511). */
+  async getLibraryPending(): Promise<LibraryPending> {
+    const res = await fetch(this.url("/api/v1/library/pending"), {
+      headers: this.headers(),
+    });
+    return readJson(res);
+  }
+
   /** The mirrored Rekordbox playlist tree, read-only (LIBUI-03, DEC-044). */
   async getLibraryPlaylists(): Promise<LibraryPlaylistTree> {
     const res = await fetch(this.url("/api/v1/library/playlists"), {
@@ -4454,6 +4503,11 @@ export class EngineClient {
 
   async restoreDuplicateGroup(params: { group_id: number }): Promise<{ group: DuplicateGroup }> {
     return this.postJson("/api/v1/clean/duplicates/restore", params);
+  }
+
+  /** Keep one track of a group: stored as "not duplicates", nothing deleted (M153). */
+  async keepDuplicateTrack(params: { group_id: number; track_id: number }): Promise<DuplicateKept> {
+    return this.postJson("/api/v1/clean/duplicates/keep", params);
   }
 
   /** Read a selection's artwork, optionally fetching Beatport's (DEC-076). */

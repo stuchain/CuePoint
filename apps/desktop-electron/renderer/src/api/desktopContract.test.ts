@@ -707,6 +707,7 @@ describe("desktop contract", () => {
       "getDuplicateGroups",
       "dismissDuplicateGroup",
       "restoreDuplicateGroup",
+      "keepDuplicateTrack",
       "startArtworkScan",
       "previewTagWrite",
       "startTagWrite",
@@ -758,6 +759,7 @@ describe("desktop contract", () => {
         "/api/v1/clean/duplicates",
         "/api/v1/clean/duplicates/dismiss",
         "/api/v1/clean/duplicates/restore",
+        "/api/v1/clean/duplicates/keep",
         "/api/v1/clean/artwork/scan",
         "/api/v1/clean/tags/preview",
         "/api/v1/clean/tags/write",
@@ -2418,9 +2420,25 @@ describe("desktop contract", () => {
     });
 
     it("gives the renderer and the menu the same list of command ids", () => {
+      // What main sends is what the shell answers, less the ids no item sends any more, plus the
+      // ones main sends that the shell has no handler for yet (M456, M497).
       const main = listed(appMenu, "MENU_COMMAND_IDS");
       expect(main.length).toBeGreaterThan(10);
-      expect(listed(menuCommands, "MENU_COMMAND_IDS")).toEqual(main);
+      const retired = listed(menuCommands, "RETIRED_MENU_COMMAND_IDS");
+      const shell = listed(menuCommands, "MENU_COMMAND_IDS").filter((id) => !retired.includes(id));
+      expect([...shell, ...listed(menuCommands, "NEW_MENU_COMMAND_IDS")].sort()).toEqual([...main].sort());
+    });
+
+    it("reports which panels are open to main, and main handles it (M497)", () => {
+      expect(invokedChannels(preload)).toContain("menu:setViewState");
+      expect(handledChannels(main)).toContain("menu:setViewState");
+      expect(bridgeTypes).toContain("setViewState?: (state: { inspector: boolean; sidebar: boolean }) => Promise<void>;");
+    });
+
+    it("passes only two booleans for the panels, never the page's object", () => {
+      const block = preload.slice(preload.indexOf("setViewState:"), preload.indexOf("setViewState:") + 260);
+      expect(block).toContain("inspector: state?.inspector === true");
+      expect(block).toContain("sidebar: state?.sidebar === true");
     });
 
     it("installs the menu from main, and sets the window's zoom to a fixed factor", () => {
@@ -2541,5 +2559,73 @@ describe("Discover saved lists", () => {
   it.each(Object.entries(ACTIONS))("%s acts with POST", (method, route) => {
     expect(clientMethod(method)).toContain(route);
     expect(clientMethod(method)).toContain("this.discoverPost(");
+  });
+});
+
+describe("polish round 3 work orders (WO-3, WO-8)", () => {
+  const clientMethod = (name: string) => {
+    const start = engineClient.indexOf(`async ${name}(`);
+    expect(start, name).toBeGreaterThan(-1);
+    const next = engineClient.indexOf("\n  async ", start + 1);
+    return engineClient.slice(start, next === -1 ? undefined : next);
+  };
+
+  it("carries getLibraryPending (M511) through every layer, as a read", () => {
+    expect(invokedChannels(preload)).toContain("engine:getLibraryPending");
+    expect(handledChannels(main)).toContain("engine:getLibraryPending");
+    expect(supervisorMethodsDeclared(supervisor)).toContain("getLibraryPending");
+    expect(supervisor).toContain("(await this.readyClient()).getLibraryPending(");
+    expect(bridgeTypes).toContain("  getLibraryPending?: () => Promise<LibraryPending>;");
+    const body = clientMethod("getLibraryPending");
+    expect(body).toContain("/api/v1/library/pending");
+    expect(body).not.toContain("POST");
+  });
+
+  it("saves the Log viewer's text through the native dialog (M264), taking text and never a path", () => {
+    expect(handledChannels(main)).toContain("dialog:saveLogText");
+    expect(invokedChannels(preload)).toContain("dialog:saveLogText");
+    expect(preload).toContain("saveLogTextDialog: (request) =>");
+    expect(bridgeTypes).toContain(
+      "saveLogTextDialog?: (request: LogTextSaveRequest) => Promise<LogTextSaveResult>;",
+    );
+    expect(bridgeTypes).toContain("export interface LogTextSaveRequest");
+    const handler = main.slice(main.indexOf('handle("dialog:saveLogText"'));
+    expect(handler.slice(0, handler.indexOf("handle(\n    \"dialog:saveExport\""))).toContain("saveLogText(");
+  });
+});
+
+describe("the window's frame follows the app (M491, M492, M495, M496, M498)", () => {
+  it("takes the theme's colours through one narrow call, and checks them in main", () => {
+    expect(invokedChannels(preload)).toContain("window:setTheme");
+    expect(handledChannels(main)).toContain("window:setTheme");
+    expect(preload).toContain(
+      'setWindowTheme: (theme) =>\n    ipcRenderer.invoke("window:setTheme", { background: theme?.background, scheme: theme?.scheme }),',
+    );
+    expect(bridgeTypes).toContain("setWindowTheme?: (theme: WindowThemeChoice) => Promise<boolean>;");
+    const handler = main.slice(main.indexOf('handle("window:setTheme"'), main.indexOf('handle("window:setTheme"') + 400);
+    expect(handler).toContain("applyWindowTheme(");
+  });
+
+  it("answers the computer's locale synchronously, from main, once (M498)", () => {
+    expect(preload).toContain('ipcRenderer.sendSync("app:systemLocale")');
+    expect(main).toContain('ipcMain.on("app:systemLocale"');
+    expect(main).toContain("app.getSystemLocale()");
+    expect(bridgeTypes).toContain("getSystemLocale?: () => string | null;");
+  });
+
+  it("makes the window hidden, in the theme's colour, with its menu bar tucked away, and shows it when drawn", () => {
+    const create = main.slice(main.indexOf("async function createWindow"));
+    expect(create).toContain("show: false,");
+    expect(create).toContain("backgroundColor: theme.background,");
+    expect(create).toContain("autoHideMenuBar: true,");
+    expect(create).toContain('win.once("ready-to-show", reveal);');
+    expect(create).toContain("nativeTheme.themeSource = theme.scheme;");
+  });
+
+  it("remembers the window as it moves and as it closes (M491)", () => {
+    const create = main.slice(main.indexOf("async function createWindow"));
+    expect(create).toContain("createWindowStateSaver(");
+    expect(create).toContain('win.on("close", () => keeper.flush());');
+    expect(create).toContain("placeWindow(");
   });
 });

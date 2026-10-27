@@ -1,7 +1,7 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, net, powerMonitor, safeStorage, screen, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeTheme, net, powerMonitor, safeStorage, screen, session, shell, systemPreferences } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import { execFile, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -16,6 +16,7 @@ import { BeatportSignInLog } from "./beatportSignInLog";
 import { BEATPORT_TOKEN_FILE, BeatportTokenStore } from "./beatportTokenStore";
 import { resolveAppIconPath } from "./appIcon";
 import { installAppMenu, type MenuPlatform } from "./appMenu";
+import { saveLogText } from "./logTextDialog";
 import { beatportPageUrl } from "./externalLinks";
 import { MediaKeyBinding } from "./mediaKeys";
 import type { PlayerNotice } from "./playbackFailures";
@@ -69,7 +70,8 @@ import {
   testWindowOptions,
   testWindowPlacement,
 } from "./testWindowPlacement";
-import { WINDOW_MIN_SIZE } from "./windowSize";
+import { DEFAULT_WINDOW_SIZE, WINDOW_MIN_SIZE, createWindowStateSaver, placeWindow } from "./windowSize";
+import { DEFAULT_WINDOW_THEME, applyWindowTheme } from "./windowTheme";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
@@ -587,10 +589,31 @@ function registerIpcHandlers(): void {
   ipcMain.on("app:pageSwitch", (_event, page: unknown, drawMs: unknown) => {
     pageSwitchLog?.report(page, drawMs);
   });
+  // The computer's locale, answered at once (the page asks while it writes its first date): dates
+  // follow the region set in the system rather than Chromium's language (M498).
+  ipcMain.on("app:systemLocale", (event) => {
+    event.returnValue = safely(() => app.getSystemLocale()) ?? null;
+  });
   // The renderer's sizes and the current one, for View → Size (FLW-20).
   handle("menu:setSizeState", (_event, state: unknown) => {
     appMenu?.setSizeState(state);
   });
+  // Which panels are open, for the check marks in View (M497).
+  handle("menu:setViewState", (_event, state: unknown) => {
+    appMenu?.setViewState(state);
+  });
+  // The app theme's background and light or dark: the window's own colour, and the system theme the
+  // title bar and the native menu follow (M492, M495, M496). Remembered for the next launch.
+  handle("window:setTheme", (_event, theme: unknown) =>
+    applyWindowTheme(
+      {
+        nativeTheme,
+        window: () => mainWindow,
+        remember: (value) => mainSettingsStore().update({ windowTheme: value }),
+      },
+      theme,
+    ),
+  );
   handle("engine:status", () => engine.getStatus());
   handle("engine:restart", () => engine.restart());
   handle("engine:searchLibrary", (_event, params) => engine.searchLibrary(params));
@@ -769,6 +792,10 @@ function registerIpcHandlers(): void {
   handle("engine:dismissDuplicateGroup", (_event, params) =>
     engine.dismissDuplicateGroup(params),
   );
+  handle("engine:keepDuplicateTrack", (_event, params) =>
+    engine.keepDuplicateTrack(params),
+  );
+  handle("engine:getLibraryPending", () => engine.getLibraryPending());
   handle("engine:restoreDuplicateGroup", (_event, params) =>
     engine.restoreDuplicateGroup(params),
   );
@@ -1325,7 +1352,6 @@ function registerIpcHandlers(): void {
           fallbackFolder: () => app.getPath("documents"),
           showSaveDialog: (options) =>
             showSaveDialogFor(BrowserWindow.getFocusedWindow(), options),
-          now: () => new Date(),
         },
         request,
       ),
@@ -1343,6 +1369,23 @@ function registerIpcHandlers(): void {
         fallbackFolder: () => app.getPath("documents"),
         showSaveDialog: (options) =>
           showSaveDialogFor(BrowserWindow.getFocusedWindow(), options),
+        now: () => new Date(),
+      },
+      request,
+    ),
+  );
+  /**
+   * The Log viewer's "Save as text file…" (M264). The page sends text and a few
+   * words for the name, never a path: the file written is the one this dialog
+   * chose, and `saveLogText` refuses what is not text or is too large.
+   */
+  handle("dialog:saveLogText", (_event, request: unknown) =>
+    saveLogText(
+      {
+        showSaveDialog: (options) =>
+          showSaveDialogFor(BrowserWindow.getFocusedWindow(), options),
+        writeFile: (filePath, text) => fs.promises.writeFile(filePath, text, "utf8"),
+        fallbackFolder: () => app.getPath("documents"),
         now: () => new Date(),
       },
       request,
@@ -1425,13 +1468,23 @@ async function createWindow(): Promise<void> {
 
   startMainLog();
 
-  const size = { width: 1280, height: 800 };
+  const size = { ...DEFAULT_WINDOW_SIZE };
   // An end-to-end run's window goes where it asks and is shown without focus
-  // (`testWindowPlacement.ts`); a person's opens as it always has.
+  // (`testWindowPlacement.ts`); a person's opens where and how big it was when last closed (M491),
+  // in the colour the app's theme last reported (M492), and is shown once it has drawn.
   const testDisplay = displayChoice(process.env[E2E_DISPLAY_ENV]);
   const placement = testDisplay
     ? testWindowPlacement(testDisplay, screen.getAllDisplays(), screen.getPrimaryDisplay(), size)
     : null;
+  const remembered = mainSettingsStore().read();
+  const theme = remembered.windowTheme ?? DEFAULT_WINDOW_THEME;
+  // The title bar and the native menu follow the app's theme, not Windows' mode (M495, M496).
+  nativeTheme.themeSource = theme.scheme;
+  const opening = placeWindow(
+    remembered.windowState,
+    screen.getAllDisplays().map((display) => display.workArea),
+    screen.getPrimaryDisplay().workArea,
+  );
 
   const appIconPath = resolveAppIconPath({
     platform: process.platform,
@@ -1440,8 +1493,20 @@ async function createWindow(): Promise<void> {
     resourcesPath: process.resourcesPath,
   });
   const win = new BrowserWindow({
-    ...size,
+    ...(placement
+      ? size
+      : {
+          width: opening.width,
+          height: opening.height,
+          ...(opening.x !== undefined && opening.y !== undefined ? { x: opening.x, y: opening.y } : {}),
+        }),
     ...WINDOW_MIN_SIZE,
+    // Not shown until the page has drawn, and made in the theme's colour, so the first thing on
+    // screen is the app's background and never a white frame (M492).
+    show: false,
+    backgroundColor: theme.background,
+    // The menu bar stays out of the way and Alt brings it back; its shortcuts work either way (M496).
+    autoHideMenuBar: true,
     ...(placement ? testWindowOptions(placement) : {}),
     // Windows and Linux show the window's own icon; macOS uses the bundle's (DIST-09).
     ...(appIconPath ? { icon: appIconPath } : {}),
@@ -1504,6 +1569,32 @@ async function createWindow(): Promise<void> {
     // `enableLargerThanScreen` set, it keeps the size the tests expect.
     win.setSize(size.width, size.height);
     win.showInactive();
+  } else {
+    // Shown when the page first paints; a page that never does is shown after a few seconds, so a
+    // broken load is a visible window with an error rather than none at all (M492).
+    let shown = false;
+    const reveal = (): void => {
+      if (shown || win.isDestroyed()) return;
+      shown = true;
+      if (opening.maximized) win.maximize();
+      win.show();
+    };
+    win.once("ready-to-show", reveal);
+    setTimeout(reveal, 5000).unref();
+
+    // Remember the size, the place and whether it was maximised, once the window has been still
+    // and again as it closes (M491).
+    const keeper = createWindowStateSaver({
+      window: win,
+      save: (state) => {
+        mainSettingsStore().update({ windowState: state });
+      },
+    });
+    win.on("resize", () => keeper.schedule());
+    win.on("move", () => keeper.schedule());
+    win.on("maximize", () => keeper.schedule());
+    win.on("unmaximize", () => keeper.schedule());
+    win.on("close", () => keeper.flush());
   }
 
   // The first load starts the updater's clock: 10 s from now, then every 4 hours (DIST-06).

@@ -13,8 +13,41 @@ export type DateInput = Date | string | number | null | undefined;
 export interface DateOptions {
   /** The moment "this year", "Today" and "Yesterday" are measured from. */
   now?: Date;
-  /** A BCP 47 tag; the computer's locale when left out. */
+  /** A BCP 47 tag; the computer's locale (`systemLocale()`) when left out. */
   locale?: string;
+}
+
+/** What dates are written in when the computer's own locale cannot be had (a test, the website). */
+export const FALLBACK_LOCALE = "en-US";
+
+let systemLocaleCache: string | null = null;
+
+/**
+ * The computer's own locale for dates (M498): the region the person set in Windows, which is what
+ * their other programs write dates in, rather than the language Chromium was started in. Main
+ * answers it once (`app.getSystemLocale()`, through the preload); where there is no preload, or it
+ * answers something `Intl` cannot use, dates are `en-US` rather than whatever the engine running
+ * the page defaults to.
+ */
+export function systemLocale(): string {
+  if (systemLocaleCache !== null) return systemLocaleCache;
+  let chosen = FALLBACK_LOCALE;
+  try {
+    const asked = window.cuepoint?.getSystemLocale?.();
+    if (typeof asked === "string" && asked.trim() !== "") {
+      const [supported] = Intl.DateTimeFormat.supportedLocalesOf([asked.trim()]);
+      if (supported) chosen = supported;
+    }
+  } catch {
+    // A locale `Intl` rejects, or a bridge that throws: the fallback stands.
+  }
+  systemLocaleCache = chosen;
+  return chosen;
+}
+
+/** Forget the locale read, so the next date asks again; for tests. */
+export function resetSystemLocale(): void {
+  systemLocaleCache = null;
 }
 
 /** A date as a Date, or null when it is missing or not a date. */
@@ -41,7 +74,7 @@ export function daysAgo(date: Date, now: Date = new Date()): number {
 function dayText(date: Date, now: Date, locale: string | undefined, withYear?: boolean): string {
   const year = withYear ?? date.getFullYear() !== now.getFullYear();
   return plain(
-    new Intl.DateTimeFormat(locale, {
+    new Intl.DateTimeFormat(locale ?? systemLocale(), {
       month: "short",
       day: "numeric",
       ...(year ? { year: "numeric" } : {}),
@@ -86,7 +119,7 @@ export function formatDateTime(value: DateInput, options: DateOptions = {}): str
   const date = toDate(value);
   if (!date) return "";
   return plain(
-    new Intl.DateTimeFormat(options.locale, {
+    new Intl.DateTimeFormat(options.locale ?? systemLocale(), {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -109,7 +142,7 @@ export function formatDayTime(value: DateInput, options: DateOptions = {}): stri
   if (!date) return "";
   const now = options.now ?? new Date();
   return plain(
-    new Intl.DateTimeFormat(options.locale, {
+    new Intl.DateTimeFormat(options.locale ?? systemLocale(), {
       month: "short",
       day: "numeric",
       ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
@@ -124,7 +157,7 @@ export function formatTimeOfDay(value: DateInput, options: DateOptions = {}): st
   const date = toDate(value);
   if (!date) return "";
   return plain(
-    new Intl.DateTimeFormat(options.locale, { hour: "numeric", minute: "2-digit" }).format(date),
+    new Intl.DateTimeFormat(options.locale ?? systemLocale(), { hour: "numeric", minute: "2-digit" }).format(date),
   );
 }
 
@@ -146,6 +179,6 @@ export function formatChartAxis(value: DateInput, options: DateOptions = {}): st
   const date = toDate(value);
   if (!date) return "";
   return plain(
-    new Intl.DateTimeFormat(options.locale, { month: "short", year: "numeric" }).format(date),
+    new Intl.DateTimeFormat(options.locale ?? systemLocale(), { month: "short", year: "numeric" }).format(date),
   );
 }

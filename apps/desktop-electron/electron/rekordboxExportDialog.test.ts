@@ -6,16 +6,16 @@ import type { RememberedRekordboxExport } from "./engineClient";
 import {
   REKORDBOX_EXPORT_DIALOG_TITLE,
   REKORDBOX_EXPORT_FILTERS,
+  REKORDBOX_EXPORT_FILE_NAME,
   chooseRekordboxExportDestination,
   rekordboxExportDialogOptions,
-  rekordboxExportFileName,
   type RekordboxExportDialogDeps,
 } from "./rekordboxExportDialog";
 
 /**
- * The Rekordbox export's save dialog (EXPORT-06, DEC-083).
+ * The Rekordbox export's save dialog (EXPORT-06, DEC-083, M512).
  *
- * What the dialog is opened with — its filter, its dated name, the folder it
+ * What the dialog is opened with — its filter, its fixed name, the folder it
  * starts in — and that it answers with a file or with nothing, and never
  * judges the file or starts anything. Whether a path may be written is the
  * engine's, and is tested there.
@@ -23,7 +23,6 @@ import {
 
 const DOCUMENTS = path.resolve("/home/dj/Documents");
 const EXPORTS = path.resolve("/music/exports");
-const SATURDAY = new Date(2026, 8, 5, 23, 59); // 5 September 2026, local time
 
 function remembered(overrides: Partial<RememberedRekordboxExport> = {}): RememberedRekordboxExport {
   return { folder: null, folder_exists: false, key_format: "normal", export_id: null, ...overrides };
@@ -42,24 +41,14 @@ function deps(
       history,
       fallbackFolder: () => DOCUMENTS,
       showSaveDialog,
-      now: () => SATURDAY,
       ...overrides,
     } satisfies RekordboxExportDialogDeps,
   };
 }
 
-describe("the dated name", () => {
-  it("is CuePoint Export and the local date", () => {
-    expect(rekordboxExportFileName(SATURDAY)).toBe("CuePoint Export 2026-09-05.xml");
-  });
-
-  it("pads the month and the day", () => {
-    expect(rekordboxExportFileName(new Date(2027, 0, 3))).toBe("CuePoint Export 2027-01-03.xml");
-  });
-
-  it("is dated in local time, the date on the person's calendar", () => {
-    const lateAtNight = new Date(2026, 11, 31, 23, 30);
-    expect(rekordboxExportFileName(lateAtNight)).toBe("CuePoint Export 2026-12-31.xml");
+describe("the fixed name (M512)", () => {
+  it("is CuePoint Export.xml, with no date, so Rekordbox is pointed at it once", () => {
+    expect(REKORDBOX_EXPORT_FILE_NAME).toBe("CuePoint Export.xml");
   });
 });
 
@@ -73,14 +62,14 @@ describe("what the dialog is opened with", () => {
     expect(options.title).toBe(REKORDBOX_EXPORT_DIALOG_TITLE);
   });
 
-  it("suggests the dated name in the folder the last export went to", async () => {
+  it("suggests the fixed name in the folder the last export went to", async () => {
     const { deps: given } = deps({
       history: async () => ({ remembered: remembered({ folder: EXPORTS, folder_exists: true }) }),
     });
 
     const options = await rekordboxExportDialogOptions(given);
 
-    expect(options.defaultPath).toBe(path.join(EXPORTS, "CuePoint Export 2026-09-05.xml"));
+    expect(options.defaultPath).toBe(path.join(EXPORTS, REKORDBOX_EXPORT_FILE_NAME));
   });
 
   it("starts in Documents when nothing has been exported", async () => {
@@ -88,7 +77,7 @@ describe("what the dialog is opened with", () => {
 
     const options = await rekordboxExportDialogOptions(given);
 
-    expect(options.defaultPath).toBe(path.join(DOCUMENTS, "CuePoint Export 2026-09-05.xml"));
+    expect(options.defaultPath).toBe(path.join(DOCUMENTS, REKORDBOX_EXPORT_FILE_NAME));
   });
 
   it("starts in Documents when the remembered folder is gone", async () => {
@@ -113,9 +102,9 @@ describe("what the dialog is opened with", () => {
     expect(path.dirname(options.defaultPath!)).toBe(DOCUMENTS);
   });
 
-  it("never suggests the previous export's file name", async () => {
-    // DEC-083: only the folder is remembered, so no export silently replaces
-    // the last one. The history is asked for the folder and nothing else.
+  it("suggests the same name every time, whatever the history holds", async () => {
+    // M512 amends DEC-083: the name is fixed, and the engine keeps a dated backup of the file it
+    // replaces. The history is still asked for the folder and nothing else.
     const { deps: given } = deps({
       history: async () => ({
         remembered: remembered({ folder: EXPORTS, folder_exists: true, export_id: 4 }),
@@ -124,7 +113,7 @@ describe("what the dialog is opened with", () => {
 
     const options = await rekordboxExportDialogOptions(given);
 
-    expect(path.basename(options.defaultPath!)).toBe("CuePoint Export 2026-09-05.xml");
+    expect(path.basename(options.defaultPath!)).toBe(REKORDBOX_EXPORT_FILE_NAME);
   });
 
   it("reopens at a previous choice when asked to change it", async () => {
@@ -148,7 +137,7 @@ describe("what the dialog is opened with", () => {
 
     const options = await rekordboxExportDialogOptions(given, { currentPath });
 
-    expect(options.defaultPath).toBe(path.join(DOCUMENTS, "CuePoint Export 2026-09-05.xml"));
+    expect(options.defaultPath).toBe(path.join(DOCUMENTS, REKORDBOX_EXPORT_FILE_NAME));
   });
 
   it("leaves overwriting another file to the OS dialog's own confirmation", async () => {

@@ -12,6 +12,7 @@ import {
   buildMenuTemplate,
   installAppMenu,
   parseSizeState,
+  parseViewState,
   type MenuPlatform,
   type SizeState,
 } from "./appMenu";
@@ -29,10 +30,14 @@ const SIZES: SizeState = {
 
 function template(
   platform: MenuPlatform,
-  { packaged = true, size = SIZES }: { packaged?: boolean; size?: SizeState } = {},
+  {
+    packaged = true,
+    size = SIZES,
+    view = null,
+  }: { packaged?: boolean; size?: SizeState; view?: { inspector: boolean; sidebar: boolean } | null } = {},
 ) {
   const sent: string[] = [];
-  const items = buildMenuTemplate({ platform, packaged, size, send: (id) => sent.push(id) });
+  const items = buildMenuTemplate({ platform, packaged, size, view, send: (id) => sent.push(id) });
   return { items, sent };
 }
 
@@ -78,24 +83,24 @@ describe("the menus on each platform", () => {
     expect(template(platform).items.map(labelOf)).toEqual(["File", "Edit", "View", "Help"]);
   });
 
-  it("gives macOS its CuePoint menu: About, Settings… (Cmd+,), Quit", () => {
+  it("gives macOS its CuePoint menu: About, Settings (Cmd+,), Quit", () => {
     const { items } = template("darwin");
     const app = submenu(top(items, "CuePoint")).filter((item) => item.type !== "separator");
-    expect(app.map(labelOf)).toEqual(["About CuePoint", "Settings…", "hide", "hideOthers", "unhide", "quit"]);
+    expect(app.map(labelOf)).toEqual(["About CuePoint", "Settings", "hide", "hideOthers", "unhide", "quit"]);
     expect(app[1]!.accelerator).toBe("CmdOrCtrl+,");
   });
 
-  it("puts Settings… in File with Ctrl+, on Windows and Linux, About in Help", () => {
+  it("puts Settings in File with Ctrl+, on Windows and Linux, About in Help", () => {
     for (const platform of ["win32", "linux"] as const) {
       const { items } = template(platform);
       const file = submenu(top(items, "File"));
-      const settings = file.find((item) => item.label === "Settings…");
+      const settings = file.find((item) => item.label === "Settings");
       expect(settings?.accelerator).toBe("CmdOrCtrl+,");
-      expect(submenu(top(items, "View")).some((item) => item.label === "Settings…")).toBe(false);
+      expect(submenu(top(items, "View")).some((item) => item.label === "Settings")).toBe(false);
       // Settings sits between the file commands and Quit, with a divider on each side.
       expect(file.map((item) => item.label ?? item.role ?? item.type).slice(-4)).toEqual([
         "separator",
-        "Settings…",
+        "Settings",
         "separator",
         "quit",
       ]);
@@ -104,40 +109,68 @@ describe("the menus on each platform", () => {
     }
   });
 
-  it("leaves Settings… and About out of View and Help on macOS", () => {
+  it("leaves Settings and About out of View and Help on macOS", () => {
     const { items } = template("darwin");
-    expect(submenu(top(items, "File")).some((item) => item.label === "Settings…")).toBe(false);
+    expect(submenu(top(items, "File")).some((item) => item.label === "Settings")).toBe(false);
     expect(submenu(top(items, "Help")).some((item) => item.label === "About CuePoint")).toBe(false);
   });
 });
 
 describe("File", () => {
-  it("imports another file (Ctrl+O) and checks for changes, and does not export (DEC-087)", () => {
+  it("imports another file (Ctrl+O), checks for changes (F5) and exports to Rekordbox (M497)", () => {
     const { items } = template("linux");
     const file = submenu(top(items, "File")).filter((item) => item.type !== "separator");
     const labels = file.map(labelOf);
-    expect(labels.slice(0, 2)).toEqual(["Import a Rekordbox file…", "Check for changes"]);
+    expect(labels.slice(0, 3)).toEqual([
+      "Import a Rekordbox file…",
+      "Check for changes",
+      "Export to Rekordbox…",
+    ]);
     expect(file[0]!.accelerator).toBe("CmdOrCtrl+O");
-    expect(labels.join("|")).not.toMatch(/export/i);
+    expect(file[1]!.accelerator).toBe("F5");
   });
 
-  it("sends import and check-rekordbox", () => {
+  it("lets the menu answer F5: the page has no handler for it, so the accelerator is registered", () => {
+    for (const platform of ["darwin", "win32", "linux"] as const) {
+      expect(byId(template(platform).items, "check-rekordbox")!.registerAccelerator).not.toBe(false);
+    }
+  });
+
+  it("sends import, check-rekordbox and export-rekordbox", () => {
     const { items, sent } = template("linux");
     click(byId(items, "import"));
     click(byId(items, "check-rekordbox"));
-    expect(sent).toEqual(["import", "check-rekordbox"]);
+    click(byId(items, "export-rekordbox"));
+    expect(sent).toEqual(["import", "check-rekordbox", "export-rekordbox"]);
   });
 });
 
 describe("Edit", () => {
   it.each(["darwin", "win32", "linux"] as const)(
-    "has undo, redo, cut, copy, paste and select all roles on %s",
+    "has redo, cut, copy, paste and select all roles on %s",
     (platform) => {
       const { items } = template(platform);
       const roles = submenu(top(items, "Edit")).map((item) => item.role);
-      for (const role of ["undo", "redo", "cut", "copy", "paste", "selectAll"]) {
+      for (const role of ["redo", "cut", "copy", "paste", "selectAll"]) {
         expect(roles, role).toContain(role);
       }
+    },
+  );
+
+  it.each(["darwin", "win32", "linux"] as const)(
+    "has CuePoint's own Undo on Ctrl+Z, first, on %s (M456)",
+    (platform) => {
+      const { items, sent } = template(platform);
+      const edit = submenu(top(items, "Edit"));
+      const undo = edit[0]!;
+      expect(undo.id).toBe("undo");
+      expect(undo.label).toBe("Undo");
+      expect(undo.accelerator).toBe("CmdOrCtrl+Z");
+      // The menu takes the key and the page decides what it undoes: a text edit or the newest change.
+      expect(undo.registerAccelerator).not.toBe(false);
+      expect(undo.role).toBeUndefined();
+      click(undo);
+      expect(sent).toEqual(["undo"]);
     },
   );
 });
@@ -234,6 +267,28 @@ describe("View: size, panels, Settings", () => {
     expect(sent).toEqual(["size-bigger", "size-bigger", "size-smaller", "size-default"]);
   });
 
+  it("has no check mark on the panels until the page says what is open", () => {
+    const { items } = template("linux");
+    expect(byId(items, "toggle-sidebar")!.type).toBeUndefined();
+    expect(byId(items, "toggle-inspector")!.type).toBeUndefined();
+  });
+
+  it("ticks Track details and Sidebar as check items by what is open (M497)", () => {
+    const open = template("linux", { view: { inspector: true, sidebar: false } }).items;
+    expect(byId(open, "toggle-inspector")).toMatchObject({ type: "checkbox", checked: true });
+    expect(byId(open, "toggle-sidebar")).toMatchObject({ type: "checkbox", checked: false });
+    const other = template("linux", { view: { inspector: false, sidebar: true } }).items;
+    expect(byId(other, "toggle-inspector")).toMatchObject({ type: "checkbox", checked: false });
+    expect(byId(other, "toggle-sidebar")).toMatchObject({ type: "checkbox", checked: true });
+  });
+
+  it("still sends the toggle ids as check items", () => {
+    const { items, sent } = template("linux", { view: { inspector: true, sidebar: true } });
+    click(byId(items, "toggle-inspector"));
+    click(byId(items, "toggle-sidebar"));
+    expect(sent).toEqual(["toggle-inspector", "toggle-sidebar"]);
+  });
+
   it("toggles Track details and the sidebar (Ctrl+B)", () => {
     const { items, sent } = template("linux");
     const sidebar = byId(items, "toggle-sidebar")!;
@@ -274,7 +329,7 @@ describe("Help", () => {
     const { items } = template("linux");
     const help = submenu(top(items, "Help"));
     expect(help.filter((item) => item.type !== "separator").map(labelOf)).toEqual([
-      "Getting started…",
+      "Getting started",
       "Keyboard shortcuts…",
       "Get help…",
       "How to get your Rekordbox file…",
@@ -282,6 +337,21 @@ describe("Help", () => {
       "About CuePoint",
     ]);
     expect(walk(items).some((item) => /troubleshooting/i.test(item.label ?? ""))).toBe(false);
+  });
+
+  it("shows F1 beside Keyboard shortcuts, and leaves the key to the page (it opens the list itself)", () => {
+    const { items } = template("linux");
+    const shortcuts = byId(items, "shortcuts")!;
+    expect(shortcuts.accelerator).toBe("F1");
+    expect(shortcuts.registerAccelerator).toBe(false);
+  });
+
+  it("asks for \"…\" only where input comes first (M404): no dots on Settings, Getting started, Diagnostics, Log viewer", () => {
+    const labels = walk(template("linux", { packaged: false }).items).map(labelOf);
+    for (const label of ["Settings", "Getting started", "Diagnostics", "Log viewer"]) {
+      expect(labels, label).toContain(label);
+      expect(labels, `${label}…`).not.toContain(`${label}…`);
+    }
   });
 
   it("sends each Help command's fixed id", () => {
@@ -325,7 +395,7 @@ describe("builds: packaged, and development", () => {
   it("adds Diagnostics and Log viewer to Developer after a separator, and only when unpackaged", () => {
     const dev = template("linux", { packaged: false });
     const items = submenu(top(dev.items, "Developer"));
-    expect(items.slice(3).map(labelOf)).toEqual(["separator", "Diagnostics…", "Log viewer…"]);
+    expect(items.slice(3).map(labelOf)).toEqual(["separator", "Diagnostics", "Log viewer"]);
     const packaged = walk(template("linux", { packaged: true }).items);
     expect(packaged.some((item) => item.id === "diagnostics" || item.id === "log-viewer")).toBe(false);
     click(byId(dev.items, "diagnostics"));
@@ -348,14 +418,14 @@ describe("the command ids", () => {
       "shortcuts",
       "privacy",
       "get-help",
-      "report-problem",
       "diagnostics",
       "log-viewer",
-      "support-bundle",
       "rekordbox-help",
       "about",
       "import",
       "check-rekordbox",
+      "export-rekordbox",
+      "undo",
       "toggle-inspector",
       "toggle-sidebar",
       "search-library",
@@ -374,13 +444,24 @@ describe("the command ids", () => {
         if (item.id) sent.add(item.id);
       }
     }
-    // Report a problem and the support bundle have no item now; their ids stay one release (DEC-265).
-    const KEPT_FOR_ONE_RELEASE = ["report-problem", "support-bundle"];
-    for (const id of MENU_COMMAND_IDS) {
-      if (!KEPT_FOR_ONE_RELEASE.includes(id)) expect(sent.has(id), id).toBe(true);
-    }
-    for (const id of KEPT_FOR_ONE_RELEASE) expect(sent.has(id), id).toBe(false);
+    // Every id has an item; the two the old items sent are gone with them (M497).
+    for (const id of MENU_COMMAND_IDS) expect(sent.has(id), id).toBe(true);
+    expect(sent.has("report-problem")).toBe(false);
+    expect(sent.has("support-bundle")).toBe(false);
   });
+});
+
+describe("parseViewState", () => {
+  it("takes two booleans", () => {
+    expect(parseViewState({ inspector: true, sidebar: false })).toEqual({ inspector: true, sidebar: false });
+  });
+
+  it.each([null, undefined, 1, "x", {}, { inspector: true }, { inspector: "yes", sidebar: true }])(
+    "refuses %j",
+    (value) => {
+      expect(parseViewState(value)).toBeNull();
+    },
+  );
 });
 
 describe("parseSizeState", () => {
@@ -447,6 +528,20 @@ describe("installAppMenu", () => {
     const size = (view.submenu as MenuItemConstructorOptions[]).find((item) => item.label === "Size")!;
     const ticked = (size.submenu as MenuItemConstructorOptions[]).filter((item) => item.checked);
     expect(ticked.map((item) => item.id)).toEqual(["size:1.5"]);
+  });
+
+  it("rebuilds with the panels' state, once for each change", () => {
+    const { Menu, built } = fakes();
+    const menu = installAppMenu({ Menu: Menu as never, getWindow: () => null, platform: "linux", packaged: true });
+    menu.setViewState({ inspector: true, sidebar: true });
+    menu.setViewState({ inspector: true, sidebar: true });
+    menu.setViewState({ inspector: "no" });
+    expect(Menu.setApplicationMenu).toHaveBeenCalledTimes(2);
+    menu.setViewState({ inspector: false, sidebar: true });
+    expect(Menu.setApplicationMenu).toHaveBeenCalledTimes(3);
+    const view = built.at(-1)!.find((item) => item.label === "View")!;
+    const inspector = (view.submenu as MenuItemConstructorOptions[]).find((item) => item.id === "toggle-inspector")!;
+    expect(inspector).toMatchObject({ type: "checkbox", checked: false });
   });
 
   it("ignores a size state it cannot read, and one that has not changed", () => {

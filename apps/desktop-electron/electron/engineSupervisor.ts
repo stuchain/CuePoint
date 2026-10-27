@@ -80,6 +80,8 @@ import {
   type WantlistPage,
   type DuplicateGroup,
   type DuplicateGroupList,
+  type DuplicateKept,
+  type LibraryPending,
   type DuplicateScanStarted,
   type FieldRevert,
   type FileCheckStarted,
@@ -1018,6 +1020,14 @@ export class EngineSupervisor {
 
   async restoreDuplicateGroup(params: { group_id: number }): Promise<{ group: DuplicateGroup }> {
     return (await this.readyClient()).restoreDuplicateGroup(params);
+  }
+
+  async keepDuplicateTrack(params: { group_id: number; track_id: number }): Promise<DuplicateKept> {
+    return (await this.readyClient()).keepDuplicateTrack(params);
+  }
+
+  async getLibraryPending(): Promise<LibraryPending> {
+    return (await this.readyClient()).getLibraryPending();
   }
 
   async startArtworkScan(

@@ -17,21 +17,25 @@ import type { BrowserWindow, Menu, MenuItemConstructorOptions } from "electron";
 
 export type MenuPlatform = "darwin" | "win32" | "linux";
 
-/** The ids the menu sends besides `size:<value>`; the renderer's `menuCommands.ts` lists the same. */
+/**
+ * The ids the menu sends besides `size:<value>`; the renderer's `menuCommands.ts` lists the same
+ * (its `MENU_COMMAND_IDS` and `NEW_MENU_COMMAND_IDS`, less the ids `RETIRED_MENU_COMMAND_IDS` keeps
+ * for one more release). `report-problem` and `support-bundle` are gone: no item sends them (M497).
+ */
 export const MENU_COMMAND_IDS = [
   "settings",
   "getting-started",
   "shortcuts",
   "privacy",
   "get-help",
-  "report-problem",
   "diagnostics",
   "log-viewer",
-  "support-bundle",
   "rekordbox-help",
   "about",
   "import",
   "check-rekordbox",
+  "export-rekordbox",
+  "undo",
   "toggle-inspector",
   "toggle-sidebar",
   "search-library",
@@ -88,10 +92,26 @@ export function parseSizeState(value: unknown): SizeState | null {
   return { options: kept, current };
 }
 
+/** Which panels are open, for the check marks beside View → Track details and Sidebar (M497). */
+export interface ViewState {
+  inspector: boolean;
+  sidebar: boolean;
+}
+
+/** The page's view state, or null when it is not one: anything but two booleans is refused. */
+export function parseViewState(value: unknown): ViewState | null {
+  if (!value || typeof value !== "object") return null;
+  const { inspector, sidebar } = value as { inspector?: unknown; sidebar?: unknown };
+  if (typeof inspector !== "boolean" || typeof sidebar !== "boolean") return null;
+  return { inspector, sidebar };
+}
+
 interface MenuInput {
   platform: MenuPlatform;
   packaged: boolean;
   size: SizeState;
+  /** Null until the page reports it; the two panel items then carry no check mark. */
+  view?: ViewState | null;
   /** Called with the command id when an item is clicked. */
   send: (id: string) => void;
 }
@@ -102,6 +122,7 @@ export function buildMenuTemplate({
   platform,
   packaged,
   size,
+  view = null,
   send,
 }: MenuInput): MenuItemConstructorOptions[] {
   const mac = platform === "darwin";
@@ -113,8 +134,14 @@ export function buildMenuTemplate({
     extra: Partial<MenuItemConstructorOptions> = {},
   ): MenuItemConstructorOptions => ({ id, label, click: () => send(id), ...extra });
 
-  const settings = command("settings", "Settings…", { accelerator: "CmdOrCtrl+," });
+  // An opener ends in "…" only when it asks for input first (M404, D33): Settings, Getting started,
+  // Diagnostics and Log viewer open a page or a list, so they do not.
+  const settings = command("settings", "Settings", { accelerator: "CmdOrCtrl+," });
   const about = command("about", "About CuePoint");
+
+  /** A panel item is a check item once its state is known, and a plain one before. */
+  const panelCheck = (open: boolean | undefined): Partial<MenuItemConstructorOptions> =>
+    open === undefined ? {} : { type: "checkbox", checked: open };
 
   const sizeItems: MenuItemConstructorOptions[] = size.options.map((option) => ({
     id: `size:${option.value}`,
@@ -147,7 +174,9 @@ export function buildMenuTemplate({
     label: "File",
     submenu: [
       command("import", "Import a Rekordbox file…", { accelerator: "CmdOrCtrl+O" }),
-      command("check-rekordbox", "Check for changes"),
+      command("check-rekordbox", "Check for changes", { accelerator: "F5" }),
+      // The export asks where to save first, so it ends in "…" (M497; amends DEC-087).
+      command("export-rekordbox", "Export to Rekordbox…"),
       // Settings is in the File menu on Windows and Linux, where it is a menu of its own on macOS.
       ...(mac
         ? []
@@ -158,7 +187,9 @@ export function buildMenuTemplate({
   template.push({
     label: "Edit",
     submenu: [
-      { role: "undo" },
+      // Undo is CuePoint's own (M456): the page undoes the newest change, or a typed edit when a
+      // text field has the focus. Redo stays the system's, for text.
+      command("undo", "Undo", { accelerator: "CmdOrCtrl+Z" }),
       { role: "redo" },
       { type: "separator" },
       { role: "cut" },
@@ -189,8 +220,9 @@ export function buildMenuTemplate({
       command("size-smaller", "Smaller", { accelerator: "CmdOrCtrl+-" }),
       command("size-default", "Default size", { accelerator: "CmdOrCtrl+0" }),
       { type: "separator" },
-      command("toggle-inspector", "Track details", { accelerator: "CmdOrCtrl+I", ...shownOnly }),
-      command("toggle-sidebar", "Sidebar", { accelerator: "CmdOrCtrl+B", ...shownOnly }),
+      // Check marks once the page has said what is open (M497).
+      command("toggle-inspector", "Track details", { accelerator: "CmdOrCtrl+I", ...shownOnly, ...panelCheck(view?.inspector) }),
+      command("toggle-sidebar", "Sidebar", { accelerator: "CmdOrCtrl+B", ...shownOnly, ...panelCheck(view?.sidebar) }),
       { type: "separator" },
       // Both open a dialog, so both end in "…" (C166); the page answers Ctrl+K and Ctrl+Shift+A itself.
       command("search-library", "Search library…", { accelerator: "CmdOrCtrl+K", ...shownOnly }),
@@ -207,8 +239,9 @@ export function buildMenuTemplate({
     submenu: [
       // An item that opens a dialog ends in "…", and the dialog repeats its words without it: this
       // one opens the "Keyboard shortcuts" dialog, "Getting started" and "Privacy" likewise (C168).
-      command("getting-started", "Getting started…"),
-      command("shortcuts", "Keyboard shortcuts…"),
+      command("getting-started", "Getting started"),
+      // F1 is the page's own key for the list (it opens it itself), so the menu only shows it.
+      command("shortcuts", "Keyboard shortcuts…", { accelerator: "F1", ...shownOnly }),
       command("get-help", "Get help…"),
       command("rekordbox-help", "How to get your Rekordbox file…"),
       command("privacy", "Privacy…"),
@@ -225,8 +258,8 @@ export function buildMenuTemplate({
         { role: "forceReload" },
         { role: "toggleDevTools" },
         { type: "separator" },
-        command("diagnostics", "Diagnostics…"),
-        command("log-viewer", "Log viewer…"),
+        command("diagnostics", "Diagnostics"),
+        command("log-viewer", "Log viewer"),
       ],
     });
   }
@@ -248,6 +281,7 @@ interface InstallInput {
  */
 export function installAppMenu({ Menu: menus, getWindow, platform, packaged }: InstallInput) {
   let size: SizeState = NO_SIZES;
+  let view: ViewState | null = null;
 
   const send = (id: string): void => {
     const win = getWindow();
@@ -257,7 +291,7 @@ export function installAppMenu({ Menu: menus, getWindow, platform, packaged }: I
 
   const install = (): void => {
     menus.setApplicationMenu(
-      menus.buildFromTemplate(buildMenuTemplate({ platform, packaged, size, send })),
+      menus.buildFromTemplate(buildMenuTemplate({ platform, packaged, size, view, send })),
     );
   };
   install();
@@ -278,6 +312,15 @@ export function installAppMenu({ Menu: menus, getWindow, platform, packaged }: I
         );
       if (same) return;
       size = next;
+      install();
+    },
+
+    /** Takes which panels are open; ignores what is not that, and a state that changes nothing. */
+    setViewState(value: unknown): void {
+      const next = parseViewState(value);
+      if (!next) return;
+      if (view && view.inspector === next.inspector && view.sidebar === next.sidebar) return;
+      view = next;
       install();
     },
   };

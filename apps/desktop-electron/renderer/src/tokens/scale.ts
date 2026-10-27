@@ -52,13 +52,41 @@ export const MIN_ROWS_HEIGHT = 560;
 const COMPACT_BELOW_HEIGHT = 860;
 
 /**
+ * How far a size's device pixels (`scale * dpr`) are from a whole number at a screen's ratio. The
+ * pixel style is crisp when one of its pixels is a whole number of device pixels (M493, D35).
+ */
+function pixelBlur(scale: number, dpr: number): number {
+  const device = scale * dpr;
+  return Math.abs(device - Math.round(device));
+}
+
+/** Within this of a whole device pixel reads as crisp: 1.25 × 1.5 = 1.875 is, 1.5 × 1.5 = 2.25 is not. */
+const CRISP_WITHIN = 0.15;
+
+/**
  * The size suggested for a screen of this available height (R2-5): Small under 860,
  * else Medium, but never one that is too big for the screen; it steps down to 1.
+ *
+ * `availHeight` is in CSS pixels, so it already allows for the display's ratio (a 1080-pixel
+ * screen at 150% reports 720). At a fractional ratio (Windows at 125% or 150%) a size whose pixels
+ * are not whole device pixels blurs the pixel style (M493), so among the sizes that fit the one
+ * nearest a whole device pixel is taken when it is within reach of the wanted one: Medium at 150%
+ * becomes Small (1.875 device pixels) rather than 2.25. At a whole ratio nothing changes.
  */
-export function suggestedScale(availHeight: number): ScaleFactor {
+export function suggestedScale(availHeight: number, dpr: number = devicePixelRatio()): ScaleFactor {
   const wanted = availHeight < COMPACT_BELOW_HEIGHT ? 1.25 : DEFAULT_SCALE;
   const fits = SCALE_OPTIONS.filter((s) => s <= wanted && availHeight / s >= MIN_ROWS_HEIGHT);
-  return fits.length > 0 ? fits[fits.length - 1]! : SCALE_OPTIONS[0];
+  if (fits.length === 0) return SCALE_OPTIONS[0];
+  if (Number.isInteger(dpr)) return fits[fits.length - 1]!;
+  const crisp = fits.filter((s) => pixelBlur(s, dpr) <= CRISP_WITHIN);
+  const pool = crisp.length > 0 ? crisp : fits;
+  return pool[pool.length - 1]!;
+}
+
+/** The display's pixel ratio (1 where there is no window, or it says something unusable). */
+export function devicePixelRatio(): number {
+  const ratio = typeof window === "undefined" ? 1 : window.devicePixelRatio;
+  return Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
 }
 
 /** The screen's available height, or 0 when it is not known (a test DOM, no screen). */
@@ -80,9 +108,13 @@ export interface ScaleChoice {
  * Every size with its state for a screen: one list for Settings and View → Size. Nothing
  * is disabled or suggested when the height is unknown.
  */
-export function scaleChoices(current: number, availHeight: number): ScaleChoice[] {
+export function scaleChoices(
+  current: number,
+  availHeight: number,
+  dpr: number = devicePixelRatio(),
+): ScaleChoice[] {
   const known = availHeight > 0;
-  const suggested = known ? suggestedScale(availHeight) : null;
+  const suggested = known ? suggestedScale(availHeight, dpr) : null;
   return SCALE_OPTIONS.map((value) => {
     const disabled = known && value !== current && availHeight / value < MIN_ROWS_HEIGHT;
     // A greyed size is never the suggested one.
@@ -138,6 +170,43 @@ export function setStoredScale(scale: ScaleFactor): void {
 function applyScale(scale: ScaleFactor): void {
   document.documentElement.dataset.scale = String(scale);
   document.documentElement.style.setProperty("--scale", String(scale));
+  applyDevicePixelRatio();
+}
+
+/**
+ * Publish the display's pixel ratio as `--dpr`, so a stylesheet can snap a hairline to a whole
+ * device pixel (`round(1px * var(--scale) * var(--dpr), 1px) / var(--dpr)`, M493) instead of a
+ * whole CSS pixel, which is a blurred line at 125% and 150%.
+ */
+export function applyDevicePixelRatio(): number {
+  const ratio = devicePixelRatio();
+  document.documentElement.style.setProperty("--dpr", String(ratio));
+  return ratio;
+}
+
+/**
+ * Keep `--dpr` right as the ratio changes (a window dragged to another display, or the display's
+ * scaling changed). Calls `onChange` with the new ratio; returns the function that stops.
+ */
+export function watchDevicePixelRatio(onChange?: (ratio: number) => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => undefined;
+  let stopped = false;
+  let query: MediaQueryList | null = null;
+  const listen = (): void => {
+    query?.removeEventListener("change", changed);
+    query = window.matchMedia(`(resolution: ${devicePixelRatio()}dppx)`);
+    query.addEventListener("change", changed);
+  };
+  function changed(): void {
+    if (stopped) return;
+    onChange?.(applyDevicePixelRatio());
+    listen();
+  }
+  listen();
+  return () => {
+    stopped = true;
+    query?.removeEventListener("change", changed);
+  };
 }
 
 /**

@@ -10,12 +10,15 @@ import {
 import {
   DEFAULT_SCALE,
   SCALE_OPTIONS,
+  devicePixelRatio,
   initScale,
   scaleChoices,
   screenAvailHeight,
   setStoredScale,
+  watchDevicePixelRatio,
   type ScaleFactor,
 } from "./scale";
+import { startWindowThemeSync } from "../api/windowTheme";
 
 interface ScaleContextValue {
   scale: ScaleFactor;
@@ -27,6 +30,13 @@ const ScaleContext = createContext<ScaleContextValue | null>(null);
 
 export function ScaleProvider({ children }: { children: ReactNode }) {
   const [scale, setScaleState] = useState<ScaleFactor>(() => initScale());
+  // The display's ratio, so the menu's suggested size and `--dpr` follow a window moved to another
+  // display (M493).
+  const [dpr, setDpr] = useState<number>(() => devicePixelRatio());
+  useEffect(() => watchDevicePixelRatio(setDpr), []);
+  // Main is told the theme's colours too, for the frame around the page (M492, M495, M496): the
+  // provider is the one place that already reports the page's look to main.
+  useEffect(() => startWindowThemeSync(), []);
 
   const setScale = useCallback((next: ScaleFactor) => {
     setStoredScale(next);
@@ -38,7 +48,7 @@ export function ScaleProvider({ children }: { children: ReactNode }) {
   // The greyed state is computed on a scale change only: the rule reads the screen, not the window.
   useEffect(() => {
     const told = window.cuepoint?.menu?.setSizeState({
-      options: scaleChoices(scale, screenAvailHeight()).map(({ value, label, disabled }) => ({
+      options: scaleChoices(scale, screenAvailHeight(), dpr).map(({ value, label, disabled }) => ({
         value,
         label,
         // Optional, so only a size that is too big for the screen carries it.
@@ -47,7 +57,7 @@ export function ScaleProvider({ children }: { children: ReactNode }) {
       current: scale,
     });
     void Promise.resolve(told).catch(() => undefined);
-  }, [scale]);
+  }, [scale, dpr]);
 
   const value = useMemo(
     () => ({ scale, setScale, scaleOptions: SCALE_OPTIONS }),
