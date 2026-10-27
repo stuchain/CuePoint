@@ -12,6 +12,7 @@
  * selection has no name of its own, so it starts as "New Set".
  */
 import { NameFolderDialog, type FolderOption } from "../../components/NameFolderDialog";
+import { CREATE } from "../../format/words";
 import { newSetFromExplanation, newSetFromTitle, type NewSetSource } from "./newSetFrom";
 
 interface NewSetFromDialogProps {
@@ -41,7 +42,7 @@ export function NewSetFromDialog({
       initialName={source?.name ?? ""}
       initialParentId={source?.parentId ?? null}
       folders={folders}
-      submitLabel="Create the Set"
+      submitLabel={CREATE}
       busy={busy}
       error={error}
       onSubmit={onCreate}

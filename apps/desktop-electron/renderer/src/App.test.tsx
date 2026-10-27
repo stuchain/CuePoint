@@ -101,6 +101,20 @@ describe("App shell", () => {
     expect(await screen.findByRole("dialog", { name: /keyboard shortcuts/i })).toBeInTheDocument();
   });
 
+  it.each([
+    ["Get help", /^get help$/i],
+    ["Keyboard shortcuts", /keyboard shortcuts/i],
+    ["About CuePoint", /about cuepoint/i],
+  ])("opens %s from Settings › About & updates, as the menu does (M489)", async (label, dialog) => {
+    render(<App />);
+    act(() => {
+      window.location.hash = "#/settings";
+    });
+    await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(await screen.findByRole("dialog", { name: dialog })).toBeInTheDocument();
+  });
+
   it("leaves F1 to a dialog that is already open (C201)", () => {
     render(
       <>

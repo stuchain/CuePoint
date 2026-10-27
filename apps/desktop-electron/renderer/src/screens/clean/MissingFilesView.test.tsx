@@ -157,6 +157,35 @@ describe("the check button (K4)", () => {
     expect(selection).toEqual({ track_ids: MISSING.map((row) => row.id) });
   });
 
+  it("offers Read artwork beside the check, and runs the artwork read over every track (M220)", async () => {
+    bridge.startArtworkScan = vi.fn().mockResolvedValue({ job_id: "job-art", id: "job-art", state: "queued" });
+    renderView(CHECKED);
+    await screen.findByText("Track 1");
+    const button = screen.getByRole("button", { name: /^Read artwork/ });
+    expect(button).toHaveClass("cp-btn--framed");
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(bridge.startArtworkScan).toHaveBeenCalledWith({ selection: { query: {} } }),
+    );
+  });
+
+  it("says 'Read artwork again' once the artwork was read, and 'Read artwork' before", async () => {
+    const withArtwork = (when: string | null): LibraryHealth => ({
+      ...CHECKED,
+      detections: [
+        ...CHECKED.detections.filter((run) => run.id !== "artwork"),
+        { ...(CHECKED.detections.find((run) => run.id === "artwork") ?? { id: "artwork" }), last_run_at: when } as LibraryHealth["detections"][number],
+      ],
+    });
+    const first = renderView(withArtwork(null));
+    await screen.findByText("Track 1");
+    expect(screen.getByRole("button", { name: "Read artwork" })).toBeInTheDocument();
+    first.unmount();
+    renderView(withArtwork("2026-09-15T10:00:00Z"));
+    await screen.findByText("Track 1");
+    expect(screen.getByRole("button", { name: "Read artwork again" })).toBeInTheDocument();
+  });
+
   it("has one check button and no second one in the empty state of a checked library", async () => {
     install([]);
     bridge.browseLibrary!.mockResolvedValue(fixture.checked.missing_files as LibrarySearchResponse);

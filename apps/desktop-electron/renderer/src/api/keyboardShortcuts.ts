@@ -58,13 +58,16 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // the table (FLW-18) and the entry keys are the queue's (FLW-17), answered while the Set
   // table has focus. Plain Enter and the arrows are the field's and the divider's own.
   { context: "Prepare", action: "Resize the source panel (focus its divider first)", shortcut: "Left / Right" },
+  // M480: the page's search is the Library tab's box, opened if another tab shows.
+  { context: "Prepare", action: "Search the Library tab", shortcut: "Ctrl+F" },
   { context: "Prepare", action: "Play from here", shortcut: "Enter" },
   { context: "Prepare", action: "Edit mix-in time", shortcut: "F2" },
   { context: "Prepare", action: "Save a typed time", shortcut: "Enter (while typing)" },
   { context: "Prepare", action: "Save a typed time and go to the next", shortcut: "Tab" },
   { context: "Prepare", action: "Drop a typed time", shortcut: "Esc" },
-  { context: "Prepare", action: "Move the selected entries", shortcut: "Alt+Up / Alt+Down" },
-  { context: "Prepare", action: "Remove the selected entries", shortcut: "Delete" },
+  // "Tracks", as the page counts them (M427).
+  { context: "Prepare", action: "Move the selected tracks", shortcut: "Alt+Up / Alt+Down" },
+  { context: "Prepare", action: "Remove the selected tracks", shortcut: "Delete" },
   // Every track table: the table itself, once focused, answers these. Clean's Match table uses them too;
   // Enter on a row plays it (`onRowActivate`), F2 edits where a table has an edit (`onRowEdit`).
   { context: "Tables", action: "Select the previous or next track", shortcut: "Up / Down" },

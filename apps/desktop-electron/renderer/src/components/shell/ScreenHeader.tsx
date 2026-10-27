@@ -13,6 +13,12 @@ export interface ScreenHeaderProps {
    */
   display?: ReactNode;
   /**
+   * A control that is the title (Prepare's Set name with its switcher, M201): drawn inside the
+   * `<h1>` in place of `title`'s text, so a screen reader hears a heading that holds one button and
+   * the page name is the name of what is open. `title` stays the heading's fallback text.
+   */
+  titleControl?: ReactNode;
+  /**
    * The title (or `display`) is the page's data, a name the person gave or Beatport did (an artist,
    * a label, a playlist): it may be long, so it shrinks with an ellipsis and carries its whole
    * value in the hint rather than push the status and actions out of the header (M190).
@@ -86,6 +92,7 @@ export function headerHeightPx(offsetHeight: number, top: number): number {
 export function ScreenHeader({
   title,
   display,
+  titleControl,
   dataTitle = false,
   crumb,
   extras,
@@ -133,6 +140,7 @@ export function ScreenHeader({
     };
   }, []);
   const hasDisplay = display !== undefined && display !== null && display !== false && display !== "";
+  const hasControl = titleControl !== undefined && titleControl !== null && titleControl !== false;
   return (
     <header
       ref={root}
@@ -142,10 +150,10 @@ export function ScreenHeader({
       <div className="cp-screen-header__main">
         <div className="cp-screen-header__title-row">
           <h1
-            className={`cp-screen-header__title ${hasDisplay ? "cp-screen-header__title--hidden cp-visually-hidden" : ""}${dataTitle && !hasDisplay ? " cp-screen-header__title--data" : ""}`.trim()}
-            data-cut-hint={dataTitle && !hasDisplay ? "" : undefined}
+            className={`cp-screen-header__title ${hasDisplay ? "cp-screen-header__title--hidden cp-visually-hidden" : ""}${dataTitle && !hasDisplay ? " cp-screen-header__title--data" : ""}${hasControl ? " cp-screen-header__title--control" : ""}`.trim()}
+            data-cut-hint={dataTitle && !hasDisplay && !hasControl ? "" : undefined}
           >
-            {title}
+            {hasControl ? titleControl : title}
           </h1>
           {hasDisplay && (
             <div

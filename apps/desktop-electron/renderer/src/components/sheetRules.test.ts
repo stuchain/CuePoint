@@ -52,7 +52,9 @@ describe("settings current section (T15)", () => {
   it("highlights the current link and never moves it (L5: was a sideways step with scroll motion)", () => {
     const current = rule(settings, ".settings-page__nav a[data-current]");
     expect(current).toContain("color: var(--fg-primary);");
-    expect(current).toContain("background: var(--selected-row-background);");
+    // M235, D23: active is the text plus an edge bar, not the sidebar's fill.
+    expect(current).toContain("box-shadow: inset");
+    expect(current).not.toContain("background");
     expect(motion).not.toMatch(/settings-page__nav a\[data-current\]\s*\{[^}]*transform/);
   });
 });

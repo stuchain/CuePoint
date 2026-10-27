@@ -303,8 +303,8 @@ describe("New Set from…", () => {
   it("says what was made, repeats counted, from the engine's answer", () => {
     expect(
       newSetMadeLine(CREATED_FROM_COLLECTION.set.name, CREATED_FROM_COLLECTION.track_count),
-    ).toBe("Made the Set “Warm-up” with 3 entries.");
-    expect(newSetMadeLine("One", 1)).toBe("Made the Set “One” with 1 entry.");
+    ).toBe("Made the Set “Warm-up” with 3 tracks.");
+    expect(newSetMadeLine("One", 1)).toBe("Made the Set “One” with 1 track.");
   });
 });
 

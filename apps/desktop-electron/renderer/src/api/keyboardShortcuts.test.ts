@@ -20,6 +20,7 @@ import trackTableSource from "../components/table/TrackTable.tsx?raw";
 import trackTableKeysSource from "../components/table/trackTableKeys.ts?raw";
 import collectionsPaneSource from "../screens/library/CollectionsPane.tsx?raw";
 import prepareLayoutSource from "../screens/prepare/PrepareLayout.tsx?raw";
+import sourcePanelSource from "../screens/prepare/SourcePanel.tsx?raw";
 import entryZoneSource from "../screens/prepare/SetEntryZone.tsx?raw";
 import prepareScreenSource from "../screens/prepare/PrepareScreen.tsx?raw";
 import timeCellSource from "../screens/prepare/prepareEditing.tsx?raw";
@@ -59,10 +60,11 @@ describe("the Library's shortcuts (LIBUI-10)", () => {
     expect(action("Delete")).toBe("Delete the selected Collection");
   });
 
-  it("lists Ctrl+F once: the Results screen it was shared with is gone", () => {
+  it("lists Ctrl+F for the Library and Prepare only: the Results screen it was shared with is gone", () => {
     const focus = KEYBOARD_SHORTCUTS.filter((row) => row.shortcut === "Ctrl+F");
 
-    expect(focus.map((row) => row.context)).toEqual(["Library"]);
+    // M480: Prepare answers it too, with its Library tab's search.
+    expect(focus.map((row) => row.context)).toEqual(["Library", "Prepare"]);
   });
 });
 
@@ -202,6 +204,7 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Ctrl+? / F1", "Everywhere", appSource, /key === "F1"/],
     ["Esc", "Everywhere", modalSource, /key === "Escape"/],
     ["Ctrl+F", "Library", pageSearchSource, /key\.toLowerCase\(\) !== "f"/],
+    ["Ctrl+F", "Prepare", sourcePanelSource, /key\.toLowerCase\(\) !== "f"[\s\S]*openLibrarySearch\.current\(\)/],
     ["Ctrl+A", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "a"/],
     ["Enter", "Library", trackTableSource, /key === "Enter" && onRowActivate/],
     ["Esc", "Library", trackTableSource, /key === "Escape" && onClearSelection/],
@@ -259,8 +262,8 @@ describe("only shortcuts that work (PAGES-03B)", () => {
   it("lists Prepare's entry keys and the cell's (FLW-17, FLW-18)", () => {
     const prepare = rows("Prepare");
     const keyOf = (action: RegExp) => prepare.find((row) => action.test(row.action))?.shortcut;
-    expect(keyOf(/Move the selected entries/)).toBe("Alt+Up / Alt+Down");
-    expect(keyOf(/Remove the selected entries/)).toBe("Delete");
+    expect(keyOf(/Move the selected tracks/)).toBe("Alt+Up / Alt+Down");
+    expect(keyOf(/Remove the selected tracks/)).toBe("Delete");
     expect(keyOf(/Play from here/)).toBe("Enter");
     expect(keyOf(/Edit mix-in time/)).toBe("F2");
     expect(keyOf(/^Save a typed time$/)).toBe("Enter (while typing)");

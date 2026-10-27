@@ -136,6 +136,20 @@ export function MissingFilesView({
     [detail, jobs, onHealthChanged, push, window_],
   );
 
+  // M220: the artwork read, moved here from Statistics (which only reads). Every track, as the
+  // read is of files and not of Collections.
+  const readArtwork = useCallback(() => {
+    const bridge = window.cuepoint?.startArtworkScan;
+    if (!bridge) {
+      push(needsDesktopApp(), "warning");
+      return;
+    }
+    void jobs.run<CleanJobStarted>("artwork_scan", () => bridge({ selection: { query: {} } }), {
+      succeeded: "Finished reading artwork",
+      onEnded: onHealthChanged,
+    });
+  }, [jobs, onHealthChanged, push]);
+
   const copy = useCallback(async () => {
     setCopying(true);
     try {
@@ -223,6 +237,19 @@ export function MissingFilesView({
     </Button>
   );
 
+  const artworkRead = health ? lastRun(health, "artwork") : undefined;
+  const readButton = (
+    <Button
+      variant="secondary"
+      className="cp-btn--framed"
+      disabled={running}
+      loading={jobs.running === "artwork_scan"}
+      onClick={readArtwork}
+    >
+      {artworkRead ? "Read artwork again" : "Read artwork"}
+    </Button>
+  );
+
   // K13: the last check found nothing missing, and the loaded list agrees. One
   // line with the one button; the steps and the table have nothing to say. Health
   // says only whether files were ever checked. Until the list has loaded, the
@@ -242,6 +269,7 @@ export function MissingFilesView({
           )}
           <span className="clean-toolbar__spacer" />
           {checkButton}
+          {readButton}
         </div>
         {window_.answered && (
           <EmptyState
@@ -311,6 +339,7 @@ export function MissingFilesView({
           {plural(window_.total, "file")} missing
         </span>
         {checkButton}
+        {readButton}
       </div>
 
       <div className="clean-missing__table">

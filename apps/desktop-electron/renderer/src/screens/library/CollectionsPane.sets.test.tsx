@@ -360,7 +360,7 @@ describe("the New Set from… dialog", () => {
     expect(within(dialog).getByText(/It is a copy: “Warm-up” stays as it is/)).toBeInTheDocument();
     expect(within(dialog).getByRole("textbox", { name: "Name" })).toHaveValue("Warm-up");
     expect(within(dialog).getByRole("combobox", { name: "In" })).toHaveValue(String(GIGS.id));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create" }));
     expect(onCreate).toHaveBeenCalledWith("Warm-up", GIGS.id);
   });
 
@@ -391,7 +391,7 @@ describe("the New Set from… dialog", () => {
       />,
     );
     await userEvent.clear(screen.getByRole("textbox", { name: "Name" }));
-    await userEvent.click(screen.getByRole("button", { name: "Create the Set" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
     expect(onCreate).not.toHaveBeenCalled();
     expect(screen.getByRole("textbox", { name: /name/i })).toHaveAccessibleDescription(/Give it a name/);
   });

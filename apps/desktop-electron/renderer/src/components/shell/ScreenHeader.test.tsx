@@ -192,6 +192,15 @@ describe("ScreenHeader", () => {
       expect(rule(".cp-screen-header__beside .cp-select__control")).toMatch(/text-overflow:\s*ellipsis/);
       expect(css).toMatch(/\.cp-screen-header__beside \.cp-select\b[^{]*\{\s*min-width:\s*0/);
     });
+
+    it("keeps an inline-label picker's box and sizes it to its words (M165)", () => {
+      const field = rule(".cp-screen-header__beside .cp-select--inline .cp-select__field:not(");
+      expect(field).toMatch(/border-color:\s*var\(--border-control\)/);
+      expect(field).toMatch(/min-height:\s*var\(--control-height\)/);
+      const control = rule(".cp-screen-header__beside .cp-select--inline .cp-select__control");
+      expect(control).toMatch(/field-sizing:\s*content/);
+      expect(control).toMatch(/width:\s*auto/);
+    });
   });
 });
 

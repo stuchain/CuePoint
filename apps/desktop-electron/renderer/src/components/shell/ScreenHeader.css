@@ -149,8 +149,9 @@
   white-space: nowrap;
 }
 
-/* A picker beside the title is quiet (P21): no line until the pointer is over it or it has focus.
-   The token focus ring stays; the line under it turns violet. Disabled and error keep their own look. */
+/* A plain picker beside the title is quiet (P21): no line until the pointer is over it or it has focus
+   (an inline-label picker keeps its box, M165). The token focus ring stays; the line under it turns violet.
+   Disabled and error keep their own look. */
 .cp-screen-header__beside .cp-select__control:not(:disabled):not([aria-disabled="true"]):not(.cp-select__control--error) {
   border-color: transparent;
 }
@@ -160,7 +161,18 @@
 }
 
 .cp-screen-header__beside .cp-select--inline .cp-select__field:not(:has(> .cp-select__control:is(:disabled, [aria-disabled="true"]))) {
-  border-color: transparent;
+  /* M165: the inline picker (Statistics' "Which tracks") keeps a visible box, the control line, and is
+     one control tall like the buttons beside it; the hover and focus lines below darken or colour it. */
+  border-color: var(--border-control);
+  min-height: var(--control-height);
+}
+
+/* The box is as wide as its label and the chosen value, not the longest option (a native select sizes to
+   its widest), so the chevron sits at the value. Long names still shrink and end in an ellipsis above. */
+.cp-screen-header__beside .cp-select--inline .cp-select__control {
+  field-sizing: content;
+  flex: 0 1 auto;
+  width: auto;
 }
 
 .cp-screen-header__beside .cp-select--inline .cp-select__field:not(:has(> .cp-select__control:is(:disabled, [aria-disabled="true"]))):hover {

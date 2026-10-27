@@ -47,13 +47,7 @@ describe("sentence case (N3)", () => {
       ),
     );
     const names = screen.getAllByRole("button").map((button) => button.textContent);
-    expect(names).toEqual([
-      "Reset appearance",
-      "Reset privacy",
-      "Reset playback",
-      "Reset waveforms",
-      "Reset motion",
-      "Reset Beatport",
-    ]);
+    // M436, D23: one "Reset to defaults" in every section; the section is named in the Undo toast.
+    expect(names).toEqual(sections.map(() => "Reset to defaults"));
   });
 });

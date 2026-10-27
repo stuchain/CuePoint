@@ -101,8 +101,8 @@
   width: min(calc(var(--unit) * 120), calc(100vw - var(--space-lg)));
   max-height: 70vh;
   overflow: auto;
-  padding: var(--space-sm);
-  padding-block: var(--space-xs);
+  /* M296: one padding on every side, as the wheel popover has. */
+  padding: var(--space-lg);
   background: var(--bg-panel);
   border: var(--popover-border);
   box-shadow: var(--shadow-popover);

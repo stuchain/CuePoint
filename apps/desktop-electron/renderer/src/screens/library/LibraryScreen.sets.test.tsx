@@ -408,14 +408,14 @@ describe("New Set from… (DEC-104)", () => {
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Warm-up”" });
     expect(dialog).toHaveTextContent(/in its order and with any repeats/);
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create" }));
 
     expect(sets!.createFrom).toHaveBeenCalledWith({
       source: { kind: "collection", id: WARMUP.id },
       name: "Warm-up",
       parent_id: null,
     });
-    expect(await screen.findByText("Made the Set “Warm-up” with 3 entries.")).toBeInTheDocument();
+    expect(await screen.findByText("Made the Set “Warm-up” with 3 tracks.")).toBeInTheDocument();
     await waitFor(() =>
       expect(lastBrowse()).toMatchObject({
         scope: "collection",
@@ -437,13 +437,13 @@ describe("New Set from… (DEC-104)", () => {
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Sunday”" });
     expect(dialog).toHaveTextContent(/refreshing from Rekordbox never changes the Set/);
     await userEvent.selectOptions(within(dialog).getByRole("combobox", { name: "In" }), String(GIGS.id));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create" }));
     expect(sets!.createFrom).toHaveBeenCalledWith({
       source: { kind: "playlist", id: 2 },
       name: "Sunday",
       parent_id: GIGS.id,
     });
-    expect(await screen.findByText("Made the Set “Sunday” with 3 entries.")).toBeInTheDocument();
+    expect(await screen.findByText("Made the Set “Sunday” with 3 tracks.")).toBeInTheDocument();
   });
 
   it("makes a Set from the selection, in the table's order and not the clicks' (PREP-12)", async () => {
@@ -462,7 +462,7 @@ describe("New Set from… (DEC-104)", () => {
     expect(name).toHaveValue("New Set");
     await userEvent.clear(name);
     await userEvent.type(name, "Picked");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create" }));
 
     const inTableOrder = TRACKS.filter((row) => row.title === "Warm One" || row.title === "Close").map(
       (row) => row.id,
@@ -472,7 +472,7 @@ describe("New Set from… (DEC-104)", () => {
       name: "Picked",
       parent_id: null,
     });
-    expect(await screen.findByText("Made the Set “Picked” with 3 entries.")).toBeInTheDocument();
+    expect(await screen.findByText("Made the Set “Picked” with 3 tracks.")).toBeInTheDocument();
   });
 
   it("makes a Set of the one track a menu was opened on", async () => {
@@ -483,7 +483,7 @@ describe("New Set from… (DEC-104)", () => {
       (await menuItem("New Set from this track…", await rowMenu("Close"))),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from the 1 selected track" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create" }));
     expect(sets!.createFrom).toHaveBeenCalledWith({
       source: { kind: "selection", track_ids: [5] },
       name: "New Set",
@@ -521,7 +521,7 @@ describe("New Set from… (DEC-104)", () => {
       within(await screen.findByRole("menu")).getByRole("menuitem", { name: "New Set from…" }),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Warm-up”" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create" }));
     expect(await within(dialog).findByText(/a Set holds at most 1,000/)).toBeInTheDocument();
   });
 });
@@ -541,7 +541,7 @@ describe("a Set's menu in the tree", () => {
       currentPath: null,
     });
     expect(
-      await screen.findByText("Saved “Friday” as a CSV set list, 6 entries, 6 untimed"),
+      await screen.findByText("Saved “Friday” as a CSV set list, 6 tracks, 6 untimed"),
     ).toBeInTheDocument();
   });
 

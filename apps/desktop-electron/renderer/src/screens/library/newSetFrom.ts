@@ -122,5 +122,5 @@ export function newSetFromExplanation(source: NewSetSource): string {
 
 /** What the page says once the Set is made. */
 export function newSetMadeLine(name: string, entries: number): string {
-  return `Made the Set ${quoted(name)} with ${countNoun(entries, "entry", "entries")}.`;
+  return `Made the Set ${quoted(name)} with ${countNoun(entries, "track", "tracks")}.`;
 }

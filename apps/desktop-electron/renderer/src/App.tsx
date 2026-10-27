@@ -303,6 +303,10 @@ function AppShell() {
           <SettingsScreen
             onOpenPrivacy={() => setPrivacyOpen(true)}
             onOpenOnboarding={() => setOnboardingOpen(true)}
+            // M489: About & updates opens these as the native menu does.
+            onOpenHelp={() => setGetHelpOpen(true)}
+            onOpenShortcuts={() => setShortcutsOpen(true)}
+            onOpenAbout={() => setAboutOpen(true)}
           />
         );
       default:
