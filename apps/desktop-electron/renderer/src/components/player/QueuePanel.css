@@ -62,6 +62,8 @@ body.cp-queue-resizing {
    padded --space-lg like the page's own area, so its × and the rows' × share one column (M309). */
 .cp-queue__header {
   box-sizing: border-box;
+  /* The floor; the side head's own height (screens.css) is the taller of the two. */
+  min-height: var(--toolbar-height);
 }
 
 .cp-queue__title {

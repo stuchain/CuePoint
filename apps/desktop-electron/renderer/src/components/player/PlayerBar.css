@@ -482,14 +482,10 @@
   pointer-events: none;
 }
 
-/* A track was added to the queue (M383): the count takes the accent for a moment, a state change, so
-   it fades only where State changes motion is on. */
+/* A track was added to the queue (M383): the count takes the accent for a moment. A change of colour,
+   not of place or size, so it needs no motion switch. */
 .cp-player-bar__count[data-pulse] {
   color: var(--accent-primary);
-}
-
-:root[data-motion-state] .cp-player-bar__count {
-  transition: color var(--motion-base) var(--motion-fade);
 }
 
 /* Repeat's state in words beside its icon (BAR-3). */
