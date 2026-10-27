@@ -39,7 +39,7 @@ CuePoint then checks, in the background, that your files are where Rekordbox say
 ### 3. Match on Beatport
 
 1. Go to **Clean**.
-2. Clean opens on **Playlists**, step 1 of 3 (**Tick playlists**). Tick the playlists you want (or **Whole library** to match everything) and press **Match N playlists**. When it ends, a **Review** opens for each playlist (step 3, **Check and sync**). Later, come back here and do the same.
+2. Clean opens on **Playlists**, step 1 of 3 (**Tick playlists**). Tick the playlists you want (or **All tracks** to match everything) and press **Match N playlists**. When it ends, a **Review** opens for each playlist (step 3, **Check and sync**). Later, come back here and do the same.
 
 Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are confirmed for you. The rest are marked **To check** in the review that opens when the match ends.
 

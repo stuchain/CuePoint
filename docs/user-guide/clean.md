@@ -52,7 +52,7 @@ playlists** here, **Step 2 of 3 · Matching** while a match runs and **Step 3 of
 Check and sync** (with the playlist's name) in a Review. Past searches is not a
 step, so it has no caption.
 
-One row for every Rekordbox playlist, and a first row, **Whole library**. Each
+One row for every Rekordbox playlist, and a first row, **All tracks**. Each
 row is one compact line with a square tick, and the list is boxed with its
 heading kept in view while you scroll; the bar under it (what is ticked and
 **Match**) stays at the bottom. Each row has the playlist's folder (muted) and name, how many **Tracks**
@@ -77,7 +77,7 @@ playlists** beside it.
 
 **Tick one or more playlists and press Match N playlists.** That is the only way
 to start a match: there is no button on a row. The ticked playlists are matched as
-one run. **Whole library** is its own choice: ticking it unticks and disables the
+one run. **All tracks** is its own choice: ticking it unticks and disables the
 playlists (they are in it) and matches only the collection. A playlist with
 nothing left to look up is looked up again. One match runs at a time, so **Match**
 waits until the running one ends, and says why.
@@ -277,7 +277,7 @@ Rekordbox does not read their tags; Rekordbox shows the new values after **Reloa
 Tag**. See [Syncing to files](library.md#syncing-to-files). The key of a match is
 the track's shown key unless you typed one yourself, which Sync never replaces.
 
-To sync the whole collection, open the **Whole library** row's **Review** and use
+To sync the whole collection, open the **All tracks** row's **Review** and use
 its **Sync to files…**.
 
 ## Missing files
