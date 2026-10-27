@@ -94,24 +94,26 @@ afterEach(() => {
 describe("the key summary (STATS-06)", () => {
   it("lists the commonest keys with their counts, and says how many have a key and how many none", async () => {
     renderSummary("library");
-    expect(await screen.findByText("1,840 with a key · 372 with none")).toBeInTheDocument();
+    expect(await screen.findByText("1,840 with a key · 372 without a key")).toBeInTheDocument();
     const list = screen.getByRole("list", { name: "Commonest keys" });
     expect(
       within(list)
         .getAllByRole("listitem")
         .map((item) => item.textContent),
-    ).toEqual(["8A142", "9A131", "7A118", "1A5"]);
+    ).toEqual(["18A142", "29A131", "37A118", "41A5"]);
+    // The ranked-row look (D22): a heading row over rank, key, bar and count (M211).
+    expect(list.previousElementSibling).toHaveTextContent("#KeyTracks");
     expect(population).toHaveBeenCalledWith({ sources: [{ kind: "all" }] });
   });
 
-  it("tints each bar with the key's chip colour, never a solid neon one (C100)", async () => {
+  it("draws every bar in the chart's one ink, not the key's colour (M211)", async () => {
     renderSummary("library");
     const list = await screen.findByRole("list", { name: "Commonest keys" });
     const bars = list.querySelectorAll<HTMLElement>(".cp-rank-bar");
     expect(bars).toHaveLength(4);
     for (const bar of bars) {
-      expect(bar.style.getPropertyValue("--bar-color")).toBe("color-mix(in srgb, var(--key) 35%, transparent)");
-      expect(bar.className).toMatch(/key-chip--[0-9]+[AB]/);
+      expect(bar.style.getPropertyValue("--bar-color")).toBe("");
+      expect(bar.className).not.toMatch(/key-chip--/);
     }
   });
 
@@ -129,7 +131,7 @@ describe("the key summary (STATS-06)", () => {
 
   it("draws no list and says '0 with a key' when none is held", async () => {
     renderSummary("library", { total: 4, no_key: 4, keys: [] });
-    expect(await screen.findByText("0 with a key · 4 with none")).toBeInTheDocument();
+    expect(await screen.findByText("0 with a key · 4 without a key")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Commonest keys" })).toBeNull();
   });
 

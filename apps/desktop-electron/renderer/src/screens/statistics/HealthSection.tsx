@@ -1,7 +1,8 @@
 /**
  * The Health tab of the Statistics page (STATS-07, K3): four cards, Files, Beatport, Other and
- * Analysis. Each with a stacked bar over its states, and rows for what needs doing: a tinted
- * count chip and where it is dealt with ("Open in Clean ›").
+ * Analysis. Each with a stacked bar over its states, and rows for what needs doing: the label, where
+ * it is dealt with ("Open in Clean ›") and the count on the right edge (D22). The page is read-only:
+ * a line at the top says so and links to Clean, where the jobs are, the artwork read included (M220).
  *
  * Files carries missing, unreadable and not checked; Beatport the match states plus the tracks
  * with values not yet in their files; Other duplicates, matches Beatport changed after you
@@ -9,22 +10,21 @@
  * engine's; the Library opens on the engine's own rules where Clean has no place for a count
  * (not synced, no artwork). Failed analysis opens Settings, where waveforms are managed.
  *
- * Health lives here now, and Clean's Health tab is gone. The artwork read is run by the page
- * (`useCleanJob` in StatisticsScreen), not here, so it outlives this tab when a scope change
- * or a failed re-read swaps it for a spinner; this tab only shows its state.
+ * Health lives here now, and Clean's Health tab is gone. Nothing here runs a job: the artwork read
+ * moved to Clean's Missing files (M220), and Other's card says when it last ran and links there.
  */
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { FilterRuleSet, StatisticsHealth } from "../../api/cuepointBridge.types";
-import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { LinkButton } from "../../components/LinkButton";
+import { PixelIcon } from "../../components/PixelIcon";
 import { formatCount } from "../../format/counts";
 import { formatDayTimeInSentence } from "../../format/dates";
 import { MATCH_STATE, goTo } from "../../format/words";
 import { checkedLine } from "../clean/cleanEmpty";
-import { cleanSectionState } from "../clean/cleanLink";
+import { cleanSectionState, openClean } from "../clean/cleanLink";
 import type { CleanSection } from "../clean/cleanSections";
 import { libraryRulesState } from "../library/libraryLink";
 import { settingsFocusState } from "../settingsLink";
@@ -43,10 +43,12 @@ interface Row {
   id: string;
   label: string;
   count: number;
-  /** The bar part this row names; a row the bar does not draw has no swatch. */
+  /** The bar part this row is; a row the bar does not draw has none. */
   swatch?: BarTone;
   /** The count's colour while it is above zero and means work to do; otherwise plain. */
   todo?: "warning" | "danger";
+  /** The one status dot a panel keeps (M208): the pixel `dot-filled` after the words of the row to check. */
+  dot?: boolean;
   /** Where it is dealt with, or nothing to open. */
   place?: Place | null;
 }
@@ -62,7 +64,7 @@ interface CardProps {
   title: string;
   /** At the heading's right: what the card says about itself. */
   note?: string;
-  /** Draws the stacked bar over the list; the swatches of the rows are its legend. */
+  /** Draws the stacked bar over the list. A card without one holds the bar's room, so side-by-side cards share row lines (M209). */
   bar?: boolean;
   rows: readonly Row[];
   onOpen: (place: Place) => void;
@@ -82,24 +84,21 @@ function HealthCard({ id, title, note, bar = false, rows, onOpen, children }: Ca
       unit={note}
       bodyClassName="statistics-panel__body health-card__body"
     >
-      {bar && <StackedBar title={title} parts={parts} legend={false} />}
+      {bar ? (
+        <StackedBar title={title} parts={parts} legend={false} />
+      ) : (
+        <div className="health-card__bar-slot" aria-hidden="true" />
+      )}
       <ul className="health-card__rows">
         {rows.map((row) => (
           <li key={row.id} className="health-card__row" data-row={row.id}>
-            <span
-              className={`health-card__swatch${
-                row.swatch && row.count > 0 ? ` stacked__part--${row.swatch}` : " health-card__swatch--none"
-              }`}
-              aria-hidden="true"
-            />
-            <span className="health-card__label">{row.label}</span>{" "}
-            <span
-              className={`health-card__count statistics-figure${
-                row.todo && row.count > 0 ? ` health-card__count--${row.todo}` : ""
-              }`}
-            >
-              {formatCount(row.count)}
+            <span className="health-card__label">
+              {row.label}
+              {row.dot && row.count > 0 && (
+                <PixelIcon name="dot-filled" size="sm" className="health-card__dot" />
+              )}
             </span>
+            {/* The link before the count, so the counts end on the card's right edge whether or not a row has one (M210). */}
             {row.place && row.count > 0 ? (
               <LinkButton
                 go
@@ -112,6 +111,13 @@ function HealthCard({ id, title, note, bar = false, rows, onOpen, children }: Ca
             ) : (
               <span className="health-card__open" aria-hidden="true" />
             )}
+            <span
+              className={`health-card__count statistics-figure${
+                row.todo && row.count > 0 ? ` health-card__count--${row.todo}` : ""
+              }`}
+            >
+              {formatCount(row.count)}
+            </span>
           </li>
         ))}
       </ul>
@@ -122,13 +128,9 @@ function HealthCard({ id, title, note, bar = false, rows, onOpen, children }: Ca
 
 interface HealthSectionProps {
   health: StatisticsHealth;
-  /** True while the page's artwork read is running. */
-  coverArtRunning: boolean;
-  /** Starts the artwork read (the page owns it, so it survives this tab unmounting). */
-  onReadCoverArt: () => void;
 }
 
-export function HealthSection({ health, coverArtRunning, onReadCoverArt }: HealthSectionProps) {
+export function HealthSection({ health }: HealthSectionProps) {
   const navigate = useNavigate();
   const open = (place: Place) => {
     if (place.page === "Clean") navigate("/clean", { state: cleanSectionState(place.section) });
@@ -140,7 +142,15 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
   const { files, beatport, analyzed, other } = health;
 
   return (
-    <div className="statistics-panels">
+    <div className="health-tab">
+      {/* M220, M223: the page only reads; what fixes these is in Clean. */}
+      <p className="statistics-note health-tab__lead">
+        Read-only here. To fix these,{" "}
+        <LinkButton go onClick={() => openClean(navigate)}>
+          {goTo("Clean")}
+        </LinkButton>
+      </p>
+      <div className="statistics-panels">
       <HealthCard
         id="files"
         title="Files"
@@ -167,14 +177,9 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
       >
         <div className="health-card__foot">
           <span className="statistics-note">{artworkLine(health.artwork_checked_at)}</span>
-          <Button
-            variant="secondary"
-            onClick={onReadCoverArt}
-            disabled={coverArtRunning}
-            loading={coverArtRunning}
-          >
-            Read artwork
-          </Button>
+          <LinkButton go onClick={() => navigate("/clean", { state: cleanSectionState("missing") })}>
+            Read artwork in Clean
+          </LinkButton>
         </div>
       </HealthCard>
       <HealthCard
@@ -185,7 +190,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         onOpen={open}
         rows={[
           { id: "accepted", label: MATCH_STATE.confirmed, count: beatport.accepted.count, swatch: "success" },
-          { id: "needs_review", label: MATCH_STATE.toCheck, count: beatport.needs_review.count, swatch: "warning", todo: "warning", place: clean("review") },
+          { id: "needs_review", label: MATCH_STATE.toCheck, count: beatport.needs_review.count, swatch: "warning", todo: "warning", dot: true, place: clean("review") },
           { id: "rejected", label: MATCH_STATE.rejected, count: beatport.rejected.count, swatch: "danger" },
           { id: "no_match", label: MATCH_STATE.noMatch, count: beatport.no_match.count, swatch: "neutral", place: clean("review") },
           { id: "not_matched", label: MATCH_STATE.notLookedUp, count: beatport.not_matched.count, swatch: "muted", place: clean("review") },
@@ -205,6 +210,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
           { id: "no_file", label: "No file", count: analyzed.no_file, swatch: "muted" },
         ]}
       />
+      </div>
     </div>
   );
 }

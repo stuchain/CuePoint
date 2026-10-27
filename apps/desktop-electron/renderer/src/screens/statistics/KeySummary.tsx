@@ -27,9 +27,6 @@ import { keysScopeFor } from "./statisticsKeys";
 
 const TOP = 6;
 
-/** A key's bar is its chip's tint (C100), not the solid neon of the key colour itself. */
-const KEY_BAR_TINT = "color-mix(in srgb, var(--key) 35%, transparent)";
-
 const noSourceGone = () => false;
 
 interface KeySummaryProps {
@@ -78,24 +75,31 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
     body = (
       <>
         {common.length > 0 && (
-          <ol className="keys__list" aria-label="Commonest keys">
-            {common.map((entry) => (
-              <li key={entry.code} className="keys__row">
-                <span className="keys__chip">
-                  <KeyChip value={entry.code} />
-                </span>
-                <RankBar
-                  share={entry.count / top}
-                  color={KEY_BAR_TINT}
-                  className={`key-chip--${entry.code}`}
-                />
-                <span className="keys__count statistics-figure">{formatCount(entry.count)}</span>
-              </li>
-            ))}
-          </ol>
+          <>
+            <div className="keys__head cp-data-grid__head" aria-hidden="true">
+              <span className="rank__hash">#</span>
+              <span>Key</span>
+              <span />
+              <span className="rank__number">Tracks</span>
+            </div>
+            <ol className="keys__list" aria-label="Commonest keys">
+              {common.map((entry, index) => (
+                <li key={entry.code} className="keys__row">
+                  <span className="keys__rank statistics-figure" aria-hidden="true">
+                    {index + 1}
+                  </span>
+                  <span className="keys__chip">
+                    <KeyChip value={entry.code} />
+                  </span>
+                  <RankBar share={entry.count / top} />
+                  <span className="keys__count statistics-figure">{formatCount(entry.count)}</span>
+                </li>
+              ))}
+            </ol>
+          </>
         )}
         <p className="statistics-note">
-          {`${formatCount(total - no_key)} with a key · ${formatCount(no_key)} with none`}
+          {`${formatCount(total - no_key)} with a key · ${formatCount(no_key)} without a key`}
         </p>
       </>
     );
@@ -105,7 +109,6 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
     <Card
       className="statistics-panel statistics-panel--keys"
       title="Keys"
-      unit="tracks"
       bodyClassName="statistics-panel__body"
     >
       {body}

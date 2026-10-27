@@ -31,12 +31,9 @@ import grid from "../../components/table/DataTable.css?raw";
 import { STATISTICS_SCOPE_STORAGE_KEY } from "./statisticsScope";
 import { useLibraryJobsFinished } from "./useStatistics";
 
-let jobEnds: ((outcome: { state: string }) => void) | null = null;
 vi.mock("../library/followJob", () => ({
   followJob: () => ({
-    finished: new Promise((resolve) => {
-      jobEnds = resolve;
-    }),
+    finished: new Promise(() => {}),
     stop: () => {},
   }),
 }));
@@ -199,7 +196,7 @@ function renderPage(entry: string | { pathname: string; state: unknown } = "/sta
 }
 
 /** A tab's panel, whichever tab is showing (the three are mounted once and hidden). */
-const panel = (id: "plays" | "library" | "health") =>
+const panel = (id: "overview" | "plays" | "health") =>
   document.querySelector<HTMLElement>(`[data-panel-of="${id}"]`) as HTMLElement;
 
 const never = () => new Promise<never>(() => {});
@@ -225,17 +222,17 @@ describe("one grid and an inline Scope (C244, C248)", () => {
     expect(css).not.toContain("scope-word");
   });
 
-  it("puts the Library tab's count in its figures and not in the tab", async () => {
+  it("puts the track count in the header and not in the tab", async () => {
     renderPage();
-    const tab = await screen.findByRole("tab", { name: "Library" });
+    const tab = await screen.findByRole("tab", { name: "Overview" });
     expect(tab).not.toHaveTextContent(/\d/);
   });
 
   it("uses one grid on every tab", async () => {
     renderPage();
-    await screen.findByRole("tab", { name: "Library" });
+    await screen.findByRole("tab", { name: "Overview" });
     await waitFor(() => {
-      for (const id of ["plays", "library", "health"] as const) {
+      for (const id of ["plays", "overview", "health"] as const) {
         expect(panel(id).querySelector(".statistics-panels")).not.toBeNull();
       }
     });
@@ -244,7 +241,7 @@ describe("one grid and an inline Scope (C244, C248)", () => {
     expect(rule).toContain("gap: var(--space-xl);");
     expect(css).not.toContain("--charts");
     expect(css).not.toContain("380px");
-    expect(css).not.toContain(".health-tab {");
+    expect(rule).toContain("align-items: start;");
     expect(css).not.toContain(".library-lists");
   });
 });
@@ -260,23 +257,23 @@ describe("the Statistics page (STATS-04)", () => {
     vi.clearAllMocks();
   });
 
-  it("has the title and three tabs, Plays, Library and Health, opening on Plays", async () => {
+  it("has the title and three tabs, Overview, Plays and Health, opening on Overview (D22)", async () => {
     renderPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "Statistics" })).toBeInTheDocument();
     const tabs = await screen.findAllByRole("tab");
     expect(tabs.map((tab) => tab.getAttribute("aria-label") ?? tab.textContent)).toEqual([
+      "Overview",
       "Plays",
-      "Library",
       "Health, 112 issues",
     ]);
-    expect(screen.getByRole("tab", { name: "Plays" })).toHaveAttribute("aria-selected", "true");
-    expect(panel("plays")).toBeVisible();
-    expect(panel("library")).not.toBeVisible();
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    expect(panel("overview")).toBeVisible();
+    expect(panel("plays")).not.toBeVisible();
     expect(panel("health")).not.toBeVisible();
   });
 
-  it("carries what needs fixing on Health, and no count on Library (C257)", async () => {
+  it("carries what needs fixing on Health, and no count on Overview (C257)", async () => {
     install({
       getStatisticsHealth: vi.fn().mockResolvedValue({
         ...health(),
@@ -289,7 +286,7 @@ describe("the Statistics page (STATS-04)", () => {
 
     // 12 missing + 0 unreadable + 41 to review + 14 duplicates + 5 changed + 3 failed.
     expect(await screen.findByRole("tab", { name: (name) => name.replace(/\s+,/g, ",") === "Health, 75 issues" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Library" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
   });
 
   it("starts the page at the top when another tab is chosen", async () => {
@@ -308,7 +305,7 @@ describe("the Statistics page (STATS-04)", () => {
 
   it("keeps each tab's own scroll position: new tabs at the top, a tab come back to where it was left", async () => {
     renderPage();
-    const plays = await screen.findByRole("tab", { name: /^Plays/ });
+    const plays = await screen.findByRole("tab", { name: /^Overview/ });
     const region = plays.closest(".statistics-page")!.parentElement!;
     region.classList.add("app-main");
     let top = 0;
@@ -318,15 +315,15 @@ describe("the Statistics page (STATS-04)", () => {
     });
     Object.defineProperty(region, "scrollTo", { configurable: true, value: scrollTo });
 
-    top = 420; // read down Plays
+    top = 420; // read down Overview
     fireEvent.click(screen.getByRole("tab", { name: /^Health/ }));
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 0 });
     top = 90; // a little way down Health
-    fireEvent.click(screen.getByRole("tab", { name: /^Plays/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Overview/ }));
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 420 });
     fireEvent.click(screen.getByRole("tab", { name: /^Health/ }));
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 90 });
-    fireEvent.click(screen.getByRole("tab", { name: /^Library/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Plays/ }));
     expect(scrollTo).toHaveBeenLastCalledWith({ top: 0 });
   });
 
@@ -334,7 +331,7 @@ describe("the Statistics page (STATS-04)", () => {
     let release: (value: unknown) => void = () => {};
     install({ getStatisticsHealth: vi.fn(() => new Promise((resolve) => (release = resolve))) });
     renderPage();
-    const plays = await screen.findByRole("tab", { name: /^Plays/ });
+    const plays = await screen.findByRole("tab", { name: /^Overview/ });
     const region = plays.closest(".statistics-page")!.parentElement!;
     region.classList.add("app-main");
     let top = 0;
@@ -346,7 +343,7 @@ describe("the Statistics page (STATS-04)", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /^Health/ }));
     top = 300; // read down Health's placeholder
-    fireEvent.click(screen.getByRole("tab", { name: /^Plays/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Overview/ }));
     scrollTo.mockClear();
     fireEvent.click(screen.getByRole("tab", { name: /^Health/ }));
     // Asked for at once (the layout effect), before any paint ...
@@ -374,11 +371,12 @@ describe("the Statistics page (STATS-04)", () => {
 
   it("keeps each tab's state while another is shown", async () => {
     renderPage();
+    await userEvent.click(await screen.findByRole("tab", { name: "Plays" }));
     const since = await within(panel("plays")).findByRole("combobox", { name: "Since" });
     await userEvent.selectOptions(since, "30d");
 
-    await userEvent.click(screen.getByRole("tab", { name: /^Library/ }));
-    expect(panel("library")).toBeVisible();
+    await userEvent.click(screen.getByRole("tab", { name: /^Overview/ }));
+    expect(panel("overview")).toBeVisible();
     expect(panel("plays")).not.toBeVisible();
     await userEvent.click(screen.getByRole("tab", { name: "Plays" }));
 
@@ -441,10 +439,10 @@ describe("the Statistics page (STATS-04)", () => {
     renderPage();
 
     await screen.findByRole("tab", { name: "Plays" });
-    const reading = (id: "plays" | "library" | "health") =>
+    const reading = (id: "overview" | "plays" | "health") =>
       within(panel(id)).getByRole("status", { hidden: true });
     expect(reading("plays")).toHaveTextContent("Loading plays");
-    expect(reading("library")).toHaveTextContent("Loading your library");
+    expect(reading("overview")).toHaveTextContent("Loading your library");
     expect(reading("health")).toHaveTextContent("Loading health");
   });
 
@@ -455,7 +453,7 @@ describe("the Statistics page (STATS-04)", () => {
     await waitFor(() => expect(within(plays).getByText("3,120")).toBeInTheDocument());
     expect(within(plays).getByText("41")).toBeInTheDocument();
     expect(
-      within(panel("library")).getByRole("heading", { level: 3, name: "Genres", hidden: true }),
+      within(panel("overview")).getByRole("heading", { level: 3, name: "Keys", hidden: true }),
     ).toBeInTheDocument();
     expect(
       within(panel("health")).getByText(checkedLine("2026-10-08T12:00:00Z")),
@@ -518,6 +516,7 @@ describe("the Statistics page (STATS-04)", () => {
     // The other sections are not taken down with it.
     await within(panel("health")).findByText(checkedLine("2026-10-08T12:00:00Z"));
 
+    await userEvent.click(screen.getByRole("tab", { name: "Plays" }));
     await userEvent.click(within(section).getByRole("button", { name: "Try again" }));
 
     expect(await within(section).findByText(/Never played/)).toBeInTheDocument();
@@ -969,23 +968,19 @@ describe("a link to the Health tab (K3)", () => {
     expect(panel("plays")).toBeVisible();
   });
 
-  it("opens on Plays for an ordinary visit", async () => {
+  it("opens on Overview for an ordinary visit", async () => {
     renderPage();
 
     await within(panel("plays")).findByText("3,120");
-    expect(screen.getByRole("tab", { name: "Plays" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
     expect(panel("health")).not.toBeVisible();
   });
 });
 
-describe("reading artwork from Health", () => {
-  const startArtworkScan = vi.fn();
-
+describe("the Health tab is read-only (M220, D22)", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    jobEnds = null;
-    startArtworkScan.mockReset();
-    install({ startArtworkScan });
+    install({ startArtworkScan: vi.fn() });
   });
 
   afterEach(() => {
@@ -993,61 +988,13 @@ describe("reading artwork from Health", () => {
     vi.clearAllMocks();
   });
 
-  const readButton = () => screen.getByRole("button", { name: "Read artwork" });
-
-  it("shows the button busy and disabled while the scan starts", async () => {
-    startArtworkScan.mockReturnValue(new Promise(() => {}));
+  it("has no Read artwork button and starts no scan; it links to Clean instead", async () => {
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-    await userEvent.click(await screen.findByRole("button", { name: "Read artwork" }));
-
-    const busy = await screen.findByRole("button", { name: "Read artwork" });
-    expect(busy).toBeDisabled();
-    expect(busy).toHaveClass("cp-btn--loading");
-    expect(startArtworkScan).toHaveBeenCalledWith({ selection: { query: {} } });
-  });
-
-  it("reads health again and says it finished when the scan ends", async () => {
-    startArtworkScan.mockResolvedValue({ job_id: "j1", id: "j1", state: "queued" });
-    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-    await userEvent.click(await screen.findByRole("button", { name: "Read artwork" }));
-    await waitFor(() => expect(jobEnds).not.toBeNull());
-    expect(screen.getByRole("button", { name: "Read artwork" })).toBeDisabled();
-    const reads = mock("getStatisticsHealth").mock.calls.length;
-
-    await act(async () => jobEnds!({ state: "succeeded" }));
-
-    await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads + 1));
-    expect(await screen.findByText("Finished reading artwork")).toBeInTheDocument();
-    expect(readButton()).toBeEnabled();
-  });
-
-  it("still reads health again and shows the toast when Health unmounts mid-scan", async () => {
-    startArtworkScan.mockResolvedValue({ job_id: "j1", id: "j1", state: "queued" });
-    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-    await userEvent.click(await screen.findByRole("button", { name: "Read artwork" }));
-    await waitFor(() => expect(jobEnds).not.toBeNull());
-
-    // The next health read is slow, so changing scope swaps Health for its spinner.
-    let answerSlow!: (value: StatisticsHealth) => void;
-    mock("getStatisticsHealth").mockImplementation(
-      () => new Promise<StatisticsHealth>((resolve) => (answerSlow = resolve)),
-    );
-    const picker = screen.getByRole("combobox", { name: "Which tracks" });
-    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
-    await userEvent.selectOptions(picker, "playlist:2");
-    await within(panel("health")).findByRole("status");
-    expect(screen.queryByRole("button", { name: "Read artwork" })).not.toBeInTheDocument();
-    const reads = mock("getStatisticsHealth").mock.calls.length;
-
-    mock("getStatisticsHealth").mockResolvedValue(health());
-    await act(async () => jobEnds!({ state: "succeeded" }));
-    // The read on its way is let answer (not superseded); the one the scan's end asked for follows it.
-    expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads);
-    await act(async () => answerSlow(health()));
-
-    await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads + 1));
-    expect(await screen.findByText("Finished reading artwork")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Read artwork" })).toBeEnabled();
+    await screen.findByText(/Read-only here/);
+    expect(screen.queryByRole("button", { name: "Read artwork" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /Read artwork in Clean/ }));
+    expect(screen.getByTestId("where")).toHaveTextContent("/clean");
+    expect(mock("startArtworkScan")).not.toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,6 @@
 /*
- * The Statistics page (STATS-04): a header with the title, the scope picker and the tab strip,
- * then the three tabs' panels (mounted once, hidden when not shown). Theme tokens only, so every
+ * The Statistics page (STATS-04): a header with the title, the scope picker and the tab strip
+ * (Overview, Plays, Health), then the three tabs' panels (mounted once, hidden when not shown). Theme tokens only, so every
  * theme and scale draws it; the header wraps rather than scrolling sideways.
  */
 .statistics-page {
@@ -75,6 +75,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(320px * var(--scale))), 1fr));
   gap: var(--space-xl);
+  align-items: start;
   width: 100%;
 }
 
@@ -105,11 +106,14 @@
 /* A card's link, or its "Show all" button, sits at the bottom right inside the card (C256). */
 .statistics-panel__link {
   align-self: flex-end;
+  margin-inline-end: var(--space-sm);
 }
 
+/* Every card's foot: its link or "Show all", at the right, in line with the numbers above (D22). */
 .statistics-panel__foot {
   display: flex;
   justify-content: flex-end;
+  padding-inline-end: var(--space-sm);
 }
 
 .statistics-panel__line > .cp-link {
@@ -121,7 +125,20 @@
    (`cp-data-grid` in components/table/DataTable.css, D8); this sheet names the columns. */
 .rank__columns,
 .rank__row {
-  --cp-data-grid-columns: 3ch minmax(0, 1fr) repeat(var(--rank-columns, 1), 8ch);
+  --cp-data-grid-columns:
+    3ch minmax(0, 1fr) minmax(calc(48px * var(--scale)), 0.8fr)
+    repeat(var(--rank-columns, 1), 8ch);
+}
+
+/* The bar has its own column, so the first row meets the header line and every bar starts at one edge. */
+.rank__bar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.rank__bar > .cp-rank-bar {
+  max-width: 100%;
 }
 
 .rank__row:focus-visible {
@@ -155,9 +172,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: var(--space-2xs);
   min-width: 0;
-  padding: var(--space-xs) 0;
 }
 
 .rank__text {
@@ -211,10 +226,10 @@
   font-weight: var(--weight-strong);
 }
 
-/* A figure read at a glance: Inter semibold in tabular figures, 26 (P15). */
+/* A figure read at a glance: Inter semibold in tabular figures, at the large size (P15, D22). */
 .library-figures__value {
   font-family: var(--font-data);
-  font-size: var(--font-size-figure);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
 }
@@ -229,18 +244,27 @@
 .keys__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.keys__head,
 .keys__row {
   display: grid;
-  grid-template-columns: 5ch minmax(0, 1fr) 6ch;
+  grid-template-columns: 3ch 5ch minmax(0, 1fr) 8ch;
   align-items: center;
   gap: var(--space-md);
   min-height: var(--row-height);
+  padding-inline: var(--space-sm);
+}
+
+.keys__head > .rank__number {
+  color: inherit;
+}
+
+.keys__rank {
+  color: var(--fg-muted);
 }
 
 .keys__count {
@@ -256,25 +280,38 @@
   list-style: none;
 }
 
-/* The legend is the list: swatch, label, count and the link on one line. */
+/* Label, the link to Clean, and the count on the card's right edge (D22, M210). */
 .health-card__row {
   display: grid;
-  grid-template-columns: var(--status-dot) minmax(0, 1fr) 6ch minmax(max-content, 17ch);
+  grid-template-columns: minmax(0, 1fr) minmax(max-content, 17ch) 6ch;
   align-items: center;
   gap: var(--space-md);
   min-height: var(--row-height);
+  padding-inline: var(--space-sm);
   border-bottom: var(--divider);
 }
 
-/* The state as a dot (P24); the other swatches stay 8 px squares (P65). */
-.health-card__swatch {
-  width: var(--status-dot);
-  height: var(--status-dot);
-  border-radius: 50%;
+/* The one status dot a panel keeps (M208): the pixel icon, square like every other mark (M34). */
+.health-card__dot {
+  margin-inline-start: var(--space-sm);
+  color: var(--warning-text);
+  vertical-align: middle;
 }
 
-.health-card__swatch--none {
-  background: transparent;
+/* A card with no bar holds the bar's room, so side-by-side cards share row lines (M209). */
+.health-card__bar-slot {
+  height: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.health-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.health-tab__lead {
+  max-width: 60ch;
 }
 
 .health-card__label {
@@ -340,7 +377,8 @@
 }
 
 .stacked__part--success {
-  background: var(--health-ok);
+  /* The chart's one ink (M218): grey is "all good" (DEC-299), not a green. */
+  background: var(--chart-bar);
 }
 
 .stacked__part--warning {

@@ -1,7 +1,7 @@
 /**
  * The Health tab (STATS-07, K3): four cards with their stacked bars and legends, a tinted count
- * chip on each thing to fix and where it opens ("Open in Clean"), the not-checked lines, and Read
- * artwork starting the scan.
+ * chip on each thing to fix and where it opens ("Open in Clean"), the not-checked lines, and the
+ * page being read-only: the artwork read is in Clean now (M220, D22).
  */
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -71,18 +71,11 @@ function Where() {
   );
 }
 
-function renderSection(
-  health = HEALTH,
-  props: { coverArtRunning?: boolean; onReadCoverArt?: () => void } = {},
-) {
+function renderSection(health = HEALTH) {
   return render(
     <ToastProvider>
       <MemoryRouter initialEntries={["/statistics"]}>
-        <HealthSection
-          health={health}
-          coverArtRunning={props.coverArtRunning ?? false}
-          onReadCoverArt={props.onReadCoverArt ?? (() => {})}
-        />
+        <HealthSection health={health} />
         <Where />
       </MemoryRouter>
     </ToastProvider>,
@@ -125,15 +118,16 @@ describe("the Health tab (STATS-07, K3)", () => {
     renderSection();
     const files = within(panel("files"));
     expect(files.getByRole("img", { name: /^Files: Present 80, Missing 12, Unreadable 3, Not checked 5$/ })).toBeInTheDocument();
-    for (const text of ["Present 80", "Missing 12", "Unreadable 3", "Not checked 5"]) {
-      expect(panel("files")).toHaveTextContent(text);
-    }
-    for (const text of ["Confirmed 50", "To check 10", "Rejected 2", "No match 3", "Not looked up yet 35"]) {
-      expect(panel("beatport")).toHaveTextContent(text);
-    }
-    for (const text of ["Analyzed 40", "Waiting 30", "Failed 2", "No file 28"]) {
-      expect(panel("analysis")).toHaveTextContent(text);
-    }
+    // Each row is the label, then the count at the right edge, whatever sits between (D22).
+    const words = (card: string) =>
+      [...panel(card).querySelectorAll(".health-card__row")].map(
+        (row) => `${row.querySelector(".health-card__label")!.textContent} ${row.querySelector(".health-card__count")!.textContent}`,
+      );
+    expect(words("files")).toEqual(expect.arrayContaining(["Present 80", "Missing 12", "Unreadable 3", "Not checked 5"]));
+    expect(words("beatport")).toEqual(
+      expect.arrayContaining(["Confirmed 50", "To check 10", "Rejected 2", "No match 3", "Not looked up yet 35"]),
+    );
+    expect(words("analysis")).toEqual(expect.arrayContaining(["Analyzed 40", "Waiting 30", "Failed 2", "No file 28"]));
   });
 
   it("says how many tracks are matched, and when the files were checked", () => {
@@ -163,12 +157,17 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(count("analysis", "waiting")).toHaveTextContent("30");
   });
 
-  it("is its own legend: a swatch, the label, the count and the link on one row", () => {
+  it("is its own legend: the label, the link and the count on one row, the count last (D22, M210)", () => {
     renderSection();
     const row = rowOf("files", "missing");
-    expect(row.querySelector(".health-card__swatch")).toHaveClass("stacked__part--danger");
+    expect(row.querySelector(".health-card__swatch")).toBeNull();
     expect(row.textContent).toContain("Missing");
     expect(within(row).getByRole("button", { name: /Open in Clean/ })).toHaveClass("health-card__open");
+    expect([...row.children].map((child) => child.className.split(" ").find((name) => name.startsWith("health-card__")))).toEqual([
+      "health-card__label",
+      "health-card__open",
+      "health-card__count",
+    ]);
     // The bar has no second legend under it.
     expect(document.querySelector(".stacked__legend")).toBeNull();
   });
@@ -252,28 +251,23 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(within(panel("other")).getByText("Artwork has not been read yet")).toBeInTheDocument();
   });
 
-  it("asks the page to read the artwork when Read artwork is pressed", async () => {
-    const onReadCoverArt = vi.fn();
-    renderSection(HEALTH, { onReadCoverArt });
-    await userEvent.click(within(panel("other")).getByRole("button", { name: "Read artwork" }));
-    expect(onReadCoverArt).toHaveBeenCalledTimes(1);
+  it("is read-only: it says so at the top and links to Clean, and starts no job", async () => {
+    renderSection();
+    expect(screen.getByText(/Read-only here\. To fix these,/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Read artwork" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Open in Clean" }));
+    expect(where()).toHaveTextContent("/clean");
   });
 
-  it("disables Read artwork and shows it busy while the read runs", async () => {
-    const onReadCoverArt = vi.fn();
-    renderSection(HEALTH, { coverArtRunning: true, onReadCoverArt });
-    const button = within(panel("other")).getByRole("button", { name: "Read artwork" });
-    expect(button).toBeDisabled();
-    expect(button).toHaveClass("cp-btn--loading");
-    await userEvent.click(button);
-    expect(onReadCoverArt).not.toHaveBeenCalled();
-  });
-
-  it("puts the status on the left and the Read artwork button on the right (C235)", () => {
+  it("sends the artwork read to Clean's Missing files, with the status on the left (M220)", async () => {
     renderSection();
     const foot = panel("other").querySelector(".health-card__foot")!;
     expect(foot.children[0]).toHaveTextContent(/^Artwork last read /);
-    expect(foot.children[1]).toBe(within(panel("other")).getByRole("button", { name: "Read artwork" }));
+    const link = within(panel("other")).getByRole("button", { name: /Read artwork in Clean/ });
+    expect(foot.children[1]).toBe(link);
+    await userEvent.click(link);
+    expect(where()).toHaveTextContent("/clean");
+    expect(where()).toHaveAttribute("data-section", "missing");
     const rule = /\.health-card__foot\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(rule).toContain("justify-content: space-between;");
   });
@@ -286,16 +280,21 @@ describe("the Health tab (STATS-07, K3)", () => {
     }
   });
 
-  it("draws a swatch only for a state that has a segment in the bar (C98)", () => {
-    renderSection({ ...HEALTH, files: { ...HEALTH.files, not_checked: count(0, "not_checked") } });
-    const swatch = (card: string, id: string) => rowOf(card, id).querySelector(".health-card__swatch")!;
-    // Not synced is a count beside the bar, not a part of it: no hollow square promising a colour.
-    expect(swatch("beatport", "not_synced")).toHaveClass("health-card__swatch--none");
-    expect(swatch("beatport", "not_synced")).not.toHaveClass("health-card__swatch--write");
-    // A state with nothing in it has no segment, so no swatch.
-    expect(swatch("files", "not_checked")).toHaveClass("health-card__swatch--none");
-    expect(swatch("beatport", "accepted")).toHaveClass("stacked__part--success");
-    expect(css).not.toContain("health-card__swatch--write");
+  it("keeps one status dot, on the Beatport row to check, and no other swatch or dot (M208)", () => {
+    renderSection();
+    expect(document.querySelector(".health-card__swatch")).toBeNull();
+    const dots = document.querySelectorAll(".health-card__dot");
+    expect(dots).toHaveLength(1);
+    expect(rowOf("beatport", "needs_review").contains(dots[0]!)).toBe(true);
+    expect(css).not.toContain("health-card__swatch");
+    expect(css).not.toMatch(/border-radius:\s*50%/);
+  });
+
+  it("holds the bar's room in a card without one, so side-by-side cards share row lines (M209)", () => {
+    renderSection();
+    expect(panel("other").querySelector(".health-card__bar-slot")).not.toBeNull();
+    expect(panel("files").querySelector(".health-card__bar-slot")).toBeNull();
+    expect(panel("files").querySelector(".stacked__bar")).not.toBeNull();
   });
 
   it("names the match states with the shared words (C152)", () => {
@@ -311,10 +310,11 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(panel("beatport")).not.toHaveTextContent(/To review|Not matched/);
   });
 
-  it("draws what is healthy quietly: the grey --health-ok segment and a muted OK count (C99, D14)", () => {
+  it("draws what is healthy quietly: the chart-ink segment and a muted OK count (C99, D14, M218)", () => {
     renderSection();
     const success = /\.stacked__part--success\s*\{([^}]*)\}/.exec(css)![1]!;
-    expect(success).toContain("background: var(--health-ok);");
+    // M218: the healthy part is the chart's one ink, not a status colour.
+    expect(success).toContain("background: var(--chart-bar);");
     for (const [card, id] of [["files", "present"], ["beatport", "accepted"], ["analysis", "analyzed"]] as const) {
       const figure = rowOf(card, id).querySelector(".health-card__count")!;
       expect(figure).not.toHaveClass("health-card__count--warning", "health-card__count--danger");

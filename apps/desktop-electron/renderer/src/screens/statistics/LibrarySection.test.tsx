@@ -1,6 +1,7 @@
 /**
- * The Library tab: four numbers, Genres, Labels and Artists by track count (five rows, the rest
- * behind "Show all N"), and the charts, with Date added and Rating behind "More charts".
+ * The Overview tab: four numbers, Genres, Labels and Artists by track count (five rows, the rest
+ * behind "Show all N"), and the charts in pairs, with Date added and Rating behind "More charts".
+ * A card with nothing to show is not drawn, and an empty scope says so once (D22, M222).
  */
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -79,13 +80,12 @@ function Where() {
   );
 }
 
-function renderTab(data = spreads(), playlistCount: number | null = 64) {
+function renderTab(data = spreads()) {
   return render(
     <MemoryRouter initialEntries={["/statistics"]}>
       <LibrarySection
         spreads={data}
         collections={[]}
-        playlistCount={playlistCount}
         now={new Date(2026, 9, 16)}
       />
       <Where />
@@ -105,10 +105,12 @@ afterEach(() => {
 
 const figure = (id: string) => document.querySelector<HTMLElement>(`[data-figure="${id}"]`)!;
 
-describe("the Library tab", () => {
+describe("the Overview tab", () => {
   it("shows four numbers with what each is out of", () => {
-    renderTab();
-    expect(figure("tracks")).toHaveTextContent("Tracks2,84764 playlists");
+    renderTab(spreads({ rating: { ...spreads().rating, unknown: { label: "Unrated", count: 47, rules: null } } }));
+    // The track count is in the header already, so the first tile is the rated ones (D22).
+    expect(figure("rated")).toHaveTextContent("Rated tracks2,80047 not rated");
+    expect(figure("tracks")).toBeNull();
     expect(figure("time")).toHaveTextContent("Total time308 h 25 minavg 6:30");
     expect(figure("bpm")).toHaveTextContent("Average BPM126.412 with no BPM");
     // Added in 2026: Mar 300 + Sep 112, not Dec 2025.
@@ -116,8 +118,8 @@ describe("the Library tab", () => {
   });
 
   it("gives every tile a second line, even when it cannot say the usual one (C257)", () => {
-    renderTab(spreads({ average_seconds: null, average_bpm: null, total_seconds: 0 }), null);
-    expect(figure("tracks")).toHaveTextContent(/^Tracks2,847in this scope$/);
+    renderTab(spreads({ average_seconds: null, average_bpm: null, total_seconds: 0 }));
+    expect(figure("rated")).toHaveTextContent(/^Rated tracks2,847every track is rated$/);
     expect(figure("time")).not.toHaveTextContent("avg");
     expect(figure("time")).toHaveTextContent("no lengths known");
     expect(figure("bpm")).toHaveTextContent(/^Average BPM—/);
@@ -172,7 +174,7 @@ describe("the Library tab", () => {
     expect(JSON.parse(screen.getByTestId("where").dataset.rules!)).toEqual(rules("artist_name", "Michael Bibi"));
   });
 
-  it("draws BPM, Keys, Year and Loudness, and keeps Date added and Rating behind More charts", async () => {
+  it("draws Keys, BPM, Year and Loudness, and keeps Date added and Rating behind More charts", async () => {
     const user = userEvent.setup();
     renderTab();
     const titles = () =>
@@ -180,12 +182,13 @@ describe("the Library tab", () => {
         .getAllByRole("heading", { level: 3 })
         .map((h) => h.textContent)
         .filter((text) => !["Genres", "Labels", "Artists"].includes(text ?? ""));
-    expect(titles()).toEqual(["BPM", "Keys", "Year", "Loudness"]);
+    // Pairs, D22: Genres | Labels, Artists | Keys, BPM | Year, then Loudness across the row.
+    expect(titles()).toEqual(["Keys", "BPM", "Year", "Loudness"]);
 
     await user.click(screen.getByRole("button", { name: "More charts: date added, rating" }));
     expect(titles()).toEqual([
-      "BPM",
       "Keys",
+      "BPM",
       "Year",
       "Loudness",
       "Date added",
@@ -193,5 +196,35 @@ describe("the Library tab", () => {
     ]);
     await user.click(screen.getByRole("button", { name: "Fewer charts" }));
     expect(titles()).toHaveLength(4);
+  });
+
+  it("draws Loudness across the whole row (D22)", () => {
+    renderTab();
+    expect(document.querySelector('[data-panel="loudness"]')).toHaveClass("statistics-panel--wide");
+    expect(document.querySelector('[data-panel="tempo"]')).not.toHaveClass("statistics-panel--wide");
+  });
+
+  it("draws no card for a list or chart with nothing in it (M222)", () => {
+    renderTab(spreads({ artists: [], labels: [], year: spread([]), tempo: { ...spreads().tempo, buckets: [], unknown: { label: "No tempo", count: 0, rules: null } } }));
+    expect(screen.queryByRole("heading", { level: 3, name: "Artists" })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 3, name: "Labels" })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 3, name: "Year" })).toBeNull();
+    expect(screen.queryByText(/Nothing here to chart|No artists to list|No labels to list/)).toBeNull();
+    expect(screen.getByRole("heading", { level: 3, name: "Genres" })).toBeInTheDocument();
+  });
+
+  it("says once that there is nothing to count when the scope has no tracks (M222)", () => {
+    renderTab(spreads({ total: 0, artists: [], labels: [], genre: spread([]) }));
+    expect(screen.getByText("No tracks to count here")).toBeInTheDocument();
+    expect(document.querySelectorAll(".statistics-panel")).toHaveLength(0);
+    expect(document.querySelector(".library-figures")).toBeNull();
+  });
+
+  it("puts a bar in its own column in the ranked lists, with a heading row over it (D22)", () => {
+    renderTab();
+    const genres = screen.getByRole("list", { name: "Genres" });
+    expect(genres.closest("section")!.querySelector(".rank__columns")).toHaveTextContent("#NameTracks");
+    expect(genres.querySelectorAll(".rank__bar > .cp-rank-bar")).toHaveLength(5);
+    expect(genres.querySelector(".rank__name .cp-rank-bar")).toBeNull();
   });
 });

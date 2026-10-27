@@ -178,10 +178,17 @@ function renderPage() {
 }
 
 /** The Plays tab's panel. */
-const panel = (id: "plays" | "library" | "health") =>
+const panel = (id: "plays" | "overview" | "health") =>
   document.querySelector<HTMLElement>(`[data-panel-of="${id}"]`) as HTMLElement;
 
+async function playsPanel() {
+  await userEvent.click(await screen.findByRole("tab", { name: "Plays" }));
+  return panel("plays");
+}
+
 async function section() {
+  // Overview is the page's first tab (D22); these tests read Plays.
+  await userEvent.click(await screen.findByRole("tab", { name: "Plays" }));
   await screen.findByRole("list", { name: "Most played tracks" });
   return panel("plays");
 }
@@ -633,7 +640,7 @@ describe("the Plays section (STATS-05)", () => {
       await user.click(within(region).getByRole("button", { name: "Open in Library: Never played" }));
       expect(navigated().state).toEqual({ cuepointLibraryRules: rules("play_count", 3120) });
 
-      await user.click(within(region).getByRole("button", { name: "Open in Library: Plays unknown" }));
+      await user.click(within(region).getByRole("button", { name: "Open in Library: No play count" }));
       expect(navigated().state).toEqual({ cuepointLibraryRules: rules("play_count", 41) });
     });
 
@@ -657,7 +664,7 @@ describe("the Plays section (STATS-05)", () => {
         getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: [], artists: [], labels: [], genres: [] })),
       });
       renderPage();
-      const region = await panel("plays");
+      const region = await playsPanel();
 
       expect(await within(region).findByText("None of these tracks has been played yet")).toBeVisible();
       expect(within(region).getByRole("button", { name: "Keep as Collection" })).toBeDisabled();
@@ -670,7 +677,7 @@ describe("the Plays section (STATS-05)", () => {
         getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: [], artists: [], labels: [], genres: [] })),
       });
       renderPage();
-      const region = await panel("plays");
+      const region = await playsPanel();
 
       expect(await within(region).findByText("No plays were recorded in that time")).toBeVisible();
     });
@@ -699,7 +706,7 @@ describe("the Plays section (STATS-05)", () => {
           ),
       });
       renderPage();
-      const region = await panel("plays");
+      const region = await playsPanel();
 
       expect(await within(region).findByText(/no refresh since the import/)).toBeVisible();
     });
@@ -1110,7 +1117,7 @@ describe("the Plays section, after review (STATS-05)", () => {
           .mockResolvedValue(plays({ history_from: null, last_read: null, last_read_id: null })),
       });
       renderPage();
-      const region = await panel("plays");
+      const region = await playsPanel();
 
       expect(await within(region).findByText(/no refresh to count from yet/)).toBeVisible();
       expect(within(region).queryByRole("list", { name: "Most played tracks" })).toBeNull();
@@ -1177,7 +1184,7 @@ describe("the Plays section, after review (STATS-05)", () => {
         getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: [], artists: [], labels: [], genres: [] })),
       });
       renderPage();
-      const region = await panel("plays");
+      const region = await playsPanel();
 
       await within(region).findByText("None of these tracks has been played yet");
       const empties = region.querySelectorAll(".cp-empty-state--compact");

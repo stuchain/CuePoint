@@ -450,7 +450,7 @@ export function PlaysSection({
               {(
                 [
                   ["Never played", data.never_played],
-                  ["Plays unknown", data.unknown],
+                  ["No play count", data.unknown],
                 ] as const
               ).map(([label, found]) => (
                 <div key={label} className="plays__unplayed-row">

@@ -1,7 +1,7 @@
 /**
  * A ranked list in a Statistics card: a heading with what it counts at its right, a row of
- * column headings, then rows of rank, name (with a bar behind it as long as its share of the
- * top row), and the numbers. A row is a button that opens exactly the tracks it counted.
+ * column headings, then rows of rank, name, a bar as long as its share of the top row (its own
+ * column, so every bar starts at the same edge, D22), and the numbers. A row is a button that opens exactly the tracks it counted.
  *
  * Shared by the Plays tab (top artists, labels and genres) and the Library tab (genres, labels
  * and artists by tracks). Only the first `shown` rows are drawn; the card's one link says how
@@ -36,12 +36,14 @@ export interface RankRow {
 interface RankListProps {
   title: string;
   /** What the card counts, at the heading's right, in the order of its columns: "tracks · plays". */
-  unit: string;
+  unit?: string;
   rows: readonly RankRow[];
   /** The numeric columns, in order. */
   columns: ReadonlyArray<"tracks" | "plays">;
   /** What the empty card says. */
   empty: string;
+  /** Draw nothing at all when there are no rows (the Overview, M222), instead of an empty card. */
+  hideWhenEmpty?: boolean;
   /** Rows drawn before the link; the rest wait behind it. */
   shown?: number;
   onOpen: (rules: FilterRuleSet) => void;
@@ -57,6 +59,7 @@ export function RankList({
   rows,
   columns,
   empty,
+  hideWhenEmpty = false,
   shown = 5,
   onOpen,
   children,
@@ -65,6 +68,7 @@ export function RankList({
   const visible = all ? rows : rows.slice(0, shown);
   const top = Math.max(1, ...rows.map((row) => row.weight));
   const more = rows.length > shown;
+  if (hideWhenEmpty && rows.length === 0) return null;
   return (
     <Card className="statistics-panel rank" title={title} unit={unit} titleClassName="rank__title" bodyClassName="statistics-panel__body" aria-label={title}>
       {rows.length === 0 ? (
@@ -78,6 +82,7 @@ export function RankList({
           >
             <span className="rank__hash">#</span>
             <span>Name</span>
+            <span aria-hidden="true" />
             {columns.map((column) => (
               <span key={column} className="rank__number">
                 {HEADINGS[column]}
@@ -98,10 +103,12 @@ export function RankList({
                     {index + 1}
                   </span>
                   <span className="rank__name" aria-hidden="true">
-                    <span className="rank__text">
+                    <span className="rank__text" data-cut-hint="">
                       {row.name}
                       {row.note && <span className="rank__note">{row.note}</span>}
                     </span>
+                  </span>
+                  <span className="rank__bar" aria-hidden="true">
                     <RankBar share={row.weight / top} />
                   </span>
                   {columns.map((column) => (

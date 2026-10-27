@@ -171,9 +171,13 @@ interface SpreadsSectionProps {
   charts: readonly ChartId[];
   /** Inside the last chart's card, at its bottom right (a link such as "More charts"). */
   footer?: ReactNode;
+  /** Draw no card for a chart with nothing to chart (the Overview, M222); the default says so in the card. */
+  hideEmpty?: boolean;
+  /** Charts that take the whole row (Loudness, D22). */
+  wide?: readonly ChartId[];
 }
 
-export function SpreadsSection({ spreads, charts, footer }: SpreadsSectionProps) {
+export function SpreadsSection({ spreads, charts, footer, hideEmpty = false, wide = [] }: SpreadsSectionProps) {
   const navigate = useNavigate();
   const openRules = (rules: FilterRuleSet) =>
     navigate("/library", { state: libraryRulesState(rules) });
@@ -187,10 +191,11 @@ export function SpreadsSection({ spreads, charts, footer }: SpreadsSectionProps)
       {charts.map((id) => PANELS.find((panel) => panel.id === id)!).map((panel, at) => {
         const spread = spreads[panel.id];
         const items = itemsById[panel.id]!;
+        if (hideEmpty && items.length === 0) return null;
         return (
           <Card
             key={panel.id}
-            className="statistics-panel"
+            className={`statistics-panel${wide.includes(panel.id) ? " statistics-panel--wide" : ""}`}
             data-panel={panel.id}
             title={panel.title}
             unit={panel.unit}

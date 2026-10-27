@@ -1,8 +1,8 @@
 /**
  * The Statistics page (STATS-04, DEC-138, DEC-162).
  *
- * What you play most, how the library is made up and what needs fixing, as three tabs: Plays,
- * Library and Health. The page is the frame: the header with its scope picker and a summary line
+ * How the library is made up, what you play most and what needs fixing, as three tabs: Overview,
+ * Plays and Health (D22). The page is the frame: the header with its scope picker and a summary line
  * of what is counted, the tab strip (Health carries a "N issues" chip),
  * and each tab's loading, failed and empty states. Nothing here is drawn from numbers the
  * engine did not send.
@@ -17,12 +17,11 @@
  * now: the page opens it, once per navigation.
  */
 import { ScreenHeader, type HeaderFacts } from "../../components/shell/ScreenHeader";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import type { CleanJobStarted, LibrarySummary } from "../../api/cuepointBridge.types";
+import type { LibrarySummary } from "../../api/cuepointBridge.types";
 import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
-import { useToast } from "../../components";
 import { Button } from "../../components/Button";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
@@ -32,7 +31,6 @@ import { countNoun, formatCount, pluralWord } from "../../format/counts";
 import { RETRY } from "../../format/words";
 import { WHICH_TRACKS } from "../../words";
 import { Select } from "../../components/Select";
-import { useCleanJob, type CleanMessageTone } from "../clean/useCleanJob";
 import { libraryImportState } from "../library/libraryLink";
 import { HealthSection } from "./HealthSection";
 import { healthToFix } from "./healthCount";
@@ -54,11 +52,11 @@ import {
   useStatisticsSpreads,
   useStatisticsTrees,
 } from "./useStatistics";
-import { NEEDS_DESKTOP, needsDesktopApp } from "../../api/userMessage";
+import { needsDesktopApp } from "../../api/userMessage";
 import "../screens.css";
 import "./statistics.css";
 
-type TabId = "plays" | "library" | "health";
+type TabId = "overview" | "plays" | "health";
 
 interface TabPanelProps {
   id: TabId;
@@ -128,35 +126,11 @@ export function StatisticsScreen() {
   const spreads = useStatisticsSpreads(reading, trees.refreshing);
   const health = useStatisticsHealth(reading, trees.refreshing);
 
-  // The artwork read is run here, not in HealthSection: a scope change or a failed re-read
-  // swaps that section for a spinner, and a follower living in it would be dropped mid-scan
-  // (no toast, no re-read, the button free again while the job runs).
-  const { push } = useToast();
-  const message = useCallback((text: string, tone: CleanMessageTone) => push(text, tone), [push]);
-  const { running: jobRunning, run: runJob } = useCleanJob(message);
-  // A scan outlives the scope it started under: when it ends, Health is read for the scope then.
-  const healthRetry = useRef(health.retry);
-  healthRetry.current = health.retry;
-  const retryHealth = useCallback(() => healthRetry.current(), []);
-  // The same start Clean's Health tab made: every track, however the library is scoped here,
-  // because the read is of files and not of Collections.
-  const readCoverArt = useCallback(() => {
-    const begin = window.cuepoint?.startArtworkScan;
-    if (!begin) {
-      push(NEEDS_DESKTOP, "warning");
-      return;
-    }
-    void runJob<CleanJobStarted>("artwork_scan", () => begin({ selection: { query: {} } }), {
-      succeeded: "Finished reading artwork",
-      onEnded: retryHealth,
-    });
-  }, [runJob, push, retryHealth]);
-
   // A link that is about health opens the Health tab, once per navigation, so choosing another
   // tab afterwards (or a read coming round again) does not send the person back.
   const location = useLocation();
   const asked = statisticsFocus(location);
-  const [tab, setTab] = useState<TabId>("plays");
+  const [tab, setTab] = useState<TabId>("overview");
   const openedFor = useRef<string | null>(null);
   const leaveRef = useRef<() => void>(() => {});
   const focusToken = asked?.focus === "health" ? asked.token : null;
@@ -178,7 +152,7 @@ export function StatisticsScreen() {
   // A layout effect, so the page never paints one frame at the old place. A tab whose data has
   // not come yet is too short to scroll down to its place (the browser clamps it to 0), so the
   // place is asked for again once that data first arrives.
-  const tabLoaded = tab === "plays" ? !!plays.data : tab === "library" ? !!spreads.data : !!health.data;
+  const tabLoaded = tab === "plays" ? !!plays.data : tab === "overview" ? !!spreads.data : !!health.data;
   const waitingFor = useRef<{ tab: TabId; top: number } | null>(null);
   useLayoutEffect(() => {
     shown.current = tab;
@@ -263,9 +237,9 @@ export function StatisticsScreen() {
             activeId={tab}
             onChange={(id) => chooseTab(id as TabId)}
             tabs={[
+              // No count after the name: the track count is in the header (C257).
+              { id: "overview", label: "Overview" },
               { id: "plays", label: "Plays" },
-              // No count after the name: the track count is the first figure on the tab (C257).
-              { id: "library", label: "Library" },
               {
                 id: "health",
                 label: "Health",
@@ -315,6 +289,17 @@ export function StatisticsScreen() {
       {header}
 
       <TabPanel
+        id="overview"
+        active={tab === "overview"}
+        status={spreads.status}
+        loading="your library"
+        failed="Your library could not be read."
+        onRetry={spreads.retry}
+      >
+        {spreads.data && <LibrarySection spreads={spreads.data} collections={trees.collections} />}
+      </TabPanel>
+
+      <TabPanel
         id="plays"
         active={tab === "plays"}
         status={plays.status}
@@ -340,27 +325,6 @@ export function StatisticsScreen() {
       </TabPanel>
 
       <TabPanel
-        id="library"
-        active={tab === "library"}
-        status={spreads.status}
-        loading="your library"
-        failed="Your library could not be read."
-        onRetry={spreads.retry}
-      >
-        {spreads.data && (
-          <LibrarySection
-            spreads={spreads.data}
-            collections={trees.collections}
-            playlistCount={
-              spreads.data.scope === "library" && typeof summaryValue?.playlist_count === "number"
-                ? summaryValue.playlist_count
-                : null
-            }
-          />
-        )}
-      </TabPanel>
-
-      <TabPanel
         id="health"
         active={tab === "health"}
         status={health.status}
@@ -368,13 +332,7 @@ export function StatisticsScreen() {
         failed="Health could not be read."
         onRetry={health.retry}
       >
-        {health.data && (
-          <HealthSection
-            health={health.data}
-            coverArtRunning={jobRunning === "artwork_scan"}
-            onReadCoverArt={readCoverArt}
-          />
-        )}
+        {health.data && <HealthSection health={health.data} />}
       </TabPanel>
     </div>
   );

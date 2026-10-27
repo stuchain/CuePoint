@@ -1,15 +1,17 @@
 /**
- * The Library tab of the Statistics page: what is in the scope.
+ * The Overview tab of the Statistics page: what is in the scope.
  *
- * Four numbers (tracks, total time, average BPM, added this year), then Genres, Labels and
- * Artists by track count (five rows each, the rest behind "See top N"), then the charts: BPM
- * and Keys, Year and Loudness, with Date added and Rating behind "More charts". Every number is
- * the engine's; a row opens exactly the tracks it counted.
+ * Four numbers (rated tracks, total time, average BPM, added this year; the track count is in the
+ * header already), then the cards in pairs (D22): Genres and Labels, Artists and Keys, BPM and
+ * Year, and Loudness across the row, with Date added and Rating behind "More charts". A card with
+ * nothing to show is not drawn (M222), and a scope with no tracks says so once. Every number is the
+ * engine's; a row opens exactly the tracks it counted.
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { CollectionNode, FilterRuleSet, StatisticsSpreads } from "../../api/cuepointBridge.types";
+import { EmptyState } from "../../components/EmptyState";
 import { LinkButton } from "../../components/LinkButton";
 import { countNoun, formatCount } from "../../format/counts";
 import { formatLength, formatTotal } from "../../format/durations";
@@ -22,8 +24,8 @@ import { SpreadsSection } from "./SpreadsSection";
 interface LibrarySectionProps {
   spreads: StatisticsSpreads;
   collections: readonly CollectionNode[];
-  /** The library's playlist count; only known for the whole library, so null for a scope. */
-  playlistCount: number | null;
+  /** The library's playlist count; only known for the whole library, so null for a scope. (The header says it.) */
+  playlistCount?: number | null;
   /** Today, for "added this year". */
   now?: Date;
 }
@@ -42,7 +44,7 @@ function addedIn(spreads: StatisticsSpreads, year: number): number {
     .reduce((sum, bucket) => sum + bucket.count, 0);
 }
 
-export function LibrarySection({ spreads, collections, playlistCount, now }: LibrarySectionProps) {
+export function LibrarySection({ spreads, collections, now }: LibrarySectionProps) {
   const navigate = useNavigate();
   const [more, setMore] = useState(false);
   const open = (rules: FilterRuleSet) => navigate("/library", { state: libraryRulesState(rules) });
@@ -56,10 +58,13 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
 
   const figures: Figure[] = [
     {
-      id: "tracks",
-      label: "Tracks",
-      value: formatCount(spreads.total),
-      note: playlistCount === null ? "in this scope" : countNoun(playlistCount, "playlist"),
+      id: "rated",
+      label: "Rated tracks",
+      value: formatCount(Math.max(0, spreads.total - spreads.rating.unknown.count)),
+      note:
+        spreads.rating.unknown.count > 0
+          ? `${formatCount(spreads.rating.unknown.count)} not rated`
+          : "every track is rated",
     },
     {
       id: "time",
@@ -120,6 +125,14 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
     label: `${row.name}, ${countNoun(row.tracks, "track")}`,
   }));
 
+  if (spreads.total === 0) {
+    return (
+      <div className="library-tab">
+        <EmptyState compact headline="No tracks to count here" description="Pick another playlist or Collection above." />
+      </div>
+    );
+  }
+
   return (
     <div className="library-tab">
       <dl className="library-figures">
@@ -133,38 +146,19 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
       </dl>
 
       <div className="statistics-panels">
-        <RankList
-          title="Genres"
-          unit="tracks"
-          columns={["tracks"]}
-          rows={genres}
-          empty="No genres to list"
-          onOpen={open}
-        />
-        <RankList
-          title="Labels"
-          unit="tracks"
-          columns={["tracks"]}
-          rows={labels}
-          empty="No labels to list"
-          onOpen={open}
-        />
-        <RankList
-          title="Artists"
-          unit="tracks"
-          columns={["tracks"]}
-          rows={artists}
-          empty="No artists to list"
-          onOpen={open}
-        />
-        <SpreadsSection spreads={spreads} charts={["tempo"]} />
+        <RankList title="Genres" columns={["tracks"]} rows={genres} empty="No genres to list" hideWhenEmpty onOpen={open} />
+        <RankList title="Labels" columns={["tracks"]} rows={labels} empty="No labels to list" hideWhenEmpty onOpen={open} />
+        <RankList title="Artists" columns={["tracks"]} rows={artists} empty="No artists to list" hideWhenEmpty onOpen={open} />
         <KeySummary scope={spreads.scope} collections={collections} />
+        <SpreadsSection spreads={spreads} charts={["tempo", "year"]} hideEmpty />
         <SpreadsSection
           spreads={spreads}
-          charts={["year", "loudness"]}
+          charts={["loudness"]}
+          hideEmpty
+          wide={["loudness"]}
           footer={more ? undefined : moreCharts}
         />
-        {more && <SpreadsSection spreads={spreads} charts={["date_added", "rating"]} footer={moreCharts} />}
+        {more && <SpreadsSection spreads={spreads} charts={["date_added", "rating"]} hideEmpty footer={moreCharts} />}
       </div>
     </div>
   );
