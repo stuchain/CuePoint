@@ -44,12 +44,12 @@ describe("the spacing scale (area 'spacing')", () => {
   });
 });
 
-describe("pixel icons come in three sizes (area 10)", () => {
-  it("has 12, 16 and 24, each a whole multiple of the 12-unit grid", () => {
-    expect(rootDecl(tokens, "--icon-size-sm")).toContain("12px");
-    expect(rootDecl(tokens, "--icon-size-md")).toContain("16px");
+describe("pixel icons come in two sizes (area 10, M28)", () => {
+  it("has sm and lg, each a whole multiple of the 12-unit grid, and md only as an alias of lg", () => {
+    expect(rootDecl(tokens, "--icon-size-sm")).toContain("16px");
     expect(rootDecl(tokens, "--icon-size-lg")).toContain("24px");
-    for (const size of ["sm", "md", "lg"]) expect(rootDecl(tokens, `--icon-size-${size}`)).toContain("12px)");
+    for (const size of ["sm", "lg"]) expect(rootDecl(tokens, `--icon-size-${size}`)).toContain("12px)");
+    expect(rootDecl(tokens, "--icon-size-md")).toBe("var(--icon-size-lg)");
     expect(rootDecl(tokens, "--icon-size")).toBe("var(--icon-size-lg)");
   });
 
@@ -102,8 +102,8 @@ describe("text roles and the one legend (area 4)", () => {
     expect(rootDecl(tokens, "--font-size-page")).toBe("round(nearest, calc(22px * var(--scale)), 1px)");
     expect(rootDecl(tokens, "--font-size-dialog")).toBe("round(nearest, calc(16px * var(--scale)), 1px)");
     expect(rootDecl(tokens, "--font-size-section")).toBe("var(--font-size-md)");
-    // P2: 10.5 rounded down at the scale (10.5 times 1.5 is fractional).
-    expect(rootDecl(tokens, "--font-size-label")).toBe("round(down, calc(10.5px * var(--scale)), 1px)");
+    // P2: 10.5 rounded to the nearest pixel like every data size (M27).
+    expect(rootDecl(tokens, "--font-size-label")).toBe("round(nearest, calc(10.5px * var(--scale)), 1px)");
     expect(rootDecl(tokens, "--font-size-chip")).toBe("var(--font-size-label)");
     expect(rootDecl(tokens, "--weight-strong")).toBe("var(--font-weight-bold)");
     expect(rootDecl(tokens, "--font-weight-bold")).toBe("700");
@@ -170,7 +170,7 @@ describe("no hover nudge and one panel motion (area 53)", () => {
   });
 
   it("slides every side panel in the same way and fades every popover in the same way", () => {
-    const side = parseRules(stripComments(motionCss)).find((r) => r.selector.includes(".cp-side-panel"))!;
+    const side = parseRules(stripComments(motionCss)).find((r) => r.selector.includes(".cp-inspector[data-entering]"))!;
     expect(side.selector).toContain(".cp-queue");
     expect(side.selector).toContain(".cp-inspector[data-entering]");
     expect(side.body).toMatch(/cp-from-edge/);

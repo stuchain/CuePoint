@@ -22,18 +22,18 @@
 
   /* Pixel-art chrome (structural) */
   --border-width: round(down, calc(2px * var(--scale)), 1px);
-  /* Borders are drawn at a whole pixel and Chromium floors them, so the 1px line
-     rounds down too: 1, 1, 1, 2 and 3 at 1x, 1.25x, 1.5x, 2x and 3x. A border and a
-     shadow of this token then agree (DEC-161). */
-  --hairline: max(1px, round(down, calc(1px * var(--scale)), 1px));
+  /* A hairline is 1px at every scale (M82, D10): a line stays the thinnest mark on the page, so a
+     header rule is never 6px at 3x. A border and a shadow of this token agree (DEC-161). */
+  --hairline: 1px;
   --border-width-heavy: round(down, calc(3px * var(--scale)), 1px);
   --bevel-size: round(down, calc(2px * var(--scale)), 1px);
   --bevel-size-sm: var(--hairline);
   --focus-ring-width: round(down, calc(2px * var(--scale)), 1px);
 
-  /* The pixel shadows and bevels below are the website's (sync-tokens carries them to the web);
-     panels and controls draw none. Dialogs and floating surfaces lift with --shadow-dialog and
-     --shadow-popover (P11, P12; DEC-299 amends C16a). */
+  /* Hard pixel shadows (M33, D4): no surface blurs. Popovers, menus and toasts lift by a 2-unit
+     offset with no blur; a dialog by --shadow-modal (8 units); a sticky header or a raised segment
+     by a hard hairline. The bevels below are the website's (sync-tokens carries them to the web);
+     panels and controls draw none. */
   --shadow-bevel: inset var(--bevel-size) var(--bevel-size) 0 var(--bevel-highlight),
     inset calc(-1 * var(--bevel-size)) calc(-1 * var(--bevel-size)) 0 var(--bevel-shadow);
   --shadow-bevel-panel: inset var(--bevel-size) var(--bevel-size) 0 var(--border-light),
@@ -43,10 +43,12 @@
   --shadow-bevel-pressed: inset calc(-1 * var(--bevel-size-sm)) calc(-1 * var(--bevel-size-sm)) 0
       var(--bevel-highlight),
     inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-shadow);
+  --shadow-offset: max(2px, round(nearest, calc(2px * var(--scale)), 1px));
+  --shadow-hard: var(--shadow-offset) var(--shadow-offset) 0 var(--border-shadow);
   --shadow-panel: round(down, calc(4px * var(--scale)), 1px) round(down, calc(4px * var(--scale)), 1px) 0 var(--border-shadow);
   --shadow-modal: round(down, calc(8px * var(--scale)), 1px) round(down, calc(8px * var(--scale)), 1px) 0 var(--border-shadow);
-  /* The picked part of a segmented strip lifts a hairline off its slab (P13). */
-  --shadow-raised: 0 var(--hairline) round(nearest, calc(2px * var(--scale)), 1px) rgba(0, 0, 0, 0.35);
+  /* The picked part of a segmented strip lifts a hairline off its slab (P13): hard, no blur. */
+  --shadow-raised: 0 var(--hairline) 0 var(--border-shadow);
   --shadow-badge: round(down, calc(2px * var(--scale)), 1px) round(down, calc(2px * var(--scale)), 1px) 0 var(--border-shadow);
   --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
 
@@ -84,23 +86,26 @@
   --field-width-short: calc(120px * var(--scale));
   --field-width-standard: calc(320px * var(--scale));
   --selected-bar-width: max(2px, round(down, calc(2px * var(--scale)), 1px));
-  --bg-selected: color-mix(in srgb, var(--accent-primary) 18%, var(--bg-input));
+  /* Selection is the strongest state (M337, D30): 24% accent over the row, with the bar. Hover is
+     quieter (--row-hover below); themeContrast.test.ts holds hover under selected in every theme. */
+  --bg-selected: color-mix(in srgb, var(--accent-primary) 24%, var(--bg-input));
   --selected-row-background: linear-gradient(
     to right,
     var(--accent-primary) var(--selected-bar-width),
     var(--bg-selected) var(--selected-bar-width)
   );
-  --shadow-popover: 0 round(nearest, calc(8px * var(--scale)), 1px) round(nearest, calc(24px * var(--scale)), 1px)
-    rgba(0, 0, 0, 0.4);
-  --shadow-dialog: 0 round(nearest, calc(12px * var(--scale)), 1px) round(nearest, calc(40px * var(--scale)), 1px)
-      rgba(0, 0, 0, 0.45),
-    0 0 0 var(--hairline) color-mix(in srgb, var(--border-muted) 50%, transparent);
+  --shadow-popover: var(--shadow-hard);
+  --shadow-dialog: var(--shadow-modal), 0 0 0 var(--hairline) color-mix(in srgb, var(--border-muted) 50%, transparent);
   --tab-underline: max(2px, round(down, calc(2px * var(--scale)), 1px));
 
-  /* One divider and the text roles (G6); the colours are theme tokens. */
-  --divider-color: color-mix(in srgb, var(--border-muted) 70%, var(--bg-panel));
+  /* Two line roles (M329, D29), both as tuned in the theme and unmixed: a strong line for panel
+     dividers, frames and the header rule, a soft one between table rows. --divider-color and
+     --row-line are the older names of the same two. */
+  --line-strong: var(--border-muted);
+  --line-soft: var(--row-divider, var(--border-muted));
+  --divider-color: var(--line-strong);
   --divider: var(--hairline) solid var(--divider-color);
-  --row-line: color-mix(in srgb, var(--row-divider, var(--border-muted)) 60%, var(--bg-input));
+  --row-line: var(--line-soft);
   --bg-between: color-mix(in srgb, var(--bg-panel) 60%, var(--bg-app));
   --fg-muted-on-slab: color-mix(in srgb, var(--fg-muted) 80%, var(--fg-primary));
   --popover-border: var(--hairline) solid color-mix(in srgb, var(--border-muted) 70%, transparent);
@@ -110,6 +115,21 @@
   --focus-ring: var(--focus-ring-color);
   /* How much of the app background veils a page that is shown but cannot be used: offline. */
   --dim-veil: 45%;
+
+  /*
+   * Stacking order (M84): one scale, lowest to highest, so two layers never tie. A surface names
+   * its layer here instead of a number of its own. The track menu sits above the Activity list.
+   */
+  --z-sticky: 20;
+  --z-banner: 50;
+  --z-activity: 55;
+  --z-menu: 60;
+  --z-submenu: 61;
+  --z-popover: 940;
+  --z-modal: 1000;
+  --z-toast: 1100;
+  --z-ghost: 1200;
+  --z-hint: 1300;
 
   /*
    * Spacing: the scale is 2 / 4 / 8 / 12 / 16 / 24 (times --scale). --space-sm (6) is only for
@@ -147,7 +167,7 @@
    * lack. It is a token, so a theme or a later decision can
    * point it back at --font-pixel in one line.
    */
-  --font-data: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,
+  --font-data: "CuePoint Signs", "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,
     -apple-system, "Helvetica Neue", Arial, sans-serif;
   /* Raw text only (a log, a JSON block, a path): the one monospace stack (C68). */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -160,20 +180,21 @@
    * titles, chips, buttons, tabs and labels stay on --font-pixel-digits. One line points it back.
    */
   --font-meta: var(--font-data);
-  --font-size-xs: calc(10px * var(--scale));
-  --font-size-sm: calc(12px * var(--scale));
-  --font-size-md: calc(14px * var(--scale));
-  --font-size-lg: calc(18px * var(--scale));
-  --font-size-xl: calc(24px * var(--scale));
-  /* A figure read at a glance (P15): Statistics' four numbers. 26 times 1.5 is whole. */
-  --font-size-figure: calc(26px * var(--scale));
+  /* Every size lands on a whole pixel (M4, M27): pixel words at 12.5 or 17.5 px grey every stem. */
+  --font-size-xs: round(nearest, calc(10px * var(--scale)), 1px);
+  --font-size-sm: round(nearest, calc(12px * var(--scale)), 1px);
+  --font-size-md: round(nearest, calc(14px * var(--scale)), 1px);
+  --font-size-lg: round(nearest, calc(18px * var(--scale)), 1px);
+  --font-size-xl: round(nearest, calc(24px * var(--scale)), 1px);
+  /* A figure read at a glance (P15): Statistics' four numbers. */
+  --font-size-figure: round(nearest, calc(26px * var(--scale)), 1px);
   /* Text roles (P47): page 22 / dialog 16 / section 14 / control 11 / label 10.5. The page and dialog
      titles step down from 24 and 18 (answer 1); --font-size-xl and -lg stay for the few other uses. */
   --font-size-page: round(nearest, calc(22px * var(--scale)), 1px);
   --font-size-dialog: round(nearest, calc(16px * var(--scale)), 1px);
   --font-size-section: var(--font-size-md);
-  /* P2/P47: labels, column headers and chips are 10.5 (rounded down so it never grows past the ladder). */
-  --font-size-label: round(down, calc(10.5px * var(--scale)), 1px);
+  /* P2/P47: labels, column headers and chips are 10.5, rounded like the data sizes (M27). */
+  --font-size-label: round(nearest, calc(10.5px * var(--scale)), 1px);
   --font-size-chip: var(--font-size-label);
   /* One chip box (P30): 18 high, 6 either side, square. Status, key, filter, tag and Activity chips. */
   --chip-height: round(nearest, calc(18px * var(--scale)), 1px);
@@ -190,24 +211,39 @@
   --weight-strong: var(--font-weight-bold);
   --weight-normal: var(--font-weight-regular);
 
-  /* Pixel icons come in three sizes only (12 / 16 / 24 times the text size), each rounded down on
-     its own to a multiple of the 12-unit grid so no art pixel is fractional (C136). */
+  /* Pixel icons come in two sizes (M28, M29, D3), each rounded down to a multiple of the 12-unit
+     grid so no art pixel is fractional (C136): sm is 12 at 1x and 1.25x and 24 from 1.5x; lg is 24
+     at 1x and 1.25x and 36 from 1.5x. Stars, the artwork glyph and the player's right cluster use lg. */
   /* One checkbox and radio box (P29): 14 at 1x. */
   /* A disabled control keeps its shape in a faint line (P38): the control line at 60%, never opacity. */
+  /* The disabled main action (M324): the accent fill at 22% over the panel, its words the text colour
+     at 70% over that fill, so they read at 4.5:1 in every theme (themeContrast.test.ts). A mix, never opacity. */
+  --disabled-primary-fill: color-mix(in srgb, var(--accent-fill) 22%, var(--bg-panel));
+  --disabled-primary-text: color-mix(in srgb, var(--fg-primary) 70%, var(--disabled-primary-fill));
   --border-disabled: color-mix(in srgb, var(--border-control) 60%, transparent);
-  /* A sticky header over scrolling content (P40): a hairline in the row line, then a soft shadow
-     below that shows the rows sliding under it. Always on (open question 6). */
-  --shadow-sticky: 0 var(--hairline) 0 var(--row-line), 0 round(nearest, calc(6px * var(--scale)), 1px) round(nearest, calc(10px * var(--scale)), 1px) round(nearest, calc(-6px * var(--scale)), 1px) rgba(0, 0, 0, 0.6);
+  /* A sticky header over scrolling content (P40, M33): a hard hairline in the row line, no blur. */
+  --shadow-sticky: 0 var(--hairline) 0 var(--row-line);
   --check-size: round(nearest, calc(14px * var(--scale)), 1px);
-  --icon-size-sm: max(12px, round(down, calc(12px * var(--scale)), 12px));
-  --icon-size-md: max(12px, round(down, calc(16px * var(--scale)), 12px));
+  --icon-size-sm: max(12px, round(down, calc(16px * var(--scale)), 12px));
   --icon-size-lg: max(12px, round(down, calc(24px * var(--scale)), 12px));
+  /* Gone (M28, D3): there is no medium. An alias of lg until wave 2 moves the last two uses. */
+  --icon-size-md: var(--icon-size-lg);
 
   /* One focus ring for every focusable control: violet, a square 2px line, the same offset. The
      ring sits flush on the control's edge (P64); an item inside a list or a pane uses the inset
      offset, so its ring is never clipped by the pane. */
   --focus-ring-offset: 0px;
   --focus-ring-offset-inset: calc(-1 * var(--focus-ring-width));
+
+  /*
+   * Colour roles (M326, D28). Violet (--accent-primary, --accent-fill, --link, --focus-ring-color)
+   * belongs to four things only: the page's one main action, selection, focus and links. Everything
+   * else is neutral: an "all good" state is the greyed text colour (--health-ok), never green; a
+   * second button on a page is a plain Button; a playing title is --link. Status colours say a
+   * state (success, warning, danger); --accent-info is its own hue per theme (never a third violet:
+   * themeContrast.test.ts holds its hue away from the accent); --accent-write is its own green.
+   * The few loud spots left (the player's Play, Prepare's Play Set) are for P11 and P15 to mute.
+   */
 
   /*
    * Status text: a status colour lifted towards the theme's text colour, so the words read at
@@ -223,6 +259,8 @@
   /* A notice is a faint tint of its tone with a bar on the left, no frame (P6). */
   --notice-fill-mix: 8%;
   --notice-bar-width: round(nearest, calc(3px * var(--scale)), 1px);
+  /* The bar on the edge of a card or a candidate (M80): 4 units, whole at every scale. */
+  --edge-bar-width: round(nearest, calc(4px * var(--scale)), 1px);
   /* A status dot (P17, P24): a state's colour as a round 7. */
   --status-dot: round(nearest, calc(7px * var(--scale)), 1px);
   --chip-text-mix: 35%;
@@ -236,7 +274,11 @@
    * row hover (R3-14), reading measure (C214), tree indent (C40), box gap (C32), resizer hover
    * (C149), the inset of a row's end control (C84), the search field's width (C223).
    */
-  --row-hover: var(--hover-fill);
+  /* Row hover (M337, D30): a 6% shade of the text colour over whatever the row sits on, so it is
+     quieter than --bg-selected on every surface. --row-hover-solid is the same over --bg-input for
+     the one place that needs an opaque fill (a sticky cell that hides what scrolls under it). */
+  --row-hover: color-mix(in srgb, var(--fg-primary) 6%, transparent);
+  --row-hover-solid: color-mix(in srgb, var(--fg-primary) 6%, var(--bg-input));
   --reading-width: 60ch;
   --tree-indent: calc(12px * var(--scale));
   --gap-box: var(--space-xl);

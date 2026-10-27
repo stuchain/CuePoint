@@ -69,7 +69,7 @@ describe("the data font", () => {
     const fonts = source("./fonts.css");
     expect(fonts).toMatch(/font-family:\s*"CuePoint Digits"/);
     // Only the figures and the signs numbers use: never letters.
-    expect(fonts).toMatch(/unicode-range:\s*U\+0025,\s*U\+0028-0029,\s*U\+002B,\s*U\+0030-003A,\s*U\+2013-2014,\s*U\+2212/);
+    expect(fonts).toMatch(/unicode-range:\s*U\+0025,\s*U\+0028-0029,\s*U\+0030-003A,\s*U\+2013-2014,\s*U\+2212/);
     // Not the comma, hyphen or full stop of ordinary words (U+002C-002E), which are pixel-face in
     // a sentence; the brackets of "(67)" are, so a count reads in one face (B8).
     for (const range of fonts.match(/unicode-range:[^;]*;/g) ?? []) {
@@ -96,7 +96,7 @@ describe("the data font", () => {
     const fonts = source("./fonts.css");
     for (const weight of ["400", "700"]) {
       const face = fonts.match(
-        new RegExp(`@font-face\\s*\\{[^}]*font-weight:\\s*${weight};[^}]*key-signs-${weight}\\.woff2[^}]*\\}`),
+        new RegExp(`@font-face\\s*\\{[^}]*font-family:\\s*"CuePoint Digits";[^}]*font-weight:\\s*${weight};[^}]*key-signs-${weight}\\.woff2[^}]*\\}`),
       );
       expect(face, `key signs ${weight}`).not.toBeNull();
       expect(face?.[0]).toContain('font-family: "CuePoint Digits"');

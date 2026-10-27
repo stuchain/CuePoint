@@ -26,10 +26,7 @@ const TOKEN_KEYS = [
   "fg-on-accent",
   "fg-on-status",
   "accent-primary",
-  "accent-primary-hover",
-  "accent-primary-pressed",
   "accent-secondary",
-  "accent-secondary-hover",
   "accent-success",
   "accent-warning",
   "accent-danger",
@@ -40,7 +37,6 @@ const TOKEN_KEYS = [
   "link",
   "focus-ring-color",
   "color-scheme",
-  "overlay-header",
   "overlay-backdrop",
   "waveform-low",
   "waveform-mid",
@@ -54,7 +50,7 @@ const TOKEN_KEYS = [
 export const DERIVED_THEME_TOKEN_KEYS: readonly string[] = [...TOKEN_KEYS, ...KEY_TOKEN_KEYS];
 
 /** How much accent the selected fill has: `--bg-selected` in tokens.css, mixed into `--bg-input`. */
-export const SELECTED_ACCENT_MIX = 18;
+export const SELECTED_ACCENT_MIX = 24;
 
 function clamp(n: number, min = 0, max = 255): number {
   return Math.min(max, Math.max(min, n));
@@ -157,6 +153,30 @@ const TOOLBAR_MIX = 0.55;
 const BORDER_MUTED_MIN_CONTRAST = 1.5;
 /** The least contrast the panel-alt surface keeps against the panel. */
 const PANEL_ALT_MIN_CONTRAST = 1.15;
+
+/** The hue of a colour, in degrees. */
+export function hueOf(hex: string): number {
+  const { r, g, b } = hexToRgb(hex);
+  const [rn, gn, bn] = [r / 255, g / 255, b / 255] as const;
+  const max = Math.max(rn, gn, bn);
+  const d = max - Math.min(rn, gn, bn);
+  if (d === 0) return 0;
+  const h = max === rn ? ((gn - bn) / d) % 6 : max === gn ? (bn - rn) / d + 2 : (rn - gn) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+
+/** The least hue distance, in degrees, info keeps from the accent. */
+export const INFO_MIN_HUE_GAP = 30;
+
+/** The info colour for an accent: sky blue, else teal, else amber, whichever keeps its hue away. */
+function infoHue(accent: string): string {
+  const gap = (a: string, b: string) => {
+    const d = Math.abs(hueOf(a) - hueOf(b));
+    return Math.min(d, 360 - d);
+  };
+  const choices = ["#38bdf8", "#2dd4bf", "#fbbf24"];
+  return choices.find((c) => gap(c, accent) >= INFO_MIN_HUE_GAP) ?? choices[2]!;
+}
 
 /** Black or white, whichever reads better on `bg`. */
 export function betterText(bg: string): string {
@@ -262,10 +282,10 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
 
   // Text on the accent: black or white, whichever reads better, so a mid-tone accent keeps its colour.
   const fgOnAccent = betterText(accentPrimary);
-  // Info is the accent a step lighter, and never under 3:1 on the panel where that can be held
-  // (it is still the focus outline until the sweep); where black text on it then falls short, the
-  // status text below turns white instead.
-  const accentInfo = holdContrast(lighten(accentPrimary, 0.05), [bgPanel], 3);
+  // Info has its own hue (M327, D28): the first of sky blue, teal and amber that stands 30 degrees
+  // or more from the accent, held at 3:1 on the panel where that can be done; where black text on it
+  // then falls short, the status text below turns white instead.
+  const accentInfo = holdContrast(infoHue(accentPrimary), [bgPanel], 3);
   const accentSuccess = normalizeHex(colors.accentSuccess);
   const accentWarning = normalizeHex(colors.accentWarning);
   const accentDanger = normalizeHex(colors.accentDanger);
@@ -288,7 +308,8 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "border-outline": "#000000",
     "border-light": borderLight,
     "border-muted": borderMuted,
-    "row-divider": borderMuted,
+    // The soft row line: the divider mixed 60% into the rows (M319), so it stays quieter than the frames.
+    "row-divider": blend(bgInput, borderMuted, 0.6),
     "border-control": borderControl,
     // The active tab's underline is the accent, moved only as far as 3:1 on the toolbar needs.
     "tab-underline-color": withContrast(accentPrimary, bgToolbar, 3),
@@ -301,10 +322,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "fg-on-accent": fgOnAccent,
     "fg-on-status": fgOnStatus,
     "accent-primary": accentPrimary,
-    "accent-primary-hover": lighten(accentPrimary, 0.12),
-    "accent-primary-pressed": darken(accentPrimary, 0.12),
     "accent-secondary": bgPanelAlt,
-    "accent-secondary-hover": lighten(bgPanelAlt, 0.08),
     "accent-success": accentSuccess,
     "accent-warning": accentWarning,
     "accent-danger": accentDanger,
@@ -317,7 +335,6 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "link": link,
     "focus-ring-color": focusRing,
     "color-scheme": betterText(bgApp) === "#000000" ? "light" : "dark",
-    "overlay-header": "rgba(0, 0, 0, 0.25)",
     "overlay-backdrop": "rgba(0, 0, 0, 0.7)",
     ...deriveWaveformTokens(colors),
     // Key chips (R4-2): the 24 key colours, held on this theme's own backgrounds.

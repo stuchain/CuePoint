@@ -12,7 +12,7 @@
   --border-light: #9ca3af;
   --border-muted: #4b5568;
   /* Table rows and hover: the defaults Retro tunes (C93). */
-  --row-divider: #4b5568;
+  --row-divider: #383f4e;
   --hover-fill: #343d4f;
   --border-control: #7b8190;
   --tab-underline-color: #818cf8;
@@ -35,7 +35,8 @@
   --accent-danger: #ef4a4a;
   --accent-info: #38bdf8;
   /* Writing to the user's files is green (D14); text on it is --fg-on-status, black. */
-  --accent-write: #34b38a;
+  /* Writing is its own green, not the success green (M331). */
+  --accent-write: #4ade80;
 
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
   --accent-fill: #818cf8;

@@ -22,12 +22,20 @@ function mix(top: string, base: string, percent: number): string {
 }
 
 const TOKENS_CSS = (await import("./tokens.css?raw")).default;
+const ROW_HOVER_MIX = Number(/--row-hover:\s*color-mix\(in srgb,\s*var\(--fg-primary\)\s*(\d+)%,\s*transparent\)/.exec(TOKENS_CSS)?.[1]);
 const SELECTED_MIX = Number(/--bg-selected:\s*color-mix\(in srgb,\s*var\(--accent-primary\)\s*(\d+)%/.exec(TOKENS_CSS)?.[1]);
 
 const CASES: [string, Record<string, string>][] = [
   ...Object.entries(THEMES).map(([name, css]) => [name, themeTokens(css)] as [string, Record<string, string>]),
   ["custom (derived)", deriveThemeTokens(NEO_DARK_EDITOR_COLORS)],
 ];
+
+describe("the hover-row token", () => {
+  it("is a quiet shade of the text colour, 6%, and the solid twin is the same over the rows", () => {
+    expect(ROW_HOVER_MIX).toBe(6);
+    expect(TOKENS_CSS).toMatch(/--row-hover-solid:\s*color-mix\(in srgb,\s*var\(--fg-primary\)\s*6%,\s*var\(--bg-input\)\)/);
+  });
+});
 
 describe("the selected-row token", () => {
   it("is the accent mixed into the input background", () => {
@@ -38,6 +46,14 @@ describe("the selected-row token", () => {
 
 describe.each(CASES)("selection and control edges in %s", (_name, t) => {
   const selected = mix(t["accent-primary"]!, t["bg-input"]!, SELECTED_MIX);
+
+  // M337 (D30): selection is the strongest state. A hovered row is 6% of the text colour over the
+  // rows (--row-hover), so it is always dimmer than the selected fill and never louder than it.
+  it("draws a hovered row dimmer than a selected one", () => {
+    const luminance = (c: string) => contrastRatio(c, "#000000");
+    const hovered = mix(t["fg-primary"]!, t["bg-input"]!, ROW_HOVER_MIX);
+    expect(luminance(hovered), "hover under selected").toBeLessThan(luminance(selected));
+  });
 
   it("reads --fg-primary at 4.5:1 on the selected fill", () => {
     expect(contrastRatio(t["fg-primary"]!, selected)).toBeGreaterThanOrEqual(4.5);

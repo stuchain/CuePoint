@@ -133,7 +133,7 @@
   color: var(--fg-muted);
 }
 
-@container content (max-width: 600px) {
+@container content (max-width: 60em) {
   .library-preview__counts {
     grid-template-columns: 1fr;
   }
@@ -323,10 +323,10 @@
   flex: 0 0 auto;
   min-width: calc(12px * var(--scale));
   height: calc(12px * var(--scale));
-  padding: 0 calc(2px * var(--scale));
+  padding: 0 var(--space-2xs);
   /* The data face: the pixel face has no dot to draw. */
   font-family: var(--font-data);
-  font-size: calc(var(--font-size-xs) * 0.8);
+  font-size: round(nearest, calc(var(--font-size-xs) * 0.8), 1px);
   line-height: 1;
   color: var(--fg-on-accent);
   background: var(--accent-primary);

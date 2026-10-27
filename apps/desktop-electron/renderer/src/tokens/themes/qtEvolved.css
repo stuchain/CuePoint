@@ -1,8 +1,9 @@
 /* Qt evolved — the dark theme of CuePoint's former Qt app, kept as a choice */
 [data-theme="qtEvolved"] {
   --bg-app: #1e1e1e;
-  --bg-panel: #252526;
-  --bg-panel-alt: #383838;
+  /* Page, toolbar and panel tones step by 1.15:1 or more, page to panel (M330, D29). */
+  --bg-panel: #2a2a2b;
+  --bg-panel-alt: #404040;
   --bg-input: #1e1e1e;
   --bg-toolbar: #222223;
 
@@ -12,8 +13,8 @@
   --border-light: #6a6a6a;
   --border-muted: #5f5f5f;
   /* Table rows and hover: the defaults Retro tunes (C93). */
-  --row-divider: #5f5f5f;
-  --hover-fill: #383838;
+  --row-divider: #454545;
+  --hover-fill: #404040;
   --border-control: #7e7e7e;
   /* Accent #0078d4 is 2.79:1 on the toolbar; the active-tab underline needs 3:1. */
   --tab-underline-color: #3794ff;
@@ -34,7 +35,8 @@
   --accent-success: #4caf50;
   --accent-warning: #ff9800;
   --accent-danger: #f44336;
-  --accent-info: #2196f3;
+  /* Info is teal: the accent is blue, and the old info blue sat 1 degree from it (M327, D28). */
+  --accent-info: #2dd4bf;
   /* Writing to the user's files is green (D14); text on it is --fg-on-status, black. */
   --accent-write: #3fa45b;
 
@@ -49,7 +51,7 @@
   --overlay-backdrop: rgba(0, 0, 0, 0.7);
 
   /* Waveforms (WAVE-05): each band at 3:1 or more against --bg-panel. */
-  --waveform-low: #2563eb;
+  --waveform-low: #3b82f6;
   --waveform-mid: #ff9800;
   --waveform-high: #f4f4f5;
   --waveform-mono: #218ada;

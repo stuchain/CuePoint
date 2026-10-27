@@ -22,6 +22,11 @@
 @import "@fontsource/inter/latin-ext-600.css";
 @import "@fontsource/inter/latin-700.css";
 @import "@fontsource/inter/latin-ext-700.css";
+/* Greek names (an artist, a label) draw in Inter too, not in the system's face (M7). */
+@import "@fontsource/inter/greek-400.css";
+@import "@fontsource/inter/greek-500.css";
+@import "@fontsource/inter/greek-600.css";
+@import "@fontsource/inter/greek-700.css";
 
 /*
  * Figures inside pixel words (area 56). The pixel face draws 2 like 8 and 5 like S, and its dash
@@ -30,6 +35,11 @@
  * drawn by the bundled Inter files (first in each src, so a figure is the same width on every OS),
  * backed by the same system sans the data face uses; --font-pixel-digits puts it in front of the
  * pixel face, so the words stay pixel and every figure is the data face.
+ *
+ * Size (M8, D2): Inter's figures are 0.73 em tall and the pixel capitals 0.64 em, so a figure drew
+ * taller than the word beside it. `size-adjust` 88% brings the figures to the capitals' height, and
+ * the ascent and descent overrides (divided by the same 88%) hold the line box at the pixel face's own,
+ * so a label does not change height. The plus sign is left to the pixel face (M24): "+ New" is one font.
  *
  * The two key signs are the exception: Pixelify Sans has no flat (U+266D) or sharp (U+266F), so
  * "A♭ minor" fell back to another font and the sign floated. Two small pixel-drawn files carry just
@@ -47,7 +57,11 @@
     local("Segoe UI"),
     local("Helvetica Neue"),
     local("Arial");
-  unicode-range: U+0025, U+0028-0029, U+002B, U+0030-003A, U+2013-2014, U+2212;
+  size-adjust: 88%;
+  ascent-override: 104.5%;
+  descent-override: 31.8%;
+  line-gap-override: 0%;
+  unicode-range: U+0025, U+0028-0029, U+0030-003A, U+2013-2014, U+2212;
 }
 
 @font-face {
@@ -61,7 +75,11 @@
     local("Segoe UI Semibold"),
     local("Helvetica Neue Bold"),
     local("Arial Bold");
-  unicode-range: U+0025, U+0028-0029, U+002B, U+0030-003A, U+2013-2014, U+2212;
+  size-adjust: 88%;
+  ascent-override: 104.5%;
+  descent-override: 31.8%;
+  line-gap-override: 0%;
+  unicode-range: U+0025, U+0028-0029, U+0030-003A, U+2013-2014, U+2212;
 }
 
 @font-face {
@@ -74,6 +92,25 @@
 @font-face {
   font-family: "CuePoint Digits";
   font-weight: 700;
+  src: url("../assets/fonts/cuepoint-key-signs-700.woff2") format("woff2");
+  unicode-range: U+266D, U+266F;
+}
+
+/*
+ * The same two signs for the data face (M7): Inter has no flat or sharp either, so "A♭ minor" in
+ * Track details and Keys fell back to a thin system sign. --font-data puts this family first; its
+ * unicode-range covers only the two signs, so every other character stays Inter.
+ */
+@font-face {
+  font-family: "CuePoint Signs";
+  font-weight: 400;
+  src: url("../assets/fonts/cuepoint-key-signs-400.woff2") format("woff2");
+  unicode-range: U+266D, U+266F;
+}
+
+@font-face {
+  font-family: "CuePoint Signs";
+  font-weight: 500 700;
   src: url("../assets/fonts/cuepoint-key-signs-700.woff2") format("woff2");
   unicode-range: U+266D, U+266F;
 }

@@ -69,7 +69,8 @@ describe("themed scrollbar", () => {
   // P5: thin, always visible, no track fill; the thumb is the muted line colour and lights on hover.
   it("draws a 6px bar on a transparent track with a muted thumb (P5)", () => {
     const root = decls(":root");
-    expect(root["--scrollbar-size"]).toBe("calc(6px * var(--scale))");
+    // M45: rounded, so the thumb's edges land on whole pixels at 1.25x and 1.75x.
+    expect(root["--scrollbar-size"]).toBe("round(nearest, calc(6px * var(--scale)), 1px)");
     expect(root["--scrollbar-inset"]).toBe("var(--hairline)");
     expect(root["--scrollbar-track"]).toBe("transparent");
     expect(decls("*::-webkit-scrollbar-track").background).toBe("var(--scrollbar-track)");

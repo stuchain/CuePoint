@@ -115,6 +115,25 @@ describe.each([
   });
 });
 
+describe("key chip brightness (M332, D28)", () => {
+  const luminance = (hex: string) => contrastRatio(hex, "#000000") * 0.05 - 0.05;
+
+  it("draws every key of a ring at about one luminance in the base colours, so no hue shouts", () => {
+    for (const ring of ["A", "B"] as const) {
+      const values = KEY_TOKEN_KEYS.filter((k) => k.endsWith(ring)).map((k) => luminance(KEY_BASE_HUES[k]!));
+      expect(Math.max(...values) - Math.min(...values), `${ring} ring spread`).toBeLessThan(0.03);
+    }
+  });
+
+  it("keeps the B ring lighter than the A ring", () => {
+    const mean = (ring: string) => {
+      const v = KEY_TOKEN_KEYS.filter((k) => k.endsWith(ring)).map((k) => luminance(KEY_BASE_HUES[k]!));
+      return v.reduce((a, b) => a + b, 0) / v.length;
+    };
+    expect(mean("B")).toBeGreaterThan(mean("A"));
+  });
+});
+
 describe("the key tokens", () => {
   it("are 1A to 12B", () => {
     expect(KEY_TOKEN_KEYS).toHaveLength(24);

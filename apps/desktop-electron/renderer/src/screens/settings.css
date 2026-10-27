@@ -135,7 +135,7 @@
 .settings-check::before {
   content: "";
   position: absolute;
-  inset: calc(-10px * var(--scale)) 0;
+  inset: round(nearest, calc(-10px * var(--scale)), 1px) 0;
 }
 
 /* The box sits above the invisible layers (its own and the neighbours'), so a click on the box itself reaches the box. */

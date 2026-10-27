@@ -71,9 +71,26 @@ describe("bundled Inter", () => {
     }
   });
 
-  it("the bundled family is the first family of --font-data", () => {
-    const data = /--font-data:\s*"([^"]+)"/.exec(sheet("tokens.css"))?.[1];
-    expect(data).toBe("Inter");
+  it("the bundled family is the first text family of --font-data, after the two signs Inter lacks (M7)", () => {
+    const stack = /--font-data:\s*([^;]+);/.exec(sheet("tokens.css"))?.[1] ?? "";
+    expect([...stack.matchAll(/"([^"]+)"/g)].map((m) => m[1]).slice(0, 2)).toEqual(["CuePoint Signs", "Inter"]);
+  });
+
+  it("imports Inter's Greek for the weights it ships, so a Greek name is not the system's face (M7)", () => {
+    const fontsCss = stripComments(sheet("fonts.css"));
+    for (const weight of ["400", "500", "600", "700"]) expect(fontsCss).toContain(`@fontsource/inter/greek-${weight}.css`);
+  });
+
+  it("sizes the figures to the pixel capitals and holds the pixel face's line box (M8, D2)", () => {
+    const fontsCss = stripComments(sheet("fonts.css"));
+    const faces = fontsCss.match(/@font-face\s*\{[^}]*inter-latin-\d+-normal[^}]*\}/g) ?? [];
+    expect(faces).toHaveLength(2);
+    for (const face of faces) {
+      expect(face).toMatch(/size-adjust:\s*88%;/);
+      expect(face).toMatch(/ascent-override:\s*104\.5%;/);
+      expect(face).toMatch(/descent-override:\s*31\.8%;/);
+      expect(face).toMatch(/line-gap-override:\s*0%;/);
+    }
   });
 });
 
@@ -81,7 +98,8 @@ describe("key signs font", () => {
   it("covers exactly the flat and sharp signs, from files bundled with the app", () => {
     const css = stripComments(sheet("fonts.css"));
     const faces = css.match(/@font-face\s*\{[^}]*key-signs[^}]*\}/g) ?? [];
-    expect(faces).toHaveLength(2);
+    // Two weights for the pixel words ("CuePoint Digits") and two for the data face ("CuePoint Signs").
+    expect(faces).toHaveLength(4);
     for (const face of faces) {
       expect(face).toMatch(/unicode-range:\s*U\+266D,\s*U\+266F;/);
       expect(face).toMatch(/url\("\.\.\/assets\/fonts\/cuepoint-key-signs-\d+\.woff2"\)/);

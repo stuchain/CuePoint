@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { NEO_DARK_EDITOR_COLORS } from "./customThemes";
 import { CUSTOM_PALETTES, THEMES, themeTokens } from "../test/themeFixtures";
-import { SELECTED_ACCENT_MIX, contrastRatio, deriveThemeTokens } from "./themeDerivation";
+import { INFO_MIN_HUE_GAP, SELECTED_ACCENT_MIX, contrastRatio, deriveThemeTokens } from "./themeDerivation";
 
 /**
  * Contrast floors for every theme (G6 step 1, R2-6/R2-7/T5/T13/T16): the surface ladder, the
@@ -65,7 +65,8 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
   const floor = (min: number, backgrounds: string[]) => (builtIn ? min : reachable(min, backgrounds));
 
   it("steps the surface ladder away from the page", () => {
-    if (builtIn) expect(contrastRatio(app, panel), "app to panel").toBeGreaterThanOrEqual(1.05);
+    // M330 (D29): page to panel steps by 1.15:1 in every built-in theme (Club neon and Classic were 1.08).
+    if (builtIn) expect(contrastRatio(app, panel), "app to panel").toBeGreaterThanOrEqual(1.15);
     // Only Retro's slabs are below 1.15: D10 (C93) set them to 1.14:1, no louder than a panel. Its hover
     // does not lean on them (see --hover-fill below). Every other theme keeps the 1.15 floor.
     expect(contrastRatio(panel, alt), "panel to alt").toBeGreaterThanOrEqual(name === "retro16" ? 1.1 : 1.15);
@@ -91,8 +92,49 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
   it("draws Retro's table rows with a quiet line, so the page does not read as a grid (D10, C93)", () => {
     if (name !== "retro16") return;
     const rows = t["row-divider"]!;
-    expect(contrastRatio(rows, t["bg-input"]!), "row line on the rows").toBeLessThanOrEqual(1.6);
+    // M319: the line was 1.26:1 once mixed into the rows; it is now the colour the rows get, 1.5 to 1.7.
+    expect(contrastRatio(rows, t["bg-input"]!), "row line on the rows").toBeLessThanOrEqual(1.7);
     expect(contrastRatio(rows, t["bg-input"]!)).toBeLessThan(contrastRatio(t["border-muted"]!, t["bg-input"]!));
+  });
+
+  it("draws every table row line at 1.5:1 or more on the rows, as unmixed (M319, M329)", () => {
+    if (!builtIn) return;
+    expect(contrastRatio(t["row-divider"]!, t["bg-input"]!)).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it("keeps the soft row line quieter than the strong divider (M329: two line roles)", () => {
+    if (!builtIn) return;
+    expect(contrastRatio(t["row-divider"]!, t["bg-input"]!)).toBeLessThan(contrastRatio(t["border-muted"]!, t["bg-input"]!));
+  });
+
+  it("keeps info a hue of its own, 30 degrees from the accent (M327, D28)", () => {
+    for (const accent of ["accent-primary", "accent-fill"]) {
+      expect(hueGap(t["accent-info"]!, t[accent]!), `info to ${accent}`).toBeGreaterThanOrEqual(INFO_MIN_HUE_GAP);
+    }
+  });
+
+  it("gives writing its own green, not the success green (M331)", () => {
+    if (!builtIn) return;
+    expect(t["accent-write"]).not.toBe(t["accent-success"]);
+  });
+
+  it("reads the disabled main action's words at 4.5:1 on its fill (M324)", () => {
+    const fill = mixHex(t["accent-fill"]!, panel, 22);
+    const words = mixHex(t["fg-primary"]!, fill, 70);
+    if (builtIn) expect(contrastRatio(words, fill)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("reads muted text on a hovered slab at 4.5:1 in the slab colour (M320)", () => {
+    if (!builtIn) return;
+    const fill = t["hover-fill"] ?? alt;
+    const words = mixHex(t["fg-muted"]!, t["fg-primary"]!, 80);
+    expect(contrastRatio(words, fill)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("reads muted text at 4.5:1 on a hovered row: 6% of the text colour over the rows (M320, M337)", () => {
+    if (!builtIn) return;
+    const row = mixHex(t["fg-primary"]!, t["bg-input"]!, 6);
+    expect(contrastRatio(t["fg-muted"]!, row)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("keeps the specified line in the themes D10 leaves alone", () => {

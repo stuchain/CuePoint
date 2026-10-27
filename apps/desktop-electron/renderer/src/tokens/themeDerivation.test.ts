@@ -20,13 +20,13 @@ describe("themeDerivation", () => {
   it("derives full token set from editor colors", () => {
     const tokens = deriveThemeTokens(NEO_DARK_EDITOR_COLORS);
     expect(tokens["bg-app"]).toBe("#18181b");
-    expect(tokens["accent-primary"]).toBe("#8b5cf6");
+    expect(tokens["accent-primary"]).toBe("#9164f6"); // neoDark's own accent (M336)
     expect(tokens["border-outline"]).toBe("#000000");
     expect(tokens["fg-on-accent"]).toBe("#000000"); // black reads better on #8b5cf6 (5.2:1 against 4.1:1)
     expect(tokens["bg-toolbar"]).toBeTruthy();
     expect(tokens["bg-panel-alt"]).toBeTruthy();
     expect(tokens["border-control"]).toBeTruthy();
-    expect(tokens["tab-underline-color"]).toBe("#8b5cf6");
+    expect(tokens["tab-underline-color"]).toBe(tokens["accent-primary"]);
   });
 
   it("pickContrastText returns black on light backgrounds", () => {

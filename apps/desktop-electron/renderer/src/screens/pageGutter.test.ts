@@ -39,7 +39,8 @@ describe("the shared page margin", () => {
   it("reaches every page through .screen", () => {
     const screen = decls(layout, ".screen");
     expect(screen["--safe-left"]).toBe("var(--page-gutter-x)");
-    expect(screen["--safe-right"]).toBe("var(--page-gutter-x)");
+    // M502: the scroller keeps the scrollbar's room on the right, so the margin gives that much up there.
+    expect(screen["--safe-right"]).toBe("max(0px, calc(var(--page-gutter-x) - var(--scrollbar-size)))");
     expect(screen["--safe-top"]).toBe("var(--page-gutter-top)");
     expect(screen["--safe-bottom"]).toBe("var(--page-gutter-bottom)");
     expect(decls(screensCss, ".screen")["padding"]).toBe(
@@ -110,7 +111,8 @@ describe("the shared page margin", () => {
     const d = decls(header, ".cp-screen-header::before");
     expect(d["top"]).toBe("calc(-1 * var(--screen-header-stick, var(--page-gutter-top)))");
     expect(d["left"]).toBe("calc(-1 * var(--page-gutter-x))");
-    expect(d["right"]).toBe("calc(-1 * var(--page-gutter-x))");
+    // M502: the backdrop reaches the page's own right edge; P5 moves it from --page-gutter-x to --safe-right.
+    expect(d["right"]).toMatch(/^calc\(-1 \* var\(--(page-gutter-x|safe-right)\)\)$/);
     expect(decls(header, ".cp-screen-header--inset")["padding-inline"]).toBe("0");
   });
 });

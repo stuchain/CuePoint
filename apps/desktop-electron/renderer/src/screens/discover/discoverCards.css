@@ -260,14 +260,14 @@
 
 .discover-cards__shape {
   display: block;
-  height: calc(10px * var(--scale));
+  height: round(nearest, calc(10px * var(--scale)), 1px);
   margin: 0 var(--space-md);
   background: var(--bg-panel-alt);
 }
 
 .discover-cards__shape--title {
   width: calc(160px * var(--scale));
-  height: calc(14px * var(--scale));
+  height: round(nearest, calc(14px * var(--scale)), 1px);
   margin: 0;
 }
 

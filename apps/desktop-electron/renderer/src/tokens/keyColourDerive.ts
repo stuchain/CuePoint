@@ -42,12 +42,36 @@ function hslToHex(hue: number, saturation: number, lightness: number): string {
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 }
 
-/** The 24 base colours before any theme moves them, by token name: A deeper, B lighter. */
+/** Relative luminance (WCAG) of an `#rrggbb` colour. */
+function luminanceOf(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((at) => {
+    const c = parseInt(hex.slice(at, at + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** How bright a key colour is, by ring (M332, D28): every A is one luminance and every B another, so no hue shouts. */
+export const KEY_LUMINANCE = { A: 0.4, B: 0.55 } as const;
+
+/** The lightness (HSL) at which a hue and saturation reach `target` luminance, found by bisection. */
+function hslAtLuminance(hue: number, saturation: number, target: number): string {
+  let low = 0;
+  let high = 100;
+  for (let step = 0; step < 24; step += 1) {
+    const mid = (low + high) / 2;
+    if (luminanceOf(hslToHex(hue, saturation, mid)) < target) low = mid;
+    else high = mid;
+  }
+  return hslToHex(hue, saturation, (low + high) / 2);
+}
+
+/** The 24 base colours before any theme moves them, by token name: A deeper, B lighter, each ring at one luminance. */
 export const KEY_BASE_HUES: Readonly<Record<string, string>> = Object.fromEntries(
   KEY_TOKEN_KEYS.map((token) => {
     const number = Number(/\d+/.exec(token)![0]);
     const deep = token.endsWith("A");
-    return [token, hslToHex(NUMBER_HUES[number - 1]!, deep ? 85 : 72, deep ? 50 : 70)];
+    return [token, hslAtLuminance(NUMBER_HUES[number - 1]!, deep ? 85 : 72, deep ? KEY_LUMINANCE.A : KEY_LUMINANCE.B)];
   }),
 );
 

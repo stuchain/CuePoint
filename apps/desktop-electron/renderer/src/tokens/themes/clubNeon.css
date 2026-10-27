@@ -1,10 +1,11 @@
 /* Club / DJ neon — near-black, magenta + cyan accents */
 [data-theme="clubNeon"] {
   --bg-app: #0a0a0f;
-  --bg-panel: #14141f;
-  --bg-panel-alt: #24243a;
+  /* Page, toolbar and panel tones step by 1.15:1 or more, page to panel (M330, D29). */
+  --bg-panel: #1a1a2a;
+  --bg-panel-alt: #282840;
   --bg-input: #0a0a0f;
-  --bg-toolbar: #101018;
+  --bg-toolbar: #131320;
 
   --border-highlight: #5a5a80;
   --border-shadow: #050508;
@@ -12,7 +13,7 @@
   --border-light: #00e5ff;
   --border-muted: #50507a;
   /* Table rows and hover: the defaults Retro tunes (C93). */
-  --row-divider: #50507a;
+  --row-divider: #34344f;
   --hover-fill: #24243a;
   --border-control: #6a6a8a;
   --tab-underline-color: #e040fb;
@@ -21,7 +22,7 @@
 
   --fg-primary: #f0f0ff;
   --fg-muted: #9090b0;
-  --fg-disabled: #606080;
+  --fg-disabled: #6a6a8c;
   --fg-on-accent: #0a0a0f;
   --fg-on-status: #000000;
 

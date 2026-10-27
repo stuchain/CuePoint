@@ -12,8 +12,8 @@
 :root {
   /* Square, like the buttons; "0" is the pixel look, a number of pixels would round the thumb. */
   --scrollbar-radius: 0;
-  /* 9px at the default 1.5x (P5). Wider costs the Library its fourth whole row at 1280x773 (DEC-112). */
-  --scrollbar-size: calc(6px * var(--scale));
+  /* 6px at 1x and 9px at 1.5x (P5), rounded so the thumb edges land on whole pixels (M45). Wider costs the Library its fourth whole row at 1280x773 (DEC-112). */
+  --scrollbar-size: round(nearest, calc(6px * var(--scale)), 1px);
   /* The transparent edge that makes the thumb narrower than its track. */
   --scrollbar-inset: var(--hairline);
   /* No track fill: the thumb floats on whatever surface scrolls (a token, so the guard reads a var()). */

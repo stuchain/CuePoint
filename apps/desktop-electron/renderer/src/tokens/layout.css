@@ -59,7 +59,9 @@
  */
 .screen {
   --safe-top: var(--page-gutter-top);
-  --safe-right: var(--page-gutter-x);
+  /* The scroller reserves the scrollbar's room on the right (App.css, C219), so the page margin gives
+     that much up there and the words sit as far from the right edge as from the left (M502, D10). */
+  --safe-right: max(0px, calc(var(--page-gutter-x) - var(--scrollbar-size)));
   --safe-bottom: var(--page-gutter-bottom);
   --safe-left: var(--page-gutter-x);
 }

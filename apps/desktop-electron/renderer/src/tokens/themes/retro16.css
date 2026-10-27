@@ -4,7 +4,7 @@
   --bg-panel: #22344d;
   --bg-panel-alt: #283d58;
   --bg-input: #1b263b;
-  --bg-toolbar: #293241;
+  --bg-toolbar: #1f2c42;
 
   --border-highlight: #98c1d9;
   --border-shadow: #0d1b2a;
@@ -12,10 +12,11 @@
   --border-light: #e0fbfc;
   --border-muted: #526a84;
   /* Table rows: a quieter line than the frames (C93). */
-  --row-divider: #2e4360;
+  --row-divider: #384961;
   /* Muted text on it keeps 4.5:1 (answer 4, P67): one step darker than #3a5577, still 1.3:1 above a panel. */
   --hover-fill: #324c6b;
-  --border-control: #98c1d9;
+  /* The control line is about 4:1, so a grey button no longer outshouts the violet main action (M322, D29). */
+  --border-control: #6f8fae;
   --tab-underline-color: #b673f0;
   --bevel-highlight: #98c1d9;
   --bevel-shadow: #0d1b2a;
@@ -36,7 +37,8 @@
   --accent-danger: #eb5d67;
   --accent-info: #48cae4;
   /* Writing to the user's files is green (D14); text on it is --fg-on-status, black. */
-  --accent-write: #4caf50;
+  /* Writing is its own green, not the success green (M331). */
+  --accent-write: #52d68a;
 
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
   --accent-fill: #b673f0;

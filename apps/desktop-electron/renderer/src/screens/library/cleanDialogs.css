@@ -136,7 +136,7 @@
 .clean-dialog__lines {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-2xs);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -164,7 +164,7 @@
 
 .clean-dialog__changes th,
 .clean-dialog__changes td {
-  padding: calc(2px * var(--scale)) var(--space-xs);
+  padding: var(--space-2xs) var(--space-xs);
   border-bottom: var(--hairline) solid var(--border-muted);
   text-align: left;
   overflow-wrap: anywhere;

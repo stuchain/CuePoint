@@ -260,7 +260,7 @@
 
 .keys-counts__bar {
   display: block;
-  height: calc(6px * var(--scale));
+  height: round(nearest, calc(6px * var(--scale)), 1px);
   background: var(--bg-panel-alt);
   /* The bar is the key's own colour at the chip's tint (C100); with the colours off it is the
      chart's. */

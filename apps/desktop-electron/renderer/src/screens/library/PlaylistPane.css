@@ -158,7 +158,7 @@
   justify-content: center;
   flex-shrink: 0;
   width: var(--tree-twisty);
-  height: calc(14px * var(--scale));
+  height: round(nearest, calc(14px * var(--scale)), 1px);
   padding: 0;
   border: none;
   background: transparent;
