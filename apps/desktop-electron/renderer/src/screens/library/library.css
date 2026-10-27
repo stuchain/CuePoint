@@ -189,7 +189,11 @@
      fit at any text size (a longer name ends in "…"); the floor never takes more than 45% of
      the body, so the table keeps its share in a narrow window. A 200 floor was tried (round 8)
      and cost the table two rows with Track details open. */
-  grid-template-columns: clamp(min(calc(112px * var(--scale)), 45%), 26%, calc(220px * var(--scale))) minmax(0, 1fr);
+  grid-template-columns: calc(clamp(min(calc(112px * var(--scale)), 45%), 26%, calc(220px * var(--scale))) + var(--safe-left)) minmax(0, 1fr);
+  /* D36: the pane meets the sidebar's edge, with no strip of page margin between. The body steps out
+     over the page's left gutter by --safe-left and the pane's column grows by the same, so the table
+     keeps its place and the pane's words keep theirs (rows and heads pad in by --safe-left, below). */
+  margin-inline-start: calc(-1 * var(--safe-left));
   /* One row as tall as the body: the pane's height is the body's, not its content's, so a taller
      right side (Add filter open) never moves it (C198). */
   grid-template-rows: minmax(0, 1fr);

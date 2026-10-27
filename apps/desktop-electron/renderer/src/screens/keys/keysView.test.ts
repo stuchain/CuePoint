@@ -86,6 +86,12 @@ describe("the two panes (D12)", () => {
     expect(panes).toContain("align-items: stretch");
   });
 
+  it("meets the sidebar with the Sources pane and keeps the panes 20 apart (D36, M61)", () => {
+    expect(rule(".keys-sources")).toContain("margin-inline-start: calc(-1 * var(--safe-left))");
+    expect(rule(".keys-sources__body")).toContain("padding-inline-start: calc(var(--space-md) + var(--safe-left))");
+    expect(rule(".keys-page__top")).toContain("gap: var(--space-xl)");
+  });
+
   it("lets the track list take the rest of the row, with a floor under which it drops below the wheel", () => {
     const tracks = rule(".keys-page__tracks");
     expect(tracks).toMatch(/flex:\s*1 1 calc\(\d+px \* var\(--scale\)\)/);

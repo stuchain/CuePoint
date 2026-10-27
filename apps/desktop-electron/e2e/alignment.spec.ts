@@ -153,6 +153,12 @@ async function libraryChecks(win: Page, at: string) {
     ],
   );
   const [titles, names, counts, allName, source, icons, allIcon, arrows] = Object.values(pane);
+  // D36: the pane meets the sidebar's edge, with no strip of page margin between; its words stay put.
+  const edges = await win.evaluate(() => ({
+    sidebar: document.querySelector(".cp-sidebar")!.getBoundingClientRect().right,
+    pane: document.querySelector(".cp-library-pane")!.getBoundingClientRect().left,
+  }));
+  expect(Math.abs(edges.pane - edges.sidebar), `${at}: the pane meets the sidebar (${edges.pane} vs ${edges.sidebar})`).toBeLessThanOrEqual(SLACK);
   oneEdge(`${at}: section titles start on one edge`, titles!.map((t) => t.left));
   oneEdge(`${at}: a top-level row's icon starts under the section title`, [titles![0]!.left, ...icons!.map((i) => i.left)]);
   oneEdge(`${at}: top-level names start on one edge in every section`, names!.map((n) => n.left));

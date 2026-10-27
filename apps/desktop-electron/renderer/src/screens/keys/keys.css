@@ -33,7 +33,8 @@
   flex-wrap: wrap;
   /* One stage (P7): Sources, the wheel and the list share one top edge and one bottom edge. */
   align-items: stretch;
-  gap: var(--space-lg);
+  /* M61 (D9): the panes are 20 apart, as Prepare's and Discover's are. */
+  gap: var(--space-xl);
   padding: 0 0 var(--space-lg);
 }
 
@@ -105,9 +106,12 @@
   display: flex;
   /* Wide enough for a playlist's name on a line or two at any text size; it shrinks only
      to its floor, and the row wraps before going under it. */
-  flex: 0 1 calc(180px * var(--scale));
+  flex: 0 1 calc(180px * var(--scale) + var(--safe-left));
   flex-direction: column;
-  min-width: min(calc(140px * var(--scale)), 100%);
+  min-width: min(calc(140px * var(--scale) + var(--safe-left)), 100%);
+  /* D36: the Sources pane meets the sidebar's edge, as the Library's pane does; its words stay on the
+     title's edge (the body pads in by the gutter it covers). */
+  margin-inline-start: calc(-1 * var(--safe-left));
 }
 
 .keys-sources__body {
@@ -119,6 +123,7 @@
   min-height: 0;
   /* A dense side panel: 8 inside. */
   padding: var(--space-md);
+  padding-inline-start: calc(var(--space-md) + var(--safe-left));
   overflow-y: auto;
   background: var(--bg-panel);
   border: 0;

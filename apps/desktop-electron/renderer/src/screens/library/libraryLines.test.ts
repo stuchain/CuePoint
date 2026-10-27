@@ -118,6 +118,21 @@ describe("the Library's shared lines", () => {
   });
 });
 
+describe("the pane meets the sidebar (D36)", () => {
+  it("steps the body out over the page's left gutter and grows the pane's column by the same", () => {
+    const body = rule(library, ".library-screen__body");
+    expect(body).toContain("margin-inline-start: calc(-1 * var(--safe-left))");
+    expect(body).toMatch(/grid-template-columns: calc\(clamp\([^;]*\) \+ var\(--safe-left\)\) minmax\(0, 1fr\)/);
+  });
+
+  it("pads the pane's heads and rows in by the same gutter, so their words stay on the title's edge", () => {
+    const css = strip(pane);
+    expect(css).toMatch(
+      /\.cp-library-pane \.cp-playlist-pane__head,\s*\.cp-library-pane \.cp-playlist-pane__row \{\s*padding-inline-start: calc\(var\(--space-sm\) \+ var\(--safe-left\)\)/,
+    );
+  });
+});
+
 describe("the pane's headings in a narrow pane (zoom spot 1C)", () => {
   const head = ".cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head";
 

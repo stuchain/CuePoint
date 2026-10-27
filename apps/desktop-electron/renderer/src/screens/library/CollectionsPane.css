@@ -233,3 +233,10 @@
   padding-inline: var(--space-xs);
   letter-spacing: 0;
 }
+
+/* D36: the pane runs out to the sidebar, so its heads and rows pad in by the gutter it covers and
+   their words stay on the title's edge. */
+.cp-library-pane .cp-playlist-pane__head,
+.cp-library-pane .cp-playlist-pane__row {
+  padding-inline-start: calc(var(--space-sm) + var(--safe-left));
+}
