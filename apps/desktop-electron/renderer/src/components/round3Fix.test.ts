@@ -65,7 +65,10 @@ describe("a count beside a tab's label is the label's face (M8)", () => {
 describe("bars and cells use one inline padding (M51)", () => {
   it("sets the filter bar and the Keys tracks bar in by the cell padding", () => {
     for (const selector of [".cp-filter-bar__row.cp-toolbar", ".keys-tracks__toolbar.cp-toolbar"]) {
-      expect(body(index, selector), selector).toMatch(/padding-inline:\s*var\(--space-sm\)/);
+      // Moved (e2e narrowWidths): the end adds the hung last button's frame line, as the selection bar's does.
+      expect(body(index, selector), selector).toMatch(
+        /padding-inline:\s*var\(--space-sm\) calc\(var\(--space-sm\) \+ var\(--control-border-width\)\)/,
+      );
       expect(body(index, selector), selector).not.toMatch(/padding-inline:\s*var\(--space-md\)/);
     }
   });

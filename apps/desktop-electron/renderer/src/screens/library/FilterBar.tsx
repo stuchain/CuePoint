@@ -637,7 +637,10 @@ export function FilterBar({
 
   return (
     <div className="cp-filter-bar">
-      <div className={`cp-filter-bar__row cp-toolbar${foldQuick ? " cp-filter-bar__row--folded" : ""}`} ref={rowRef}>
+      <div
+        className={`cp-filter-bar__row cp-toolbar${foldQuick ? " cp-filter-bar__row--folded" : ""}${foldMore ? " cp-filter-bar__row--last" : ""}`}
+        ref={rowRef}
+      >
         <SearchField
           ref={searchInputRef}
           thing="these tracks"

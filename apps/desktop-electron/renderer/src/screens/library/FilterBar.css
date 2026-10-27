@@ -183,6 +183,14 @@
   flex-basis: calc(48px * var(--scale));
 }
 
+/* At the last fold there is nothing left to fold, so the row no longer wraps: the search gives the
+   rest of its width (it has no floor, min-width 0) and the one menu stays beside it. At 1366 wide
+   and 3x the search's basis and the Filters menu were 6 px more than the row, and the search went
+   to a line of its own (e2e alignment). */
+.cp-filter-bar__row--last {
+  flex-wrap: nowrap;
+}
+
 /* The search box is named by its placeholder and its label; the word "Search" above it cost the
    table a row at the default window (PAGES-05C). The label stays for assistive technology. */
 .cp-filter-bar__row > .cp-field > .cp-field__label {

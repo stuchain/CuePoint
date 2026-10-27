@@ -599,10 +599,13 @@ details > summary:has(.cp-disclosure)::before {
 
 /* The bar over a table (the Library's filter bar, the Keys tracks bar) is set in by the table's own
    cell padding, so the bar's first word and the first column's words share one edge (M51, D9 A:
-   bars and cells use one inline padding). */
+   bars and cells use one inline padding). The end also holds the last button's frame line, which
+   its hang (Button.css, L2) pulls out past the padding by the frame's width: with the padding alone
+   the row overflowed by that line at 1024 wide and 1.5x (e2e narrowWidths), as the selection bar's
+   end does (SelectionBar.css). */
 .cp-filter-bar__row.cp-toolbar,
 .keys-tracks__toolbar.cp-toolbar {
-  padding-inline: var(--space-sm);
+  padding-inline: var(--space-sm) calc(var(--space-sm) + var(--control-border-width));
 }
 
 /* Buttons in a row are 8 apart (C28). */

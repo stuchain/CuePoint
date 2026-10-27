@@ -107,3 +107,9 @@ describe("dialogs and the header", () => {
     expect(headerCss).toMatch(/display:\s*inline-flex;\s*flex-wrap:\s*nowrap;/);
   });
 });
+
+describe("the filter row at its last fold (W1, e2e alignment at 3x)", () => {
+  it("stops wrapping, so the search gives way beside the one menu", () => {
+    expect(body(filterBarCss, ".cp-filter-bar__row--last")).toMatch(/flex-wrap:\s*nowrap/);
+  });
+});
