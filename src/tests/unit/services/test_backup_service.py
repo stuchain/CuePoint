@@ -10,8 +10,10 @@ library — including when the backup handed to it is unusable.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 import time
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -68,6 +70,33 @@ class TestInterface:
 
     def test_no_unimplemented_abstract_methods(self):
         assert not getattr(BackupService, "__abstractmethods__", frozenset())
+
+
+@pytest.mark.unit
+class TestBackupNames:
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="needs time.tzset")
+    def test_the_name_carries_local_time_not_utc(self, db, backups, monkeypatch):
+        """M272: Activity shows this name; it reads as the user's own clock."""
+        # A zone far from UTC, so a name made in UTC cannot pass by accident.
+        monkeypatch.setenv("TZ", "Pacific/Auckland")
+        time.tzset()
+        try:
+            self._check_local_name(db, backups)
+        finally:
+            monkeypatch.undo()
+            time.tzset()
+
+    @staticmethod
+    def _check_local_name(db, backups):
+        _add_track(db, "1", "Song")
+        before = datetime.now()
+        info = backups.create_backup(reason="launch")
+        after = datetime.now()
+
+        match = re.fullmatch(r"cuepoint-(\d{8}-\d{6})-launch\.db", info.name)
+        assert match, info.name
+        stamp = datetime.strptime(match.group(1), "%Y%m%d-%H%M%S")
+        assert before.replace(microsecond=0) <= stamp <= after
 
 
 @pytest.mark.unit

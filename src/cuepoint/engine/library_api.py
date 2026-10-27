@@ -51,6 +51,7 @@ from cuepoint.persistence.track_query import (
     search_bpm,
     search_key,
 )
+from cuepoint.core.genres import primary_genre, split_genres
 from cuepoint.core.similarity import MusicalKey, compatible_keys, key_relation
 from cuepoint.services.key_resolver import camelot_of, resolve_key
 from cuepoint.services.override_values import parse_key
@@ -189,6 +190,11 @@ def track_to_dict(
         payload[f"effective_{name}"] = effective_value(
             getattr(track, name), getattr(metadata, name) if metadata else None
         )
+    # M95: a Beatport genre string joins several genres ("A, B, A|C"). The
+    # raw value stays in ``genre`` / ``effective_genre``; a table shows
+    # ``genre_primary`` and the hint lists ``genres``. Additive.
+    payload["genres"] = split_genres(payload.get("effective_genre"))
+    payload["genre_primary"] = payload["genres"][0] if payload["genres"] else None
     # PAGES-15 (DEC-201): the key is the user's correction, else the accepted
     # match's Beatport key, else none. ``key`` above stays Rekordbox's.
     key = resolve_key(
@@ -243,6 +249,7 @@ def proposal_to_dict(proposal: Optional[MatchProposal]) -> Optional[Dict[str, An
         "key": camelot_of(proposal.key),
         "bpm": proposal.bpm,
         "genre": proposal.genre,
+        "genre_primary": primary_genre(proposal.genre),
         "label": proposal.label,
         "year": proposal.year,
         "mix": mix_of(proposal.title),
@@ -1205,7 +1212,7 @@ def library_summary() -> Dict[str, Any]:
 
     return {
         "track_count": service.track_count(),
-        "playlist_count": playlists.count(),
+        "playlist_count": playlists.count_playlists(),
         "playlist_entry_count": playlists.count_entries(),
         "library_empty": service.is_empty(),
         "source": source_to_dict(source) if source is not None else None,

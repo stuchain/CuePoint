@@ -450,7 +450,8 @@
       "groups": [],
       "limit": null,
       "offset": 0,
-      "total": 0
+      "total": 0,
+      "track_total": 0
     },
     "health": {
       "counts": [
@@ -629,7 +630,8 @@
       "groups": [],
       "limit": null,
       "offset": 0,
-      "total": 0
+      "total": 0,
+      "track_total": 0
     },
     "health": {
       "counts": [

@@ -306,6 +306,17 @@ class TestSorting:
     def test_bpm_descending_puts_nulls_last_not_first(self, seeded):
         assert ids(seeded.browse(BrowseQuery(sort="bpm", direction="desc")))[-1] == "4"
 
+    @pytest.mark.parametrize("direction", ["asc", "desc"])
+    def test_blank_text_and_a_zero_year_sort_with_the_nulls(self, repo, direction):
+        # M93 (D12): an empty genre and a year of 0 are blanks, and a blank is last
+        # both ways, not first when ascending.
+        repo.add(_track("a", genre="", year=0))
+        repo.add(_track("b", genre="House", year=2001, title="B"))
+        repo.add(_track("c", genre="Techno", year=2010, title="C"))
+        for sort in ("genre", "year"):
+            rows = repo.browse(BrowseQuery(sort=sort, direction=direction), limit=10)
+            assert ids(rows)[-1] == "a"
+
     def test_equal_values_fall_back_to_artist_and_title(self, seeded):
         # Both 128.0 BPM: "Deadmau5 / Ghosts n Stuff" before
         # "deadmau5 / Strobe" on title, not at random.

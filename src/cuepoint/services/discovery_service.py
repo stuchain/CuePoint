@@ -440,22 +440,34 @@ def _count(n: int, one: str, many: str) -> str:
 
 
 def summary_line(run: DiscoveryRun) -> str:
-    """The activity feed's sentence for a run that has ended."""
-    found = (
-        f"found {_count(run.tracks_found, 'track', 'tracks')} in "
-        f"{_count(run.charts_read, 'chart', 'charts')} and "
-        f"{_count(run.releases_read, 'release', 'releases')}"
-    )
+    """The activity feed's sentence for a run that has ended.
+
+    A run is a "dig" wherever a person reads it (M398, M422): "Dig found 3,643
+    tracks from 290 charts". What it read comes after "from", and a part that is
+    nothing is left out rather than said as "0 releases"; a dig that read
+    neither says only what it found.
+    """
+    found = f"found {_count(run.tracks_found, 'track', 'tracks')}"
+    read = [
+        _count(n, one, many)
+        for n, one, many in (
+            (run.charts_read, "chart", "charts"),
+            (run.releases_read, "release", "releases"),
+        )
+        if n > 0
+    ]
+    if read:
+        found += " from " + " and ".join(read)
     if run.outcome == RUN_SUCCEEDED:
-        return f"Discovery {found}"
+        return f"Dig {found}"
     if run.outcome == RUN_CANCELLED:
-        return f"Discovery cancelled; {found}"
+        return f"Dig cancelled; {found}"
     reason = (
         _STOPPED_BECAUSE.get(run.error_class, "Beatport could not be reached")
         if run.error_class is not None
         else "of an error"
     )
-    return f"Discovery stopped because {reason}; {found}"
+    return f"Dig stopped because {reason}; {found}"
 
 
 class DiscoveryService(IDiscoveryService):

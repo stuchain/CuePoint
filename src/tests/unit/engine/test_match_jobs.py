@@ -267,6 +267,7 @@ class TestStarting:
             "excluded": 0,
             "planned": 10,
             "resumed_from": None,
+            "queued": False,
         }
         assert (job.type, job.state) == (JOB_TYPE_CLEAN_MATCH, JobState.SUCCEEDED)
         assert job.result["completed"] == job.result["matched"] == 10
@@ -323,19 +324,84 @@ class TestStarting:
 
 
 class TestOneAtATime:
-    def test_a_second_match_job_is_refused_with_the_running_jobs_id(
+    def test_a_second_match_job_queues_behind_the_running_one(
+        self, container, store, processor, ids
+    ):
+        """M510 (D17): not refused, and not run beside it."""
+        processor.gate.clear()
+        first = start_match_job(store, BatchSelection.of_ids(ids[:3]))
+        wait_for(lambda: processor.asked() == 1)
+        second = start_match_job(store, BatchSelection.of_ids(ids[3:6]))
+        try:
+            assert first.queued is False and second.queued is True
+            assert second.to_dict()["queued"] is True
+            assert second.job.state == JobState.QUEUED
+            # Nothing of the second is asked while the first is held.
+            assert processor.asked() == 1
+        finally:
+            processor.gate.set()
+        finished(first.job)
+        done = finished(second.job)
+        assert done.state == JobState.SUCCEEDED
+        assert attempt_tracks(container) == Counter(ids[:6])
+
+    def test_queued_matches_run_in_the_order_they_were_asked(
+        self, store, processor, ids
+    ):
+        processor.gate.clear()
+        first = start_match_job(store, BatchSelection.of_ids(ids[:2]))
+        wait_for(lambda: processor.asked() == 1)
+        second = start_match_job(store, BatchSelection.of_ids(ids[2:4]))
+        third = start_match_job(store, BatchSelection.of_ids(ids[4:6]))
+        processor.gate.set()
+        for started in (first, second, third):
+            finished(started.job)
+        assert [t for t in processor.calls] == [str(t) for t in ids[:6]]
+
+    def test_a_queued_match_asks_again_what_the_one_ahead_settled(
+        self, container, store, processor, ids
+    ):
+        processor.gate.clear()
+        first = start_match_job(store, BatchSelection.of_ids(ids[:4]))
+        wait_for(lambda: processor.asked() == 1)
+        second = start_match_job(store, BatchSelection.of_ids(ids[2:6]))
+        assert second.planned == 4  # as asked, before the first settles two of them
+        processor.gate.set()
+        finished(first.job)
+        job = finished(second.job)
+        assert job.result["planned"] == 2
+        assert Counter(processor.calls) == Counter(str(t) for t in ids[:6])
+
+    def test_a_queued_match_that_has_nothing_left_ends_without_a_search(
         self, store, processor, ids
     ):
         processor.gate.clear()
         first = start_match_job(store, BatchSelection.of_ids(ids[:3]))
-        try:
-            with pytest.raises(JobTypeBusyError) as refused:
-                start_match_job(store, BatchSelection.of_ids(ids[3:6]))
-            assert refused.value.job_id == first.job.id
-            assert refused.value.job_type == JOB_TYPE_CLEAN_MATCH
-        finally:
-            processor.gate.set()
+        wait_for(lambda: processor.asked() == 1)
+        second = start_match_job(store, BatchSelection.of_ids(ids[:3]), rematch=False)
+        # Asked before the first settled anything, so it queued with all three.
+        processor.gate.set()
         finished(first.job)
+        job = finished(second.job)
+        assert job.state == JobState.SUCCEEDED
+        assert len(processor.calls) == 3
+
+    def test_cancelling_a_queued_match_never_runs_it_nor_frees_the_running_one(
+        self, store, processor, ids
+    ):
+        processor.gate.clear()
+        first = start_match_job(store, BatchSelection.of_ids(ids[:2]))
+        wait_for(lambda: processor.asked() == 1)
+        second = start_match_job(store, BatchSelection.of_ids(ids[2:4]))
+        third = start_match_job(store, BatchSelection.of_ids(ids[4:6]))
+        store.request_cancel(second.job.id)
+        assert finished(second.job).state == JobState.CANCELLED
+        # The cancelled one did not hand the third the first's place.
+        assert third.job.state == JobState.QUEUED
+        processor.gate.set()
+        finished(first.job)
+        assert finished(third.job).state == JobState.SUCCEEDED
+        assert Counter(processor.calls) == Counter(str(t) for t in ids[:2] + ids[4:6])
 
     def test_a_match_does_not_start_while_a_refresh_applies(
         self, store, processor, ids
@@ -482,20 +548,20 @@ class TestResuming:
         with pytest.raises(ValueError, match="nothing left"):
             resume_match_job(store, job.id)
 
-    def test_a_job_still_finishing_cannot_be_resumed_beside_itself(
-        self, store, processor, ids
+    def test_a_job_still_finishing_is_resumed_after_it_not_beside_it(
+        self, container, store, processor, ids
     ):
         processor.gate.clear()
         started = start_match_job(store, BatchSelection.of_ids(ids[:5]))
         wait_for(lambda: processor.asked() == 1)
         store.request_cancel(started.job.id)
-        try:
-            with pytest.raises(JobTypeBusyError) as refused:
-                resume_match_job(store, started.job.id)
-            assert refused.value.job_id == started.job.id
-        finally:
-            processor.gate.set()
+        resumed = resume_match_job(store, started.job.id)
+        assert resumed.queued is True
+        processor.gate.set()
         finished(started.job)
+        job = finished(resumed.job)
+        assert job.state == JobState.SUCCEEDED
+        assert attempt_tracks(container) == Counter(ids[:5])
 
 
 class TestOfferedAfterARestart:

@@ -193,7 +193,7 @@ class TestADiscoveryJob:
             .execute("SELECT summary FROM activity_events WHERE type = 'discovery.ran'")
         )
         assert [r[0] for r in rows] == [
-            "Discovery found 7 tracks in 3 charts and 2 releases"
+            "Dig found 7 tracks from 3 charts and 2 releases"
         ]
 
 
@@ -205,9 +205,7 @@ class TestWhenItStops:
         job = finished(store, start_discovery_job(store, **ASK))
         assert job.state == JobState.FAILED
         assert job.error["code"] == "BEATPORT_REJECTED"
-        assert job.error["message"].startswith(
-            "Discovery stopped because Beatport refused"
-        )
+        assert job.error["message"].startswith("Dig stopped because Beatport refused")
         assert (job.result["outcome"], job.result["error_class"]) == (
             RUN_FAILED,
             "rejected",

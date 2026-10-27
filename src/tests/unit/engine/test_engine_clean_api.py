@@ -466,21 +466,21 @@ class TestStartingAMatch:
             "selection",
         )
 
-    def test_a_second_match_is_refused_with_the_running_job(self, engine, store):
+    def test_a_second_match_queues_behind_the_running_one(self, engine, store):
+        """M510: it is accepted, not refused, and says it waits."""
         [track_id] = add_tracks(track("Busy"))
         released = hold(store, "clean_match")
         try:
-            error = refused(
+            started = ok(
                 post(
                     engine,
                     "/api/v1/clean/match",
                     {"selection": ids_selection(track_id)},
                 ),
-                409,
-                "LIBRARY_BUSY",
+                202,
             )
-            assert error["job_type"] == "clean_match"
-            assert error["job_id"]
+            assert started["queued"] is True
+            assert started["job_id"]
         finally:
             released.set()
 
@@ -1292,6 +1292,37 @@ class TestFileChecks:
 
 
 @pytest.mark.unit
+class TestPending:
+    """M511 (WO-3): what CuePoint holds that is not in the files or the export."""
+
+    def test_nothing_changed_nothing_pending(self, engine):
+        add_tracks(track("Plain", genre="House"))
+        assert ok(get(engine, "/api/v1/library/pending")) == {
+            "values_not_in_files": 0,
+            "changes_not_exported": 0,
+            "last_export_at": None,
+        }
+
+    def test_an_edited_value_is_pending_in_both_ways_until_each_happens(self, engine):
+        [track_id] = add_tracks(track("Edited", genre="House"))
+        resolve("IMetadataService").set_override(track_id, "genre", "Techno")
+        resolve("IMetadataService").set_override(track_id, "label", "Drumcode")
+
+        pending = ok(get(engine, "/api/v1/library/pending"))
+
+        # One per track and field, however the two are counted by track elsewhere.
+        assert pending["values_not_in_files"] == 2
+        assert pending["changes_not_exported"] == 2
+        assert pending["last_export_at"] is None
+
+    def test_a_field_changed_twice_is_one_change(self, engine):
+        [track_id] = add_tracks(track("Twice", genre="House"))
+        for value in ("Techno", "Minimal"):
+            resolve("IMetadataService").set_override(track_id, "genre", value)
+        assert ok(get(engine, "/api/v1/library/pending"))["changes_not_exported"] == 1
+
+
+@pytest.mark.unit
 class TestDuplicates:
     def scanned(self, base: str, store: JobStore) -> List[int]:
         ids = add_tracks(
@@ -1340,6 +1371,85 @@ class TestDuplicates:
         )
         assert restored["group"]["dismissed"] is False
         assert ok(get(engine, "/api/v1/clean/duplicates", signal="text"))["total"] == 1
+
+    def test_a_group_says_its_size_and_the_listing_the_tracks_it_holds(
+        self, engine, store
+    ):
+        self.scanned(engine, store)
+        listed = ok(get(engine, "/api/v1/clean/duplicates"))
+        [group] = listed["groups"]
+        assert group["track_count"] == 2
+        assert (listed["total"], listed["track_total"]) == (1, 2)
+        # Same title, so no word sets one apart; a text group is never "different mixes".
+        assert [d["words"] for d in group["differing"]] == [[], []]
+        assert group["mixes_differ"] is False
+
+    def test_the_words_that_differ_are_named_per_member(self):
+        from cuepoint.engine.clean_api import _listed_group
+        from cuepoint.models.duplicate_group import (
+            DuplicateGroup,
+            DuplicateGroupMembers,
+        )
+
+        rows = {
+            1: {"id": 1, "title": "Touch Me (Hotlap Remix)"},
+            2: {"id": 2, "title": "Touch Me (Original Mix)"},
+        }
+
+        def listed(signal):
+            return _listed_group(
+                DuplicateGroupMembers(
+                    group=DuplicateGroup(
+                        signal=signal, group_key="k", computed_at="2026-10-27", id=1
+                    ),
+                    track_ids=(1, 2),
+                ),
+                rows,
+            )
+
+        beatport = listed("beatport")
+        assert [d["words"] for d in beatport["differing"]] == [
+            ["Hotlap", "Remix"],
+            ["Original", "Mix"],
+        ]
+        assert beatport["mixes_differ"] is True
+        assert beatport["track_count"] == 2
+        # The same words under another signal are not a wrong match.
+        assert listed("text")["mixes_differ"] is False
+
+    def test_keep_stores_not_duplicates_and_names_nothing_to_delete(
+        self, engine, store
+    ):
+        ids = self.scanned(engine, store)
+        [group] = ok(get(engine, "/api/v1/clean/duplicates"))["groups"]
+
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/duplicates/keep",
+                {"group_id": group["id"], "track_id": ids[2]},
+            ),
+            400,
+            "INVALID_REQUEST",
+            "not in this group",
+        )
+        kept = ok(
+            post(
+                engine,
+                "/api/v1/clean/duplicates/keep",
+                {"group_id": group["id"], "track_id": ids[0]},
+            )
+        )
+        assert kept["kept_track_id"] == ids[0]
+        assert kept["group"]["dismissed"] is True
+        assert ok(get(engine, "/api/v1/clean/duplicates"))["total"] == 0
+        # Nothing was deleted: every track is still there, and Keep can be undone.
+        for track_id in ids:
+            ok(get(engine, f"/api/v1/library/tracks/{track_id}"))
+        restored = ok(
+            post(engine, "/api/v1/clean/duplicates/restore", {"group_id": group["id"]})
+        )
+        assert restored["group"]["dismissed"] is False
 
     def test_every_signal_when_none_are_named(self, engine, store):
         payload = ok(post(engine, "/api/v1/clean/duplicates/scan", {}), 202)
@@ -2252,6 +2362,18 @@ class TestSyncingAReview:
             )
             state = resolve("IMatchRepository").get_match(track_id)
             assert state.decided_by == "auto"
+
+    def test_tracks_of_several_playlists_sync_as_one_job_and_one_undo(
+        self, engine, store, ticked
+    ):
+        """M509 (WO-2): "Sync all reviewed" needs no new route. The selection is
+        the union of each playlist's ticked ids, and the job, its batch and its
+        undo are one however many playlists the tracks came from."""
+        ids, _paths = ticked
+        job = self.sync(engine, store, ids, self.only("genre"))
+        assert job.state == JobState.SUCCEEDED
+        synced = job.result["synced"]
+        assert synced["tracks"] == 2 and synced["batch_id"] == job.id
 
     def test_the_preview_keeps_the_key_the_track_already_shows(self, engine, tmp_path):
         path = audio_copy(tmp_path / "music", "mp3", "keyed.mp3")

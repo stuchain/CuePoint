@@ -118,7 +118,10 @@ class BackupService(IBackupService):
             )
 
         self.backup_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+        # Local time (M272): the name is what Activity shows, and a person
+        # reads "cuepoint-20261027-104800" as when they were working. The file's
+        # own modified time (``created_at``) stays UTC.
+        stamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
         target = self.backup_dir / f"{BACKUP_PREFIX}{stamp}-{reason}{BACKUP_SUFFIX}"
         # Two backups within the same second must not collide.
         counter = 1

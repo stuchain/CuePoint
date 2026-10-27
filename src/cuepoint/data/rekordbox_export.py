@@ -86,7 +86,9 @@ about a second, which is the bound on how long a stop waits.
 import logging
 import os
 import re
+import shutil
 import tempfile
+from datetime import datetime
 import xml.parsers.expat as expat
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -330,6 +332,9 @@ class PatchResult:
     playlist_folder: Optional[str] = None
     #: True when that name had to be changed, which the preview reports.
     playlist_folder_renamed: bool = False
+    #: Where the file this export replaced was copied first (M512), or ``None``
+    #: when there was nothing at the destination to keep.
+    backup_path: Optional[str] = None
 
     @property
     def changed(self) -> bool:
@@ -541,7 +546,10 @@ def patch_collection_xml(
         source_path: The Rekordbox XML the library was imported from (DEC-035).
         updates: Track id, as the importer reads it, to that track's effective
             values. A track absent from this map is not touched at all.
-        destination_path: Where to write. Never the source (DEC-083).
+        destination_path: Where to write. Never the source (DEC-083). A file
+            already there is the previous export (M512): it is copied to a
+            dated name beside it before it is replaced, and the copy's path is
+            on the result's ``backup_path``.
         playlists: The nodes to append under the ``CuePoint`` folder, already
             resolved to track ids in export order. ``None`` and an empty
             sequence both mean "append nothing", and then no folder is created:
@@ -569,7 +577,7 @@ def patch_collection_xml(
     result, data, edits = _plan(
         source_path, updates, playlists, on_progress, should_cancel
     )
-    _write_atomically(data, edits, destination_path, should_cancel)
+    result.backup_path = _write_atomically(data, edits, destination_path, should_cancel)
     return result
 
 
@@ -1285,13 +1293,53 @@ def _count_edit(
     return None
 
 
+def backup_path_for(destination: Path, now: datetime) -> Path:
+    """The dated name the previous file at ``destination`` is kept under (M512).
+
+    ``CuePoint Export.xml`` becomes ``CuePoint Export (backup 2026-10-27
+    104800).xml`` in the same folder, dated in local time. A name that is taken
+    gets a counter: a backup never replaces another file, because the point of
+    it is that nothing is lost.
+    """
+    stamp = now.strftime("%Y-%m-%d %H%M%S")
+    candidate = destination.with_name(
+        f"{destination.stem} (backup {stamp}){destination.suffix}"
+    )
+    counter = 2
+    while candidate.exists():
+        candidate = destination.with_name(
+            f"{destination.stem} (backup {stamp} {counter}){destination.suffix}"
+        )
+        counter += 1
+    return candidate
+
+
+def _keep_previous(destination: Path) -> Optional[str]:
+    """Copy the file at ``destination`` to its dated backup name; return that path.
+
+    ``None`` when nothing is there. A copy that fails raises, which stops the
+    export before anything is replaced: the previous file is only ever replaced
+    once a copy of it exists.
+    """
+    if not destination.is_file():
+        return None
+    backup = backup_path_for(destination, datetime.now())
+    shutil.copy2(destination, backup)
+    return str(backup)
+
+
 def _write_atomically(
     data: bytes,
     edits: List[Tuple[int, int, bytes]],
     destination_path: str,
     should_cancel: Optional[CancelCheck] = None,
-) -> None:
+) -> Optional[str]:
     """Splice the edits into ``data`` and write via a temp file in the same dir.
+
+    A file already at the destination is copied to a dated backup first
+    (:func:`_keep_previous`), after the new file is complete and the last stop
+    has been honoured, so a cancelled or failed export leaves the destination
+    and the folder as they were. Returns the backup's path, or ``None``.
 
     A temp file beside the destination, then ``replace``: the pattern the
     orphaned writer used, and the reason an export that fails part-way leaves
@@ -1326,8 +1374,17 @@ def _write_atomically(
             stream.write(out)
         if should_cancel is not None and should_cancel():
             raise ExportCancelled(PHASE_WRITE)
-        Path(temp_path).replace(destination)
+        backup = _keep_previous(destination)
+        try:
+            Path(temp_path).replace(destination)
+        except BaseException:
+            # Nothing was replaced, so the copy is not needed: leave the folder
+            # as it was found.
+            if backup is not None:
+                Path(backup).unlink(missing_ok=True)
+            raise
         temp_path = None
+        return backup
     finally:
         if temp_path is not None and os.path.exists(temp_path):
             try:

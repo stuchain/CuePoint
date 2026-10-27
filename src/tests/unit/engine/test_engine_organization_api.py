@@ -419,6 +419,43 @@ class TestMembership:
         assert [entry["track_id"] for entry in left] == [ids[0], ids[2]]
         assert [entry["position"] for entry in left] == [0, 1]
 
+    def test_an_add_names_its_entries_and_removing_them_is_its_undo(
+        self,
+        engine,  # noqa: F811
+        warmups,
+        ids,  # noqa: F811
+    ):
+        """M519 (WO-6): no new undo route; the add says which entries it made."""
+        ok(
+            engine,
+            "/api/v1/collections/tracks/add",
+            {"collection_id": warmups["id"], "track_ids": ids[:2]},
+        )
+        added = ok(
+            engine,
+            "/api/v1/collections/tracks/add",
+            {"collection_id": warmups["id"], "track_ids": ids[1:4]},
+        )
+        # ids[1] was already there: skipped, and no entry made for it.
+        assert added["added_track_ids"] == ids[2:4]
+        assert len(added["added_entry_ids"]) == 2
+        entries = get_json(
+            engine, "/api/v1/collections/entries", collection_id=warmups["id"]
+        )["entries"]
+        by_entry = {entry["id"]: entry["track_id"] for entry in entries}
+        assert [by_entry[i] for i in added["added_entry_ids"]] == ids[2:4]
+
+        undone = ok(
+            engine,
+            "/api/v1/collections/tracks/remove",
+            {"entry_ids": added["added_entry_ids"]},
+        )
+        assert undone["removed"] == 2
+        left = get_json(
+            engine, "/api/v1/collections/entries", collection_id=warmups["id"]
+        )["entries"]
+        assert [entry["track_id"] for entry in left] == ids[:2]
+
     def test_reorder_moves_one_entry(self, engine, warmups, ids):  # noqa: F811
         ok(
             engine,

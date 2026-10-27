@@ -597,6 +597,9 @@ def add_tracks(data: Dict[str, Any]) -> Dict[str, Any]:
         "skipped": result.skipped,
         "added_track_ids": list(result.added_track_ids),
         "skipped_track_ids": list(result.skipped_track_ids),
+        # M519: the entries the tracks became. Undoing the add is removing them
+        # (`/collections/tracks/remove`), which closes the gaps they leave.
+        "added_entry_ids": list(result.added_entry_ids),
     }
 
 
@@ -926,7 +929,7 @@ def apply_batch(data: Dict[str, Any], *, job_store: Any) -> Tuple[int, Dict[str,
     if job is not None:
         return 202, {"job_id": job.id, "id": job.id, "state": job.state.value}
     assert result is not None  # apply_or_start returns exactly one of the two
-    return 200, {"applied": result.to_dict()}
+    return 200, {"applied": result.answer()}
 
 
 # ---------------------------------------------------------------------------

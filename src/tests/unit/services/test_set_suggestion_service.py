@@ -306,12 +306,19 @@ class TestTheEnds:
         theirs = SimilarityService(
             SimilarityRepository(db), lib.credits, lib.tracks
         ).similar(seed, limit=200)
+        # M200: Similar Tracks keeps keyless tracks; a keyed gap does not.
+        traits = every_track(lib)
+        keyless = traits[seed].key is None
+        kept = [
+            s
+            for s in theirs.suggestions
+            if keyless or traits[s.track_id].key is not None
+        ]
+        assert any(traits[s.track_id].key is None for s in theirs.suggestions)
         assert [(s.track_id, s.score) for s in mine.suggestions] == [
-            (s.track_id, s.score) for s in theirs.suggestions
+            (s.track_id, s.score) for s in kept
         ]
-        assert [s.before.reasons for s in mine.suggestions] == [
-            s.reasons for s in theirs.suggestions
-        ]
+        assert [s.before.reasons for s in mine.suggestions] == [s.reasons for s in kept]
 
 
 # ---------------------------------------------------------------- refusals
@@ -420,8 +427,8 @@ class TestNoFit:
     ):
         before = lib.add("A", bpm=before_bpm, key=before_key)
         after = lib.add("B", bpm=after_bpm, key=after_key)
-        near_before = lib.add("C", bpm=before_bpm + 1)
-        near_after = lib.add("D", bpm=after_bpm - 1)
+        near_before = lib.add("C", bpm=before_bpm + 1, key=before_key)
+        near_after = lib.add("D", bpm=after_bpm - 1, key=after_key or "8A")
         set_id, entries = lib.make_set([before, after])
         return set_id, entries, near_before, near_after
 
@@ -458,6 +465,14 @@ class TestNoFit:
         assert ids(own_before) == [near_before]
         assert ids(own_after) == [near_after]
         assert own_after.suggestions[0].before is None
+
+    def test_a_keyless_track_is_not_suggested_beside_a_keyed_neighbour(self, lib):
+        before = lib.add("A", bpm=124.0, key="8A")
+        keyed = lib.add("B", bpm=124.0, key="9A")
+        lib.add("C", bpm=124.0)  # same tempo, no key: left out (M200)
+        set_id, entries = lib.make_set([before])
+        result = lib.service.suggest(set_id, before_entry_id=entries[0])
+        assert ids(result) == [keyed]
 
     def test_half_time_is_not_a_gap(self, lib):
         before = lib.add("A", bpm=128.0)
@@ -834,10 +849,15 @@ class TestAgainstScoringEveryTrack:
                 neighbours = {track_of[e] for e in (before, after) if e is not None}
                 # A gap is in the chapter of the entry before it (PREP-02).
                 in_peak = before is not None and index >= 10
+                # M200: beside a keyed neighbour, a keyless track is not offered.
+                harmonic = any(
+                    t is not None and t.key is not None for t in (first, second)
+                )
                 pool = [
                     (track_id, t)
                     for track_id, t in sorted(traits.items())
-                    if not in_peak or (t.bpm is not None and 120.0 <= t.bpm <= 130.0)
+                    if (not in_peak or (t.bpm is not None and 120.0 <= t.bpm <= 130.0))
+                    and (not harmonic or t.key is not None)
                 ]
                 expected = rank_fits(
                     first, second, pool, MAX_SIMILAR_LIMIT, exclude=sorted(neighbours)

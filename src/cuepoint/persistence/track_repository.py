@@ -224,6 +224,8 @@ class BulkUpsertResult:
             keeps the two from ever disagreeing about which rows those are.
         play_counts_stored: ``play_counts`` rows written for the read this
             upsert was given (STATS-01); zero when it was given none.
+        inserted_track_ids: The library ids the inserted tracks were given,
+            sorted (M517): what lets a refresh say which tracks are new.
     """
 
     inserted: int = 0
@@ -231,6 +233,7 @@ class BulkUpsertResult:
     relinked: Tuple[RelinkedTrack, ...] = ()
     unclaimed_track_ids: Tuple[int, ...] = ()
     play_counts_stored: int = 0
+    inserted_track_ids: Tuple[int, ...] = ()
 
     @property
     def total(self) -> int:
@@ -965,6 +968,7 @@ class TrackRepository(ITrackRepository):
         # the credits need anyway.
         stored_counts = 0
         played_updates: List[tuple] = []
+        new_ids: List[int] = []
 
         def flush_inserts(conn: Any) -> None:
             nonlocal stored_counts
@@ -977,6 +981,7 @@ class TrackRepository(ITrackRepository):
                 flush_updates(conn)
             conn.executemany(_INSERT_SQL, insert_rows)
             stored = self._read_back_inserted(conn, inserted_tracks)
+            new_ids.extend(track_id for track_id, _ in stored)
             write_credits(
                 conn, [(track_id, t.artist, t.remixer) for track_id, t in stored]
             )
@@ -1064,6 +1069,7 @@ class TrackRepository(ITrackRepository):
             relinked=tuple(relinked),
             unclaimed_track_ids=tuple(sorted(unclaimed)),
             play_counts_stored=stored_counts,
+            inserted_track_ids=tuple(sorted(new_ids)),
         )
 
     def ids_by_rekordbox_id(self, rekordbox_track_ids: Iterable[str]) -> Dict[str, int]:

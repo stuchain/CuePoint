@@ -253,3 +253,37 @@ class TestTheLimitOnTheWire:
         )["applied"]
         assert applied["changed"] == 3
         assert plans(gig["id"]) == [0, 0, 0]
+
+    def test_a_batch_add_names_its_entries_so_it_can_be_undone(
+        self,
+        engine,  # noqa: F811
+        gig,
+        ids,  # noqa: F811
+    ):
+        """M519 (WO-6): the add's answer carries what removing it takes."""
+        first = ok(
+            engine,
+            "/api/v1/library/batch",
+            {
+                "selection": {"track_ids": ids[:2]},
+                "operation": {"kind": "add_to_collection", "value": gig["id"]},
+            },
+        )["applied"]
+        assert first["undoable"] is True and len(first["added_entry_ids"]) == 2
+
+        ok(
+            engine,
+            "/api/v1/collections/tracks/remove",
+            {"entry_ids": first["added_entry_ids"]},
+        )
+        page = get_json(engine, "/api/v1/collections/entries", collection_id=gig["id"])
+        assert page["entry_count"] == 0
+
+        # An add that changed nothing has nothing to undo, and says it is whole.
+        body = {
+            "selection": {"track_ids": ids[:2]},
+            "operation": {"kind": "add_to_collection", "value": gig["id"]},
+        }
+        ok(engine, "/api/v1/library/batch", body)
+        again = ok(engine, "/api/v1/library/batch", body)["applied"]
+        assert again["changed"] == 0 and again["added_entry_ids"] == []

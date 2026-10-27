@@ -341,10 +341,17 @@ class SetSuggestionService(ISetSuggestionService):
             windows = _clipped(windows, bpm_range)
         considered = 0
 
+        # M200: a gap with a keyed neighbour is bridged harmonically, and a
+        # track with no key has no place on the wheel to bridge from, so it is
+        # not suggested (nor counted as considered).
+        harmonic = any(t is not None and t.key is not None for t in (first, second))
+
         def counted(found: Iterable[TraitRow]) -> Iterable[Tuple[int, Traits]]:
             nonlocal considered
             for candidate in found:
                 traits = traits_of(candidate)
+                if harmonic and traits.key is None:
+                    continue
                 if bpm_range is not None and not bpm_range.holds(traits.bpm):
                     continue
                 considered += 1

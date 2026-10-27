@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime, time, timedelta, timezone
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import pytest
@@ -441,7 +442,7 @@ class TestARun:
         run = service.run(request(service))
         [event] = events(db)
         assert event["type"] == EVENT_DISCOVERY_RAN
-        assert event["summary"] == "Discovery found 7 tracks in 3 charts and 2 releases"
+        assert event["summary"] == "Dig found 7 tracks from 3 charts and 2 releases"
         assert event["detail"]["run_id"] == run.id
         assert event["detail"]["outcome"] == "succeeded"
 
@@ -671,7 +672,7 @@ class TestCancel:
         assert found(db, run.id) == [1, 2, 3, 4, 5]
         assert (run.charts_read, run.tracks_found, run.error) == (3, 5, None)
         assert events(db)[0]["summary"] == (
-            "Discovery cancelled; found 5 tracks in 3 charts and 0 releases"
+            "Dig cancelled; found 5 tracks from 3 charts"
         )
 
     def test_a_cancel_mid_releases_keeps_what_the_labels_before_it_gave(
@@ -710,8 +711,8 @@ class TestFailures:
         assert found(db, run.id) == [1, 2, 3, 4, 5]
         assert run.labels_resolved == 1
         assert events(db)[0]["summary"] == (
-            "Discovery stopped because Beatport refused the sign-in;"
-            " found 5 tracks in 3 charts and 0 releases"
+            "Dig stopped because Beatport refused the sign-in;"
+            " found 5 tracks from 3 charts"
         )
         assert events(db)[0]["detail"]["error_class"] == "rejected"
 
@@ -782,9 +783,7 @@ class TestFailures:
             "'a bug'",
         )
         assert not DiscoveryRepository(db).get_run(run.id).is_running
-        assert events(db)[0]["summary"].startswith(
-            "Discovery stopped because of an error"
-        )
+        assert events(db)[0]["summary"].startswith("Dig stopped because of an error")
 
 
 # ---------------------------------------------------------------- ownership
@@ -1264,3 +1263,49 @@ class TestContinue:
             service.continue_run(stopped.id)
         again = service.get_run(stopped.id)
         assert (again.outcome, again.finished_at) == (RUN_FAILED, stopped.finished_at)
+
+
+class TestTheSummarySentence:
+    """M398, M422: a "dig", "from" what it read, and no part that is nothing."""
+
+    @staticmethod
+    def run_with(**fields):
+        from cuepoint.services.discovery_service import summary_line
+
+        base = dict(
+            id=1,
+            outcome=RUN_SUCCEEDED,
+            tracks_found=3643,
+            charts_read=290,
+            releases_read=0,
+            error_class=None,
+        )
+        base.update(fields)
+        return summary_line(SimpleNamespace(**base))
+
+    def test_says_dig_and_drops_a_part_that_is_nothing(self):
+        assert self.run_with() == "Dig found 3,643 tracks from 290 charts"
+
+    def test_names_both_parts_when_both_were_read(self):
+        assert (
+            self.run_with(tracks_found=1, charts_read=1, releases_read=2)
+            == "Dig found 1 track from 1 chart and 2 releases"
+        )
+
+    def test_names_only_releases_when_no_chart_was_read(self):
+        assert (
+            self.run_with(charts_read=0, releases_read=1)
+            == "Dig found 3,643 tracks from 1 release"
+        )
+
+    def test_says_only_what_it_found_when_it_read_nothing(self):
+        assert (
+            self.run_with(tracks_found=0, charts_read=0, releases_read=0)
+            == "Dig found 0 tracks"
+        )
+
+    def test_keeps_the_words_for_a_cancel(self):
+        assert (
+            self.run_with(outcome=RUN_CANCELLED)
+            == "Dig cancelled; found 3,643 tracks from 290 charts"
+        )

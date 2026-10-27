@@ -323,10 +323,14 @@ class AddResult:
     Attributes:
         added_track_ids: The tracks that were appended, in the order given.
         skipped_track_ids: The tracks already in the Collection, left alone.
+        added_entry_ids: The entries those tracks became, in the same order
+            (M519): what an undo removes, by ``remove_entries``, which is the
+            undo of an add.
     """
 
     added_track_ids: Tuple[int, ...] = ()
     skipped_track_ids: Tuple[int, ...] = ()
+    added_entry_ids: Tuple[int, ...] = ()
 
     @property
     def added(self) -> int:

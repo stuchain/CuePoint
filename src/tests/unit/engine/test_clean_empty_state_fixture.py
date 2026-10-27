@@ -227,6 +227,7 @@ class TestEachStateIsTheOneItClaims:
         assert state["duplicates"] == {
             "groups": [],
             "total": 0,
+            "track_total": 0,
             "limit": None,
             "offset": 0,
         }

@@ -21,7 +21,7 @@ playlist rows and its activity event commit together or not at all.
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from typing import Any, List, Optional, Sequence, Tuple
 
 from cuepoint.models.rekordbox_export import (
     EXPORT_WRITTEN,
@@ -75,6 +75,18 @@ _INSERT_PLAYLIST = (
 #: The most rows :meth:`RekordboxExportRepository.recent` answers with. A history
 #: list is read by a person; a caller wanting more is asking a different question.
 MAX_RECENT = 200
+
+#: The track-history fields of the values an export writes: CuePoint's own key,
+#: BPM, genre, label, year and rating (``services.metadata_service`` names them,
+#: and persistence does not import services' modules).
+EXPORTED_HISTORY_FIELDS: Tuple[str, ...] = (
+    "cuepoint_key",
+    "cuepoint_bpm",
+    "cuepoint_genre",
+    "cuepoint_label",
+    "cuepoint_year",
+    "cuepoint_rating",
+)
 
 
 class RekordboxExportRepository(IRekordboxExportRepository):
@@ -179,6 +191,28 @@ class RekordboxExportRepository(IRekordboxExportRepository):
             .fetchall()
         )
         return [RekordboxExport.from_row(row) for row in rows]
+
+    def count_changes_since_last_export(self) -> int:
+        """Return how many values changed since the last export wrote its file.
+
+        A change is a row of the track history for a field an export writes
+        (the key, BPM, genre, label, year and rating CuePoint holds), counted
+        once per track and field however often it changed. With no written
+        export every such change counts, because none has been exported.
+        """
+        last = self.latest_written()
+        since = last.finished_at if last is not None else None
+        marks = ", ".join("?" for _ in EXPORTED_HISTORY_FIELDS)
+        sql = (
+            "SELECT COUNT(*) FROM (SELECT DISTINCT track_id, field FROM track_history"
+            f" WHERE field IN ({marks})"
+        )
+        params: Tuple[Any, ...] = EXPORTED_HISTORY_FIELDS
+        if since is not None:
+            sql += " AND changed_at > ?"
+            params = (*params, since)
+        row = self._db.connect().execute(sql + ")", params).fetchone()
+        return int(row[0]) if row is not None else 0
 
     def latest_written(self) -> Optional[RekordboxExport]:
         """Return the most recent export that wrote its file, or ``None``.

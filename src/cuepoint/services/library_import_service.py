@@ -235,6 +235,8 @@ class RefreshSummary:
         duration_seconds: Wall-clock time for the whole refresh.
         marks: The cue points and beat grid markers written (WAVE-04), and
             the marks skipped as unknown or malformed.
+        new_track_ids: The library ids of the tracks the export added, sorted
+            (M517), so "Match the 12 new tracks" can name them.
     """
 
     source: LibrarySource
@@ -246,6 +248,7 @@ class RefreshSummary:
     references: ReferenceSummary
     duration_seconds: float
     marks: MarksWritten = NO_MARKS_WRITTEN
+    new_track_ids: Tuple[int, ...] = ()
 
     @property
     def track_count(self) -> int:
@@ -588,6 +591,7 @@ class LibraryImportService(ILibraryImportService):
             references=written.references,
             duration_seconds=time.perf_counter() - started,
             marks=written.marks,
+            new_track_ids=written.tracks.inserted_track_ids,
         )
         self._record_refresh_activity(summary)
         _logger.info(

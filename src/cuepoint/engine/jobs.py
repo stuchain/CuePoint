@@ -13,10 +13,11 @@ import sys
 import threading
 import time
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Deque, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.compat.gui_types import ProgressInfo
 
@@ -95,6 +96,10 @@ class Job:
     error: Optional[Dict[str, str]] = None
     demo: bool = False
     cancel_requested: bool = False
+    #: True when the job waited behind another of its type before it ran (M510),
+    #: so a runner that resolved its work when it was asked for can resolve it
+    #: again against what the earlier job left.
+    waited: bool = False
     #: The exception that failed the job, kept so the ended listeners can report it
     #: (REPORT-03). Private to the process: never in :meth:`to_status_dict`, the database
     #: record or an event, because an exception's message can hold a path or a title.
@@ -157,6 +162,10 @@ class JobStore:
         self._end_listeners: List[Callable[[Job], None]] = []
         #: Ids of jobs whose runner is on a thread right now: only these keep a ``cause``.
         self._running: set = set()
+        #: Jobs queued behind another of their type, oldest first (M510).
+        self._waiting: Dict[str, Deque[Tuple[Job, threading.Event]]] = {}
+        #: Queued jobs a cancel let go early: they never held their type's place.
+        self._left_queue: set = set()
 
     def add_listeners(
         self,
@@ -272,10 +281,35 @@ class JobStore:
             job.cancel_requested = True
             job.updated_at = _utc_now()
             controller = self._controllers.get(job_id)
+            # A queued job has no controller and nothing to stop: let it go on
+            # to its end now, where the cancel is seen before the runner starts.
+            gate = self._leave_queue(job)
         self._persist(job, force=True)
         if controller is not None:
             controller.cancel()
+        if gate is not None:
+            gate.set()
         return job
+
+    def _leave_queue(self, job: Job) -> Optional[threading.Event]:
+        """Take a job out of its type's queue and return its gate. Lock held."""
+        waiting = self._waiting.get(job.type)
+        if not waiting:
+            return None
+        for entry in list(waiting):
+            if entry[0] is job:
+                waiting.remove(entry)
+                self._left_queue.add(job.id)
+                return entry[1]
+        return None
+
+    def _open_next_gate(self, job_type: str) -> None:
+        """Let the oldest job queued behind ``job_type`` start (M510)."""
+        with self._lock:
+            waiting = self._waiting.get(job_type)
+            entry = waiting.popleft() if waiting else None
+        if entry is not None:
+            entry[1].set()
 
     def create_job(
         self,
@@ -285,6 +319,7 @@ class JobStore:
         runner: Callable[[Job], None],
         exclusive: bool = False,
         conflicts_with: Sequence[str] = (),
+        queue: bool = False,
     ) -> Job:
         """Register a job of any type and start it on a background thread.
 
@@ -309,6 +344,11 @@ class JobStore:
                 refresh running together — which write the same tables just as
                 badly. Only consulted when ``exclusive``, because a job that
                 does not mind a twin has no business minding a cousin.
+            queue: Behind a job of the same type, wait for it instead of being
+                refused (M510, D17): the job is registered as ``queued`` now
+                and starts when the ones ahead of it have ended. A conflicting
+                type still refuses, because the work would be resolved against a
+                library that is being rewritten.
 
         Raises:
             JobTypeBusyError: If ``exclusive`` and a job of this type or of a
@@ -317,6 +357,7 @@ class JobStore:
         """
         job = Job(id=str(uuid.uuid4()), type=job_type, demo=demo)
         blocking = {job_type, *conflicts_with}
+        gate: Optional[threading.Event] = None
         with self._lock:
             if exclusive:
                 for existing in self._jobs.values():
@@ -324,7 +365,13 @@ class JobStore:
                         existing.type in blocking
                         and existing.state.value in _ACTIVE_STATES
                     ):
+                        if queue and existing.type == job_type:
+                            gate = gate or threading.Event()
+                            continue
                         raise JobTypeBusyError(existing.type, existing.id)
+            if gate is not None:
+                job.waited = True
+                self._waiting.setdefault(job_type, deque()).append((job, gate))
             self._jobs[job.id] = job
             started = list(self._start_listeners)
         self._persist(job, force=True)
@@ -332,7 +379,7 @@ class JobStore:
 
         thread = threading.Thread(
             target=self._run_job,
-            args=(job, runner),
+            args=(job, runner, gate),
             daemon=True,
             name=f"{job_type}-job-{job.id[:8]}",
         )
@@ -352,11 +399,22 @@ class JobStore:
         with self._lock:
             return self._jobs.get(job_id)
 
-    def _run_job(self, job: Job, runner: Callable[[Job], None]) -> None:
+    def _run_job(
+        self,
+        job: Job,
+        runner: Callable[[Job], None],
+        gate: Optional[threading.Event] = None,
+    ) -> None:
+        if gate is not None:
+            # Queued (M510): stays ``queued`` until the job ahead has ended.
+            gate.wait()
         self._running.add(job.id)
         self._update(job, state=JobState.RUNNING)
         try:
-            runner(job)
+            # Cancelled while it waited: nothing to run, and the check below
+            # ends it as cancelled.
+            if not (gate is not None and job.cancel_requested):
+                runner(job)
             # Decided under the lock, written after it: ``_update`` takes the
             # same lock, which is not re-entrant, and calling it from in here
             # locked the whole store for good (CLEAN-14).
@@ -397,6 +455,11 @@ class JobStore:
             # the listeners need it, not for the life of the process.
             job.cause = None
             self._running.discard(job.id)
+            with self._lock:
+                held = job.id not in self._left_queue
+                self._left_queue.discard(job.id)
+            if held:
+                self._open_next_gate(job.type)
 
     def report_progress(self, job: Job, progress: ProgressInfo) -> None:
         """Record a progress tick from a runner.

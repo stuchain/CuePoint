@@ -21,7 +21,10 @@ over.
 One match at a time, and why a refresh may still run
 ----------------------------------------------------
 A match job is exclusive with another match job — two would ask Beatport the
-same questions and race to store the answers — and refuses to *start* while a
+same questions and race to store the answers — so a second request *queues*
+behind the running one and starts when it ends (M510, D17), resolving its
+tracks again then, so what the first match settled is not looked up twice. It
+refuses to *start* while a
 refresh is applying, because it would resolve its scope against a library being
 rewritten. A refresh may start while a match runs, and must be able to: a
 whole-library match takes hours, and a user cannot be told not to refresh for a
@@ -86,6 +89,8 @@ class StartedMatch:
     excluded: int
     planned: int
     resumed_from: Optional[str] = None
+    #: True when another match is running and this one waits for it (M510).
+    queued: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """The answer a route returns for a started match."""
@@ -95,6 +100,7 @@ class StartedMatch:
             "excluded": self.excluded,
             "planned": self.planned,
             "resumed_from": self.resumed_from,
+            "queued": self.queued,
         }
 
 
@@ -230,6 +236,7 @@ def _create(store: JobStore, runner: Callable[[Job], None]) -> Job:
         runner=runner,
         exclusive=True,
         conflicts_with=MATCH_JOB_CONFLICTS,
+        queue=True,
     )
 
 
@@ -248,13 +255,22 @@ def start_match_job(
         ValueError: If the selection names no library tracks, or only tracks
             already settled when ``rematch`` is not set.
         BrowseQueryError: If a query selection cannot be built.
-        JobTypeBusyError: If a match job is running or a refresh is applying.
+        JobTypeBusyError: If a refresh is applying. A match already running is
+            not an error: this one queues behind it.
     """
     service = _match_service()
     draft = service.prepare(selection, rematch, label, playlist_order)
 
     def runner(job: Job) -> None:
-        run_match_job(job, store, lambda svc: svc.write_plan(job.id, draft))
+        current = draft
+        if job.waited:
+            # The match ahead settled tracks this selection names: ask again.
+            try:
+                current = service.prepare(selection, rematch, label, playlist_order)
+            except ValueError:
+                store.finish(job, state=JobState.SUCCEEDED)
+                return
+        run_match_job(job, store, lambda svc: svc.write_plan(job.id, current))
 
     job = _create(store, runner)
     return StartedMatch(
@@ -262,6 +278,7 @@ def start_match_job(
         selected=draft.selected,
         excluded=draft.excluded,
         planned=draft.planned,
+        queued=job.waited,
     )
 
 
@@ -271,8 +288,8 @@ def resume_match_job(store: JobStore, job_id: str) -> StartedMatch:
     Raises:
         LookupError: If there is no such match job.
         ValueError: If it has nothing left.
-        JobTypeBusyError: If a match job is running — including the one named,
-            if it is still finishing — or a refresh is applying.
+        JobTypeBusyError: If a refresh is applying. A match running, including
+            the one named while it is still finishing, is waited for.
     """
     service = _match_service()
     waiting = service.check_resumable(job_id)
@@ -287,6 +304,7 @@ def resume_match_job(store: JobStore, job_id: str) -> StartedMatch:
         excluded=0,
         planned=waiting.remaining,
         resumed_from=job_id,
+        queued=job.waited,
     )
 
 

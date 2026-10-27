@@ -134,6 +134,8 @@ class TestReplaceTree:
         assert result.entries == 7
         assert result.missing_count == 0
         assert repo.count() == 9
+        # M523: what the Library pane counts: playlists, not folders or ROOT.
+        assert repo.count_playlists() == 4
         assert repo.count_entries() == 7
 
     def test_the_tree_rebuilds_exactly(self, repo, tracks, db):

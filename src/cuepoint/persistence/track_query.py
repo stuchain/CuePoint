@@ -31,7 +31,9 @@ actually a missing tiebreak.
 **Nulls sort last in both directions.** A library where a third of the BPMs are
 missing must not open on a screen of blanks. SQLite orders nulls first for ASC
 by default, so ascending orderings say so explicitly; descending already puts
-them last.
+them last. A blank is a null here: an empty text value, and a zero BPM, year,
+length or bitrate (rekordbox writes 0 for "unknown"), sort with the nulls (M93,
+D12), so neither direction opens on a screen of blanks.
 """
 
 from __future__ import annotations
@@ -381,10 +383,22 @@ def search_clause(query: str) -> Tuple[Optional[str], str, Tuple[object, ...]]:
     return pattern, f"({' OR '.join(clauses)})", tuple(params)
 
 
-def _field_term(name: str, text: bool = False) -> SortTerm:
+def _blank_as_null(expression: str, *, text: bool) -> str:
+    """The expression with its blank value turned into NULL (M93).
+
+    Text is blank when empty; a number is blank at 0, which rekordbox writes for
+    "unknown" (a rating is not one: unrated and rated-zero differ, DEC-034).
+    """
+    return f"NULLIF({expression}, '')" if text else f"NULLIF({expression}, 0)"
+
+
+def _field_term(name: str, text: bool = False, zero_blank: bool = False) -> SortTerm:
     """A nullable sort term reading what the filter field ``name`` reads."""
     spec = field_spec(name)
-    return SortTerm(spec.expression, text=text, nullable=True, joins=spec.joins)
+    expression = spec.expression
+    if text or zero_blank:
+        expression = _blank_as_null(expression, text=text)
+    return SortTerm(expression, text=text, nullable=True, joins=spec.joins)
 
 
 def _ranked_term(name: str, order: Sequence[str]) -> SortTerm:
@@ -421,7 +435,9 @@ FILE_STATUS_ORDER: Tuple[str, ...] = ("missing", "unreadable", "present", "not_c
 _PRIMARY: Dict[str, Tuple[SortTerm, ...]] = {
     "artist": (_ARTIST, _TITLE),
     "title": (_TITLE, _ARTIST),
-    "album": (SortTerm("tracks.album", text=True, nullable=True),),
+    "album": (
+        SortTerm(_blank_as_null("tracks.album", text=True), text=True, nullable=True),
+    ),
     # The five fields CuePoint can override sort by the value a user sees
     # (DEC-068): the expression the filter field of the same name compiles
     # to, read from the registry rather than written a second time.
@@ -430,12 +446,14 @@ _PRIMARY: Dict[str, Tuple[SortTerm, ...]] = {
     # Round the wheel (1A, 1B, 2A ... 12B), then no key: the number first and
     # then the letter, which no spelling of a key sorts as.
     "key": (SortTerm(KEY_WHEEL_SQL, nullable=True, joins=field_spec("key").joins),),
-    "bpm": (_field_term("bpm"),),
-    "year": (_field_term("year"),),
-    "duration_seconds": (SortTerm("tracks.duration_seconds", nullable=True),),
+    "bpm": (_field_term("bpm", zero_blank=True),),
+    "year": (_field_term("year", zero_blank=True),),
+    "duration_seconds": (
+        SortTerm(_blank_as_null("tracks.duration_seconds", text=False), nullable=True),
+    ),
     "rating": (SortTerm("tracks.rating", nullable=True),),
     "play_count": (SortTerm("tracks.play_count", nullable=True),),
-    "bitrate": (SortTerm("tracks.bitrate", nullable=True),),
+    "bitrate": (SortTerm(_blank_as_null("tracks.bitrate", text=False), nullable=True),),
     # Rekordbox writes an ISO-ish date, which sorts correctly as text. No
     # COLLATE NOCASE: there are no letters in it, and the collation would only
     # make the term harder to serve from an index.

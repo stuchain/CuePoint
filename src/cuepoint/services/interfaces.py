@@ -479,6 +479,14 @@ class IRekordboxExportRepository(ABC):
     """
 
     @abstractmethod
+    def count_changes_since_last_export(self) -> int:
+        """Return how many values changed since the last export wrote its file (M511).
+
+        One per track and exportable field; every change when none was written.
+        """
+        ...
+
+    @abstractmethod
     def add(self, export: "RekordboxExport") -> "RekordboxExport":
         """Record one export and return it with its id."""
         ...
@@ -3060,6 +3068,13 @@ class IDuplicateRepository(ABC):
         ...
 
     @abstractmethod
+    def count_group_tracks(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> int:
+        """How many different tracks those groups hold (M155)."""
+        ...
+
+    @abstractmethod
     def group(self, group_id: int) -> Optional["DuplicateGroupMembers"]:
         """A group as it is now, or None."""
         ...
@@ -3107,8 +3122,20 @@ class IDuplicateService(ABC):
         ...
 
     @abstractmethod
+    def count_group_tracks(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> int:
+        """How many different tracks those groups hold (M155)."""
+        ...
+
+    @abstractmethod
     def dismiss(self, group_id: int) -> "DuplicateGroupMembers":
         """Mark a group "not duplicates" for the members it has now."""
+        ...
+
+    @abstractmethod
+    def keep(self, group_id: int, track_id: int) -> "DuplicateGroupMembers":
+        """Keep one track of a group: a non-destructive "not duplicates" (M153)."""
         ...
 
     @abstractmethod
@@ -4159,6 +4186,11 @@ class IPlaylistRepository(ABC):
         ...
 
     @abstractmethod
+    def count_playlists(self) -> int:
+        """Return the number of playlists: no folders, and not Rekordbox's ROOT."""
+        ...
+
+    @abstractmethod
     def count_entries(self) -> int:
         """Return the number of stored track references."""
         ...
@@ -4649,6 +4681,11 @@ class IMatchStatusRepository(ABC):
     @abstractmethod
     def counts(self) -> Tuple[Dict[int, "StatusCounts"], "StatusCounts"]:
         """Return the counts of each playlist that holds a track (by id), and the library's."""
+        ...
+
+    @abstractmethod
+    def unsaved_value_count(self) -> int:
+        """Return how many values (a track and a field each) are not in the files yet."""
         ...
 
     @abstractmethod

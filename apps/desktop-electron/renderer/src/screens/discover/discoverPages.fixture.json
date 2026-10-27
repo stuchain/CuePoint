@@ -68,6 +68,10 @@
       "file_path": "/music/p1.mp3",
       "file_status": "not_checked",
       "genre": "House",
+      "genre_primary": "House",
+      "genres": [
+        "House"
+      ],
       "id": 1,
       "key": "8A",
       "key_name": "A minor",
@@ -78,6 +82,7 @@
         "bpm": null,
         "candidate_id": 1,
         "genre": null,
+        "genre_primary": null,
         "guard_ok": true,
         "key": null,
         "label": null,
@@ -172,6 +177,10 @@
       "file_path": "/music/p3.mp3",
       "file_status": "not_checked",
       "genre": "Techno",
+      "genre_primary": "Techno",
+      "genres": [
+        "Techno"
+      ],
       "id": 3,
       "key": "8A",
       "key_name": "A minor",
@@ -740,6 +749,10 @@
         "file_path": "/music/p1.mp3",
         "file_status": "not_checked",
         "genre": "House",
+        "genre_primary": "House",
+        "genres": [
+          "House"
+        ],
         "id": 1,
         "key": "8A",
         "key_name": "A minor",
@@ -750,6 +763,7 @@
           "bpm": null,
           "candidate_id": 1,
           "genre": null,
+          "genre_primary": null,
           "guard_ok": true,
           "key": null,
           "label": null,
@@ -793,6 +807,10 @@
         "file_path": "/music/p2.mp3",
         "file_status": "not_checked",
         "genre": "House",
+        "genre_primary": "House",
+        "genres": [
+          "House"
+        ],
         "id": 2,
         "key": "9A",
         "key_name": "E minor",
@@ -871,6 +889,10 @@
         "file_path": "/music/p1.mp3",
         "file_status": "not_checked",
         "genre": "House",
+        "genre_primary": "House",
+        "genres": [
+          "House"
+        ],
         "id": 1,
         "key": "8A",
         "key_name": "A minor",
@@ -881,6 +903,7 @@
           "bpm": null,
           "candidate_id": 1,
           "genre": null,
+          "genre_primary": null,
           "guard_ok": true,
           "key": null,
           "label": null,
@@ -924,6 +947,10 @@
         "file_path": "/music/p3.mp3",
         "file_status": "not_checked",
         "genre": "Techno",
+        "genre_primary": "Techno",
+        "genres": [
+          "Techno"
+        ],
         "id": 3,
         "key": "8A",
         "key_name": "A minor",
@@ -967,6 +994,10 @@
         "file_path": "/music/p7.mp3",
         "file_status": "not_checked",
         "genre": "Techno",
+        "genre_primary": "Techno",
+        "genres": [
+          "Techno"
+        ],
         "id": 7,
         "key": null,
         "key_name": null,
@@ -1041,6 +1072,10 @@
         "file_path": "/music/p1.mp3",
         "file_status": "not_checked",
         "genre": "House",
+        "genre_primary": "House",
+        "genres": [
+          "House"
+        ],
         "id": 1,
         "key": "8A",
         "key_name": "A minor",
@@ -1051,6 +1086,7 @@
           "bpm": null,
           "candidate_id": 1,
           "genre": null,
+          "genre_primary": null,
           "guard_ok": true,
           "key": null,
           "label": null,
@@ -1094,6 +1130,10 @@
         "file_path": "/music/p2.mp3",
         "file_status": "not_checked",
         "genre": "House",
+        "genre_primary": "House",
+        "genres": [
+          "House"
+        ],
         "id": 2,
         "key": "9A",
         "key_name": "E minor",
@@ -1137,6 +1177,10 @@
         "file_path": "/music/p5.mp3",
         "file_status": "not_checked",
         "genre": "Deep House",
+        "genre_primary": "Deep House",
+        "genres": [
+          "Deep House"
+        ],
         "id": 5,
         "key": "3A",
         "key_name": "B♭ minor",
@@ -1147,6 +1191,7 @@
           "bpm": null,
           "candidate_id": 2,
           "genre": null,
+          "genre_primary": null,
           "guard_ok": true,
           "key": null,
           "label": null,
@@ -1782,6 +1827,10 @@
         "file_path": "/music/p2.mp3",
         "file_status": "not_checked",
         "genre": "House",
+        "genre_primary": "House",
+        "genres": [
+          "House"
+        ],
         "id": 2,
         "key": "9A",
         "key_name": "E minor",
@@ -1876,6 +1925,10 @@
         "file_path": "/music/p3.mp3",
         "file_status": "not_checked",
         "genre": "Techno",
+        "genre_primary": "Techno",
+        "genres": [
+          "Techno"
+        ],
         "id": 3,
         "key": "8A",
         "key_name": "A minor",
@@ -1962,6 +2015,10 @@
         "file_path": "/music/p4.mp3",
         "file_status": "not_checked",
         "genre": "House",
+        "genre_primary": "House",
+        "genres": [
+          "House"
+        ],
         "id": 4,
         "key": "8B",
         "key_name": "C major",
@@ -2048,6 +2105,10 @@
         "file_path": "/music/p5.mp3",
         "file_status": "not_checked",
         "genre": "Deep House",
+        "genre_primary": "Deep House",
+        "genres": [
+          "Deep House"
+        ],
         "id": 5,
         "key": "3A",
         "key_name": "B♭ minor",
@@ -2058,6 +2119,7 @@
           "bpm": null,
           "candidate_id": 2,
           "genre": null,
+          "genre_primary": null,
           "guard_ok": true,
           "key": null,
           "label": null,
@@ -2144,6 +2206,10 @@
         "file_path": "/music/p6.mp3",
         "file_status": "not_checked",
         "genre": "Deep House",
+        "genre_primary": "Deep House",
+        "genres": [
+          "Deep House"
+        ],
         "id": 6,
         "key": "3A",
         "key_name": "B♭ minor",
@@ -2154,6 +2220,7 @@
           "bpm": null,
           "candidate_id": 3,
           "genre": null,
+          "genre_primary": null,
           "guard_ok": true,
           "key": null,
           "label": null,

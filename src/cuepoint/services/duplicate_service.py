@@ -68,6 +68,9 @@ EVENT_DUPLICATES_SCANNED = "clean.duplicates.scanned"
 EVENT_DUPLICATES_DISMISSED = "clean.duplicates.dismissed"
 EVENT_DUPLICATES_RESTORED = "clean.duplicates.restored"
 
+#: Recorded when a user keeps one track of a group (M153).
+EVENT_DUPLICATES_KEPT = "clean.duplicates.kept"
+
 #: What started a scan: every import, applied refresh and match job, or a request.
 TRIGGER_REQUEST = "request"
 TRIGGER_IMPORT = "import"
@@ -357,6 +360,20 @@ class DuplicateService(IDuplicateService):
             validate_signals([signal])
         return self._groups.count_groups(signal, include_dismissed=include_dismissed)
 
+    def count_group_tracks(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> int:
+        """How many different tracks :meth:`count_groups`'s groups hold (M155).
+
+        Raises:
+            ValueError: If the signal is unknown.
+        """
+        if signal is not None:
+            validate_signals([signal])
+        return self._groups.count_group_tracks(
+            signal, include_dismissed=include_dismissed
+        )
+
     def dismiss(self, group_id: int) -> DuplicateGroupMembers:
         """Mark a group "not duplicates" for the members it has now.
 
@@ -365,6 +382,50 @@ class DuplicateService(IDuplicateService):
             ValueError: If it no longer has two members, so there is nothing to
                 answer about, or it is already dismissed.
         """
+        current = self._store_dismissal(group_id)
+        group = current.group
+        self._record(
+            EVENT_DUPLICATES_DISMISSED,
+            f"Marked {_count(len(current.track_ids), 'track')} as not duplicates"
+            f" ({SIGNAL_LABELS[group.signal]})",
+            current,
+        )
+        return self._require(group_id)
+
+    def keep(self, group_id: int, track_id: int) -> DuplicateGroupMembers:
+        """Keep one track of a group, and stop showing the group (M153, D18).
+
+        Non-destructive, as every duplicate action is (DEC-074): nothing is
+        deleted, merged or retagged. It is stored as "not duplicates" for the
+        members the group has now, so it comes back if the group gains a
+        member, and :meth:`restore` takes it back. The kept track is named in
+        the activity feed.
+
+        Raises:
+            LookupError: If there is no such group.
+            ValueError: If the track is not in the group, the group has fewer
+                than two members, or it is already dismissed.
+        """
+        current = self._require(group_id)
+        if int(track_id) not in current.track_ids:
+            raise ValueError("That track is not in this group")
+        current = self._store_dismissal(group_id)
+        group = current.group
+        self._write_event(
+            EVENT_DUPLICATES_KEPT,
+            f"Kept one of {_count(len(current.track_ids), 'track')} that look like"
+            f" {SIGNAL_LABELS[group.signal]}",
+            {
+                "group_id": group.id,
+                "signal": group.signal,
+                "tracks": len(current.track_ids),
+                "kept_track_id": int(track_id),
+            },
+        )
+        return self._require(group_id)
+
+    def _store_dismissal(self, group_id: int) -> DuplicateGroupMembers:
+        """Write "not duplicates" for a group's members now; return them as they were."""
         current = self._require(group_id)
         if len(current.track_ids) < 2:
             raise ValueError(
@@ -382,13 +443,7 @@ class DuplicateService(IDuplicateService):
         )
         with self._db.transaction():
             self._groups.dismiss(dismissal, int(group_id))
-        self._record(
-            EVENT_DUPLICATES_DISMISSED,
-            f"Marked {_count(len(current.track_ids), 'track')} as not duplicates"
-            f" ({SIGNAL_LABELS[group.signal]})",
-            current,
-        )
-        return self._require(group_id)
+        return current
 
     def restore(self, group_id: int) -> DuplicateGroupMembers:
         """Take back a dismissal, showing the group again.

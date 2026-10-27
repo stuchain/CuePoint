@@ -281,6 +281,11 @@ class BatchResult:
     unchanged: int = 0
     failed: int = 0
     cancelled: bool = False
+    #: The entries an add-to-Collection made, so the add can be undone by
+    #: removing them (M519). Only for that operation, and only up to
+    #: :data:`UNDO_ENTRIES_MAX`; kept out of :meth:`to_dict`, which the activity
+    #: feed stores, and answered by :meth:`answer`.
+    added_entry_ids: Tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if self.completed > self.total:
@@ -311,6 +316,24 @@ class BatchResult:
             "cancelled": self.cancelled,
         }
 
+    def answer(self) -> Dict[str, Any]:
+        """The counts, and what an undo of this batch would need (M519).
+
+        ``added_entry_ids`` names the entries an add-to-Collection made and
+        ``undoable`` says the list is whole: an add of more than
+        :data:`UNDO_ENTRIES_MAX` tracks answers an empty list and ``False``
+        rather than a payload of tens of thousands of ids.
+        """
+        added = self.operation == OPERATION_ADD_TO_COLLECTION
+        return {
+            **self.to_dict(),
+            "added_entry_ids": list(self.added_entry_ids),
+            "undoable": bool(added and (self.added_entry_ids or self.changed == 0)),
+        }
+
+
+#: The most entries an add reports for its undo (M519).
+UNDO_ENTRIES_MAX = 10_000
 
 #: Called with (completed, total) as a batch works through its chunks.
 BatchProgressCallback = Callable[[int, int], None]
@@ -497,6 +520,9 @@ class BatchService(IBatchService):
             unchanged=unchanged,
             failed=failed,
             cancelled=cancelled,
+            added_entry_ids=applier.added_entry_ids()[:UNDO_ENTRIES_MAX]
+            if changed <= UNDO_ENTRIES_MAX
+            else (),
         )
         self._record(result, applier)
         return result
@@ -640,6 +666,10 @@ class _Applier(ABC):
             ValueError: If the selection cannot be applied whole.
         """
 
+    def added_entry_ids(self) -> Tuple[int, ...]:
+        """The entries this operation made, for undoing it; none for most."""
+        return ()
+
     def begin(self) -> None:
         """Read whatever the operation needs before its first chunk.
 
@@ -760,6 +790,10 @@ class _AddToCollection(_Applier):
     def __init__(self, collections: ICollectionService, collection_id: int) -> None:
         self._collections = collections
         self._collection_id = collection_id
+        self._entries: List[int] = []
+
+    def added_entry_ids(self) -> Tuple[int, ...]:
+        return tuple(self._entries)
 
     def target(self) -> str:
         return _require_collection_named(self._collections, self._collection_id)
@@ -772,7 +806,9 @@ class _AddToCollection(_Applier):
     def apply(self, track_ids: Sequence[int], batch_id: str) -> int:
         # No batch id: membership is an entry row rather than a field of a
         # track, and ORG-04 writes no history for it by any path.
-        return self._collections.add_tracks(self._collection_id, track_ids).added
+        added = self._collections.add_tracks(self._collection_id, track_ids)
+        self._entries.extend(added.added_entry_ids)
+        return added.added
 
     def describe(self, result: BatchResult) -> str:
         return f"Added {_tracks(result.changed)} to “{result.target}”"

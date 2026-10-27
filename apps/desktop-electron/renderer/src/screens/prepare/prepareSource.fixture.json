@@ -118,6 +118,10 @@
           "file_path": "/music/5.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 5,
           "key": "9A",
           "key_name": "E minor",
@@ -128,6 +132,7 @@
             "bpm": null,
             "candidate_id": 5,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "9A",
             "label": null,
@@ -167,6 +172,10 @@
           "file_path": "/music/7.mp3",
           "file_status": "not_checked",
           "genre": "Dubstep",
+          "genre_primary": "Dubstep",
+          "genres": [
+            "Dubstep"
+          ],
           "id": 7,
           "key": "9A",
           "key_name": "E minor",
@@ -177,6 +186,7 @@
             "bpm": null,
             "candidate_id": 7,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "9A",
             "label": null,
@@ -216,6 +226,10 @@
           "file_path": "/music/10.mp3",
           "file_status": "not_checked",
           "genre": "Drum & Bass",
+          "genre_primary": "Drum & Bass",
+          "genres": [
+            "Drum & Bass"
+          ],
           "id": 10,
           "key": "1A",
           "key_name": "A♭ minor",
@@ -226,6 +240,7 @@
             "bpm": null,
             "candidate_id": 9,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "1A",
             "label": null,
@@ -288,6 +303,10 @@
           "file_path": "/music/1.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 1,
           "key": "8A",
           "key_name": "A minor",
@@ -298,6 +317,7 @@
             "bpm": null,
             "candidate_id": 1,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "8A",
             "label": null,
@@ -337,6 +357,10 @@
           "file_path": "/music/2.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 2,
           "key": "9A",
           "key_name": "E minor",
@@ -347,6 +371,7 @@
             "bpm": null,
             "candidate_id": 2,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "9A",
             "label": null,
@@ -386,6 +411,10 @@
           "file_path": "/music/3.mp3",
           "file_status": "not_checked",
           "genre": "Techno",
+          "genre_primary": "Techno",
+          "genres": [
+            "Techno"
+          ],
           "id": 3,
           "key": "3B",
           "key_name": "D♭ major",
@@ -396,6 +425,7 @@
             "bpm": null,
             "candidate_id": 3,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "3B",
             "label": null,
@@ -435,6 +465,10 @@
           "file_path": "/music/4.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 4,
           "key": "8A",
           "key_name": "A minor",
@@ -445,6 +479,7 @@
             "bpm": null,
             "candidate_id": 4,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "8A",
             "label": null,
@@ -484,6 +519,10 @@
           "file_path": "/music/5.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 5,
           "key": "9A",
           "key_name": "E minor",
@@ -494,6 +533,7 @@
             "bpm": null,
             "candidate_id": 5,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "9A",
             "label": null,
@@ -533,6 +573,10 @@
           "file_path": "/music/6.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 6,
           "key": "8B",
           "key_name": "C major",
@@ -543,6 +587,7 @@
             "bpm": null,
             "candidate_id": 6,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "8B",
             "label": null,
@@ -582,6 +627,10 @@
           "file_path": "/music/7.mp3",
           "file_status": "not_checked",
           "genre": "Dubstep",
+          "genre_primary": "Dubstep",
+          "genres": [
+            "Dubstep"
+          ],
           "id": 7,
           "key": "9A",
           "key_name": "E minor",
@@ -592,6 +641,7 @@
             "bpm": null,
             "candidate_id": 7,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "9A",
             "label": null,
@@ -631,6 +681,10 @@
           "file_path": "/music/8.mp3",
           "file_status": "not_checked",
           "genre": "Techno",
+          "genre_primary": "Techno",
+          "genres": [
+            "Techno"
+          ],
           "id": 8,
           "key": "3B",
           "key_name": "D♭ major",
@@ -641,6 +695,7 @@
             "bpm": null,
             "candidate_id": 8,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "3B",
             "label": null,
@@ -680,6 +735,10 @@
           "file_path": "/music/9.mp3",
           "file_status": "not_checked",
           "genre": "Ambient",
+          "genre_primary": "Ambient",
+          "genres": [
+            "Ambient"
+          ],
           "id": 9,
           "key": null,
           "key_name": null,
@@ -719,6 +778,10 @@
           "file_path": "/music/10.mp3",
           "file_status": "not_checked",
           "genre": "Drum & Bass",
+          "genre_primary": "Drum & Bass",
+          "genres": [
+            "Drum & Bass"
+          ],
           "id": 10,
           "key": "1A",
           "key_name": "A♭ minor",
@@ -729,6 +792,7 @@
             "bpm": null,
             "candidate_id": 9,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "1A",
             "label": null,
@@ -768,6 +832,10 @@
           "file_path": "/music/11.mp3",
           "file_status": "not_checked",
           "genre": "Techno",
+          "genre_primary": "Techno",
+          "genres": [
+            "Techno"
+          ],
           "id": 11,
           "key": "4B",
           "key_name": "A♭ major",
@@ -778,6 +846,7 @@
             "bpm": null,
             "candidate_id": 10,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "4B",
             "label": null,
@@ -840,6 +909,10 @@
           "file_path": "/music/4.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 4,
           "key": "8A",
           "key_name": "A minor",
@@ -850,6 +923,7 @@
             "bpm": null,
             "candidate_id": 4,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "8A",
             "label": null,
@@ -890,6 +964,10 @@
           "file_path": "/music/5.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 5,
           "key": "9A",
           "key_name": "E minor",
@@ -900,6 +978,7 @@
             "bpm": null,
             "candidate_id": 5,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "9A",
             "label": null,
@@ -940,6 +1019,10 @@
           "file_path": "/music/6.mp3",
           "file_status": "not_checked",
           "genre": "House",
+          "genre_primary": "House",
+          "genres": [
+            "House"
+          ],
           "id": 6,
           "key": "8B",
           "key_name": "C major",
@@ -950,6 +1033,7 @@
             "bpm": null,
             "candidate_id": 6,
             "genre": null,
+            "genre_primary": null,
             "guard_ok": true,
             "key": "8B",
             "label": null,
@@ -1155,6 +1239,10 @@
             "file_path": "/music/1.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 1,
             "key": "8A",
             "key_name": "A minor",
@@ -1165,6 +1253,7 @@
               "bpm": null,
               "candidate_id": 1,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8A",
               "label": null,
@@ -1216,6 +1305,10 @@
             "file_path": "/music/2.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 2,
             "key": "9A",
             "key_name": "E minor",
@@ -1226,6 +1319,7 @@
               "bpm": null,
               "candidate_id": 2,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -1277,6 +1371,10 @@
             "file_path": "/music/4.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 4,
             "key": "8A",
             "key_name": "A minor",
@@ -1287,6 +1385,7 @@
               "bpm": null,
               "candidate_id": 4,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8A",
               "label": null,
@@ -1338,6 +1437,10 @@
             "file_path": "/music/3.mp3",
             "file_status": "not_checked",
             "genre": "Techno",
+            "genre_primary": "Techno",
+            "genres": [
+              "Techno"
+            ],
             "id": 3,
             "key": "3B",
             "key_name": "D♭ major",
@@ -1348,6 +1451,7 @@
               "bpm": null,
               "candidate_id": 3,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "3B",
               "label": null,
@@ -1399,6 +1503,10 @@
             "file_path": "/music/11.mp3",
             "file_status": "not_checked",
             "genre": "Techno",
+            "genre_primary": "Techno",
+            "genres": [
+              "Techno"
+            ],
             "id": 11,
             "key": "4B",
             "key_name": "A♭ major",
@@ -1409,6 +1517,7 @@
               "bpm": null,
               "candidate_id": 10,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "4B",
               "label": null,
@@ -1939,6 +2048,10 @@
             "file_path": "/music/1.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 1,
             "key": "8A",
             "key_name": "A minor",
@@ -1949,6 +2062,7 @@
               "bpm": null,
               "candidate_id": 1,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8A",
               "label": null,
@@ -2000,6 +2114,10 @@
             "file_path": "/music/1.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 1,
             "key": "8A",
             "key_name": "A minor",
@@ -2010,6 +2128,7 @@
               "bpm": null,
               "candidate_id": 1,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8A",
               "label": null,
@@ -2061,6 +2180,10 @@
             "file_path": "/music/7.mp3",
             "file_status": "not_checked",
             "genre": "Dubstep",
+            "genre_primary": "Dubstep",
+            "genres": [
+              "Dubstep"
+            ],
             "id": 7,
             "key": "9A",
             "key_name": "E minor",
@@ -2071,6 +2194,7 @@
               "bpm": null,
               "candidate_id": 7,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -2122,6 +2246,10 @@
             "file_path": "/music/9.mp3",
             "file_status": "not_checked",
             "genre": "Ambient",
+            "genre_primary": "Ambient",
+            "genres": [
+              "Ambient"
+            ],
             "id": 9,
             "key": null,
             "key_name": null,
@@ -2173,6 +2301,10 @@
             "file_path": "/music/1.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 1,
             "key": "8A",
             "key_name": "A minor",
@@ -2183,6 +2315,7 @@
               "bpm": null,
               "candidate_id": 1,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8A",
               "label": null,
@@ -2234,6 +2367,10 @@
             "file_path": "/music/6.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 6,
             "key": "8B",
             "key_name": "C major",
@@ -2244,6 +2381,7 @@
               "bpm": null,
               "candidate_id": 6,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8B",
               "label": null,
@@ -2295,6 +2433,10 @@
             "file_path": "/music/3.mp3",
             "file_status": "not_checked",
             "genre": "Techno",
+            "genre_primary": "Techno",
+            "genres": [
+              "Techno"
+            ],
             "id": 3,
             "key": "3B",
             "key_name": "D♭ major",
@@ -2305,6 +2447,7 @@
               "bpm": null,
               "candidate_id": 3,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "3B",
               "label": null,
@@ -2561,6 +2704,10 @@
             "file_path": "/music/4.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 4,
             "key": "8A",
             "key_name": "A minor",
@@ -2571,6 +2718,7 @@
               "bpm": null,
               "candidate_id": 4,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8A",
               "label": null,
@@ -2665,6 +2813,10 @@
             "file_path": "/music/5.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 5,
             "key": "9A",
             "key_name": "E minor",
@@ -2675,6 +2827,7 @@
               "bpm": null,
               "candidate_id": 5,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -2762,6 +2915,10 @@
             "file_path": "/music/6.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 6,
             "key": "8B",
             "key_name": "C major",
@@ -2772,6 +2929,7 @@
               "bpm": null,
               "candidate_id": 6,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8B",
               "label": null,
@@ -2854,6 +3012,10 @@
             "file_path": "/music/7.mp3",
             "file_status": "not_checked",
             "genre": "Dubstep",
+            "genre_primary": "Dubstep",
+            "genres": [
+              "Dubstep"
+            ],
             "id": 7,
             "key": "9A",
             "key_name": "E minor",
@@ -2864,6 +3026,7 @@
               "bpm": null,
               "candidate_id": 7,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -2963,6 +3126,10 @@
             "file_path": "/music/3.mp3",
             "file_status": "not_checked",
             "genre": "Techno",
+            "genre_primary": "Techno",
+            "genres": [
+              "Techno"
+            ],
             "id": 3,
             "key": "3B",
             "key_name": "D♭ major",
@@ -2973,6 +3140,7 @@
               "bpm": null,
               "candidate_id": 3,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "3B",
               "label": null,
@@ -3043,6 +3211,10 @@
             "file_path": "/music/8.mp3",
             "file_status": "not_checked",
             "genre": "Techno",
+            "genre_primary": "Techno",
+            "genres": [
+              "Techno"
+            ],
             "id": 8,
             "key": "3B",
             "key_name": "D♭ major",
@@ -3053,6 +3225,7 @@
               "bpm": null,
               "candidate_id": 8,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "3B",
               "label": null,
@@ -3181,6 +3354,10 @@
             "file_path": "/music/8.mp3",
             "file_status": "not_checked",
             "genre": "Techno",
+            "genre_primary": "Techno",
+            "genres": [
+              "Techno"
+            ],
             "id": 8,
             "key": "3B",
             "key_name": "D♭ major",
@@ -3191,6 +3368,7 @@
               "bpm": null,
               "candidate_id": 8,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "3B",
               "label": null,
@@ -3261,6 +3439,10 @@
             "file_path": "/music/11.mp3",
             "file_status": "not_checked",
             "genre": "Techno",
+            "genre_primary": "Techno",
+            "genres": [
+              "Techno"
+            ],
             "id": 11,
             "key": "4B",
             "key_name": "A♭ major",
@@ -3271,6 +3453,7 @@
               "bpm": null,
               "candidate_id": 10,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "4B",
               "label": null,
@@ -3363,6 +3546,10 @@
             "file_path": "/music/1.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 1,
             "key": "8A",
             "key_name": "A minor",
@@ -3373,6 +3560,7 @@
               "bpm": null,
               "candidate_id": 1,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8A",
               "label": null,
@@ -3443,6 +3631,10 @@
             "file_path": "/music/5.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 5,
             "key": "9A",
             "key_name": "E minor",
@@ -3453,6 +3645,7 @@
               "bpm": null,
               "candidate_id": 5,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -3523,6 +3716,10 @@
             "file_path": "/music/6.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 6,
             "key": "8B",
             "key_name": "C major",
@@ -3533,6 +3730,7 @@
               "bpm": null,
               "candidate_id": 6,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8B",
               "label": null,
@@ -3603,6 +3801,10 @@
             "file_path": "/music/2.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 2,
             "key": "9A",
             "key_name": "E minor",
@@ -3613,6 +3815,7 @@
               "bpm": null,
               "candidate_id": 2,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -3677,6 +3880,10 @@
             "file_path": "/music/7.mp3",
             "file_status": "not_checked",
             "genre": "Dubstep",
+            "genre_primary": "Dubstep",
+            "genres": [
+              "Dubstep"
+            ],
             "id": 7,
             "key": "9A",
             "key_name": "E minor",
@@ -3687,6 +3894,7 @@
               "bpm": null,
               "candidate_id": 7,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -3804,6 +4012,10 @@
             "file_path": "/music/5.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 5,
             "key": "9A",
             "key_name": "E minor",
@@ -3814,6 +4026,7 @@
               "bpm": null,
               "candidate_id": 5,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -3896,6 +4109,10 @@
             "file_path": "/music/7.mp3",
             "file_status": "not_checked",
             "genre": "Dubstep",
+            "genre_primary": "Dubstep",
+            "genres": [
+              "Dubstep"
+            ],
             "id": 7,
             "key": "9A",
             "key_name": "E minor",
@@ -3906,6 +4123,7 @@
               "bpm": null,
               "candidate_id": 7,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -4019,6 +4237,10 @@
             "file_path": "/music/6.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 6,
             "key": "8B",
             "key_name": "C major",
@@ -4029,6 +4251,7 @@
               "bpm": null,
               "candidate_id": 6,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8B",
               "label": null,
@@ -4149,6 +4372,10 @@
             "file_path": "/music/4.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 4,
             "key": "8A",
             "key_name": "A minor",
@@ -4159,6 +4386,7 @@
               "bpm": null,
               "candidate_id": 4,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8A",
               "label": null,
@@ -4253,6 +4481,10 @@
             "file_path": "/music/5.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 5,
             "key": "9A",
             "key_name": "E minor",
@@ -4263,6 +4495,7 @@
               "bpm": null,
               "candidate_id": 5,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "9A",
               "label": null,
@@ -4350,6 +4583,10 @@
             "file_path": "/music/6.mp3",
             "file_status": "not_checked",
             "genre": "House",
+            "genre_primary": "House",
+            "genres": [
+              "House"
+            ],
             "id": 6,
             "key": "8B",
             "key_name": "C major",
@@ -4360,6 +4597,7 @@
               "bpm": null,
               "candidate_id": 6,
               "genre": null,
+              "genre_primary": null,
               "guard_ok": true,
               "key": "8B",
               "label": null,

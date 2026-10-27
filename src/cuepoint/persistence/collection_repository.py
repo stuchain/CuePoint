@@ -537,13 +537,18 @@ class CollectionRepository(ICollectionRepository):
         if not wanted:
             return AddResult()
 
+        entry_ids: Tuple[int, ...] = ()
         with self._db.transaction(join_existing=True):
             present = set(self.track_ids(collection_id))
             adding = [track_id for track_id in wanted if track_id not in present]
             skipped = tuple(track_id for track_id in wanted if track_id in present)
             if adding:
-                self._append(collection_id, adding)
-        return AddResult(added_track_ids=tuple(adding), skipped_track_ids=skipped)
+                entry_ids = self._append(collection_id, adding)
+        return AddResult(
+            added_track_ids=tuple(adding),
+            skipped_track_ids=skipped,
+            added_entry_ids=entry_ids,
+        )
 
     def append(self, collection_id: int, track_ids: Iterable[int]) -> AddResult:
         """Append tracks exactly as given, repeats and all.
@@ -557,10 +562,11 @@ class CollectionRepository(ICollectionRepository):
             SetLimitError: If the node is a Set and the tracks would not fit.
         """
         adding = [int(track_id) for track_id in track_ids]
+        entry_ids: Tuple[int, ...] = ()
         if adding:
             with self._db.transaction(join_existing=True):
-                self._append(int(collection_id), adding)
-        return AddResult(added_track_ids=tuple(adding))
+                entry_ids = self._append(int(collection_id), adding)
+        return AddResult(added_track_ids=tuple(adding), added_entry_ids=entry_ids)
 
     def insert_at(
         self,
@@ -1067,8 +1073,8 @@ class CollectionRepository(ICollectionRepository):
         ).fetchone()
         return None if row is None else str(row["kind"])
 
-    def _append(self, collection_id: int, track_ids: Sequence[int]) -> None:
-        """Append entries in the order given; plan them if the node is a Set.
+    def _append(self, collection_id: int, track_ids: Sequence[int]) -> Tuple[int, ...]:
+        """Append entries in the order given, and return their ids; plan them if a Set.
 
         The one place new entries are appended, for :meth:`add` and
         :meth:`append`. Into a Set they join its last chapter, after the limit
@@ -1088,8 +1094,17 @@ class CollectionRepository(ICollectionRepository):
                     for offset, track_id in enumerate(track_ids)
                 ],
             )
+            # The new rows are exactly those at or past ``start`` (see below).
+            entry_ids = tuple(
+                int(row[0])
+                for row in conn.execute(
+                    "SELECT id FROM collection_tracks"
+                    " WHERE collection_id = ? AND position >= ? ORDER BY position",
+                    (collection_id, start),
+                )
+            )
             if not is_set:
-                return
+                return entry_ids
             last = conn.execute(
                 "SELECT id FROM set_chapters WHERE collection_id = ?"
                 " ORDER BY position DESC, id DESC LIMIT 1",
@@ -1106,6 +1121,7 @@ class CollectionRepository(ICollectionRepository):
                 (int(last["id"]), collection_id, start),
             )
             self._check_set(conn, collection_id)
+            return entry_ids
 
     @staticmethod
     def _check_room(conn, set_id: int, adding: int) -> None:

@@ -28,6 +28,7 @@ other side: the numbers an export records are the numbers its preview promised.
 from __future__ import annotations
 
 import json
+import re
 import os
 import sys
 from pathlib import Path
@@ -304,12 +305,80 @@ class TestAFullExport:
         self, service, destination: Path
     ):
         """Overwriting a file someone chose is the OS dialog's confirmation, not a
-        second one here (DEC-083)."""
+        second one here (DEC-083); and it is kept first (M512)."""
         destination.write_bytes(EARLIER)
 
         service.export([], "normal", str(destination))
 
         assert destination.read_bytes() == SOURCE
+
+    def test_the_file_it_replaces_is_kept_under_a_dated_name_beside_it(
+        self, service, destination: Path, out: Path
+    ):
+        """M512: one fixed name for Rekordbox to point at, and nothing lost."""
+        destination.write_bytes(EARLIER)
+
+        ended = service.export([], "normal", str(destination))
+
+        [kept] = [p for p in out.iterdir() if p != destination]
+        assert re.fullmatch(
+            re.escape(destination.stem) + r" \(backup \d{4}-\d{2}-\d{2} \d{6}\)\.xml",
+            kept.name,
+        )
+        assert kept.read_bytes() == EARLIER
+        assert ended.backup_path == str(kept)
+        assert ended.to_dict()["backup_path"] == str(kept)
+
+    def test_two_exports_in_a_second_keep_two_backups(
+        self, service, destination: Path, out: Path
+    ):
+        destination.write_bytes(EARLIER)
+        service.export([], "normal", str(destination))
+        service.export([], "normal", str(destination))
+
+        backups = [p for p in out.iterdir() if p != destination]
+        assert len(backups) == 2
+        assert {p.read_bytes() for p in backups} == {EARLIER, SOURCE}
+
+    def test_a_new_destination_has_nothing_to_keep(
+        self, service, destination: Path, out: Path
+    ):
+        ended = service.export([], "normal", str(destination))
+
+        assert ended.backup_path is None
+        assert list(out.iterdir()) == [destination]
+
+    def test_a_backup_that_cannot_be_made_stops_the_export_before_replacing(
+        self, service, destination: Path, out: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        import shutil
+
+        destination.write_bytes(EARLIER)
+
+        def refuse(*_args, **_kwargs):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(shutil, "copy2", refuse)
+
+        ended = service.export([], "normal", str(destination))
+
+        assert ended.failed and "No space left on device" in ended.record.error
+        assert destination.read_bytes() == EARLIER
+        assert leftovers(out, destination.name) == []
+
+    def test_the_source_is_still_refused_when_the_backup_would_be_of_it(
+        self, service, source: Path
+    ):
+        """DEC-083 stands: the collection is never a destination, so it is never
+        copied aside and replaced either."""
+        before = source.read_bytes()
+
+        with pytest.raises(ExportDestinationError) as refused:
+            service.export([], "normal", str(source))
+
+        assert refused.value.reason == DESTINATION_IS_SOURCE
+        assert source.read_bytes() == before
+        assert [p for p in source.parent.iterdir() if "backup" in p.name] == []
 
     def test_a_relative_destination_is_recorded_where_it_actually_went(
         self, service, out: Path, monkeypatch: pytest.MonkeyPatch

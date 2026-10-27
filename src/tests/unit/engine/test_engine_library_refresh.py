@@ -438,6 +438,10 @@ class TestApply:
         result = job_result(engine, started["job_id"])
 
         assert result["tracks_inserted"] == 1
+        # M517: the added track is named, by the id the library gave it.
+        [new_id] = result["new_track_ids"]
+        _, added = request(engine, f"/api/v1/library/tracks/{new_id}")
+        assert added["track"]["rekordbox_track_id"] == "9"
         assert result["tracks_deleted"] == 2
         assert result["track_count"] == 3
         assert result["diff_id"] == diff["diff_id"]

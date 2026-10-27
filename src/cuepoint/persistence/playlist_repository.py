@@ -273,6 +273,22 @@ class PlaylistRepository(IPlaylistRepository):
         )
         return int(row["n"]) if row is not None else 0
 
+    def count_playlists(self) -> int:
+        """Return the number of playlists, which is what the Library pane counts.
+
+        Folders are not playlists, and Rekordbox's own ``ROOT`` is a folder
+        (M523), so ``count()`` is one or more higher than what a person sees.
+        """
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT count(*) AS n FROM rekordbox_playlists WHERE kind = ?",
+                (KIND_PLAYLIST,),
+            )
+            .fetchone()
+        )
+        return int(row["n"]) if row is not None else 0
+
     def count_entries(self) -> int:
         """Return the number of stored track references across all playlists."""
         row = (

@@ -13,6 +13,7 @@ overwritten" are the same promise only if both are checked.
 
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 from typing import Callable, List, Tuple
 
@@ -209,7 +210,8 @@ class TestTwoPhasesOfProgress:
             str(source), updates(), str(other), tree(), on_progress=lambda *t: None
         )
 
-        assert quiet == loud
+        # The first run replaced the fixture's earlier file, and kept it (M512).
+        assert dataclasses.replace(quiet, backup_path=None) == loud
         assert destination.read_bytes() == other.read_bytes()
 
 

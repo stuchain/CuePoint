@@ -214,6 +214,20 @@ class MatchStatusRepository(IMatchStatusRepository):
         )
         return playlists, library
 
+    def unsaved_value_count(self) -> int:
+        """Return how many values are not in the files: one per track and field (M511).
+
+        The same rows as :data:`~cuepoint.models.filter_rule.UNSAVED_VALUES_SQL`
+        (the Save bar's, and the ``unsaved_values`` filter's), counted by value
+        rather than by track.
+        """
+        row = (
+            self._db.connect()
+            .execute(f"SELECT COUNT(*) AS n FROM ({UNSAVED_VALUES_SQL})")
+            .fetchone()
+        )
+        return int(row["n"]) if row is not None else 0
+
     def last_written(self) -> Dict[int, str]:
         """Return, per playlist, when a Clean sync last wrote it into the files.
 

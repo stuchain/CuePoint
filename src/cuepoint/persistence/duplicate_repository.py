@@ -313,6 +313,31 @@ class DuplicateRepository(IDuplicateRepository):
         )
         return int(row[0]) if row is not None else 0
 
+    def count_group_tracks(
+        self, signal: Optional[str] = None, *, include_dismissed: bool = False
+    ) -> int:
+        """How many different tracks the groups :meth:`groups` answers hold (M155).
+
+        A track in two groups (the same file and the same title) counts once.
+        """
+        where, params = _signal_where(signal)
+        inner = _GROUPS.format(
+            where=where,
+            minimum=2,
+            hidden="" if include_dismissed else _NOT_DISMISSED,
+            page="",
+        )
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT count(DISTINCT track_id) FROM duplicate_members"
+                f" WHERE group_id IN (SELECT id FROM ({inner}))",
+                params,
+            )
+            .fetchone()
+        )
+        return int(row[0]) if row is not None else 0
+
     def group(self, group_id: int) -> Optional[DuplicateGroupMembers]:
         """A group as it is now, whatever its size; None when there is no such group."""
         row = (

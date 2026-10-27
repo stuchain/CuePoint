@@ -406,6 +406,8 @@ class TestTheProposalOnARow:
             "key": "8A",
             "bpm": 126.0,
             "genre": "Techno",
+            # M95: the first of the genres, for a table.
+            "genre_primary": "Techno",
             "label": "Drumcode",
             "year": 2019,
             "mix": "Extended Mix",

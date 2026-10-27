@@ -1242,18 +1242,43 @@ def duplicate_groups(params: Dict[str, List[str]]) -> Dict[str, Any]:
     total = service.count_groups(signal, include_dismissed=include_dismissed)
     rows = _member_rows([track_id for group in page for track_id in group.track_ids])
     return {
-        "groups": [
-            {
-                **group.to_dict(),
-                "members": [
-                    rows[track_id] for track_id in group.track_ids if track_id in rows
-                ],
-            }
-            for group in page
-        ],
+        "groups": [_listed_group(group, rows) for group in page],
         "total": total,
         "limit": limit,
         "offset": offset,
+        # M155: "2 duplicate groups (4 tracks)": the tracks in every group, each
+        # once, so the page and the counts of the header say the same thing.
+        "track_total": service.count_group_tracks(
+            signal, include_dismissed=include_dismissed
+        ),
+    }
+
+
+def _listed_group(group: Any, rows: Dict[int, Dict[str, Any]]) -> Dict[str, Any]:
+    """One group as the listing answers it, with what a person needs to judge it.
+
+    ``track_count`` is its members now. ``differing`` names, per member, the
+    title words the others lack (M152), and ``mixes_differ`` is true when the
+    members name different mixes, which for a Beatport group means one of the
+    matches may be wrong: the same Beatport track does not have two mixes.
+    """
+    from cuepoint.core.title_words import differing_words, mixes_differ
+    from cuepoint.models.duplicate_group import SIGNAL_BEATPORT
+    from cuepoint.services.match_comparison import mix_of
+
+    members = [rows[track_id] for track_id in group.track_ids if track_id in rows]
+    titles = [member.get("title") for member in members]
+    words = differing_words(titles)
+    return {
+        **group.to_dict(),
+        "members": members,
+        "track_count": len(group.track_ids),
+        "differing": [
+            {"track_id": member["id"], "words": own}
+            for member, own in zip(members, words)
+        ],
+        "mixes_differ": group.group.signal == SIGNAL_BEATPORT
+        and mixes_differ([mix_of(title) for title in titles]),
     }
 
 
@@ -1264,6 +1289,14 @@ def dismiss_duplicates(
     _only(data, ("group_id",))
     group = _service("IDuplicateService").dismiss(_require_int(data, "group_id"))
     return 200, {"group": group.to_dict()}
+
+
+def keep_duplicate(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Keep one track of a group: stored as "not duplicates", nothing deleted (M153)."""
+    _only(data, ("group_id", "track_id"))
+    track_id = _require_int(data, "track_id")
+    group = _service("IDuplicateService").keep(_require_int(data, "group_id"), track_id)
+    return 200, {"group": group.to_dict(), "kept_track_id": track_id}
 
 
 def restore_duplicates(
@@ -1556,6 +1589,23 @@ def _counts_to_dict(counts: Any, running: Any, queued: bool = False) -> Dict[str
     }
 
 
+def library_pending(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """What CuePoint holds that is not out in the world yet (M511).
+
+    "12 values not in files, 30 changes not exported": the values (a track and a
+    field each) that differ from what the audio files hold, by the same rule the
+    Save bar and the ``unsaved_values`` filter use, and the changes to exported
+    fields made since the last Rekordbox export wrote its file. Reads only.
+    """
+    exported = _service("IRekordboxExportRepository")
+    last = exported.latest_written()
+    return {
+        "values_not_in_files": _service("IMatchStatusRepository").unsaved_value_count(),
+        "changes_not_exported": exported.count_changes_since_last_export(),
+        "last_export_at": None if last is None else last.finished_at,
+    }
+
+
 def _active_match_job_id(job_store: Any) -> Optional[str]:
     """The id of the match job that is queued or running, if there is one."""
     from cuepoint.engine.jobs import _ACTIVE_STATES
@@ -1603,6 +1653,7 @@ def clean_playlists(params: Dict[str, List[str]], job_store: Any) -> Dict[str, A
 # ---------------------------------------------------------------------------
 
 _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
+    "/api/v1/library/pending": library_pending,
     "/api/v1/clean/match/resumable": resumable_matches,
     "/api/v1/clean/match/jobs": past_matches,
     "/api/v1/clean/match/review": match_review,
@@ -1630,6 +1681,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     "/api/v1/clean/files/check": check_files,
     "/api/v1/clean/duplicates/scan": scan_duplicates,
     "/api/v1/clean/duplicates/dismiss": dismiss_duplicates,
+    "/api/v1/clean/duplicates/keep": keep_duplicate,
     "/api/v1/clean/duplicates/restore": restore_duplicates,
     "/api/v1/clean/artwork/scan": scan_artwork,
     "/api/v1/clean/sync-preview": sync_preview,

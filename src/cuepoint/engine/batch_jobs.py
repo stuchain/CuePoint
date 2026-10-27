@@ -98,9 +98,10 @@ def batch_result_to_dict(result: BatchResult) -> Dict[str, Any]:
 
     The job's answer rather than its progress: it is served from
     ``GET /api/v1/jobs/{id}/results``, which a caller asks for once, and is
-    deliberately not in the polled status payload.
+    deliberately not in the polled status payload. It carries what an undo of an
+    add needs (M519), which the activity feed's copy of the counts does not.
     """
-    return result.to_dict()
+    return result.answer()
 
 
 def _batch_service() -> Any:

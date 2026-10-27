@@ -522,7 +522,9 @@ class TestSummary:
         _status, payload = request(engine, "/api/v1/library/summary")
 
         assert payload["track_count"] == 9
-        assert payload["playlist_count"] == 2
+        # M523: the playlists the pane lists. The export holds ROOT and one
+        # playlist; ROOT, like any folder, is not counted.
+        assert payload["playlist_count"] == 1
         assert payload["playlist_entry_count"] == 1
         assert payload["library_empty"] is False
 

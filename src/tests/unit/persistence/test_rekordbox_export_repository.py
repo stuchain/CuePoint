@@ -86,6 +86,58 @@ def playlist(
     return RekordboxExportPlaylist(**values)
 
 
+class TestChangesSinceTheLastExport:
+    """M511: "30 changes not exported" counts a track and a field once each."""
+
+    def history(self, db, track_id: int, field: str, at: str) -> None:
+        db.connect().execute(
+            "INSERT INTO track_history"
+            " (track_id, field, old_value_json, new_value_json, source, changed_at)"
+            " VALUES (?, ?, NULL, '\"x\"', 'cuepoint', ?)",
+            (track_id, field, at),
+        )
+
+    @pytest.fixture()
+    def tracks(self, db):
+        from cuepoint.models.library_track import LibraryTrack
+        from cuepoint.persistence.track_repository import TrackRepository
+
+        found = TrackRepository(db)
+        return [
+            found.add(
+                LibraryTrack(
+                    rekordbox_track_id=str(n),
+                    title=f"T{n}",
+                    artist="A",
+                    file_path=f"/m/{n}.mp3",
+                )
+            ).id
+            for n in (1, 2)
+        ]
+
+    def test_without_an_export_every_change_counts_once_per_field(
+        self, db, repo, tracks
+    ):
+        self.history(db, tracks[0], "cuepoint_genre", "2026-09-01T00:00:00+00:00")
+        self.history(db, tracks[0], "cuepoint_genre", "2026-09-02T00:00:00+00:00")
+        self.history(db, tracks[1], "cuepoint_year", "2026-09-02T00:00:00+00:00")
+        # Not a field an export writes: the user's note is not in the file.
+        self.history(db, tracks[1], "cuepoint_notes", "2026-09-02T00:00:00+00:00")
+        assert repo.count_changes_since_last_export() == 2
+
+    def test_only_what_changed_after_the_last_written_export_counts(
+        self, db, repo, tracks
+    ):
+        self.history(db, tracks[0], "cuepoint_genre", "2026-09-20T00:00:00+00:00")
+        repo.add(export(finished_at="2026-09-21T12:00:00+00:00"))
+        # A later export that wrote nothing is not "the last export".
+        repo.add(export(EXPORT_FAILED, finished_at="2026-09-23T12:00:00+00:00"))
+        assert repo.count_changes_since_last_export() == 0
+        self.history(db, tracks[0], "cuepoint_genre", "2026-09-22T00:00:00+00:00")
+        self.history(db, tracks[1], "cuepoint_rating", "2026-09-22T00:00:00+00:00")
+        assert repo.count_changes_since_last_export() == 2
+
+
 class TestWritingARecord:
     def test_an_export_comes_back_with_its_id_and_every_field(self, repo):
         stored = repo.add(

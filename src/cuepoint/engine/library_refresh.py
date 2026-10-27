@@ -534,6 +534,8 @@ def refresh_summary_to_dict(summary: RefreshSummary, diff_id: str) -> Dict[str, 
         "xml_path": summary.source.xml_path,
         "track_count": summary.track_count,
         "tracks_inserted": summary.tracks_inserted,
+        # M517: the ids of those tracks, so a caller can offer to match them.
+        "new_track_ids": list(summary.new_track_ids),
         "tracks_updated": summary.tracks_updated,
         "tracks_deleted": summary.tracks_deleted,
         "relinked_count": summary.relinked_count,

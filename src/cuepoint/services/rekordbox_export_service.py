@@ -49,6 +49,12 @@ before anything is written.
 
 Where the export may write
 --------------------------
+A file already at the destination is the previous export, and M512 (amending
+DEC-083, which never suggested a name so no export would overwrite another)
+replaces it: the next export re-uses one fixed name so Rekordbox keeps one file
+to point at, and the previous file is first copied to a dated backup beside it.
+The backup is written before the replace and a failed copy stops the export.
+
 DEC-083 refuses the source as a destination, and :meth:`validate` enforces that
 before anything is parsed, through the same comparison the writer makes: resolved
 and case-folded, so a relative path, a trailing separator, a case difference on
@@ -448,6 +454,7 @@ class ExportResult:
     record: RekordboxExport
     playlists: Tuple[RekordboxExportPlaylist, ...] = ()
     report: Optional[ExportPreview] = None
+    backup_path: Optional[str] = None
 
     @property
     def outcome(self) -> str:
@@ -491,6 +498,8 @@ class ExportResult:
             "export_id": record.id,
             "outcome": record.outcome,
             "destination_path": record.destination_path,
+            # M512: the previous file at the destination, kept under a dated name.
+            "backup_path": self.backup_path,
             "source_path": record.source_path,
             "source_stale": record.source_stale,
             "key_format": record.key_format,
@@ -902,7 +911,10 @@ class RekordboxExportService(IRekordboxExportService):
                 ]
             )
             ended = ExportResult(
-                record=stored, playlists=tuple(playlists), report=report
+                record=stored,
+                playlists=tuple(playlists),
+                report=report,
+                backup_path=result.backup_path,
             )
             self._activity.record_event(
                 EVENT_REKORDBOX_EXPORTED,
@@ -911,6 +923,7 @@ class RekordboxExportService(IRekordboxExportService):
                     "export_id": stored.id,
                     "job_id": job_id,
                     "destination_path": stored.destination_path,
+                    "backup_path": result.backup_path,
                     "source_path": stored.source_path,
                     "source_stale": stored.source_stale,
                     "key_format": stored.key_format,
