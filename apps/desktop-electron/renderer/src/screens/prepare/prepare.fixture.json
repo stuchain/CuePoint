@@ -1229,7 +1229,7 @@
       "payload": {
         "error": {
           "code": "INVALID_REQUEST",
-          "message": "'Peak' already starts at this entry: rename it rather than start another chapter here"
+          "message": "'Peak' already starts at this track: rename it rather than start another chapter here"
         }
       },
       "status": 400
