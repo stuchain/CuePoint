@@ -3,7 +3,7 @@
  * search, and the two decisions pinned at the foot (Use this match, None of these). Against the real
  * panel over a faked bridge.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
@@ -417,6 +417,11 @@ describe("holding Down (moving quickly from track to track)", () => {
   it("reads the track it stops on, not every track it passes, and never shows one track's candidates under another", async () => {
     const view = render(panelOn(1));
     await candidates();
+    // Held still, so the moves below are as quick as a held key on any machine: on a slow
+    // runner the real clock passed `SETTLE_MS` between two rerenders, and every track was read.
+    const at = performance.now();
+    const clock = vi.spyOn(performance, "now").mockReturnValue(at);
+    onTestFinished(() => clock.mockRestore());
     view.rerender(panelOn(2));
     view.rerender(panelOn(3));
     view.rerender(panelOn(4));
