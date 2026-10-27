@@ -194,7 +194,8 @@
 }
 
 .cp-player-bar__title {
-  font-family: var(--font-control);
+  /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
+  font-family: var(--font-data);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--fg-primary);

@@ -19,10 +19,10 @@ const body = (sheet: string, selector: string): string =>
 
 describe("hint (P39)", () => {
   const tip = body("/src/components/Hint.css", ".cp-hint__tip");
-  it("is a regular-weight control-face sentence, 4 by 8 padded, on the popover chrome", () => {
+  it("is a regular-weight data-face sentence (Q4), 4 by 8 padded, on the popover chrome", () => {
     expect(tip).toMatch(/font-weight:\s*var\(--font-weight-regular\)/);
     expect(tip).toMatch(/font-size:\s*var\(--control-font-size\)/);
-    expect(tip).toMatch(/font-family:\s*var\(--font-control\)/);
+    expect(tip).toMatch(/font-family:\s*var\(--font-data\)/);
     expect(tip).toMatch(/padding:\s*var\(--space-xs\) var\(--space-md\)/);
     expect(tip).toMatch(/box-shadow:\s*var\(--shadow-popover\)/);
     expect(tip).toMatch(/360px \* var\(--scale\)/);

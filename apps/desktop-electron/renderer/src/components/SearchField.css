@@ -27,7 +27,8 @@
   border: var(--control-border-width) solid transparent;
   background: var(--bg-input);
   color: var(--fg-primary);
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
 }

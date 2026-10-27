@@ -24,7 +24,8 @@
   box-shadow: var(--shadow-popover);
   color: var(--fg-primary);
   /* Not inherited: inside the player's meta line that would be the data font. */
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
   /* P39: the hint's sentence is regular weight; the control weight is for what you press. */
   font-weight: var(--font-weight-regular);

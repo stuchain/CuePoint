@@ -57,11 +57,14 @@
    */
   --control-border-width: var(--hairline);
   --control-height: round(nearest, calc(20px * var(--scale)), 1px);
-  /* P2: Inter 11 medium for every control (the work); the pixel face is the voice. 11 times 1.5 is fractional, so it rounds. */
-  --font-control: var(--font-data);
+  /* Q4 (amending P2): everything you press or read as interface (buttons, tabs, chips, labels, column
+     headers, menus) speaks in the pixel face with data-face figures, so the words match the pixel art;
+     Inter (--font-data, --font-meta) is kept for data and sentences. The pixel face ships at 400 and
+     700 only, so a control is 400. 11 times 1.5 is fractional, so the size rounds. */
+  --font-control: var(--font-pixel-digits);
   --font-voice: var(--font-pixel-digits);
   --control-font-size: round(nearest, calc(11px * var(--scale)), 1px);
-  --control-font-weight: var(--font-weight-medium);
+  --control-font-weight: var(--font-weight-regular);
   /* Hover for every control (area 79): a shade of the text colour, and a firmer border on fields. */
   --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
   /* A press (DEC-298): the fill darkens under the pointer, drawn on the first frame. */

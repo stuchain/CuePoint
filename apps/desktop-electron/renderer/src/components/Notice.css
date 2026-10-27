@@ -14,7 +14,8 @@
   background: color-mix(in srgb, var(--notice-tone) var(--notice-fill-mix), var(--bg-panel));
   color: var(--fg-primary);
   /* P62: the sentence is Inter at the control size. */
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
 }
 
@@ -56,6 +57,7 @@
   border: 0;
   background: none;
   color: var(--danger-text);
-  font-family: var(--font-control);
+  /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }

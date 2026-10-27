@@ -429,9 +429,9 @@ describe("Hint on hover", () => {
 });
 
 describe("the tip's look (C121, C212)", () => {
-  it("is drawn in the control face (Inter, P2), on the one floating chrome (P12)", async () => {
+  it("is a sentence, so it is drawn in the data face (Inter, Q4), on the one floating chrome (P12)", async () => {
     const css = (await import("./Hint.css?raw")).default as string;
-    expect(css).toMatch(/\.cp-hint__tip\s*\{[^}]*font-family:\s*var\(--font-control\)/);
+    expect(css).toMatch(/\.cp-hint__tip\s*\{[^}]*font-family:\s*var\(--font-data\)/);
     expect(css).toMatch(/\.cp-hint__tip\s*\{[^}]*border:\s*var\(--popover-border\)/);
     expect(css).toMatch(/\.cp-hint__tip\s*\{[^}]*box-shadow:\s*var\(--shadow-popover\)/);
   });

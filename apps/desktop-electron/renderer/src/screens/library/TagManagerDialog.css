@@ -30,7 +30,8 @@
   border: none;
   background: transparent;
   color: var(--fg-primary);
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
   text-align: left;
   cursor: pointer;

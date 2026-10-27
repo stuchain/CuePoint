@@ -27,6 +27,7 @@
 .cp-update-item__percent {
   flex: none;
   color: var(--fg-muted);
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
 }

@@ -51,7 +51,8 @@
   min-height: var(--row-height);
   padding: 0 var(--space-sm);
   color: var(--fg-primary);
-  font-family: var(--font-control);
+  /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
   cursor: pointer;
 }

@@ -249,7 +249,8 @@ legend,
   color: var(--link);
   font: inherit;
   /* P37/P2: a link is a control, so the control face and weight. */
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-weight: var(--control-font-weight);
   text-decoration: none;
   cursor: pointer;
@@ -264,7 +265,8 @@ a[href]:where(:not([class])):hover {
 /* A bare <a href> in prose is the one link too. */
 a[href]:where(:not([class])) {
   color: var(--link);
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-weight: var(--control-font-weight);
   text-decoration: none;
 }

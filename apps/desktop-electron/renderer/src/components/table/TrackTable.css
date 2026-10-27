@@ -440,7 +440,8 @@
   justify-content: center;
   padding: var(--space-lg);
   color: var(--fg-muted);
-  font-family: var(--font-control);
+  /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
+  font-family: var(--font-data);
   font-size: var(--font-size-sm);
   text-align: center;
 }

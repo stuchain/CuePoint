@@ -897,6 +897,11 @@ body.prepare-resizing {
   border-bottom-width: var(--tab-underline);
 }
 
+/* L1: the first tab's word starts on the panel's edge, over "Inserting" and the boxes below. */
+.prepare-source .cp-tabs__tab:first-child {
+  margin-inline-start: calc(-1 * var(--space-xs));
+}
+
 /* The pool, and the panel's one action at the end of its line: the select
    gives way, so the button always shows whole. */
 .prepare-source__controls {
@@ -908,6 +913,8 @@ body.prepare-resizing {
    own 8 at the sides, so its band never runs past the table's frame (item 7). */
 .prepare-source > .prepare-source__controls {
   margin-inline: 0;
+  /* L1, L4: the select and the button are boxes on the panel's one left edge, as the table is. */
+  padding-inline: 0;
 }
 
 .prepare-source__search {
@@ -1038,7 +1045,8 @@ body.prepare-resizing {
   padding: var(--space-xs) var(--space-sm);
   background: var(--accent-primary);
   color: var(--fg-primary);
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
 

@@ -172,6 +172,9 @@
   flex-wrap: wrap;
   align-items: center;
   row-gap: var(--space-xs);
+  /* "+ New" hangs out by its padding and border (L2) so its words end on the counts' edge; its
+     border would reach 1px past the pane, so the head clips it rather than the pane scrolling. */
+  overflow-x: clip;
 }
 
 /* "from Rekordbox" ends in "..." only when even a line of its own is too narrow for it. */

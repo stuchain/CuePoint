@@ -226,13 +226,15 @@ body.cp-queue-resizing {
 /* Names are data, in Inter like the tables'. */
 .cp-queue__row-title {
   flex: 0 1 auto;
-  font-family: var(--font-control);
+  /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
 }
 
 .cp-queue__row-meta {
   flex: 1 1 0;
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-size: var(--font-size-label);
   color: var(--fg-muted);
 }

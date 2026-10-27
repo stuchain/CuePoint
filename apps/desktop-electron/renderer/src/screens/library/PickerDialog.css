@@ -70,7 +70,8 @@
 
 .cp-picker__label {
   flex: 1 1 auto;
-  font-family: var(--font-control);
+  /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
+  font-family: var(--font-data);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -80,7 +81,8 @@
 .cp-picker__hint {
   flex: 0 0 auto;
   color: var(--fg-muted);
-  font-family: var(--font-control);
+  /* Q4: data, typed text and sentences stay Inter; the pixel face is for what you press. */
+  font-family: var(--font-data);
   font-size: var(--font-size-label);
   font-variant-numeric: tabular-nums;
 }

@@ -76,13 +76,16 @@ describe("the data font", () => {
       expect(range).not.toMatch(/U\+002C|U\+002D|U\+002E|U\+002B-002E/);
     }
     expect(source("./tokens.css")).toMatch(/--font-pixel-digits:\s*"CuePoint Digits",\s*var\(--font-pixel\)/);
-    // P2: buttons, tabs, fields, selects and chips are the work, so they take --font-control (Inter);
-    // the pixel face with data-face figures is the voice (--font-voice).
-    expect(source("./tokens.css")).toMatch(/--font-control:\s*var\(--font-data\)/);
+    // Q4 (amending P2): buttons, tabs, selects and chips are interface, so --font-control is the
+    // pixel face with data-face figures, as the voice is; typed text and data stay Inter.
+    expect(source("./tokens.css")).toMatch(/--font-control:\s*var\(--font-pixel-digits\)/);
     expect(source("./tokens.css")).toMatch(/--font-voice:\s*var\(--font-pixel-digits\)/);
-    for (const file of ["Button", "Tabs", "TextField", "Select", "SearchField", "Badge"]) {
+    for (const file of ["Button", "Tabs", "TextField", "Select", "Badge"]) {
       expect(source(`../components/${file}.css`), file).toContain("var(--font-control)");
     }
+    // Q4: what you type is data, so a text box and the search box draw it in Inter.
+    expect(ruleBody(source("../components/TextField.css"), ".cp-field__input")).toContain("var(--font-data)");
+    expect(ruleBody(source("../components/SearchField.css"), ".cp-search-field__input")).toContain("var(--font-data)");
     // P2: the page body is Inter (--font-data); the voice names --font-voice itself.
     expect(source("./tokens.css")).toMatch(/color: var\(--fg-primary\);\s*\/\*[^*]*\*\/\s*font-family: var\(--font-data\)/);
     expect(ruleBody(source("../index.css"), ".cp-digits")).toContain("var(--font-pixel-digits)");

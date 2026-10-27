@@ -3,7 +3,8 @@
   overflow-y: auto;
   overflow-wrap: anywhere;
   /* P59: Inter at the control size; the headings below stay in the voice. */
-  font-family: var(--font-control);
+  /* Q4: data and sentences stay in the data face; the interface around them is pixel. */
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
   line-height: var(--line-height-prose);
 }
