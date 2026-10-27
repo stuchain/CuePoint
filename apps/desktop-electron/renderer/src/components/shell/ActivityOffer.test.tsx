@@ -109,7 +109,7 @@ describe("a batch's entry", () => {
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Rated 3 tracks");
 
-    await userEvent.click(within(entry).getByRole("button", { name: "Undo this batch" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo all of these" }));
     expect(bridge.revertBatch).not.toHaveBeenCalled();
     expect(within(entry).getByText("Undo every change this batch made?")).toBeInTheDocument();
     await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
@@ -117,7 +117,7 @@ describe("a batch's entry", () => {
     await waitFor(() => expect(bridge.revertBatch).toHaveBeenCalledWith({ batch_id: "b-1" }));
     expect(await within(entry).findByText("Undid 3 changes.")).toBeInTheDocument();
     // Reverted once from here; its revert has an entry of its own to revert.
-    expect(within(entry).queryByRole("button", { name: "Undo this batch" })).toBeNull();
+    expect(within(entry).queryByRole("button", { name: "Undo all of these" })).toBeNull();
     expect(announced).toHaveBeenCalled();
     await waitFor(() => expect(bridge.getRecentActivity).toHaveBeenCalledTimes(2));
     // Read again quietly: the entry and what it said stay on screen.
@@ -129,10 +129,10 @@ describe("a batch's entry", () => {
     events = [event(1, "library.batch", { batch_id: "b-1", operation: "add_tag", changed: 2 }, "Tagged 2")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Tagged 2");
-    await userEvent.click(within(entry).getByRole("button", { name: "Undo this batch" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo all of these" }));
     await userEvent.click(within(entry).getByRole("button", { name: "Keep" }));
     expect(bridge.revertBatch).not.toHaveBeenCalled();
-    expect(within(entry).getByRole("button", { name: "Undo this batch" })).toBeEnabled();
+    expect(within(entry).getByRole("button", { name: "Undo all of these" })).toBeEnabled();
   });
 
   it("follows a revert that runs as a job", async () => {
@@ -156,7 +156,7 @@ describe("a batch's entry", () => {
     events = [event(1, "library.batch", { batch_id: "b-1", operation: "set_favorite", changed: 2000 }, "Big")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Big");
-    await userEvent.click(within(entry).getByRole("button", { name: "Undo this batch" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo all of these" }));
     await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     expect(
       await within(entry).findByText("Undid 1,990 changes, 10 skipped because the value changed since."),
@@ -169,7 +169,7 @@ describe("a batch's entry", () => {
     events = [event(1, "library.batch", { batch_id: "b-1", operation: "add_tag" }, "Odd")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Odd");
-    await userEvent.click(within(entry).getByRole("button", { name: "Undo this batch" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo all of these" }));
     await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     expect(await within(entry).findByText(/nothing to revert/)).toBeInTheDocument();
   });
@@ -180,7 +180,7 @@ describe("a batch's entry", () => {
     ];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Added 5");
-    expect(within(entry).getByRole("button", { name: "Undo this batch" })).toBeDisabled();
+    expect(within(entry).getByRole("button", { name: "Undo all of these" })).toBeDisabled();
     expect(within(entry).getByText(MEMBERSHIP_REVERT_REASON)).toBeInTheDocument();
   });
 
@@ -211,6 +211,27 @@ describe("a tag write's entry", () => {
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledWith({ job_id: "w-1" }));
     expect(await within(entry).findByText("Undid 2 files.")).toBeInTheDocument();
     expect(within(entry).getByText("Everything synced to files has been undone.")).toBeInTheDocument();
+  });
+
+  it("asks Keep first, then Undo, and Undo is a write button because it puts values back in files (M271)", async () => {
+    events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags to 2 files")];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("Wrote tags to 2 files");
+    await within(entry).findByText("4 values synced to files can be undone.");
+
+    expect(within(entry).getByRole("button", { name: "Undo" })).toHaveClass("cp-btn--write");
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
+    const asked = within(entry).getAllByRole("button").map((button) => button.textContent);
+    expect(asked).toEqual(["Keep", "Undo"]);
+    expect(within(entry).getByRole("button", { name: "Undo" })).toHaveClass("cp-btn--write");
+  });
+
+  it("asks a batch Keep first, then Undo (M271)", async () => {
+    events = [event(1, "library.batch", { batch_id: "b-1", operation: "set_rating", changed: 3 }, "Rated 3 tracks")];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("Rated 3 tracks");
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo all of these" }));
+    expect(within(entry).getAllByRole("button").map((button) => button.textContent)).toEqual(["Keep", "Undo"]);
   });
 
   it("shows unconfirmed writes as unfinished, never as written", async () => {

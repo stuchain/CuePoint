@@ -45,7 +45,7 @@ describe("jobLabel", () => {
     // One reads and one deletes (DEC-003). A single verb for both would leave
     // the only place the app reports background work unable to say whether the
     // irreversible half had started.
-    expect(jobLabel(job({ type: "library_refresh_preview" }))).toBe("Checking your Rekordbox file for changes · 3 of 10");
+    expect(jobLabel(job({ type: "library_refresh_preview" }))).toBe("Checking for changes · 3 of 10");
     expect(jobLabel(job({ type: "library_refresh_apply" }))).toBe("Refreshing · 3 of 10");
   });
 

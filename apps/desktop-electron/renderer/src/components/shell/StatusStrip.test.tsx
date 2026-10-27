@@ -9,11 +9,12 @@
  * discover jobs it did not start, including one that outlived a reload.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { noteOutage, resetEngineOnlineForTests } from "../../api/engineOnline";
-import { StatusStrip } from "./StatusStrip";
+import { resetActivityForTests } from "./activityState";
+import { DONE_HOLD_MS, StatusStrip, announcedQuarter } from "./StatusStrip";
 import { JOB_EXPLAINERS } from "./useActiveJob";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 
@@ -76,6 +77,7 @@ async function stream(): Promise<(event: unknown) => void> {
 }
 
 afterEach(() => {
+  resetActivityForTests();
   resetEngineOnlineForTests();
   localStorage.clear();
   vi.useRealTimers();
@@ -84,10 +86,11 @@ afterEach(() => {
 });
 
 describe("engine state", () => {
-  it("shows nothing when ready, but still tells a screen reader (STR-1)", async () => {
+  it("says Ready in the strip's quiet muted words, in the status region (STR-1, M367)", async () => {
     render(<StatusStrip />);
     const ready = await screen.findByText("Ready");
-    expect(ready).toHaveClass("cp-visually-hidden");
+    expect(ready).not.toHaveClass("cp-visually-hidden");
+    expect(ready).toHaveClass("cp-status__engine--ok");
     expect(ready.closest("[role='status']")).not.toBeNull();
     expect(screen.queryByText(/1\.0\.0/)).not.toBeInTheDocument();
   });
@@ -112,19 +115,23 @@ describe("engine state", () => {
 
     render(<StatusStrip />);
 
-    const starting = await screen.findByText("Starting up…");
+    const starting = await screen.findByText("Starting…");
     expect(starting).not.toHaveClass("cp-visually-hidden");
+    // Neutral, not the red of a stopped engine (M494).
+    expect(starting).toHaveClass("cp-status__engine--reconnecting");
+    expect(starting).not.toHaveClass("cp-status__engine--error");
     expect(screen.queryByText("Ready")).not.toBeInTheDocument();
     expect(screen.queryByText(/Stopped/)).not.toBeInTheDocument();
   });
 
-  it("says Getting ready… when the first-run guide was never done", async () => {
+  it("has one word for the wait, whether or not the first-run guide was done (M402)", async () => {
     localStorage.removeItem("cuepoint-onboarding-complete");
     getEngineStatus.mockResolvedValue({ connected: false, starting: true, error: "Starting" });
 
     render(<StatusStrip />);
 
-    expect(await screen.findByText("Getting ready…")).toBeInTheDocument();
+    expect(await screen.findByText("Starting…")).toBeInTheDocument();
+    expect(screen.queryByText("Getting ready…")).not.toBeInTheDocument();
     expect(screen.queryByText("Starting up…")).not.toBeInTheDocument();
   });
 
@@ -155,7 +162,7 @@ describe("engine state", () => {
   it("goes from starting to connected without a remount", async () => {
     getEngineStatus.mockResolvedValue({ connected: false, starting: true, error: "Starting" });
     render(<StatusStrip />);
-    await screen.findByText("Starting up…");
+    await screen.findByText("Starting…");
 
     getEngineStatus.mockResolvedValue({ connected: true, version: "1.0.0" });
     await vi.advanceTimersByTimeAsync(4100);
@@ -197,12 +204,15 @@ describe("engine state", () => {
     expect(screen.queryByText("Connecting…")).not.toBeInTheDocument();
   });
 
-  it("says the state is unknown when there is no bridge at all", () => {
+  it("says Starting… in the neutral look, never red, before the first answer or with no bridge at all (M494)", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 
     render(<StatusStrip />);
 
-    expect(screen.getByText("Connecting…")).toBeInTheDocument();
+    const word = screen.getByText("Starting…");
+    expect(word).toHaveClass("cp-status__engine--reconnecting");
+    expect(word).not.toHaveClass("cp-status__engine--error");
+    expect(screen.queryByText("Connecting…")).not.toBeInTheDocument();
   });
 });
 
@@ -511,65 +521,128 @@ describe("stopping a job", () => {
 });
 
 describe("the reason for the work (STR-3, Hint)", () => {
-  it("is on the label as a title and shown while the label has focus", async () => {
+  it("is on the label as a title and shown on hover; the label is not a tab stop (M468)", async () => {
     listJobs.mockResolvedValue({ jobs: [job({ type: "library_import" })], active_count: 1 });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<StatusStrip />);
 
     const label = await screen.findByText("Importing · 3 of 10");
     expect(label).toHaveAttribute("title", JOB_EXPLAINERS.library_import);
+    expect(label).not.toHaveAttribute("tabindex");
+    expect(label).not.toHaveAttribute("aria-live");
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
 
-    await user.tab();
-    while (document.activeElement !== label) await user.tab();
-
-    expect(screen.getByRole("tooltip")).toHaveTextContent(JOB_EXPLAINERS.library_import);
-    expect(label).toHaveAttribute("aria-describedby", screen.getByRole("tooltip").id);
+    await user.hover(label);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(JOB_EXPLAINERS.library_import);
   });
 });
 
-describe("the strip is there only while it has something to show (C231)", () => {
+describe("the strip is one row, always (C231, M367, D25)", () => {
   const strip = () => document.querySelector(".cp-status") as HTMLElement;
 
-  it("is idle, and takes no room, when all is well", async () => {
+  it("is there, saying Ready, when all is well: it never collapses and nothing takes its place", async () => {
     render(<StatusStrip />);
-    await waitFor(() => expect(strip()).toHaveAttribute("data-idle"));
-    // A screen reader still hears the state.
+    await screen.findByText("Ready");
+    expect(strip()).not.toHaveAttribute("data-idle");
     expect(screen.getByRole("status")).toHaveTextContent("Ready");
   });
 
-  it("stays up for the finish pulse, then goes idle", async () => {
+  it("says Done · … where the job was, then goes back to Ready; it never goes idle", async () => {
     listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
     render(<StatusStrip />);
     await screen.findByText("Matching on Beatport · 3 of 10");
 
     listJobs.mockResolvedValue({ jobs: [], active_count: 0 });
     await vi.advanceTimersByTimeAsync(4100);
-    await waitFor(() => expect(screen.queryByText(/Matching/)).not.toBeInTheDocument());
-    expect(strip()).not.toHaveAttribute("data-idle");
+    await waitFor(() => expect(strip().querySelector(".cp-status__done")).toHaveTextContent("Done · Matched on Beatport"));
+    expect(screen.queryByText(/Matching/)).not.toBeInTheDocument();
     expect(strip()).toHaveAttribute("data-finished");
+    expect(strip()).not.toHaveAttribute("data-idle");
 
     await vi.advanceTimersByTimeAsync(900);
-    await waitFor(() => expect(strip()).toHaveAttribute("data-idle"));
+    await waitFor(() => expect(strip()).not.toHaveAttribute("data-finished"));
+    expect(strip().querySelector(".cp-status__done")).toHaveTextContent("Done · Matched on Beatport");
+
+    await vi.advanceTimersByTimeAsync(DONE_HOLD_MS);
+    await waitFor(() => expect(strip().querySelector(".cp-status__done")).toBeNull());
+    expect(screen.getByText("Ready")).toBeVisible();
   });
 
-  it("is not idle while the engine is starting", async () => {
+  it("says Stopped · … for a job the person stopped", async () => {
+    listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
+    const cancelJob = vi.fn().mockResolvedValue({});
+    bridge({ cancelJob });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<StatusStrip />);
+    await user.click(await screen.findByRole("button", { name: /^Stop matching/i }));
+
+    listJobs.mockResolvedValue({ jobs: [], active_count: 0 });
+    await vi.advanceTimersByTimeAsync(4100);
+    await waitFor(() => expect(strip().querySelector(".cp-status__done")).toHaveTextContent("Stopped · Matched on Beatport"));
+  });
+
+  it("is up while the engine is starting", async () => {
     getEngineStatus.mockResolvedValue({ connected: false, starting: true });
     render(<StatusStrip />);
-    await screen.findByText("Starting up…");
+    await screen.findByText("Starting…");
     expect(strip()).not.toHaveAttribute("data-idle");
   });
 
-  it("is not idle while work is running", async () => {
+  it("is up while work is running", async () => {
     listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
     render(<StatusStrip />);
     await screen.findByText(/Matching/);
     expect(strip()).not.toHaveAttribute("data-idle");
   });
 
-  it("holds no Activity button: that sits in the player bar, and Ctrl+Shift+A opens the panel", () => {
+  it("holds the Activity button at its right end, and Ctrl+Shift+A opens the same panel (M273)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<StatusStrip />);
-    expect(screen.queryByRole("button", { name: "Activity" })).not.toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Activity" });
+    expect(strip().querySelector(".cp-status__tail")).toContainElement(button);
+    await user.click(button);
+    expect(screen.getByRole("dialog", { name: "Activity" })).toBeInTheDocument();
+  });
+
+  it("does not open Activity over another dialog with Ctrl+Shift+A (M473)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <>
+        <div role="dialog" aria-modal="true" aria-label="Rename" />
+        <StatusStrip />
+      </>,
+    );
+    await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
+    expect(screen.queryByRole("dialog", { name: "Activity" })).not.toBeInTheDocument();
+  });
+
+  it("says whether Beatport is signed in, at the right (M522)", async () => {
+    bridge({
+      getBeatportAuth: vi.fn().mockResolvedValue({ state: "signed_in" }),
+      onBeatportAuthChanged: vi.fn(() => () => undefined),
+    });
+    render(<StatusStrip />);
+    expect(await screen.findByText("Beatport · signed in")).toBeInTheDocument();
+  });
+
+  it("says Beatport is not signed in when it is not, and follows a sign-in", async () => {
+    let announce: ((auth: { state: string }) => void) | null = null;
+    bridge({
+      getBeatportAuth: vi.fn().mockResolvedValue({ state: "signed_out" }),
+      onBeatportAuthChanged: vi.fn((listener: (auth: { state: string }) => void) => {
+        announce = listener;
+        return () => undefined;
+      }),
+    });
+    render(<StatusStrip />);
+    expect(await screen.findByText("Beatport · not signed in")).toBeInTheDocument();
+    act(() => announce?.({ state: "signed_in" }));
+    expect(await screen.findByText("Beatport · signed in")).toBeInTheDocument();
+  });
+
+  it("says nothing about Beatport until it knows", () => {
+    render(<StatusStrip />);
+    expect(screen.queryByText(/^Beatport ·/)).not.toBeInTheDocument();
   });
 
   it("draws its progress with the shared bar (C148)", async () => {
@@ -689,5 +762,31 @@ describe("+N more (STR-5)", () => {
     render(<StatusStrip />);
     await screen.findByText("Matching on Beatport · 3 of 10");
     expect(screen.queryByRole("button", { name: /more/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("what a screen reader hears of a job (M468)", () => {
+  it("announces the start and the finish, not every poll", async () => {
+    listJobs.mockResolvedValue({ jobs: [job({ progress: { completed_tracks: 1, total_tracks: 10, percentage: 10 } })], active_count: 1 });
+    render(<StatusStrip />);
+    await screen.findByText("Matching on Beatport · 1 of 10");
+    const live = screen.getByRole("status");
+    await waitFor(() => expect(live).toHaveTextContent("Matching on Beatport started"));
+
+    listJobs.mockResolvedValue({ jobs: [], active_count: 0 });
+    await vi.advanceTimersByTimeAsync(4100);
+    await waitFor(() => expect(live).toHaveTextContent("Done · Matched on Beatport"));
+  });
+
+  it("announces each quarter of the way, and the visible label is not itself live", async () => {
+    listJobs.mockResolvedValue({ jobs: [job({ progress: { completed_tracks: 5, total_tracks: 10, percentage: 50 } })], active_count: 1 });
+    render(<StatusStrip />);
+    await screen.findByText("Matching on Beatport · 5 of 10");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("50% done"));
+    expect(screen.getByText("Matching on Beatport · 5 of 10").closest("[aria-live]")).toBeNull();
+  });
+
+  it("works out the quarter a percentage has reached", () => {
+    expect([null, 0, 24, 25, 49, 50, 99, 100].map(announcedQuarter)).toEqual([0, 0, 0, 25, 25, 50, 75, 100]);
   });
 });

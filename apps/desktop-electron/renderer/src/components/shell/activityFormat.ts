@@ -194,6 +194,43 @@ function formatDetailValue(value: unknown): string {
   return "";
 }
 
+/**
+ * The summary as the feed shows it. A dig's summary is recorded as "Discovery found 6 tracks in 1
+ * chart…"; the app calls the action a dig (M398), so the old entries read the same as new ones.
+ */
+export function formatEventSummary(type: string, summary: string): string {
+  return type === "discovery.ran" ? summary.replace(/^Discovery\b/, "Dig") : summary;
+}
+
+/**
+ * The family an event belongs to, for the feed's filter (M269): what a person would call the part
+ * of the app it came from. A type with no family is listed under "Other".
+ */
+export function formatEventFamily(type: string): string {
+  if (type.startsWith("clean.")) return "Clean";
+  if (type.startsWith("discover")) return "Discover";
+  if (type.startsWith("waveforms.")) return "Waveforms";
+  if (type.startsWith("library.") || type.startsWith("track_field_")) return "Library";
+  if (type.startsWith("collection.") || type.startsWith("set.") || type.startsWith("set_list.")) {
+    return "Collections and Sets";
+  }
+  if (type.startsWith("rekordbox.")) return "Export";
+  if (type.startsWith("engine.") || type.startsWith("backup.")) return "App";
+  return "Other";
+}
+
+/** The families the filter offers, in the order it lists them. */
+export const EVENT_FAMILIES: readonly string[] = [
+  "Library",
+  "Clean",
+  "Discover",
+  "Collections and Sets",
+  "Export",
+  "Waveforms",
+  "App",
+  "Other",
+];
+
 /** Sorts newest first, tolerating events the engine returned out of order. */
 export function sortNewestFirst(events: ActivityEvent[]): ActivityEvent[] {
   return [...events].sort((a, b) => b.created_at.localeCompare(a.created_at));

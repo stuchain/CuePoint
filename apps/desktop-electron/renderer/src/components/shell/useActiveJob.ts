@@ -61,7 +61,8 @@ export function jobPercent(job: EngineJobSummary | null): number | null {
  */
 const JOB_VERBS: Record<string, string> = {
   library_import: "Importing",
-  library_refresh_preview: "Checking your Rekordbox file for changes",
+  // One verb for the check, here and on the Library (M402).
+  library_refresh_preview: "Checking for changes",
   library_refresh_apply: "Refreshing",
   // ORG-07's batch. Without its own verb it fell through to "Working", which
   // is the fallback for a job type this build has never heard of — and this
@@ -150,6 +151,38 @@ export function jobLabel(job: EngineJobSummary | null): string {
       ? stage.trim()
       : (JOB_VERBS[job.type] ?? "Working on it");
   return known ? `${verb} · ${countInWords(done, total)}` : verb;
+}
+
+/**
+ * What a finished job is called after it, for "Done · …" in the strip (D25). A type this build has
+ * not heard of reads "Done" alone.
+ */
+const JOB_DONE_WORDS: Record<string, string> = {
+  library_import: "Imported your library",
+  library_refresh_preview: "Checked for changes",
+  library_refresh_apply: "Refreshed your library",
+  library_batch: "Updated tracks",
+  file_check: "Checked files",
+  duplicate_scan: "Looked for duplicates",
+  artwork_scan: "Read artwork",
+  clean_match: "Matched on Beatport",
+  tag_write_preview: "Read tags",
+  tag_write: "Synced to files",
+  tag_restore: "Undid the sync",
+  rekordbox_export: "Exported to Rekordbox",
+  credit_index: "Got artist and label pages ready",
+  marks_backfill: "Read your cue points",
+  discovery: "Dig finished",
+  beatport_playlist: "Made the playlist on Beatport",
+  beatport_resolve: "Linked tracks to Beatport",
+  waveform_analysis: "Analyzed waveforms",
+};
+
+/** The strip's line for a job that has ended: "Done · Matched on Beatport", or "Stopped · …" when the person stopped it. */
+export function jobDoneLine(job: EngineJobSummary | null, stopped = false): string {
+  const word = job && Object.hasOwn(JOB_DONE_WORDS, job.type) ? JOB_DONE_WORDS[job.type]! : "";
+  const head = stopped ? "Stopped" : "Done";
+  return word ? `${head} · ${word}` : head;
 }
 
 /** What the strip's stop button says for a job: "Pause" where stopping pauses. */

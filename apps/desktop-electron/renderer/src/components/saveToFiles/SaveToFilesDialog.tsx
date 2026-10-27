@@ -630,7 +630,8 @@ export function SaveToFilesDialog({
             <p className="save-dialog__note">{RELOAD_TAG_REMINDER}</p>
             {phase !== "restored" && (
               <div className="save-dialog__restore">
-                <Button variant="secondary" loading={phase === "restoring"} onClick={() => void runRestore()}>
+                {/* Undo writes the files back, so it is a write button (M271). */}
+                <Button variant="write" loading={phase === "restoring"} onClick={() => void runRestore()}>
                   Undo this sync
                 </Button>
                 <span className="save-dialog__note">

@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { useEngineOnline } from "../../api/engineOnline";
 import { useLeaveGhost } from "../../tokens/useLeaveGhost";
-import { shouldShowOnboarding } from "../firstRunMemory";
 import { Button } from "../Button";
 import { Hint } from "../Hint";
 import { PixelSpinner } from "../PixelSpinner";
 import { UpdateStatusItem } from "../updates/UpdateStatusItem";
-import { useUpdateState } from "../updates/useUpdateState";
+import { ActivityButton } from "./ActivityButton";
 import { ActivityPanel } from "./ActivityPanel";
 import { closeActivity, openActivity, useActivityOpen } from "./activityState";
-import { jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
+import { isDialogOpen } from "./shellKeyboard";
+import { jobDoneLine, jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
+import { useBeatportSignIn } from "./useBeatportSignIn";
 import { useEngineStatus } from "./useEngineStatus";
 import { usePlayerStatusMessage } from "./usePlayerStatus";
 import "./StatusStrip.css";
@@ -27,17 +28,23 @@ import "./StatusStrip.css";
  * and the floating banner is gone, so there is one place that reports engine
  * state rather than two that can disagree.
  *
- * Clicking through to the Activity panel is the other half of DEC-026: the
- * strip is the only entry point to a feed that has been recorded since Phase 1
- * and never shown.
+ * The strip is one row tall for good (M367, D25): it does not appear and vanish around a job,
+ * which moved the player bar, the table's last rows and the toasts twice for every match or
+ * import. At rest it says "Ready"; a job's progress, then "Done · …", take its place. At its
+ * right end are the Beatport sign-in state (M522) and the Activity button (M273): Activity is a
+ * dialog over the page, not a page, so its button sits beside the jobs it lists.
  */
+
+/** How long "Done · …" stays before the strip goes back to its idle words. */
+export const DONE_HOLD_MS = 30_000;
+
 /**
  * Everything that is running, from "+N more" (STR-5).
  *
  * A popover, not a modal: it names the work and stops it, and the rest of the
  * window stays usable. It closes on Escape (returning focus to its button) and on
  * a click anywhere outside it. Fixed to the viewport because the strip clips what
- * overflows it.
+ * overflows it, and kept inside the window by `--space-xs` on all four sides (M294).
  */
 function RunningList({
   jobs,
@@ -58,6 +65,7 @@ function RunningList({
 }) {
   const box = useRef<HTMLDivElement | null>(null);
   useLeaveGhost(box);
+  const [style, setStyle] = useState<{ left: number; bottom: number; maxHeight: number } | undefined>(undefined);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -79,10 +87,19 @@ function RunningList({
     };
   }, [button, onClose]);
 
-  const rect = button?.getBoundingClientRect();
-  const style = rect
-    ? { left: Math.max(4, rect.left), bottom: Math.max(4, window.innerHeight - rect.top + 4) }
-    : undefined;
+  // Above its button, then pulled inside the window on every side by the box's own padding
+  // (`--space-xs`): at the right edge the list moves left rather than leave the window.
+  useLayoutEffect(() => {
+    const element = box.current;
+    const rect = button?.getBoundingClientRect();
+    if (!element || !rect) return;
+    const gap = Number.parseFloat(getComputedStyle(element).paddingLeft) || 4;
+    const width = element.offsetWidth;
+    const left = Math.max(gap, Math.min(rect.left, window.innerWidth - width - gap));
+    const bottom = Math.max(gap, window.innerHeight - rect.top + gap);
+    setStyle({ left, bottom, maxHeight: Math.max(0, window.innerHeight - bottom - gap) });
+  }, [button, jobs.length]);
+
   const hidden = activeCount - jobs.length;
 
   return (
@@ -105,7 +122,7 @@ function RunningList({
               )}
               {canStop(job) && (
                 <Button
-                  variant="secondary"
+                  variant="quiet"
                   className="cp-status__cancel"
                   onClick={() => onStop(job)}
                   disabled={stopping === job.id}
@@ -123,12 +140,18 @@ function RunningList({
   );
 }
 
+/** A job's progress is announced at each quarter (M468): 0 until a quarter is reached. */
+export function announcedQuarter(percent: number | null): number {
+  return percent === null ? 0 : Math.floor(Math.min(100, Math.max(0, percent)) / 25) * 25;
+}
+
 export function StatusStrip() {
   const status = useEngineStatus();
   // The message, not the snapshot: the strip must not repaint every time the
   // playback position moves (PLAYER-06).
   const playerMessage = usePlayerStatusMessage();
   const { job, jobs, activeCount } = useActiveJob();
+  const beatport = useBeatportSignIn();
   const [listOpen, setListOpen] = useState(false);
   // The popover belongs to "+N more"; once that is gone it must not come back
   // unasked the next time two things run.
@@ -136,48 +159,59 @@ export function StatusStrip() {
     if (activeCount <= 1) setListOpen(false);
   }, [activeCount]);
   const moreButton = useRef<HTMLButtonElement | null>(null);
-  // A job that finishes pulses the strip once (feedback, DEC-154).
+
+  // A job that finishes leaves "Done · …" in its place (D25), and pulses the strip once (feedback,
+  // DEC-154). A job the person stopped says "Stopped" instead.
   const [finished, setFinished] = useState(0);
+  const [done, setDone] = useState<string | null>(null);
+  const lastJob = useRef<EngineJobSummary | null>(null);
+  const stoppedJobs = useRef(new Set<string>());
+  if (job) lastJob.current = job;
   const hadJob = useRef(false);
   useEffect(() => {
     const has = job !== null;
     if (hadJob.current && !has) {
+      const ended = lastJob.current;
+      setDone(jobDoneLine(ended, ended !== null && stoppedJobs.current.has(ended.id)));
       setFinished((n) => n + 1);
-      const timer = window.setTimeout(() => setFinished(0), 800);
+      const pulse = window.setTimeout(() => setFinished(0), 800);
+      const hold = window.setTimeout(() => setDone(null), DONE_HOLD_MS);
       hadJob.current = has;
-      return () => window.clearTimeout(timer);
+      return () => {
+        window.clearTimeout(pulse);
+        window.clearTimeout(hold);
+      };
     }
+    if (has) setDone(null);
     hadJob.current = has;
   }, [job]);
   const activityOpen = useActivityOpen();
-  const update = useUpdateState();
 
   const percent = jobPercent(job);
   const { offline } = useEngineOnline();
   // A failed call can know before the poll does: offline overrides a stale "Ready".
   const connected = status?.connected === true && !offline;
-  // Starting is a third state, not a flavour of offline: it ends by itself.
-  const starting = status?.starting === true;
+  // Not answered yet, or answered "starting": one wait, one word, in the neutral look. Red is for
+  // an engine that really stopped, and the banner above the page says that in full (M494, M402).
+  const waiting = !connected && !offline;
   // While the banner above the page is up (`offline`: stopped, restarting, or gave up) it says
   // so in full; the strip stays quiet rather than repeat it in other words.
-  const engineText = offline
-    ? ""
-    : status === null
-      ? "Connecting…"
-      : connected
-        ? "Ready"
-        : shouldShowOnboarding()
-          ? "Getting ready…"
-          : "Starting up…";
+  const engineText = offline ? "" : connected ? "Ready" : "Starting…";
 
-  // The strip is there only while it has something to say (C231): work, a message from the
-  // player, an engine that is not ready, or an update on its way. Otherwise it takes no room;
-  // the live region stays mounted, so a screen reader still hears the state change. A job that
-  // just finished keeps the strip up for its pulse (finished is back to 0 after it).
-  const updateShown =
-    update !== null &&
-    (update.status === "downloading" || update.status === "ready" || update.status === "manual");
-  const idle = job === null && !playerMessage && !updateShown && finished === 0 && (connected || offline);
+  // What a screen reader hears (M468): a job starting, each quarter of it, and how it ended. The
+  // visible label changes with every poll and is not itself a live region.
+  const [announcement, setAnnouncement] = useState("");
+  const jobId = job?.id ?? null;
+  const quarter = announcedQuarter(percent);
+  useEffect(() => {
+    if (jobId !== null && lastJob.current) setAnnouncement(`${jobLabelWithoutCount(lastJob.current)} started`);
+  }, [jobId]);
+  useEffect(() => {
+    if (jobId !== null && quarter > 0) setAnnouncement(`${quarter}% done`);
+  }, [jobId, quarter]);
+  useEffect(() => {
+    if (done) setAnnouncement(done);
+  }, [done]);
 
   /**
    * Stopping the work the strip is reporting (ORG-13).
@@ -198,12 +232,14 @@ export function StatusStrip() {
 
   const cancel = async (target: EngineJobSummary) => {
     setCancelling(target.id);
+    stoppedJobs.current.add(target.id);
     try {
       await window.cuepoint?.cancelJob?.(target.id);
     } catch {
       // A cancel that cannot be delivered is not worth an error of its own:
       // the job carries on and the strip keeps saying so, which is the honest
       // outcome either way.
+      stoppedJobs.current.delete(target.id);
     } finally {
       setCancelling(null);
     }
@@ -213,6 +249,8 @@ export function StatusStrip() {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "a") {
         event.preventDefault();
+        // Not over an open dialog (M473): the key belongs to the dialog.
+        if (isDialogOpen()) return;
         openActivity();
       }
     };
@@ -226,49 +264,46 @@ export function StatusStrip() {
     // refused to wrap — a dialog silently picking up the styling of whatever
     // happened to render it.
     <>
-      {/*
-        The live region is only the status text. The Hint tooltip and the running
-        list open from inside the strip and would otherwise be announced as
-        status updates.
-      */}
-      <div
-        className="cp-status"
-        data-finished={finished > 0 ? finished % 2 : undefined}
-        data-idle={idle ? "" : undefined}
-      >
-        <span className="cp-status__live" role="status" aria-live="polite">
-        {/* Ready is not drawn (the strip is quiet when all is well); a screen reader still hears it. */}
-        <span
-          className={`cp-status__engine ${
-            connected
-              ? "cp-status__engine--ok cp-visually-hidden"
-              : starting
-                ? "cp-status__engine--reconnecting"
-                : "cp-status__engine--error"
-          }`}
-        >
-          {engineText}
-        </span>
-
+      <div className="cp-status" data-finished={finished > 0 ? finished % 2 : undefined}>
         {/*
-          The player speaks only when it was in use and broke (PLAYER-03).
-          "Audio player unavailable" is a different sentence from "Stopped" and
-          must not read as one: the background process being down stops
-          everything, while a dead player leaves the whole library usable.
+          The live region is only the status text. The Hint tooltip and the running
+          list open from inside the strip and would otherwise be announced as
+          status updates. It is a box (flex), not `display: contents`, so the finish pulse can
+          draw on it (M368).
         */}
-        {playerMessage && (
-          <span className="cp-status__player cp-status__engine--error">{playerMessage}</span>
-        )}
+        <span className="cp-status__live" role="status" aria-live="polite">
+          {/* A hidden line for a screen reader: the start, each quarter and the finish of a job (M468). */}
+          <span className="cp-visually-hidden">{announcement}</span>
+          {/* "Ready" is the idle word, quiet and muted; it is not a green badge that never clears. */}
+          <span
+            className={`cp-status__engine ${
+              connected ? "cp-status__engine--ok" : waiting ? "cp-status__engine--reconnecting" : "cp-status__engine--error"
+            }`}
+            // Shown only while nothing else is being said (a job, or "Done · …").
+            hidden={(job !== null || done !== null) && connected ? true : undefined}
+          >
+            {engineText}
+          </span>
+
+          {/*
+            The player speaks only when it was in use and broke (PLAYER-03).
+            "Audio player unavailable" is a different sentence from "Stopped" and
+            must not read as one: the background process being down stops
+            everything, while a dead player leaves the whole library usable.
+          */}
+          {playerMessage && (
+            <span className="cp-status__player cp-status__engine--error">{playerMessage}</span>
+          )}
+
+          {!job && done && <span className="cp-status__done">{done}</span>}
         </span>
 
         {job ? (
           <span className="cp-status__job">
             <PixelSpinner label={null} />
-            {/* Focusable, so the reason it carries is shown to the keyboard too. */}
+            {/* The reason is on hover; the label is not a tab stop and not a live region (M468). */}
             <Hint text={jobTitle(job)}>
-              <span className="cp-status__job-label" tabIndex={0} aria-live="polite">
-                {jobLabel(job)}
-              </span>
+              <span className="cp-status__job-label">{jobLabel(job)}</span>
             </Hint>
             {percent !== null && (
               <>
@@ -333,11 +368,24 @@ export function StatusStrip() {
           </span>
         ) : null}
 
-        <UpdateStatusItem />
-
+        {/* The right end: an update on its way, the Beatport sign-in state, and Activity. */}
+        <span className="cp-status__tail">
+          <UpdateStatusItem />
+          {beatport !== null && (
+            <Hint text={beatport ? "Signed in to Beatport: matching and Discover can use it" : "Sign in to Beatport in Settings to match and discover"}>
+              <span className="cp-status__beatport">{beatport ? "Beatport · signed in" : "Beatport · not signed in"}</span>
+            </Hint>
+          )}
+          <ActivityButton />
+        </span>
       </div>
 
       <ActivityPanel open={activityOpen} onClose={closeActivity} />
     </>
   );
+}
+
+/** A job's name without its counts, for "… started". */
+function jobLabelWithoutCount(job: EngineJobSummary): string {
+  return jobLabel({ ...job, progress: undefined });
 }

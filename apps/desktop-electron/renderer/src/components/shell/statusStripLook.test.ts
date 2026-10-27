@@ -38,10 +38,32 @@ describe("the status strip is slim", () => {
     expect(ruleDecls(updateItem, ".cp-update-item__button")["min-height"]).toBe("var(--control-height)");
   });
 
-  it("takes no room while idle (C231)", () => {
-    const idle = ruleDecls(statusStrip, ".cp-status[data-idle]");
-    expect(idle["height"]).toBe("0");
-    expect(idle["border-top"]).toBe("0");
+  it("is one fixed height in every state: it never collapses while idle (M367, D25)", () => {
+    const strip = ruleDecls(statusStrip, ".cp-status");
+    expect(strip["height"]).toBe("calc(var(--control-height) + 2 * var(--space-xs) + var(--hairline))");
+    expect(strip["box-sizing"]).toBe("border-box");
+    expect(stripComments(statusStrip)).not.toMatch(/data-idle/);
+  });
+
+  it("names a wait and a ready engine in the muted colour, and only a stopped one in red (M494)", () => {
+    for (const selector of [".cp-status__engine--ok", ".cp-status__engine--reconnecting"]) {
+      expect(ruleDecls(statusStrip, selector)["color"]).toBe("var(--fg-muted)");
+    }
+    expect(ruleDecls(statusStrip, ".cp-status__engine--error")["color"]).toBe("var(--danger-text)");
+    expect(ruleDecls(statusStrip, ".cp-status__engine")["font-weight"]).toBeUndefined();
+  });
+
+  it("keeps the live region a box, so the finish pulse draws (M368)", () => {
+    const live = ruleDecls(statusStrip, ".cp-status__live");
+    expect(live["display"]).toBe("flex");
+    expect(stripComments(statusStrip)).not.toMatch(/display:\s*contents/);
+  });
+
+  it("draws the running list as a popover: its border and shadow (M294)", () => {
+    const list = ruleDecls(statusStrip, ".cp-status__running");
+    expect(list["border"]).toBe("var(--popover-border)");
+    expect(list["box-shadow"]).toBe("var(--shadow-popover)");
+    expect(list["max-width"]).toContain("2 * var(--space-xs)");
   });
 
   it("uses the icon size nowhere in the strip or its update item", () => {

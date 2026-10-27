@@ -1,24 +1,21 @@
+import { Button } from "../Button";
 import { Hint } from "../Hint";
-import { PixelIcon } from "../PixelIcon";
 import { openActivity } from "./activityState";
 
 /** The Activity button's reason; its shortcut is drawn beside it as a key cap. */
 const ACTIVITY_HINT = "Activity: what CuePoint has done";
 
 /**
- * Opens the Activity panel. It is a row of the sidebar's pinned foot, above Settings: the icon
- * and the word, the icon alone in the collapsed rail. The status strip holds no button, so it
- * can stay out of the way while nothing is happening (C231).
+ * Opens the Activity panel. It is the last item of the status strip, next to the jobs it lists
+ * (M273, D25): Activity opens a dialog over the page and is not a page, so it is not in the
+ * sidebar's list of pages. Ctrl+Shift+A opens it from anywhere.
  */
-export function ActivityButton({ collapsed }: { collapsed: boolean }) {
+export function ActivityButton() {
   return (
-    <Hint text={ACTIVITY_HINT} shortcut="Mod+Shift+A" portal placement="right">
-      <button type="button" className="cp-sidebar__link cp-sidebar__activity" aria-label="Activity" onClick={openActivity}>
-        <span className="cp-sidebar__icon" aria-hidden>
-          <PixelIcon name="activity" />
-        </span>
-        {!collapsed && <span className="cp-sidebar__label">Activity</span>}
-      </button>
+    <Hint text={ACTIVITY_HINT} shortcut="Mod+Shift+A" portal>
+      <Button variant="quiet" className="cp-status__activity" aria-label="Activity" aria-haspopup="dialog" onClick={openActivity}>
+        Activity
+      </Button>
     </Hint>
   );
 }

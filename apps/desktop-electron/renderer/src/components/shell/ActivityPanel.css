@@ -28,13 +28,36 @@
   line-height: 1.5;
 }
 
+/* A failure: the sentence in the danger tone, the reason under it in muted words, then a button (M348). */
 .cp-activity__note--error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.cp-activity__failure {
+  margin: 0;
   color: var(--danger-text);
+}
+
+.cp-activity__reason-line {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* The count and the kind filter share a line; the count starts on the rows' inset (M269). */
+.cp-activity__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
 }
 
 .cp-activity__summary {
   margin: 0;
-  padding: 0 var(--space-xs);
+  padding: 0 var(--space-sm);
   color: var(--fg-muted);
   font-family: var(--font-meta);
   font-size: var(--font-size-xs);
@@ -56,7 +79,8 @@
   grid-template-columns: var(--cp-activity-time) var(--cp-activity-tag) minmax(0, 1fr);
   min-width: 0;
   gap: var(--space-sm);
-  align-items: baseline;
+  /* Centred on the row, so the time and the kind sit on one line with the summary's first (M269). */
+  align-items: center;
   padding: var(--space-xs) var(--space-sm);
   border-bottom: var(--hairline) solid var(--row-line);
   font-size: var(--text-body);
@@ -91,16 +115,17 @@
   white-space: nowrap;
 }
 
-/* A category is the shared tinted chip (Badge, as the status chips are), as wide as its words and
-   cut with an ellipsis at its column's width (item 8). */
+/* A kind is muted text, not a chip: eight violet blocks said nothing (M269). Cut with an ellipsis
+   at its column's width. */
 .cp-activity__type {
   display: block;
-  line-height: var(--chip-height);
-  justify-self: start;
   min-width: 0;
-  max-width: 100%;
   overflow: hidden;
+  color: var(--fg-muted);
+  font-family: var(--font-meta);
+  font-size: var(--font-size-xs);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Wraps rather than truncating: a summary is the point of the row. */

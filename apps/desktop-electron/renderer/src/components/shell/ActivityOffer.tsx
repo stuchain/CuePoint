@@ -226,7 +226,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       return (
         <span className="cp-activity__offer">
           <Button variant="secondary" size="sm" className="cp-activity__action" disabled>
-            Undo this batch
+            Undo all of these
           </Button>
           <span className="cp-activity__reason">{offer.disabledReason}</span>
         </span>
@@ -237,6 +237,10 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         {reverted ? null : asking ? (
           <>
             <span>Undo every change this batch made?</span>
+            {/* Keep, then Undo: the order the dialogs ask in (M271). */}
+            <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
+              Keep
+            </Button>
             <Button
               variant="secondary"
               size="sm"
@@ -244,9 +248,6 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
               onClick={() => void revert(offer.batchId)}
             >
               Undo
-            </Button>
-            <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
-              Keep
             </Button>
           </>
         ) : (
@@ -257,7 +258,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
             disabled={busy}
             onClick={() => setAsking(true)}
           >
-            {busy ? "Undoing…" : "Undo this batch"}
+            {busy ? "Undoing…" : "Undo all of these"}
           </Button>
         )}
         {said && <span className="cp-activity__said">{said}</span>}
@@ -277,21 +278,22 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         (asking ? (
           <>
             <span>Undo these saves? Every value they replaced goes back.</span>
+            <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
+              Keep
+            </Button>
+            {/* Undo puts values back in the files, so it is a write button (M271). */}
             <Button
-              variant="secondary"
+              variant="write"
               size="sm"
               className="cp-activity__action"
               onClick={() => void restore(offer.jobIds)}
             >
               Undo
             </Button>
-            <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
-              Keep
-            </Button>
           </>
         ) : (
           <Button
-            variant="secondary"
+            variant="write"
             size="sm"
             className="cp-activity__action"
             disabled={busy}

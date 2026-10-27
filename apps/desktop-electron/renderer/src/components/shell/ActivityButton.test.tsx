@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import { ActivityButton } from "./ActivityButton";
 import { closeActivity, resetActivityForTests, useActivityOpen } from "./activityState";
 import { Sidebar } from "./Sidebar";
+import { StatusStrip } from "./StatusStrip";
 
 function Probe() {
   return <p data-testid="open">{useActivityOpen() ? "open" : "closed"}</p>;
@@ -16,29 +17,25 @@ afterEach(() => {
   localStorage.clear();
 });
 
-describe("the Activity button (STR-9, C231)", () => {
+describe("the Activity button (STR-9, M273)", () => {
   it("says what it opens and its shortcut", () => {
-    render(<ActivityButton collapsed={false} />);
+    render(<ActivityButton />);
     expect(screen.getByRole("button", { name: "Activity" })).toHaveAttribute(
       "title",
       "Activity: what CuePoint has done (Ctrl+Shift+A)",
     );
   });
 
-  it("shows the word expanded and the icon alone in the rail", () => {
-    const { rerender } = render(<ActivityButton collapsed={false} />);
+  it("shows the word", () => {
+    render(<ActivityButton />);
     expect(screen.getByRole("button", { name: "Activity" })).toHaveTextContent(/^Activity$/);
-    rerender(<ActivityButton collapsed />);
-    const button = screen.getByRole("button", { name: "Activity" });
-    expect(button).toHaveTextContent("");
-    expect(button.querySelector("svg")).not.toBeNull();
   });
 
   it("opens the panel through the shared state", async () => {
     const user = userEvent.setup();
     render(
       <>
-        <ActivityButton collapsed={false} />
+        <ActivityButton />
         <Probe />
       </>,
     );
@@ -49,16 +46,16 @@ describe("the Activity button (STR-9, C231)", () => {
     expect(screen.getByTestId("open")).toHaveTextContent("closed");
   });
 
-  it("sits in the sidebar's pinned foot, above Settings", () => {
+  it("is in the status strip, and not in the sidebar's list of pages (M273, D25)", () => {
     render(
       <MemoryRouter initialEntries={["/library"]}>
         <Sidebar />
+        <StatusStrip />
       </MemoryRouter>,
     );
     const nav = screen.getByRole("navigation", { name: /main navigation/i });
-    const foot = nav.querySelector(".cp-sidebar__foot") as HTMLElement;
-    const names = [...foot.querySelectorAll("[aria-label]")].map((el) => el.getAttribute("aria-label"));
-    expect(names.indexOf("Activity")).toBeGreaterThanOrEqual(0);
-    expect(names.indexOf("Activity")).toBeLessThan(names.indexOf("Settings"));
+    expect(nav.querySelector('[aria-label="Activity"]')).toBeNull();
+    const strip = document.querySelector(".cp-status") as HTMLElement;
+    expect(strip.querySelector('[aria-label="Activity"]')).not.toBeNull();
   });
 });

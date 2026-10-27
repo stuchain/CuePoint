@@ -26,11 +26,18 @@ describe("the Activity list lines up (C37)", () => {
     expect(decl(".cp-activity__type", "text-overflow")).toBe("ellipsis");
   });
 
-  it("draws a category as the shared tinted chip, not an outlined box like a field (item 8)", () => {
-    // The chip's own fill and line (Badge); this sheet only fits it to its column.
+  it("draws a kind as muted text, with no chip, frame or fill (M269)", () => {
+    expect(decl(".cp-activity__type", "color")).toBe("var(--fg-muted)");
     expect(decl(".cp-activity__type", "border")).toBeUndefined();
-    expect(decl(".cp-activity__type", "justify-self")).toBe("start");
-    expect(decl(".cp-activity__type", "max-width")).toBe("100%");
+    expect(decl(".cp-activity__type", "background")).toBeUndefined();
+    expect(decl(".cp-activity__type", "justify-self")).toBeUndefined();
+  });
+
+  it("centres its rows and starts the count, the day headings and the rows on one inset (M269)", () => {
+    expect(decl(".cp-activity__row", "align-items")).toBe("center");
+    expect(decl(".cp-activity__summary", "padding")).toBe("0 var(--space-sm)");
+    expect(decl(".cp-activity__day-heading", "padding")).toBe("var(--space-xs) var(--space-sm)");
+    expect(decl(".cp-activity__row", "padding")).toBe("var(--space-xs) var(--space-sm)");
   });
 });
 

@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { ActivityPanel } from "./ActivityPanel";
+import { ACTIVITY_REFRESH_MS, ActivityPanel } from "./ActivityPanel";
 import type { ActivityEvent, ActivityFeed } from "../../api/cuepointBridge.types";
 
 function event(overrides: Partial<ActivityEvent> = {}): ActivityEvent {
@@ -81,7 +81,7 @@ describe("ActivityPanel", () => {
     expect(screen.getByText(/Playlists: 4/)).toBeInTheDocument();
   });
 
-  it("draws a category as a tinted status chip, never the grey button-like box (item 8)", async () => {
+  it("writes a kind as muted text, not a coloured chip (M269)", async () => {
     getRecentActivity.mockResolvedValue(
       feed({
         events: [
@@ -95,9 +95,10 @@ describe("ActivityPanel", () => {
     render(<ActivityPanel open onClose={() => {}} />);
 
     const imported = await screen.findByText("Import");
-    expect(imported).toHaveClass("cp-badge", "cp-badge--info", "cp-activity__type");
-    expect(imported).not.toHaveClass("cp-badge--neutral");
-    expect(screen.getByText("Match stopped")).toHaveClass("cp-badge", "cp-badge--warning");
+    expect(imported).toHaveClass("cp-activity__type");
+    expect(imported).not.toHaveClass("cp-badge");
+    expect(screen.getByText("Match stopped")).toHaveClass("cp-activity__type");
+    expect(document.querySelector(".cp-activity .cp-badge")).toBeNull();
   });
 
   it("shows newest first even if the engine returned them out of order", async () => {
@@ -142,14 +143,69 @@ describe("ActivityPanel", () => {
     expect(await screen.findByText("Showing 1 of 320")).toBeInTheDocument();
   });
 
-  it("reloads on demand", async () => {
+  it("keeps itself current while open, with no Refresh button (M269)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(<ActivityPanel open onClose={() => {}} />);
+      await waitFor(() => expect(getRecentActivity).toHaveBeenCalledTimes(1));
+      expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
+
+      getRecentActivity.mockResolvedValue(feed({ events: [event({ id: 9, summary: "Backed up" })], total: 1 }));
+      await vi.advanceTimersByTimeAsync(ACTIVITY_REFRESH_MS + 100);
+
+      expect(await screen.findByText("Backed up")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reaches older entries with Show 50 more (M270)", async () => {
     const user = userEvent.setup();
+    const many = (n: number) => Array.from({ length: n }, (_, i) => event({ id: i + 1, summary: `Event ${i + 1}`, created_at: `2026-09-02T10:${String(59 - (i % 60)).padStart(2, "0")}:00Z` }));
+    getRecentActivity.mockImplementation(async ({ limit }: { limit: number }) => feed({ events: many(Math.min(limit, 120)), total: 120, limit }));
+
     render(<ActivityPanel open onClose={() => {}} />);
-    await waitFor(() => expect(getRecentActivity).toHaveBeenCalledTimes(1));
 
-    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("Showing 50 of 120")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show 50 more" }));
+    expect(await screen.findByText("Showing 100 of 120")).toBeInTheDocument();
+    expect(getRecentActivity).toHaveBeenLastCalledWith({ limit: 100 });
+    await user.click(screen.getByRole("button", { name: "Show 50 more" }));
+    expect(await screen.findByText("120 events")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show 50 more" })).not.toBeInTheDocument();
+  });
 
-    await waitFor(() => expect(getRecentActivity).toHaveBeenCalledTimes(2));
+  it("filters by kind (M269)", async () => {
+    const user = userEvent.setup();
+    getRecentActivity.mockResolvedValue(
+      feed({
+        events: [
+          event({ id: 1, type: "library.imported", summary: "Imported 120 tracks" }),
+          event({ id: 2, type: "clean.match", summary: "Matched 32 tracks" }),
+        ],
+        total: 2,
+      }),
+    );
+    render(<ActivityPanel open onClose={() => {}} />);
+    await screen.findByText("Imported 120 tracks");
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Kind" }), "Clean");
+
+    expect(screen.queryByText("Imported 120 tracks")).not.toBeInTheDocument();
+    expect(screen.getByText("Matched 32 tracks")).toBeInTheDocument();
+    expect(screen.getByText("1 event")).toBeInTheDocument();
+  });
+
+  it("calls a dig a dig (M398)", async () => {
+    getRecentActivity.mockResolvedValue(
+      feed({
+        events: [event({ id: 3, type: "discovery.ran", summary: "Discovery found 6 tracks in 1 chart and 0 releases" })],
+        total: 1,
+      }),
+    );
+    render(<ActivityPanel open onClose={() => {}} />);
+    expect(await screen.findByText(/Dig found 6 tracks in 1 chart/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Discovery found/)).not.toBeInTheDocument();
   });
 
   it("says so in plain words when the bridge is absent (STR-8)", async () => {
@@ -170,11 +226,16 @@ describe("ActivityPanel", () => {
     render(<ActivityPanel open onClose={() => {}} />);
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Could not load the list. Try Refresh.");
-    // The raw error is for a title, never the sentence.
-    expect(alert).not.toHaveTextContent(/ECONNREFUSED/);
-    expect(alert).toHaveAttribute("title", "connect ECONNREFUSED 127.0.0.1:51234");
+    // The sentence, then the reason as a muted line of its own, then a button: no hover needed (M348).
+    expect(alert.querySelector(".cp-activity__failure")).toHaveTextContent("Could not load the list.");
+    expect(alert.querySelector(".cp-activity__reason-line")).toBeInTheDocument();
+    expect(alert).not.toHaveAttribute("title");
+    expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
     expect(screen.queryByText(/Nothing has happened yet/i)).not.toBeInTheDocument();
+
+    getRecentActivity.mockResolvedValue(feed({ events: [event()], total: 1 }));
+    await userEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Imported 120 tracks")).toBeInTheDocument();
   });
 
   it("offers no way to revert anything", async () => {

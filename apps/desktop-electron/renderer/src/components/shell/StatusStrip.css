@@ -5,7 +5,8 @@
  * height is the one thing every other region gives up. It stays a single line
  * for that reason: no wrapping, ellipsis on anything long. It is one control
  * tall (`--control-height`) plus the same small air above and below (Q6c), and
- * nothing inside it may be taller (R2-2, DEC-266).
+ * nothing inside it may be taller (R2-2, DEC-266). That height is fixed (M367, D25): the strip is
+ * there at rest, during a job and after it, so nothing around it moves when work starts or ends.
  */
 .cp-status {
   /* Its visually hidden live text is clipped with the strip, so an idle strip adds no scroll to the page. */
@@ -13,6 +14,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  box-sizing: border-box;
+  /* A control, the same air above and below (Q6c) and the divider: one height in every state. */
+  height: calc(var(--control-height) + 2 * var(--space-xs) + var(--hairline));
   min-height: var(--control-height);
   /* The shell inset at both sides (C46), and the same air above and below (Q6c, amending C231's
      air below only), so everything sits on the strip's centre line and nothing touches its top line. */
@@ -27,31 +31,31 @@
   overflow: hidden;
 }
 
-/* Nothing to report: the strip takes no room. Its live region stays, for a screen reader. */
-.cp-status[data-idle] {
-  min-height: 0;
-  height: 0;
-  padding: 0;
-  border-top: 0;
-}
-
 .cp-status__engine {
   flex: none;
   padding: 0 var(--space-xs);
-  font-weight: var(--font-weight-bold);
 }
 
 /*
- * Colour carries the same meaning the floating banner used, but as text on the
- * strip's own background rather than a filled block: a permanently visible
- * green bar reads as an alert that never clears.
+ * Only a stopped engine is loud. "Ready" and the wait before the first answer ("Starting…") are
+ * quiet words in the strip's muted colour, so launch does not open with a red alert (M494).
  */
-.cp-status__engine--ok {
-  color: var(--success-text);
+.cp-status__engine--ok,
+.cp-status__engine--reconnecting {
+  color: var(--fg-muted);
+  font-weight: var(--font-weight-regular);
 }
 
 .cp-status__engine--error {
   color: var(--danger-text);
+  font-weight: var(--font-weight-bold);
+}
+
+/* "Done · …" after a job: the strip keeps its words (D25). */
+.cp-status__done {
+  flex: none;
+  padding: 0 var(--space-xs);
+  color: var(--fg-muted);
 }
 
 .cp-status__job,
@@ -105,15 +109,44 @@
   overflow: hidden;
 }
 
-/* Everything running, above "+N more". Fixed, as the strip clips its overflow. */
+/* The right end: an update on its way, the Beatport state and Activity. */
+.cp-status__tail {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-md);
+  margin-inline-start: auto;
+}
+
+.cp-status__beatport {
+  color: var(--fg-muted);
+}
+
+/* The Activity button hangs out by its padding so its word ends on the strip's inset (Q1). */
+.cp-status__activity {
+  flex: none;
+  min-height: var(--control-height);
+  min-width: 0;
+  padding: 0 var(--space-sm);
+  margin-inline-end: calc(-1 * var(--space-sm));
+}
+
+/*
+ * Everything running, above "+N more": a popover like the menus, with their border and shadow
+ * (M294). Fixed, as the strip clips its overflow; the component keeps it --space-xs inside the
+ * window on every side, and it scrolls when the window is too short.
+ */
 .cp-status__running {
   position: fixed;
   z-index: 60;
+  box-sizing: border-box;
   min-width: calc(260px * var(--scale));
-  max-width: min(calc(480px * var(--scale)), calc(100vw - 8px));
+  max-width: min(calc(480px * var(--scale)), calc(100vw - 2 * var(--space-xs)));
+  overflow-y: auto;
   padding: var(--space-xs);
   background: var(--bg-panel);
-  border: var(--divider);
+  border: var(--popover-border);
+  box-shadow: var(--shadow-popover);
   color: var(--fg-primary);
   white-space: normal;
 }
@@ -151,7 +184,12 @@
   white-space: nowrap;
 }
 
-/* Wraps the status text only, so it is the one live region; takes no box of its own. */
+/* Wraps the status text only, so it is the one live region. A box of its own, not
+   `display: contents`: the finish pulse draws on it (M368). */
 .cp-status__live {
-  display: contents;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
 }
