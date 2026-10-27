@@ -130,10 +130,11 @@ describe("the two panes (D12)", () => {
     const stacked = parseRules(stripComments(keysCss)).find(
       (r) => r.selector === ".keys-page__tracks" && r.context.startsWith("@container content"),
     );
-    expect(stacked?.context).toBe("@container content (max-width: 81.92em)");
+    // Moved (CI wave 3, Windows keys.spec): text at 1.25 is a whole 13px, so 1024px is 78.75em; the
+    // old 81.92em (of 12.5px) was 1065px and wrapped the list at the default window on Windows.
+    expect(stacked?.context).toBe("@container content (max-width: 78.75em)");
     expect(stacked?.body).toContain("flex-basis: 100%");
-    // 81.92em of 12.5px text is the 1024px the decision names.
-    expect(81.92 * 12.5).toBeCloseTo(1024, 5);
+    expect(78.75 * 13).toBeCloseTo(1024, 0);
     expect(keysCss).not.toMatch(/@media/);
   });
 

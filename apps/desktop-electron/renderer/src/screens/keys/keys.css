@@ -396,9 +396,11 @@
 }
 
 /* Below about 1024 wide at 1.25 text size (C206: a container query, in em of the content region's
-   text: 81.92em is 1024px at 12.5px text) the tracks move under Sources and the wheel and take the
-   whole row (M162). The two panes above stay one height: the row they wrap in stretches them. */
-@container content (max-width: 81.92em) {
+   text) the tracks move under Sources and the wheel and take the whole row (M162). Text at 1.25 is
+   whole pixels, 13px, not 12.5, so 1024px is 78.75em: 81.92em was 1065px, one pixel under the
+   default 1264 x 735 window's region on Linux, and a Windows scrollbar (17px) crossed it, so the
+   list wrapped there (wave 3). The two panes above stay one height: the row stretches them. */
+@container content (max-width: 78.75em) {
   .keys-page__tracks {
     flex-basis: 100%;
   }
