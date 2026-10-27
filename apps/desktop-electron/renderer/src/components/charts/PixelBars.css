@@ -50,7 +50,8 @@
 }
 
 .cp-pixel-bars__bar--open {
-  cursor: pointer;
+  /* The arrow pointer, as everywhere in the app (M339). */
+  cursor: default;
 }
 
 .cp-pixel-bars__bar--open:hover .cp-pixel-bars__fill,

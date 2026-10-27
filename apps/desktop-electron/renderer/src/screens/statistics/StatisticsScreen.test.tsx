@@ -305,9 +305,9 @@ describe("the Statistics page (STATS-04)", () => {
 
   it("keeps each tab's own scroll position: new tabs at the top, a tab come back to where it was left", async () => {
     renderPage();
-    const plays = await screen.findByRole("tab", { name: /^Overview/ });
-    const region = plays.closest(".statistics-page")!.parentElement!;
-    region.classList.add("app-main");
+    await screen.findByRole("tab", { name: /^Overview/ });
+    // M225: the tabs scroll in the page's own region under the header, not in `.app-main`.
+    const region = document.querySelector<HTMLElement>(".statistics-page > .screen-region")!;
     let top = 0;
     Object.defineProperty(region, "scrollTop", { configurable: true, get: () => top, set: (v) => (top = v) });
     const scrollTo = vi.fn((arg: { top: number }) => {
@@ -331,9 +331,9 @@ describe("the Statistics page (STATS-04)", () => {
     let release: (value: unknown) => void = () => {};
     install({ getStatisticsHealth: vi.fn(() => new Promise((resolve) => (release = resolve))) });
     renderPage();
-    const plays = await screen.findByRole("tab", { name: /^Overview/ });
-    const region = plays.closest(".statistics-page")!.parentElement!;
-    region.classList.add("app-main");
+    await screen.findByRole("tab", { name: /^Overview/ });
+    // M225: the tabs scroll in the page's own region under the header, not in `.app-main`.
+    const region = document.querySelector<HTMLElement>(".statistics-page > .screen-region")!;
     let top = 0;
     Object.defineProperty(region, "scrollTop", { configurable: true, get: () => top, set: (v) => (top = v) });
     const scrollTo = vi.fn((arg: { top: number }) => {
@@ -372,17 +372,22 @@ describe("the Statistics page (STATS-04)", () => {
   it("keeps each tab's state while another is shown", async () => {
     renderPage();
     await userEvent.click(await screen.findByRole("tab", { name: "Plays" }));
-    const since = await within(panel("plays")).findByRole("combobox", { name: "Since" });
+    // M224: Since is in the header beside "Which tracks" while Plays is shown.
+    const since = await screen.findByRole("combobox", { name: "Since" });
+    expect(since.closest(".cp-screen-header")).not.toBeNull();
     await userEvent.selectOptions(since, "30d");
+    const card = panel("plays").querySelector(".plays__unplayed");
 
     await userEvent.click(screen.getByRole("tab", { name: /^Overview/ }));
     expect(panel("overview")).toBeVisible();
     expect(panel("plays")).not.toBeVisible();
+    // Only Plays has a Since.
+    expect(screen.queryByRole("combobox", { name: "Since" })).toBeNull();
     await userEvent.click(screen.getByRole("tab", { name: "Plays" }));
 
-    // The same select, with the choice still in it (the panel was hidden, not rebuilt).
-    expect(within(panel("plays")).getByRole("combobox", { name: "Since" })).toBe(since);
-    expect(since).toHaveValue("30d");
+    // The choice is still made, and the panel was hidden, not rebuilt.
+    expect(screen.getByRole("combobox", { name: "Since" })).toHaveValue("30d");
+    expect(panel("plays").querySelector(".plays__unplayed")).toBe(card);
   });
 
   it("puts the scope picker beside the title and says what is counted in one summary line", async () => {

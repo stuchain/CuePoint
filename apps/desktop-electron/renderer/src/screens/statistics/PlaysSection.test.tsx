@@ -193,6 +193,15 @@ async function section() {
   return panel("plays");
 }
 
+/** M409: "Save as a Collection…" opens a name dialog; Save there makes it. Returns the dialog's name field's value. */
+async function saveAsCollection(user: ReturnType<typeof userEvent.setup>, region: HTMLElement): Promise<string> {
+  await user.click(within(region).getByRole("button", { name: "Save as a Collection…" }));
+  const dialog = await screen.findByRole("dialog", { name: "Save as a Collection" });
+  const offered = (within(dialog).getByRole("textbox", { name: "Name" }) as HTMLInputElement).value;
+  await user.click(within(dialog).getByRole("button", { name: "Save" }));
+  return offered;
+}
+
 const lastAsked = () => {
   const calls = mock("getStatisticsPlays").mock.calls;
   return calls[calls.length - 1]![0] as Record<string, unknown>;
@@ -250,7 +259,7 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       expect(within(region).getByText("top 50")).toBeInTheDocument();
-      expect(within(region).getByLabelText("Since")).toHaveValue("30d");
+      expect(screen.getByLabelText("Since")).toHaveValue("30d");
       expect(lastAsked()).toMatchObject({ limit: 50, since: "2026-10-21", scope: "library" });
     });
 
@@ -271,22 +280,22 @@ describe("the Plays section (STATS-05)", () => {
     ])("%s counts from %s", async (value, label, day) => {
       const user = userEvent.setup();
       renderPage();
-      const region = await section();
+      await section();
 
-      await user.selectOptions(within(region).getByLabelText("Since"), label);
+      await user.selectOptions(screen.getByLabelText("Since"), label);
 
       await waitFor(() => expect(lastAsked()).toMatchObject({ since: day, limit: 10 }));
       expect(lastAsked().tz).toMatch(/^[+-]\d\d:\d\d$/);
       expect(lastAsked()).not.toHaveProperty("sinceRead");
-      expect(within(region).getByLabelText("Since")).toHaveValue(value);
+      expect(screen.getByLabelText("Since")).toHaveValue(value);
     });
 
     it("counts from your last refresh by the id of the last read", async () => {
       const user = userEvent.setup();
       renderPage();
-      const region = await section();
+      await section();
 
-      await user.selectOptions(within(region).getByLabelText("Since"), "Your last refresh");
+      await user.selectOptions(screen.getByLabelText("Since"), "Your last refresh");
 
       await waitFor(() => expect(lastAsked()).toMatchObject({ sinceRead: "7", limit: 10 }));
       expect(lastAsked()).not.toHaveProperty("since");
@@ -383,9 +392,9 @@ describe("the Plays section (STATS-05)", () => {
       window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "7d" }));
       const user = userEvent.setup();
       renderPage();
-      const region = await section();
+      await section();
 
-      await user.selectOptions(within(region).getByLabelText("Since"), "All time");
+      await user.selectOptions(screen.getByLabelText("Since"), "All time");
 
       await waitFor(() => expect(lastAsked()).toEqual({ limit: 10, scope: "library" }));
     });
@@ -399,12 +408,12 @@ describe("the Plays section (STATS-05)", () => {
       });
       const user = userEvent.setup();
       renderPage();
-      const region = await section();
+      await section();
 
-      await user.selectOptions(within(region).getByLabelText("Since"), "A date…");
+      await user.selectOptions(screen.getByLabelText("Since"), "A date…");
       // Until a date is typed the list stays as it was.
       expect(lastAsked()).toEqual({ limit: 10, scope: "library" });
-      await user.type(within(region).getByLabelText("Since date"), "2026-09-01");
+      await user.type(screen.getByLabelText("Since date"), "2026-09-01");
 
       await waitFor(() =>
         expect(lastAsked()).toEqual({
@@ -482,7 +491,7 @@ describe("the Plays section (STATS-05)", () => {
       expect(navigated()).toEqual({ path: "/library", state: { cuepointLibraryTrack: 90 } });
     });
 
-    it("has the shared round play button at the row's right end, and it plays the track", async () => {
+    it("has no play button in the rows; a double-click plays from the row and stays on the page (D12 A, M99)", async () => {
       const playQueue = vi.fn().mockResolvedValue({ ok: true });
       const row = { id: 812, title: "Alpha", artist: "B", file_path: "/m/a.mp3" };
       install({
@@ -493,31 +502,31 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      const play = within(region).getByRole("button", { name: "Play Alpha by B" });
-      expect(play).toHaveAttribute("title", "Play Alpha by B");
-      expect(play.closest("li")).toHaveClass("plays__item");
-      expect(play).toHaveClass("cp-play-btn", "plays__play");
-      expect(play.closest(".cp-hint")?.nextElementSibling).toBeNull();
-      expect(play.querySelector(".cp-pixel-icon")).not.toBeNull();
-      expect(play).toHaveTextContent("");
-      await user.click(play);
+      expect(within(region).queryByRole("button", { name: /^Play / })).toBeNull();
+      expect(region.querySelector(".cp-play-btn")).toBeNull();
+      await user.dblClick(within(region).getByRole("button", { name: /^1\. Alpha by B/ }));
 
       await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
       expect(mock("getLibraryTrack")).toHaveBeenCalledWith({ trackId: 812 });
       expect(playQueue.mock.calls[0]![0][0]).toMatchObject({ trackId: 812, filePath: "/m/a.mp3" });
+      // The first click of the double-click did not open the Library.
+      await new Promise((resolve) => setTimeout(resolve, 600));
       expect(navigated().path).toBe("/statistics");
     });
 
-    it("does not play on a double-click of the row", async () => {
+    it("plays from the row with Enter (M99)", async () => {
       const playQueue = vi.fn().mockResolvedValue({ ok: true });
-      install({ player: { playQueue } });
-      const user = userEvent.setup();
+      install({
+        player: { playQueue },
+        getLibraryTrack: vi.fn().mockResolvedValue({ track: { id: 812, title: "Alpha", artist: "B", file_path: "/m/a.mp3" } }),
+      });
       renderPage();
       const region = await section();
 
-      await user.dblClick(within(region).getByRole("button", { name: /^1\. Alpha by B/ }));
+      fireEvent.keyDown(within(region).getByRole("button", { name: /^1\. Alpha by B/ }), { key: "Enter" });
 
-      expect(playQueue).not.toHaveBeenCalled();
+      await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
+      expect(navigated().path).toBe("/statistics");
     });
 
     it("offers no preview where there is no player", async () => {
@@ -667,8 +676,9 @@ describe("the Plays section (STATS-05)", () => {
       const region = await playsPanel();
 
       expect(await within(region).findByText("None of these tracks has been played yet")).toBeVisible();
-      expect(within(region).getByRole("button", { name: "Keep as Collection" })).toBeDisabled();
-      expect(within(region).getAllByText("No plays to rank")).toHaveLength(3);
+      // M222: one empty state, and no empty cards (nothing to save, nothing to rank).
+      expect(within(region).queryByRole("button", { name: "Save as a Collection…" })).toBeNull();
+      expect(within(region).queryAllByText("No plays to rank")).toHaveLength(0);
     });
 
     it("says so when nothing was played in the time chosen", async () => {
@@ -712,36 +722,38 @@ describe("the Plays section (STATS-05)", () => {
     });
   });
 
-  describe("the footer", () => {
-    it("says when the counts were last read and when history started", async () => {
+  describe("the source line (M431)", () => {
+    it("says when the counts were last read, and nothing of the history all time", async () => {
       renderPage();
       const region = await section();
 
-      expect(
-        within(region).getByText(
-          "From your Rekordbox play counts · history since Oct 8 · last refresh Nov 2",
-        ),
-      ).toBeVisible();
+      expect(within(region).getByText("Rekordbox play counts · refreshed Nov 2")).toBeVisible();
+    });
+
+    it("says where the history starts only when it starts after the Since chosen", async () => {
+      install({
+        getStatisticsPlays: vi.fn().mockResolvedValue(plays({ since: "2026-09-01" })),
+      });
+      renderPage();
+      const region = await section();
+
+      expect(within(region).getByText("Rekordbox play counts · refreshed Nov 2 · history from Oct 8")).toBeVisible();
     });
 
     it("adds the year to a date in another year", async () => {
       install({
         getStatisticsPlays: vi
           .fn()
-          .mockResolvedValue(plays({ history_from: "2025-10-08T12:00:00Z" })),
+          .mockResolvedValue(plays({ since: "2025-01-01", history_from: "2025-10-08T12:00:00Z" })),
       });
       renderPage();
       const region = await section();
 
-      expect(
-        within(region).getByText(
-          "From your Rekordbox play counts · history since Oct 8, 2025 · last refresh Nov 2",
-        ),
-      ).toBeVisible();
+      expect(within(region).getByText("Rekordbox play counts · refreshed Nov 2 · history from Oct 8, 2025")).toBeVisible();
     });
   });
 
-  describe("Keep as Collection", () => {
+  describe("Save as a Collection (M409)", () => {
     const made = (name: string) => ({
       collection: { id: 33, name, kind: "collection", parent_id: null },
     });
@@ -753,7 +765,7 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Keep as Collection" }));
+      await saveAsCollection(user, region);
 
       await waitFor(() =>
         expect(create).toHaveBeenCalledWith({
@@ -762,8 +774,8 @@ describe("the Plays section (STATS-05)", () => {
           track_ids: [812, 90, 4, ...FILLER_IDS],
         }),
       );
-      expect(await within(region).findByText(/Kept 10 tracks in rank order as/)).toHaveTextContent(
-        "Kept 10 tracks in rank order as “Most played, all time (top 10)”, in Collections in the Library.",
+      expect(await within(region).findByText(/Saved 10 tracks in rank order as/)).toHaveTextContent(
+        "Saved 10 tracks in rank order as “Most played, all time (top 10)”, in Collections in the Library.",
       );
       await user.click(within(region).getByRole("button", { name: "Open it in the Library" }));
       expect(navigated()).toEqual({
@@ -805,8 +817,8 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      expect(within(region).getByText(`Will be named “${name}”`)).toBeVisible();
-      await user.click(within(region).getByRole("button", { name: "Keep as Collection" }));
+      // M409: the name is offered in the dialog's field.
+      expect(await saveAsCollection(user, region)).toBe(name);
 
       await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
       expect(create.mock.calls[0]![0].name).toBe(name);
@@ -829,12 +841,12 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Keep as Collection" }));
+      await saveAsCollection(user, region);
 
       expect(await within(region).findByRole("alert")).toHaveTextContent(
         "The Collection could not be made. Nothing was saved.",
       );
-      expect(within(region).queryByText(/Kept/)).toBeNull();
+      expect(within(region).queryByText(/Saved \d/)).toBeNull();
     });
   });
 
@@ -856,7 +868,7 @@ describe("the Plays section (STATS-05)", () => {
       const control = within(region).getByRole("button", { name: "Show less" });
       expect(within(region).getByText("top 25")).toBeInTheDocument();
       expect(within(region).getByRole("button", { name: "1. Alpha by B, 14 plays" })).toBeVisible();
-      expect(within(region).getByRole("button", { name: "Keep as Collection" })).toBeDisabled();
+      expect(within(region).getByRole("button", { name: "Save as a Collection…" })).toBeDisabled();
       release(plays({ tracks: [{ id: 90, title: "Bravo", artist: "C", plays: 9, key: null, bpm: null }] }));
       expect(await within(region).findByRole("button", { name: "1. Bravo by C, 9 plays" })).toBeVisible();
       expect(within(region).getByRole("button", { name: "Show less" })).toBe(control);
@@ -904,7 +916,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
       const before = mock("getStatisticsPlays").mock.calls.length;
-      fireEvent.change(within(region).getByLabelText("Since"), { target: { value: "date" } });
+      fireEvent.change(screen.getByLabelText("Since"), { target: { value: "date" } });
       await waitFor(() =>
         expect(JSON.parse(window.localStorage.getItem(PLAYS_STORAGE_KEY) ?? "{}").since).toBe("date:"),
       );
@@ -912,13 +924,13 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(asked).toBeGreaterThanOrEqual(before);
 
       for (const typed of ["0002-09-01", "1899-12-31", "2027-01-01", "2026-02-30"]) {
-        fireEvent.change(within(region).getByLabelText("Since date"), { target: { value: typed } });
+        fireEvent.change(screen.getByLabelText("Since date"), { target: { value: typed } });
       }
 
       expect(mock("getStatisticsPlays").mock.calls.length).toBe(asked);
       expect(JSON.parse(window.localStorage.getItem(PLAYS_STORAGE_KEY) ?? "{}").since).toBe("date:");
       // The section, with its controls, is still there.
-      expect(within(region).getByLabelText("Since date")).toBeVisible();
+      expect(screen.getByLabelText("Since date")).toBeVisible();
       expect(within(region).getByRole("list", { name: "Most played tracks" })).toBeVisible();
     });
 
@@ -927,7 +939,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      fireEvent.change(within(region).getByLabelText("Since date"), {
+      fireEvent.change(screen.getByLabelText("Since date"), {
         target: { value: "0002-09-01" },
       });
 
@@ -937,9 +949,9 @@ describe("the Plays section, after review (STATS-05)", () => {
     it("is sent once it is whole", async () => {
       window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "date:" }));
       renderPage();
-      const region = await section();
+      await section();
 
-      fireEvent.change(within(region).getByLabelText("Since date"), {
+      fireEvent.change(screen.getByLabelText("Since date"), {
         target: { value: "1999-09-01" },
       });
 
@@ -951,7 +963,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      fireEvent.change(within(region).getByLabelText("Since date"), {
+      fireEvent.change(screen.getByLabelText("Since date"), {
         target: { value: "2026-12-25" },
       });
 
@@ -962,9 +974,9 @@ describe("the Plays section, after review (STATS-05)", () => {
     it("limits the picker to the range", async () => {
       window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "date:" }));
       renderPage();
-      const region = await section();
+      await section();
 
-      const field = within(region).getByLabelText("Since date");
+      const field = screen.getByLabelText("Since date");
       expect(field).toHaveAttribute("max", "2026-11-20");
       expect(field).toHaveAttribute("min", "1900-01-01");
     });
@@ -1039,14 +1051,14 @@ describe("the Plays section, after review (STATS-05)", () => {
       const user = userEvent.setup();
       renderPage();
       const region = await section();
-      expect(within(region).queryByText("Loading plays…")).toBeNull();
+      expect(screen.queryByText("Loading plays…")).toBeNull();
 
       await user.click(within(region).getByRole("button", { name: "Show all 25" }));
 
-      expect(await within(region).findByText("Loading plays…")).toBeVisible();
+      expect(await screen.findByText("Loading plays…")).toBeVisible();
       expect(region.querySelector(".plays--stale")).not.toBeNull();
       release(plays());
-      await waitFor(() => expect(within(region).queryByText("Loading plays…")).toBeNull());
+      await waitFor(() => expect(screen.queryByText("Loading plays…")).toBeNull());
       expect(region.querySelector(".plays--stale")).toBeNull();
     });
   });
@@ -1069,7 +1081,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       act(() => invalidateReads(["library"]));
 
       await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
-      expect(within(region).queryByText("Loading plays…")).toBeNull();
+      expect(screen.queryByText("Loading plays…")).toBeNull();
       expect(region.querySelector(".plays--stale")).toBeNull();
       expect(region.querySelector("[aria-busy]")).toBeNull();
       expect(within(region).getByText("3,120")).toBeInTheDocument();
@@ -1096,14 +1108,14 @@ describe("the Plays section, after review (STATS-05)", () => {
       act(() => invalidateReads(["library"]));
 
       await waitFor(() => expect(pending.length).toBeGreaterThan(0));
-      expect(within(region).queryByText("Loading plays…")).toBeNull();
+      expect(screen.queryByText("Loading plays…")).toBeNull();
       expect(region.querySelector(".plays--stale")).toBeNull();
       await act(async () => {
         for (const resolve of pending.splice(0)) resolve(plays({ last_read_id: 7 }));
       });
 
       await user.click(within(region).getByRole("button", { name: "Show all 25" }));
-      expect(await within(region).findByText("Loading plays…")).toBeVisible();
+      expect(await screen.findByText("Loading plays…")).toBeVisible();
       expect(region.querySelector(".plays--stale")).not.toBeNull();
     });
   });
@@ -1122,19 +1134,19 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(await within(region).findByText(/no refresh to count from yet/)).toBeVisible();
       expect(within(region).queryByRole("list", { name: "Most played tracks" })).toBeNull();
       expect(within(region).queryByRole("button", { name: /Alpha/ })).toBeNull();
-      expect(within(region).queryByRole("button", { name: "Keep as Collection" })).toBeNull();
+      expect(within(region).queryByRole("button", { name: "Save as a Collection…" })).toBeNull();
       // The controls stay, so another choice can be made.
-      expect(within(region).getByLabelText("Since")).toHaveValue("refresh");
+      expect(screen.getByLabelText("Since")).toHaveValue("refresh");
     });
   });
 
-  describe("Keep as Collection", () => {
+  describe("Save as a Collection (M409)", () => {
     it("is not offered where the Collection cannot be made", async () => {
       install({ createCollectionFrom: undefined });
       renderPage();
       const region = await section();
 
-      expect(within(region).queryByRole("button", { name: "Keep as Collection" })).toBeNull();
+      expect(within(region).queryByRole("button", { name: "Save as a Collection…" })).toBeNull();
     });
 
     it("says a track has gone when the route refuses the list, and offers to read again", async () => {
@@ -1145,10 +1157,10 @@ describe("the Plays section, after review (STATS-05)", () => {
       const region = await section();
       const reads = mock("getStatisticsPlays").mock.calls.length;
 
-      await user.click(within(region).getByRole("button", { name: "Keep as Collection" }));
+      await saveAsCollection(user, region);
 
       expect(await within(region).findByRole("alert")).toHaveTextContent(
-        "A track in the list is no longer in your library. Read the list again and keep it.",
+        "A track in the list is no longer in your library. Read the list again and save it.",
       );
       expect(reportUnexpected).not.toHaveBeenCalled();
       await user.click(within(region).getByRole("button", { name: "Read the list again" }));
@@ -1159,24 +1171,33 @@ describe("the Plays section, after review (STATS-05)", () => {
   });
 
   describe("wording and layout of the Plays tab (C47, C85, C140, C72)", () => {
-    it("puts the source note under the Since select as its hint (C47)", async () => {
+    it("puts Since in the header beside Which tracks, and the source line on its own above the cards (M224, M206)", async () => {
       renderPage();
       const region = await section();
 
-      const since = within(region).getByRole("combobox", { name: "Since" });
-      const hint = since.closest(".cp-select")!.querySelector(".cp-field__hint")!;
-      expect(hint).toHaveTextContent(/^From your Rekordbox play counts · history since /);
-      expect(since).toHaveAccessibleDescription(hint.textContent!);
+      const since = screen.getByRole("combobox", { name: "Since" });
+      expect(since.closest(".cp-screen-header")).not.toBeNull();
+      expect(region.contains(since)).toBe(false);
+      const source = region.querySelector(".plays__source")!;
+      expect(source).toHaveTextContent(/^Rekordbox play counts · refreshed /);
+      expect(/\.plays__source\s*\{([^}]*)\}/.exec(playsCss)![1]).toContain("max-width: 60ch;");
       expect(region.querySelector(".plays__footer")).toBeNull();
     });
 
-    it("writes who a track is as one 'Title · artist' line (C85)", async () => {
+    it("writes Title and Artist in columns of their own, in the shared order (D12, M87)", async () => {
       renderPage();
       const region = await section();
 
-      const first = region.querySelector(".plays__item .plays__what")!;
-      expect(first.textContent).toBe("Alpha · B");
-      expect(first.querySelectorAll("span")).toHaveLength(1);
+      const row = region.querySelector(".plays__item .plays__row")!;
+      const cells = [...row.children].map((cell) => cell.textContent);
+      expect(cells.slice(0, 3)).toEqual(["1", "Alpha", "B"]);
+      const head = [...region.querySelector(".plays__columns-head")!.children].map((cell) => cell.textContent);
+      expect(head).toEqual(["#", "Title", "Artist", "BPM", "Key", "Plays"]);
+      expect(/\.plays__columns-head,\s*\.plays__row\s*\{([^}]*)\}/.exec(playsCss)![1]).toContain(
+        "--cp-data-grid-columns: 3ch minmax(0, 1fr) minmax(0, 1fr) 7ch 6ch 6ch;",
+      );
+      // M221: BPM is a figure at the size of the names, like Plays.
+      expect(row.children[3]).toHaveClass("rank__number", "rank__number--main", "statistics-figure");
     });
 
     it("says an empty list with the compact empty state, headline without a full stop (C140)", async () => {
@@ -1187,8 +1208,9 @@ describe("the Plays section, after review (STATS-05)", () => {
       const region = await playsPanel();
 
       await within(region).findByText("None of these tracks has been played yet");
+      // M222: one empty state, not one per card.
       const empties = region.querySelectorAll(".cp-empty-state--compact");
-      expect(empties).toHaveLength(4);
+      expect(empties).toHaveLength(1);
       expect(region.querySelector(".statistics-note + .statistics-note")).toBeNull();
     });
 
@@ -1222,7 +1244,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Play Bravo by C" }));
+      await user.dblClick(within(region).getByRole("button", { name: /^2\. Bravo by C/ }));
 
       await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
       const [items, start] = playQueue.mock.calls[0]!;
@@ -1244,7 +1266,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Play Alpha by B" }));
+      await user.dblClick(within(region).getByRole("button", { name: /^1\. Alpha by B/ }));
 
       await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
       expect(playQueue.mock.calls[0]![0].map((item: { trackId: number }) => item.trackId)).toEqual([812, 4, ...FILLER_IDS]);
@@ -1262,14 +1284,14 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Play Bravo by C" }));
+      await user.dblClick(within(region).getByRole("button", { name: /^2\. Bravo by C/ }));
 
       expect(await within(region).findByText("Could not read the track.")).toBeVisible();
       expect(playQueue).not.toHaveBeenCalled();
     });
   });
 
-  describe("the number columns and the play column (C38, C54, C62)", () => {
+  describe("the number columns (C38, C54, C62)", () => {
     it("gives Not played a fixed number column, with an empty link cell when there is nothing to open", async () => {
       install({
         getStatisticsPlays: vi.fn().mockResolvedValue(plays({ never_played: count(84), unknown: count(0) })),
@@ -1296,19 +1318,12 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(within(region).queryByRole("button", { name: "Show all 25" })).toBeNull();
     });
 
-    it("reserves the play column in the header and the rows alike, with the header band over it (item 5)", () => {
-      expect(playsCss).toMatch(/--plays-play-column:\s*calc\(round\(nearest, calc\(16px \* var\(--scale\)\), 1px\) \+ var\(--space-sm\)\)/);
-      const head = /\.plays__columns-head--play\s*\{([^}]*)\}/.exec(playsCss)![1]!;
-      // Padding, not margin: the band's fill and rule run on over the play column.
-      expect(head).toContain("padding-right: calc(var(--space-sm) + var(--space-md) + var(--plays-play-column));");
-      expect(head).not.toContain("margin-right");
+    it("reserves no play column: the header and the rows share one grid (M99)", () => {
+      expect(playsCss).not.toContain("--plays-play-column");
+      expect(playsCss).not.toContain(".plays__columns-head--play");
     });
 
-    it("keeps the play buttons in a fixed column and cuts a long title short", () => {
-      const item = /\.plays__item\s*\{([^}]*)\}/.exec(playsCss)![1]!;
-      expect(item).toContain("display: grid;");
-      expect(item).toContain("grid-template-columns: minmax(0, 1fr) var(--plays-play-column);");
-      expect(playsCss).toContain("--plays-play-column:");
+    it("cuts a long title short", () => {
       expect(playsCss).toMatch(/\.plays__row\s*\{\s*min-width:\s*0;/);
       const name = /\.plays__name\s*\{([^}]*)\}/.exec(playsCss)![1]!;
       expect(name).toContain("text-overflow: ellipsis;");
@@ -1330,7 +1345,7 @@ describe("the Plays section, after review (STATS-05)", () => {
     });
   });
 
-  describe("the preview button", () => {
+  describe("playing from a row", () => {
     it("says so when the track cannot be read", async () => {
       install({
         player: { playQueue: vi.fn() },
@@ -1340,7 +1355,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Play Alpha by B" }));
+      await user.dblClick(within(region).getByRole("button", { name: /^1\. Alpha by B/ }));
 
       expect(await within(region).findByText("Could not read the track.")).toBeVisible();
     });

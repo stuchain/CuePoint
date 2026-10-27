@@ -3,8 +3,6 @@
  * is the `state` kind, behind its switch.
  */
 .plays {
-  /* The button's width plus the 6 it keeps from the edge: the header and the rows reserve it alike. */
-  --plays-play-column: calc(round(nearest, calc(16px * var(--scale)), 1px) + var(--space-sm));
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -13,33 +11,40 @@
   min-width: 0;
 }
 
+/* The source line and a date's note, above the cards (M224 moved Since to the header). */
 .plays__controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-md);
+  gap: var(--space-xs);
+}
+
+/* The source line keeps a reading width and no longer wraps at the Since field's 400 px (M206, M431):
+   it is a line of its own now, not the field's hint. */
+.plays__source {
+  max-width: 60ch;
+}
+
+/* The spinner sits in the Since row while a new choice is read (M384): no block above the list. */
+.plays__reading {
+  flex: none;
+}
+
+/* The list dims while it is out of date (M384). */
+.plays[data-stale] .cp-data-grid__list {
+  opacity: 0.6;
 }
 
 /* The list look is the shared one (`cp-data-grid` in components/table/DataTable.css, D8); this sheet
    names the columns. */
+/* # · Title · Artist · BPM · Key · Plays, the shared order (D12, M87). No play column: a double-click
+   or Enter plays from a row (M99). */
 .plays__columns-head,
 .plays__row {
-  --cp-data-grid-columns: 3ch minmax(0, 1fr) 6ch 7ch 6ch;
+  --cp-data-grid-columns: 3ch minmax(0, 1fr) minmax(0, 1fr) 7ch 6ch 6ch;
 }
 
-/* The play button's room, so the headings line up with the rows: padding, so the band's fill and
-   rule run on over the play column (item 5). */
-.plays__columns-head--play {
-  padding-right: calc(var(--space-sm) + var(--space-md) + var(--plays-play-column));
-}
-
-/* The row, then the play button in a column of its own that is always as wide as the button, so a
-   long title never pushes it out of line (C54). */
 .plays__item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--plays-play-column);
-  align-items: center;
-  gap: var(--space-md);
   min-width: 0;
 }
 
@@ -47,16 +52,8 @@
   min-width: 0;
 }
 
-/* Title and artist on one line, so the row keeps the one row height. */
-.plays__what {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-md);
-  min-width: 0;
-}
-
+/* Title and Artist, each in its own column, one line each, so the row keeps the one row height. */
 .plays__name {
-  flex: 0 1 auto;
   min-width: 0;
   font-family: var(--font-data);
   overflow: hidden;
@@ -68,21 +65,11 @@
   display: flex;
 }
 
-/* The row's play button is the shared PlayButton, in the list's last column. */
-.plays__play {
-  justify-self: start;
-}
-
 .plays__keep {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
-}
-
-/* The link that widens the list sits at the card's right end. */
-.plays__more {
-  margin-left: auto;
 }
 
 /* The Health › Other pattern: label, a fixed number column, then the link's column, so the two
@@ -93,6 +80,9 @@
   align-items: center;
   gap: var(--space-md);
   min-height: var(--row-height);
+  /* The list's own row: its inset and its line (M216). */
+  padding-inline: var(--space-sm);
+  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--row-line);
 }
 
 .plays__unplayed-count {
@@ -129,10 +119,19 @@
   color: var(--fg-disabled);
 }
 
-.plays__failed,
-.plays__date {
+.plays__failed {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-xs);
+}
+
+/* The date field beside Since in the header (M39, M224). */
+.plays__date {
+  display: inline-flex;
+  min-width: calc(140px * var(--scale));
+}
+
+.plays__date > .discover-date {
+  width: 100%;
 }

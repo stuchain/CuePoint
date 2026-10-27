@@ -6,7 +6,7 @@
  *
  * Files carries missing, unreadable and not checked; Beatport the match states plus the tracks
  * with values not yet in their files; Other duplicates, matches Beatport changed after you
- * decided and tracks with no artwork; Analysis the waveforms and loudness. Every number is the
+ * confirmed and tracks with no artwork; Analysis the waveforms and loudness. Every number is the
  * engine's; the Library opens on the engine's own rules where Clean has no place for a count
  * (not synced, no artwork). Failed analysis opens Settings, where waveforms are managed.
  *

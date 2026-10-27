@@ -10,8 +10,24 @@
   min-height: auto;
 }
 
+/* The page fills the content region and its tabs scroll in `.screen-region` (M225), as Settings
+   does: the bar sits on the content's edge under the header, not at the window's. */
 .app-main .screen.statistics-page {
+  flex: 1;
+  min-height: 0;
   max-width: none;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.statistics-page > .screen-region {
+  --screen-header-height: 0px;
+}
+
+/* Plays' Since beside the scope (M224), sized like it. */
+.statistics-page .plays__since {
+  min-width: 0;
+  max-width: calc(320px * var(--scale));
 }
 
 /* Sized like Prepare's Set picker (.prepare-header__picker): to its content up to a limit, the
@@ -103,17 +119,12 @@
   gap: var(--space-xs) var(--space-md);
 }
 
-/* A card's link, or its "Show all" button, sits at the bottom right inside the card (C256). */
-.statistics-panel__link {
-  align-self: flex-end;
-  margin-inline-end: var(--space-sm);
-}
-
-/* Every card's foot: its link or "Show all", at the right, in line with the numbers above (D22). */
+/* Every card's foot (M213): one quiet button at the right, hung out by its own padding so its words
+   end on the numbers' edge above (the rows keep --space-sm inside). */
 .statistics-panel__foot {
   display: flex;
   justify-content: flex-end;
-  padding-inline-end: var(--space-sm);
+  margin-inline-end: round(calc(-1 * var(--space-sm)), 1px);
 }
 
 .statistics-panel__line > .cp-link {
@@ -293,6 +304,8 @@
 
 /* The one status dot a panel keeps (M208): the pixel icon, square like every other mark (M34). */
 .health-card__dot {
+  /* M208: a box of its own, so its margin and size hold beside the words. */
+  display: inline-block;
   margin-inline-start: var(--space-sm);
   color: var(--warning-text);
   vertical-align: middle;
@@ -301,7 +314,6 @@
 /* A card with no bar holds the bar's room, so side-by-side cards share row lines (M209). */
 .health-card__bar-slot {
   height: var(--space-xs);
-  margin-bottom: var(--space-sm);
 }
 
 .health-tab {
@@ -425,4 +437,26 @@
   border: 0;
   width: var(--space-md);
   height: var(--space-md);
+}
+
+/* The Most played card is a table: capped (D22 A, M207), not stretched across a wide window. */
+.plays__tracks {
+  max-width: calc(760px * var(--scale));
+}
+
+/* A list right under its heading band: the band and the rows meet, with no body gap between (M216). */
+.statistics-panel__body > .cp-data-grid__head + .cp-data-grid__list {
+  margin-top: calc(-1 * var(--space-md));
+}
+
+/* The Overview's cards in pairs (M212): two columns once two fit, never three or four on a wide
+   window, so a pair stays a pair; one column below. */
+.library-tab {
+  container: statistics-overview / inline-size;
+}
+
+@container statistics-overview (min-width: 660px) {
+  .library-tab .statistics-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

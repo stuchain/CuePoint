@@ -236,6 +236,12 @@ function columns({ buckets, width, height, scale, isGap, fit = "scroll" }: BarsL
   const length = total - top - bottom;
   const baseY = top + length;
   const totalW = Math.max(1, real.length * pitch + (buckets.length - real.length) * gapPitch);
+  // The plot runs to the container's right edge (M214): a short run's bars keep their comfortable
+  // width, and its baseline reaches the card's content edge.
+  const plotW = Math.max(totalW, Math.floor(width));
+  // Every bar's count, or none (D22 A, M214): a count is written only where it fits its own column,
+  // and one that does not would leave some bars labelled and others bare.
+  const countsFit = real.every((b) => b.count <= 0 || [...countText(b.count)].length * charW + px(2) <= pitch);
   const labelEvery = Math.max(1, Math.ceil((labelChars * charW + px(4)) / pitch));
   const labelGap = px(4);
   // Labels are thinned by where they land, not by index, so a narrow gap slot cannot be overrun.
@@ -299,7 +305,7 @@ function columns({ buckets, width, height, scale, isGap, fit = "scroll" }: BarsL
       // "35" beside "35" ran together as "3535". The value is still on the bar's focus caption and
       // in the chart's table.
       count:
-        bucket.count <= 0 || [...countText(bucket.count)].length * charW + px(2) > pitch
+        bucket.count <= 0 || !countsFit
           ? null
           : { text: countText(bucket.count), x: centre, y: baseY - tall - hair - px(2), anchor: "middle" },
       label:
@@ -311,10 +317,10 @@ function columns({ buckets, width, height, scale, isGap, fit = "scroll" }: BarsL
 
   return {
     orientation: "vertical",
-    width: totalW,
+    width: plotW,
     height: total,
     bars,
-    axis: { x: 0, y: baseY, width: totalW, height: hair },
+    axis: { x: 0, y: baseY, width: plotW, height: hair },
     plot: { length },
     labelWidth: 0,
     fontSize,

@@ -263,7 +263,9 @@ describe("barsLayout: fit to the width (C247)", () => {
   it("stretches the bars to fill a wide container instead of stopping at the widest pitch", () => {
     const scroll = barsLayout(wide);
     const fit = barsLayout({ ...wide, fit: "width" });
-    expect(fit.width).toBeGreaterThan(scroll.width);
+    // M214: both plots now reach the container's edge, so the bars, not the plot, are compared.
+    expect(fit.bars[0]!.hit.width).toBeGreaterThan(scroll.bars[0]!.hit.width);
+    expect(scroll.width).toBe(2400);
     expect(fit.width).toBeLessThanOrEqual(2400);
     expect(fit.width).toBeGreaterThan(2400 - ORDERED.length);
   });
@@ -317,5 +319,30 @@ describe("rebin (C247)", () => {
   it("is a single bar for one bin, and the run itself for a bin count under one", () => {
     expect(rebin(run, 1)).toEqual([{ label: "100\u2013104", count: 15 }]);
     expect(rebin(run, 0)).toEqual(run);
+  });
+});
+
+describe("counts on every bar or none, and the plot to the edge (D22 A, M214)", () => {
+  it("writes no count at all when one would not fit its column", () => {
+    const buckets = [
+      { label: "120", count: 3 },
+      { label: "124", count: 12345 },
+      { label: "128", count: 7 },
+    ];
+    const layout = barsLayout({ buckets, orientation: "vertical", width: 60, height: 120, scale: 1, fit: "width" });
+    expect(layout.bars.every((bar) => bar.count === null)).toBe(true);
+  });
+
+  it("writes every count when they all fit", () => {
+    const buckets = [
+      { label: "120", count: 3 },
+      { label: "124", count: 12 },
+      { label: "128", count: 7 },
+    ];
+    const layout = barsLayout({ buckets, orientation: "vertical", width: 600, height: 120, scale: 1 });
+    expect(layout.bars.every((bar) => bar.count !== null)).toBe(true);
+    // A short run keeps its bars' width, and its baseline reaches the container's edge.
+    expect(layout.width).toBe(600);
+    expect(layout.axis.width).toBe(600);
   });
 });

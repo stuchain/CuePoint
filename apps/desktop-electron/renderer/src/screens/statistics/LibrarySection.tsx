@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { CollectionNode, FilterRuleSet, StatisticsSpreads } from "../../api/cuepointBridge.types";
 import { EmptyState } from "../../components/EmptyState";
-import { LinkButton } from "../../components/LinkButton";
+import { Button } from "../../components/Button";
 import { countNoun, formatCount } from "../../format/counts";
 import { formatLength, formatTotal } from "../../format/durations";
 import { formatBpm } from "../../format/units";
@@ -49,11 +49,14 @@ export function LibrarySection({ spreads, collections, now }: LibrarySectionProp
   const [more, setMore] = useState(false);
   const open = (rules: FilterRuleSet) => navigate("/library", { state: libraryRulesState(rules) });
   const year = (now ?? new Date()).getFullYear();
-  // The link lives inside the last chart's card, at its bottom right (C256).
+  // The button lives inside the last chart's card, in its foot at the bottom right (C256), the same
+  // quiet button as every card's foot (M213).
   const moreCharts = (
-    <LinkButton go={!more} className="statistics-panel__link" onClick={() => setMore((shown) => !shown)}>
-      {more ? "Fewer charts" : "More charts: date added, rating"}
-    </LinkButton>
+    <div className="statistics-panel__foot">
+      <Button variant="quiet" aria-expanded={more} onClick={() => setMore((shown) => !shown)}>
+        {more ? "Fewer charts" : "More charts: date added, rating"}
+      </Button>
+    </div>
   );
 
   const figures: Figure[] = [
@@ -128,7 +131,7 @@ export function LibrarySection({ spreads, collections, now }: LibrarySectionProp
   if (spreads.total === 0) {
     return (
       <div className="library-tab">
-        <EmptyState compact headline="No tracks to count here" description="Pick another playlist or Collection above." />
+        <EmptyState compact headline="No tracks to count here" description="Choose another playlist or Collection above." />
       </div>
     );
   }

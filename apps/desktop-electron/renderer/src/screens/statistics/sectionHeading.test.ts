@@ -12,7 +12,7 @@ describe("Statistics card headings", () => {
 });
 
 describe("Statistics lists", () => {
-  it("use the one row height, with no boxes and the shared play button at the row's end", async () => {
+  it("use the one row height, with no boxes and no play button in the rows (M99)", async () => {
     const plays = (await import("./PlaysSection.css?raw")).default;
     // The row height, the divider and the hover are the shared list look (DataTable.css), not copies.
     const rule = (selector: string) => {
@@ -24,6 +24,7 @@ describe("Statistics lists", () => {
     expect(plays).not.toMatch(/border-bottom:\s*var\(--divider\)/);
     expect(css).not.toMatch(/\.rank__item\s*\{/);
     expect(plays).not.toContain("plays__preview");
-    expect(plays).toContain(".plays__play");
+    // M99: no ▶ in rows; a double-click or Enter plays from one.
+    expect(plays).not.toContain(".plays__play");
   });
 });

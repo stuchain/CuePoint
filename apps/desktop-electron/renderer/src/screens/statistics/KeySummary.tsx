@@ -14,7 +14,6 @@ import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { RankBar } from "../../components/charts/RankBar";
-import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatCount } from "../../format/counts";
@@ -112,13 +111,12 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
       bodyClassName="statistics-panel__body"
     >
       {body}
-      <LinkButton
-        go
-        className="statistics-panel__link"
-        onClick={() => navigate("/keys", { state: keysState(picked) })}
-      >
-        {goTo("Keys")}
-      </LinkButton>
+      {/* The card's one foot, the same quiet button as every card's (M213). */}
+      <div className="statistics-panel__foot">
+        <Button variant="quiet" onClick={() => navigate("/keys", { state: keysState(picked) })}>
+          {goTo("Keys")}
+        </Button>
+      </div>
     </Card>
   );
 }

@@ -124,9 +124,13 @@ describe("the key summary (STATS-06)", () => {
     const card = list.closest("section")!;
     expect(card.querySelector(".cp-card__head")).not.toHaveTextContent("Open in Keys");
     const link = within(card).getByRole("button", { name: "Open in Keys" });
-    expect(link).toHaveClass("statistics-panel__link");
+    // M213: the card's one foot, a quiet button at the right, as every card's foot.
+    expect(link.parentElement).toHaveClass("statistics-panel__foot");
+    expect(link).toHaveClass("cp-btn--quiet");
     expect(card.querySelector(".cp-card__body")).toContainElement(link);
-    expect(/\.statistics-panel__link\s*\{([^}]*)\}/.exec(css)![1]).toContain("align-self: flex-end;");
+    const foot = /\.statistics-panel__foot\s*\{([^}]*)\}/.exec(css)![1];
+    expect(foot).toContain("justify-content: flex-end;");
+    expect(foot).toContain("margin-inline-end: round(calc(-1 * var(--space-sm)), 1px);");
   });
 
   it("draws no list and says '0 with a key' when none is held", async () => {

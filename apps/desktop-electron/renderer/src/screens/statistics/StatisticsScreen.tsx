@@ -35,7 +35,7 @@ import { libraryImportState } from "../library/libraryLink";
 import { HealthSection } from "./HealthSection";
 import { healthToFix } from "./healthCount";
 import { LibrarySection } from "./LibrarySection";
-import { PlaysSection } from "./PlaysSection";
+import { PlaysSection, PlaysSince } from "./PlaysSection";
 import { loadPlaysChoice } from "./playsChoice";
 import { statisticsFocus } from "./statisticsLink";
 import { noHistoryState, noLibraryState } from "./statisticsEmpty";
@@ -122,6 +122,8 @@ export function StatisticsScreen() {
   // remembered scope has been judged against the trees as they are now.
   const reading = settled && !libraryEmpty ? scope : null;
   const [playsChoice, setPlaysChoice] = useState(loadPlaysChoice);
+  // What the header's date field says is wrong with a typed day; the Plays tab says it (M224).
+  const [dateNote, setDateNote] = useState<string | null>(null);
   const plays = useStatisticsPlays(reading, playsChoice, trees.refreshing);
   const spreads = useStatisticsSpreads(reading, trees.refreshing);
   const health = useStatisticsHealth(reading, trees.refreshing);
@@ -141,14 +143,15 @@ export function StatisticsScreen() {
     setTab("health");
   }, [focusToken]);
 
-  // Each tab keeps its own place in the page's one scroll (the `.app-main` region holds it): a tab
-  // not opened yet starts at the top, one come back to is where it was left. A link that asks for
-  // Health is a new ask, so it starts at the top.
+  // Each tab keeps its own place in the page's one scroll (its `.screen-region`, under the header,
+  // M225): a tab not opened yet starts at the top, one come back to is where it was left. A link that
+  // asks for Health is a new ask, so it starts at the top.
   const pageRef = useRef<HTMLDivElement>(null);
+  const regionRef = useRef<HTMLDivElement>(null);
   const places = useRef<Partial<Record<TabId, number>>>({});
   const shown = useRef<TabId>(tab);
   const lastFocus = useRef<string | null>(null);
-  const scroller = () => pageRef.current?.closest<HTMLElement>(".app-main") ?? pageRef.current;
+  const scroller = () => regionRef.current ?? pageRef.current;
   // A layout effect, so the page never paints one frame at the old place. A tab whose data has
   // not come yet is too short to scroll down to its place (the browser clamps it to 0), so the
   // place is asked for again once that data first arrives.
@@ -218,15 +221,21 @@ export function StatisticsScreen() {
         answered !== null && !libraryEmpty ? (
           // The label is the select's own, drawn inside its box (C244), so the title row is one
           // control tall like the other pages' and nothing is painted over. Keys says the same (C222).
-          <Select
-            label={WHICH_TRACKS}
-            inlineLabel
-            className="statistics-page__scope"
-            value={scope}
-            options={options}
-            disabled={!settled}
-            onChange={(event) => choose(event.target.value)}
-          />
+          <>
+            <Select
+              label={WHICH_TRACKS}
+              inlineLabel
+              className="statistics-page__scope"
+              value={scope}
+              options={options}
+              disabled={!settled}
+              onChange={(event) => choose(event.target.value)}
+            />
+            {/* Plays' Since is part of the scope, so it sits beside it while Plays is shown (M224). */}
+            {tab === "plays" && plays.status !== "unavailable" && (
+              <PlaysSince choice={playsChoice} onChoice={setPlaysChoice} stale={plays.stale} onNote={setDateNote} />
+            )}
+          </>
         ) : undefined
       }
       facts={facts}
@@ -265,19 +274,21 @@ export function StatisticsScreen() {
     return (
       <div ref={pageRef} className="screen screen--scroll statistics-page">
         {header}
-        <EmptyState
-          icon="statistics"
-          headline={empty.title}
-          description={empty.hint ?? undefined}
-          action={
-            empty.action
-              ? {
-                  label: empty.action.label,
-                  onClick: () => navigate("/library", { state: libraryImportState() }),
-                }
-              : undefined
-          }
-        />
+        <div ref={regionRef} className="screen-region">
+          <EmptyState
+            icon="statistics"
+            headline={empty.title}
+            description={empty.hint ?? undefined}
+            action={
+              empty.action
+                ? {
+                    label: empty.action.label,
+                    onClick: () => navigate("/library", { state: libraryImportState() }),
+                  }
+                : undefined
+            }
+          />
+        </div>
       </div>
     );
   }
@@ -288,6 +299,8 @@ export function StatisticsScreen() {
     <div ref={pageRef} className="screen screen--scroll statistics-page">
       {header}
 
+      {/* The tabs scroll here, under the header, so the bar sits on the content's edge (M225). */}
+      <div ref={regionRef} className="screen-region">
       <TabPanel
         id="overview"
         active={tab === "overview"}
@@ -319,6 +332,8 @@ export function StatisticsScreen() {
               stale={plays.stale}
               failed={plays.failed}
               onRetry={plays.retry}
+              dateNote={dateNote}
+              pageEmpty={noHistory !== null}
             />
           </>
         )}
@@ -334,6 +349,7 @@ export function StatisticsScreen() {
       >
         {health.data && <HealthSection health={health.data} />}
       </TabPanel>
+      </div>
     </div>
   );
 }

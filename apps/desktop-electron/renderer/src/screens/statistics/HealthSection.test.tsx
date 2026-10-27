@@ -205,7 +205,7 @@ describe("the Health tab (STATS-07, K3)", () => {
     }
   });
 
-  it("opens Clean's Duplicates tab from Duplicates, and Match from Changed since you decided", async () => {
+  it("opens Clean's Duplicates tab from Duplicates, and Match from Changed after you confirmed (M432)", async () => {
     const first = renderSection();
     await userEvent.click(within(rowOf("other", "duplicates")).getByRole("button"));
     expect(where().dataset.section).toBe("duplicates");
