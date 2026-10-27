@@ -39,11 +39,27 @@ describe("EmptyState", () => {
   });
 
   // P41: the headline is the section size (14, voice) and still bold.
-  it("is centred and the headline is section-size bold", () => {
+  it("is centred and the headline is a section-size pixel line at the regular weight (M19, D1)", () => {
     const root = /\.cp-empty-state\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(root).toMatch(/align-items:\s*center/);
     expect(root).toMatch(/text-align:\s*center/);
-    expect(css).toMatch(/headline\s*\{[^}]*font-size:\s*var\(--font-size-section\)[^}]*font-weight:\s*var\(--font-weight-bold\)/);
+    expect(css).toMatch(/headline\s*\{[^}]*font-size:\s*var\(--font-size-section\)[^}]*font-weight:\s*var\(--font-weight-regular\)/);
+  });
+
+  it("sets its sentence at the body size with a rounded line height, like the rows around it (M18, M19)", () => {
+    expect(css).toMatch(/__description\s*\{[^}]*font-size:\s*var\(--text-body\)/);
+    expect(css).toMatch(/__description\s*\{[^}]*line-height:\s*round\(nearest,/);
+  });
+
+  it("starts a third of the free room down, on every page, with Loading starting on the same line (M353, M372)", async () => {
+    const third = /flex:\s*0 0 max\(0px, calc\(100% \/ 3 - 2 \* var\(--space-2xl\)\)\)/;
+    expect(css).toMatch(third);
+    const loading = (await import("./Loading.css?raw")).default;
+    expect(loading).toMatch(third);
+  });
+
+  it("gives its button no margin of its own, so a link in the slot sits where a button does (M350)", () => {
+    expect(css).not.toMatch(/\.cp-empty-state \.cp-btn\s*\{/);
   });
 });
 

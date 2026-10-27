@@ -9,7 +9,23 @@
   font-size: var(--control-font-size);
 }
 
+/* It holds its room from the first frame but is not drawn for the first 300 ms (M371). */
+.cp-loading[data-waiting] {
+  opacity: 0;
+}
+
+/* Centred in the room it has, starting where an empty state starts (a third of the free room
+   down, EmptyState.css), so the words do not drop when one becomes the other (M372). */
 .cp-loading--centered {
-  justify-content: center;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 100%;
   padding: var(--space-lg);
+}
+
+.cp-loading--centered::before {
+  content: "";
+  flex: 0 0 max(0px, calc(100% / 3 - 2 * var(--space-2xl)));
 }

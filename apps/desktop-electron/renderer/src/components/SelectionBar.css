@@ -14,7 +14,9 @@
   justify-content: space-between;
   gap: var(--space-md);
   min-height: var(--selection-bar-height);
-  padding-inline: var(--space-md);
+  /* The count starts where the table's cell text starts, and the last button ends where the rows'
+     end inset does, so the bar's words sit on the columns above and below it (M54, M56). */
+  padding-inline: var(--space-sm) var(--row-end-inset);
   background: var(--bg-toolbar);
   color: var(--fg-primary);
   font-size: var(--text-body);
@@ -26,11 +28,12 @@
   gap: var(--space-sm);
   flex: none;
   white-space: nowrap;
-  /* "N selected" is the one count in the text colour (P52, P34): semibold, tabular. */
+  /* "N selected" is the one count in the text colour (P52, P34): the control face at the control
+     weight like the buttons beside it, tabular (the figures come from the data face, M20). */
   color: var(--fg-primary);
-  font-family: var(--font-data);
+  font-family: var(--font-control);
   font-variant-numeric: tabular-nums;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--control-font-weight);
 }
 
 /* Narrow (Track details open), the buttons wrap to a second line instead of running over the count. */
@@ -45,15 +48,19 @@
 }
 
 /*
- * Over a table's bottom rows (option 1A): lifted off them by the sticky shadow mirrored upward
- * (P52, P40), not a divider. For a double-click's length after it appears the pointer goes through
- * it to the row under it.
+ * Over a table's bottom rows (option 1A): a hard hairline on top, like the header's, so the row
+ * under it does not show through as a sliver (M117, D4). For a double-click's length after it
+ * appears the pointer goes through it to the row under it.
  */
 .cp-selection-bar--overlay {
-  box-shadow:
-    0 calc(-1 * var(--hairline)) 0 var(--row-line),
-    0 calc(-1 * round(nearest, calc(6px * var(--scale)), 1px)) round(nearest, calc(10px * var(--scale)), 1px)
-      round(nearest, calc(-6px * var(--scale)), 1px) rgba(0, 0, 0, 0.6);
+  box-shadow: 0 calc(-1 * var(--hairline)) 0 var(--row-line);
+}
+
+/* The last button hangs by its frame's padding, as every last quiet button does (Button.css, L2),
+   also when the bar's hidden "everything matching" note follows it in the group (M56). */
+.cp-selection-bar__actions > :last-child > .cp-btn:not(.cp-btn--framed):nth-last-child(2):has(+ .cp-visually-hidden),
+.cp-selection-bar__actions > :last-child > .cp-hint:nth-last-child(2):has(+ .cp-visually-hidden) {
+  margin-inline-end: calc(-1 * (var(--space-sm) + var(--control-border-width)));
 }
 
 .cp-selection-bar--overlay[data-armed="false"] {

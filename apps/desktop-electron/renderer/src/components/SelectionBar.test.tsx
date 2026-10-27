@@ -93,3 +93,21 @@ describe("SelectAllButton", () => {
     expect(screen.getByRole("button", { name: "Select all" })).toBeDisabled();
   });
 });
+
+describe("SelectionBar look (M20, M54, M56, M117)", () => {
+  const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  it("sets the count in the control face at the control weight, like the buttons beside it (M20)", () => {
+    expect(flat).toMatch(/\.cp-selection-bar__count \{[^}]*font-family:\s*var\(--font-control\)/);
+    expect(flat).toMatch(/\.cp-selection-bar__count \{[^}]*font-weight:\s*var\(--control-font-weight\)/);
+    expect(flat).not.toMatch(/font-weight:\s*var\(--font-weight-semibold\)/);
+  });
+
+  it("starts the count on the cell inset and ends the last button on the rows' end inset (M54, M56)", () => {
+    expect(flat).toMatch(/\.cp-selection-bar \{[^}]*padding-inline:\s*var\(--space-sm\) var\(--row-end-inset\)/);
+  });
+
+  it("lifts off the rows with a hard hairline, not a blur (M117, D4)", () => {
+    expect(flat).toMatch(/\.cp-selection-bar--overlay \{[^}]*box-shadow:\s*0 calc\(-1 \* var\(--hairline\)\) 0 var\(--row-line\);/);
+  });
+});

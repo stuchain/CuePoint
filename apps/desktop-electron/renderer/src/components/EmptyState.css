@@ -3,7 +3,6 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-md);
-  /* One start position on every page: 12 below the header divider. */
   padding: var(--space-lg);
   text-align: center;
 }
@@ -19,9 +18,25 @@
   height: var(--icon-size-lg);
 }
 
-/* Starts 48 down from the header line, so the empty state sits in the upper third, not the middle. */
+/*
+ * Where an empty state sits: the block starts a third of the free room down, on every page (M353,
+ * D32); a centred Loading (Loading.css) starts at the same line, so the words do not drop when one
+ * becomes the other (M372). A spacer above it takes the share; with no room to share (a parent as
+ * tall as its content) the spacer is nothing and the block starts at the top, `--space-lg` under
+ * the toolbar.
+ */
 .cp-empty-state:not(.cp-empty-state--compact) {
-  padding-top: calc(var(--unit) * 12);
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 100%;
+}
+
+.cp-empty-state:not(.cp-empty-state--compact)::before {
+  content: "";
+  flex: 0 0 max(0px, calc(100% / 3 - 2 * var(--space-2xl)));
+}
+
+.cp-empty-state:not(.cp-empty-state--compact) {
   gap: var(--space-sm);
 }
 
@@ -29,27 +44,29 @@
   color: var(--success-text);
 }
 
+/* A short pixel headline at the regular weight, the page's label voice (M19, D1). */
 .cp-empty-state__headline {
   font-family: var(--font-voice);
   margin: 0;
   font-size: var(--font-size-section);
-  font-weight: var(--font-weight-bold);
+  line-height: round(nearest, calc(var(--font-size-section) * var(--line-height-body)), 1px);
+  font-weight: var(--font-weight-regular);
   color: var(--fg-primary);
 }
 
-/* The description is a sentence, so Inter (D5, C55); the headline is the voice (P2). */
+/* The description is a sentence, so Inter (D5, C55), at the body size like the rows around it
+   (M18); the headline is the voice (P2). */
 .cp-empty-state__description {
   margin: 0;
   max-width: 60ch;
   font-family: var(--font-data);
-  font-size: var(--control-font-size);
-  line-height: var(--line-height-prose);
+  font-size: var(--text-body);
+  line-height: round(nearest, calc(var(--text-body) * var(--line-height-prose)), 1px);
   color: var(--fg-muted);
 }
 
-.cp-empty-state .cp-btn {
-  margin-top: var(--space-xs);
-}
+/* The one action is a grey button; the gap above it is the container's, not a margin of its own
+   (a link in this slot sat 5 px lower than a button, M350). */
 
 /* The short form: no icon, body-size words, for an empty list inside a panel. */
 .cp-empty-state--compact {
@@ -58,4 +75,5 @@
 
 .cp-empty-state--compact .cp-empty-state__headline {
   font-size: var(--text-body);
+  line-height: round(nearest, calc(var(--text-body) * var(--line-height-body)), 1px);
 }
