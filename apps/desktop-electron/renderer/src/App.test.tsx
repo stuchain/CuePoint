@@ -636,7 +636,16 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
     file_path: "C:\\music\\1.mp3",
   };
 
+  // Track details folds itself in a window too narrow for the table beside it (D16); these
+  // look at the panel shown, so the window is wide enough for both (every element, the sidebar
+  // too, is 1200 wide below).
+  const width = window.innerWidth;
+  afterEach(() => {
+    window.innerWidth = width;
+  });
+
   beforeEach(() => {
+    window.innerWidth = 3200;
     globalThis.ResizeObserver ??= class {
       observe() {}
       unobserve() {}

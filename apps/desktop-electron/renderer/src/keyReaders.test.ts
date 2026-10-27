@@ -33,6 +33,7 @@ const ALLOWED: Readonly<Record<string, string>> = {
   "screens/library/PaneTree.tsx": "a tree row's key, not a track's",
   "screens/library/CollectionsPane.tsx": "a tree row's key, not a track's",
   "screens/library/libraryClean.ts": "importedText, the value the mark's tooltip says is not used",
+  "screens/library/beatportComparison.ts": "the Beatport tab's Rekordbox column, shown beside the key used (D16)",
   "screens/statistics/PlaysSection.tsx": "the plays route's key, which the engine resolved (as the queue's is)",
 };
 

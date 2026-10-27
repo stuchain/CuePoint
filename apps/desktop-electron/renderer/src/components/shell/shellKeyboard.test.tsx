@@ -77,13 +77,18 @@ describe("sidebar keyboard", () => {
 
 describe("inspector focus", () => {
   // The panel opens with a selection (K1); these are about the open panel's controls.
+  // Track details folds itself in a window too narrow for the table beside it (D16); these are about
+  // the panel shown, so the window is wide enough for both.
+  const width = window.innerWidth;
   beforeEach(() => {
+    window.innerWidth = 1280;
     vi.useFakeTimers({ shouldAdvanceTime: true });
     setSelectedTrack({ id: 1, key: null });
   });
   afterEach(() => {
     vi.useRealTimers();
     setSelectedTrack(null);
+    window.innerWidth = width;
   });
 
   /** Renders, then lets the selection's double-click window pass so the panel is open. */
@@ -106,7 +111,8 @@ describe("inspector focus", () => {
 
     await user.click(screen.getByRole("button", { name: /hide track details/i }));
 
-    expect(screen.getByRole("button", { name: /^track details$/i })).toHaveFocus();
+    // The header's button shows only while the panel is hidden (D16).
+    expect(await screen.findByRole("button", { name: /^track details$/i })).toHaveFocus();
     expect(document.activeElement).not.toBe(document.body);
   });
 
@@ -120,7 +126,7 @@ describe("inspector focus", () => {
     );
     await user.click(screen.getByRole("button", { name: /hide track details/i }));
 
-    await user.click(screen.getByRole("button", { name: /^track details$/i }));
+    await user.click(await screen.findByRole("button", { name: /^track details$/i }));
 
     expect(screen.getByRole("button", { name: /hide track details/i })).toHaveFocus();
   });
@@ -143,7 +149,7 @@ describe("inspector focus", () => {
     await user.keyboard("{Control>}i{/Control}");
     screen.getByRole("button", { name: /hide track details/i }).focus();
     await user.keyboard("{Control>}i{/Control}");
-    expect(screen.getByRole("button", { name: /^track details$/i })).toHaveFocus();
+    expect(await screen.findByRole("button", { name: /^track details$/i })).toHaveFocus();
   });
 
   it("does not steal focus on first render", () => {

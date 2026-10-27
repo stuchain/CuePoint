@@ -91,12 +91,13 @@ describe("B4: the Details toggle", () => {
     expect(closed).toHaveAttribute("aria-pressed", "false");
     expect(closed).not.toHaveAttribute("aria-controls");
 
+    // While the panel shows, the header has no toggle at all: the panel's own × hides it (D16, moved
+    // from a pressed toggle naming the panel).
     act(() => publishDetails({ open: true, toggle: () => undefined }));
     view.rerender(<ScreenHeader title="Library" />);
-    const open = screen.getByRole("button", { name: "Track details" });
-    expect(open).toHaveAttribute("aria-pressed", "true");
-    expect(open).toHaveAttribute("aria-controls", DETAILS_PANEL_ID);
+    expect(screen.queryByRole("button", { name: "Track details" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Show track details" })).toBeNull();
+    expect(document.querySelector(`[aria-controls="${DETAILS_PANEL_ID}"]`)).toBeNull();
   });
 
   it("focuses the visible toggle, skipping a hidden kept page", () => {
@@ -189,10 +190,10 @@ describe("A4: the search field", () => {
 });
 
 describe("A5: the player bar controls", () => {
-  it("makes the five secondary buttons the standard size with medium icons", () => {
-    expect(decl(playerBarCss, ".cp-player-bar__button--standard", "min-height")).toBe("max(var(--control-height), 24px)");
+  it("makes the five secondary buttons the right cluster's square with large icons (M315, moved from the control size)", () => {
+    expect(decl(playerBarCss, ".cp-player-bar__button--standard", "min-height")).toBe("var(--player-cluster)");
     expect(decl(playerBarCss, ".cp-player-bar__button--standard .cp-pixel-icon", "width")).toBe(
-      "var(--icon-size-md)",
+      "var(--icon-size-lg)",
     );
   });
 
@@ -200,9 +201,11 @@ describe("A5: the player bar controls", () => {
     expect(decl(playerBarCss, ".cp-player-bar__count", "position")).toBe("static");
   });
 
-  it("goes compact only in a short window (C207), with the transport at the control height and no zoom toggle", () => {
+  it("goes compact only in a short window (C207), with the transport kept at its size and no zoom toggle", () => {
     const flag = ":root[data-short-window] ";
-    expect(decl(playerBarCss, `${flag}.cp-player-bar__button--play`, "min-height")).toBe("max(var(--control-height), 24px)");
+    // M304, M76: the transport is --player-transport everywhere; the short window does not shrink it.
+    expect(decl(playerBarCss, ".cp-player-bar__button", "min-height")).toBe("var(--player-transport)");
+    expect(decl(playerBarCss, `${flag}.cp-player-bar__button--play`, "min-height")).toBeUndefined();
     expect(decl(playerBarCss, `${flag}.cp-player-bar__button--zoom`, "display")).toBe("none");
     expect(decl(playerBarCss, `${flag}.cp-player-slot .cp-detail-strip`, "display")).toBe("none");
     expect(playerBarCss).not.toMatch(/max-height:\s*\d+px/);

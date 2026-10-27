@@ -93,7 +93,8 @@ describe("the Library's shared lines", () => {
   it("draws Favorite as a quiet icon button, accent when on (P13; was D1's selected fill and accent border)", () => {
     const off = rule(detail, ".cp-track-yours__favorite");
     expect(off).toContain("background: transparent");
-    expect(off).toMatch(/border:\s*var\(--control-border-width\) solid transparent/);
+    // M136: the heart is a sixth mark beside the stars, with no frame at all (moved from a transparent border).
+    expect(off).toMatch(/border:\s*0;/);
     const on = rule(detail, ".cp-track-yours__favorite--on");
     expect(on).toContain("color: var(--accent-primary)");
     expect(on).not.toContain("background");

@@ -117,13 +117,15 @@ describe("ScreenHeader", () => {
       expect(within(actions as HTMLElement).getByRole("button", { name: "Track details" })).toBeInTheDocument();
     });
 
-    it("looks pressed while the panel is open, and toggles it", async () => {
+    it("is absent while the panel is open, and toggles it while hidden", async () => {
+      // D16: the header's button shows only while the panel is hidden (moved from a pressed look).
       const toggle = vi.fn();
       act(() => publishDetails({ open: true, toggle }));
-      render(<ScreenHeader title="Library" />);
+      const view = render(<ScreenHeader title="Library" />);
+      expect(screen.queryByRole("button", { name: "Track details" })).toBeNull();
+      act(() => publishDetails({ open: false, toggle }));
+      view.rerender(<ScreenHeader title="Library" />);
       const button = screen.getByRole("button", { name: "Track details" });
-      // The shared on look (Button's [aria-pressed]), not a violet fill of its own (D1).
-      expect(button).toHaveAttribute("aria-pressed", "true");
       expect(button).not.toHaveAttribute("aria-expanded");
       await userEvent.click(button);
       expect(toggle).toHaveBeenCalledTimes(1);
