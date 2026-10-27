@@ -8517,4 +8517,32 @@ with rendered mockups. 27 were release blockers. Built in three waves of file-di
 deleted or skipped. Real-library and Windows display checks are still owed (Clean M139, M140, M152,
 M160, M476, M506; 125% and 150% system scale for M493/M495/M496). Deferred: M42, M316, M515, M521.
 
+**Verification round (10-27 evening)**: a check of every item at `470e60f0`
+(`changes/polish/round3/verify/`, FIX-PLAN.md) found 192 not fully applied; 183 were built in a
+fix round. These stay as they are:
+- **M42** D7 is B: native select popups and the colour dialog are accepted.
+- **M144** No defect in code: every Clean `th` shares one fill (`DataTable.css`) and no page sheet
+  sets another; to confirm on the next Clean capture.
+- **M264** D1 puts every EmptyState headline in the pixel face; an Inter headline for the Log
+  viewer alone would break the one-EmptyState rule (M19).
+- **M316** Waveform gain is tuned with real audio only; the 8 px fixture wave cannot tune it.
+- **M367** The status strip stays one row: it holds Activity (M273) and the Beatport sign-in
+  (M522), both needed at launch, and no layout moves (D25).
+- **M420** "Settings → Beatport" keeps its arrow: `typedSymbols.test.ts` forbids `›` in source,
+  and that guard is not loosened.
+- Kept parts of built items: Prepare's source head stays one row tall (`--row-height`, M50), since
+  it meets the Set table's header line, not a page head; Settings sections stay on the ground (M58),
+  since D9 puts a single form there; New Set from a list keeps the group "Collections" (M408),
+  since the engine refuses a Set as a source (`collection_service.py` `SET_SOURCES`).
+
+Three items were the owner's call. The recommended option (★) was built, pending the owner's
+confirmation:
+- **M69** Every menu and panel opens 2xs off its trigger, quick filters included, which also
+  removes M113's two-grey seam (the alternative kept quick filters joined).
+- **M408** Prepare's New Set asks for a name first, with "Create", and makes nothing until then,
+  as the Library's inline row does (the alternative kept create-then-rename).
+- **N4** A third click on a column head clears the sort and returns to the playlist's own order
+  (`playlist_position` in a playlist or Set, the scope default elsewhere), with `aria-sort="none"`
+  (the alternative was an "Original order" item in Columns…).
+
 **Decided with**: User (picks 27 Oct 2026: "all the other use recommended", D6 B, D20 as now, D36 A) · **Date**: 2026-10-27
