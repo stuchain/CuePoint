@@ -176,7 +176,8 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
       open={open}
       title="Get help"
       onClose={onClose}
-      secondaryAction={{ label: phase === "sent" || !canReport ? "Close" : "Cancel", onClick: onClose }}
+      // Once there is nothing to send, the header's × is the one way out: no lone footer Close (M254, D24).
+      secondaryAction={phase === "sent" || !canReport ? undefined : { label: "Cancel", onClick: onClose }}
       primaryAction={
         phase === "sent" || !canReport
           ? undefined

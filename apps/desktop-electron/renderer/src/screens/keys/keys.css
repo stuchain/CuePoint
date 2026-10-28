@@ -217,6 +217,8 @@
   padding: var(--space-md) 0;
   padding-inline-start: var(--safe-left);
   overflow-y: auto;
+  /* A long playlist name ends in "…" in its row; the pane never scrolls sideways. */
+  overflow-x: hidden;
   border: 0;
 }
 

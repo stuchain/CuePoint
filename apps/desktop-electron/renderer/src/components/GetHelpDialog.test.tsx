@@ -74,7 +74,8 @@ describe("GetHelpDialog", () => {
     expect(await screen.findByText(/sending is off in settings/i)).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Send note" })).toBeNull();
-    expect(screen.getAllByRole("button", { name: "Close" }).length).toBeGreaterThan(0);
+    // The header's × is the one Close: no lone footer Close beside it (M254, D24).
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
     expect(sdk.feedback).toHaveLength(0);
   });
 });
