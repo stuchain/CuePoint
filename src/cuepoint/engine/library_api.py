@@ -88,6 +88,44 @@ def _resolve_library_service() -> Any:
         raise LibraryUnavailableError(str(exc)) from exc
 
 
+def add_tag_counts(rows: List[Dict[str, Any]]) -> None:
+    """Give each Library row its ``tag_count`` (M411), in one query for them all.
+
+    How many tags the track has, so a menu offers "Remove tag…" only to tracks
+    that have one. Additive, and on every place that answers with the
+    Library's own row (a browse window, a Set's entries). Null when the tag
+    store cannot be read, which says "not known", never 0.
+    """
+    if not rows:
+        return
+    counts = _tag_counts([int(row["id"]) for row in rows if row.get("id") is not None])
+    for row in rows:
+        row["tag_count"] = (
+            counts.get(row["id"], 0)
+            if counts is not None and row.get("id") is not None
+            else None
+        )
+
+
+def _tag_counts(track_ids: List[int]) -> Optional[Dict[int, int]]:
+    """Return how many tags each of these tracks has (M411), or None if unknown.
+
+    Tracks with no tags are absent, as in ``tags_for_tracks``. The tag store is
+    resolved per call, like the services above; when it cannot be, the rows
+    still answer, with the count unknown rather than claimed to be zero.
+    """
+    if not track_ids:
+        return {}
+    try:
+        from cuepoint.services.interfaces import ITagService
+        from cuepoint.utils.di_container import get_container
+
+        found = get_container().resolve(ITagService).tags_for_tracks(track_ids)
+    except Exception:  # noqa: BLE001 — a count the menu can do without
+        return None
+    return {int(track_id): len(tags) for track_id, tags in found.items()}
+
+
 def parse_int_param(raw: Optional[str], *, default: int, name: str) -> int:
     """Parse a query-string integer, raising ValueError with a usable message."""
     if raw is None or raw == "":
@@ -561,6 +599,7 @@ def search_library(
         track_to_dict(t, found.get(t.id), clean.get(t.id), sources.get(t.id))
         for t in result.tracks
     ]
+    add_tag_counts(tracks)
     if (query or "").strip():
         for row in tracks:
             # FLW-5: "key", "bpm" or null, so a row found by "8A" says why.

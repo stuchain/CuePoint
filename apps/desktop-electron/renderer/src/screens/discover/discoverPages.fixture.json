@@ -784,6 +784,7 @@
         "rating_source": null,
         "rekordbox_track_id": "p1",
         "remixer": null,
+        "tag_count": 0,
         "title": "Harbour Lights",
         "year": 2025
       },
@@ -831,6 +832,7 @@
         "rating_source": null,
         "rekordbox_track_id": "p2",
         "remixer": null,
+        "tag_count": 0,
         "title": "Low Tide",
         "year": 2024
       }
@@ -924,6 +926,7 @@
         "rating_source": null,
         "rekordbox_track_id": "p1",
         "remixer": null,
+        "tag_count": 0,
         "title": "Harbour Lights",
         "year": 2025
       },
@@ -971,6 +974,7 @@
         "rating_source": null,
         "rekordbox_track_id": "p3",
         "remixer": "DJEFF",
+        "tag_count": 0,
         "title": "Night Bus",
         "year": 2023
       },
@@ -1014,6 +1018,7 @@
         "rating_source": null,
         "rekordbox_track_id": "p7",
         "remixer": null,
+        "tag_count": 0,
         "title": "Untimed",
         "year": null
       }
@@ -1107,6 +1112,7 @@
         "rating_source": null,
         "rekordbox_track_id": "p1",
         "remixer": null,
+        "tag_count": 0,
         "title": "Harbour Lights",
         "year": 2025
       },
@@ -1154,6 +1160,7 @@
         "rating_source": null,
         "rekordbox_track_id": "p2",
         "remixer": null,
+        "tag_count": 0,
         "title": "Low Tide",
         "year": 2024
       },
@@ -1212,6 +1219,7 @@
         "rating_source": null,
         "rekordbox_track_id": "p5",
         "remixer": null,
+        "tag_count": 0,
         "title": "Someone Else",
         "year": 2021
       }

@@ -9,7 +9,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-import { organizationMenuItems, type OrganizationMenuHandlers } from "./trackMenu";
+import { organizationMenuItems, targetTagCount, type OrganizationMenuHandlers } from "./trackMenu";
 
 function handlers(): OrganizationMenuHandlers {
   return {
@@ -119,6 +119,18 @@ describe("the rating row (M299)", () => {
     expect(none!.reason).toBe("These tracks have no tags");
     const some = organizationMenuItems({ ...IN_LIBRARY, tagCount: 2 }, handlers()).find((item) => item.id === "remove-tag");
     expect(some!.disabled).toBeFalsy();
+  });
+
+  it("counts the chosen tracks' own tags, not the library's, when every track is in hand (M411)", () => {
+    // A library with tags in use, but these two rows have none: Remove tag… is off.
+    expect(targetTagCount([{ tag_count: 0 }, { tag_count: 0 }], 2, 5)).toBe(0);
+    expect(targetTagCount([{ tag_count: 0 }, { tag_count: 3 }], 2, 5)).toBe(3);
+    // A selection reaching rows not loaded falls back to the library's tags in use.
+    expect(targetTagCount([{ tag_count: 0 }], 40, 5)).toBe(5);
+    expect(targetTagCount([{ tag_count: 0 }], 40, null)).toBeNull();
+    // A row whose count the engine could not read is not known: the library's answer stands.
+    expect(targetTagCount([{ tag_count: null }], 1, 4)).toBe(4);
+    expect(targetTagCount([{}], 1, 0)).toBe(0);
   });
 
   it("does nothing when the parent itself is chosen", () => {

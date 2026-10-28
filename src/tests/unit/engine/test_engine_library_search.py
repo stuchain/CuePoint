@@ -253,6 +253,8 @@ class TestResponseShape:
             # M95: the genres as a list, and the first, beside the raw `genre`.
             "genres",
             "genre_primary",
+            # M411: how many tags the row has, for "Remove tag…".
+            "tag_count",
         }
 
     def test_total_is_the_match_count_not_the_page_length(self, seeded, engine):

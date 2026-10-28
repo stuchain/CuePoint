@@ -408,6 +408,8 @@ export interface LibraryTrackRow {
   match_proposal?: MatchProposal | null;
   file_status?: FileStatusValue | null;
   artwork?: ArtworkStateValue | null;
+  /** M411: how many tags the track has (a browse or search row); null when not known. */
+  tag_count?: number | null;
 }
 
 /** Where an override came from (CLEAN-05): applied from Beatport, or typed. */

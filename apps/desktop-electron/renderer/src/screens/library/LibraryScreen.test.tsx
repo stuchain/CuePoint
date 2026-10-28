@@ -2841,6 +2841,26 @@ describe("organizing a selection (ORG-11)", () => {
     });
   });
 
+  it("offers Remove tag… only on tracks that have a tag, though the library has tags (M411)", async () => {
+    bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) =>
+      browseAnswer(params, [track(1, { tag_count: 0 }), track(2, { tag_count: 0 }), track(3, { tag_count: 2 })]),
+    );
+    renderScreen();
+    await tableReady();
+    await openMenuOn("Track 2");
+    expect(await menuItem("Remove tag…")).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("offers Remove tag… on a track that has a tag (M411)", async () => {
+    bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) =>
+      browseAnswer(params, [track(1, { tag_count: 0 }), track(2, { tag_count: 0 }), track(3, { tag_count: 2 })]),
+    );
+    renderScreen();
+    await tableReady();
+    await openMenuOn("Track 3");
+    expect(await menuItem("Remove tag…")).not.toHaveAttribute("aria-disabled");
+  });
+
   describe("the toolbar", () => {
     it("offers the same operations as the menu, for the selection", async () => {
       renderScreen();

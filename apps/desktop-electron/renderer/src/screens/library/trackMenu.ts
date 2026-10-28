@@ -41,15 +41,32 @@ interface OrganizationMenuContext {
    */
   rating?: number | null;
   /**
-   * How many tags the tracks could have one removed from (M411): the library's tags that are on any
-   * track. Zero means none of these tracks has a tag, so Remove tag… is offered disabled, with why;
-   * null or absent is not known yet.
+   * How many tags the tracks have between them (M411, `targetTagCount`): from the rows' own counts
+   * when every track is in hand, else the library's tags in use. Zero means none of these tracks
+   * has a tag, so Remove tag… is offered disabled, with why; null or absent is not known yet.
    */
   tagCount?: number | null;
 }
 
 /** Why Remove tag… is not offered when no track has a tag (M411). */
 export const NO_TAGS_REASON = "These tracks have no tags";
+
+/**
+ * The tag count a menu's tracks give Remove tag… (M411). The rows' own `tag_count`s when the rows
+ * are every track the menu is about and each one's count is known: zero then means these tracks
+ * have no tags. Otherwise (a selection reaching rows not loaded) the library's tags in use, which
+ * is zero only when no track has a tag; null when that is not known either.
+ */
+export function targetTagCount(
+  rows: ReadonlyArray<{ tag_count?: number | null }>,
+  count: number,
+  libraryTagsInUse: number | null,
+): number | null {
+  if (rows.length > 0 && rows.length === count && rows.every((row) => typeof row.tag_count === "number")) {
+    return rows.reduce((sum, row) => sum + (row.tag_count ?? 0), 0);
+  }
+  return libraryTagsInUse;
+}
 
 export interface OrganizationMenuHandlers {
   onAddToCollection: () => void;

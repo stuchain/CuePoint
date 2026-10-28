@@ -258,6 +258,7 @@
           "rating_source": null,
           "rekordbox_track_id": "5",
           "remixer": null,
+          "tag_count": 0,
           "title": "Close",
           "year": null
         },
@@ -322,6 +323,7 @@
           "rating_source": null,
           "rekordbox_track_id": "3",
           "remixer": null,
+          "tag_count": 0,
           "title": "Peak One",
           "year": null
         },
@@ -386,6 +388,7 @@
           "rating_source": null,
           "rekordbox_track_id": "1",
           "remixer": null,
+          "tag_count": 0,
           "title": "Warm One",
           "year": null
         },
@@ -466,6 +469,7 @@
         "rating_source": null,
         "rekordbox_track_id": "1",
         "remixer": null,
+        "tag_count": 0,
         "title": "Warm One",
         "year": null
       },
@@ -518,6 +522,7 @@
         "rating_source": null,
         "rekordbox_track_id": "2",
         "remixer": null,
+        "tag_count": 0,
         "title": "Warm Two",
         "year": null
       },
@@ -570,6 +575,7 @@
         "rating_source": null,
         "rekordbox_track_id": "3",
         "remixer": null,
+        "tag_count": 0,
         "title": "Peak One",
         "year": null
       },
@@ -622,6 +628,7 @@
         "rating_source": null,
         "rekordbox_track_id": "4",
         "remixer": null,
+        "tag_count": 0,
         "title": "Peak Two",
         "year": null
       },
@@ -674,6 +681,7 @@
         "rating_source": null,
         "rekordbox_track_id": "5",
         "remixer": null,
+        "tag_count": 0,
         "title": "Close",
         "year": null
       }

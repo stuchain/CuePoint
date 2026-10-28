@@ -117,6 +117,7 @@ import {
   type TrackActionGroup,
   type TrackActionGroupId,
 } from "./trackActions";
+import { targetTagCount } from "./trackMenu";
 import { BatchConfirmDialog } from "./BatchConfirmDialog";
 import { useLibraryBatch } from "./useLibraryBatch";
 import { useLibraryClean } from "./useLibraryClean";
@@ -1187,8 +1188,13 @@ export function LibraryScreen({
             kind === "row" && rows.length > 0 && rows.every((row) => row.effective_rating === rows[0]!.effective_rating)
               ? rows[0]!.effective_rating
               : null,
-          // Remove tag… is offered only when some track has a tag (M411): the library's tags in use.
-          tagCount: tagsRead.value ? tags.filter((tag) => tag.track_count > 0).length : null,
+          // Remove tag… is offered only when one of these tracks has a tag (M411): the rows' own
+          // counts when every track is in hand, else the library's tags in use.
+          tagCount: targetTagCount(
+            rows,
+            target.count,
+            tagsRead.value ? tags.filter((tag) => tag.track_count > 0).length : null,
+          ),
           // Known from the rows a row's menu is about; a selection's rows are not all in hand (M411).
           favorite:
             kind === "row" && rows.length > 0

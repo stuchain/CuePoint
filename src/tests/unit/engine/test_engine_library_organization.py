@@ -509,3 +509,18 @@ class TestTheTagFacetOverTheWire:
         )
         named = {v["label"]: v["count"] for v in payload["values"] if v["value"]}
         assert named == {"Peak time": 1, "Vocal": 1}
+
+
+@pytest.mark.unit
+class TestRowsCarryTheirTagCount:
+    """M411: a row says how many tags it has, so "Remove tag…" can be offered
+    only to tracks that have one, not to any track of a library with tags."""
+
+    def test_each_row_counts_its_own_tags(self, engine, organized):  # noqa: F811
+        payload = get_json(engine, "/api/v1/library/search", mode="browse")
+        counts = {track["title"]: track["tag_count"] for track in payload["tracks"]}
+        assert counts == {"Strobe": 2, "Ghosts n Stuff": 1, "Rej": 0, "Opus": 0}
+
+    def test_a_search_row_carries_it_too(self, engine, organized):  # noqa: F811
+        payload = get_json(engine, "/api/v1/library/search", q="Strobe")
+        assert [track["tag_count"] for track in payload["tracks"]] == [2]

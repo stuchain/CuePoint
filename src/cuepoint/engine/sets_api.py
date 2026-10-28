@@ -460,7 +460,7 @@ def _track_rows(track_ids: Iterable[int]) -> Dict[int, Dict[str, Any]]:
     CuePoint's rating, the file's last check. A track a refresh deleted is
     simply absent, and the caller leaves out whatever named it.
     """
-    from cuepoint.engine.library_api import track_to_dict
+    from cuepoint.engine.library_api import add_tag_counts, track_to_dict
     from cuepoint.persistence.id_chunks import unique_ids
 
     ids = unique_ids(track_ids)
@@ -471,7 +471,7 @@ def _track_rows(track_ids: Iterable[int]) -> Dict[int, Dict[str, Any]]:
     library = _resolve("ILibraryService")
     clean = library.clean_states(ids)
     sources = library.override_sources(ids)
-    return {
+    rows = {
         track_id: track_to_dict(
             track,
             metadata.get(track_id),
@@ -480,6 +480,9 @@ def _track_rows(track_ids: Iterable[int]) -> Dict[int, Dict[str, Any]]:
         )
         for track_id, track in tracks.items()
     }
+    # M411: the tag count a browse row carries, so the two rows stay one shape.
+    add_tag_counts(list(rows.values()))
+    return rows
 
 
 def entries(params: Dict[str, List[str]]) -> Dict[str, Any]:

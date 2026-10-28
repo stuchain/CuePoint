@@ -515,6 +515,11 @@ export interface LibraryTrackRow {
   match_proposal?: MatchProposal | null;
   file_status?: FileStatus | null;
   artwork?: ArtworkState | null;
+  /**
+   * M411: how many tags the track has, on a browse or search row, so "Remove tag…" is offered only
+   * to tracks that have one. Null when the engine could not read it; absent on other rows.
+   */
+  tag_count?: number | null;
 }
 
 /** Where an override came from (CLEAN-05): applied from Beatport, or typed. */
