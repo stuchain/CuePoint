@@ -268,7 +268,9 @@
   border: 0;
   background: none;
   color: inherit;
-  font: inherit;
+  /* The face only: `button` already takes `font: inherit` (index.css), so its size and weight are
+     the line's, and the title's own rule sets them on the title button (M304). */
+  font-family: inherit;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
