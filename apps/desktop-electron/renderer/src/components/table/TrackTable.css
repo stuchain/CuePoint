@@ -501,8 +501,9 @@
 }
 
 /* The previous question's rows while the new answer is on its way (M369): dimmed, not blanked. */
-.track-table[data-stale] .track-table__row {
-  /* Greyed by colour, not opacity (area 11's rule). */
+.track-table[data-stale] .track-table__cell {
+  /* Greyed by colour, not opacity (area 11's rule). On the cell, which sets its own colour, so the
+     row's would never reach the text. */
   color: var(--fg-muted);
 }
 

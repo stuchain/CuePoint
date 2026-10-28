@@ -66,3 +66,13 @@ describe("M2 and M339: the heading", () => {
     expect(rule).toMatch(/cursor: default;/);
   });
 });
+
+describe("M369: a stale answer's rows are dimmed", () => {
+  it("greys the cells, which set their own colour, and after the base cell rule", () => {
+    const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    const stale = /\n\.track-table\[data-stale\] \.track-table__cell \{([^}]*)\}/.exec(flat);
+    expect(stale?.[1]).toMatch(/color:\s*var\(--fg-muted\);/);
+    expect(flat).not.toMatch(/\.track-table\[data-stale\] \.track-table__row \{/);
+    expect(flat.indexOf("\n.track-table__cell {")).toBeLessThan(stale!.index);
+  });
+});
