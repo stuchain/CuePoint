@@ -101,7 +101,7 @@ export const NEO_DARK_EDITOR_COLORS: CustomThemeColors = {
   fgPrimary: "#fafafa",
   fgMuted: "#a1a1aa",
   accentPrimary: "#9164f6",
-  accentSuccess: "#22c55e",
+  accentSuccess: "#22c522",
   accentWarning: "#eab308",
   accentDanger: "#ef4444",
 };

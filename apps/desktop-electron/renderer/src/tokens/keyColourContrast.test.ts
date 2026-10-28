@@ -136,6 +136,51 @@ describe("key chip brightness (M332, D28)", () => {
   });
 });
 
+/** A colour's hue in degrees (0 for a grey). */
+function hueOf(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16) / 255) as [number, number, number];
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  if (d === 0) return 0;
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+
+/** How far a colour's hue stands from the nearest of a theme's 24 key colours, in degrees. */
+function nearestKeyGap(colour: string, keys: Record<string, string>): number {
+  return Math.min(
+    ...KEY_TOKEN_KEYS.map((key) => {
+      const gap = Math.abs(hueOf(colour) - hueOf(keys[key]!));
+      return Math.min(gap, 360 - gap);
+    }),
+  );
+}
+
+/** The least hue distance between a status colour and any key colour (M332, owner's pick: 12 degrees). */
+const STATUS_KEY_MIN_HUE_GAP = 12;
+
+describe.each(Object.entries(THEMES))("status colours apart from the key colours in %s (M332)", (name, css) => {
+  const t = themeTokens(css);
+
+  it.each(["accent-success", "accent-warning", "accent-info"])(
+    "keeps --%s 12 degrees of hue or more from every key",
+    (status) => {
+      expect(nearestKeyGap(t[status]!, blockFor(name))).toBeGreaterThanOrEqual(STATUS_KEY_MIN_HUE_GAP);
+    },
+  );
+});
+
+describe.each([
+  ["custom (derived)", NEO_DARK_EDITOR_COLORS],
+  ...CUSTOM_PALETTES,
+])("the derived info colour in %s (M332)", (_name, colors) => {
+  // Success and warning are the user's own colours; info is the derivation's, so it keeps the rule.
+  it("stands 12 degrees of hue or more from every derived key", () => {
+    const t = deriveThemeTokens(colors);
+    expect(nearestKeyGap(t["accent-info"]!, t)).toBeGreaterThanOrEqual(STATUS_KEY_MIN_HUE_GAP);
+  });
+});
+
 describe("the key tokens", () => {
   it("are 1A to 12B", () => {
     expect(KEY_TOKEN_KEYS).toHaveLength(24);

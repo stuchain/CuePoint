@@ -168,14 +168,17 @@ export function hueOf(hex: string): number {
 /** The least hue distance, in degrees, info keeps from the accent. */
 export const INFO_MIN_HUE_GAP = 30;
 
-/** The info colour for an accent: sky blue, else teal, else amber, whichever keeps its hue away. */
+/**
+ * The info colour for an accent: sky blue, else periwinkle, else mint, else amber, whichever keeps its
+ * hue away. Each stands 12 degrees or more from every key colour's hue (M332): teal sat on key 1A.
+ */
 function infoHue(accent: string): string {
   const gap = (a: string, b: string) => {
     const d = Math.abs(hueOf(a) - hueOf(b));
     return Math.min(d, 360 - d);
   };
-  const choices = ["#38bdf8", "#2dd4bf", "#fbbf24"];
-  return choices.find((c) => gap(c, accent) >= INFO_MIN_HUE_GAP) ?? choices[2]!;
+  const choices = ["#38a2f8", "#6466df", "#2dd491", "#fbc524"];
+  return choices.find((c) => gap(c, accent) >= INFO_MIN_HUE_GAP) ?? choices[3]!;
 }
 
 /** Black or white, whichever reads better on `bg`. */
@@ -282,9 +285,9 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
 
   // Text on the accent: black or white, whichever reads better, so a mid-tone accent keeps its colour.
   const fgOnAccent = betterText(accentPrimary);
-  // Info has its own hue (M327, D28): the first of sky blue, teal and amber that stands 30 degrees
-  // or more from the accent, held at 3:1 on the panel where that can be done; where black text on it
-  // then falls short, the status text below turns white instead.
+  // Info has its own hue (M327, D28): the first of sky blue, periwinkle, mint and amber that stands
+  // 30 degrees or more from the accent, held at 3:1 on the panel where that can be done; where black
+  // text on it then falls short, the status text below turns white instead.
   const accentInfo = holdContrast(infoHue(accentPrimary), [bgPanel], 3);
   const accentSuccess = normalizeHex(colors.accentSuccess);
   const accentWarning = normalizeHex(colors.accentWarning);

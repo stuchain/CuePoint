@@ -30,11 +30,12 @@
 
   --accent-primary: #218ada;
   --accent-secondary: #3c3c3c;
+  /* Status colours stand 12 degrees of hue or more from all 24 key colours (M332): keyColourContrast.test.ts. */
   --accent-success: #4caf50;
-  --accent-warning: #ff9800;
+  --accent-warning: #ffbf00;
   --accent-danger: #f44336;
-  /* Info is teal: the accent is blue, and the old info blue sat 1 degree from it (M327, D28). */
-  --accent-info: #2dd4bf;
+  /* Info is periwinkle: the accent is blue (M327, D28), and teal sat on key 1A (M332). */
+  --accent-info: #6466df;
   /* Writing to the user's files is green (D14); text on it is --fg-on-status, black. */
   --accent-write: #3fa45b;
 

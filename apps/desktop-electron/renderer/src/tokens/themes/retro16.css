@@ -29,10 +29,11 @@
 
   --accent-primary: #c77dff;
   --accent-secondary: #2d4563;
+  /* Status colours stand 12 degrees of hue or more from all 24 key colours (M332): keyColourContrast.test.ts. */
   --accent-success: #4caf50;
-  --accent-warning: #ffb703;
+  --accent-warning: #ffc003;
   --accent-danger: #eb5d67;
-  --accent-info: #48cae4;
+  --accent-info: #489ee4;
   /* Writing to the user's files is green (D14); text on it is --fg-on-status, black. */
   /* Writing is its own green, not the success green (M331). */
   --accent-write: #52d68a;

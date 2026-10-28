@@ -51,7 +51,7 @@ Each theme defines the same token set: `--bg-app`, `--bg-panel`, `--bg-panel-alt
 | `neoDark` (**default**) | `#18181b` | `#27272a` | `#8b5cf6` violet | `#fafafa` | Modern-product zinc base |
 | `retro16` | `#1a1a2e` | `#3d5a80` | `#ee6c4d` coral | `#e0fbfc` | Original lab look; also the `:root` fallback |
 | `qtEvolved` | `#1e1e1e` | `#252526` | `#0078d4` blue | `#ffffff` | Matches the old PySide6 dark theme, for continuity |
-| `clubNeon` | `#0a0a0f` | `#14141f` | `#e040fb` magenta + `#00e5ff` cyan info | `#f0f0ff` | "DJ neon" |
+| `clubNeon` | `#0a0a0f` | `#14141f` | `#e040fb` magenta + `#008cff` azure info | `#f0f0ff` | "DJ neon" |
 | `mutedPro` | `#1c1f26` | `#2a3140` | `#f59e0b` amber | `#e8eaed` | Long-session comfort |
 
 `--border-outline` is `#000000` in **all five** themes — every panel/button/modal is outlined in
