@@ -175,8 +175,9 @@ function applyScale(scale: ScaleFactor): void {
 
 /**
  * Publish the display's pixel ratio as `--dpr`, so a stylesheet can snap a hairline to a whole
- * device pixel (`round(1px * var(--scale) * var(--dpr), 1px) / var(--dpr)`, M493) instead of a
- * whole CSS pixel, which is a blurred line at 125% and 150%.
+ * device pixel instead of a whole CSS pixel, which is a blurred line at 125% and 150% (M493):
+ * `max(calc(1px / var(--dpr, 1)), calc(round(down, calc(1px * var(--dpr, 1)), 1px) / var(--dpr, 1)))`,
+ * as `--hairline` in tokens.css. It has no `--scale` factor: a hairline is one line at every text size.
  */
 export function applyDevicePixelRatio(): number {
   const ratio = devicePixelRatio();
