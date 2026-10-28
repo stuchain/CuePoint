@@ -179,13 +179,24 @@ describe("the two panes (D12)", () => {
     expect(cell).toMatch(/round\(down, calc\(11px \* var\(--scale\)\), 1px\) \)$/);
   });
 
+  it("sizes the wheel's pane from the window's height at every width, never squeezing the tracks (M168)", () => {
+    const page = rule(".keys-page").replace(/\s+/g, " ");
+    const cell = /--keys-cell: ([^;]+);/.exec(page)?.[1] ?? "";
+    expect(cell).toMatch(/^clamp\( var\(--keys-cell-least\),/);
+    expect(cell).toContain("round(down, calc((100dvh - var(--keys-chrome)) / 48), 1px)");
+    expect(cell).toContain("round(down, calc((100cqw - var(--keys-beside)) / 48), 1px)");
+    expect(cell).toMatch(/round\(down, calc\(11px \* var\(--scale\)\), 1px\) \)$/);
+  });
+
   it("fits the wheel to its pane's height: a size container and a whole-pixel cell from 100cqh (M162, M168)", () => {
     const panel = rule(".keys-page__panel");
     expect(panel).toContain("container-type: size");
     expect(panel).toContain("min-height: calc(48 * var(--keys-cell-least) + var(--keys-wheel-reserve))");
     const wheel = rule(".keys-page__wheel").replace(/\s+/g, " ");
+    // Moved for M168 (R4): the upper bound is 11 points, not the page's cell, so the wheel follows the
+    // panel's height up and down; 100cqw keeps it inside the panel's width.
     expect(wheel).toContain(
-      "--keys-fit-cell: clamp( var(--keys-cell-least), round(down, calc((100cqh - var(--keys-wheel-reserve)) / 48), 1px), var(--keys-cell) )",
+      "--keys-fit-cell: clamp( var(--keys-cell-least), min( round(down, calc((100cqh - var(--keys-wheel-reserve)) / 48), 1px), round(down, calc(100cqw / 48), 1px) ), round(down, calc(11px * var(--scale)), 1px) )",
     );
     expect(wheel).toContain("width: calc(48 * var(--keys-fit-cell))");
     // The drawing takes the fitted cell; nothing else in the wheel sets its own.

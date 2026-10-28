@@ -603,6 +603,16 @@ describe("the Wheel | List switch (K15)", () => {
     expect(screen.queryByText("Brighter = more tracks")).toBeNull();
   });
 
+  it("asks 'Pick a key' above the wheel, so a short window never pushes it under the player (M162)", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    const ask = screen.getByText("Pick a key");
+    const panel = document.querySelector(".keys-page__panel")!;
+    expect(ask.parentElement).toBe(panel.parentElement);
+    expect(ask.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("is visible above the counts, one view at a time, on the wheel at first", async () => {
     localStorage.clear();
     renderKeys();

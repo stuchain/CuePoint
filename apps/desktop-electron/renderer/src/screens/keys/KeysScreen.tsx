@@ -496,6 +496,22 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
               />
             </div>
             <div className="keys-page__view-body">
+              {/* M162: the caption comes before the wheel, so a short window or a large text size never
+                  pushes it under the player. M170: in the list the chosen row and the Tracks head
+                  already say which key; only the ask stays. */}
+              {(view === "wheel" || !chosenAny) && (
+                <p className="keys-page__caption" role="status">
+                  {!chosenAny ? (
+                    "Pick a key"
+                  ) : choice.keys.length === 1 && !choice.none ? (
+                    <>
+                      <KeyChip value={choice.keys[0]} /> {keyName(choice.keys[0]!)} · {countNoun(choiceTotal, "track")}
+                    </>
+                  ) : (
+                    `${choiceWords(choice)} · ${countNoun(choiceTotal, "track")}`
+                  )}
+                </p>
+              )}
               <div className="keys-page__panel">
                 {view === "wheel" ? (
                   <>
@@ -531,20 +547,6 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
                   />
                 )}
               </div>
-              {/* M170: in the list the chosen row and the Tracks head already say which key; only the ask stays. */}
-              {(view === "wheel" || !chosenAny) && (
-                <p className="keys-page__caption" role="status">
-                  {!chosenAny ? (
-                    "Pick a key"
-                  ) : choice.keys.length === 1 && !choice.none ? (
-                    <>
-                      <KeyChip value={choice.keys[0]} /> {keyName(choice.keys[0]!)} · {countNoun(choiceTotal, "track")}
-                    </>
-                  ) : (
-                    `${choiceWords(choice)} · ${countNoun(choiceTotal, "track")}`
-                  )}
-                </p>
-              )}
             </div>
           </section>
         )}

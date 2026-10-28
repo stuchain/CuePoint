@@ -6,16 +6,28 @@
  * instead (the wheel stacks above the tracks).
  */
 .keys-page {
-  /* The wheel is 48 cells across and a cell is a whole number of pixels: 6 points at the default
-     size, and never more than 9. It follows the text size, never the window's width. */
-  --keys-cell: min(round(nearest, calc(6px * var(--scale)), 1px), calc(9px * var(--scale)));
-  --keys-wheel: calc(48 * var(--keys-cell));
-  /* The smallest cell the wheel is drawn at, at this text size (M162). */
+  /* The smallest cell the wheel is drawn at, at this text size (M162): 6 points, a whole pixel. */
   --keys-cell-least: round(nearest, calc(6px * var(--scale)), 1px);
   /* What the window's height holds besides the wheel (M168): the page and pane heads, the pane's
      padding, the legend, the no-key row and the caption, the status strip and the player bar. An
      estimate for the pane's width; the wheel itself fits the pane's real height (.keys-page__wheel). */
   --keys-chrome: calc(5 * var(--toolbar-height) + var(--row-height) + 4 * var(--space-lg) + 4 * var(--space-md) + 4 * var(--font-size-xs));
+  /* What the row needs beside the wheel's pane while the tracks stay beside it: Sources, the tracks'
+     floor, the two gaps and the pane's padding (M168). The wheel never widens the pane past it, so a
+     tall window does not push the tracks under the wheel. */
+  --keys-beside: calc(180px * var(--scale) + 260px * var(--scale) + 2 * var(--space-xl) + 2 * var(--space-lg));
+  /* The wheel is 48 cells across and a cell is a whole number of pixels (M168): 6 points at the
+     least, growing with the window's height up to 11, and only as far as the width beside the
+     tracks allows. The pane takes this width; the wheel then fits the pane's real height. */
+  --keys-cell: clamp(
+    var(--keys-cell-least),
+    min(
+      round(down, calc((100dvh - var(--keys-chrome)) / 48), 1px),
+      round(down, calc((100cqw - var(--keys-beside)) / 48), 1px)
+    ),
+    round(down, calc(11px * var(--scale)), 1px)
+  );
+  --keys-wheel: calc(48 * var(--keys-cell));
   /* The page column grows down to the player bar (P7) and still scrolls when its content is taller. */
   flex: 1 0 auto;
   gap: 0;
@@ -73,7 +85,7 @@
 }
 
 /* The wheel and its list take the same box, so switching between them moves nothing. The box is the
-   wheel's own pane (P7): panel tone, 12 inside, the caption centred under the wheel. */
+   wheel's own pane (P7): panel tone, 12 inside, the caption centred above the wheel (M162). */
 .keys-page__view {
   display: flex;
   flex: 0 0 calc(var(--keys-wheel) + 2 * var(--space-lg));
@@ -84,7 +96,7 @@
   background: var(--bg-panel);
 }
 
-/* The pane under its head: 12 inside (--space-lg), the wheel or list, then the caption. */
+/* The pane under its head: 12 inside (--space-lg), the caption, then the wheel or list (M162). */
 .keys-page__view-body {
   display: flex;
   flex: 1 1 auto;
@@ -102,8 +114,8 @@
 
 /*
  * M162, M168: the wheel's box is a size container, so the wheel fits the height the pane has: it
- * shrinks in a short window, so the caption under it is never pushed under the player, and grows in
- * a tall one. The room under the wheel (the legend, up to two lines, the no-key row and the gaps) is
+ * shrinks toward its least cell in a short window and grows in a tall one; the caption sits above
+ * it, so a short window never pushes it under the player. The room under the wheel (the legend, up to two lines, the no-key row and the gaps) is
  * kept for them. Never shorter than the smallest wheel and that room, so a stacked page, whose row
  * takes its height from what is in it, still draws the wheel.
  */
@@ -128,12 +140,17 @@
 }
 
 .keys-page__wheel {
-  /* M168: the whole-pixel cell the panel's height holds under the room it keeps, between the
-     smallest cell and the page's (which sets the pane's width). 100cqh is the panel's height. */
+  /* M168: the whole-pixel cell the panel's height holds under the room it keeps, from the smallest
+     cell up to 11 points, and never wider than the panel (100cqh and 100cqw are the panel's). The
+     pane's width follows the window's height (--keys-cell), so the wheel grows in a tall window
+     and shrinks back toward the least cell when the pane is shorter than that estimate. */
   --keys-fit-cell: clamp(
     var(--keys-cell-least),
-    round(down, calc((100cqh - var(--keys-wheel-reserve)) / 48), 1px),
-    var(--keys-cell)
+    min(
+      round(down, calc((100cqh - var(--keys-wheel-reserve)) / 48), 1px),
+      round(down, calc(100cqw / 48), 1px)
+    ),
+    round(down, calc(11px * var(--scale)), 1px)
   );
   flex: 0 0 calc(48 * var(--keys-fit-cell));
   align-self: center;
