@@ -370,14 +370,16 @@
 
 /* A page coming back (M381): a kept page is hidden while away (display: none), and showing it again
    would replay every one-shot animation inside it. The shell marks the returning page
-   `[data-returned]` (KeptPages) for its first frames, and what was already there is drawn as it was
-   left: no side panel slides in again, no tab underline grows, no count steps. What the user opens
-   after that (a menu, a dialog) is not inside the mark's time and keeps its motion. */
+   `[data-returned]` (KeptPages) for its first frames (about 400 ms), and what was already there is
+   drawn as it was left: no side panel slides in again, no tab underline grows, no count steps.
+   The animations keep their names and run in no time, so when the mark comes off the finished
+   ones are not started again; what the user opens after that keeps its motion. */
 :root[data-motion-entrance] [data-returned] .cp-side-panel:not([data-leaving]),
 :root[data-motion-state] [data-returned] .cp-tabs:not(.cp-tabs--sub) .cp-tabs__tab--active::after,
 :root[data-motion-state] [data-returned] .cp-track-section__body--used,
 :root[data-motion-state] [data-returned] [data-changed] {
-  animation: none;
+  animation-duration: 0s;
+  animation-delay: 0s;
 }
 
 /* ---- Scrolling (scroll) ----------------------------------------------------------------- */

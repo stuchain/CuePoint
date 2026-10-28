@@ -7,7 +7,7 @@
  * the keeping and not about any one screen.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { MemoryRouter, Navigate, Route, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -286,6 +286,16 @@ describe("KeptPages", () => {
     expect(main).toHaveAttribute("data-returned");
     await go(user, "two 7");
     expect(main).not.toHaveAttribute("data-returned");
+  });
+
+  it("takes the return mark off after the first frames, so later motion plays (M381)", async () => {
+    const user = userEvent.setup();
+    mount();
+    const main = document.querySelector(".app-main") as HTMLElement;
+    await go(user, "plain");
+    await go(user, "one");
+    expect(main).toHaveAttribute("data-returned");
+    await waitFor(() => expect(main).not.toHaveAttribute("data-returned"), { timeout: 2000 });
   });
 
   it("does not mount a destination until it is first opened", async () => {

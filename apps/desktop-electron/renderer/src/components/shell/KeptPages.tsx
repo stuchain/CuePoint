@@ -21,6 +21,9 @@ import {
 import { E2eCrashProbe, ErrorBoundary } from "../../reporting";
 import { PageActiveContext } from "./pageActive";
 
+/** How long a returning page keeps `[data-returned]` (M381): `--motion-slow` (320 ms) plus slack. */
+const RETURNED_MARK_MS = 400;
+
 /** One destination's pages: every path it owns and the `<Route>`s that draw them. */
 export interface KeptSlot {
   id: string;
@@ -138,6 +141,9 @@ export function KeptPages({ slots, unowned }: KeptPagesProps) {
     scroll: new Map(),
   });
 
+  const returnedTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(returnedTimer.current), []);
+
   useEffect(() => {
     const main = document.querySelector(".app-main");
     if (!main) return;
@@ -156,14 +162,20 @@ export function KeptPages({ slots, unowned }: KeptPagesProps) {
     shown.current = { ...before, id: owner, pathname: location.pathname };
     // A page coming back (M381): it was kept, hidden, and is shown again as it was left, so the
     // one-shot entrances inside it (a side panel, the tab underline, a count) must not play again.
-    // Marked before this paint, and for as long as it is shown: taking the mark off would start
-    // those animations then. A first visit, or a page under a slot drawn afresh, is not marked.
+    // Marked before this paint, and only for its first frames: motion.css runs the marked
+    // animations in no time (it does not remove them), so taking the mark off later does not
+    // replay them, and what the user opens after that keeps its motion. A first visit, or a page
+    // under a slot drawn afresh, is not marked.
     if (!samePage) {
       const kept = owner !== null && before.scroll.has(owner);
       const backToRoot =
         ownerSlot?.keepRoot === true && before.id === owner && isRootPage(ownerSlot, location.pathname);
       const returned = kept && (before.id !== owner || backToRoot);
+      window.clearTimeout(returnedTimer.current);
       main?.toggleAttribute("data-returned", returned);
+      if (returned && main) {
+        returnedTimer.current = window.setTimeout(() => main.removeAttribute("data-returned"), RETURNED_MARK_MS);
+      }
     }
     if (owner === null) return;
     let pages = before.scroll.get(owner);

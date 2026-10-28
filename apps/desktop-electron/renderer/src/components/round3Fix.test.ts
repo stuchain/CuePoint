@@ -162,7 +162,11 @@ describe("motion (M373, M380, M381, M387)", () => {
         ":root[data-motion-state] [data-returned] .cp-tabs:not(.cp-tabs--sub) .cp-tabs__tab--active::after",
       ]),
     );
-    expect(rule.body).toMatch(/animation:\s*none/);
+    // M381 (R1): the animations run in no time instead of being removed, so the mark can come off
+    // after the first frames without replaying them.
+    expect(rule.body).toMatch(/animation-duration:\s*0s/);
+    expect(rule.body).toMatch(/animation-delay:\s*0s/);
+    expect(rule.body).not.toMatch(/animation:\s*none/);
   });
 
   it("slides the closing queue out to its edge, as the Inspector, not the generic lift-out (F3)", () => {
