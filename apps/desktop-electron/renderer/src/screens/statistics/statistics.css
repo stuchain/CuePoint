@@ -449,14 +449,13 @@
   margin-top: calc(-1 * var(--space-md));
 }
 
-/* The Overview's cards in pairs (M212): two columns once two fit, never three or four on a wide
-   window, so a pair stays a pair; one column below. */
-.library-tab {
-  container: statistics-overview / inline-size;
-}
-
-@container statistics-overview (min-width: 660px) {
-  .library-tab .statistics-panels {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+/* The Overview's cards in pairs (M212): two columns once two fit at the cards' own minimum (320
+   points, so the threshold scales with the text size), never three or four on a wide window, so a
+   pair stays a pair; one column below. A column is never narrower than half the row less the gap,
+   so a third cannot fit. */
+.library-tab .statistics-panels {
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(max(min(100%, calc(320px * var(--scale))), calc((100% - var(--space-xl)) / 2)), 1fr)
+  );
 }

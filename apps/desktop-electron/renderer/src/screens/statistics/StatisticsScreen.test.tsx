@@ -244,6 +244,16 @@ describe("one grid and an inline Scope (C244, C248)", () => {
     expect(rule).toContain("align-items: start;");
     expect(css).not.toContain(".library-lists");
   });
+
+  it("pairs the Overview's cards at the cards' own scaled minimum, never a fixed width (M212)", () => {
+    const flat = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
+    // No fixed-pixel container step: it forced two columns under the cards' minimum at 1.5x.
+    expect(flat).not.toMatch(/@container statistics-overview/);
+    const rule = /\.library-tab \.statistics-panels \{([^}]*)\}/.exec(flat)?.[1] ?? "";
+    expect(rule).toContain(
+      "grid-template-columns: repeat( auto-fit, minmax(max(min(100%, calc(320px * var(--scale))), calc((100% - var(--space-xl)) / 2)), 1fr) );",
+    );
+  });
 });
 
 describe("the Statistics page (STATS-04)", () => {
