@@ -274,18 +274,11 @@
   border-left: 0;
 }
 
-/* A Set's note (PREP-09): its rows are its tracks once each, not its running
-   order. One quiet line under the bar, so the table keeps its height. */
+/* A Set's note (PREP-09): its rows are its tracks once each, not its running order. One more part
+   of the header's facts line (M103): inline, in the line's own face and size, so it never breaks
+   off onto a line of its own. */
 .library-screen__scope-note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-xs) var(--space-sm);
-  margin: 0;
-  padding: var(--space-xs) var(--space-sm);
-  color: var(--fg-muted);
-  font-family: var(--font-meta);
-  font-size: var(--font-size-xs);
+  display: inline;
 }
 
 .library-screen__scope-link {

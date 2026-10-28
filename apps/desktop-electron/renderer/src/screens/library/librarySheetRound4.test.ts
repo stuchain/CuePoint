@@ -113,3 +113,11 @@ describe("the filter row at its last fold (W1, e2e alignment at 3x)", () => {
     expect(body(filterBarCss, ".cp-filter-bar__row--last")).toMatch(/flex-wrap:\s*nowrap/);
   });
 });
+
+describe("a Set's note on the facts line (M103)", () => {
+  it("draws the note inline, in the line's own face and size, with no box of its own", () => {
+    const note = body(libraryCss, ".library-screen__scope-note");
+    expect(note).toMatch(/display:\s*inline;/);
+    expect(note).not.toMatch(/display:\s*flex|padding|font-family|font-size|gap/);
+  });
+});
