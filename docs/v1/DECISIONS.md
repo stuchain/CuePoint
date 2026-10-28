@@ -8535,6 +8535,46 @@ fix round. These stay as they are:
   since D9 puts a single form there; New Set from a list keeps the group "Collections" (M408),
   since the engine refuses a Set as a source (`collection_service.py` `SET_SOURCES`).
 
+The owner's picks of 28 Oct ("All ★"):
+- **M332** Status colours keep 12° of hue from every one of the 24 key colours, not 30°: the keys'
+  widest gap is about 41°, so 30° cannot be met. Success, warning and info moved where they were
+  nearer (neoDark success and info, mutedPro all three, qtEvolved warning and info, clubNeon all three,
+  Retro warning and info); the contrast guards still pass, and `keyColourContrast.test.ts` holds the
+  12°, for the derived info colour too.
+- **M85** The Keys page's tracks pane hides Genre as well as Length by default, so Genre does not
+  become the last column under the corner.
+- **M327** neoDark's tab underline stays the lighter accent `#9164f6`: its fill `#7c3aed` is 2.88:1
+  on the toolbar, under the 3:1 `selectionContrast.test.ts` holds.
+- **M50** Both side heads (Track details and Queue) take the muted control-label look (M124), not
+  Queue's 18/700.
+
+Other deviations from the plan, accepted because the reason holds (`verify/R1.md` to `R4.md`):
+- **M493** The hairline has no `--scale` factor: with it, a hairline is 2 px at 2x, breaking "1px at
+  every scale" (M82, D10). Windows 125% and 150% check still owed.
+- **M77** The Library pane's floor is on the pane grid, not a pane `min-width`, which would overflow
+  the fixed track and overlap the table.
+- **M360** The rename field's frame uses `--control-border-width`: the dividers guard keeps
+  `--border-width` for dividers.
+- **M382** A refused quick write (Library rating, Keys rating) warns with no Undo: the rows are
+  already reverted, so there is nothing to undo.
+- **M514** The lead names "Sync to files": "Save to files" is a retired word.
+- **M519** The add-to-Set toast offers Undo or "Open in Prepare", not both: a toast holds one
+  action, and Undo wins.
+- **M81** The player bar rounds its track block, wave, volume and labels to whole pixels instead of
+  the meta and timeline widths, since the end cluster's x comes from its own width; a 1.25x and
+  1.5x capture is still owed to confirm.
+- **M380** The queue leaves as a ghost (`useLeaveGhost`), because its parent unmounts it.
+- **M150** Past searches show `13×`, not `×13`: `typedSymbols.test.ts` allows `×` only after a digit.
+- **M278** The changes list is a `cp-data-table`, and a track's list of changes wraps instead of
+  ending in "…".
+- **M414** Duplicates reads "Add to a Collection" only: it offers no Set picker.
+- **M475** A past search opens from a button on its name (`aria-label` "Open {name}"), not the
+  whole row; the visible name sits inside the label.
+- **M194** Prepare's test keeps the Fit dot's `dot-half` and adds a `dash` check for the View
+  menu's mixed item.
+- **M206** Only the plays list's 60ch reading width was kept: M224 moved Since into the header.
+- **M222** The "Not played" card stays beside the one empty state: it holds real counts.
+
 Three items were the owner's call. The recommended option (★) was built, pending the owner's
 confirmation:
 - **M69** Every menu and panel opens 2xs off its trigger, quick filters included, which also
@@ -8545,4 +8585,4 @@ confirmation:
   (`playlist_position` in a playlist or Set, the scope default elsewhere), with `aria-sort="none"`
   (the alternative was an "Original order" item in Columns…).
 
-**Decided with**: User (picks 27 Oct 2026: "all the other use recommended", D6 B, D20 as now, D36 A) · **Date**: 2026-10-27
+**Decided with**: User (picks 27 Oct 2026: "all the other use recommended", D6 B, D20 as now, D36 A; 28 Oct 2026: "All ★" for M332, M85, M327 and M50) · **Date**: 2026-10-27, 2026-10-28
