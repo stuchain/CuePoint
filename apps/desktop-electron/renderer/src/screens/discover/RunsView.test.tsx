@@ -66,6 +66,7 @@ function view(
     continueBlocked?: string | null;
     lookup?: React.ReactNode;
     tools?: DiscoverTools;
+    opening?: { runId: number; token: string } | null;
   } = {},
 ) {
   return (
@@ -79,10 +80,32 @@ function view(
         continueBlocked={props.continueBlocked ?? null}
         lookup={props.lookup}
         pollMs={60_000}
+        opening={props.opening}
       />
     </ScaleProvider>
   );
 }
+
+describe("a dig another page asks for (M269)", () => {
+  it("opens that dig, not the newest, and again when asked again", async () => {
+    install(vi.fn(async () => ({ value: RUNS, refusal: null })));
+    const older = RUNS.runs[RUNS.runs.length - 1]!;
+    expect(older.id).not.toBe(RUNS.runs[0]!.id);
+    const { rerender } = render(view({ opening: { runId: older.id, token: "a" } }));
+    await screen.findByRole("navigation", { name: "Past digs" });
+    expect(detailProps.at(-1)?.runId).toBe(older.id);
+    // The person opens another dig, then the Activity row asks for the same one again.
+    rerender(view({ opening: { runId: older.id, token: "a" } }));
+    const nav = screen.getByRole("navigation", { name: "Past digs" });
+    const items = within(nav)
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("discover-runs__item"));
+    fireEvent.click(items.find((item) => item.getAttribute("aria-current") !== "page")!);
+    expect(detailProps.at(-1)?.runId).not.toBe(older.id);
+    rerender(view({ opening: { runId: older.id, token: "b" } }));
+    await waitFor(() => expect(detailProps.at(-1)?.runId).toBe(older.id));
+  });
+});
 
 describe("a dig that stopped partway", () => {
   const stopped = RUNS.runs.find((run) => run.outcome === "failed")!;

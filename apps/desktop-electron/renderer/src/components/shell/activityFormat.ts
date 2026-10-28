@@ -2,6 +2,7 @@ import type { ActivityEvent } from "../../api/cuepointBridge.types";
 import { formatCount } from "../../format/counts";
 import { formatDay, formatTimeOfDay } from "../../format/dates";
 import { cleanSectionState } from "../../screens/clean/cleanLink";
+import { discoverRunState } from "../../screens/discover/discoverSections";
 
 /**
  * Presentation rules for the activity feed, as pure functions.
@@ -83,17 +84,22 @@ export interface EventDestination {
 
 /**
  * The page an event opens (M269): a match or a sync opens Clean (on its part), an edit or an import
- * the Library, a dig Discover, a Set Prepare. An event with nowhere to go (a launch, a backup) is
- * plain text.
+ * the Library, a dig Discover on that dig (its `run_id`), a Set Prepare. An event with nowhere to
+ * go (a launch, a backup) is plain text.
  */
-export function eventDestination(type: string): EventDestination | null {
+export function eventDestination(type: string, detail: Record<string, unknown> = {}): EventDestination | null {
   if (type.startsWith("clean.files.")) return { path: "/clean", state: cleanSectionState("missing"), label: "Open in Clean" };
   if (type.startsWith("clean.duplicates.")) {
     return { path: "/clean", state: cleanSectionState("duplicates"), label: "Open in Clean" };
   }
   if (type.startsWith("clean.match")) return { path: "/clean", state: cleanSectionState("review"), label: "Open in Clean" };
   if (type.startsWith("clean.")) return { path: "/clean", label: "Open in Clean" };
-  if (type.startsWith("discover")) return { path: "/discover", label: "Open in Discover" };
+  if (type.startsWith("discover")) {
+    const runId = detail.run_id;
+    return typeof runId === "number" && Number.isInteger(runId) && runId > 0
+      ? { path: "/discover", state: discoverRunState(runId), label: "Open in Discover" }
+      : { path: "/discover", label: "Open in Discover" };
+  }
   if (type.startsWith("set.") || type.startsWith("set_list.")) return { path: "/prepare", label: "Open in Prepare" };
   if (type.startsWith("library.") || type.startsWith("track_field_") || type.startsWith("collection.")) {
     return { path: "/library", label: "Open in the Library" };

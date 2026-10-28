@@ -45,3 +45,31 @@ export function saveDiscoverSection(section: DiscoverSection): void {
     // Remembering is a convenience; the page works without it.
   }
 }
+
+// ---------------------------------------------------------------- one dig
+
+const RUN_KEY = "cuepointDiscoverRun";
+
+/** The location state that opens Discover's Results on one dig (M269: an Activity dig row). */
+export function discoverRunState(runId: number): Record<string, number> {
+  return { [RUN_KEY]: runId };
+}
+
+/** The dig to open, and the navigation that asked, so asking twice opens twice. */
+export interface DiscoverRunOpening {
+  runId: number;
+  token: string;
+}
+
+/**
+ * The dig a location carries, checked before it is used (a location can be pushed by any code in
+ * the renderer), or null when it carries none that is valid.
+ */
+export function discoverRunOpening(location: { state: unknown; key: string }): DiscoverRunOpening | null {
+  const state = location.state;
+  if (!state || typeof state !== "object") return null;
+  const carried = (state as Record<string, unknown>)[RUN_KEY];
+  return typeof carried === "number" && Number.isInteger(carried) && carried > 0
+    ? { runId: carried, token: location.key }
+    : null;
+}

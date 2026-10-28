@@ -19,7 +19,7 @@
  * describe a row it does not.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import type {
   BeatportPlaylistRequest,
@@ -57,6 +57,7 @@ import { WantlistView } from "./WantlistView";
 import { beatportNotice, beatportUsable, refusalState, unusableReason } from "./beatportState";
 import {
   DISCOVER_SECTIONS,
+  discoverRunOpening,
   loadDiscoverSection,
   saveDiscoverSection,
   type DiscoverSection,
@@ -336,6 +337,16 @@ export function DiscoverScreen() {
     setSeen((previous) => (previous.has(section) ? previous : new Set(previous).add(section)));
   }, [section]);
 
+  // An Activity dig row opens that dig (M269): Results, with the dig open beside the list. Read
+  // per navigation, so asking for the same dig twice opens it twice on the kept page.
+  const location = useLocation();
+  const opening = useMemo(() => discoverRunOpening(location), [location]);
+  useEffect(() => {
+    if (!opening) return;
+    setSection("results");
+    saveDiscoverSection("results");
+  }, [opening]);
+
   const choose = (id: string) => {
     const next = DISCOVER_SECTIONS.find((entry) => entry.id === id)?.id;
     if (!next) return;
@@ -522,6 +533,7 @@ export function DiscoverScreen() {
               }
               lookup={lookupNotice}
               onHasRows={resultsHaveRows}
+              opening={opening}
             />
           </div>
         )}

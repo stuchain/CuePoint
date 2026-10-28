@@ -55,6 +55,8 @@ import {
   DEFAULT_DISCOVER_SECTION,
   DISCOVER_SECTION_STORAGE_KEY,
   DISCOVER_SECTIONS,
+  discoverRunOpening,
+  discoverRunState,
   loadDiscoverSection,
   saveDiscoverSection,
 } from "./discoverSections";
@@ -113,6 +115,19 @@ describe("the remembered tab", () => {
     expect(loadDiscoverSection()).toBe("results");
     localStorage.setItem(DISCOVER_SECTION_STORAGE_KEY, "runs");
     expect(loadDiscoverSection()).toBe("results");
+  });
+});
+
+describe("opening one dig from another page (M269)", () => {
+  it("carries the dig's id in the location state and reads it back with the navigation's key", () => {
+    expect(discoverRunOpening({ state: discoverRunState(12), key: "k1" })).toEqual({ runId: 12, token: "k1" });
+  });
+
+  it("ignores state that does not name a dig", () => {
+    expect(discoverRunOpening({ state: null, key: "k" })).toBeNull();
+    expect(discoverRunOpening({ state: { cuepointDiscoverRun: "12" }, key: "k" })).toBeNull();
+    expect(discoverRunOpening({ state: { cuepointDiscoverRun: 0 }, key: "k" })).toBeNull();
+    expect(discoverRunOpening({ state: { cuepointDiscoverRun: 1.5 }, key: "k" })).toBeNull();
   });
 });
 

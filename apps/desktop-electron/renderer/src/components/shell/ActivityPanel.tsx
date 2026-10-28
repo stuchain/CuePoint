@@ -204,7 +204,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
                           {word && <span className="cp-activity__type">{word}</span>}
                           <span className="cp-activity__summary-text">
                             {routed ? (
-                              <SummaryLink type={event.type} onGo={onClose}>
+                              <SummaryLink type={event.type} detail={event.detail} onGo={onClose}>
                                 {summary}
                               </SummaryLink>
                             ) : (
@@ -234,12 +234,22 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
 
 /**
  * An entry's summary, as a link to the page that holds what it recorded (M269): a match opens
- * Clean, an edit the Library, a dig Discover. The dialog closes first. An entry with nowhere to go
- * stays plain words.
+ * Clean, an edit the Library, a dig Discover on that dig. The dialog closes first. An entry with
+ * nowhere to go stays plain words.
  */
-function SummaryLink({ type, onGo, children }: { type: string; onGo: () => void; children: ReactNode }) {
+function SummaryLink({
+  type,
+  detail,
+  onGo,
+  children,
+}: {
+  type: string;
+  detail: Record<string, unknown>;
+  onGo: () => void;
+  children: ReactNode;
+}) {
   const navigate = useNavigate();
-  const to = eventDestination(type);
+  const to = eventDestination(type, detail);
   if (!to) return <>{children}</>;
   return (
     <LinkButton

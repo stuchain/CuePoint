@@ -28,6 +28,7 @@ import { RunList } from "./RunList";
 import { useNarrow } from "./useNarrow";
 import { refusalText, searchTitle } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
+import type { DiscoverRunOpening } from "./discoverSections";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
 
@@ -61,6 +62,8 @@ interface RunsViewProps {
   lookup?: ReactNode;
   /** Told whether a dig, and so rows of tracks, is showing (M490: the page's Details slot). */
   onHasRows?: (has: boolean) => void;
+  /** A dig another page asked to open (M269: an Activity dig row), once per navigation. */
+  opening?: DiscoverRunOpening | null;
 }
 
 export function RunsView({
@@ -73,6 +76,7 @@ export function RunsView({
   pollMs = JOB_POLL_MS,
   lookup = null,
   onHasRows,
+  opening = null,
 }: RunsViewProps) {
   // The list is read through the shared cache (C19d): a page shown again has it
   // at once, and it is read again when a search ends (the cache hears the job),
@@ -107,7 +111,7 @@ export function RunsView({
       : read.error !== undefined
         ? userMessage(read.error)
         : null;
-  const [selected, setSelected] = useState<number | null>(() => runs?.[0]?.id ?? null);
+  const [selected, setSelected] = useState<number | null>(() => opening?.runId ?? runs?.[0]?.id ?? null);
   const showsRows = runs !== null && runs.length > 0;
   useEffect(() => {
     onHasRows?.(showsRows);
@@ -136,6 +140,13 @@ export function RunsView({
     }
     wasRunning.current = running;
   }, [answer]);
+
+  // A dig another page asked for (M269) is opened, whether or not it is on the list's first page.
+  const openingToken = opening?.token ?? null;
+  const openingRun = opening?.runId ?? null;
+  useEffect(() => {
+    if (openingRun !== null) setSelected(openingRun);
+  }, [openingToken, openingRun]);
 
   // The newest search is chosen when none is.
   useEffect(() => {

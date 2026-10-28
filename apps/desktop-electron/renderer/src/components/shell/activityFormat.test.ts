@@ -135,6 +135,16 @@ describe("eventDestination (M269)", () => {
     expect(eventDestination("set.created_from")?.path).toBe("/prepare");
   });
 
+  it("opens a dig's own run on Discover when the event names it", () => {
+    expect(eventDestination("discovery.ran", { run_id: 7 })).toEqual({
+      path: "/discover",
+      state: { cuepointDiscoverRun: 7 },
+      label: "Open in Discover",
+    });
+    // A detail without a usable id still opens Discover, on whatever it shows.
+    expect(eventDestination("discovery.ran", { run_id: "7" })).toEqual({ path: "/discover", label: "Open in Discover" });
+  });
+
   it("has nowhere to send a launch or a backup", () => {
     expect(eventDestination("engine.started")).toBeNull();
     expect(eventDestination("backup.created")).toBeNull();
