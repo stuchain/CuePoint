@@ -93,6 +93,11 @@ export function scrollRegionOf(element: HTMLElement): HTMLElement | null {
   return null;
 }
 
+/** The page's own scroll region beside the header (M225): a `.screen-region` sibling, if there is one. */
+function siblingRegionOf(element: HTMLElement): HTMLElement | null {
+  return element.parentElement?.querySelector<HTMLElement>(":scope > .screen-region") ?? null;
+}
+
 /**
  * The one header every page uses (G6 T4): a grid of `title + beside | actions`, a summary
  * line, a tabs row and a single divider under all of it. It sticks to the top of a
@@ -150,9 +155,11 @@ export function ScreenHeader({
   }, []);
   // The sticky edge shows only while something has scrolled under the header (M215, M329): at
   // rest the header has one rule, its divider, and the hairline joins it once content slides under.
+  // A page that scrolls its own `.screen-region` under the header (Settings, Statistics, M225) is
+  // read from that sibling; any other page from the scrolling ancestor.
   useLayoutEffect(() => {
     const header = root.current;
-    const region = header ? scrollRegionOf(header) : null;
+    const region = header ? (siblingRegionOf(header) ?? scrollRegionOf(header)) : null;
     if (!header || !region) return;
     const update = () => {
       if (region.scrollTop > 0) header.setAttribute("data-scrolled", "");

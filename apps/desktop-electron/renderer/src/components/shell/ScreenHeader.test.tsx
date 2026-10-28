@@ -70,6 +70,28 @@ describe("ScreenHeader", () => {
     expect(header).not.toHaveAttribute("data-scrolled");
   });
 
+  it("reads the scroll of a sibling .screen-region under the header (Settings, Statistics; M215, M329)", () => {
+    const { container } = render(
+      <div style={{ overflow: "hidden" }}>
+        <ScreenHeader title="Settings" />
+        <div className="screen-region" data-testid="region" style={{ overflowY: "auto" }} />
+      </div>,
+    );
+    const region = container.querySelector<HTMLElement>("[data-testid=region]")!;
+    const header = container.querySelector(".cp-screen-header")!;
+    expect(header).not.toHaveAttribute("data-scrolled");
+    act(() => {
+      region.scrollTop = 40;
+      region.dispatchEvent(new Event("scroll"));
+    });
+    expect(header).toHaveAttribute("data-scrolled");
+    act(() => {
+      region.scrollTop = 0;
+      region.dispatchEvent(new Event("scroll"));
+    });
+    expect(header).not.toHaveAttribute("data-scrolled");
+  });
+
   it("has one rule at rest and whole-pixel spacing (M81, M329)", () => {
     const rest = /\.cp-screen-header\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
     expect(rest).not.toMatch(/box-shadow/);
