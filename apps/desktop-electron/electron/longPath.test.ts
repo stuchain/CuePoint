@@ -35,6 +35,14 @@ describe("the path mpv is given", () => {
     expect(osPath(`//server/share/${"a".repeat(300)}.mp3`, "win32")).toBe(expected);
   });
 
+  it("never climbs above the share or the drive with ..", () => {
+    const tail = "a".repeat(300);
+    expect(osPath(`\\\\server\\share\\..\\..\\${tail}`, "win32")).toBe(
+      `\\\\?\\UNC\\server\\share\\${tail}`,
+    );
+    expect(osPath(`C:\\..\\..\\${tail}`, "win32")).toBe(`\\\\?\\C:\\${tail}`);
+  });
+
   it("is not prefixed twice, and a relative path is never prefixed", () => {
     const prefixed = `\\\\?\\${LONG}`;
     expect(osPath(prefixed, "win32")).toBe(prefixed);

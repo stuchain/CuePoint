@@ -15,14 +15,17 @@ const ALREADY_PREFIXED = /^(\\\\[?.]\\|\/\/[?.]\/)/;
 const DRIVE_ABSOLUTE = /^[A-Za-z]:[\\/]/;
 const UNC = /^[\\/]{2}[^\\/?.][^\\/]*[\\/]+[^\\/]+/;
 
-/** Collapse `.`, `..` and repeated separators, as Windows would have before the prefix. */
-function collapse(path: string): string {
+/**
+ * Collapse `.`, `..` and repeated separators, as Windows would have before the prefix. `..` never
+ * climbs out of the root, which is `rootParts` segments (`C:`, or `server\share`), like ntpath.normpath.
+ */
+function collapse(path: string, rootParts: number): string {
   const parts = path.replace(/\//g, "\\").split("\\");
   const kept: string[] = [];
   parts.forEach((part, index) => {
     if (part === "." || (part === "" && index > 0 && index < parts.length - 1)) return;
-    if (part === ".." && kept.length > 1) {
-      kept.pop();
+    if (part === "..") {
+      if (kept.length > rootParts) kept.pop();
       return;
     }
     kept.push(part);
@@ -34,7 +37,7 @@ function collapse(path: string): string {
 export function osPath(file: string, platform: string = process.platform): string {
   if (platform !== "win32" || file.length <= LONG_PATH_LIMIT) return file;
   if (ALREADY_PREFIXED.test(file)) return file;
-  if (UNC.test(file)) return `\\\\?\\UNC\\${collapse(file.replace(/^[\\/]{2}/, ""))}`;
-  if (DRIVE_ABSOLUTE.test(file)) return `\\\\?\\${collapse(file)}`;
+  if (UNC.test(file)) return `\\\\?\\UNC\\${collapse(file.replace(/^[\\/]{2}/, ""), 2)}`;
+  if (DRIVE_ABSOLUTE.test(file)) return `\\\\?\\${collapse(file, 1)}`;
   return file;
 }
