@@ -63,6 +63,8 @@ interface ToastContextValue {
   push: (message: string, variant?: ToastVariant, action?: ToastAction, options?: ToastOptions) => void;
   /** Close the toast pushed with this key, if it is still showing. */
   dismissKey: (key: string) => void;
+  /** Close every toast still showing: the window is about to be, or has just stopped being, a different screen. */
+  dismissAll: () => void;
   /** Moves focus to the newest toast's action (or its close button), so Undo is reachable from the keyboard (M456). False when none shows. */
   focusNewest: () => boolean;
   /**
@@ -131,6 +133,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.map((t) => (t.dedupeKey === key && !t.closing ? { ...t, closing: true } : t)));
   }, []);
 
+  const dismissAll = useCallback(() => {
+    setToasts((prev) => prev.map((t) => (t.closing ? t : { ...t, closing: true })));
+  }, []);
+
   // The stack floats over the page (Toast.css): it takes no room from the content, so a table does
   // not shrink and the selection bar does not jump while a toast shows (M283).
   const stack = useRef<HTMLDivElement>(null);
@@ -176,8 +182,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [showing]);
 
   const value = useMemo(
-    () => ({ push, dismissKey, focusNewest, runNewestAction }),
-    [push, dismissKey, focusNewest, runNewestAction],
+    () => ({ push, dismissKey, dismissAll, focusNewest, runNewestAction }),
+    [push, dismissKey, dismissAll, focusNewest, runNewestAction],
   );
 
   const stackNode = (

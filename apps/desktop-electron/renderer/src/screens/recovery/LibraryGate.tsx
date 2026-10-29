@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { LibraryStatus } from "../../api/cuepointBridge.types";
+import { useOptionalToast } from "../../components/Toast";
 import { LibraryRecovery } from "./LibraryRecovery";
 
 /** How often the library's state is asked for while the answer is not there yet, or is still upgrading. */
@@ -51,7 +52,16 @@ export function LibraryGate({ children }: { children: ReactNode }) {
     return () => clearInterval(timer);
   }, [bridge, settled, read]);
 
-  if (status !== null && needsRecoveryScreen(status)) {
+  // What the app said while the library could not be read (its first reads failed) is no longer true
+  // once this screen shows, nor once the app comes back.
+  const toast = useOptionalToast();
+  const recovering = status !== null && needsRecoveryScreen(status);
+  const dismissAll = toast?.dismissAll;
+  useEffect(() => {
+    dismissAll?.();
+  }, [recovering, dismissAll]);
+
+  if (recovering && status !== null) {
     return <LibraryRecovery status={status} onState={setStatus} />;
   }
   return <>{children}</>;

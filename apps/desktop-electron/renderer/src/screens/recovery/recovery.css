@@ -12,7 +12,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-lg);
+  min-height: var(--toolbar-height);
+  /* The logo sits where the rail's brand does: a page margin in, and the rail's own edge after it. */
+  padding: calc(2 * var(--space-lg)) var(--space-lg) calc(2 * var(--space-lg)) calc(2 * var(--space-lg));
   font-family: var(--font-voice);
   font-size: var(--control-font-size);
   font-weight: var(--weight-strong);
@@ -27,8 +29,9 @@
 .library-recovery__card {
   box-sizing: border-box;
   width: 100%;
-  max-width: calc(680px * var(--scale) + 2 * var(--space-lg));
-  margin: calc(72px * var(--scale)) auto 0;
+  /* About 680 px of text at the standard size, as drawn. */
+  max-width: calc(454px * var(--scale));
+  margin: calc(36px * var(--scale)) auto 0;
   padding: 0 var(--space-lg);
   display: flex;
   flex-direction: column;

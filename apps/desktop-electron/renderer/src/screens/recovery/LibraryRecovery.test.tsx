@@ -7,6 +7,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { LibraryStatus } from "../../api/cuepointBridge.types";
+import { ToastProvider, useToast } from "../../components/Toast";
 import { LibraryGate } from "./LibraryGate";
 import { LibraryRecovery, libraryFileFrom, megabytesNeeded } from "./LibraryRecovery";
 
@@ -242,6 +243,36 @@ describe("the gate", () => {
     gate();
     expect(await screen.findByRole("heading", { level: 1 })).toBeInTheDocument();
     expect(screen.queryByText("The app")).not.toBeInTheDocument();
+  });
+
+  it("closes what the app said while the library could not be read", async () => {
+    let changed: () => void = () => undefined;
+    (window.cuepoint as unknown as { library: { onStateChanged: (l: () => void) => () => void } }).library.onStateChanged = (listener) => {
+      changed = listener;
+      return () => undefined;
+    };
+    getState.mockResolvedValue(status({ state: "ok" }));
+    function Probe() {
+      const { push } = useToast();
+      return (
+        <button type="button" onClick={() => push("[DB_UNREADABLE] could not be read", "error")}>
+          Say it
+        </button>
+      );
+    }
+    render(
+      <ToastProvider>
+        <LibraryGate>
+          <Probe />
+        </LibraryGate>
+      </ToastProvider>,
+    );
+    await user().click(await screen.findByRole("button", { name: "Say it" }));
+    expect(await screen.findByText("[DB_UNREADABLE] could not be read")).toBeInTheDocument();
+    getState.mockResolvedValue(status({ state: "damaged" }));
+    changed();
+    await screen.findByRole("heading", { level: 1 });
+    await waitFor(() => expect(screen.queryByText("[DB_UNREADABLE] could not be read")).not.toBeInTheDocument());
   });
 
   it("shows the app again when the library is ok", async () => {
