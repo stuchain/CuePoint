@@ -108,7 +108,10 @@ class TestExportServiceErrorHandling:
         service = ExportService(logging_service=logging_service)
 
         # Mock open() to raise an exception
-        with patch("builtins.open", side_effect=IOError("Permission denied")):
+        with patch(
+            "cuepoint.utils.atomic_write.os.open",
+            side_effect=IOError("Permission denied"),
+        ):
             with pytest.raises(ExportError) as exc_info:
                 service.export_to_json([], "test.json")
 

@@ -288,7 +288,8 @@ class TestExportServiceIntegration:
 
             # Mock file write to raise permission error
             with patch(
-                "builtins.open", side_effect=PermissionError("Permission denied")
+                "cuepoint.utils.atomic_write.os.open",
+                side_effect=PermissionError("Permission denied"),
             ):
                 # Should raise ExportError
                 with pytest.raises(ExportError):

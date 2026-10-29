@@ -24,6 +24,7 @@ import pytest
 from cuepoint.exceptions.cuepoint_exceptions import ExportError
 from cuepoint.services import export_service as export_module
 from cuepoint.services.export_service import ExportService
+from cuepoint.utils.atomic_write import atomic_file
 
 COLUMNS = ("track_id", "title", "bpm", "match_disputed", "candidate_url")
 ROWS = [
@@ -149,8 +150,9 @@ class TestWholeOrAbsent:
         target.write_text("the previous export", encoding="utf-8")
 
         def fails(path, columns, rows):
-            Path(path).write_text("half", encoding="utf-8")
-            raise OSError("disk full")
+            with atomic_file(path, "w", encoding="utf-8") as handle:
+                handle.write("half")
+                raise OSError("disk full")
 
         monkeypatch.setattr(export_module, "_write_csv_table", fails)
 

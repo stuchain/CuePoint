@@ -11,7 +11,6 @@ import csv
 import json
 import os
 import shutil
-import tempfile
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Sequence
 
@@ -19,6 +18,7 @@ from cuepoint.exceptions.cuepoint_exceptions import ExportError
 from cuepoint.models.result import TrackResult
 from cuepoint.services.interfaces import IExportService, ILoggingService
 from cuepoint.services.output_writer import write_csv_files
+from cuepoint.utils.atomic_write import atomic_file
 from cuepoint.utils.quoting import quoted
 
 #: The formats :meth:`ExportService.export_table` writes.
@@ -40,7 +40,7 @@ def _cell(value: Any) -> Any:
 def _write_csv_table(
     path: str, columns: Sequence[str], rows: Sequence[Mapping[str, Any]]
 ) -> None:
-    with open(path, "w", newline="", encoding="utf-8-sig") as handle:
+    with atomic_file(path, "w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.writer(handle)
         writer.writerow(list(columns))
         for row in rows:
@@ -50,7 +50,7 @@ def _write_csv_table(
 def _write_json_table(
     path: str, columns: Sequence[str], rows: Sequence[Mapping[str, Any]]
 ) -> None:
-    with open(path, "w", encoding="utf-8") as handle:
+    with atomic_file(path, "w", encoding="utf-8") as handle:
         json.dump(
             [{column: row.get(column) for column in columns} for row in rows],
             handle,
@@ -82,8 +82,11 @@ def _write_excel_table(
         cell.font = Font(bold=True)
     for row in rows:
         sheet.append([_cell(row.get(column)) for column in columns])
-    workbook.save(path)
-    workbook.close()
+    try:
+        with atomic_file(path, "wb") as handle:
+            workbook.save(handle)
+    finally:
+        workbook.close()
 
 
 class ExportService(IExportService):
@@ -235,42 +238,20 @@ class ExportService(IExportService):
             base_filename = os.path.splitext(os.path.basename(filepath))[0]
             output_dir = os.path.dirname(filepath) or "output"
 
-            # Use atomic write: write to temp file first, then rename
-            temp_file = None
-            try:
-                # Create temp file in same directory for atomic rename
-                temp_fd, temp_file = tempfile.mkstemp(
-                    suffix=".tmp", dir=output_dir, prefix="cuepoint_export_"
+            # write_csv_files writes each file atomically (temp beside it, fsync,
+            # replace), so there is nothing to clean up here.
+            write_csv_files(
+                results=results,
+                base_filename=base_filename,
+                output_dir=output_dir,
+                delimiter=delimiter,
+            )
+
+            if self.logging_service:
+                self.logging_service.info(
+                    f"Exported {len(results)} tracks to CSV: {quoted(filepath)}",
+                    extra={"filepath": filepath, "track_count": len(results)},
                 )
-                os.close(temp_fd)
-
-                # Write to temp file (output_writer will handle the actual writing)
-                # For CSV, we need to write to the final location, but we'll do atomic rename
-                write_csv_files(
-                    results=results,
-                    base_filename=base_filename,
-                    output_dir=output_dir,
-                    delimiter=delimiter,
-                )
-
-                # Note: write_csv_files creates timestamped files, so we need to handle
-                # the actual file that was created. For now, we'll just verify it exists.
-                # In a future enhancement, we could modify write_csv_files to support
-                # atomic writes directly.
-
-                if self.logging_service:
-                    self.logging_service.info(
-                        f"Exported {len(results)} tracks to CSV: {quoted(filepath)}",
-                        extra={"filepath": filepath, "track_count": len(results)},
-                    )
-            except Exception:
-                # Clean up temp file if it exists
-                if temp_file and os.path.exists(temp_file):
-                    try:
-                        os.unlink(temp_file)
-                    except Exception:
-                        pass
-                raise
         except ExportError:
             # Re-raise ExportError as-is
             raise
@@ -330,31 +311,9 @@ class ExportService(IExportService):
 
             data = [result.to_dict() for result in results] if results else []
 
-            # Atomic write: write to temp file first, then rename
-            temp_file = None
-            try:
-                # Create temp file in same directory for atomic rename
-                temp_fd, temp_file = tempfile.mkstemp(
-                    suffix=".tmp", dir=str(parent_dir), prefix="cuepoint_export_"
-                )
-                # Close the OS-level handle immediately (Windows otherwise keeps the file locked)
-                os.close(temp_fd)
-
-                with open(temp_file, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
-
-                # Atomic rename
-                if file_path.exists() and overwrite:
-                    file_path.unlink()
-                Path(temp_file).replace(file_path)
-            except Exception:
-                # Clean up temp file if it exists
-                if temp_file and os.path.exists(temp_file):
-                    try:
-                        os.unlink(temp_file)
-                    except Exception:
-                        pass
-                raise
+            # Atomic write (HARDEN-04): temp beside it, fsync, replace
+            with atomic_file(file_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
             if self.logging_service:
                 self.logging_service.info(
                     f"Exported {len(results)} tracks to JSON: {quoted(filepath)}",
@@ -414,20 +373,13 @@ class ExportService(IExportService):
             )
 
         file_path = Path(filepath)
-        temp_file: Optional[str] = None
         try:
-            temp_fd, temp_file = tempfile.mkstemp(
-                suffix=".tmp", dir=str(file_path.parent), prefix="cuepoint_export_"
-            )
-            os.close(temp_fd)
             if file_format == TABLE_FORMAT_CSV:
-                _write_csv_table(temp_file, columns, rows)
+                _write_csv_table(str(file_path), columns, rows)
             elif file_format == TABLE_FORMAT_JSON:
-                _write_json_table(temp_file, columns, rows)
+                _write_json_table(str(file_path), columns, rows)
             else:
-                _write_excel_table(temp_file, columns, rows, sheet_title)
-            Path(temp_file).replace(file_path)
-            temp_file = None
+                _write_excel_table(str(file_path), columns, rows, sheet_title)
         except ExportError:
             raise
         except Exception as exc:
@@ -442,12 +394,6 @@ class ExportService(IExportService):
                 error_code="EXPORT_WRITE_FAILED",
                 context={"filepath": filepath, "row_count": len(rows)},
             ) from exc
-        finally:
-            if temp_file and os.path.exists(temp_file):
-                try:
-                    os.unlink(temp_file)
-                except OSError:
-                    pass
         if self.logging_service:
             self.logging_service.info(
                 f"Exported {len(rows)} rows as {file_format}: {quoted(filepath)}",
@@ -536,32 +482,13 @@ class ExportService(IExportService):
                 row_data = list(result.to_dict().values())
                 ws.append(row_data)
 
-            # Atomic write: write to temp file first, then rename
-            temp_file = None
+            # Atomic write (HARDEN-04): temp beside it, fsync, replace
             try:
-                # Create temp file in same directory for atomic rename
-                temp_fd, temp_file = tempfile.mkstemp(
-                    suffix=".tmp", dir=str(parent_dir), prefix="cuepoint_export_"
-                )
-                os.close(temp_fd)
-
-                # Save to temp file
-                wb.save(temp_file)
+                with atomic_file(file_path, "wb") as handle:
+                    wb.save(handle)
+            finally:
                 if hasattr(wb, "close"):
-                    wb.close()  # Release file handle (Windows: avoid WinError 32 on cleanup)
-
-                # Atomic rename
-                if file_path.exists() and overwrite:
-                    file_path.unlink()
-                Path(temp_file).replace(file_path)
-            except Exception:
-                # Clean up temp file if it exists
-                if temp_file and os.path.exists(temp_file):
-                    try:
-                        os.unlink(temp_file)
-                    except Exception:
-                        pass
-                raise
+                    wb.close()  # Release resources
             if self.logging_service:
                 self.logging_service.info(
                     f"Exported {len(results)} tracks to Excel: {quoted(filepath)}",

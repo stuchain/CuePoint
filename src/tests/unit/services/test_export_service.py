@@ -215,10 +215,13 @@ class TestExportService:
         service = ExportService(logging_service=mock_logging_service)
 
         # Mock open to raise IOError (works on all platforms)
-        with patch("builtins.open", side_effect=IOError("Permission denied")):
-            with pytest.raises(ExportError) as exc_info:
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    filepath = os.path.join(tmpdir, "test.json")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.json")
+            with patch(
+                "cuepoint.utils.atomic_write.os.open",
+                side_effect=IOError("Permission denied"),
+            ):
+                with pytest.raises(ExportError) as exc_info:
                     service.export_to_json([sample_track_result], filepath)
 
             assert exc_info.value.error_code == "EXPORT_JSON_ERROR"
@@ -400,9 +403,11 @@ class TestExportService:
         # Mock open to raise IOError
         from unittest.mock import patch
 
-        with patch("builtins.open", side_effect=IOError("Disk full")):
-            with tempfile.TemporaryDirectory() as tmpdir:
-                filepath = os.path.join(tmpdir, "test.json")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.json")
+            with patch(
+                "cuepoint.utils.atomic_write.os.open", side_effect=IOError("Disk full")
+            ):
                 with pytest.raises(ExportError) as exc_info:
                     service.export_to_json([sample_track_result], filepath)
 
