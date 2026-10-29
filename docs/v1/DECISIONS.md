@@ -8614,3 +8614,24 @@ options; he picked B for all four.
 **Decided with**: User (picks 29 Oct 2026: "recommended" for the waveform and source line, "B" for
 the chip gap and "B" for page edges) · **Date**: 2026-10-29
 
+## DEC-304 — Page Headers Meet the Sidebar's Line; One Dash for Words (Amends DEC-303, C30)
+
+**Status**: Accepted · **Related**: DEC-303, `changes/polish/sidebar-align/MOCKUP.png`
+
+**Context**: Where the sidebar meets the page, each page's header line sat at its own height, none
+on the sidebar's line under Search, the first rows did not start level with the sidebar's first
+link, and Statistics started a page margin lower than the rest (its page clips, so it is its own
+sticky box and the header's sticky top added a second margin). Separately, the owner asked for no
+long dash (—) between words.
+
+**Decision**:
+- **Sidebar alignment B** Every page header is at least as tall as the rail's top (two bars and four
+  xs steps plus the hairline), so its divider lies on the rail's line, and the first content sits
+  one rail step (`--space-md`) under it, level with the first link (amends C30's 12 under the
+  divider). Taller header content still grows it. The tight rail (2x and 3x in a short window) has
+  no brand row, so there the header keeps its own height. Scrolling pages stick their header at 0.
+- **Dashes** Words are joined with " - " (window titles "Statistics - CuePoint"); an empty cell
+  keeps its "—".
+
+**Decided with**: User (29 Oct 2026: "1 -" for the dash, "B" for sidebar alignment) · **Date**: 2026-10-29
+
