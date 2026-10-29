@@ -783,7 +783,22 @@ class IBackupService(ABC):
 
     @abstractmethod
     def verify_backup(self, backup_path: Path) -> None:
-        """Check a backup is a readable database before it is used."""
+        """Check a backup is a readable library before it is used."""
+        ...
+
+    @abstractmethod
+    def sweep_partials(self) -> int:
+        """Remove backups an earlier run left half-written."""
+        ...
+
+    @abstractmethod
+    def backup_path(self, name: str) -> Path:
+        """The backup called ``name`` in the backup folder, or raise."""
+        ...
+
+    @abstractmethod
+    def delete_backup(self, name: str) -> None:
+        """Delete one backup by name."""
         ...
 
     @abstractmethod

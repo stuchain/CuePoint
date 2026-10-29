@@ -7047,7 +7047,7 @@
     }
   },
   {
-    "name": "cuepoint/services/backup_service.py::BackupService.create_backup::Could not create a database backup: {exc}",
+    "name": "cuepoint/services/backup_service.py::BackupService._set_aside_damaged::The library could not be set aside before restoring: {exc}. Nothing was changed",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -7059,7 +7059,7 @@
         "values": [
           {
             "type": "DatabaseError",
-            "value": "Could not create a database backup: [Errno 13] Permission denied: '/Users/anna/Music/House/Warehouse Mix 2024.flac'"
+            "value": "The library could not be set aside before restoring: [Errno 13] Permission denied: '/Users/anna/Music/House/Warehouse Mix 2024.flac'. Nothing was changed"
           }
         ]
       }
@@ -7069,14 +7069,14 @@
         "values": [
           {
             "type": "DatabaseError",
-            "value": "Could not create a database backup: [Errno 13] Permission denied: '<home>/<dir>/<dir>/<file>.flac'"
+            "value": "The library could not be set aside before restoring: [Errno 13] Permission denied: '<home>/<dir>/<dir>/<file>.flac'. Nothing was changed"
           }
         ]
       }
     }
   },
   {
-    "name": "cuepoint/services/backup_service.py::BackupService.restore::Restoring the backup failed: {exc}. The database from before the restore was saved first",
+    "name": "cuepoint/services/backup_service.py::BackupService.create_backup::Could not create a backup: {exc}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -7088,7 +7088,7 @@
         "values": [
           {
             "type": "DatabaseError",
-            "value": "Restoring the backup failed: [Errno 13] Permission denied: '/Users/anna/Music/House/Warehouse Mix 2024.flac'. The database from before the restore was saved first"
+            "value": "Could not create a backup: [Errno 13] Permission denied: '/Users/anna/Music/House/Warehouse Mix 2024.flac'"
           }
         ]
       }
@@ -7098,7 +7098,65 @@
         "values": [
           {
             "type": "DatabaseError",
-            "value": "Restoring the backup failed: [Errno 13] Permission denied: '<home>/<dir>/<dir>/<file>.flac'. The database from before the restore was saved first"
+            "value": "Could not create a backup: [Errno 13] Permission denied: '<home>/<dir>/<dir>/<file>.flac'"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "cuepoint/services/backup_service.py::BackupService.delete_backup::Could not delete that backup: {exc}",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "DatabaseError",
+            "value": "Could not delete that backup: [Errno 13] Permission denied: '/Users/anna/Music/House/Warehouse Mix 2024.flac'"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "DatabaseError",
+            "value": "Could not delete that backup: [Errno 13] Permission denied: '<home>/<dir>/<dir>/<file>.flac'"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "cuepoint/services/backup_service.py::BackupService.restore::Restoring the backup failed: {exc}. Your library was not changed",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "DatabaseError",
+            "value": "Restoring the backup failed: [Errno 13] Permission denied: '/Users/anna/Music/House/Warehouse Mix 2024.flac'. Your library was not changed"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "DatabaseError",
+            "value": "Restoring the backup failed: [Errno 13] Permission denied: '<home>/<dir>/<dir>/<file>.flac'. Your library was not changed"
           }
         ]
       }

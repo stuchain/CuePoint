@@ -36,6 +36,8 @@ from cuepoint.engine.support_bundle_api import (
     run_support_bundle,
 )
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
+from cuepoint.engine import backups_api
+from cuepoint.services.backup_service import reason_of
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
 from cuepoint.engine.reporting_api import (
     initial_reporting_enabled,
@@ -1137,6 +1139,11 @@ def make_handler(
                     discover_status,
                 )
                 return
+            if backups_api.handles("GET", path):
+                self._handle_routed(
+                    lambda: backups_api.handle("GET", path), backups_api.status_for
+                )
+                return
             if sets_handles_get(path):
                 self._handle_routed(
                     lambda: sets_get(path, parse_qs(parsed.query)), sets_status
@@ -1331,6 +1338,23 @@ def make_handler(
                 return
             self._send_json(404, error_payload("NOT_FOUND", "Unknown endpoint"))
 
+        def do_DELETE(self) -> None:  # noqa: N802
+            self._dispatch(self._route_delete)
+
+        def _route_delete(self) -> None:
+            path = urlparse(self.path).path
+            if not self._authorized():
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
+            if backups_api.handles("DELETE", path):
+                self._handle_routed(
+                    lambda: backups_api.handle("DELETE", path), backups_api.status_for
+                )
+                return
+            self._send_json(404, error_payload("NOT_FOUND", "Unknown endpoint"))
+
         def do_POST(self) -> None:  # noqa: N802
             self._dispatch(self._route_post)
 
@@ -1339,6 +1363,12 @@ def make_handler(
             if not self._authorized():
                 self._send_json(
                     401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
+            if backups_api.handles("POST", path):
+                self._read_body()
+                self._handle_routed(
+                    lambda: backups_api.handle("POST", path), backups_api.status_for
                 )
                 return
             if path == "/api/v1/privacy/clear-logs":
@@ -1607,6 +1637,20 @@ def backup_library_on_launch() -> Optional[Any]:
         return None
 
 
+def record_library_opened_by() -> None:
+    """Write this build's version into the library as ``last_opened_by``.
+
+    Every start, after the migrations that make the table. Best effort, like
+    the activity feed: a library that cannot be written must not stop the engine.
+    """
+    try:
+        from cuepoint.persistence.library_meta import record_last_opened_by
+
+        record_last_opened_by(__version__)
+    except Exception as exc:  # noqa: BLE001 - never a reason not to start
+        _logger.warning("[library] could not record the app version: %s", exc)
+
+
 def record_activity(
     event_type: str, summary: str, detail: Optional[Dict[str, Any]] = None
 ) -> None:
@@ -1705,7 +1749,10 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
         record_activity(
             "backup.created",
             "Library backed up",
-            {"file": Path(backup.path).name, "reason": "launch"},
+            {
+                "file": Path(backup.path).name,
+                "reason": reason_of(Path(backup.path).name) or "launch",
+            },
         )
     # DEC-028/DEC-029: every start is recorded, so a restarting engine leaves a
     # visible trail rather than healing silently.
@@ -1714,6 +1761,7 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
         f"CuePoint started (v{__version__})",
         {"version": __version__, "port": cfg.port},
     )
+    record_library_opened_by()
     # DISCOVER-03: a library the running name rule did not index — one upgraded
     # from before the index existed, or one a rule change made stale — is
     # rebuilt in the background. After the migrations the lines above ran, and

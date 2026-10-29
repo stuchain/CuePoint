@@ -9,6 +9,9 @@ starts without the engine's import cost.
 ``--analysis-selftest DECODER FILE`` is the release check's half (C19g): it
 analyses FILE through a real worker, as the app does, and prints one JSON line
 (``fetch_player_sidecar.py --check-analysis-worker``).
+
+``--restore NAME`` restores the backup called NAME and exits, without starting
+the server (HARDEN-01): exit 0, or one JSON error line on stderr and non-zero.
 """
 
 import sys
@@ -55,6 +58,12 @@ if __name__ == "__main__":
     if "--analysis-selftest" in sys.argv[1:]:
         _at = sys.argv.index("--analysis-selftest")
         raise SystemExit(_run_selftest(sys.argv[_at + 1 :]))
+
+    if "--restore" in sys.argv[1:]:
+        from cuepoint.engine.restore_mode import main as _restore_main
+
+        _rt = sys.argv.index("--restore")
+        raise SystemExit(_restore_main(sys.argv[_rt + 1 :]))
 
     from cuepoint.engine.server import run_engine
     from cuepoint.services.analysis_worker_client import enable_worker

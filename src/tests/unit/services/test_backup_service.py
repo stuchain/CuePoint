@@ -330,3 +330,206 @@ class TestRestore:
         # Writes still work against the restored file.
         _add_track(db, "3", "After Restore")
         assert sorted(_titles(db)) == ["After Restore", "Original"]
+
+
+def _names_in(backups: BackupService) -> list[str]:
+    return [b.name for b in backups.list_backups()]
+
+
+@pytest.mark.unit
+class TestWholeOrNothing:
+    def test_an_interrupted_create_leaves_an_unlisted_partial_swept_at_start(
+        self, db, backups, monkeypatch
+    ):
+        _add_track(db, "1", "Song")
+
+        def die(*_args, **_kwargs):
+            raise KeyboardInterrupt  # not an Exception: nothing cleans up after it
+
+        monkeypatch.setattr(BackupService, "verify_backup", die)
+        with pytest.raises(KeyboardInterrupt):
+            backups.create_backup()
+        monkeypatch.undo()
+
+        leftovers = list(backups.backup_dir.glob(".*.partial"))
+        assert len(leftovers) == 1, "the interrupted copy should be a dot-partial"
+        assert backups.list_backups() == []
+
+        assert backups.sweep_partials() == 1
+        assert list(backups.backup_dir.iterdir()) == []
+
+    def test_launch_sweeps_partials(self, db, backups):
+        _add_track(db, "1", "Song")
+        backups.backup_dir.mkdir(parents=True, exist_ok=True)
+        stale = backups.backup_dir / ".cuepoint-20200101-000000-launch.db.partial"
+        stale.write_bytes(b"half")
+
+        backups.backup_on_launch()
+
+        assert not stale.exists()
+
+    def test_a_backup_failing_quick_check_is_deleted_and_not_counted(
+        self, db, backups, monkeypatch
+    ):
+        _add_track(db, "1", "Song")
+        good = backups.create_backup()
+        time.sleep(0.01)
+
+        real = BackupService.verify_backup
+
+        def corrupt(self, path):
+            if Path(path).name.startswith("."):
+                raise DatabaseError("bad", error_code="BACKUP_CORRUPT")
+            real(self, path)
+
+        monkeypatch.setattr(BackupService, "verify_backup", corrupt)
+        with pytest.raises(DatabaseError) as exc:
+            backups.create_backup()
+
+        assert exc.value.error_code == "BACKUP_VERIFY_FAILED"
+        assert _names_in(backups) == [good.name]
+        assert [p.name for p in backups.backup_dir.iterdir() if p.suffix == ".db"] == [
+            good.name
+        ]
+        assert not list(backups.backup_dir.glob(".*"))
+
+    def test_a_restore_interrupted_before_the_replace_leaves_the_library_alone(
+        self, db, backups, monkeypatch
+    ):
+        import os
+
+        _add_track(db, "1", "Original")
+        info = backups.create_backup()
+        _add_track(db, "2", "Added Later")
+        db.close_all()
+        before = db.db_path.read_bytes()
+
+        real_replace = os.replace
+
+        def refuse_library(src, dst):
+            if Path(dst) == db.db_path:
+                raise OSError("disk went away")
+            return real_replace(src, dst)
+
+        monkeypatch.setattr(os, "replace", refuse_library)
+        with pytest.raises(DatabaseError) as exc:
+            backups.restore(info.path)
+        monkeypatch.undo()
+
+        assert exc.value.error_code == "RESTORE_FAILED"
+        assert db.db_path.read_bytes() == before
+        assert sorted(_titles(db)) == ["Added Later", "Original"]
+        assert not list(db.db_path.parent.glob(".cuepoint.db.restore*"))
+
+
+@pytest.mark.unit
+class TestReasonsAndPruning:
+    def test_reason_is_parsed_from_the_name(self, db, backups):
+        _add_track(db, "1", "Song")
+        for reason in ("launch", "manual", "pre-upgrade", "pre-restore"):
+            made = backups.create_backup(reason=reason)
+            assert made.reason == reason
+        assert {b.reason for b in backups.list_backups()} == {
+            "launch",
+            "manual",
+            "pre-upgrade",
+            "pre-restore",
+        }
+
+    def test_pre_upgrade_is_pruned_on_its_own_count_of_three(self, db, backups):
+        _add_track(db, "1", "Song")
+        upgrades = []
+        for _ in range(5):
+            upgrades.append(backups.create_backup(reason="pre-upgrade"))
+            time.sleep(0.01)
+        for _ in range(7):
+            backups.create_backup(reason="launch")
+            time.sleep(0.01)
+
+        by_reason: dict[str, list[str]] = {}
+        for b in backups.list_backups():
+            by_reason.setdefault(b.reason, []).append(b.name)
+
+        assert len(by_reason["pre-upgrade"]) == 3
+        assert set(by_reason["pre-upgrade"]) == {u.name for u in upgrades[-3:]}
+        assert len(by_reason["launch"]) == 5, "launch copies counted pre-upgrade ones"
+
+    def test_launch_and_manual_share_the_cap(self, db, backups):
+        _add_track(db, "1", "Song")
+        for reason in ("launch", "manual") * 4:
+            backups.create_backup(reason=reason)
+            time.sleep(0.01)
+        assert len(backups.list_backups()) == 5
+
+    def test_pre_restore_damaged_is_never_pruned(self, db, backups):
+        _add_track(db, "1", "Song")
+        aside = backups.create_backup(reason="pre-restore-damaged")
+        for _ in range(8):
+            backups.create_backup()
+            time.sleep(0.01)
+        assert aside.path.exists()
+
+    def test_pre_upgrade_records_both_versions(self, db, backups):
+        from cuepoint.persistence.library_meta import LAST_OPENED_BY, set_meta
+        from cuepoint.version import __version__
+
+        _add_track(db, "1", "Song")
+        set_meta(db, LAST_OPENED_BY, "0.9.0")
+
+        made = backups.create_backup(reason="pre-upgrade")
+
+        assert (made.app_version, made.from_version, made.to_version) == (
+            "0.9.0",
+            "0.9.0",
+            __version__,
+        )
+        assert backups.list_backups()[0].to_version == __version__
+
+
+@pytest.mark.unit
+class TestDeleteBackup:
+    def test_deletes_a_backup_and_its_record(self, db, backups):
+        _add_track(db, "1", "Song")
+        made = backups.create_backup()
+        backups.delete_backup(made.name)
+        assert backups.list_backups() == []
+        assert list(backups.backup_dir.iterdir()) == []
+
+    @pytest.mark.parametrize(
+        "name",
+        ["../cuepoint.db", "/etc/passwd", "a/b.db", "cuepoint.db", "", "..", "x\\y.db"],
+    )
+    def test_refuses_names_outside_the_backup_folder(self, db, backups, name):
+        _add_track(db, "1", "Song")
+        backups.create_backup()
+        with pytest.raises(DatabaseError) as exc:
+            backups.delete_backup(name)
+        assert exc.value.error_code == "BACKUP_INVALID_NAME"
+        assert db.db_path.exists()
+
+    def test_unknown_backup(self, backups):
+        with pytest.raises(DatabaseError) as exc:
+            backups.delete_backup("cuepoint-20200101-000000-manual.db")
+        assert exc.value.error_code == "BACKUP_NOT_FOUND"
+
+
+@pytest.mark.unit
+class TestRestoreOfADamagedLibrary:
+    def test_the_damaged_library_is_set_aside_by_file_copy_and_replaced(
+        self, db, backups
+    ):
+        import os
+
+        _add_track(db, "1", "Original")
+        info = backups.create_backup()
+        db.close_all()
+        noise = os.urandom(4096)
+        db.db_path.write_bytes(noise)
+        Path(str(db.db_path) + "-wal").write_bytes(b"wal-bytes")
+
+        aside = backups.restore(info.path)
+
+        assert aside.reason == "pre-restore-damaged"
+        assert aside.path.read_bytes() == noise
+        assert Path(str(aside.path) + "-wal").read_bytes() == b"wal-bytes"
+        assert _titles(db) == ["Original"]

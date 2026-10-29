@@ -25,8 +25,10 @@ migrates exported CSV files between output-schema versions and is unrelated.
 from __future__ import annotations
 
 import logging
+import sqlite3
 import threading
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
@@ -64,6 +66,37 @@ def _discovered() -> List[Migration]:
         if _DISCOVERED is None:
             _DISCOVERED = tuple(discover_migrations())
         return list(_DISCOVERED)
+
+
+def pending_versions(db_path: Path) -> List[int]:
+    """Versions this build would apply to the library at ``db_path``.
+
+    Reads the file with plain SELECTs and never migrates, creates a table or
+    opens it through the shared connection pool, so it is safe to ask before
+    the first migration of a launch (the pre-upgrade copy depends on that). A
+    library that has applied nothing yet is not an upgrade: it is empty, and
+    the answer is an empty list. So is a library from a newer build.
+
+    Raises:
+        sqlite3.Error: If the file cannot be read as a library.
+    """
+    connection = sqlite3.connect(str(db_path))
+    try:
+        has_table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (SCHEMA_VERSION_TABLE,),
+        ).fetchone()
+        if has_table is None:
+            return []
+        applied = {
+            int(row[0])
+            for row in connection.execute(f"SELECT version FROM {SCHEMA_VERSION_TABLE}")
+        }
+    finally:
+        connection.close()
+    if not applied:
+        return []
+    return [m.version for m in _discovered() if m.version not in applied]
 
 
 class MigrationRunner(IMigrationRunner):

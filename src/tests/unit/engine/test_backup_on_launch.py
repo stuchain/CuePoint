@@ -187,3 +187,99 @@ class TestBehaviour:
             "a backup failure should be logged, not swallowed silently"
         )
         assert _backups(library) == []
+
+
+def _reasons(db_path):
+    from cuepoint.services.backup_service import reason_of
+
+    return [reason_of(p.name) for p in _backups(db_path)]
+
+
+def _make_old_database(db_path):
+    """A library one migration behind this build, as an upgrade finds it."""
+    from cuepoint.services.database_service import DatabaseService
+    from cuepoint.services.migration_runner import MigrationRunner, _discovered
+
+    service = DatabaseService(db_path=db_path)
+    older = _discovered()[:-1]
+    MigrationRunner(service, migrations=older).migrate()
+    service.close_all()
+    return db_path
+
+
+@pytest.mark.unit
+class TestPreUpgrade:
+    def test_pending_migrations_give_one_pre_upgrade_copy_and_no_launch_copy(
+        self, library
+    ):
+        _make_old_database(library)
+
+        taken = server.backup_library_on_launch()
+
+        assert _reasons(library) == ["pre-upgrade"]
+        assert taken is not None and taken.reason == "pre-upgrade"
+
+    def test_even_when_nothing_changed_since_the_last_backup(self, library):
+        _make_old_database(library)
+        # A launch copy newer than the library: "unchanged" by the old rule.
+        from cuepoint.services.backup_service import BackupService
+        from cuepoint.services.database_service import DatabaseService
+
+        service = DatabaseService(db_path=library)
+        BackupService(database_service=service).create_backup(reason="launch")
+        service.close_all()
+
+        server.backup_library_on_launch()
+
+        assert sorted(_reasons(library)) == ["launch", "pre-upgrade"]
+
+    def test_the_copy_is_the_library_before_it_migrates(self, library):
+        _make_old_database(library)
+
+        server.backup_library_on_launch()
+
+        copy = _backups(library)[0]
+        connection = sqlite3.connect(copy)
+        try:
+            top = connection.execute(
+                "SELECT MAX(version) FROM schema_version"
+            ).fetchone()
+        finally:
+            connection.close()
+        from cuepoint.services.migration_runner import _discovered
+
+        assert top[0] == _discovered()[-2].version
+
+    def test_none_pending_gives_the_launch_copy_as_before(self, library):
+        _make_populated_database(library)
+
+        server.backup_library_on_launch()
+
+        assert _reasons(library) == ["launch"]
+
+    def test_a_library_that_has_applied_nothing_is_not_an_upgrade(self, library):
+        library.touch()
+        server.backup_library_on_launch()
+        assert "pre-upgrade" not in _reasons(library)
+
+    def test_the_app_version_is_written_at_every_start(self, library):
+        from cuepoint.persistence.library_meta import LAST_OPENED_BY, get_meta
+        from cuepoint.services.bootstrap import bootstrap_services
+        from cuepoint.services.interfaces import IDatabaseService
+        from cuepoint.utils.di_container import get_container
+        from cuepoint.version import __version__
+
+        _make_populated_database(library)
+        bootstrap_services()
+        get_container().resolve(IDatabaseService)
+
+        server.record_library_opened_by()
+
+        # Migrations run on a repository's first resolve; ask for one.
+        from cuepoint.services.interfaces import IActivityService
+
+        get_container().resolve(IActivityService)
+        server.record_library_opened_by()
+        assert get_meta(get_container().resolve(IDatabaseService), LAST_OPENED_BY) == (
+            __version__
+        )
