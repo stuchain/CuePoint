@@ -87,7 +87,6 @@ import logging
 import os
 import re
 import shutil
-import tempfile
 from datetime import datetime
 import xml.parsers.expat as expat
 from dataclasses import dataclass, field
@@ -115,6 +114,7 @@ from cuepoint.data.rekordbox import (
 )
 from cuepoint.exceptions.cuepoint_exceptions import ValidationError
 from cuepoint.models.rekordbox_playlist import build_path
+from cuepoint.utils.atomic_write import commit_temp, discard_temp, stage_temp
 from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
@@ -1365,29 +1365,19 @@ def _write_atomically(
         cursor = end
     out += data[cursor:]
 
-    temp_path: Optional[str] = None
+    temp_path = stage_temp(destination, bytes(out))
     try:
-        handle, temp_path = tempfile.mkstemp(
-            suffix=".xml", dir=str(parent), prefix="cuepoint_export_"
-        )
-        with os.fdopen(handle, "wb") as stream:
-            stream.write(out)
         if should_cancel is not None and should_cancel():
             raise ExportCancelled(PHASE_WRITE)
         backup = _keep_previous(destination)
         try:
-            Path(temp_path).replace(destination)
+            commit_temp(temp_path, destination)
         except BaseException:
             # Nothing was replaced, so the copy is not needed: leave the folder
             # as it was found.
             if backup is not None:
                 Path(backup).unlink(missing_ok=True)
             raise
-        temp_path = None
         return backup
     finally:
-        if temp_path is not None and os.path.exists(temp_path):
-            try:
-                os.unlink(temp_path)
-            except OSError:  # pragma: no cover - best effort cleanup
-                pass
+        discard_temp(temp_path)

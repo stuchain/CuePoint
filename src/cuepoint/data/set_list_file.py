@@ -51,14 +51,13 @@ from __future__ import annotations
 
 import csv
 import io
-import os
 import re
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.core.set_timing import format_time
+from cuepoint.utils.atomic_write import commit_temp, discard_temp, stage_temp
 
 #: The three forms, and the extension each is saved with.
 FORMAT_TEXT = "text"
@@ -389,25 +388,13 @@ def write_set_list(
     """
     data = encoded(set_list, form)
     destination = Path(destination_path)
-    temp_path: Optional[str] = None
+    temp_path = stage_temp(destination, data)
     try:
-        handle, temp_path = tempfile.mkstemp(
-            suffix=destination.suffix,
-            dir=str(destination.parent),
-            prefix=".cuepoint_set_",
-        )
-        with os.fdopen(handle, "wb") as stream:
-            stream.write(data)
         if should_cancel is not None and should_cancel():
             raise SetListCancelled(destination_path)
-        Path(temp_path).replace(destination)
-        temp_path = None
+        commit_temp(temp_path, destination)
     finally:
-        if temp_path is not None and os.path.exists(temp_path):
-            try:
-                os.unlink(temp_path)
-            except OSError:  # pragma: no cover - best effort cleanup
-                pass
+        discard_temp(temp_path)
     return len(data)
 
 

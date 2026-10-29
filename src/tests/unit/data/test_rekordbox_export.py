@@ -1020,19 +1020,19 @@ class TestTheWriteIsAtomic:
         self, source: Path, destination: Path, monkeypatch: pytest.MonkeyPatch
     ):
         destination.parent.mkdir(parents=True, exist_ok=True)
-        original = Path.replace
+        original = os.replace
 
-        def fail(self: Path, target):  # noqa: ANN001 - patched stand-in
+        def fail(source, target):  # noqa: ANN001 - patched stand-in
             raise OSError("disk full")
 
-        monkeypatch.setattr(Path, "replace", fail)
+        monkeypatch.setattr(os, "replace", fail)
 
         with pytest.raises(OSError, match="disk full"):
             patch_collection_xml(
                 str(source), {"1": TrackExportValues(key="Cm")}, str(destination)
             )
 
-        monkeypatch.setattr(Path, "replace", original)
+        monkeypatch.setattr(os, "replace", original)
         assert not destination.exists()
         assert list(destination.parent.iterdir()) == []
 

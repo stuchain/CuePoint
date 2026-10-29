@@ -471,7 +471,7 @@ class TestTheWrite:
         assert list(tmp_path.iterdir()) == [target]
 
     def test_a_failed_write_leaves_nothing(self, tmp_path, monkeypatch):
-        import cuepoint.data.set_list_file as module
+        import cuepoint.utils.atomic_write as module
 
         real = module.os.fdopen
 

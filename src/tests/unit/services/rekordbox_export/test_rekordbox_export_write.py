@@ -773,10 +773,10 @@ class TestAFailedExport:
     ):
         destination.write_bytes(EARLIER)
 
-        def refuse(self, target):
+        def refuse(source, target):
             raise OSError(28, "No space left on device")
 
-        monkeypatch.setattr(Path, "replace", refuse)
+        monkeypatch.setattr(os, "replace", refuse)
 
         ended = service.export([tree["gigs"]], "normal", str(destination))
 
