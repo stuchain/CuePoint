@@ -380,7 +380,8 @@ class TestConfigServiceErrorHandling:
 
             # Mock open to simulate permission error (works on all platforms)
             with patch(
-                "builtins.open", side_effect=PermissionError("Permission denied")
+                "cuepoint.utils.atomic_write.os.open",
+                side_effect=PermissionError("Permission denied"),
             ):
                 with pytest.raises(ConfigurationError) as exc_info:
                     service.save()

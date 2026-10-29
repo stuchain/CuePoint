@@ -175,7 +175,10 @@ class TestConfigService:
         config_file = tmp_path / "config.yaml"
         service = ConfigService(config_file=config_file)
 
-        with patch("builtins.open", side_effect=OSError(30, "Read-only file system")):
+        with patch(
+            "cuepoint.utils.atomic_write.os.open",
+            side_effect=OSError(30, "Read-only file system"),
+        ):
             with pytest.raises(Exception):  # ConfigurationError (wraps OSError)
                 service.save()
 

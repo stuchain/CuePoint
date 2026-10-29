@@ -292,7 +292,10 @@ class TestConfigServiceIntegration:
         from unittest.mock import patch
 
         # Mock file write to raise error
-        with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+        with patch(
+            "cuepoint.utils.atomic_write.os.open",
+            side_effect=PermissionError("Permission denied"),
+        ):
             config_service.config_file = Path("/nonexistent/path/config.yaml")
 
             # Should raise ConfigurationError

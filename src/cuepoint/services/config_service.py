@@ -21,6 +21,7 @@ from cuepoint.exceptions.cuepoint_exceptions import ConfigurationError
 from cuepoint.models.config import SETTINGS
 from cuepoint.models.config_models import AppConfig
 from cuepoint.services.interfaces import IConfigService
+from cuepoint.utils.atomic_write import write_atomic
 from cuepoint.utils.paths import cuepoint_home
 from cuepoint.utils.quoting import quoted
 
@@ -201,10 +202,10 @@ class ConfigService(IConfigService):
         """Save configuration to persistent storage (YAML file)."""
         try:
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.config_file, "w", encoding="utf-8") as f:
-                yaml.dump(
-                    self.config.to_dict(), f, default_flow_style=False, sort_keys=False
-                )
+            text = yaml.dump(
+                self.config.to_dict(), default_flow_style=False, sort_keys=False
+            )
+            write_atomic(self.config_file, text, encoding="utf-8")
         except Exception as e:
             raise ConfigurationError(
                 message=f"Failed to save configuration: {e}",
