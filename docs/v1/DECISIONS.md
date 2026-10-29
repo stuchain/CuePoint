@@ -8637,3 +8637,38 @@ long dash (—) between words.
 
 **Decided with**: User (29 Oct 2026: "1 -" for the dash, "B" for sidebar alignment) · **Date**: 2026-10-29
 
+
+## DEC-305 — Phase 18 Screens: Backups Section, Restore Dialogs, Recovery Screen, Status Messages (Owner's Mockup Picks 2026-10-29)
+
+**Status**: Accepted · **Related**: DEC-179, DEC-180, DEC-182, DEC-173, DEC-155, DEC-158, `docs/v1/PHASE18_HARDENING.md` (HARDEN-01, HARDEN-03, HARDEN-05)
+
+**Context**: Phase 18 needs five screens (HARDEN-01, -03, -05): Settings › Backups, the restore
+questions, a recovery screen for a library that cannot be used, the status strip's own messages, and
+the plain page after a second window crash. Mockups were shown and the owner picked on 2026-10-29,
+every pick the recommended one.
+
+**Decision**:
+- **Backup rows have Restore only.** No per-row Delete: old copies are pruned by count, and **Show in
+  folder** reaches the rest. The section is Back up now (the one main button), Show in folder and
+  the list (when, why in words, size, Restore), after Privacy and before About & updates.
+- **The recovery screen is the whole window.** No sidebar and no player, in place of the app, for
+  damaged, too new, upgrade failed and needs space (an update in progress keeps the app's start-up
+  look). Buttons as the mockups: Damaged (Restore this backup, Choose another backup, Show the
+  library file, Report this problem), Too new (Get the latest CuePoint, Choose a backup), Upgrade
+  failed (Try again, Restore that copy, Report this problem), Needs space ("about N MB", rounded up
+  to 100 MB; Try again). "Choose another backup" lists the backups with Back.
+- **Restore while work runs** names the work and offers **Stop it and restore now** (left extra),
+  **Cancel**, and **Restore when done** (the main button). Restore when done waits for the work to
+  end and then restores; Stop it cancels through the work's own cancel and never by a kill. Without
+  running work the question is Cancel and Restore. Either way: "Your library as it is now is kept as
+  a backup first, so you can come back to it."
+- **Status strip messages** replace "Ready" for a while: "Your disk is full. CuePoint can't save
+  changes until there's space." (error look, until a later write succeeds or two minutes pass),
+  and, once and quietly, "CuePoint didn't close properly last time. Your library was checked and is
+  fine.", "CuePoint's window stopped and was reopened." and "An export was interrupted. Nothing was
+  written." Messages use the owner's words as drawn, contractions included; the wording guard lists
+  those files.
+- **Reasons in words:** When you opened CuePoint, You made this, Before updating to <version>,
+  Before restoring. Dates are the app's own helpers ("Today, 1:02 PM", "Oct 27, 10:10 PM").
+
+**Decided with**: User (picks 29 Oct 2026, 12:48 Athens: all recommended) · **Date**: 2026-10-29

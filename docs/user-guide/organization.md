@@ -191,14 +191,14 @@ Two more things follow from it:
 
 In the same SQLite file as the rest of your library
 (`~/.cuepoint/cuepoint.db` on macOS and Linux, `%USERPROFILE%\.cuepoint\` on
-Windows). CuePoint backs it up on launch and keeps the last several backups.
+Windows). CuePoint backs it up when you open it after a change and keeps the last several backups. **Settings → Backups** makes one on request and restores one; see [Backups](troubleshooting.md#backups).
 
 **Those backups are the only copy of this work.** A track can be re-imported
 from Rekordbox; a rating, a note, a tag, a Collection and a Set's plan cannot be
 recovered from anything else. Restoring a backup brings all of it back
 together — the tree, the membership and its order, the tags with their colors
 and categories, the ratings, the notes, the history behind them, and each Set's
-chapters, planned times, notes and warnings marked OK.
+chapters, planned times, notes and warnings marked OK. [How to restore](troubleshooting.md#restoring-a-backup).
 
 ## See also
 

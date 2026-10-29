@@ -195,6 +195,40 @@ writes that file or starts.
 - Restart application periodically
 - Check for memory leaks (report if found)
 
+## Backups
+
+CuePoint keeps copies of your library, and **Settings → Backups** is where you make one, see them and go back to one.
+
+**What is kept.** CuePoint backs up your library each time you open it after a change. The last 5 of those are kept, and the last 3 from before an update, which CuePoint always makes first. A copy made before a restore is kept until you remove it from the backups folder. Every copy is checked after it is written; one that fails the check is removed and does not count.
+
+**Back up now.** **Settings → Backups → Back up now** makes a copy at once. **Show in folder** opens the folder the copies are kept in.
+
+**The list.** Each row says when the copy was made, why, and how big it is. The reason is one of "When you opened CuePoint", "You made this", "Before updating to 1.0.0" and "Before restoring".
+
+### Restoring a backup
+
+1. In **Settings → Backups**, press **Restore** on the copy you want.
+2. CuePoint asks first and names the moment your library will go back to. Your library as it is now is kept as a backup before anything changes, so you can come back to it.
+3. Press **Restore**. CuePoint's work stops for a moment and starts again, and every page reads the library again.
+
+If work is running (an import, say), the question names it. **Restore when done** waits until it has finished and then restores. **Stop it and restore now** stops it first; what it had already done stays done. **Cancel** changes nothing. A restore that cannot finish leaves your library as it was and says so.
+
+### When CuePoint cannot open your library
+
+Instead of the app, CuePoint shows a screen that says what happened and how to go on. Your files are never touched.
+
+- **"CuePoint couldn't read your library"**: the file your library is kept in is damaged. **Restore this backup** puts back the latest copy that passes the check (the screen says when it is from). **Choose another backup** lists them all. **Show the library file** opens its folder. **Report this problem** sends a note. The damaged file is set aside before the restore, not deleted.
+- **"This library is from a newer CuePoint"**: you opened a library with an older version than the one that last used it. **Get the latest CuePoint** opens the download page. **Choose a backup** restores a copy from before the newer version.
+- **"CuePoint couldn't finish updating your library"**: an update to a newer version did not finish. Nothing was lost: a copy from just before the update is kept. **Try again** runs the update again; **Restore that copy** goes back to how things were before it.
+- **"CuePoint needs more space to update your library"**: the update first keeps a copy of your library and needs about the amount of free space the screen names. Free some space, then press **Try again**.
+
+### Messages in the status strip
+
+- **"Your disk is full. CuePoint can't save changes until there's space."** Free some space. The message goes when a change is saved again. The change that failed is not half made.
+- **"CuePoint didn't close properly last time. Your library was checked and is fine."** The last session ended without CuePoint closing (a crash, a power cut, or the program being stopped). CuePoint checked your library when it opened and found nothing wrong. This is shown once. If the check had found damage, you would see the first screen above instead.
+- **"CuePoint's window stopped and was reopened."** The window stopped and CuePoint reopened it by itself. If it stops again within a minute, a plain page offers **Reload** and **Report this problem**.
+- **"An export was interrupted. Nothing was written."** CuePoint stopped while a Rekordbox export was running. The file you chose was not touched. Export again.
+
 ## Known Issues
 
 ### No in-app updates

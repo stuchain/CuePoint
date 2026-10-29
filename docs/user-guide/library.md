@@ -708,7 +708,7 @@ Your library is a single SQLite file in your CuePoint home directory
 (`~/.cuepoint/cuepoint.db` on macOS and Linux, `%USERPROFILE%\.cuepoint\` on
 Windows). About 20 MB for 50,000 tracks, and more once they are matched:
 every Beatport candidate a match found is kept, about 300 MB for 30,000 matched
-tracks — see [Performance](performance.md#clean). CuePoint backs it up on launch, and the
+tracks — see [Performance](performance.md#clean). CuePoint backs it up on launch ([Backups](troubleshooting.md#backups) covers making one and restoring one), and the
 Activity panel lists those backups along with every import and refresh — which
 is where to look if you want to know what a refresh actually did.
 

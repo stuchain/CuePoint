@@ -430,7 +430,7 @@ In the same database as the rest of your library, which CuePoint backs up on
 launch. **Those backups are the only copy of a Set's plan.** A Set's tracks can
 be exported, but its chapters, times, notes and warnings marked OK exist nowhere
 else. Restoring a backup brings all of it back together with the Collections
-beside it.
+beside it; [Backups](troubleshooting.md#backups) says how.
 
 ## See also
 
