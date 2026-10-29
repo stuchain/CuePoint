@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { sweepTempFiles, writeAtomic } from "./atomicWrite";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
+import { RESTORE_FILES_LIMIT, TagWriteRelease } from "./tagWriteRelease";
 import { BEATPORT_PARTITION, BeatportAuth, ElectronSignInHost } from "./beatportAuth";
 import { beatportEndpoints } from "./beatportAuthRules";
 import { BeatportSignInLog } from "./beatportSignInLog";
@@ -824,24 +825,31 @@ function registerIpcHandlers(): void {
   handle("engine:startArtworkScan", (_event, params) =>
     engine.startArtworkScan(params),
   );
-  handle("engine:previewTagWrite", (_event, params) =>
-    engine.previewTagWrite(params),
+  // HARDEN-04: the player lets go of a file a tag write is about to replace, and takes it back.
+  const tagRelease = new TagWriteRelease({
+    playback,
+    jobState: async (jobId) => String((await engine.getJob(jobId)).state ?? ""),
+    jobFiles: (jobId) => engine.getTagWrites({ jobId, limit: RESTORE_FILES_LIMIT }),
+    report: (message, error) => breadcrumb("tags", `${message}: ${String(error)}`),
+  });
+  handle("engine:previewTagWrite", async (_event, params) =>
+    tagRelease.notePreview(await engine.previewTagWrite(params)),
   );
   handle("engine:startTagWrite", (_event, params) =>
-    engine.startTagWrite(params),
+    tagRelease.startFromPreview(params.preview_id, () => engine.startTagWrite(params)),
   );
   handle("engine:countTagPreview", (_event, params) =>
     engine.countTagPreview(params),
   );
-  handle("engine:previewSync", (_event, params) =>
-    engine.previewSync(params),
+  handle("engine:previewSync", async (_event, params) =>
+    tagRelease.notePreview(await engine.previewSync(params)),
   );
   handle("engine:startSync", (_event, params) =>
-    engine.startSync(params),
+    tagRelease.startFromPreview(params.preview_id, () => engine.startSync(params)),
   );
   handle("engine:getCleanPlaylists", () => engine.getCleanPlaylists());
   handle("engine:startTagRestore", (_event, params) =>
-    engine.startTagRestore(params),
+    tagRelease.startRestore(params.job_id, () => engine.startTagRestore(params)),
   );
   handle("engine:getTagWrites", (_event, params) =>
     engine.getTagWrites(params),

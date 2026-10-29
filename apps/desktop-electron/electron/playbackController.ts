@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { MpvEndFile, MpvStartFile } from "./mpvClient";
 
 type PlayerEvent =
@@ -68,6 +70,19 @@ interface PlaybackControllerSnapshot extends PlayerSnapshot {
 
 type ControllerListener = (snapshot: PlaybackControllerSnapshot) => void;
 type NoticeListener = (notice: PlayerNotice) => void;
+
+/** What `releaseFiles` hands back so `reacquire` can carry on. */
+export interface PlaybackRelease {
+  filePath: string;
+  positionSeconds: number | null;
+  paused: boolean;
+}
+
+/** A path as it is compared: normalised, and without case on the systems that ignore it. */
+export function samePath(file: string): string {
+  const normal = path.normalize(file);
+  return process.platform === "win32" || process.platform === "darwin" ? normal.toLowerCase() : normal;
+}
 
 export class PlaybackController {
   private readonly queue: PlaybackQueue;
@@ -729,6 +744,44 @@ export class PlaybackController {
     this.failedAwaitingAdvance = null;
     await this.player.stopPlayback();
     this.publish();
+  }
+
+  /**
+   * Let go of the loaded file while something rewrites it (HARDEN-04).
+   *
+   * On Windows a file mpv holds open cannot be replaced, so a tag write to the
+   * track that is playing would fail as "in use". When the loaded file is one of
+   * `paths`, playback is stopped (the queue is left as it is) and what is needed
+   * to carry on is returned; otherwise nothing is touched and the answer is null.
+   */
+  async releaseFiles(paths: ReadonlySet<string>): Promise<PlaybackRelease | null> {
+    const playing = this.player.getSnapshot().playback;
+    if (!playing.filePath || !paths.has(samePath(playing.filePath))) return null;
+    const release: PlaybackRelease = {
+      filePath: playing.filePath,
+      positionSeconds: playing.positionSeconds,
+      paused: playing.paused,
+    };
+    // A load in flight describes a file that is about to go.
+    this.generation += 1;
+    await this.stop();
+    return release;
+  }
+
+  /**
+   * Load the file `releaseFiles` let go of again, where it was and as paused as it was.
+   * Does nothing when the person has moved on in the meantime (another track, or the
+   * queue changed).
+   */
+  async reacquire(release: PlaybackRelease): Promise<void> {
+    const current = this.queue.current;
+    if (!current || samePath(current.filePath) !== samePath(release.filePath)) return;
+    if (this.player.getSnapshot().playback.filePath !== null) return;
+    await this.playCurrent();
+    if (release.positionSeconds !== null && release.positionSeconds > 0) {
+      await this.player.seek(release.positionSeconds);
+    }
+    if (release.paused) await this.player.pause();
   }
 
   /** For tests and diagnostics: what mpv has been told to play next. */
