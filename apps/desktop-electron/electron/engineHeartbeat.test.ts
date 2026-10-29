@@ -265,6 +265,20 @@ describe("the engine's heartbeat", () => {
     expect(bare.CUEPOINT_TEST_HOOKS).toBeUndefined();
   });
 
+  it("asks for the stall only in a run with the test hooks on", async () => {
+    const off = make();
+    await off.start();
+    await expect(off.stallForTest()).rejects.toThrow(/test hooks/);
+    const on = make({ testHooks: () => true });
+    await on.start();
+    vi.mocked(fetch).mockClear();
+    await on.stallForTest();
+    const [url, init] = vi.mocked(fetch).mock.calls[0]! as [string, { method: string; headers: Record<string, string> }];
+    expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/api\/v1\/test\/stall$/);
+    expect(init.method).toBe("POST");
+    expect(init.headers.Authorization).toMatch(/^Bearer [0-9a-f]{48}$/);
+  });
+
   it("lets go of the health answer's body", async () => {
     const supervisor = make();
     await supervisor.start();

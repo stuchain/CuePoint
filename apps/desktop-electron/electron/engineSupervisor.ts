@@ -608,6 +608,22 @@ export class EngineSupervisor {
   }
 
   /**
+   * Make the running engine stop answering (the test-only stall route, HARDEN-05), for the crash
+   * specs on every platform: the engine's port and token are this process's alone. Refused unless
+   * this run has its test hooks on, as the engine would refuse it anyway.
+   */
+  async stallForTest(): Promise<number> {
+    if (!(this.options.testHooks?.() ?? false)) throw new Error("test hooks are not enabled");
+    if (this.port === null || this.token === null) throw new Error("the engine is not running");
+    const res = await fetch(`http://127.0.0.1:${this.port}/api/v1/test/stall`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
+      body: "{}",
+    });
+    return res.status;
+  }
+
+  /**
    * Start the engine, and hold every request made until it has answered.
    *
    * Deliberately not `async`: the start is recorded before this returns, so
@@ -656,8 +672,9 @@ export class EngineSupervisor {
       parentPid: process.pid,
       decoderPath: this.options.decoderPath?.() ?? null,
       errorReporting: this.options.errorReporting?.() ?? false,
-      // The same two a restore's one-off run is given: without them the engine never learned of an
-      // unclean exit (no library check, no note) and never served its test-only routes.
+      // The same two a restore's one-off run is given. In effect only the test hooks were missing:
+      // the engine only echoes the unclean-exit flag in its library state (the app's own check
+      // follows the session marker), but it never served its test-only routes.
       uncleanExit: this.options.uncleanExit?.() ?? false,
       testHooks: this.options.testHooks?.() ?? false,
       build: this.options.build,

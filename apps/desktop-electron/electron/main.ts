@@ -319,6 +319,17 @@ const integrity = new IntegrityChecker({
 // An unclean exit owes a check even if the app is killed again before the window shows it.
 integrity.noteStart();
 
+/**
+ * What the end-to-end specs reach from the app handle (`app.evaluate`), only in a run with the test
+ * hooks on (`CUEPOINT_E2E`, HARDEN-05): the engine's port and token never leave this process, so
+ * the stall is asked from here.
+ */
+if (testHooksEnabled()) {
+  (globalThis as { __cuepointTest?: { stallEngine: () => Promise<number> } }).__cuepointTest = {
+    stallEngine: () => engine.stallForTest(),
+  };
+}
+
 /** Set when the quit begins: a window that goes then is not one to reopen. */
 let quitStarted = false;
 
