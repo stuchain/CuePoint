@@ -219,25 +219,30 @@ jobs:
         working-directory: apps/desktop-electron
         run: npx playwright install chromium
 
+      # The Linux runner has no mpv and no audio device: a distribution mpv (no mpv ships for Linux;
+      # a distribution mpv via CUEPOINT_MPV_PATH is the documented path) and a PulseAudio null sink
+      # for it to open. Its own step, so the packaged run below has them too. Playwright's browser is
+      # installed above without `--with-deps`, which must not be used on Ubuntu 26.04.
+      - name: Install mpv and a null sound device (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mpv pulseaudio
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null
+          pactl set-default-sink ci_null
+          echo "CUEPOINT_MPV_PATH=/usr/bin/mpv" >> "$GITHUB_ENV"
+
       # The Linux runner has no display. Without one Electron exits at once, but Playwright waits out
       # its whole launch timeout for each test, so the step ran for hours; Xvfb gives it a screen.
+      # The whole suite against the development build on every leg. The packaged app is run below.
       - name: Playwright Electron smoke
         working-directory: apps/desktop-electron
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
-            # No mpv ships for Linux (a distribution mpv via CUEPOINT_MPV_PATH is the documented path)
-            # and the runner has no audio device, so the player tests need mpv plus a PulseAudio null sink.
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends mpv pulseaudio
-            pulseaudio --start --exit-idle-time=-1
-            pactl load-module module-null-sink sink_name=ci_null
-            pactl set-default-sink ci_null
-            CUEPOINT_MPV_PATH=/usr/bin/mpv xvfb-run -a npm run test:e2e
-          elif [ "${{ matrix.leg }}" = "macos-x64" ]; then
-            # The Intel leg runs the specs that can launch a packaged app against that app below,
-            # so here it runs only the rest rather than running those twice.
-            npm run test:e2e -- $(grep -L CUEPOINT_E2E_EXECUTABLE e2e/*.spec.ts)
+            xvfb-run -a npm run test:e2e
           else
             npm run test:e2e
           fi
@@ -289,21 +294,71 @@ jobs:
         if: startsWith(matrix.leg, 'macos')
         run: python scripts/verify_macos_bundle.py apps/desktop-electron/release/${{ matrix.mac_dir }}/CuePoint.app
 
-      # DIST-02: the Intel app starts and runs the journeys on the Intel runner. Only the specs that
-      # launch `CUEPOINT_E2E_EXECUTABLE` (smoke.spec.ts is the "it starts" check); the rest drive the
-      # source tree.
-      - name: Packaged app end-to-end (Intel Mac)
+      # HARDEN-09. The app electron-builder just made, on every leg: the folder it leaves beside the
+      # installer, found the way `scale.yml` finds it. `build.linux.executableName` names the Linux
+      # file; the Windows one is `win-unpacked`; a Mac's is the .app in the leg's `mac_dir`.
+      - name: Locate the packaged app
+        id: app
+        if: steps.package.outcome == 'success'
+        working-directory: apps/desktop-electron
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Windows) exe="release/win-unpacked/CuePoint.exe" ;;
+            macOS) exe="release/${{ matrix.mac_dir }}/CuePoint.app/Contents/MacOS/CuePoint" ;;
+            Linux)
+              name="$(node -p "require('./package.json').build.linux.executableName")"
+              exe="release/linux-unpacked/${name}"
+              ;;
+          esac
+          test -f "$exe" || { echo "::error::No packaged app at $exe"; ls -la release; exit 1; }
+          echo "exe=$PWD/$exe" >> "$GITHUB_OUTPUT"
+
+      # REPORT-07 (PHASE13_REPORTING.md): the source maps went to Sentry and were deleted before
+      # packing, so none ships. Looked for in the app's archive and beside it.
+      - name: Check no source map ships
+        if: steps.app.outcome == 'success'
+        working-directory: apps/desktop-electron
+        shell: bash
+        env:
+          APP_EXE: ${{ steps.app.outputs.exe }}
+        run: |
+          case "$RUNNER_OS" in
+            macOS) resources="$(dirname "$APP_EXE")/../Resources" ;;
+            *) resources="$(dirname "$APP_EXE")/resources" ;;
+          esac
+          test -f "$resources/app.asar" || { echo "::error::No app.asar in $resources"; exit 1; }
+          inside="$(npx asar list "$resources/app.asar" | grep -c '\.map$' || true)"
+          beside="$(find "$resources" -name '*.map' | wc -l | tr -d ' ')"
+          echo "source maps in app.asar: $inside, beside it: $beside"
+          test "$inside" = "0" && test "$beside" = "0" || { echo "::error::A source map ships in the package"; exit 1; }
+
+      # HARDEN-09. The end-to-end suite against that app, not the source tree: `CUEPOINT_E2E_EXECUTABLE`
+      # is read by `e2e/support/launchApp.ts`, which every spec starts the app through. A push (or pull
+      # request) runs the specs tagged `@packaged-smoke` (start, import, play, export, quit); a release
+      # runs the whole suite. The Linux runner needs the same screen and sound device as above.
+      - name: Packaged app end-to-end
         id: packaged-e2e
-        if: matrix.leg == 'macos-x64'
+        if: steps.app.outcome == 'success'
         working-directory: apps/desktop-electron
         env:
-          CUEPOINT_E2E_EXECUTABLE: ${{ github.workspace }}/apps/desktop-electron/release/mac/CuePoint.app/Contents/MacOS/CuePoint
-        # Every spec that can launch a packaged app, found when the step runs, so a new one is included.
+          CUEPOINT_E2E_EXECUTABLE: ${{ steps.app.outputs.exe }}
+          RELEASE_RUN: ${{ inputs.release && 'true' || 'false' }}
         shell: bash
-        run: npm run test:e2e -- $(grep -l CUEPOINT_E2E_EXECUTABLE e2e/*.spec.ts)
+        run: |
+          if [ "$RELEASE_RUN" = "true" ]; then
+            filter=""
+          else
+            filter="--grep @packaged-smoke"
+          fi
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a npx playwright test $filter
+          else
+            npx playwright test $filter
+          fi
 
       # The packaged run's own snapshots: the ones printed above were taken before it ran.
-      - name: Print the packaged run's failure snapshots (Intel Mac)
+      - name: Print the packaged run's failure snapshots
         if: failure() && steps.packaged-e2e.outcome == 'failure'
         shell: bash
         working-directory: apps/desktop-electron
@@ -313,6 +368,15 @@ jobs:
             head -c 20000 "$f"
             echo "::endgroup::"
           done
+
+      - name: Upload the packaged run's failures
+        if: failure() && steps.packaged-e2e.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-packaged-failures-${{ matrix.leg }}
+          path: apps/desktop-electron/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
 
       # A failed Mac check keeps the leg's files, so the app that failed it can be downloaded.
       - name: Generate SHA256SUMS
