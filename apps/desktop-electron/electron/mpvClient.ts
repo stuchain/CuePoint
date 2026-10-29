@@ -3,6 +3,8 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 
+import { osPath } from "./longPath";
+
 /**
  * The mpv JSON IPC protocol, and nothing else (PLAYER-02, DEC-049).
  *
@@ -519,7 +521,8 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
   ): Promise<number | null> {
     const result = await this.command<{ playlist_entry_id?: number } | null>([
       "loadfile",
-      file,
+      // A path past Windows' 259 characters is opened through the long-path prefix (HARDEN-06).
+      osPath(file),
       mode,
     ]);
     const id = result?.playlist_entry_id;
