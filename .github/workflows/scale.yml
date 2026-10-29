@@ -1,0 +1,367 @@
+# HARDEN-07 (DEC-184): CuePoint at 50,000 tracks, on all four builds.
+#
+# Every scale test and every bench, on the four legs of `desktop-electron.yml`, with each bench
+# held to its budget for the leg (`scripts/budgets.json`, `scripts/budget_check.py`), and the
+# packaged app's own journey (`apps/desktop-electron/e2e/libraryScale.spec.ts`) against the
+# unpacked app. Each bench writes its JSON; the JSON is uploaded as `scale-json-<leg>`, and the
+# last job writes the numbers into `docs/user-guide/performance.md` (`scripts/performance_tables.py`).
+# A 100,000-track run follows on each leg, recorded and not budgeted: the supported maximum is 50,000.
+#
+# When it runs: every Monday, by hand, and from `release.yml` before a normal tag is published.
+# It is not part of a push: a full run is long (Intel Mac the slowest), and the budgets are
+# provisional until the first green run (see `scripts/budgets.json`). A leg more than twice as
+# slow as the others is investigated, never loosened. A red run blocks a normal tag only, never
+# a `v*-test.*` tag (`release.yml`).
+#
+# The setup is `desktop-electron.yml`'s, step for step.
+name: Scale
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+  workflow_call:
+
+# One run at a time per branch; a run in progress is never cancelled. The group is spelled out:
+# called from `release.yml`, `github.workflow` is the caller's name, which the build shares.
+concurrency:
+  group: scale-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  scale:
+    strategy:
+      fail-fast: false
+      # The four legs of desktop-electron.yml, with the same names, runners and chips.
+      matrix:
+        include:
+          - leg: windows-x64
+            runner: windows-latest
+            builder_arch: ""
+          - leg: linux-x64
+            runner: ubuntu-latest
+            builder_arch: ""
+          - leg: macos-arm64
+            runner: macos-latest
+            builder_arch: "--arm64"
+            chip: arm64
+            mac_dir: mac-arm64
+          - leg: macos-x64
+            runner: macos-15-intel
+            builder_arch: "--x64"
+            chip: x64
+            mac_dir: mac
+    runs-on: ${{ matrix.runner }}
+    # Generous: the Intel Mac is slow, and the 100,000 run follows the 50,000 one.
+    timeout-minutes: 360
+
+    env:
+      CUEPOINT_BUILD_COMMIT: ${{ github.sha }}
+      # Which budgets the benches hold themselves to (`scripts/budget_check.py`).
+      CUEPOINT_BENCH_LEG: ${{ matrix.leg }}
+      PYTHONPATH: src
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            apps/desktop-electron/package-lock.json
+            apps/desktop-electron/renderer/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Install desktop dependencies
+        working-directory: apps/desktop-electron
+        run: |
+          npm ci
+          npm ci --prefix renderer
+
+      - name: Build desktop shell
+        working-directory: apps/desktop-electron
+        run: npm run build
+
+      - name: Build engine sidecar (packaged)
+        run: python scripts/build_engine_sidecar.py
+
+      # PLAYER-01 (DEC-049). Exits 0 with a notice on Linux, which pins no binary.
+      - name: Fetch player sidecar (mpv)
+        run: python scripts/fetch_player_sidecar.py
+
+      # The Linux runner has no mpv and no audio device: a distribution mpv, and a PulseAudio null
+      # sink for it to open (as the Playwright step of desktop-electron.yml does).
+      - name: Install mpv and a null sound device (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mpv pulseaudio
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null
+          pactl set-default-sink ci_null
+          echo "CUEPOINT_MPV_PATH=/usr/bin/mpv" >> "$GITHUB_ENV"
+
+      # The Windows runner has no sound device, so mpv opens no output; Scream is a virtual one.
+      - name: Give the Windows runner a sound device
+        if: runner.os == 'Windows'
+        uses: LABSN/sound-ci-helpers@v1
+
+      - name: Install Playwright Chromium
+        working-directory: apps/desktop-electron
+        run: npx playwright install chromium
+
+      - name: Make the folder for the JSON
+        shell: bash
+        run: |
+          mkdir -p scale-out scale-out-100k
+
+      # ---- The scale tests, at 50,000 tracks (by path: they carry the `performance` marker) ----
+      - name: Scale tests (50,000 tracks)
+        env:
+          CUEPOINT_SCALE: "50000"
+        shell: bash
+        run: |
+          python -m pytest \
+            src/tests/performance/test_library_scale.py \
+            src/tests/performance/test_marks_scale.py \
+            src/tests/performance/test_sets_scale.py \
+            src/tests/performance/test_waveforms_scale.py \
+            -q --tb=short
+
+      # ---- The benches. Each exits 1 on a budget it misses; each step runs whatever the one before did ----
+      - name: Bench the library (50,000 tracks, with Statistics)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_library.py --tracks 50000 --statistics --json scale-out/library.json
+
+      - name: Bench Clean (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_clean.py --tracks 50000 --json scale-out/clean.json
+
+      - name: Bench sets (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_sets.py --tracks 50000 --json scale-out/sets.json
+
+      - name: Bench marks (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_marks.py --tracks 50000 --json scale-out/marks.json
+
+      - name: Bench waveforms (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_waveforms.py --tracks 50000 --json scale-out/waveforms.json
+
+      - name: Bench the waveform store (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_waveform_store.py --tracks 50000 --json scale-out/waveform_store.json
+
+      - name: Bench the search keys (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_search_keys.py --tracks 50000 --json scale-out/search_keys.json
+
+      - name: Bench the migrations (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_migrations.py --tracks 50000 --json scale-out/migrations.json
+
+      - name: Bench the match storage (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_match_storage.py --library 50000 --json scale-out/match_storage.json
+
+      - name: Bench a tag write (1,000 files)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_tag_write.py --files 1000 --json scale-out/tag_write.json
+
+      # Needs mpv: the bundled one, or the distribution's on Linux (CUEPOINT_MPV_PATH).
+      - name: Bench the decoder
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_decoder.py --json scale-out/decoder.json
+
+      - name: Bench the waveform analysis
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python scripts/bench_waveform_analysis.py --json scale-out/waveform_analysis.json
+
+      # The packaged engine (built above) on a full library: first answer, launch backup, ready.
+      - name: Bench the packaged engine's start (50,000 tracks)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          engine="$(ls apps/desktop-electron/resources/engine/*/cuepoint-engine*)"
+          python scripts/bench_engine_start.py --library 50000 --exe "$engine" --json scale-out/engine_start.json
+
+      # ---- The packaged app ----
+      # `pack` builds again and unpacks (no installer): the app a user would run, in `release/`.
+      - name: Unpack the app
+        if: ${{ !cancelled() }}
+        id: unpack
+        working-directory: apps/desktop-electron
+        shell: bash
+        run: |
+          npm run pack -- ${{ matrix.builder_arch }}
+          case "$RUNNER_OS" in
+            Windows) exe="release/win-unpacked/CuePoint.exe" ;;
+            macOS) exe="release/${{ matrix.mac_dir }}/CuePoint.app/Contents/MacOS/CuePoint" ;;
+            Linux)
+              exe="$(find release/linux-unpacked -maxdepth 1 -type f -perm -u+x ! -name '*.so*' ! -name 'chrome*' ! -name 'libffmpeg*' | head -n 1)"
+              ;;
+          esac
+          test -f "$exe" || { echo "::error::No packaged app at $exe"; exit 1; }
+          echo "exe=$PWD/$exe" >> "$GITHUB_OUTPUT"
+
+      - name: Packaged app at 50,000 tracks
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+        working-directory: apps/desktop-electron
+        shell: bash
+        env:
+          CUEPOINT_SCALE: "50000"
+          CUEPOINT_SCALE_E2E: "1"
+          CUEPOINT_E2E_EXECUTABLE: ${{ steps.unpack.outputs.exe }}
+          CUEPOINT_SCALE_JSON: ${{ github.workspace }}/scale-out/e2e.json
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a npx playwright test e2e/libraryScale.spec.ts
+          else
+            npx playwright test e2e/libraryScale.spec.ts
+          fi
+
+      # The spec asserts the app worked, never how long it took; the budget is held here.
+      - name: Hold the packaged app to its budgets
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+        shell: bash
+        run: python scripts/budget_check.py check e2e scale-out/e2e.json --optional mpv_mb
+
+      - name: Upload the JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scale-json-${{ matrix.leg }}
+          path: scale-out/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Upload Playwright failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scale-playwright-failures-${{ matrix.leg }}
+          path: apps/desktop-electron/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # ---- 100,000 tracks: recorded, never budgeted, never failing the run ----
+      - name: Scale tests (100,000 tracks)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 90
+        env:
+          CUEPOINT_SCALE: "100000"
+        shell: bash
+        run: |
+          python -m pytest \
+            src/tests/performance/test_library_scale.py \
+            src/tests/performance/test_marks_scale.py \
+            src/tests/performance/test_sets_scale.py \
+            src/tests/performance/test_waveforms_scale.py \
+            -q --tb=short
+
+      - name: Bench the library (100,000 tracks)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 90
+        shell: bash
+        run: python scripts/bench_library.py --tracks 100000 --statistics --json scale-out-100k/library.json
+
+      - name: Bench the packaged engine's start (100,000 tracks)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 60
+        shell: bash
+        run: |
+          engine="$(ls apps/desktop-electron/resources/engine/*/cuepoint-engine*)"
+          python scripts/bench_engine_start.py --library 100000 --exe "$engine" --json scale-out-100k/engine_start.json
+
+      - name: Packaged app at 100,000 tracks
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 90
+        working-directory: apps/desktop-electron
+        shell: bash
+        env:
+          CUEPOINT_SCALE: "100000"
+          CUEPOINT_SCALE_E2E: "1"
+          CUEPOINT_E2E_EXECUTABLE: ${{ steps.unpack.outputs.exe }}
+          CUEPOINT_SCALE_JSON: ${{ github.workspace }}/scale-out-100k/e2e.json
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a npx playwright test e2e/libraryScale.spec.ts
+          else
+            npx playwright test e2e/libraryScale.spec.ts
+          fi
+
+      - name: Upload the 100,000-track JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scale-json-100k-${{ matrix.leg }}
+          path: scale-out-100k/*.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+  # The guide's tables, written from what the four legs measured. Nothing is filled in that was
+  # not measured: a leg that failed to report leaves its column as it was.
+  tables:
+    needs: scale
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download every leg's JSON
+        uses: actions/download-artifact@v4
+        with:
+          pattern: scale-json-*
+          path: scale-results
+
+      - name: Write the performance guide's tables
+        run: python scripts/performance_tables.py scale-results
+
+      - name: Keep the rewritten guide
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-guide
+          path: docs/user-guide/performance.md
+          retention-days: 90

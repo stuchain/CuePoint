@@ -91,7 +91,31 @@ class TestJobOrder:
         assert "needs" not in jobs["gate"]
         assert jobs["build"]["needs"] == "gate"
         assert jobs["check-macs"]["needs"] == "build"
-        assert set(jobs["publish"]["needs"]) == {"gate", "check-macs"}
+        assert jobs["scale"]["needs"] == "gate"
+        assert set(jobs["publish"]["needs"]) == {"gate", "check-macs", "scale"}
+
+    def test_scale_runs_before_a_normal_tag_is_published_and_not_for_a_test_tag(
+        self, release
+    ):
+        scale = release["jobs"]["scale"]
+        assert scale["uses"] == "./.github/workflows/scale.yml"
+        # The gate's `prerelease` is true for `-test.` tags: no scale run for those.
+        assert scale["if"] == "${{ needs.gate.outputs.prerelease != 'true' }}"
+        assert scale["permissions"] == {"contents": "read"}
+
+    def test_a_red_scale_run_stops_a_normal_tag_and_never_a_test_tag(self, release):
+        # A skipped need would skip `publish`, so the condition is spelled out: scale green, or
+        # skipped on a test tag. A red or cancelled scale run on a normal tag publishes nothing.
+        condition = " ".join(release["jobs"]["publish"]["if"].split())
+        assert "!cancelled()" in condition
+        assert "needs.gate.result == 'success'" in condition
+        assert "needs.check-macs.result == 'success'" in condition
+        assert "needs.scale.result == 'success'" in condition
+        assert (
+            "needs.scale.result == 'skipped' && needs.gate.outputs.prerelease == 'true'"
+            in condition
+        )
+        assert "needs.scale.result != 'failure'" not in condition
 
     def test_build_calls_the_build_workflow_as_a_release(self, release):
         build = release["jobs"]["build"]
