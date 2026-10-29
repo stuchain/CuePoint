@@ -121,6 +121,13 @@ _WRITE_METHODS = frozenset(
 )
 
 
+#: Plain-name calls that write: HARDEN-04's helpers, which every writer of a
+#: user's file now goes through.
+_WRITE_FUNCTIONS = frozenset(
+    {"stage_temp", "commit_temp", "write_atomic", "atomic_file", "save_via_copy"}
+)
+
+
 def _module_path(module: str) -> Path:
     return _SRC.joinpath(*module.split(".")).with_suffix(".py")
 
@@ -166,6 +173,8 @@ def writing_functions(sources: Dict[str, str]) -> Dict[str, Set[str]]:
                 elif isinstance(target, ast.Name):
                     names.add(target.id)
                     if target.id == "open" and _opens_for_writing(inner):
+                        direct[module].add(node.name)
+                    if target.id in _WRITE_FUNCTIONS:
                         direct[module].add(node.name)
             called[module][node.name] = names
     writers = {module: set(found) for module, found in direct.items()}
