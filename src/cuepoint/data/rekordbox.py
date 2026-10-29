@@ -663,7 +663,14 @@ def is_writable(path: Path) -> bool:
 
 # Rekordbox writes Location as a file URL whose host part is empty or
 # "localhost", e.g. file://localhost/Users/stu/track.mp3.
-_FILE_URL_HOST = re.compile(r"^file://[^/]*", re.IGNORECASE)
+_FILE_URL_HOST = re.compile(r"^file://(?P<host>[^/]*)", re.IGNORECASE)
+
+# Hosts that mean "this machine". Any other host is a network location and is
+# part of the path: ``file://server/share/a.mp3`` is ``//server/share/a.mp3``.
+_LOCAL_HOSTS = frozenset({"", "localhost"})
+
+# A drive letter written where the host belongs ("file://D:/Music/a.mp3").
+_DRIVE_AS_HOST = re.compile(r"^[A-Za-z]:$")
 
 # "/D:/Music/x.mp3" -> "D:/Music/x.mp3". Matched on the path rather than on
 # os.name: the database is a single file a user may copy between machines, so a
@@ -698,6 +705,12 @@ def location_to_path(location: Optional[str]) -> str:
     - **The result does not depend on the host platform.** ``os.sep`` and
       ``os.name`` play no part, so a Windows export decodes identically on a
       Mac — the database is one file a user may copy or restore anywhere.
+    - **A network host is kept** (HARDEN-06). ``file://server/share/a.mp3`` is
+      ``//server/share/a.mp3``, with forward slashes on every platform as the
+      drive-letter form has: Windows opens that spelling, and
+      :func:`~cuepoint.models.library_track.normalize_path` folds it with the
+      ``\\\\server\\share`` spelling. Rekordbox's own ``file://localhost//server/share``
+      already arrives with its slashes and needs nothing more.
     - **Nothing is truncated at ``?`` or ``#``.** Those are ordinary characters
       in a track name ("Is This A Dream?", "C's Movement #1", "f#m"), and a real
       collection has them; cutting there silently loses the extension.
@@ -720,8 +733,20 @@ def location_to_path(location: Optional[str]) -> str:
     if not text:
         return ""
 
-    text = _FILE_URL_HOST.sub("", text, count=1)
-    text = unquote(text)
+    found = _FILE_URL_HOST.match(text)
+    if found is None:
+        text = unquote(text)
+        return _LEADING_DRIVE_LETTER.sub(r"\1", text, count=1)
+
+    host = unquote(found.group("host"))
+    rest = unquote(text[found.end() :])
+    if _DRIVE_AS_HOST.match(host):
+        text = f"{host}{rest}"
+    elif host.lower() in _LOCAL_HOSTS:
+        text = rest
+    else:
+        # A machine name: it leads the path, as a UNC path's does.
+        text = f"//{host}{rest}"
     return _LEADING_DRIVE_LETTER.sub(r"\1", text, count=1)
 
 
