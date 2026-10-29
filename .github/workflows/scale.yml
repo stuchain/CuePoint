@@ -218,7 +218,12 @@ jobs:
       - name: Bench the waveform analysis
         if: ${{ !cancelled() }}
         shell: bash
-        run: python scripts/bench_waveform_analysis.py --json scale-out/waveform_analysis.json
+        # The Intel runner pays about 0.5 s more per file (63 s per 100 against 7 on Linux in the
+        # first run), so it analyses 1,000 copies instead of 5,000: 58 minutes become about 12.
+        run: |
+          tracks=5000
+          if [ "${{ matrix.leg }}" = "macos-x64" ]; then tracks=1000; fi
+          python scripts/bench_waveform_analysis.py --tracks "$tracks" --json scale-out/waveform_analysis.json
 
       # The packaged engine (built above) on a full library: first answer, launch backup, ready.
       - name: Bench the packaged engine's start (50,000 tracks)

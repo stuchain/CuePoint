@@ -269,13 +269,19 @@ class TestTheBudgetsFile:
         self, data
     ):
         scales = {leg: entry["scale"] for leg, entry in data["legs"].items()}
-        assert scales["macos-x64"] == 2.5
+        # The Intel runner read 3 to 4 times Linux on every timed metric of the first run.
+        assert scales["macos-x64"] == 3.25
         # Windows' disk (fsync, Defender) is 1.6 to 1.8 times Linux's on the library benches.
         assert scales["windows-x64"] == 1.5
         assert scales["linux-x64"] == scales["macos-arm64"] == 1.0
 
     def test_windows_does_not_loosen_the_budgets_written_in_the_benches(self, data):
         assert data["legs"]["windows-x64"]["code_scale"] == 1.0
+
+    def test_the_intel_mac_keeps_two_and_a_half_for_the_budgets_in_the_benches(
+        self, data
+    ):
+        assert data["legs"]["macos-x64"]["code_scale"] == 2.5
 
     def test_windows_migrations_get_their_own_numbers_not_a_factor(self, data):
         """m0032 is 17 times slower on Windows, so one factor cannot cover it: ~1.5x measured."""

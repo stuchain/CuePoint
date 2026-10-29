@@ -1,5 +1,5 @@
 {
-  "set_from": "CI scale run 40888941398 (Linux, Windows and macOS arm64 measured; the Intel Mac was still running, so its scale of 2.5 is kept until its numbers arrive). HARDEN-07, DEC-184.",
+  "set_from": "CI scale run 40888941398, all four legs (the Intel Mac ran 3 to 4 times Linux on every timed metric, so its scale is 3.25; its code budgets keep 2.5, where the work-list refill read 1218 of 1250 ms). HARDEN-07, DEC-184.",
   "_how": [
     "A budget is for 50,000 tracks (1,000 files for a tag write). A smaller run is held to it; a larger one is recorded, not held.",
     "Base: the Windows number in docs/user-guide/performance.md times 1.5, or the Phase 15/16 budget where one exists; then the first CI scale run (set_from): a metric within 10% of its budget on any leg was raised to about 1.25 times its worst value, and one with room to spare was left alone.",
@@ -60,7 +60,7 @@
       }
     },
     "macos-x64": {
-      "scale": 2.5,
+      "scale": 3.25,
       "overrides": {
         "engine_start": {
           "first_health_ms": 30000
@@ -69,7 +69,8 @@
           "launch_s": 100,
           "relaunch_s": 150
         }
-      }
+      },
+      "code_scale": 2.5
     }
   },
   "benches": {
