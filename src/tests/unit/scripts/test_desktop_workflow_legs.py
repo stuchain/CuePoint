@@ -204,6 +204,15 @@ class TestPackagedRun:
             "steps.app.outcome == 'success'" in _step("Packaged app end-to-end")["if"]
         )
 
+    def test_a_red_development_suite_does_not_skip_the_package_step(self):
+        # Regression: `package` had no `if:`, so a red Playwright step skipped it, and with it
+        # "Locate the packaged app" and "Packaged app end-to-end" (they need its outcome).
+        package = _step("Build Electron installers + artifacts")
+        assert package["id"] == "package"
+        assert package["if"].replace(" ", "") == "${{!cancelled()}}"
+        names = [s.get("name") for s in _job()["steps"]]
+        assert names.index(package["name"]) > names.index("Playwright Electron smoke")
+
     def test_the_job_and_the_packaged_run_have_a_timeout(self):
         job = _job()
         assert 60 <= job["timeout-minutes"] <= 360

@@ -283,8 +283,13 @@ jobs:
 
       # `package`, not `dist`: `dist` builds again first, which would replace the files that
       # carry the debug ids.
+      #
+      # `!cancelled()`: under the default `success()` a red development suite skipped this step, and
+      # with it every packaged step after it, so a leg never showed whether its installer or its
+      # packaged app worked. A green run runs exactly what it ran before.
       - name: Build Electron installers + artifacts
         id: package
+        if: ${{ !cancelled() }}
         working-directory: apps/desktop-electron
         run: npm run package -- ${{ matrix.builder_arch }}
 
