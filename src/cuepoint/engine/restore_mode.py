@@ -40,7 +40,15 @@ def run_restore(name: str) -> int:
 
         bootstrap_services()
         service = get_container().resolve(IBackupService)
-        service.restore(service.backup_path(name))
+        kept = service.restore(service.backup_path(name))
+        try:
+            # One line on stdout so the app can name the copy it kept.
+            print(
+                json.dumps({"safety_backup": getattr(kept, "name", None)}),
+                flush=True,
+            )
+        except Exception:  # noqa: BLE001 - the restore itself succeeded
+            pass
         return 0
     except DatabaseError as exc:
         return _fail(exc.error_code or "RESTORE_FAILED", exc.message)

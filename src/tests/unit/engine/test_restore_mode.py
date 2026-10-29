@@ -94,10 +94,12 @@ def _error_line(capsys) -> dict:
 
 
 class TestRestoreMode:
-    def test_restores_and_keeps_a_pre_restore_copy(self, home):
+    def test_restores_and_keeps_a_pre_restore_copy(self, home, capsys):
         info = _library_with_backup(home)
 
         assert restore_mode.run_restore(info.name) == 0
+        said = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+        assert said["safety_backup"].endswith("-pre-restore.db")
 
         assert _job_ids(home / "cuepoint.db") == ["job-1"]
         kept = [n for n in _names(home) if n.endswith("-pre-restore.db")]

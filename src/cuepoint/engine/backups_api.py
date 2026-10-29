@@ -82,7 +82,12 @@ def handle(method: str, path: str) -> Tuple[int, Dict[str, Any]]:
     """Answer one request, or raise."""
     service = _service()
     if method == "GET":
-        return 200, {"backups": [backup_json(b) for b in service.list_backups()]}
+        # ``folder`` lets the app show the backups in the file manager.
+        folder = getattr(service, "backup_dir", None)
+        return 200, {
+            "backups": [backup_json(b) for b in service.list_backups()],
+            "folder": str(folder) if folder else None,
+        }
     if method == "POST":
         info = service.create_backup(reason="manual")
         _record_manual(info)

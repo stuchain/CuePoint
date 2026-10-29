@@ -63,7 +63,10 @@ def backup_dir(library: Path) -> Path:
 
 class TestList:
     def test_empty(self, engine, library):  # noqa: F811
-        assert call(engine, "GET", "/api/v1/backups") == (200, {"backups": []})
+        status, payload = call(engine, "GET", "/api/v1/backups")
+        assert status == 200
+        assert payload["backups"] == []
+        assert Path(payload["folder"]) == backup_dir(library)
 
     def test_shape_and_newest_first(self, engine, library):  # noqa: F811
         first = call(engine, "POST", "/api/v1/backups")[1]
@@ -127,7 +130,7 @@ class TestCreate:
         assert payload["error"]["code"] == "BACKUP_VERIFY_FAILED"
         for word in ("database", "schema", "engine"):
             assert word not in payload["error"]["message"].lower()
-        assert call(engine, "GET", "/api/v1/backups")[1] == {"backups": []}
+        assert call(engine, "GET", "/api/v1/backups")[1]["backups"] == []
         leftovers = list(backup_dir(library).iterdir())
         assert leftovers == [], leftovers
 
