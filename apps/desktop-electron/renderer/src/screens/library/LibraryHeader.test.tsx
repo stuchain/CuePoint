@@ -447,6 +447,20 @@ describe("what is not out yet (M511)", () => {
     expect(handlers.onExport).toHaveBeenCalledTimes(1);
   });
 
+  // DEC-304: a third line made the Library's header taller than the sidebar's top, so its divider
+  // missed the sidebar's line. The notes join the facts line; the header has no row under it.
+  it("puts the notes on the facts line, not on a line of their own", () => {
+    renderHeader({
+      pending: { values_not_in_files: 12, changes_not_exported: 30, last_export_at: null },
+      summary: summaryWith(true),
+    });
+    const facts = document.querySelector(".cp-screen-header__summary")!;
+    expect(facts).toContainElement(screen.getByTestId("library-pending"));
+    expect(facts).toHaveTextContent(/· 12 values not in files · 30 changes not exported/);
+    expect(facts).toContainElement(screen.getByRole("status"));
+    expect(document.querySelector(".cp-screen-header__tabs")).toBeNull();
+  });
+
   it("says nothing when nothing is waiting, or before it is known", () => {
     renderHeader({ pending: { values_not_in_files: 0, changes_not_exported: 0, last_export_at: null } });
     expect(screen.queryByTestId("library-pending")).toBeNull();

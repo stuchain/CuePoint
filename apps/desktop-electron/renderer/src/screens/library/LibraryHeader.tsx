@@ -458,6 +458,50 @@ export function LibraryHeader({
               {sourceLine}
             </span>
           ) : null,
+          // Sidebar alignment B (DEC-304): what is only in CuePoint, what is in the files and what has
+          // been exported (M511), the file's state and what an import applied join the facts line
+          // after a dot, so the header stays two lines and its divider lies on the sidebar's line.
+          hasPending && pending ? (
+            <span key="pending" className="library-header__pending" data-testid="library-pending">
+              <span className="library-header__sep"> · </span>
+              {pending.values_not_in_files > 0 &&
+                (onSaveToFiles ? (
+                  // M511: the words are the way to Save to files, as "not exported" is to Export.
+                  <button type="button" className="cp-link" onClick={onSaveToFiles} disabled={disabled}>
+                    {`${formatCount(pending.values_not_in_files)} ${pending.values_not_in_files === 1 ? "value" : "values"} not in files`}
+                  </button>
+                ) : (
+                  <span>{`${formatCount(pending.values_not_in_files)} ${pending.values_not_in_files === 1 ? "value" : "values"} not in files`}</span>
+                ))}
+              {pending.values_not_in_files > 0 && pending.changes_not_exported > 0 && (
+                <span className="library-header__sep"> · </span>
+              )}
+              {pending.changes_not_exported > 0 && (
+                <button type="button" className="cp-link" onClick={onExport} disabled={disabled}>
+                  {`${formatCount(pending.changes_not_exported)} ${pending.changes_not_exported === 1 ? "change" : "changes"} not exported`}
+                </button>
+              )}
+            </span>
+          ) : null,
+          state !== "unchanged" ? (
+            <span key="state">
+              <span className="library-header__sep"> · </span>
+              <span
+                className={`library-header__state${needsLook ? " library-header__state--attention" : ""}`}
+                role="status"
+              >
+                {sourceStateMessage(state)}
+              </span>
+            </span>
+          ) : null,
+          appliedLine ? (
+            <span key="applied">
+              <span className="library-header__sep"> · </span>
+              <span className="library-header__applied" role="status">
+                {appliedLine}
+              </span>
+            </span>
+          ) : null,
         ]}
         actions={
           level >= 3 ? (
@@ -501,47 +545,6 @@ export function LibraryHeader({
               {LABELS.export}
             </Button>
           </>
-          )
-        }
-        tabs={
-          (state !== "unchanged" || appliedLine || hasPending) && (
-            <div className="library-header__notes">
-              {/* M511: what is only in CuePoint, what is in the files and what has been exported. */}
-              {hasPending && pending && (
-                <p className="library-header__pending" data-testid="library-pending">
-                  {pending.values_not_in_files > 0 &&
-                    (onSaveToFiles ? (
-                      // M511: the words are the way to Save to files, as "not exported" is to Export.
-                      <button type="button" className="cp-link" onClick={onSaveToFiles} disabled={disabled}>
-                        {`${formatCount(pending.values_not_in_files)} ${pending.values_not_in_files === 1 ? "value" : "values"} not in files`}
-                      </button>
-                    ) : (
-                      <span>{`${formatCount(pending.values_not_in_files)} ${pending.values_not_in_files === 1 ? "value" : "values"} not in files`}</span>
-                    ))}
-                  {pending.values_not_in_files > 0 && pending.changes_not_exported > 0 && (
-                    <span className="library-header__sep"> · </span>
-                  )}
-                  {pending.changes_not_exported > 0 && (
-                    <button type="button" className="cp-link" onClick={onExport} disabled={disabled}>
-                      {`${formatCount(pending.changes_not_exported)} ${pending.changes_not_exported === 1 ? "change" : "changes"} not exported`}
-                    </button>
-                  )}
-                </p>
-              )}
-              {state !== "unchanged" && (
-                <span
-                  className={`library-header__state${needsLook ? " library-header__state--attention" : ""}`}
-                  role="status"
-                >
-                  {sourceStateMessage(state)}
-                </span>
-              )}
-              {appliedLine && (
-                <p className="library-header__applied" role="status">
-                  {appliedLine}
-                </p>
-              )}
-            </div>
           )
         }
       />

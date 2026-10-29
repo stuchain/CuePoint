@@ -137,21 +137,11 @@
   white-space: pre;
 }
 
-.library-header__notes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-sm);
-  font-family: var(--font-meta);
-  font-size: var(--font-size-xs);
-}
-
 .library-header__state--attention {
   color: var(--warning-text);
 }
 
 .library-header__applied {
-  margin: 0;
   color: var(--fg-muted);
 }
 
@@ -177,9 +167,8 @@
   vertical-align: middle;
 }
 
-/* What is only in CuePoint and what is not exported yet (M511): the notes' first line. */
+/* What is only in CuePoint and what is not exported yet (M511), on the facts line (DEC-304). */
 .library-header__pending {
-  margin: 0;
   color: var(--fg-muted);
 }
 
@@ -187,6 +176,13 @@
    hold the places the running time and BPM range take. */
 .library-header .cp-screen-header__summary {
   min-height: 1lh;
+  /* The notes are links (DEC-304): never cut into "…". A window too narrow for the line wraps it
+     between its parts, each kept whole. */
+  white-space: normal;
+}
+
+.library-header .cp-screen-header__summary > * {
+  white-space: nowrap;
 }
 
 .library-header__skeleton {
