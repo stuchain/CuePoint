@@ -37,6 +37,29 @@ interface Stop {
 
 const MAX_STOPS = 150;
 
+/**
+ * Stops that exist only in some states of the machine the suite runs on, not of the page. The pin is
+ * compared with these taken out of both sides, so it holds on every runner; they are still tabbed to and
+ * still counted in the reachability, trap and reading-order checks above, which look at what was seen.
+ *
+ * - Playback "Exclusive output" and its "Who needs exclusive output" fold: drawn only where the system has
+ *   such a mode (`exclusiveSupported`, true on Windows and macOS, false on Linux).
+ * - Waveforms "Check files on the Clean page." (the status line when no file of the library is on disk) and
+ *   the analysis button ("Analyze waveforms", "Analyze N waveforms", "Analyze again", "Pause", "Resume"): which
+ *   of them show follows the analysis state, which follows the library's files and how far the background
+ *   analysis has got when Tab reaches them.
+ */
+const CONDITIONAL_STOPS: RegExp[] = [
+  /^region "Playback" \| checkbox \| Exclusive output$/,
+  /^region "Playback" \| button \| Who needs exclusive output$/,
+  // Its region is the status line's own ("status"), not the Waveforms section's.
+  /^status \| link \| Check files on the Clean page\.$/,
+  /^[^|]+ \| button \| (Analyze waveforms|Analyze N waveforms|Analyze again)$/,
+  /^region "Waveforms" \| button \| (Pause|Resume)$/,
+];
+
+const withoutConditionalStops = (stops: string[]): string[] => stops.filter((stop) => !CONDITIONAL_STOPS.some((pattern) => pattern.test(stop)));
+
 /** Starts Tab from the top of the document and returns every stop until the order cycles or leaves the page. */
 async function tabOrder(window: Page): Promise<{ stops: string[]; orphans: string[]; positive: number }> {
   await window.evaluate(() => {
@@ -206,8 +229,12 @@ test.describe("the keyboard", () => {
         await openDestination(window, destination);
         const order = await tabOrder(window);
         seen[destination.link] = order.stops;
-        // CUEPOINT_A11Y_RECORD=1 writes what was seen as the new pin, for a change made on purpose.
-        if (process.env.CUEPOINT_A11Y_RECORD) writeFileSync(path.join(__dirname, "keyboardTabOrders.json"), `${JSON.stringify(seen, null, 2)}\n`);
+        // CUEPOINT_A11Y_RECORD=1 writes what was seen as the new pin, for a change made on purpose
+        // (without the stops that depend on the machine, see CONDITIONAL_STOPS).
+        if (process.env.CUEPOINT_A11Y_RECORD) {
+          const pin = Object.fromEntries(Object.entries(seen).map(([link, stops]) => [link, withoutConditionalStops(stops)]));
+          writeFileSync(path.join(__dirname, "keyboardTabOrders.json"), `${JSON.stringify(pin, null, 2)}\n`);
+        }
 
         // No trap: Tab cycled back to its first stop, or left the page, within the limit.
         expect(order.stops.length, `${destination.link}: Tab never cycled`).toBeLessThan(MAX_STOPS);
@@ -236,7 +263,7 @@ test.describe("the keyboard", () => {
       }
       // Pinned.
       for (const destination of DESTINATIONS) {
-        expect(seen[destination.link], `${destination.link}'s tab order changed`).toEqual(PINNED[destination.link]);
+        expect(withoutConditionalStops(seen[destination.link]!), `${destination.link}'s tab order changed`).toEqual(withoutConditionalStops(PINNED[destination.link]!));
       }
     } finally {
       await app.close();
