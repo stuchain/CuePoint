@@ -26,7 +26,7 @@ function settingsFile(): string {
 }
 
 const GIGS = path.resolve("/music/gigs");
-const DEFAULTS = { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null, windowState: null, windowTheme: null, lastExportFolders: [], lastIntegrityCheckAt: null };
+const DEFAULTS = { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null, windowState: null, windowTheme: null, lastExportFolders: [], lastIntegrityCheckAt: null, integrityCheckOwed: false };
 
 describe("reading", () => {
   it("answers the defaults before anything was written", () => {
@@ -244,7 +244,11 @@ describe("the integrity check date (HARDEN-03)", () => {
       expect(store.read().lastIntegrityCheckAt).toBeNull();
       store.update({ lastIntegrityCheckAt: "2026-10-29T12:00:00.000Z" });
       expect(store.read().lastIntegrityCheckAt).toBe("2026-10-29T12:00:00.000Z");
-      fs.writeFileSync(path.join(dir, "main-settings.json"), JSON.stringify({ lastIntegrityCheckAt: "yesterday" }));
+      expect(store.read().integrityCheckOwed).toBe(false);
+      store.update({ integrityCheckOwed: true });
+      expect(store.read().integrityCheckOwed).toBe(true);
+      fs.writeFileSync(path.join(dir, "main-settings.json"), JSON.stringify({ lastIntegrityCheckAt: "yesterday", integrityCheckOwed: "yes" }));
+      expect(store.read().integrityCheckOwed).toBe(false);
       expect(store.read().lastIntegrityCheckAt).toBeNull();
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

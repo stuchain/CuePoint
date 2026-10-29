@@ -33,7 +33,7 @@ function library(over: Partial<LibraryStatus> = {}, check: LibraryStatus["integr
 interface Rig {
   checker: IntegrityChecker;
   engine: { getLibraryStatus: ReturnType<typeof vi.fn>; startIntegrityCheck: ReturnType<typeof vi.fn> };
-  saved: Array<{ lastIntegrityCheckAt: string | null }>;
+  saved: Array<{ lastIntegrityCheckAt?: string | null; integrityCheckOwed?: boolean }>;
   changed: LibraryStatus[];
   calls: string[];
 }
@@ -42,11 +42,12 @@ interface Rig {
 function rig(options: {
   unclean?: boolean;
   last?: string | null;
+  owed?: boolean;
   states?: LibraryStatus[];
   result?: LibraryStatus["integrityCheck"]["state"];
 }): Rig {
   const calls: string[] = [];
-  const saved: Array<{ lastIntegrityCheckAt: string | null }> = [];
+  const saved: Array<{ lastIntegrityCheckAt?: string | null; integrityCheckOwed?: boolean }> = [];
   const changed: LibraryStatus[] = [];
   let started = false;
   const script = [...(options.states ?? [])];
@@ -71,7 +72,7 @@ function rig(options: {
   const checker = new IntegrityChecker({
     engine,
     settings: {
-      read: () => ({ lastIntegrityCheckAt: options.last ?? null }),
+      read: () => ({ lastIntegrityCheckAt: options.last ?? null, integrityCheckOwed: options.owed ?? false }),
       update: (patch) => saved.push(patch),
     },
     uncleanExit: () => options.unclean ?? false,
@@ -93,8 +94,10 @@ describe("when a check is due", () => {
     expect(integrityCheckDue({ uncleanExit: false, lastCheckedAt: daysAgo(0), now: NOW })).toBe(false);
     expect(INTEGRITY_INTERVAL_MS).toBe(7 * 24 * 3600 * 1000);
   });
-  it("when none has ever finished, and when the date is not believable", () => {
-    expect(integrityCheckDue({ uncleanExit: false, lastCheckedAt: null, now: NOW })).toBe(true);
+  it("while one is owed from an unclean exit, whatever the date", () => {
+    expect(integrityCheckDue({ uncleanExit: false, owed: true, lastCheckedAt: daysAgo(0), now: NOW })).toBe(true);
+  });
+  it("when the date is not believable", () => {
     expect(integrityCheckDue({ uncleanExit: false, lastCheckedAt: "garbage", now: NOW })).toBe(true);
     expect(integrityCheckDue({ uncleanExit: false, lastCheckedAt: daysAgo(-3), now: NOW })).toBe(true);
   });
@@ -105,7 +108,7 @@ describe("the integrity check", () => {
     const r = rig({ unclean: true, last: daysAgo(1) });
     expect(await r.checker.afterFirstPaint()).toBe("passed");
     expect(r.engine.startIntegrityCheck).toHaveBeenCalledTimes(1);
-    expect(r.saved).toEqual([{ lastIntegrityCheckAt: new Date(NOW).toISOString() }]);
+    expect(r.saved).toEqual([{ lastIntegrityCheckAt: new Date(NOW).toISOString(), integrityCheckOwed: false }]);
   });
 
   it("runs after 7 days", async () => {
@@ -139,10 +142,10 @@ describe("the integrity check", () => {
     expect(damaged.engine.startIntegrityCheck).not.toHaveBeenCalled();
   });
 
-  it("does not record a check that failed, and tells the page", async () => {
+  it("does not record a check that failed, clears what it owed, and tells the page", async () => {
     const r = rig({ unclean: true, result: "failed" });
     expect(await r.checker.afterFirstPaint()).toBe("failed");
-    expect(r.saved).toEqual([]);
+    expect(r.saved).toEqual([{ integrityCheckOwed: false }]);
     expect(r.changed).toHaveLength(1);
   });
 
@@ -203,5 +206,43 @@ describe("settling after Try again", () => {
       { sleep: async () => void (clock += 1000), now: () => clock, maxMs: 3000 },
     );
     expect(settled).toBeNull();
+  });
+});
+
+describe("a check owed after an unclean exit", () => {
+  it("is written down at start, before anything has run", () => {
+    const r = rig({ unclean: true, last: daysAgo(1) });
+    r.checker.noteStart();
+    expect(r.saved).toEqual([{ integrityCheckOwed: true }]);
+    expect(rig({ unclean: false }).saved).toEqual([]);
+  });
+
+  it("is still owed at the next start when the last session ended before the check did", async () => {
+    // The session after the unclean one was killed too: no unclean marker is read as new news,
+    // but the file says a check is owed.
+    const r = rig({ unclean: false, owed: true, last: daysAgo(1) });
+    expect(await r.checker.afterFirstPaint()).toBe("passed");
+    expect(r.saved.at(-1)).toMatchObject({ integrityCheckOwed: false });
+  });
+
+  it("is not cleared by a check that did not finish", async () => {
+    const r = rig({ unclean: true, result: "idle" });
+    await r.checker.afterFirstPaint();
+    expect(r.saved).toEqual([]);
+  });
+});
+
+describe("a fresh profile", () => {
+  it("records now as the start of the weekly clock instead of checking", async () => {
+    const r = rig({ last: null });
+    expect(await r.checker.afterFirstPaint()).toBe("baseline");
+    expect(r.saved).toEqual([{ lastIntegrityCheckAt: new Date(NOW).toISOString() }]);
+    expect(r.engine.getLibraryStatus).not.toHaveBeenCalled();
+    expect(r.engine.startIntegrityCheck).not.toHaveBeenCalled();
+  });
+
+  it("still checks when it also has an unclean exit", async () => {
+    const r = rig({ last: null, unclean: true });
+    expect(await r.checker.afterFirstPaint()).toBe("passed");
   });
 });

@@ -195,6 +195,11 @@ export const HEALTH_POLL_MS = 250;
  * then stop and say so, leaving the user a Restart engine control.
  */
 const MAX_RESTART_ATTEMPTS = 3;
+/** How long a killed engine gets to be seen exiting before it is treated as gone anyway. */
+const HEARTBEAT_KILL_GRACE_MS = 5_000;
+/** Heartbeat-triggered restarts allowed within the window; a stop beyond them is given up on. */
+const HEARTBEAT_RESTARTS_BEFORE_GIVING_UP = 3;
+const HEARTBEAT_GIVE_UP_WINDOW_MS = 10 * 60_000;
 const RESTART_BACKOFF_MS = [1000, 2000, 4000];
 
 interface EngineSupervisorOptions {
@@ -389,6 +394,10 @@ export class EngineSupervisor {
   private stallReported = false;
   /** The stall now being handled is not the session's first, so it is a breadcrumb only. */
   private stallRepeat = false;
+  /** When the heartbeat last killed the engine, within the give-up window. */
+  private heartbeatKills: number[] = [];
+  /** The stall now being handled is one too many: no restart follows it. */
+  private stallGiveUp = false;
   /**
    * Whether `/health` has answered for the child now running.
    *
@@ -673,33 +682,7 @@ export class EngineSupervisor {
     const closed = new Promise<void>((resolve) => child.once("close", () => resolve()));
     child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
       exited = true;
-      if (this.child === child) this.stopHeartbeat();
-      // `stop()` and a newer launch let go of a child before it exits: that exit is ours, not a
-      // crash, and not an incident (REPORT-05). It must not touch the state of the child that
-      // replaced it, nor start a restart.
-      if (this.child !== child) return;
-      this.child = null;
-      this.healthy = false;
-      if (this.stopping) return;
-      this.changed();
-      // An exit during a restart is still one that was not asked for: it is one more exit in
-      // the open incident, though the restart already running will do the restarting.
-      const stalled = this.stalledChild === child;
-      if (stalled) this.stalledChild = null;
-      const uptimeMs = Date.now() - this.spawnedAt;
-      if (stalled && this.stallRepeat) {
-        // Already reported this session: a step on the trail, not another event.
-        try {
-          this.options.reporter?.breadcrumb("process", "engine stopped answering", { uptime_ms: uptimeMs });
-        } catch {
-          /* reporting must never stop a supervisor */
-        }
-      } else {
-        // What it was: a process that stopped answering, killed by us, not one that crashed.
-        this.incidents.exited({ code, signal: stalled ? "heartbeat" : signal, uptimeMs });
-      }
-      if (this.reconnecting) return;
-      void this.scheduleRestart();
+      this.childGone(child, code, signal);
     });
 
     // A spawn that fails (no such binary) is an `error` event and no `exit`; unhandled, it would
@@ -750,6 +733,46 @@ export class EngineSupervisor {
     return this.getStatus();
   }
 
+  /**
+   * A child is gone: it exited, or the heartbeat gave up waiting for it to. Runs once for a
+   * child (the second call finds it already let go of).
+   */
+  private childGone(child: ChildProcess, code: number | null, signal: NodeJS.Signals | null): void {
+    if (this.child === child) this.stopHeartbeat();
+    // `stop()` and a newer launch let go of a child before it exits: that exit is ours, not a
+    // crash, and not an incident (REPORT-05). It must not touch the state of the child that
+    // replaced it, nor start a restart.
+    if (this.child !== child) return;
+    this.child = null;
+    this.healthy = false;
+    if (this.stopping) return;
+    this.changed();
+    // An exit during a restart is still one that was not asked for: it is one more exit in
+    // the open incident, though the restart already running will do the restarting.
+    const stalled = this.stalledChild === child;
+    if (stalled) this.stalledChild = null;
+    const uptimeMs = Date.now() - this.spawnedAt;
+    if (stalled && this.stallRepeat) {
+      // Already reported this session: a step on the trail, not another event.
+      try {
+        this.options.reporter?.breadcrumb("process", "engine stopped answering", { uptime_ms: uptimeMs });
+      } catch {
+        /* reporting must never stop a supervisor */
+      }
+    } else {
+      // What it was: a process that stopped answering, killed by us, not one that crashed.
+      this.incidents.exited({ code, signal: stalled ? "heartbeat" : signal, uptimeMs });
+    }
+    if (stalled && this.stallGiveUp) {
+      // Wedged again and again: stop restarting. The strip says so and offers Restart engine
+      // (DEC-028's manual restart), which resets this.
+      this.stallGiveUp = false;
+      this.restartAttempts = MAX_RESTART_ATTEMPTS;
+    }
+    if (this.reconnecting) return;
+    void this.scheduleRestart();
+  }
+
   private stopHeartbeat(): void {
     this.heartbeat?.stop();
     this.heartbeat = null;
@@ -774,6 +797,8 @@ export class EngineSupervisor {
         timer.unref?.();
         try {
           const res = await fetch(`http://127.0.0.1:${port}/health`, { signal: abort.signal });
+          // Not read: only that it answered. The body is let go so nothing is held open.
+          await res.body?.cancel().catch(() => undefined);
           return res.ok;
         } finally {
           clearTimeout(timer);
@@ -800,7 +825,17 @@ export class EngineSupervisor {
     // later one is only a breadcrumb, so a machine that keeps suspending it is not a flood.
     this.stallRepeat = this.stallReported;
     this.stallReported = true;
+    // Wedged again and again is not worth restarting for good: a fourth stop within 10 minutes of
+    // three restarts for the same cause gives up, and the person has Restart engine.
+    const now = Date.now();
+    this.heartbeatKills = [...this.heartbeatKills.filter((at) => now - at < HEARTBEAT_GIVE_UP_WINDOW_MS), now];
+    this.stallGiveUp = this.heartbeatKills.length > HEARTBEAT_RESTARTS_BEFORE_GIVING_UP;
     stopProcessTree(child, { force: true });
+    // A tree that will not die (an exit that never comes) must not leave the engine neither up nor
+    // restarting: after a grace, it is treated as gone.
+    const grace = setTimeout(() => this.childGone(child, null, "SIGKILL"), HEARTBEAT_KILL_GRACE_MS);
+    grace.unref?.();
+    child.once("exit", () => clearTimeout(grace));
   }
 
   /**
@@ -865,6 +900,7 @@ export class EngineSupervisor {
     this.generation += 1;
     this.endBackoff();
     this.restartAttempts = 0;
+    this.heartbeatKills = [];
     this.reconnecting = false;
     const status = await this.start(token);
     this.changed();

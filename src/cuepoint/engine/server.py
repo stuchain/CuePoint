@@ -381,28 +381,29 @@ TEST_HOOKS_ENV = "CUEPOINT_TEST_HOOKS"
 #: The stall route's path, served only with ``TEST_HOOKS_ENV`` set to ``1``.
 TEST_STALL_PATH = "/api/v1/test/stall"
 
-#: How long a stall lasts when the request names no length: longer than any test.
-DEFAULT_STALL_SECONDS = 3600.0
-
 
 def hooks_enabled() -> bool:
     """Whether the test-only routes exist for this process."""
     return os.environ.get(TEST_HOOKS_ENV, "").strip() == "1"
 
 
-def stall_server(server: Any, seconds: float) -> None:
+def stall_server(server: Any, seconds: Optional[float] = None) -> None:
     """Make ``server`` stop answering: its accept loop blocks on the next connection.
 
     A suspended or wholly wedged process, as far as ``/health`` can tell, and the same on every
     platform (Windows has no ``SIGSTOP``). ``serve_forever`` calls ``verify_request`` for each
     connection it accepts, on its own thread, so one that waits holds the loop: nothing is
     answered, in the process or out of it, until the wait ends. Only the request that
-    follows is swallowed, and the process is left to be killed by whoever notices.
+    follows is swallowed. With ``seconds`` the stall is temporary: the server's own
+    ``verify_request`` is put back when it ends. Without, it lasts until the process is killed.
     """
     release = threading.Event()
 
     def verify_request(request: Any, client_address: Any) -> bool:
         release.wait(seconds)
+        if seconds is not None:
+            # Put back what the class provides, so the server answers again.
+            server.__dict__.pop("verify_request", None)
         return False
 
     server.verify_request = verify_request
@@ -1418,7 +1419,7 @@ def make_handler(
                 return
             if path == TEST_STALL_PATH and hooks_enabled():
                 raw = self._read_body()
-                seconds = DEFAULT_STALL_SECONDS
+                seconds: Optional[float] = None
                 try:
                     asked = json.loads(raw.decode("utf-8")) if raw else {}
                     if isinstance(asked, dict) and isinstance(

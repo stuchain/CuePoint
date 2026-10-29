@@ -2552,9 +2552,13 @@ describe("desktop contract", () => {
 
     it("tells the engine about an unclean exit and the test hooks, only from main", () => {
       expect(main).toContain("uncleanExit: (): boolean => sessionMarker.uncleanExit");
-      expect(main).toContain("testHooks: e2eRun");
+      expect(main).toContain("testHooks: (): boolean => testHooksEnabled()");
       expect(preload).not.toContain("CUEPOINT_TEST_HOOKS");
       expect(preload).not.toContain("CUEPOINT_UNCLEAN_EXIT");
+    });
+
+    it("also releases the marker synchronously at will-quit, whatever the cleanup did", () => {
+      expect(main).toMatch(/app\.on\("will-quit", \(\) => \{[\s\S]{0,300}sessionMarker\.release\(\);/);
     });
 
     it("takes the session marker only after the single-instance lock, and removes it in the quit's cleanup", () => {

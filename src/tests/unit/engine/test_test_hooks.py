@@ -91,3 +91,24 @@ def test_the_stall_route_stops_health_answering_when_the_hooks_are_on(
     ):  # a timeout: the connection is taken and never answered
         urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=1.0)
     assert time.monotonic() - began < 5
+
+
+def test_a_stall_with_a_length_ends_and_the_server_answers_again(
+    monkeypatch, engine_port
+):
+    monkeypatch.setenv(TEST_HOOKS_ENV, "1")
+    port = engine_port()
+    assert _post(port, TEST_STALL_PATH, {"seconds": 1}) == 202
+    with pytest.raises(Exception):  # the connection that is held
+        urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=0.3)
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/health", timeout=1.0
+            ) as response:
+                assert response.status == 200
+                break
+        except Exception:
+            assert time.monotonic() < deadline, "the server never answered again"
+            time.sleep(0.1)

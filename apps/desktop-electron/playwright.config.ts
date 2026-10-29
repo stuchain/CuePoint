@@ -17,6 +17,12 @@ process.env.CUEPOINT_E2E_DISPLAY ??= "left";
  */
 process.env.CUEPOINT_SENTRY_DSN ??= "off";
 
+/**
+ * Tells the app it is under test, so it starts the engine with its test-only routes
+ * (`electron/testHooks.ts`, HARDEN-05). A packaged app started normally has no such variable.
+ */
+process.env.CUEPOINT_E2E ??= "1";
+
 export default defineConfig({
   testDir: "./e2e",
   // The website's picture capture (SITE-04) has its own config and runs only

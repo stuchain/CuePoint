@@ -141,9 +141,12 @@ class FakeClient extends EventEmitter {
   idleActiveReads = 0;
   /** Set to make every `idle-active` read hang from now on. */
   silent = false;
-  async getProperty(name: string): Promise<unknown> {
+  /** The request timeout each `idle-active` read was given. */
+  idleActiveTimeouts: Array<number | undefined> = [];
+  async getProperty(name: string, timeoutMs?: number): Promise<unknown> {
     this.commands.push(["get_property", name]);
     if (name === "idle-active") {
+      this.idleActiveTimeouts.push(timeoutMs);
       this.idleActiveReads += 1;
       const next = this.idleActiveScript.shift();
       if (this.silent || next === "hang") return new Promise(() => undefined);
@@ -1702,6 +1705,17 @@ describe("the heartbeat (HARDEN-05)", () => {
     await until(() => clients[0].idleActiveReads >= 3);
     expect(children).toHaveLength(1);
     expect(clients[0].commands).toContainEqual(["get_property", "idle-active"]);
+  });
+
+  it("gives each ask its own request timeout, the heartbeat's", async () => {
+    const { supervisor, clients } = track(harness({ heartbeat: beats }));
+    await supervisor.ensureRunning();
+    await until(() => clients[0].idleActiveReads >= 1);
+    expect(clients[0].idleActiveTimeouts[0]).toBe(beats.timeoutMs);
+    const { supervisor: other, clients: others } = track(harness({ heartbeat: { intervalMs: 8, maxMisses: 3 } }));
+    await other.ensureRunning();
+    await until(() => others[0].idleActiveReads >= 1);
+    expect(others[0].idleActiveTimeouts[0]).toBe(10_000);
   });
 
   it("restarts a player that stops answering after three misses in a row, counting toward the bound", async () => {

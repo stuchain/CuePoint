@@ -384,7 +384,7 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
    *
    * Everything else in this class is a wrapper around this.
    */
-  command<T = unknown>(command: readonly unknown[]): Promise<T> {
+  command<T = unknown>(command: readonly unknown[], timeoutMs?: number): Promise<T> {
     if (this.closed) {
       return Promise.reject(new MpvConnectionError("client is closed"));
     }
@@ -399,8 +399,8 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);
-        reject(new MpvTimeoutError(command, this.requestTimeoutMs));
-      }, this.requestTimeoutMs);
+        reject(new MpvTimeoutError(command, timeoutMs ?? this.requestTimeoutMs));
+      }, timeoutMs ?? this.requestTimeoutMs);
       timer.unref?.();
 
       this.pending.set(requestId, {
@@ -423,8 +423,8 @@ export class MpvClient extends EventEmitter<MpvClientEventMap> {
     });
   }
 
-  async getProperty<T = unknown>(name: string): Promise<T> {
-    return this.command<T>(["get_property", name]);
+  async getProperty<T = unknown>(name: string, timeoutMs?: number): Promise<T> {
+    return this.command<T>(["get_property", name], timeoutMs);
   }
 
   async setProperty(name: string, value: unknown): Promise<void> {

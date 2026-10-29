@@ -14,7 +14,7 @@ import {
   playerUnavailableReason,
   type ResolvePlayerBinaryOptions,
 } from "./playerLaunch";
-import { Heartbeat } from "./heartbeat";
+import { HEARTBEAT_TIMEOUT_MS, Heartbeat } from "./heartbeat";
 import { IncidentTracker, capLine, type ProcessReporter } from "./processWatch";
 
 /**
@@ -715,7 +715,8 @@ export class PlayerSupervisor {
     const beat = new Heartbeat({
       ...this.options.heartbeat,
       probe: async () => {
-        await client.getProperty("idle-active");
+        // Its own request timeout, the heartbeat's: the client's default may be longer.
+        await client.getProperty("idle-active", this.options.heartbeat?.timeoutMs ?? HEARTBEAT_TIMEOUT_MS);
         return true;
       },
       onDead: () => this.heartbeatLost(child),

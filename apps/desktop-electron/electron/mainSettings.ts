@@ -75,6 +75,12 @@ interface MainSettings {
    * first. The next one is due 7 days later, or after an unclean exit (HARDEN-03, DEC-181).
    */
   lastIntegrityCheckAt: string | null;
+  /**
+   * An unclean exit was seen and the check it owes has not finished yet. Kept in the file, so a
+   * quit or a crash before the check ran does not forget it; cleared only when a check finishes,
+   * passing or failing (HARDEN-03).
+   */
+  integrityCheckOwed: boolean;
 }
 
 /** How many export folders are remembered. */
@@ -91,6 +97,7 @@ function defaults(): MainSettings {
     windowTheme: null,
     lastExportFolders: [],
     lastIntegrityCheckAt: null,
+    integrityCheckOwed: false,
   };
 }
 
@@ -137,6 +144,7 @@ export function parseMainSettings(text: string): MainSettings {
     windowTheme: parseWindowTheme(record.windowTheme),
     lastExportFolders: exportFolders(record.lastExportFolders),
     lastIntegrityCheckAt: isoDate(record.lastIntegrityCheckAt),
+    integrityCheckOwed: record.integrityCheckOwed === true,
   };
 }
 

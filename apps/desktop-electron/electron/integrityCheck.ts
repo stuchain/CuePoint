@@ -25,10 +25,12 @@ export const INTEGRITY_RUN_WAIT_MS = 60 * 60_000;
 /** Whether a check is due: after an unclean exit, never done, or done 7 days ago or more. */
 export function integrityCheckDue(input: {
   uncleanExit: boolean;
+  /** A check owed from an unclean exit that no check has finished since. */
+  owed?: boolean;
   lastCheckedAt: string | null;
   now: number;
 }): boolean {
-  if (input.uncleanExit) return true;
+  if (input.uncleanExit || input.owed) return true;
   if (input.lastCheckedAt === null) return true;
   const last = Date.parse(input.lastCheckedAt);
   if (Number.isNaN(last)) return true;
@@ -43,8 +45,8 @@ export interface IntegrityCheckDeps {
     startIntegrityCheck(): Promise<unknown>;
   };
   settings: {
-    read(): { lastIntegrityCheckAt: string | null };
-    update(patch: { lastIntegrityCheckAt: string | null }): unknown;
+    read(): { lastIntegrityCheckAt: string | null; integrityCheckOwed: boolean };
+    update(patch: { lastIntegrityCheckAt?: string | null; integrityCheckOwed?: boolean }): unknown;
   };
   /** Whether the last session ended uncleanly (`sessionLock.ts`). */
   uncleanExit: () => boolean;
@@ -61,6 +63,8 @@ export interface IntegrityCheckDeps {
 export type IntegrityOutcome =
   /** Not due: the engine was not even asked. */
   | "not-due"
+  /** A fresh profile: today is recorded as the start of the weekly clock, and nothing was asked. */
+  | "baseline"
   /** The library was not `ok` (or never became so) in time: nothing was asked. */
   | "not-ready"
   | "passed"
@@ -72,6 +76,19 @@ export class IntegrityChecker {
   private started = false;
 
   constructor(private readonly deps: IntegrityCheckDeps) {}
+
+  /**
+   * Called at start, before the window: an unclean exit is written down as a check owed, so it
+   * survives a quit or a crash before the check has run. Never throws.
+   */
+  noteStart(): void {
+    if (!this.deps.uncleanExit()) return;
+    try {
+      this.deps.settings.update({ integrityCheckOwed: true });
+    } catch {
+      /* the check still runs this session */
+    }
+  }
 
   /**
    * Called once the window has shown. Returns at once; the check follows in the background and
@@ -89,9 +106,17 @@ export class IntegrityChecker {
     const sleep = this.deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms).unref?.()));
     const pollMs = this.deps.pollMs ?? INTEGRITY_POLL_MS;
 
+    const saved = this.deps.settings.read();
+    const unclean = this.deps.uncleanExit();
+    // A fresh profile has nothing to check yet: the weekly clock starts at the first launch.
+    if (!unclean && !saved.integrityCheckOwed && saved.lastIntegrityCheckAt === null) {
+      this.deps.settings.update({ lastIntegrityCheckAt: new Date(now()).toISOString() });
+      return "baseline";
+    }
     const due = integrityCheckDue({
-      uncleanExit: this.deps.uncleanExit(),
-      lastCheckedAt: this.deps.settings.read().lastIntegrityCheckAt,
+      uncleanExit: unclean,
+      owed: saved.integrityCheckOwed,
+      lastCheckedAt: saved.lastIntegrityCheckAt,
       now: now(),
     });
     if (!due) return "not-due";
@@ -125,10 +150,15 @@ export class IntegrityChecker {
       }
       const check = library?.integrityCheck.state;
       if (library && check === "ok") {
-        this.deps.settings.update({ lastIntegrityCheckAt: new Date(now()).toISOString() });
+        this.deps.settings.update({
+          lastIntegrityCheckAt: new Date(now()).toISOString(),
+          integrityCheckOwed: false,
+        });
         return "passed";
       }
       if (library && check === "failed") {
+        // Finished, and the answer is the damaged screen's to give: nothing more is owed.
+        this.deps.settings.update({ integrityCheckOwed: false });
         // The engine has marked the library damaged; the page is told so it can show the screen.
         try {
           this.deps.onChanged?.(library);

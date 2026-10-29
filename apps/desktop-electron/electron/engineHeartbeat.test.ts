@@ -47,10 +47,13 @@ vi.mock("node:child_process", async (importOriginal) => ({
 }));
 
 const treeStops: Array<{ pid: number | undefined; force: boolean }> = [];
+/** False: a tree that will not die, so the kill brings no exit. */
+let treeDies = true;
+const bodiesCancelled: number[] = [];
 vi.mock("./processTree", () => ({
   stopProcessTree: (proc: FakeChild, options?: { force?: boolean }) => {
     treeStops.push({ pid: proc.pid, force: options?.force === true });
-    proc.finish();
+    if (treeDies) proc.finish();
   },
 }));
 
@@ -74,7 +77,11 @@ function stubFetch(): void {
     vi.fn((_url: string, init?: { signal?: AbortSignal }) => {
       healthAsked += 1;
       if (health === "answer") {
-        return Promise.resolve({ ok: true, json: async () => ({ version: "fake" }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ version: "fake" }),
+          body: { cancel: async () => void bodiesCancelled.push(healthAsked) },
+        });
       }
       return new Promise((_resolve, reject) => {
         init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
@@ -114,10 +121,13 @@ beforeEach(() => {
   crumbs.length = 0;
   health = "answer";
   healthAsked = 0;
+  treeDies = true;
+  bodiesCancelled.length = 0;
   stubFetch();
 });
 
 afterEach(async () => {
+  treeDies = true;
   for (const supervisor of supervisors.splice(0)) await supervisor.stop();
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -239,5 +249,71 @@ describe("the engine's heartbeat", () => {
     const told = engineEnvironment({ ...base, env: {}, uncleanExit: true, testHooks: true });
     expect(told.CUEPOINT_UNCLEAN_EXIT).toBe("1");
     expect(told.CUEPOINT_TEST_HOOKS).toBe("1");
+  });
+
+  it("lets go of the health answer's body", async () => {
+    const supervisor = make();
+    await supervisor.start();
+    await run(HEARTBEAT + 10);
+    expect(bodiesCancelled.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("restarts anyway when the killed engine's exit never comes", async () => {
+    const supervisor = make();
+    await supervisor.start();
+    treeDies = false;
+    health = "hang";
+    await run(HEARTBEAT * 3 + TIMEOUT * 3 + 10);
+    expect(treeStops).toHaveLength(1);
+    // Nothing exited yet: not stuck as "up", not restarted either, until the grace is over.
+    expect(spawned).toHaveLength(1);
+    await run(5_000 + 10);
+    expect(supervisor.getStatus()).toMatchObject({ connected: false, reconnecting: true, restartAttempts: 1 });
+    health = "answer";
+    await run(1000 + 50);
+    expect(spawned).toHaveLength(2);
+    expect(supervisor.getStatus().connected).toBe(true);
+  });
+
+  it("gives up after three heartbeat restarts within 10 minutes, and Restart engine brings it back", async () => {
+    const supervisor = make();
+    await supervisor.start();
+    const stallAndRecover = async (): Promise<void> => {
+      health = "hang";
+      await run(HEARTBEAT * 3 + TIMEOUT * 3 + 10);
+      health = "answer";
+      await run(1000 + 50);
+    };
+    await stallAndRecover();
+    await stallAndRecover();
+    await stallAndRecover();
+    expect(spawned).toHaveLength(4);
+    expect(supervisor.getStatus().connected).toBe(true);
+
+    // The fourth stop inside the window: no restart.
+    health = "hang";
+    await run(HEARTBEAT * 3 + TIMEOUT * 3 + 10);
+    health = "answer";
+    await run(60_000);
+    expect(spawned).toHaveLength(4);
+    expect(supervisor.getStatus()).toMatchObject({ connected: false, reconnecting: false, restartAttempts: 3 });
+
+    // The manual restart still works and starts the count afresh.
+    expect((await supervisor.restart()).connected).toBe(true);
+    expect(spawned).toHaveLength(5);
+  });
+
+  it("does not give up when the stops are more than 10 minutes apart", async () => {
+    const supervisor = make();
+    await supervisor.start();
+    for (let i = 0; i < 4; i += 1) {
+      health = "hang";
+      await run(HEARTBEAT * 3 + TIMEOUT * 3 + 10);
+      health = "answer";
+      await run(1000 + 50);
+      await run(4 * 60_000);
+    }
+    expect(spawned).toHaveLength(5);
+    expect(supervisor.getStatus().connected).toBe(true);
   });
 });

@@ -65,6 +65,7 @@ import { fetchReleases } from "./releaseList";
 import { scrubText } from "./reportScrub";
 import { enforceSingleInstance, onlyIfFirst } from "./singleInstance";
 import { startSession } from "./sessionLock";
+import { testHooksEnabled } from "./testHooks";
 import { IntegrityChecker, settledLibrary } from "./integrityCheck";
 import {
   RECOVERY_RELOAD_CHANNEL,
@@ -107,10 +108,6 @@ const sessionMarker = startSession({
   first: firstInstance,
   appVersion: app.getVersion(),
 });
-
-/** An end-to-end run: the engine is then started with its test-only routes (HARDEN-05). */
-const e2eRun = (): boolean =>
-  process.env.CUEPOINT_E2E === "1" || displayChoice(process.env[E2E_DISPLAY_ENV]) !== null;
 
 /**
  * Main's own settings, read when first needed: the user-data folder is the
@@ -201,7 +198,7 @@ const engine: EngineSupervisor = new EngineSupervisor({
   // The last session did not end (HARDEN-03); the engine looks at its library for it.
   uncleanExit: (): boolean => sessionMarker.uncleanExit,
   // The test-only stall route exists only in an end-to-end run (HARDEN-05).
-  testHooks: e2eRun,
+  testHooks: (): boolean => testHooksEnabled(),
   // The engine's exits, restarts and give-ups, once per incident (REPORT-05).
   reporter: processReporter,
   // The window re-reads the status at once on each change, rather than at its next poll: a
@@ -319,6 +316,8 @@ const integrity = new IntegrityChecker({
   uncleanExit: () => sessionMarker.uncleanExit,
   onChanged: libraryStateChanged,
 });
+// An unclean exit owes a check even if the app is killed again before the window shows it.
+integrity.noteStart();
 
 /** Set when the quit begins: a window that goes then is not one to reopen. */
 let quitStarted = false;
@@ -1878,7 +1877,12 @@ app.whenReady().then(onlyIfFirst(firstInstance, () => {
 
 // The quit is going ahead, cleanup finished or not (`quitAfter` lets it through after 5 s).
 // An install not started by now waits for the next quit rather than starting in a dying process.
-app.on("will-quit", () => updater.closeInstalls());
+app.on("will-quit", () => {
+  // Also here, synchronously: a cleanup that overran its time or threw (a player that would not
+  // dispose) still ends the session properly. Releasing twice is harmless.
+  sessionMarker.release();
+  updater.closeInstalls();
+});
 
 app.on("window-all-closed", () => {
   breadcrumb("app", "window-all-closed");
