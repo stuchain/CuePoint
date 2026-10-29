@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import math
+import re
 import struct
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -168,7 +170,9 @@ def _dispatch(
     return _write_mutagen_auto(path, key, comment, year, label, bpm, genre)
 
 
-#: The MP4 family the writer has a dedicated path for.
+#: The MP4 family the writer has a dedicated path for. ``.m4p`` (protected
+#: iTunes purchases) and ``.m4v`` (video) are deliberately left out: they are
+#: refused rather than rewritten.
 MP4_SUFFIXES = (".m4a", ".mp4", ".m4b")
 
 # M4A / MP4 atoms (before 1.0.0 these went under made-up atoms nothing reads).
@@ -210,14 +214,30 @@ def _mp4_text(value: Any) -> str:
 
 
 def _mp4_bpm(bpm: Optional[str]) -> Optional[int]:
-    """The integer ``tmpo`` holds for a BPM text (``126.4`` -> 126), or None."""
+    """The integer ``tmpo`` holds for a BPM text (``126.5`` -> 127), or None.
+
+    None when the text is not a finite number or the result does not fit the
+    atom (1 to 65535). Rounds half up, not to even.
+    """
     if bpm is None:
         return None
     try:
-        value = int(round(float(str(bpm).strip())))
-    except (ValueError, OverflowError):
+        number = float(str(bpm).strip())
+    except ValueError:
         return None
+    if not math.isfinite(number):
+        return None
+    value = math.floor(number + 0.5)
     return value if 0 < value < 65536 else None
+
+
+_FULL_DATE = re.compile(r"^(\d{4})(?:$|[-/T ])")
+
+
+def _same_year(held: str, year: str) -> bool:
+    """Whether ``held`` is that year, as ``2021`` or as a full date within it."""
+    match = _FULL_DATE.match(held.strip())
+    return match is not None and match.group(1) == year
 
 
 def read_mp4_fields(tags: Any, legacy_fallback: bool = True) -> "dict[str, str]":
@@ -236,6 +256,22 @@ def read_mp4_fields(tags: Any, legacy_fallback: bool = True) -> "dict[str, str]"
                 found[field] = values[0]
                 break
     return found
+
+
+def _carry_mp4_values(field: str, values: Any, freeform: Any) -> List[Any]:
+    """An old atom's values in the standard atom's form; all of them, in order."""
+    carried: List[Any] = []
+    for value in values:
+        text = _mp4_text(value)
+        if field == "bpm":
+            number = _mp4_bpm(text)
+            if number is not None:
+                carried.append(number)
+        elif field in ("key", "label"):
+            carried.append(freeform(text))
+        else:
+            carried.append(text)
+    return carried
 
 
 def _write_mp4(
@@ -270,7 +306,13 @@ def _write_mp4(
     def freeform(text: str) -> Any:
         return MP4FreeForm(text.encode("utf-8"), dataformat=AtomDataType.UTF8)
 
-    carried = read_mp4_fields(tags)  # standard first, then the made-up atoms
+    # A BPM that cannot be stored is refused for the file, never dropped quietly.
+    tempo = _mp4_bpm(bpm)
+    if bpm and tempo is None:
+        return (
+            STATUS_WRITE_ERROR,
+            f"BPM {bpm!r} cannot be stored in an M4A (a whole number from 1 to 65535)",
+        )
     new: dict[str, Any] = {}
     if key:
         new["key"] = [freeform(key)]
@@ -278,29 +320,28 @@ def _write_mp4(
         new["comment"] = [comment]
     year_norm = _normalize_year(year)
     if year_norm:
-        new["year"] = [year_norm]
+        held_year = [_mp4_text(v) for v in (tags.get(MP4_ATOMS["year"]) or [])]
+        # A full date in the same year is more than the year says: keep it.
+        if not (held_year and _same_year(held_year[0], year_norm)):
+            new["year"] = [year_norm]
     if label:
         new["label"] = [freeform(label)]
-    tempo = _mp4_bpm(bpm)
     if tempo is not None:
         new["bpm"] = [tempo]
     if genre:
         new["genre"] = [genre]
     for field, atom in MP4_ATOMS.items():
+        legacy = MP4_LEGACY_ATOMS[field]
         if field in new:
             tags[atom] = new[field]
-        elif atom not in tags and field in carried:
-            text = carried[field]
-            if field == "bpm":
-                number = _mp4_bpm(text)
-                if number is not None:
-                    tags[atom] = [number]
-            elif field in ("key", "label"):
-                tags[atom] = [freeform(text)]
-            else:
-                tags[atom] = [text]
-    for legacy in MP4_LEGACY_ATOMS.values():
-        if legacy in tags:
+        elif atom in tags or (field == "year" and year_norm):
+            pass  # the standard atom already holds a value (or the same year)
+        elif legacy in tags:
+            carried = _carry_mp4_values(field, tags[legacy], freeform)
+            if not carried:
+                continue  # nothing could be carried: leave the old atom as it is
+            tags[atom] = carried
+        if legacy in tags and atom in tags:
             del tags[legacy]
     try:
         audio.save()
@@ -359,7 +400,7 @@ def _verify_comments(
 
 
 def _verify_mp4(tags: Any, expected: "dict[str, Optional[str]]") -> bool:
-    """The standard atoms hold what was written and no made-up atom is left."""
+    """The standard atoms hold what was written, and no old atom stands beside one."""
     if tags is None:
         return False
     held = read_mp4_fields(tags, legacy_fallback=False)
@@ -368,11 +409,18 @@ def _verify_mp4(tags: Any, expected: "dict[str, Optional[str]]") -> bool:
             continue
         if field == "bpm":
             tempo = _mp4_bpm(wanted)
-            if tempo is not None and held.get("bpm") != str(tempo):
+            if tempo is None or held.get("bpm") != str(tempo):
+                return False
+        elif field == "year":
+            if not _same_year(held.get("year", ""), wanted):
                 return False
         elif held.get(field) != wanted:
             return False
-    return not any(name in tags for name in MP4_LEGACY_ATOMS.values())
+    # An old atom may remain only where it could not be carried and nothing
+    # stands in the standard atom's place.
+    return not any(
+        MP4_LEGACY_ATOMS[f] in tags and MP4_ATOMS[f] in tags for f in MP4_ATOMS
+    )
 
 
 def _verify_tags(

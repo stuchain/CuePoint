@@ -10,6 +10,7 @@ from cuepoint.data.tag_writer import (
     MP4_ATOMS,
     MP4_LEGACY_ATOMS,
     STATUS_OK,
+    STATUS_WRITE_ERROR,
     read_mp4_fields,
     write_key_comment_year_to_file,
 )
@@ -88,11 +89,25 @@ class TestStandardAtoms:
         _write(path, bpm=bpm)
         assert _tags(path)["tmpo"] == [stored]
 
-    def test_an_unreadable_bpm_is_left_out_not_written_wrongly(self, tmp_path):
+    @pytest.mark.parametrize(
+        "bpm", ["fast", "0", "-5", "65535.6", "70000", "nan", "inf", "0.4"]
+    )
+    def test_a_bpm_that_cannot_be_stored_refuses_the_file(self, tmp_path, bpm):
         path = audio_copy(tmp_path, "m4a")
-        assert _write(path, bpm="fast", genre="House") == (STATUS_OK, None)
-        tags = _tags(path)
-        assert "tmpo" not in tags and tags["\xa9gen"] == ["House"]
+        before = path.read_bytes()
+
+        status, message = _write(path, bpm=bpm, genre="House")
+
+        assert status == STATUS_WRITE_ERROR and message
+        assert path.read_bytes() == before  # nothing of it was written
+
+    @pytest.mark.parametrize(
+        "bpm, stored", [("0.5", 1), ("125.5", 126), ("126.5", 127)]
+    )
+    def test_bpm_rounds_half_up_not_to_even(self, tmp_path, bpm, stored):
+        path = audio_copy(tmp_path, "m4a")
+        assert _write(path, bpm=bpm) == (STATUS_OK, None)
+        assert _tags(path)["tmpo"] == [stored]
 
     def test_a_rewrite_replaces_rather_than_adds(self, tmp_path):
         path = audio_copy(tmp_path, "m4a")
@@ -174,3 +189,92 @@ class TestFilesFromEarlierVersions:
 
     def test_every_field_has_both_atoms(self):
         assert MP4_ATOMS.keys() == MP4_LEGACY_ATOMS.keys()
+
+
+@pytest.mark.unit
+class TestCarryOverAndYear:
+    def test_an_old_atom_stays_when_its_value_cannot_be_carried(self, tmp_path):
+        from mutagen.mp4 import MP4
+
+        path = audio_copy(tmp_path, "m4a")
+        audio = MP4(str(path))
+        if audio.tags is None:
+            audio.add_tags()
+        assert audio.tags is not None
+        audio.tags["BPM\x00"] = ["not a number"]
+        audio.save()
+
+        assert _write(path, genre="House") == (STATUS_OK, None)
+
+        tags = _tags(path)
+        assert tags["BPM\x00"] == ["not a number"]  # kept: nothing stands in its place
+        assert "tmpo" not in tags
+
+    def test_every_value_of_a_multi_valued_old_atom_is_carried(self, tmp_path):
+        from mutagen.mp4 import MP4
+
+        path = audio_copy(tmp_path, "m4a")
+        audio = MP4(str(path))
+        if audio.tags is None:
+            audio.add_tags()
+        assert audio.tags is not None
+        audio.tags["GENR"] = ["Techno", "House"]
+        audio.tags["COMM"] = ["one", "two"]
+        audio.save()
+
+        _write(path, key="8A")
+
+        tags = _tags(path)
+        assert tags["\xa9gen"] == ["Techno", "House"]
+        assert tags["\xa9cmt"] == ["one", "two"]
+        assert "GENR" not in tags and "COMM" not in tags
+
+    def test_a_standard_atom_that_holds_a_value_wins_and_the_old_one_goes(
+        self, tmp_path
+    ):
+        from mutagen.mp4 import MP4
+
+        path = audio_copy(tmp_path, "m4a")
+        audio = MP4(str(path))
+        if audio.tags is None:
+            audio.add_tags()
+        assert audio.tags is not None
+        audio.tags["\xa9cmt"] = ["standard"]
+        audio.tags["COMM"] = ["old"]
+        audio.save()
+
+        _write(path, key="8A")
+
+        tags = _tags(path)
+        assert tags["\xa9cmt"] == ["standard"] and "COMM" not in tags
+
+    @pytest.mark.parametrize("held", ["2021-05-03", "2021-05-03T10:00:00Z", "2021"])
+    def test_a_full_date_in_the_same_year_is_kept(self, tmp_path, held):
+        from mutagen.mp4 import MP4
+
+        path = audio_copy(tmp_path, "m4a")
+        audio = MP4(str(path))
+        if audio.tags is None:
+            audio.add_tags()
+        assert audio.tags is not None
+        audio.tags["\xa9day"] = [held]
+        audio.save()
+
+        assert _write(path, year="2021", genre="House") == (STATUS_OK, None)
+
+        assert _tags(path)["\xa9day"] == [held]
+
+    def test_a_date_in_another_year_is_replaced(self, tmp_path):
+        from mutagen.mp4 import MP4
+
+        path = audio_copy(tmp_path, "m4a")
+        audio = MP4(str(path))
+        if audio.tags is None:
+            audio.add_tags()
+        assert audio.tags is not None
+        audio.tags["\xa9day"] = ["2019-05-03"]
+        audio.save()
+
+        assert _write(path, year="2021") == (STATUS_OK, None)
+
+        assert _tags(path)["\xa9day"] == ["2021"]
