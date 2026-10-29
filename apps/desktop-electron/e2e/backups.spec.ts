@@ -110,4 +110,3 @@ test.describe("Backups and restore (HARDEN-01)", () => {
     expect(integrityCheck(libraryFile(home))).toBe("ok");
   });
 });
-
