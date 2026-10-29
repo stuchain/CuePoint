@@ -245,6 +245,60 @@ async function appReloaded(application: ElectronApplication): Promise<boolean> {
 }
 
 /**
+ * What every window is doing, for the message of a reload that never came: whether it is crashed,
+ * loading, which page it is on and what it shows. A red CI run then says why, not only that it waited.
+ */
+async function describeWindows(application: ElectronApplication): Promise<string> {
+  try {
+    return await application.evaluate(async ({ BrowserWindow }) => {
+      const lines: string[] = [];
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (win.isDestroyed()) {
+          lines.push("(destroyed window)");
+          continue;
+        }
+        const contents = win.webContents;
+        let shell = "unanswered";
+        let text = "";
+        if (!contents.isCrashed()) {
+          try {
+            const seen = (await Promise.race([
+              contents.executeJavaScript(
+                "JSON.stringify({ shell: !!document.querySelector('main.app-main'), text: (document.body ? document.body.innerText : '').slice(0, 300) })",
+              ) as Promise<string>,
+              new Promise<string>((resolve) => setTimeout(() => resolve(""), 2000)),
+            ])) as string;
+            if (seen) {
+              const parsed = JSON.parse(seen) as { shell: boolean; text: string };
+              shell = String(parsed.shell);
+              text = parsed.text;
+            }
+          } catch (error) {
+            shell = `error: ${String(error)}`;
+          }
+        }
+        lines.push(
+          `url=${contents.getURL()} crashed=${contents.isCrashed()} loading=${contents.isLoading()} visible=${win.isVisible()} shell=${shell} text=${JSON.stringify(text)}`,
+        );
+      }
+      return lines.join("\n");
+    });
+  } catch (error) {
+    return `the windows could not be asked: ${String(error)}`;
+  }
+}
+
+/** The window loaded again after a crash, or the test fails saying what each window was doing. */
+async function expectReloaded(application: ElectronApplication, timeout: number): Promise<void> {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (await appReloaded(application)) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`the window did not reload within ${timeout} ms. Windows:\n${await describeWindows(application)}`);
+}
+
+/**
  * Whether a note is on screen as `toBeVisible()` judges it (shown, not hidden, with a box). The
  * crashed page's Playwright handle stays dead for good, so the check runs in the window itself.
  */
@@ -575,7 +629,7 @@ test.describe("Crash injection (HARDEN-05)", () => {
     // Playwright keeps the crashed page's handle as crashed for good, so what follows asks the
     // windows themselves, from the main process.
     await crashRenderer(app);
-    await expect.poll(() => appReloaded(app!), { timeout: 60_000, message: "the window did not reload" }).toBe(true);
+    await expectReloaded(app, 60_000);
     // The strip says one thing at a time: the note waits while a job holds it, and then shows in full.
     await expect
       .poll(() => noteVisible(app!, "CuePoint's window stopped and was reopened."), {
@@ -600,7 +654,7 @@ test.describe("Crash injection (HARDEN-05)", () => {
     await crashRenderer(app);
     // The second one as soon as the reloaded window is up, so a slow machine's own pace cannot
     // push it past the minute the page allows.
-    await expect.poll(() => appReloaded(app!), { timeout: 30_000, message: "the window did not reload" }).toBe(true);
+    await expectReloaded(app, 30_000);
     await crashRenderer(app);
     expect(Date.now() - crashedAt, "the second crash came after the minute").toBeLessThan(60_000);
 
