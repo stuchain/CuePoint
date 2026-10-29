@@ -51,6 +51,8 @@ def run_restore(name: str) -> int:
 def main(arguments: Optional[List[str]] = None) -> int:
     """Entry point: ``arguments`` are those after ``--restore``."""
     args = list(sys.argv[1:] if arguments is None else arguments)
-    if len(args) != 1 or not args[0]:
+    # The app spawns this with the engine's own arguments and environment, so
+    # whatever follows the name (a flag meant for the server) is ignored.
+    if not args or not args[0] or args[0].startswith("--"):
         return _fail("RESTORE_USAGE", "Say which backup to restore")
     return run_restore(args[0])

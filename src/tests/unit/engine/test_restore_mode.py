@@ -146,6 +146,12 @@ class TestRestoreMode:
         assert len(aside) == 1
         assert (home / "backups" / aside[0]).read_bytes() == noise
 
+    def test_extra_arguments_after_the_name_are_ignored(self, home):
+        info = _library_with_backup(home)
+
+        assert restore_mode.main([info.name, "--port", "123", "--whatever"]) == 0
+        assert _job_ids(home / "cuepoint.db") == ["job-1"]
+
     def test_no_name_is_a_usage_error(self, capsys):
         assert restore_mode.main([]) != 0
         assert _error_line(capsys)["error_code"] == "RESTORE_USAGE"

@@ -36,8 +36,18 @@ def set_meta(database: IDatabaseService, key: str, value: str) -> None:
         )
 
 
-def record_last_opened_by(version: str) -> None:
-    """Store ``version`` as the build that last opened the shared library."""
+def record_last_opened_by(version: str) -> bool:
+    """Store ``version`` as the build that last opened the shared library.
+
+    A library whose schema is ahead of this build belongs to a newer CuePoint;
+    its record is kept, so a "this library is from a newer version" screen can
+    name that version. Returns True when the value was written.
+    """
+    from cuepoint.services.migration_runner import schema_is_ahead
     from cuepoint.utils.di_container import get_container
 
-    set_meta(get_container().resolve(IDatabaseService), LAST_OPENED_BY, version)
+    database = get_container().resolve(IDatabaseService)
+    if schema_is_ahead(database.db_path):
+        return False
+    set_meta(database, LAST_OPENED_BY, version)
+    return True

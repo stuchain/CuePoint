@@ -2131,41 +2131,6 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/services/backup_service.py::BackupService._set_aside_damaged::The library could not be set aside before restoring: {exc}. Nothing was changed": {
-    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
-    "verdict": "corpus"
-  },
-  "cuepoint/services/backup_service.py::BackupService.create_backup::Could not create a backup: {exc}": {
-    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
-    "verdict": "corpus"
-  },
-  "cuepoint/services/backup_service.py::BackupService.delete_backup::Could not delete that backup: {exc}": {
-    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
-    "verdict": "corpus"
-  },
-  "cuepoint/services/backup_service.py::BackupService.restore::; a copy of it was saved as {safety.name}": {
-    "holds": "exception text",
-    "reason": "values are our own constants, numbers and names",
-    "verdict": "exempt"
-  },
-  "cuepoint/services/backup_service.py::BackupService.restore::Restoring the backup failed: {exc}. Your library was not changed": {
-    "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
-    "verdict": "corpus"
-  },
-  "cuepoint/services/backup_service.py::BackupService.verify_backup::Backup file not found: {quoted(path)}": {
-    "holds": "a file path (it can name the user's folders and files)",
-    "verdict": "corpus"
-  },
-  "cuepoint/services/backup_service.py::BackupService.verify_backup::This backup could not be read: {exc}": {
-    "holds": "exception text",
-    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path",
-    "verdict": "exempt"
-  },
-  "cuepoint/services/backup_service.py::BackupService.verify_backup::This backup failed its integrity check: {result}": {
-    "holds": "exception text",
-    "reason": "values are our own constants, numbers and names",
-    "verdict": "exempt"
-  },
   "cuepoint/services/batch_service.py::BatchOperation.validated::Favorite must be true or false, not {self.value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"

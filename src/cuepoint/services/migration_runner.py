@@ -68,6 +68,23 @@ def _discovered() -> List[Migration]:
         return list(_DISCOVERED)
 
 
+def _applied_at(db_path: Path) -> set:
+    connection = sqlite3.connect(str(db_path))
+    try:
+        has_table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (SCHEMA_VERSION_TABLE,),
+        ).fetchone()
+        if has_table is None:
+            return set()
+        return {
+            int(row[0])
+            for row in connection.execute(f"SELECT version FROM {SCHEMA_VERSION_TABLE}")
+        }
+    finally:
+        connection.close()
+
+
 def pending_versions(db_path: Path) -> List[int]:
     """Versions this build would apply to the library at ``db_path``.
 
@@ -80,23 +97,21 @@ def pending_versions(db_path: Path) -> List[int]:
     Raises:
         sqlite3.Error: If the file cannot be read as a library.
     """
-    connection = sqlite3.connect(str(db_path))
-    try:
-        has_table = connection.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
-            (SCHEMA_VERSION_TABLE,),
-        ).fetchone()
-        if has_table is None:
-            return []
-        applied = {
-            int(row[0])
-            for row in connection.execute(f"SELECT version FROM {SCHEMA_VERSION_TABLE}")
-        }
-    finally:
-        connection.close()
+    applied = _applied_at(db_path)
     if not applied:
         return []
     return [m.version for m in _discovered() if m.version not in applied]
+
+
+def schema_is_ahead(db_path: Path) -> bool:
+    """True when the library has applied migrations this build does not have.
+
+    Such a library belongs to a newer CuePoint; an older one must not overwrite
+    what that build recorded about it (``library_meta.last_opened_by``).
+    """
+    applied = _applied_at(db_path)
+    known = {m.version for m in _discovered()}
+    return bool(applied - known)
 
 
 class MigrationRunner(IMigrationRunner):

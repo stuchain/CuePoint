@@ -283,3 +283,69 @@ class TestPreUpgrade:
         assert get_meta(get_container().resolve(IDatabaseService), LAST_OPENED_BY) == (
             __version__
         )
+
+    def test_the_pre_upgrade_copy_is_taken_even_with_backups_switched_off(
+        self, library
+    ):
+        from cuepoint.services.backup_service import BackupService
+        from cuepoint.services.database_service import DatabaseService
+
+        class Off:
+            def get(self, key):
+                return False if key == "backup.enabled" else None
+
+        _make_old_database(library)
+        service = DatabaseService(db_path=library)
+        try:
+            taken = BackupService(
+                database_service=service, config_service=Off()
+            ).backup_on_launch()
+        finally:
+            service.close_all()
+
+        assert taken is not None and taken.reason == "pre-upgrade"
+
+    def test_switched_off_still_means_no_launch_copy(self, library):
+        from cuepoint.services.backup_service import BackupService
+        from cuepoint.services.database_service import DatabaseService
+
+        class Off:
+            def get(self, key):
+                return False if key == "backup.enabled" else None
+
+        _make_populated_database(library)
+        service = DatabaseService(db_path=library)
+        try:
+            assert (
+                BackupService(
+                    database_service=service, config_service=Off()
+                ).backup_on_launch()
+                is None
+            )
+        finally:
+            service.close_all()
+
+    def test_an_older_build_keeps_the_newer_builds_version(self, library):
+        from cuepoint.persistence.library_meta import (
+            LAST_OPENED_BY,
+            get_meta,
+            record_last_opened_by,
+            set_meta,
+        )
+        from cuepoint.services.bootstrap import bootstrap_services
+        from cuepoint.services.interfaces import IActivityService, IDatabaseService
+        from cuepoint.utils.di_container import get_container
+
+        _make_populated_database(library)
+        bootstrap_services()
+        get_container().resolve(IActivityService)
+        database = get_container().resolve(IDatabaseService)
+        set_meta(database, LAST_OPENED_BY, "9.9.9")
+        with database.transaction() as conn:
+            conn.execute(
+                "INSERT INTO schema_version (version, description, applied_at)"
+                " VALUES (9999, 'from the future', '2030-01-01')"
+            )
+
+        assert record_last_opened_by("1.0.0") is False
+        assert get_meta(database, LAST_OPENED_BY) == "9.9.9"

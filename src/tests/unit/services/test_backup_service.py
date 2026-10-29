@@ -533,3 +533,255 @@ class TestRestoreOfADamagedLibrary:
         assert aside.path.read_bytes() == noise
         assert Path(str(aside.path) + "-wal").read_bytes() == b"wal-bytes"
         assert _titles(db) == ["Original"]
+
+
+def _leave_a_wal_at_close(db, monkeypatch, content: bytes = b"stale-wal-frames"):
+    """Make the library still carry a -wal when restore reaches the swap."""
+    real = db.close_all
+
+    def close_then_leave_wal():
+        real()
+        Path(str(db.db_path) + "-wal").write_bytes(content)
+
+    monkeypatch.setattr(db, "close_all", close_then_leave_wal)
+
+
+def _real_wal_library(db: DatabaseService) -> None:
+    """Rows that live only in the -wal: checkpointing is switched off."""
+    db.connect().execute("PRAGMA wal_autocheckpoint = 0")
+
+
+@pytest.mark.unit
+class TestStaleWalNeverReplays:
+    def test_a_stale_wal_present_at_the_swap_is_moved_before_it(
+        self, db, backups, monkeypatch
+    ):
+        import os
+
+        _add_track(db, "1", "Original")
+        info = backups.create_backup()
+        _add_track(db, "2", "Later")
+        wal = Path(str(db.db_path) + "-wal")
+        _leave_a_wal_at_close(db, monkeypatch)
+
+        seen = {}
+        real_replace = os.replace
+
+        def spy(src, dst):
+            if Path(dst) == db.db_path:
+                seen["wal_at_swap"] = wal.exists()
+            return real_replace(src, dst)
+
+        monkeypatch.setattr(os, "replace", spy)
+        backups.restore(info.path)
+        monkeypatch.undo()
+
+        assert seen == {"wal_at_swap": False}
+        assert not wal.exists(), "the old WAL was left beside the restored library"
+        assert _titles(db) == ["Original"]
+        assert not list(db.db_path.parent.glob(".cuepoint.db*.stale"))
+
+    def test_a_failed_move_aside_aborts_before_the_swap(self, db, backups, monkeypatch):
+        import os
+
+        _add_track(db, "1", "Original")
+        info = backups.create_backup()
+        _add_track(db, "2", "Later")
+        db.close_all()
+        _leave_a_wal_at_close(db, monkeypatch, b"x" * 64)
+        before_db = db.db_path.read_bytes()
+
+        real_replace = os.replace
+
+        def refuse_wal(src, dst):
+            if str(src).endswith("-wal") and str(dst).endswith(".stale"):
+                raise PermissionError("antivirus has the file open")
+            return real_replace(src, dst)
+
+        monkeypatch.setattr(os, "replace", refuse_wal)
+        with pytest.raises(DatabaseError) as exc:
+            backups.restore(info.path)
+        monkeypatch.undo()
+
+        assert exc.value.error_code == "RESTORE_FAILED"
+        assert "was not changed" in exc.value.message
+        assert "antivirus" not in exc.value.message
+        assert db.db_path.read_bytes() == before_db
+        assert Path(str(db.db_path) + "-wal").read_bytes() == b"x" * 64
+
+    def test_a_crash_between_the_move_and_the_swap_is_undone_at_start(
+        self, db, backups
+    ):
+        _add_track(db, "1", "Original")
+        db.close_all()
+        live_wal = Path(str(db.db_path) + "-wal")
+        stale = db.db_path.parent / ".cuepoint.db-wal.stale"
+        stale.write_bytes(b"wal")
+        (db.db_path.parent / ".cuepoint.db.restore").write_bytes(b"temp")
+        live_wal.unlink(missing_ok=True)
+
+        backups.sweep_partials()
+
+        assert live_wal.read_bytes() == b"wal"
+        assert not stale.exists()
+        assert not (db.db_path.parent / ".cuepoint.db.restore").exists()
+
+    def test_leftovers_after_a_finished_swap_are_dropped_at_start(self, db, backups):
+        stale = db.db_path.parent / ".cuepoint.db-wal.stale"
+        stale.write_bytes(b"wal")
+        backups.sweep_partials()
+        assert not stale.exists()
+
+
+@pytest.mark.unit
+class TestDamagedSetAside:
+    def test_real_wal_rows_survive_a_main_file_that_opens_but_is_corrupt(
+        self, db, backups, tmp_path
+    ):
+        import shutil
+
+        _add_track(db, "1", "Original")
+        info = backups.create_backup()
+        db.close_all()
+        live = db.db_path
+        # A crash image: a writer with checkpointing off leaves rows only in the
+        # -wal; snapshot main + wal while it is still open.
+        writer = sqlite3.connect(str(live))
+        writer.execute("PRAGMA journal_mode=WAL")
+        writer.execute("PRAGMA wal_autocheckpoint = 0")
+        writer.execute(
+            "INSERT INTO jobs (id, type, state, created_at, updated_at)"
+            " VALUES ('wal-only', 'match', 'completed', 'x', 'x')"
+        )
+        writer.commit()
+        root = writer.execute(
+            "SELECT rootpage FROM sqlite_master WHERE name = 'tracks'"
+        ).fetchone()[0]
+        snap = tmp_path / "snap"
+        snap.mkdir()
+        shutil.copyfile(live, snap / "main")
+        shutil.copyfile(str(live) + "-wal", snap / "wal")
+        writer.close()
+        wal_bytes = (snap / "wal").read_bytes()
+        assert len(wal_bytes) > 0
+
+        main = bytearray((snap / "main").read_bytes())
+        main[(root - 1) * 4096 + 8 : (root - 1) * 4096 + 3000] = b"\xff" * (2992)
+        for suffix in ("", "-wal", "-shm"):
+            Path(str(live) + suffix).unlink(missing_ok=True)
+        live.write_bytes(bytes(main))
+        Path(str(live) + "-wal").write_bytes(wal_bytes)
+        main_corrupt = live.read_bytes()
+
+        aside = backups.restore(info.path)
+
+        assert aside.reason == "pre-restore-damaged"
+        assert aside.path.read_bytes() == main_corrupt
+        assert Path(str(aside.path) + "-wal").read_bytes() == wal_bytes
+        assert _titles(db) == ["Original"]
+        assert not list(backups.backup_dir.glob(".*"))
+
+    def test_a_failed_set_aside_aborts_and_changes_nothing(
+        self, db, backups, monkeypatch
+    ):
+        import os
+
+        _add_track(db, "1", "Original")
+        info = backups.create_backup()
+        db.close_all()
+        db.db_path.write_bytes(os.urandom(4096))
+        before = db.db_path.read_bytes()
+
+        def no_copy(*_a, **_k):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(shutil_module(), "copyfile", no_copy)
+        with pytest.raises(DatabaseError) as exc:
+            backups.restore(info.path)
+        monkeypatch.undo()
+
+        assert exc.value.error_code == "RESTORE_FAILED"
+        assert "disk full" not in exc.value.message
+        assert db.db_path.read_bytes() == before
+        assert not [b for b in backups.list_backups() if "damaged" in b.name]
+
+    def test_orphaned_sidecars_are_swept(self, db, backups):
+        backups.backup_dir.mkdir(parents=True, exist_ok=True)
+        orphan = (
+            backups.backup_dir / "cuepoint-20200101-000000-pre-restore-damaged.db-wal"
+        )
+        orphan.write_bytes(b"x")
+        lone = backups.backup_dir / "cuepoint-20200101-000000-manual.db.json"
+        lone.write_text("{}")
+        backups.sweep_partials()
+        assert not orphan.exists() and not lone.exists()
+
+    def test_delete_removes_the_wal_shm_and_record_too(self, db, backups):
+        _add_track(db, "1", "Song")
+        made = backups.create_backup(reason="pre-restore-damaged")
+        for suffix in ("-wal", "-shm"):
+            Path(str(made.path) + suffix).write_bytes(b"x")
+        backups.delete_backup(made.name)
+        assert list(backups.backup_dir.iterdir()) == []
+
+
+def shutil_module():
+    import shutil
+
+    return shutil
+
+
+@pytest.mark.unit
+class TestMessagesAndNames:
+    def test_user_facing_messages_carry_no_raw_error_text(self, db, backups, tmp_path):
+        bogus = tmp_path / "bogus.db"
+        bogus.write_bytes(b"not a database" * 50)
+        with pytest.raises(DatabaseError) as exc:
+            backups.verify_backup(bogus)
+        assert exc.value.message in {
+            "This backup could not be read",
+            "This backup failed its integrity check",
+        }
+        assert str(tmp_path) not in exc.value.message
+
+    def test_the_name_must_match_completely(self, db, backups):
+        _add_track(db, "1", "Song")
+        made = backups.create_backup()
+        for bad in (made.name + "\n", made.name + "x"):
+            with pytest.raises(DatabaseError) as exc:
+                backups.backup_path(bad)
+            assert exc.value.error_code == "BACKUP_INVALID_NAME"
+
+    def test_concurrent_creates_in_one_second_never_share_a_name(self, db, backups):
+        import threading
+
+        _add_track(db, "1", "Song")
+        made: list = []
+        errors: list = []
+
+        def work():
+            try:
+                service = BackupService(database_service=db)
+                made.append(service.create_backup(reason="manual").name)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        # Each thread has its own connection through the shared service.
+        threads = [threading.Thread(target=work) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, errors
+        assert len(set(made)) == 6
+        assert (
+            len(list(backups.backup_dir.glob("cuepoint-*.db"))) == 5
+        )  # pruned to keep
+
+    def test_a_reserved_name_is_skipped_not_reused(self, db, backups, monkeypatch):
+        _add_track(db, "1", "Song")
+        backups.backup_dir.mkdir(parents=True, exist_ok=True)
+        first, partial = backups._reserve("manual")
+        second, _ = backups._reserve("manual")
+        assert first != second and partial.exists()
