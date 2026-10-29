@@ -66,6 +66,7 @@ import { openActivity } from "./components/shell/activityState";
 import { useMenuCommands } from "./components/shell/useMenuCommands";
 import { useWindowTitle } from "./components/shell/useWindowTitle";
 import { useStartupNotices } from "./components/shell/useStartupNotices";
+import { LibraryGate } from "./screens/recovery/LibraryGate";
 import { undoTarget } from "./api/menuCommands";
 import { PREPARE_SET_ROUTE, preparePath } from "./screens/prepare/prepareLink";
 import { EntityScreen } from "./screens/discover/EntityScreen";
@@ -516,7 +517,10 @@ export default function App() {
           <MotionProvider>
             <ToastProvider>
               <InspectorSlotProvider>
-                <AppShell />
+                {/* A library that cannot be used takes the whole window (HARDEN-03). */}
+                <LibraryGate>
+                  <AppShell />
+                </LibraryGate>
               </InspectorSlotProvider>
             </ToastProvider>
           </MotionProvider>

@@ -59,6 +59,7 @@ const CONTRACTIONS_APPROVED: ReadonlyArray<{ file: string; reason: string }> = [
   { file: "api/stripMessages.ts", reason: "the strip's messages, from mockup 4" },
   { file: "screens/BackupsSection.tsx", reason: "\"couldn't\" in a failed backup's line" },
   { file: "screens/backups/useRestoreFlow.tsx", reason: "\"Restore when it's done\" in the busy question, from mockup 2" },
+  { file: "screens/recovery/LibraryRecovery.tsx", reason: "the four recovery screens, from mockup 3" },
 ];
 
 function offenders(): Map<string, string[]> {

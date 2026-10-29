@@ -1,0 +1,67 @@
+/* The recovery screen (HARDEN-03, DEC-182, DEC-305): the whole window, no sidebar and no player. Tokens only. */
+.library-recovery {
+  box-sizing: border-box;
+  min-height: 100vh;
+  background: var(--bg-app);
+  color: var(--fg-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.library-recovery__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  font-family: var(--font-voice);
+  font-size: var(--control-font-size);
+  font-weight: var(--weight-strong);
+}
+
+.library-recovery__logo {
+  display: block;
+  width: round(nearest, calc(24px * var(--scale)), 1px);
+  height: round(nearest, calc(24px * var(--scale)), 1px);
+}
+
+.library-recovery__card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(680px * var(--scale) + 2 * var(--space-lg));
+  margin: calc(72px * var(--scale)) auto 0;
+  padding: 0 var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* The one shared header carries the title; here it has no rule under it and does not stick. */
+.library-recovery .cp-screen-header {
+  position: static;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+  background: none;
+}
+
+.library-recovery .cp-screen-header::before {
+  display: none;
+}
+
+.library-recovery .cp-screen-header__title {
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.library-recovery__text {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.library-recovery__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
