@@ -3698,6 +3698,56 @@ export interface WhatsNew {
   releaseUrl: string | null;
 }
 
+/** One backup of the library (HARDEN-01). `reason` is launch, manual, pre-upgrade, pre-restore or pre-restore-damaged. */
+export interface BackupEntry {
+  name: string;
+  createdAt: string;
+  reason: string;
+  appVersion: string | null;
+  bytes: number;
+  fromVersion?: string | null;
+  toVersion?: string | null;
+}
+
+export interface BackupList {
+  backups: BackupEntry[];
+  /** Where the backups are kept; null when it cannot be said. */
+  folder: string | null;
+}
+
+export interface BackupRunningWork {
+  id: string;
+  type: string;
+  state: string;
+}
+
+/** A restore never rejects for a refusal: `WORK_RUNNING` names the work, `RESTORE_IN_PROGRESS` means one is going on. */
+export type BackupRestoreResult =
+  | { ok: true; safetyBackup?: string; engineRunning: boolean }
+  | { ok: false; errorCode: string; message: string; running?: BackupRunningWork[] };
+
+/** What a restore pushes as it goes; `restored` is the cue to reload every view. */
+export type BackupRestoreEvent =
+  | { phase: "stopping" | "restoring" | "starting" }
+  | { phase: "restored"; safetyBackup?: string }
+  | { phase: "failed"; errorCode: string; message: string };
+
+export interface BackupsBridge {
+  list: () => Promise<BackupList>;
+  /** Back up now (reason `manual`). */
+  create: () => Promise<BackupEntry>;
+  /**
+   * Restore a backup: main stops CuePoint's work, restores, and starts it again, whatever the
+   * outcome. With work running and no `cancelRunning`, nothing is touched and the answer is
+   * `WORK_RUNNING`; asking first (DEC-173) is the page's job. `cancelRunning` cancels the work
+   * through its own cancel and waits for it.
+   */
+  restore: (name: string, options?: { cancelRunning?: boolean }) => Promise<BackupRestoreResult>;
+  /** Show the backups folder, or one backup in it; false when the folder is not known. */
+  showInFolder: (name?: string) => Promise<boolean>;
+  onRestoreEvent: (listener: (event: BackupRestoreEvent) => void) => () => void;
+}
+
 export interface UpdatesBridge {
   getState: () => Promise<UpdateState>;
   /** Check now; a check that is running is joined. Answers the state it ends in. */
@@ -4261,6 +4311,8 @@ export interface CuePointBridge {
   buildInfo?: () => Promise<AppBuildInfo>;
   /** The updater (DIST-06). Absent in a browser tab, or in an older shell. */
   updates?: UpdatesBridge;
+  /** Backups and restore (HARDEN-01b). Absent in a browser tab, or in an older shell. */
+  backups?: BackupsBridge;
   /** How long a page took to draw, by destination id, for main's log. Absent in a browser tab. */
   reportPageSwitch?: (page: string, drawMs: number) => void;
   errorReporting?: {

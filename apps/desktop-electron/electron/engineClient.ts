@@ -3193,6 +3193,24 @@ export type SetListDestinationChoice =
   | { canceled: true }
   | { canceled: false; filePath: string };
 
+/** One backup of the library, as `GET /api/v1/backups` lists it (HARDEN-01). */
+export interface BackupEntry {
+  name: string;
+  createdAt: string;
+  /** launch, manual, pre-upgrade, pre-restore or pre-restore-damaged. */
+  reason: string;
+  appVersion: string | null;
+  bytes: number;
+  fromVersion?: string | null;
+  toVersion?: string | null;
+}
+
+export interface BackupList {
+  backups: BackupEntry[];
+  /** Where the backups are kept; null when the engine does not say. */
+  folder: string | null;
+}
+
 export class EngineClient {
   constructor(
     private readonly port: number,
@@ -4740,6 +4758,21 @@ export class EngineClient {
    */
   async cancelJob(jobId: string): Promise<{ id: string; state: string }> {
     const res = await fetch(this.url(`/api/v1/jobs/${jobId}/cancel`), {
+      method: "POST",
+      headers: this.headers(),
+      body: "{}",
+    });
+    return readJson(res);
+  }
+
+  async listBackups(): Promise<BackupList> {
+    const res = await fetch(this.url("/api/v1/backups"), { headers: this.headers() });
+    return readJson(res);
+  }
+
+  /** Back up now (reason `manual`). */
+  async createBackup(): Promise<BackupEntry> {
+    const res = await fetch(this.url("/api/v1/backups"), {
       method: "POST",
       headers: this.headers(),
       body: "{}",

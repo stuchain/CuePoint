@@ -63,6 +63,7 @@ import { scrubText } from "./reportScrub";
 import { enforceSingleInstance, onlyIfFirst } from "./singleInstance";
 import { UpdateNotes, openNoteLink, openReleasePage, pruneInstalledUpdates } from "./updateNotes";
 import { compareVersions, isTestVersion } from "./updateRule";
+import { Backups, validBackupName } from "./backups";
 import { Updater, type UpdateState, type WindowsUpdater } from "./updater";
 import {
   E2E_DISPLAY_ENV,
@@ -183,6 +184,16 @@ const engine: EngineSupervisor = new EngineSupervisor({
     void beatportAuth()
       .onEngineStarted()
       .catch(() => breadcrumb("beatport", "could not hand the token to the engine"));
+  },
+});
+
+/** Backups and restore (HARDEN-01b): the restore stops the engine, runs it once, and starts it again. */
+const backups = new Backups({
+  engine,
+  shell,
+  join: (folder, name) => path.join(folder, name),
+  notify: (event): void => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("backups:restoreEvent", event);
   },
 });
 
@@ -1009,6 +1020,19 @@ function registerIpcHandlers(): void {
   handle("engine:getJob", (_event, jobId: string) => engine.getJob(jobId));
   handle("engine:getJobResults", (_event, jobId: string) => engine.getJobResults(jobId));
   handle("engine:cancelJob", (_event, jobId: string) => engine.cancelJob(jobId));
+  // Backups (HARDEN-01b). Asking first while work runs is the page's job; `restore` answers
+  // WORK_RUNNING with what runs, and cancels it itself only when told to.
+  handle("backups:list", () => backups.listBackups());
+  handle("backups:create", () => backups.createBackup());
+  handle("backups:restore", (_event, name: unknown, options: unknown) => {
+    if (!validBackupName(name)) throw new Error("Choose a backup to restore.");
+    const cancelRunning = (options as { cancelRunning?: unknown } | null | undefined)?.cancelRunning === true;
+    return backups.restore(name, { cancelRunning });
+  });
+  handle("backups:showInFolder", (_event, name: unknown) => {
+    if (name !== undefined && name !== null && !validBackupName(name)) throw new Error("Choose a backup to show.");
+    return backups.showInFolder(name ?? undefined);
+  });
   handle("engine:getBeatportTokenStatus", () => engine.getBeatportTokenStatus());
   handle("engine:setBeatportToken", (_event, token: string) => engine.setBeatportToken(token));
   handle("engine:testBeatportToken", (_event, body) => engine.testBeatportToken(body));

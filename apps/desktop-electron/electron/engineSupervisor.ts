@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import type { WebContents } from "electron";
 import {
   EngineClient,
+  type BackupEntry,
+  type BackupList,
   type ActivityFeed,
   type BeatportTokenStatusWire,
   type EngineJobList,
@@ -288,6 +290,17 @@ export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.Process
   return withDecoderPath(env, input.decoderPath);
 }
 
+/** How a one-off run of the engine ended (`runOnce`). */
+export interface EngineRunResult {
+  /** The exit code; null when it did not exit by itself (timed out, or never spawned). */
+  code: number | null;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  /** Why it could not be spawned, when it could not. */
+  spawnError?: string;
+}
+
 /** What a launch answers when `stop()` came before it could spawn. */
 const STOPPED: EngineStatus = { connected: false, error: "Engine not running" };
 
@@ -364,6 +377,8 @@ export class EngineSupervisor {
    * no engine, so nothing may spawn one, whatever was in flight when it asked.
    */
   private stopRequested = false;
+  /** Set by `stopForMaintenance()`, cleared by the next `start()`: the strip says why it is stopped. */
+  private maintenance = false;
   /**
    * Counts the times someone other than an automatic restart took over (`stop()`, `restart()`). An
    * automatic restart remembers the count it began under and does nothing once it has changed, so a
@@ -412,6 +427,107 @@ export class EngineSupervisor {
     stream.on("error", () => undefined);
   }
 
+  /**
+   * What to spawn for the engine: a stand-in (tests), the bundled sidecar, or development Python.
+   * `extraArgs` follow the engine's own arguments. `launch()` and `runOnce()` both use it, so a
+   * one-off run (the restore) resolves and is configured exactly as the engine is.
+   */
+  private spawnSpec(
+    env: NodeJS.ProcessEnv,
+    extraArgs: readonly string[],
+  ): { command: string; args: string[]; cwd: string; env: NodeJS.ProcessEnv } | { error: string } {
+    const standIn = this.options.command?.();
+    if (standIn) {
+      return {
+        command: standIn.command,
+        args: [...standIn.args, ...extraArgs],
+        cwd: standIn.cwd ?? REPO_ROOT,
+        env,
+      };
+    }
+    if (shouldUseBundledEngine()) {
+      const enginePath = getBundledEnginePath();
+      if (!fs.existsSync(enginePath)) return { error: `Bundled engine not found: ${enginePath}` };
+      return { command: enginePath, args: [...extraArgs], cwd: path.dirname(enginePath), env };
+    }
+    return {
+      command: resolveDevelopmentPython(),
+      args: ["-m", "cuepoint.engine", ...extraArgs],
+      cwd: REPO_ROOT,
+      env: { ...env, PYTHONPATH: path.join(REPO_ROOT, "src") },
+    };
+  }
+
+  /**
+   * Run the engine once with `extraArgs` and wait for it to exit (the restore, HARDEN-01). Only
+   * ever called with the engine stopped. Never rejects: a spawn that fails or a run that outlasts
+   * `timeoutMs` (the tree is then stopped) is in the answer.
+   */
+  runOnce(extraArgs: readonly string[], timeoutMs: number): Promise<EngineRunResult> {
+    const env = engineEnvironment({
+      port: 0,
+      token: crypto.randomBytes(24).toString("hex"),
+      sessionId: this.sessionId,
+      parentPid: process.pid,
+      decoderPath: this.options.decoderPath?.() ?? null,
+      errorReporting: this.options.errorReporting?.() ?? false,
+      build: this.options.build,
+    });
+    const spec = this.spawnSpec(env, extraArgs);
+    if ("error" in spec) {
+      return Promise.resolve({ code: null, stdout: "", stderr: "", timedOut: false, spawnError: spec.error });
+    }
+    return new Promise<EngineRunResult>((resolve) => {
+      let stdout = "";
+      let stderr = "";
+      let timedOut = false;
+      let done = false;
+      let child: ChildProcess | null = null;
+      const finish = (result: EngineRunResult): void => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(result);
+      };
+      const timer = setTimeout(() => {
+        timedOut = true;
+        if (child) stopProcessTree(child, { force: true });
+      }, timeoutMs);
+      timer.unref?.();
+      try {
+        child = spawn(spec.command, spec.args, {
+          cwd: spec.cwd,
+          env: spec.env,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+      } catch (error) {
+        finish({ code: null, stdout, stderr, timedOut: false, spawnError: (error as Error).message });
+        return;
+      }
+      child.stdout?.on("data", (chunk: Buffer) => {
+        stdout = (stdout + chunk.toString("utf8")).slice(-16_384);
+      });
+      child.stderr?.on("data", (chunk: Buffer) => {
+        stderr = (stderr + chunk.toString("utf8")).slice(-16_384);
+      });
+      child.on("error", (error: Error) =>
+        finish({ code: null, stdout, stderr, timedOut, spawnError: error.message }),
+      );
+      // `close`, not `exit`: everything the child wrote has been read by then.
+      child.on("close", (code: number | null) => finish({ code, stdout, stderr, timedOut }));
+    });
+  }
+
+  /**
+   * Stop the engine so something else may hold the library (a restore). Stops it as `stop()` does,
+   * so nothing is counted as a crash or a restart, and the status says "Restoring" rather than
+   * "not running" until the next `start()`.
+   */
+  async stopForMaintenance(): Promise<void> {
+    this.maintenance = true;
+    await this.stop();
+  }
+
   getRepoRoot(): string {
     return REPO_ROOT;
   }
@@ -424,6 +540,7 @@ export class EngineSupervisor {
    */
   start(): Promise<EngineStatus> {
     this.stopRequested = false;
+    this.maintenance = false;
     const run = this.launch();
     this.startup = run;
     void run
@@ -462,44 +579,22 @@ export class EngineSupervisor {
       build: this.options.build,
     });
 
-    const standIn = this.options.command?.();
-    if (standIn) {
-      this.child = spawn(standIn.command, standIn.args, {
-        cwd: standIn.cwd ?? REPO_ROOT,
-        env: baseEnv,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } else if (shouldUseBundledEngine()) {
-      const enginePath = getBundledEnginePath();
-      if (!fs.existsSync(enginePath)) {
-        // Reported here and not by `main.ts`: this start resolves, it does not reject.
-        this.incidents.startFailed(
-          "missing",
-          "bundled engine not found",
-          "the bundled engine is missing from the install",
-          this.outputTail(),
-        );
-        return {
-          connected: false,
-          error: `Bundled engine not found: ${enginePath}`,
-        };
-      }
-      this.child = spawn(enginePath, [], {
-        cwd: path.dirname(enginePath),
-        env: baseEnv,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } else {
-      const python = resolveDevelopmentPython();
-      this.child = spawn(python, ["-m", "cuepoint.engine"], {
-        cwd: REPO_ROOT,
-        env: {
-          ...baseEnv,
-          PYTHONPATH: path.join(REPO_ROOT, "src"),
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+    const spec = this.spawnSpec(baseEnv, []);
+    if ("error" in spec) {
+      // Reported here and not by `main.ts`: this start resolves, it does not reject.
+      this.incidents.startFailed(
+        "missing",
+        "bundled engine not found",
+        "the bundled engine is missing from the install",
+        this.outputTail(),
+      );
+      return { connected: false, error: spec.error };
     }
+    this.child = spawn(spec.command, spec.args, {
+      cwd: spec.cwd,
+      env: spec.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     this.spawnedAt = Date.now();
     this.drain(this.child, "stdout");
@@ -690,7 +785,7 @@ export class EngineSupervisor {
     if (!this.port || !this.child) {
       return {
         connected: false,
-        error: this.reconnecting ? "Reconnecting" : "Engine not running",
+        error: this.maintenance ? "Restoring" : this.reconnecting ? "Reconnecting" : "Engine not running",
         reconnecting: this.reconnecting,
         restartAttempts: this.restartAttempts,
       };
@@ -1489,6 +1584,14 @@ export class EngineSupervisor {
     result?: Record<string, unknown>;
   }> {
     return (await this.readyClient()).getJobResults(jobId);
+  }
+
+  async listBackups(): Promise<BackupList> {
+    return (await this.readyClient()).listBackups();
+  }
+
+  async createBackup(): Promise<BackupEntry> {
+    return (await this.readyClient()).createBackup();
   }
 
   async cancelJob(jobId: string): Promise<{ id: string; state: string }> {

@@ -462,6 +462,20 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   setPrivacyExitPrefs: (prefs) => ipcRenderer.invoke("privacy:setExitPrefs", prefs),
   // This build's version, release, commit and environment (REPORT-07), for the About dialog.
   buildInfo: () => ipcRenderer.invoke("app:buildInfo"),
+  // Backups and restore (HARDEN-01b). `restore` answers { ok, ... }; it never rejects for a refusal.
+  backups: {
+    list: () => ipcRenderer.invoke("backups:list"),
+    create: () => ipcRenderer.invoke("backups:create"),
+    restore: (name, options) =>
+      ipcRenderer.invoke("backups:restore", name, { cancelRunning: options?.cancelRunning === true }),
+    showInFolder: (name) => ipcRenderer.invoke("backups:showInFolder", name),
+    // A push while a restore goes on; `restored` is the cue to reload every view.
+    onRestoreEvent: (listener) => {
+      const handler = (_event, restoreEvent) => listener(restoreEvent);
+      ipcRenderer.on("backups:restoreEvent", handler);
+      return () => ipcRenderer.removeListener("backups:restoreEvent", handler);
+    },
+  },
   /**
    * The updater (DIST-06). The page can read the state, ask for a check or a restart and
    * hear the changes; it names no address, and main opens only its own release pages.

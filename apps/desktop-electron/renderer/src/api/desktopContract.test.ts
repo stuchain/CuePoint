@@ -25,6 +25,7 @@ import mainSource from "../../../electron/main.ts?raw";
 import reportingSource from "../../../electron/reporting.ts?raw";
 import engineClientSource from "../../../electron/engineClient.ts?raw";
 import supervisorSource from "../../../electron/engineSupervisor.ts?raw";
+import backupsSourceRaw from "../../../electron/backups.ts?raw";
 import appMenuSource from "../../../electron/appMenu.ts?raw";
 import menuCommandsSource from "./menuCommands.ts?raw";
 import bridgeTypesSource from "./cuepointBridge.types.ts?raw";
@@ -42,6 +43,7 @@ const main = lf(mainSource);
 const engineClient = lf(engineClientSource);
 const supervisor = lf(supervisorSource);
 const bridgeTypes = lf(bridgeTypesSource);
+const backupsSource = lf(backupsSourceRaw);
 const readReportingSource = (): string => lf(reportingSource);
 
 /** Every channel the preload invokes. */
@@ -2441,6 +2443,46 @@ describe("desktop contract", () => {
     it("installs the menu from main, and sets the window's zoom to a fixed factor", () => {
       expect(main).toContain("installAppMenu(");
       expect(main).toContain("setVisualZoomLevelLimits(1, 1)");
+    });
+  });
+  describe("backups and restore (HARDEN-01b)", () => {
+    const channels = ["backups:list", "backups:create", "backups:restore", "backups:showInFolder"];
+
+    it("handles every backups channel in main and invokes it from the preload, and no other", () => {
+      const handled = handledChannels(main).filter((channel) => channel.startsWith("backups:")).sort();
+      const invoked = invokedChannels(preload).filter((channel) => channel.startsWith("backups:")).sort();
+      expect(handled).toEqual([...channels].sort());
+      expect(invoked).toEqual([...channels].sort());
+    });
+
+    it("exposes backups: { list, create, restore, showInFolder }", () => {
+      const block = preload.slice(preload.indexOf("backups: {"), preload.indexOf("backups: {") + 1200);
+      for (const method of ["list:", "create:", "restore:", "showInFolder:", "onRestoreEvent:"]) {
+        expect(block, method).toContain(method);
+      }
+      expect(bridgeTypes).toContain("backups?: BackupsBridge");
+      expect(bridgeTypes).toContain("export interface BackupsBridge");
+    });
+
+    it("validates the name in main and passes only cancelRunning on from the page", () => {
+      expect(main).toMatch(/import \{[^}]*\bvalidBackupName\b[^}]*\} from "\.\/backups";/);
+      expect(main).toMatch(/handle\("backups:restore",[\s\S]{0,200}validBackupName\(name\)/);
+      expect(preload).toMatch(/"backups:restore", name, \{ cancelRunning: options\?\.cancelRunning === true \}/);
+    });
+
+    it("pushes the restore's progress on backups:restoreEvent, listened for and sent on the same channel", () => {
+      expect(preload).toMatch(/ipcRenderer\.on\("backups:restoreEvent"/);
+      expect(preload).toMatch(/ipcRenderer\.removeListener\("backups:restoreEvent"/);
+      expect(main).toMatch(/\.send\("backups:restoreEvent"/);
+    });
+
+    it("keeps the restore's types in step with main's", () => {
+      for (const phase of ["stopping", "restoring", "starting", "restored", "failed"]) {
+        expect(bridgeTypes, phase).toContain(`"${phase}"`);
+        expect(backupsSource, phase).toContain(`"${phase}"`);
+      }
+      expect(bridgeTypes).toContain("WORK_RUNNING");
+      expect(backupsSource).toContain("WORK_RUNNING");
     });
   });
   describe("the updater (DIST-06)", () => {
