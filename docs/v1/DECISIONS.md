@@ -8628,7 +8628,9 @@ long dash (—) between words.
 - **Sidebar alignment B** Every page header is at least as tall as the rail's top (two bars and four
   xs steps plus the hairline), so its divider lies on the rail's line, and the first content sits
   one rail step (`--space-md`) under it, level with the first link (amends C30's 12 under the
-  divider). Taller header content still grows it. The tight rail (2x and 3x in a short window) has
+  divider). Taller header content still grows it, so the Library's notes ("N values not in files ·
+  N changes not exported", the file's state, what an import applied) join its facts line after a dot
+  instead of taking a third line; that line wraps between its parts in a narrow window. The tight rail (2x and 3x in a short window) has
   no brand row, so there the header keeps its own height. Scrolling pages stick their header at 0.
 - **Dashes** Words are joined with " - " (window titles "Statistics - CuePoint"); an empty cell
   keeps its "—".
