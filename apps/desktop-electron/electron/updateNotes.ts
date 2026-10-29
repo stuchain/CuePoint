@@ -19,6 +19,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { writeAtomicSync } from "./atomicWrite";
 import { releaseNoteLinkUrl } from "./externalLinks";
 import { RELEASES_REPOSITORY } from "./releaseList";
 import { removeTree } from "./removeTree";
@@ -92,7 +93,7 @@ export function writeNotes(updatesDir: string, version: string, notes: string): 
   try {
     const file = notesPath(updatesDir, version);
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, notes, "utf8");
+    writeAtomicSync(file, notes);
   } catch {
     // Nothing depends on the file but the notes link.
   }

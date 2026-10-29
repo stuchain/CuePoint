@@ -29,6 +29,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { writeAtomicSync } from "./atomicWrite";
 import { parseVersion } from "./updateRule";
 import { parseWindowState, type WindowState } from "./windowSize";
 import { parseWindowTheme, type WindowTheme } from "./windowTheme";
@@ -128,14 +129,7 @@ export class MainSettingsStore {
   update(patch: Partial<MainSettings>): MainSettings {
     const next: MainSettings = { ...this.read(), ...patch };
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    const temporary = `${this.file}.${process.pid}.tmp`;
-    try {
-      fs.writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`, "utf8");
-      fs.renameSync(temporary, this.file);
-    } catch (error) {
-      fs.rmSync(temporary, { force: true });
-      throw error;
-    }
+    writeAtomicSync(this.file, `${JSON.stringify(next, null, 2)}\n`);
     return next;
   }
 }

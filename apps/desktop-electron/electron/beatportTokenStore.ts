@@ -18,6 +18,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { writeAtomicSync } from "./atomicWrite";
 import type { BeatportTokenOrigin, StoredBeatportToken } from "./beatportAuthRules";
 
 /** The file's name, in `app.getPath("userData")`. */
@@ -117,15 +118,12 @@ export class BeatportTokenStore {
       this.removeFile();
       return false;
     }
-    const temporary = `${this.file}.${process.pid}.tmp`;
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
       const encrypted = this.safeStorage.encryptString(JSON.stringify(this.memory));
-      fs.writeFileSync(temporary, encrypted, { mode: 0o600 });
-      fs.renameSync(temporary, this.file);
+      writeAtomicSync(this.file, encrypted, { mode: 0o600 });
       return true;
     } catch {
-      fs.rmSync(temporary, { force: true });
       return false;
     }
   }

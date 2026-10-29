@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MAIN_SETTINGS_FILE, MainSettingsStore, parseMainSettings } from "./mainSettings";
 
@@ -121,10 +121,14 @@ describe("writing", () => {
     const file = settingsFile();
     const store = new MainSettingsStore(file);
     store.update({ setListFolder: GIGS });
-    // A folder in the temporary file's place makes the write itself fail.
-    fs.mkdirSync(`${file}.${process.pid}.tmp`);
+    // A rename that is refused makes the write itself fail.
+    const refused = vi.spyOn(fs, "renameSync").mockImplementation(() => {
+      throw new Error("in use");
+    });
 
     expect(() => store.update({ setListFolder: path.resolve("/elsewhere") })).toThrow();
+    refused.mockRestore();
+    expect(fs.readdirSync(path.dirname(file)).filter((name) => name.includes(".cuepoint-tmp-"))).toEqual([]);
     expect(store.read()).toEqual({ ...DEFAULTS, setListFolder: GIGS });
   });
 });

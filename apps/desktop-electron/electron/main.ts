@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { sweepTempFiles, writeAtomic } from "./atomicWrite";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
 import { BEATPORT_PARTITION, BeatportAuth, ElectronSignInHost } from "./beatportAuth";
 import { beatportEndpoints } from "./beatportAuthRules";
@@ -1418,7 +1419,9 @@ function registerIpcHandlers(): void {
       {
         showSaveDialog: (options) =>
           showSaveDialogFor(BrowserWindow.getFocusedWindow(), options),
-        writeFile: (filePath, text) => fs.promises.writeFile(filePath, text, "utf8"),
+        writeFile: async (filePath, text) => {
+          await writeAtomic(filePath, text);
+        },
         fallbackFolder: () => app.getPath("documents"),
         now: () => new Date(),
       },
@@ -1661,6 +1664,14 @@ if (displayChoice(process.env[E2E_DISPLAY_ENV]) !== null) {
 app.whenReady().then(onlyIfFirst(firstInstance, () => {
   // A second copy has already exited (`enforceSingleInstance`) and starts nothing.
   breadcrumb("app", "ready");
+  // HARDEN-04: what a killed write left behind (".<name>.cuepoint-tmp-<pid>") goes, in main's own
+  // folder and where a set list was last saved. The folders the engine last exported to are the
+  // engine's to sweep (not recorded here yet).
+  sweepTempFiles(
+    [app.getPath("userData"), mainSettingsStore().read().setListFolder].filter(
+      (folder): folder is string => typeof folder === "string",
+    ),
+  );
   // What an installed update left behind goes, and a first launch of an updating build marks
   // its own version as seen so "What's new" offers nothing for it (DEC-172).
   if (app.isPackaged) {
