@@ -186,7 +186,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
     }
   });
 
-  test("a library goes back to Rekordbox, and nothing else changes", async () => {
+  test("a library goes back to Rekordbox, and nothing else changes", { tag: "@packaged-smoke" }, async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);

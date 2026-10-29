@@ -63,7 +63,7 @@ ${entries}
   return target;
 }
 
-test("playing a view queues exactly what the table shows, in its order", async () => {
+test("playing a view queues exactly what the table shows, in its order", { tag: "@packaged-smoke" }, async () => {
   test.skip(!hasPlayer, NO_PLAYER);
   const userDataDir = mkdtempSync(path.join(tmpdir(), "cuepoint-pv-"));
   const cuepointHome = mkdtempSync(path.join(tmpdir(), "cuepoint-home-"));

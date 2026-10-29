@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
 
 test.describe("Electron desktop smoke (TC-UI-001)", () => {
-  test("app launches and shows main navigation", async () => {
+  test("app launches and shows main navigation", { tag: "@packaged-smoke" }, async () => {
     // Its own profile directory and engine home: the app persists UI state and
     // the engine its library, and a test run should not read or write the real
     // CuePoint profile or `~/.cuepoint`.

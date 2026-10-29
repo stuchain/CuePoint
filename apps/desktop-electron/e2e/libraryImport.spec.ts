@@ -124,7 +124,7 @@ test.describe("Library import from the renderer (LIBRARY-06)", () => {
     }
   });
 
-  test("an import can be started and followed to completion", async () => {
+  test("an import can be started and followed to completion", { tag: "@packaged-smoke" }, async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);

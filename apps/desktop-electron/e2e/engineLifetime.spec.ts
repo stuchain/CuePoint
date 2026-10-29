@@ -113,7 +113,7 @@ test.describe("the engine's lifetime (EXPORT-07)", () => {
     for (const dir of [userDataDir, cuepointHome]) rmSync(dir, { recursive: true, force: true });
   });
 
-  test("an ordinary quit stops the engine before the app is gone", async () => {
+  test("an ordinary quit stops the engine before the app is gone", { tag: "@packaged-smoke" }, async () => {
     const app = await launch(userDataDir, cuepointHome);
     const { engines } = await runningEngines(app);
     await app.close();
