@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { useEngineOnline } from "../../api/engineOnline";
-import { DISK_FULL_WORDS, useStripMessages } from "../../api/stripMessages";
+import { DISK_FULL_WORDS, setNoticeShowing, useStripMessages } from "../../api/stripMessages";
 import { useLayerStack } from "../../hooks/useLayerStack";
 import { usePresence } from "../../tokens/usePresence";
 import { Button } from "../Button";
@@ -231,6 +231,13 @@ export function StatusStrip() {
   const waitingRestore = useSyncExternalStore(subscribeRestore, getRestoreSnapshot).waiting;
   const sayDiskFull = diskFull && !offline;
   const sayNote = !sayDiskFull && connected && notice !== null;
+  // The note is on screen only when nothing else holds the strip; its time runs only then.
+  const engineHidden = (job !== null || done !== null) && connected && !sayDiskFull;
+  const noteOnScreen = sayNote && !engineHidden;
+  useEffect(() => {
+    setNoticeShowing(noteOnScreen);
+    return () => setNoticeShowing(false);
+  }, [noteOnScreen]);
   const engineText = sayDiskFull ? DISK_FULL_WORDS : offline ? "" : sayNote ? notice : connected ? "Ready" : "Starting…";
 
   // What a screen reader hears (M468): a job starting, each quarter of it, and how it ended. The
@@ -321,7 +328,7 @@ export function StatusStrip() {
                     : "cp-status__engine--error"
             }`}
             // Shown only while nothing else is being said (a job, or "Done · …"); a full disk is always said.
-            hidden={(job !== null || done !== null) && connected && !sayDiskFull ? true : undefined}
+            hidden={engineHidden ? true : undefined}
           >
             {engineText}
           </span>

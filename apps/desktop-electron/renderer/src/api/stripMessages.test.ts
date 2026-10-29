@@ -10,6 +10,7 @@ import {
   getStripMessages,
   isDiskFull,
   noteDiskFull,
+  setNoticeShowing,
   showStripNotice,
 } from "./stripMessages";
 
@@ -72,6 +73,7 @@ describe("a full disk", () => {
 
 describe("the notes", () => {
   it("show one at a time, each for a while, never the same words twice", () => {
+    setNoticeShowing(true);
     showStripNotice("One");
     showStripNotice("Two");
     showStripNotice("Two");
@@ -80,5 +82,26 @@ describe("the notes", () => {
     expect(getStripMessages().notice).toBe("Two");
     vi.advanceTimersByTime(NOTICE_HOLD_MS);
     expect(getStripMessages().notice).toBeNull();
+  });
+
+  it("are timed only while the strip is showing them: a running job holds the note, it does not use it up", () => {
+    // A job holds the strip, and the launch's check can outlast any hold.
+    setNoticeShowing(false);
+    showStripNotice("Unclean");
+    vi.advanceTimersByTime(NOTICE_HOLD_MS * 5);
+    expect(getStripMessages().notice).toBe("Unclean");
+
+    // Shown for a part of its time, held again, then shown: only the time on screen counts.
+    setNoticeShowing(true);
+    vi.advanceTimersByTime(NOTICE_HOLD_MS - 5000);
+    setNoticeShowing(false);
+    vi.advanceTimersByTime(NOTICE_HOLD_MS * 5);
+    expect(getStripMessages().notice).toBe("Unclean");
+    setNoticeShowing(true);
+    vi.advanceTimersByTime(4999);
+    expect(getStripMessages().notice).toBe("Unclean");
+    vi.advanceTimersByTime(2);
+    expect(getStripMessages().notice).toBeNull();
+    setNoticeShowing(false);
   });
 });

@@ -37,6 +37,10 @@ let snapshot: StripMessages = { diskFull: false, notice: null };
 let queue: string[] = [];
 let diskTimer: ReturnType<typeof setTimeout> | null = null;
 let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+/** Whether the strip is showing the note now (a running job takes its place), and how much of its time is left. */
+let noticeShowing = false;
+let noticeLeftMs = NOTICE_HOLD_MS;
+let noticeArmedAt = 0;
 let unwire: (() => void) | null = null;
 const listeners = new Set<() => void>();
 
@@ -87,12 +91,37 @@ export function noteIfDiskFull(error: unknown): void {
   if (isDiskFull(error)) noteDiskFull();
 }
 
+function armNotice(): void {
+  if (noticeTimer !== null || snapshot.notice === null || !noticeShowing) return;
+  noticeArmedAt = Date.now();
+  noticeTimer = setTimeout(showNext, noticeLeftMs);
+}
+
+function disarmNotice(): void {
+  if (noticeTimer === null) return;
+  clearTimeout(noticeTimer);
+  noticeTimer = null;
+  noticeLeftMs = Math.max(0, noticeLeftMs - (Date.now() - noticeArmedAt));
+}
+
 function showNext(): void {
   if (noticeTimer !== null) clearTimeout(noticeTimer);
   noticeTimer = null;
   const next = queue.shift() ?? null;
+  noticeLeftMs = NOTICE_HOLD_MS;
   publish({ ...snapshot, notice: next });
-  if (next !== null) noticeTimer = setTimeout(showNext, NOTICE_HOLD_MS);
+  if (next !== null) armNotice();
+}
+
+/**
+ * The strip says whether it is showing the note. The hold counts only while it is: a job running
+ * takes the strip's place, and a note that timed out behind it would never be read.
+ */
+export function setNoticeShowing(showing: boolean): void {
+  if (showing === noticeShowing) return;
+  noticeShowing = showing;
+  if (showing) armNotice();
+  else disarmNotice();
 }
 
 /** Say a note in the strip, quietly, after any that are already showing. The same words are never queued twice. */
@@ -123,6 +152,8 @@ export function resetStripMessagesForTests(): void {
   if (noticeTimer !== null) clearTimeout(noticeTimer);
   diskTimer = null;
   noticeTimer = null;
+  noticeShowing = false;
+  noticeLeftMs = NOTICE_HOLD_MS;
   queue = [];
   snapshot = { diskFull: false, notice: null };
   listeners.clear();
