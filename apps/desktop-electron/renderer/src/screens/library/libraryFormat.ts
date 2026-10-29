@@ -6,6 +6,7 @@
  * understand that DEC-003's removals are permanent. That deserves tests that
  * read like the sentences themselves, not tests that go through a render.
  */
+import { noteDiskFull } from "../../api/stripMessages";
 import { formatDayTime } from "../../format/dates";
 import { countNoun, formatCount as groupCount } from "../../format/counts";
 import { UP_TO_DATE } from "../../format/words";
@@ -242,6 +243,8 @@ export function refreshedWords(result: RefreshApplied): string {
  * by doing something ordinary, so they get an answer rather than a diagnosis.
  */
 export function jobErrorMessage(error?: { code?: string; message?: string }): string {
+  // A job that failed for lack of room says so in the status strip too.
+  if (error?.code === "R002") noteDiskFull();
   switch (error?.code) {
     case "LIBRARY_NOT_IMPORTED":
       return "Import a Rekordbox file first.";

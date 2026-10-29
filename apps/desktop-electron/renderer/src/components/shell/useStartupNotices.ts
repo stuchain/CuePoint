@@ -11,6 +11,7 @@
  */
 import { useEffect } from "react";
 
+import { restoreSeen } from "../../screens/backups/restoreStore";
 import {
   EXPORT_INTERRUPTED_WORDS,
   UNCLEAN_EXIT_WORDS,
@@ -18,8 +19,9 @@ import {
 } from "../../api/stripMessages";
 
 const ASK_MS = 2000;
-/** How long the library's check is waited for after an unclean exit. */
-const CHECK_TRIES = 90;
+/** The check of a large library can take a while: after this many asks the asking slows down, but never stops. */
+const QUICK_ASKS = 30;
+const SLOW_ASK_MS = 10_000;
 /** An interruption is "from start" when the job was marked in the last few minutes. */
 const RECENT_MS = 10 * 60_000;
 const LIST_TRIES = 15;
@@ -58,6 +60,9 @@ function rememberUnclean(): void {
   }
 }
 
+/** Told once in this run of the app, wherever the shell is mounted again. */
+let exportTold = false;
+
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function useStartupNotices(): void {
@@ -81,7 +86,7 @@ export function useStartupNotices(): void {
       } catch {
         return;
       }
-      for (let tries = 0; tries < CHECK_TRIES && live; tries += 1) {
+      for (let tries = 0; live; tries += 1) {
         try {
           const status = await bridge?.library?.getState();
           const check = status?.integrityCheck.state;
@@ -94,13 +99,13 @@ export function useStartupNotices(): void {
         } catch {
           // Not up yet.
         }
-        await pause(ASK_MS);
+        await pause(tries < QUICK_ASKS ? ASK_MS : SLOW_ASK_MS);
       }
     })();
 
     // An export was interrupted: the job was marked so when CuePoint started again.
     void (async () => {
-      for (let tries = 0; tries < LIST_TRIES && live; tries += 1) {
+      for (let tries = 0; tries < LIST_TRIES && live && !exportTold; tries += 1) {
         try {
           const list = await bridge?.listJobs?.({ state: "all", limit: 50 });
           if (!list) return;
@@ -112,7 +117,9 @@ export function useStartupNotices(): void {
               Date.now() - Date.parse(job.updated_at) < RECENT_MS &&
               !told.includes(job.id),
           );
-          if (found.length > 0) {
+          // After a restore in this run the jobs listed are the restored library's, not an interruption.
+          if (found.length > 0 && !restoreSeen()) {
+            exportTold = true;
             remember(found.map((job) => job.id));
             if (live) showStripNotice(EXPORT_INTERRUPTED_WORDS);
           }
@@ -128,4 +135,9 @@ export function useStartupNotices(): void {
       offReopened?.();
     };
   }, []);
+}
+
+/** Back to the start; for tests. */
+export function resetStartupNoticesForTests(): void {
+  exportTold = false;
 }

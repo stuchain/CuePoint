@@ -1,6 +1,7 @@
 /** What the strip says about a full disk and the once-only notes (HARDEN-03, HARDEN-05, DEC-305). */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { subscribeActiveJobs } from "./jobsStore";
 import { announceLibraryChange } from "./libraryChanges";
 import { userMessage } from "./userMessage";
 import {
@@ -40,10 +41,24 @@ describe("a full disk", () => {
     expect(getStripMessages().diskFull).toBe(false);
   });
 
-  it("clears when something is saved after it", () => {
+  it("is not cleared by a change the page only announces", () => {
     noteDiskFull();
     announceLibraryChange();
+    expect(getStripMessages().diskFull).toBe(true);
+  });
+
+  it("clears when the engine's library counter moves, which only a write does", async () => {
+    let library = 1;
+    (window as unknown as { cuepoint: unknown }).cuepoint = {
+      listJobs: async () => ({ jobs: [], active_count: 0, revisions: { library, waveforms: 1 } }),
+    };
+    const off = subscribeActiveJobs(() => undefined, 100);
+    await vi.advanceTimersByTimeAsync(10);
+    noteDiskFull();
+    library = 2;
+    await vi.advanceTimersByTimeAsync(300);
     expect(getStripMessages().diskFull).toBe(false);
+    off();
   });
 
   it("clears after a while when nothing is saved", () => {

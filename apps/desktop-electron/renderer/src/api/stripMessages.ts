@@ -3,8 +3,9 @@
  * HARDEN-05; owner's picks, DEC-305):
  *
  * - A full disk (an `R002` answer to any request): "Your disk is full. CuePoint can't save changes
- *   until there's space." in the strip's error look, until something is saved again (the library
- *   announces a change) or a while passes.
+ *   until there's space." in the strip's error look, until a write is known to have succeeded (the
+ *   engine's library counter moved) or a while passes. A change the page merely announces is not
+ *   proof: it is also said after a failed write.
  * - A short note, once, quietly, in the place of "Ready": the last session did not end properly, the
  *   window was reopened, an export was interrupted. Notes take turns, each held for a while.
  *
@@ -14,7 +15,7 @@
 import { useSyncExternalStore } from "react";
 
 import { bridgeErrorFields } from "./bridgeError";
-import { LIBRARY_CHANGED_EVENT } from "./libraryChanges";
+import { onRevisionsChanged } from "./jobsStore";
 
 /** The words for a full disk: the engine's own, so the strip and a refused request agree. */
 export const DISK_FULL_WORDS = "Your disk is full. CuePoint can't save changes until there's space.";
@@ -36,7 +37,7 @@ let snapshot: StripMessages = { diskFull: false, notice: null };
 let queue: string[] = [];
 let diskTimer: ReturnType<typeof setTimeout> | null = null;
 let noticeTimer: ReturnType<typeof setTimeout> | null = null;
-let wired = false;
+let unwire: (() => void) | null = null;
 const listeners = new Set<() => void>();
 
 function publish(next: StripMessages): void {
@@ -45,15 +46,17 @@ function publish(next: StripMessages): void {
   for (const listener of [...listeners]) listener();
 }
 
-function onSaved(): void {
-  clearDiskFull();
+function wire(): void {
+  if (unwire) return;
+  // The library's change counter moves only when the engine has written; that is the proof.
+  unwire = onRevisionsChanged((domains) => {
+    if (domains.includes("library")) clearDiskFull();
+  });
 }
 
-function wire(): void {
-  if (wired || typeof window === "undefined") return;
-  wired = true;
-  // Something was saved after the failure, so there is room again.
-  window.addEventListener(LIBRARY_CHANGED_EVENT, onSaved);
+/** A write is known to have succeeded: there is room again. */
+export function noteWriteSucceeded(): void {
+  clearDiskFull();
 }
 
 /** A write was refused for lack of room. Said until a later write succeeds, or for a while. */
@@ -123,6 +126,6 @@ export function resetStripMessagesForTests(): void {
   queue = [];
   snapshot = { diskFull: false, notice: null };
   listeners.clear();
-  if (wired && typeof window !== "undefined") window.removeEventListener(LIBRARY_CHANGED_EVENT, onSaved);
-  wired = false;
+  unwire?.();
+  unwire = null;
 }
