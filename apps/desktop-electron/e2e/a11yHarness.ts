@@ -6,12 +6,13 @@
  * CuePoint library. The file dialog cannot be clicked from Playwright, so the import is started through the
  * same bridge method the button calls.
  */
-import { expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { expect, type ElectronApplication, type Page } from "@playwright/test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -88,10 +89,8 @@ ${entries}
 export function launch(ws: Workspace): Promise<ElectronApplication> {
   const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: ws.cuepointHome } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${ws.userDataDir}`], env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${ws.userDataDir}`], env });
+  // The one launch helper (HARDEN-09): the packaged app when `CUEPOINT_E2E_EXECUTABLE` names one.
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${ws.userDataDir}`], env });
 }
 
 export interface Look {

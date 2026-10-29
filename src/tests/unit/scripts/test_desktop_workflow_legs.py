@@ -181,8 +181,29 @@ class TestPackagedRun:
         # The archive is app.asar: beside the exe on Windows and Linux, in Resources on a Mac.
         assert "/../Resources" in run and "/resources" in run
         assert "asar list" in run
+        # The listing goes to a file and its exit code is checked, so a failed `asar list` fails
+        # the step instead of counting zero maps.
+        assert "asar list" in run and '> "$RUNNER_TEMP/asar-list.txt" ||' in run
+        assert "| grep -c" not in run
         names = [s.get("name") for s in _job()["steps"]]
         assert names.index("Locate the packaged app") < names.index(step["name"])
+
+    def test_a_red_development_suite_does_not_hide_the_packaged_result(self):
+        # The development suite fails the job before these would run under the default `success()`.
+        for name in (
+            "Locate the packaged app",
+            "Packaged app end-to-end",
+            "Check no source map ships",
+        ):
+            assert "!cancelled()" in _step(name)["if"], name
+        assert "steps.package.outcome == 'success'" in _step("Locate the packaged app")["if"]
+        assert "steps.app.outcome == 'success'" in _step("Packaged app end-to-end")["if"]
+
+    def test_the_job_and_the_packaged_run_have_a_timeout(self):
+        job = _job()
+        assert 60 <= job["timeout-minutes"] <= 360
+        step_timeout = _step("Packaged app end-to-end")["timeout-minutes"]
+        assert "inputs.release" in step_timeout
 
     def test_the_packaged_run_keeps_its_failures(self):
         for name in (

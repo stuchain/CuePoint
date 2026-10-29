@@ -51,6 +51,9 @@ jobs:
             chip: x64
             mac_dir: mac
     runs-on: ${{ matrix.runner }}
+    # HARDEN-09: a hung app must not hold a runner for the 6 hours GitHub allows. Release runs the whole
+    # suite packaged (about 25 to 35 minutes more on Intel), so this leaves generous room.
+    timeout-minutes: 150
 
     env:
       # The commit this build is made from: main and the engine sidecar record it, and it is
@@ -299,7 +302,7 @@ jobs:
       # file; the Windows one is `win-unpacked`; a Mac's is the .app in the leg's `mac_dir`.
       - name: Locate the packaged app
         id: app
-        if: steps.package.outcome == 'success'
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         working-directory: apps/desktop-electron
         shell: bash
         run: |
@@ -317,7 +320,7 @@ jobs:
       # REPORT-07 (PHASE13_REPORTING.md): the source maps went to Sentry and were deleted before
       # packing, so none ships. Looked for in the app's archive and beside it.
       - name: Check no source map ships
-        if: steps.app.outcome == 'success'
+        if: ${{ !cancelled() && steps.app.outcome == 'success' }}
         working-directory: apps/desktop-electron
         shell: bash
         env:
@@ -328,7 +331,9 @@ jobs:
             *) resources="$(dirname "$APP_EXE")/resources" ;;
           esac
           test -f "$resources/app.asar" || { echo "::error::No app.asar in $resources"; exit 1; }
-          inside="$(npx asar list "$resources/app.asar" | grep -c '\.map$' || true)"
+          # Listed to a file first: a failed `asar list` must fail the step, not read as "no maps".
+          npx asar list "$resources/app.asar" > "$RUNNER_TEMP/asar-list.txt" || { echo "::error::asar list failed"; exit 1; }
+          inside="$(grep -c '\.map$' "$RUNNER_TEMP/asar-list.txt" || true)"
           beside="$(find "$resources" -name '*.map' | wc -l | tr -d ' ')"
           echo "source maps in app.asar: $inside, beside it: $beside"
           test "$inside" = "0" && test "$beside" = "0" || { echo "::error::A source map ships in the package"; exit 1; }
@@ -339,7 +344,9 @@ jobs:
       # runs the whole suite. The Linux runner needs the same screen and sound device as above.
       - name: Packaged app end-to-end
         id: packaged-e2e
-        if: steps.app.outcome == 'success'
+        if: ${{ !cancelled() && steps.app.outcome == 'success' }}
+        # A push adds a few minutes (Intel the most); a release runs the whole suite, 25 to 35 on Intel.
+        timeout-minutes: ${{ inputs.release && 75 || 30 }}
         working-directory: apps/desktop-electron
         env:
           CUEPOINT_E2E_EXECUTABLE: ${{ steps.app.outputs.exe }}
