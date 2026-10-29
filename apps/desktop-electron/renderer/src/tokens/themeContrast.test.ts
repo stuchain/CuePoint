@@ -482,14 +482,17 @@ describe("every text token against its surfaces, in every theme (HARDEN-08, DEC-
       for (const [surface, resolve] of Object.entries(pair.on)) {
         const key = `${theme} | ${pair.id} | ${surface}`;
         it(`${key} reaches ${FLOOR[pair.kind]}:1`, () => {
-          const ratio = rounded(contrastRatio(pair.fg(t), resolve(t)));
+          const exact = contrastRatio(pair.fg(t), resolve(t));
+          const ratio = rounded(exact);
           const known = KNOWN_FAILING[key];
-          if (ratio >= FLOOR[pair.kind]) {
+          // The floor is met by the exact ratio: 4.496 shown as 4.50 is still short of 4.5.
+          if (exact >= FLOOR[pair.kind]) {
             expect(known, `${key} now passes at ${ratio}:1: delete its entry from KNOWN_FAILING`).toBeUndefined();
             return;
           }
           expect(known, `${key} fails at ${ratio}:1 and is not in KNOWN_FAILING`).toBeDefined();
-          expect(ratio, `${key} got worse than the measured ${known?.measured}:1`).toBeGreaterThanOrEqual(known!.measured);
+          // `measured` is a ratio to two places, so half a hundredth of rounding is allowed.
+          expect(exact, `${key} got worse than the measured ${known?.measured}:1`).toBeGreaterThanOrEqual(known!.measured - 0.005);
         });
       }
     }

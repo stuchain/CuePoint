@@ -1,11 +1,13 @@
 /**
  * The keyboard, destination by destination (HARDEN-08, DEC-186): every destination's tab order is pinned, it
- * can be reached and read in order, it holds no trap, focus comes back to what opened a dialog, and the
- * table answers the arrow keys.
+ * can be reached and read in order, it holds no trap, focus comes back to what opened a dialog (the five a
+ * keyboard opens from the controls this spec reaches: Search, Columns, Get help, Keyboard shortcuts and About;
+ * the others share the Modal, whose focus return and trap are tested in the renderer), and the table answers
+ * the arrow keys.
  *
  * "Pinned" means the sequence of regions, roles and names that Tab visits from the top of the page is written
  * out below. A control added, dropped, renamed or moved changes it, and the change is then a decision made on
- * purpose and not a drift. Controls that are one Tab stop for a whole group (the table's rows, a tab strip,
+ * purpose and not a drift. A number in a name is data (a count, a row's artist), so it is pinned as "N". Controls that are one Tab stop for a whole group (the table's rows, a tab strip,
  * a toolbar's buttons, a radio group) show as that one stop; their arrow keys are checked on their own.
  */
 import { test, expect, type Page } from "@playwright/test";
@@ -36,15 +38,14 @@ interface Stop {
 const MAX_STOPS = 150;
 
 /** Starts Tab from the top of the document and returns every stop until the order cycles or leaves the page. */
-async function tabOrder(window: Page): Promise<{ stops: string[]; orphans: string[]; positive: number; geometry: string[] }> {
+async function tabOrder(window: Page): Promise<{ stops: string[]; orphans: string[]; positive: number }> {
   await window.evaluate(() => {
     (document.activeElement as HTMLElement | null)?.blur?.();
     document.querySelectorAll("[data-a11y-visited]").forEach((node) => node.removeAttribute("data-a11y-visited"));
+    (window as unknown as { __a11yLast?: Element | null }).__a11yLast = null;
     window.scrollTo(0, 0);
   });
   const stops: Stop[] = [];
-  const geometry: string[] = [];
-  let first = "";
   for (let index = 0; index < MAX_STOPS; index += 1) {
     if (index === 0) {
       // Tab starts from the last place the pointer or the focus was, so a run starts by focusing the page's
@@ -113,22 +114,26 @@ async function tabOrder(window: Page): Promise<{ stops: string[]; orphans: strin
         }
         return "page";
       };
+      // The same element twice is the order cycling: found by identity, not by where it sits or what it says.
+      // (A date field is several Tab stops on one element, its day, month and year: staying on the same element is not a cycle.)
+      const w = window as unknown as { __a11yLast?: Element | null };
+      const sameAsLast = w.__a11yLast === el;
+      w.__a11yLast = el;
+      const again = el.hasAttribute("data-a11y-visited") && !sameAsLast;
       el.setAttribute("data-a11y-visited", "");
-      const box = el.getBoundingClientRect();
       return {
+        again,
+        sameAsLast,
         region: regionOf(el),
         role: roleOf(el),
-        name: nameOf(el).slice(0, 60),
-        x: Math.round(box.left),
-        y: Math.round(box.top),
-        id: `${regionOf(el)}|${roleOf(el)}|${nameOf(el)}|${Math.round(box.left)}|${Math.round(box.top)}`,
+        // Counts, sizes and the rows a library happens to hold are data, not the page: a digit run is "N", so
+        // "First steps 1/4 done" and "Artist 0960" pin as the stable words around them.
+        name: nameOf(el).slice(0, 60).replace(/\d+/g, "N"),
       };
     });
-    if (!stop) break;
-    if (first === "") first = stop.id;
-    else if (stop.id === first) break;
+    if (!stop || stop.again) break;
+    if (stop.sameAsLast) continue;
     stops.push({ region: stop.region, role: stop.role, name: stop.name });
-    geometry.push(`${stop.region}@${stop.y}:${stop.x}`);
   }
   const { orphans, positive } = await window.evaluate(() => {
     const visible = (node: Element) => {
@@ -171,7 +176,6 @@ async function tabOrder(window: Page): Promise<{ stops: string[]; orphans: strin
     stops: stops.map((stop) => `${stop.region} | ${stop.role} | ${stop.name}`),
     orphans,
     positive,
-    geometry,
   };
 }
 
@@ -273,7 +277,7 @@ test.describe("the keyboard", () => {
     await window.evaluate(() => document.querySelectorAll("[data-a11y-opener]").forEach((n) => n.removeAttribute("data-a11y-opener")));
   }
 
-  test("focus returns to the opener after every dialog", async () => {
+  test("focus returns to the opener after the dialogs a keyboard opens here (Search, Columns, Get help, Keyboard shortcuts, About)", async () => {
     test.setTimeout(300_000);
     const app = await launch(ws);
     try {

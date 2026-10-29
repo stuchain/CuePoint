@@ -443,7 +443,7 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
 
       await tabs.getByRole("tab", { name: /^Overview/ }).click();
       await expect(library.locator('[data-panel="tempo"]')).toBeVisible({ timeout: 30_000 });
-      await expect(library.getByRole("button", { name: "House, 4 tracks" })).toBeVisible();
+      await expect(library.getByRole("button", { name: /^\d+\. House, 4 tracks$/ })).toBeVisible();
 
       await tabs.getByRole("tab", { name: /^Health/ }).click();
       for (const group of ["files", "beatport", "other", "analysis"]) {
@@ -467,14 +467,14 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
 
       // Plays: the top artist opens that artist's one track.
       await tabs.getByRole("tab", { name: /^Plays/ }).click();
-      await plays.getByRole("button", { name: /^Artist 2, 9 plays, 1 track/ }).click();
+      await plays.getByRole("button", { name: /^\d+\. Artist 2, 9 plays, 1 track/ }).click();
       await expect(libraryHeading).toBeVisible();
       await expect(rows).toHaveCount(1, { timeout: 30_000 });
       await expect(rows).toContainText("Track 2");
 
       // Library: the House bar opens all four tracks.
       await openStatistics(/^Overview/);
-      await library.getByRole("button", { name: "House, 4 tracks" }).click({ timeout: 30_000 });
+      await library.getByRole("button", { name: /^\d+\. House, 4 tracks$/ }).click({ timeout: 30_000 });
       await expect(libraryHeading).toBeVisible();
       await expect(rows).toHaveCount(4, { timeout: 30_000 });
 

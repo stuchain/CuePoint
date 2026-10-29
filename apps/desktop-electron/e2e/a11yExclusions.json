@@ -1,30 +1,23 @@
 [
   {
     "rule": "target-size",
-    "selector": "cp-playlist-pane__fold",
+    "selector": ".cp-playlist-pane__fold",
     "scale": 1,
     "finding": "A11Y-T1",
-    "reason": "The collapse arrow of a Collections folder is smaller than 24 by 24 CSS px at Extra small and has no 24px of clear space around it. Making it larger changes layout, so it waits for the owner's go (a11y-findings.md)."
+    "reason": "The Collections folder header button is 17px tall at Extra small and has no 24px of clear space around it. Making it taller changes layout, so it waits for the owner's go (a11y-findings.md)."
   },
   {
     "rule": "target-size",
-    "selector": "cp-credit-link",
+    "selector": ".cp-credit-link",
     "scale": 1,
     "finding": "A11Y-T2",
     "reason": "The artist and label links in the track details are 12px tall at Extra small. A larger hit area changes layout, so it waits for the owner's go (a11y-findings.md)."
   },
   {
     "rule": "target-size",
-    "selector": "key-chip",
+    "selector": ".key-chip",
     "scale": 1,
     "finding": "A11Y-T3",
     "reason": "The key chip in the track details is 18px tall at Extra small. A larger hit area changes layout, so it waits for the owner's go (a11y-findings.md)."
-  },
-  {
-    "rule": "color-contrast",
-    "selector": "role=\"tab\"",
-    "destination": "Library",
-    "finding": "A11Y-C1",
-    "reason": "The unselected tabs of the track details are muted text on the raised panel colour (fg-muted on bg-panel-alt), 3.7 to 4.4:1 against 4.5:1 depending on the theme and on how far a fade has run. It needs a lighter text colour, a visual change that waits for the owner's go (a11y-findings.md)."
   }
 ]

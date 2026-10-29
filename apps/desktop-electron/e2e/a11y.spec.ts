@@ -6,8 +6,8 @@
  * runs, and every other rule runs too. A violation that needs a colour change is a visual change and waits
  * for the owner's go on a mockup: it is recorded in `/mnt/project-files/phase18-hardening/a11y-findings.md`
  * and named in `a11yExclusions.json`, which this spec reads. The file is empty when nothing is outstanding.
- * An entry names one rule, a selector the failing element is inside, optionally a theme, a text size and a
- * destination, and the finding that records it; nothing else is left out, and every scan records what it left
+ * An entry names one rule, a selector the failing element is, or is inside (`closest`), optionally a list of
+ * themes, a text size and a destination, and the finding that records it; nothing else is left out, and every scan records what it left
  * out as a test annotation, so no exclusion is silent. A fixed finding has its entry deleted.
  */
 import { test, expect } from "@playwright/test";
@@ -36,7 +36,8 @@ interface Exclusion {
   rule: string;
   /** A selector the failing element is inside, or is. */
   selector: string;
-  theme?: string;
+  /** The themes it applies to; all of them when left out. */
+  themes?: string[];
   scale?: number;
   destination?: string;
   /** The id of the entry in a11y-findings.md. */
@@ -75,29 +76,44 @@ test.describe("axe, WCAG 2.2 A and AA, in each theme", () => {
       test.setTimeout(900_000);
       const app = await launch(ws);
       const failures: string[] = [];
+      const used = new Set<Exclusion>();
       try {
         const window = await ready(app);
         await importCollection(window, writeExport(ws.workspace));
 
         const scan = async (theme: string, scale: number, motion: string, destination: { link: string }, state: string) => {
-          const results = await new AxeBuilder({ page: window }).withTags(WCAG_TAGS).setLegacyMode(true).analyze();
+          const builder = () => new AxeBuilder({ page: window }).setLegacyMode(true);
+          const results = await builder().withTags(WCAG_TAGS).analyze();
+          // `region` (content inside a landmark) is a best practice and not in the WCAG tags, so it is asked for by name.
+          const landmarks = await builder().withRules(["region"]).analyze();
           // The scan must have looked at colour: this is the one place `color-contrast` can run.
           const contrastChecked = results.passes.some((rule) => rule.id === "color-contrast") || results.violations.some((rule) => rule.id === "color-contrast");
           if (!contrastChecked) failures.push(`${theme} ${scale}x ${destination.link}${state}: color-contrast was not evaluated`);
-          for (const violation of results.violations) {
+          for (const violation of [...results.violations, ...landmarks.violations]) {
             for (const node of violation.nodes) {
               const target = node.target.join(" ");
-              const excluded = EXCLUSIONS.find(
-                (entry) =>
-                  entry.rule === violation.id &&
-                  (entry.theme === undefined || entry.theme === theme) &&
-                  (entry.scale === undefined || entry.scale === scale) &&
-                  (entry.destination === undefined || entry.destination === destination.link) &&
-                  // The selector may name the failing element or an ancestor, which axe's target does not
-                  // carry, so it is also looked for in the element's own markup and in its target.
-                  (target.includes(entry.selector) || node.html.includes(entry.selector.replace(/^[.#]/, ""))),
-              );
+              let excluded: Exclusion | undefined;
+              for (const entry of EXCLUSIONS) {
+                if (
+                  entry.rule !== violation.id ||
+                  (entry.themes !== undefined && !entry.themes.includes(theme)) ||
+                  (entry.scale !== undefined && entry.scale !== scale) ||
+                  (entry.destination !== undefined && entry.destination !== destination.link)
+                ) {
+                  continue;
+                }
+                // The failing element is, or sits inside, an element matching the entry's selector.
+                const inside = await window.evaluate(
+                  ([path, selector]) => document.querySelector(path!)?.closest(selector!) != null,
+                  [node.target[node.target.length - 1] as string, entry.selector],
+                );
+                if (inside) {
+                  excluded = entry;
+                  break;
+                }
+              }
               if (excluded) {
+                used.add(excluded);
                 test.info().annotations.push({
                   type: "excluded",
                   description: `${excluded.finding}: ${violation.id} on ${target} (${theme}, ${scale}x, ${destination.link})`,
@@ -123,6 +139,8 @@ test.describe("axe, WCAG 2.2 A and AA, in each theme", () => {
                 await grid.focus();
                 await window.keyboard.press("ArrowDown");
                 await expect(window.getByText("1 selected")).toBeVisible();
+                // The details panel and its tabs fade in; a colour read halfway through the fade is not the colour at rest.
+                await window.waitForTimeout(1500);
                 await settle(window);
                 await scan(theme, scale, motion, destination, " (a row selected)");
                 await window.keyboard.press("Escape");
@@ -132,6 +150,11 @@ test.describe("axe, WCAG 2.2 A and AA, in each theme", () => {
         }
       } finally {
         await app.close();
+      }
+      // An exclusion that matched nothing in this theme is stale (the finding was fixed, or the selector drifted): delete it.
+      for (const entry of EXCLUSIONS) {
+        if (entry.themes !== undefined && !entry.themes.includes(theme)) continue;
+        if (!used.has(entry)) failures.push(`${entry.finding}: the exclusion for ${entry.rule} on "${entry.selector}" matched nothing in ${theme}, so it is stale: delete it or fix its selector`);
       }
       expect(failures, failures.join("\n")).toEqual([]);
     });
