@@ -8,6 +8,7 @@
 @import "./tokens/themes/clubNeon.css";
 @import "./tokens/themes/mutedPro.css";
 @import "./tokens/keyColours.css";
+@import "./tokens/forcedColors.css";
 
 *,
 *::before,

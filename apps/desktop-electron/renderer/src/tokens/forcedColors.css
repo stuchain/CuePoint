@@ -1,0 +1,78 @@
+/*
+ * Windows high contrast (HARDEN-08, DEC-186).
+ *
+ * Forced colours replace every colour with the system's and drop backgrounds, shadows and masks, so what
+ * the app shows by a fill or a shadow alone vanishes. Everything here is inside `forced-colors: active`,
+ * so the normal look is untouched; the rules only add lines in system colours, and use `outline`, which
+ * takes no room, so no layout moves. The selected row, the active tab and the player's controls are in
+ * App.css and PlayerBar.css; the checkboxes in index.css; the waveform's canvas is painted in system
+ * colours by waveformEnvironment.ts (a canvas is not recoloured by the system).
+ *
+ * The rules are written `html .x` so they win over a component's own `.x` whichever stylesheet loads last.
+ */
+@media (forced-colors: active) {
+  /* The ring that shows where the keyboard is: a solid line in the highlight colour, never thinner than 2px.
+     A component's own `:focus-visible` rule keeps its offset; the system takes its colour. */
+  html :focus-visible {
+    outline-style: solid;
+    outline-width: max(var(--focus-ring-width, 2px), 2px);
+    outline-color: Highlight;
+  }
+
+  /* A dialog, a card, a menu and a tip are told from the page by a fill and a shadow; both are dropped. */
+  html .cp-modal,
+  html .cp-modal:focus,
+  html .cp-card,
+  html .cp-track-menu,
+  html .cp-hint__tip,
+  html .cp-toast {
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+
+  /* A frameless button (quiet, in a bar, in a row) is a button by its fill, which is dropped: it keeps an edge. */
+  html .cp-btn {
+    border-color: ButtonText;
+  }
+
+  html .cp-btn:disabled,
+  html .cp-btn[aria-disabled="true"] {
+    border-color: GrayText;
+    color: GrayText;
+  }
+
+  /* A button that is on, or whose menu is open, says so by more than its tint. */
+  html .cp-btn[aria-pressed="true"],
+  html .cp-btn[aria-expanded="true"] {
+    border-color: Highlight;
+  }
+
+  /* The entry the keyboard or pointer is on in a menu or a picker, drawn as a fill in normal mode. */
+  html .cp-track-menu__item--active:not([aria-disabled="true"]),
+  html .cp-picker__item--active:not(:disabled) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  /* The current page in the sidebar. */
+  html .cp-sidebar__link--active,
+  html .cp-sidebar__link--active:hover {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  /* A selected or playing row in the queue, the trees and the lists. */
+  html .cp-queue__row--selected,
+  html .cp-queue__row--playing,
+  html .cp-playlist-pane__row[aria-selected="true"],
+  html [role="option"][aria-selected="true"],
+  html [role="treeitem"][aria-selected="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  /* A field keeps its frame, whatever its theme gave it. */
+  html :where(input:not([type="checkbox"], [type="radio"], [type="range"]), textarea, select) {
+    border-color: FieldText;
+  }
+}

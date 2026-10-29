@@ -29,9 +29,13 @@ export const NOT_FOCUS_OUTLINES: ReadonlyArray<{ sheet: string; value: string; r
   },
 ];
 
+/** The forced-colours sheet draws in system colours inside `forced-colors: active` only; tokens/forcedColors.test.ts holds it. */
+const FORCED_COLOURS_SHEET = "/src/tokens/forcedColors.css";
+
 function offsets(): Array<{ sheet: string; value: string }> {
   const out: Array<{ sheet: string; value: string }> = [];
   for (const [sheet, css] of Object.entries(sheets)) {
+    if (sheet === FORCED_COLOURS_SHEET) continue;
     const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
     for (const m of code.matchAll(/outline-offset\s*:\s*([^;}]+)/g)) out.push({ sheet, value: m[1]!.trim() });
   }
@@ -41,6 +45,7 @@ function offsets(): Array<{ sheet: string; value: string }> {
 function outlines(): Array<{ sheet: string; value: string }> {
   const out: Array<{ sheet: string; value: string }> = [];
   for (const [sheet, css] of Object.entries(sheets)) {
+    if (sheet === FORCED_COLOURS_SHEET) continue;
     const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
     for (const m of code.matchAll(/(?<![\w-])outline\s*:\s*([^;}]+)/g)) {
       out.push({ sheet, value: m[1]!.trim() });

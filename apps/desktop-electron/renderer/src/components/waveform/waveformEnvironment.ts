@@ -112,6 +112,31 @@ export function useDevicePixelRatio(): number {
 
 const themeListeners = new Set<() => void>();
 let themeObserver: MutationObserver | null = null;
+let forcedQuery: MediaQueryList | null = null;
+
+/** Windows high contrast (HARDEN-08): the page's colours are replaced by the system's. */
+const FORCED_COLOURS_QUERY = "(forced-colors: active)";
+
+/**
+ * What a waveform paint is drawn in while forced colours are on. A canvas's pixels are not recoloured by
+ * the system, so a playhead drawn in the theme's near-white would vanish on a light high-contrast page.
+ * The bars take the text colour, the played half and the grid the greyed one, the playhead and the memory
+ * cues the highlight colour, which every high-contrast theme keeps apart from the page. Normal mode is untouched.
+ */
+export const FORCED_PAINTS: Record<string, string> = {
+  "--waveform-low": "CanvasText",
+  "--waveform-mid": "CanvasText",
+  "--waveform-high": "CanvasText",
+  "--waveform-mono": "CanvasText",
+  "--waveform-played": "GrayText",
+  "--waveform-grid": "GrayText",
+  "--waveform-memory-cue": "Highlight",
+  "--fg-primary": "Highlight",
+};
+
+function forcedColours(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(FORCED_COLOURS_QUERY).matches;
+}
 let themeRevision = 0;
 
 function subscribeTheme(listener: () => void): () => void {
@@ -129,15 +154,25 @@ function subscribeTheme(listener: () => void): () => void {
       attributes: true,
       attributeFilter: ["data-theme", "style"],
     });
+    // Windows high contrast turning on or off repaints the canvases in the system colours, or back.
+    forcedQuery = typeof window.matchMedia === "function" ? window.matchMedia(FORCED_COLOURS_QUERY) : null;
+    forcedQuery?.addEventListener?.("change", forcedChanged);
   }
   return () => {
     themeListeners.delete(listener);
     if (themeListeners.size === 0) {
       themeObserver?.disconnect();
       themeObserver = null;
+      forcedQuery?.removeEventListener?.("change", forcedChanged);
+      forcedQuery = null;
       tokenCache.clear();
     }
   };
+}
+
+function forcedChanged(): void {
+  themeRevision += 1;
+  themeListeners.forEach((each) => each());
 }
 
 /**
@@ -153,6 +188,8 @@ const tokenCache = new Map<string, string>();
 
 export const themeTokens: Pick<CSSStyleDeclaration, "getPropertyValue"> = {
   getPropertyValue(name: string): string {
+    const forced = FORCED_PAINTS[name];
+    if (forced !== undefined && forcedColours()) return forced;
     const known = themeObserver ? tokenCache.get(name) : undefined;
     if (known !== undefined) return known;
     const value = getComputedStyle(document.documentElement).getPropertyValue(name);
