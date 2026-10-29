@@ -112,3 +112,14 @@
 .cp-screen-header {
   user-select: none;
 }
+
+/* A scrolling page clips its overflow, so it is its own sticky box and its padding already holds the
+   top margin: the header sticks at 0 and starts level with every other page's (sidebar alignment B;
+   at --page-gutter-top it sat a second margin lower). The backdrop still covers the margin. */
+.screen.screen--scroll {
+  --screen-header-stick: 0px;
+}
+
+.screen.screen--scroll > .cp-screen-header::before {
+  top: calc(-1 * var(--page-gutter-top));
+}

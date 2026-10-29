@@ -15,13 +15,24 @@
   margin-inline-start: calc(-1 * var(--safe-left));
   padding-inline-start: var(--safe-left);
   border-bottom: var(--divider);
-  /* Divider to the first content: 12, for every page. */
-  margin-bottom: var(--space-lg);
+  /* Sidebar alignment B: as tall as the rail's top (the brand row, the Search row and the steps
+     around them, Sidebar.css), so the divider lies on the rail's line under Search on every page and
+     the first content starts level with the rail's first link. Taller content still grows it. */
+  box-sizing: border-box;
+  min-height: calc(2 * var(--toolbar-height) + 4 * var(--space-xs) + var(--hairline));
+  /* Divider to the first content: the rail's step from its line to its first link. */
+  margin-bottom: var(--space-md);
   background: var(--bg-app);
   min-width: 0;
 }
 
 /* Content has scrolled under the header: the sticky edge, a hard hairline (D4 A, M215). */
+/* The tight rail (2x and 3x in a short window) drops its brand row, so there is no line to meet:
+   the header keeps its own height there. */
+.app-shell:has(.cp-sidebar[data-tight]) .cp-screen-header {
+  min-height: 0;
+}
+
 .cp-screen-header[data-scrolled] {
   box-shadow: var(--shadow-sticky);
 }

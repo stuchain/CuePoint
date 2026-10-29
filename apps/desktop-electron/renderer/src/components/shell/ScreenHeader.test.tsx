@@ -223,8 +223,13 @@ describe("ScreenHeader", () => {
       expect(/\.app-main\s*\{([^}]*)\}/.exec(appCss)![1]).toMatch(/scrollbar-gutter:\s*stable/);
     });
 
-    it("leaves the content 12 below its divider (C30)", () => {
-      expect(/\.cp-screen-header\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/margin-bottom:\s*var\(--space-lg\)/);
+    // Moved for sidebar alignment B (C30's 12 becomes the rail's step from its line to its first link).
+    it("leaves the content one rail step below its divider, the divider on the rail's line (C30, sidebar alignment B)", () => {
+      const header = /\.cp-screen-header\s*\{([^}]*)\}/.exec(css)![1];
+      expect(header).toMatch(/margin-bottom:\s*var\(--space-md\)/);
+      expect(header).toMatch(/box-sizing:\s*border-box/);
+      expect(header).toMatch(/min-height:\s*calc\(2 \* var\(--toolbar-height\) \+ 4 \* var\(--space-xs\) \+ var\(--hairline\)\)/);
+      expect(css).toMatch(/\.app-shell:has\(\.cp-sidebar\[data-tight\]\) \.cp-screen-header \{\s*min-height: 0;/);
     });
   });
 
