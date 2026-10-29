@@ -919,19 +919,34 @@ DETAIL_EDGE_LEVEL = 0.5
 def _load_audio_decode() -> Any:
     """``cuepoint.data.audio_decode``, loaded from its file.
 
-    Loaded by path rather than imported, so the check needs nothing but the
-    standard library: importing the package would run ``cuepoint.data``'s own
-    imports, which this script has no business depending on.
+    Loaded by path rather than imported, so the check does not run
+    ``cuepoint.data``'s own imports, which this script has no business
+    depending on. The module needs only the standard library and
+    ``cuepoint.utils.long_path``, so the repository's ``src`` is on the path
+    while it loads (a release check runs from a plain interpreter, where
+    ``cuepoint`` is not installed); ``cuepoint/__init__.py`` and
+    ``cuepoint/utils/__init__.py`` import nothing heavy.
     """
     import importlib.util
 
-    path = PROJECT_ROOT / "src" / "cuepoint" / "data" / "audio_decode.py"
+    source_root = PROJECT_ROOT / "src"
+    path = source_root / "cuepoint" / "data" / "audio_decode.py"
     spec = importlib.util.spec_from_file_location("cuepoint_audio_decode", path)
     if spec is None or spec.loader is None:
         raise SmokeTestError(f"Could not load the decoder module: {path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
+    added = str(source_root) not in sys.path
+    if added:
+        sys.path.insert(0, str(source_root))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        if added:
+            try:
+                sys.path.remove(str(source_root))
+            except ValueError:
+                pass
     return module
 
 
