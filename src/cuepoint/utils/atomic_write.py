@@ -35,16 +35,28 @@ from typing import IO, Any, Iterable, Iterator, List, Sequence, Union
 TEMP_MARKER = ".cuepoint-tmp-"
 
 # ``.<name>.cuepoint-tmp-<pid>`` or ``.<name>.cuepoint-tmp-<pid>-<n>``.
-_TEMP_NAME = re.compile(r"^\..+\.cuepoint-tmp-(\d+)(?:-\d+)?$")
+# A copy of an audio file keeps its extension so a library can tell the format:
+# ``.<stem>.cuepoint-tmp-<pid>[-<n>].<ext>``.
+_TEMP_NAME = re.compile(r"^\..+\.cuepoint-tmp-(\d+)(?:-\d+)?(?:\.[^.]+)?$")
 
 PathLike = Union[str, "os.PathLike[str]"]
 Data = Union[bytes, bytearray, memoryview, str, IO[Any], Iterable[Union[bytes, str]]]
 
 
-def temp_name_for(name: str, pid: int | None = None, serial: int = 0) -> str:
-    """The temporary file name for a file called ``name``."""
-    base = f".{name}{TEMP_MARKER}{os.getpid() if pid is None else pid}"
-    return base if serial == 0 else f"{base}-{serial}"
+def temp_name_for(
+    name: str,
+    pid: int | None = None,
+    serial: int = 0,
+    keep_extension: bool = False,
+) -> str:
+    """The temporary file name for a file called ``name``.
+
+    With ``keep_extension`` the original extension stays last
+    (``.song.cuepoint-tmp-42.mp3``), for copies a library must recognise by name.
+    """
+    stem, extension = os.path.splitext(name) if keep_extension else (name, "")
+    base = f".{stem}{TEMP_MARKER}{os.getpid() if pid is None else pid}"
+    return (base if serial == 0 else f"{base}-{serial}") + extension
 
 
 def fsync_folder(folder: PathLike) -> None:
@@ -67,12 +79,17 @@ def fsync_folder(folder: PathLike) -> None:
         os.close(descriptor)
 
 
-def _create_temp(final: Path) -> "tuple[Path, int]":
-    """Create the temporary file beside ``final``, exclusively; return (path, fd)."""
+def create_temp(final: Path, keep_extension: bool = False) -> "tuple[Path, int]":
+    """Create the temporary file beside ``final``, exclusively; return (path, fd).
+
+    A name already taken (a concurrent write in this process) gets the next ``-<n>``.
+    """
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
     serial = 0
     while True:
-        candidate = final.with_name(temp_name_for(final.name, serial=serial))
+        candidate = final.with_name(
+            temp_name_for(final.name, serial=serial, keep_extension=keep_extension)
+        )
         try:
             return candidate, os.open(candidate, flags, 0o666)
         except FileExistsError:
@@ -112,12 +129,13 @@ def stage_temp(path: PathLike, data: Data, *, encoding: str = "utf-8") -> Path:
     or :func:`discard_temp`. If writing fails the temporary file is removed.
     """
     final = Path(path)
-    temp, descriptor = _create_temp(final)
+    temp, descriptor = create_temp(final)
     try:
         with os.fdopen(descriptor, "wb") as stream:
             _write_data(stream, data, encoding)
             stream.flush()
             os.fsync(stream.fileno())
+        _keep_mode(final, temp)
     except BaseException:
         discard_temp(temp)
         raise
@@ -154,7 +172,6 @@ def write_atomic(path: PathLike, data: Data, *, encoding: str = "utf-8") -> int:
     temp = stage_temp(final, data, encoding=encoding)
     try:
         size = temp.stat().st_size
-        _keep_mode(final, temp)
         commit_temp(temp, final)
     except BaseException:
         discard_temp(temp)
@@ -189,7 +206,7 @@ def atomic_file(
     if "w" not in mode:
         raise ValueError("atomic_file is for writing: mode must contain 'w'")
     final = Path(path)
-    temp, descriptor = _create_temp(final)
+    temp, descriptor = create_temp(final)
     try:
         if "b" in mode:
             stream: IO[Any] = os.fdopen(descriptor, "wb", buffering=buffering)
@@ -212,6 +229,37 @@ def atomic_file(
         raise
 
 
+def sweep_stale_copies_of(final: PathLike, keep_extension: bool = False) -> List[Path]:
+    """Remove dead processes' temporary copies of this one file; never raises."""
+    final = Path(final)
+    stem, extension = (
+        os.path.splitext(final.name) if keep_extension else (final.name, "")
+    )
+    pattern = re.compile(
+        r"^\."
+        + re.escape(stem)
+        + re.escape(TEMP_MARKER)
+        + r"(\d+)(?:-\d+)?"
+        + re.escape(extension)
+        + "$"
+    )
+    removed: List[Path] = []
+    try:
+        entries = list(os.scandir(final.parent))
+    except OSError:
+        return removed
+    for entry in entries:
+        match = pattern.match(entry.name)
+        if match is None or pid_alive(int(match.group(1))):
+            continue
+        try:
+            os.unlink(entry.path)
+            removed.append(Path(entry.path))
+        except OSError:
+            continue
+    return removed
+
+
 def pid_alive(pid: int) -> bool:
     """Whether a process with this id exists (unknown counts as alive)."""
     if pid <= 0:
@@ -219,11 +267,13 @@ def pid_alive(pid: int) -> bool:
     if sys.platform == "win32":  # pragma: no cover - exercised on Windows only
         import ctypes
 
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+        kernel32.OpenProcess.restype = ctypes.c_void_p
         handle = kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
         if not handle:
-            return kernel32.GetLastError() == 5  # access denied: it exists
-        kernel32.CloseHandle(handle)
+            # Only "no such process id" means dead; access denied and the rest mean alive.
+            return ctypes.get_last_error() != 87  # ERROR_INVALID_PARAMETER
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
         return True
     try:
         os.kill(pid, 0)
@@ -310,7 +360,9 @@ __all__: Sequence[str] = (
     "fsync_file",
     "fsync_folder",
     "pid_alive",
+    "create_temp",
     "stage_temp",
+    "sweep_stale_copies_of",
     "sweep_own_folders",
     "sweep_temp_files",
     "temp_name_for",

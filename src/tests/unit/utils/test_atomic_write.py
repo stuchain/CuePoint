@@ -220,3 +220,61 @@ def test_sweep_own_folders_clears_dead_temps_in_home_and_below(tmp_path, monkeyp
 
     assert sorted(removed) == sorted(old)
     assert live.exists()
+
+
+def test_copy_names_can_keep_the_extension():
+    assert (
+        temp_name_for("song.mp3", pid=7, keep_extension=True)
+        == ".song.cuepoint-tmp-7.mp3"
+    )
+    assert (
+        temp_name_for("song.mp3", pid=7, serial=2, keep_extension=True)
+        == ".song.cuepoint-tmp-7-2.mp3"
+    )
+
+
+def test_sweep_removes_dead_copies_that_kept_their_extension(tmp_path):
+    dead = _dead_pid()
+    gone = tmp_path / temp_name_for("song.mp3", pid=dead, keep_extension=True)
+    gone_serial = tmp_path / temp_name_for(
+        "song.flac", pid=dead, serial=3, keep_extension=True
+    )
+    mine = tmp_path / temp_name_for("song.mp3", pid=os.getpid(), keep_extension=True)
+    for path in (gone, gone_serial, mine):
+        path.write_bytes(b"x")
+    removed = sweep_temp_files([tmp_path])
+    assert sorted(p.name for p in removed) == sorted([gone.name, gone_serial.name])
+    assert mine.exists()
+
+
+def test_stale_copies_of_one_file_only(tmp_path):
+    dead = _dead_pid()
+    ours = tmp_path / temp_name_for("a.mp3", pid=dead, keep_extension=True)
+    other = tmp_path / temp_name_for("b.mp3", pid=dead, keep_extension=True)
+    for path in (ours, other):
+        path.write_bytes(b"x")
+    removed = atomic_write.sweep_stale_copies_of(
+        tmp_path / "a.mp3", keep_extension=True
+    )
+    assert [p.name for p in removed] == [ours.name]
+    assert other.exists()
+
+
+def test_create_temp_takes_the_next_name_when_one_is_taken(tmp_path):
+    first, fd1 = atomic_write.create_temp(tmp_path / "a.mp3", keep_extension=True)
+    second, fd2 = atomic_write.create_temp(tmp_path / "a.mp3", keep_extension=True)
+    os.close(fd1)
+    os.close(fd2)
+    assert first != second
+    assert second.name.endswith(".mp3")
+
+
+def test_staged_temp_keeps_the_existing_files_mode(tmp_path):
+    if sys.platform == "win32":
+        pytest.skip("POSIX modes")
+    target = tmp_path / "f"
+    target.write_bytes(b"old")
+    target.chmod(0o600)
+    temp = stage_temp(target, b"new")
+    assert temp.stat().st_mode & 0o777 == 0o600
+    atomic_write.discard_temp(temp)

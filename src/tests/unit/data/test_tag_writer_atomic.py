@@ -420,3 +420,37 @@ class TestRestoreAndPicture:
 def test_helpers_are_exported():
     fn: Callable = tag_save.save_via_copy
     assert callable(fn)
+
+
+@pytest.mark.unit
+class TestCopyNaming:
+    def test_the_copy_keeps_the_extension_while_it_is_written(
+        self, tmp_path, monkeypatch
+    ):
+        path = audio_copy(tmp_path, "mp3")
+        seen = []
+        real = tag_writer._dispatch
+
+        def look(work: Path, *args):
+            seen.append(work.name)
+            return real(work, *args)
+
+        monkeypatch.setattr(tag_writer, "_dispatch", look)
+        assert write(path)[0] == STATUS_OK
+        assert seen == [f".tone.cuepoint-tmp-{os.getpid()}.mp3"]
+
+    def test_a_dead_processs_copy_of_this_file_is_removed_first(self, tmp_path):
+        from cuepoint.utils.atomic_write import temp_name_for
+
+        path = audio_copy(tmp_path, "flac")
+        import subprocess
+
+        child = subprocess.Popen([sys.executable, "-c", "pass"])
+        child.wait()
+        stale = tmp_path / temp_name_for(
+            "tone.flac", pid=child.pid, keep_extension=True
+        )
+        stale.write_bytes(b"left by a killed write")
+
+        assert write(path)[0] == STATUS_OK
+        assert not stale.exists()

@@ -114,7 +114,13 @@ from cuepoint.data.rekordbox import (
 )
 from cuepoint.exceptions.cuepoint_exceptions import ValidationError
 from cuepoint.models.rekordbox_playlist import build_path
-from cuepoint.utils.atomic_write import commit_temp, discard_temp, stage_temp
+from cuepoint.utils.atomic_write import (
+    commit_temp,
+    discard_temp,
+    fsync_file,
+    fsync_folder,
+    stage_temp,
+)
 from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
@@ -1325,6 +1331,8 @@ def _keep_previous(destination: Path) -> Optional[str]:
         return None
     backup = backup_path_for(destination, datetime.now())
     shutil.copy2(destination, backup)
+    fsync_file(backup)  # HARDEN-04: the safety copy is on disk before the original goes
+    fsync_folder(backup.parent)
     return str(backup)
 
 

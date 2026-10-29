@@ -2,7 +2,8 @@
 
 A tag write used to rewrite the audio file in place, so a crash half way could
 truncate the user's music. Now every write path works on a copy made beside the
-file (named like the other temporary files, ``.<name>.cuepoint-tmp-<pid>``):
+file (named like the other temporary files, ``.<stem>.cuepoint-tmp-<pid><.ext>``,
+the extension kept so mutagen and friends recognise the format):
 
 1. check there is room for the copy; if not, fail before touching anything;
 2. copy the file, write the tags into the copy;
@@ -46,9 +47,10 @@ from typing import Any, BinaryIO, Callable, Dict, Optional, TypeVar, Union
 
 from cuepoint.utils.atomic_write import (
     commit_temp,
+    create_temp,
     discard_temp,
     fsync_file,
-    temp_name_for,
+    sweep_stale_copies_of,
 )
 
 PathLike = Union[str, "os.PathLike[str]"]
@@ -306,22 +308,24 @@ def save_via_copy(
         raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), str(original))
     _require_room(original.parent, before.st_size)
 
-    work = original.with_name(temp_name_for(original.name))
-    work_taken = False
+    # A killed earlier write may have left its copy of this very file.
+    sweep_stale_copies_of(original, keep_extension=True)
+    work, descriptor = create_temp(original, keep_extension=True)
     swapped = False
     try:
         try:
-            with open(original, "rb") as source, open(work, "xb") as target:
-                work_taken = True
+            with open(original, "rb") as source, os.fdopen(descriptor, "wb") as target:
                 shutil.copyfileobj(source, target, _CHUNK)
-        except FileExistsError:
-            raise TagSaveError(MESSAGE_IN_USE) from None
         except OSError as exc:
             if exc.errno == errno.ENOSPC:
                 raise TagSaveError(MESSAGE_NO_SPACE) from exc
             raise
         if sys.platform != "win32":
             shutil.copymode(original, work)
+            try:
+                os.chown(work, before.st_uid, before.st_gid)
+            except (OSError, AttributeError):
+                pass  # not ours to give (EPERM), or no owners on this system
 
         result = operation(work)
         if accept is not None and not accept(result):
@@ -353,7 +357,7 @@ def save_via_copy(
         swapped = True
         return result
     finally:
-        if work_taken and not swapped:
+        if not swapped:
             discard_temp(work)
 
 
