@@ -8,7 +8,7 @@ This module provides conversion functions to bridge old and new model implementa
 enabling gradual migration without breaking changes.
 """
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, List
 
 if TYPE_CHECKING:
     from cuepoint.data.beatport import BeatportCandidate as OldBeatportCandidate
@@ -130,8 +130,11 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
     """
     # Convert candidates from Dict to BeatportCandidate
     candidates: List[BeatportCandidate] = []
-    if old.candidates:
-        for cand_dict in old.candidates:
+    # The legacy shape held dicts here although the class now types the field as
+    # BeatportCandidate objects (see gui_types), so read it as untyped rows.
+    legacy_rows: List[Any] = list(old.candidates)
+    if legacy_rows:
+        for cand_dict in legacy_rows:
             # Try to convert if it's a dict, otherwise skip
             if isinstance(cand_dict, dict):
                 # Handle field name differences:
@@ -364,7 +367,7 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
         search_query_index=old.search_query_index,
         search_stop_query_index=old.search_stop_query_index,
         candidate_index=old.candidate_index,
-        candidates_data=old.candidates,  # Keep original dict format for backward compatibility
+        candidates_data=legacy_rows,  # Keep original dict format for backward compatibility
         queries_data=old.queries,
     )
 
@@ -392,7 +395,7 @@ def track_result_to_old(new: TrackResult) -> "OldTrackResult":
         True
     """
     # Convert candidates from BeatportCandidate to Dict
-    candidates_dict: List[dict] = []
+    candidates_dict: List[Any] = []
     if new.candidates:
         candidates_dict = [c.to_dict() for c in new.candidates]
     elif new.candidates_data:
@@ -423,6 +426,7 @@ def track_result_to_old(new: TrackResult) -> "OldTrackResult":
         search_query_index=new.search_query_index,
         search_stop_query_index=new.search_stop_query_index,
         candidate_index=new.candidate_index,
+        # Legacy callers read dict rows here, whatever the class types the field as.
         candidates=candidates_dict,
         queries_data=new.queries_data if new.queries_data else [],
     )

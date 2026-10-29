@@ -142,6 +142,7 @@ def _read_vorbis_title_artist(path: str) -> Tuple[Optional[str], Optional[str]]:
     except ImportError:
         return (None, None)
     suffix = Path(path).suffix.lower()
+    audio: "FLAC | OggVorbis"
     try:
         if suffix == ".flac":
             audio = FLAC(os_path(path))
