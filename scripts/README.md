@@ -25,6 +25,10 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
   reaches (a file only tests reach counts as dead), or on a stale `ALLOWLIST` entry. `test.yml` runs
   `--check`. By hand, `python scripts/audit_dead_code.py --output report.md`; Phase 12's audit
   (`docs/v1/PHASE12_AUDIT.md`) is written from it.
+- `check_acceptance.py`: Checks `docs/release/v1-acceptance.md`, the list of every check owed before
+  `v1.0.0` (HARDEN-09): each row has a check, a source that exists, systems, a how, a result and, once it is
+  not `owed`, a date. With `--release` it also exits 1 while any row is `owed` or `fail` (DEC-188). `release.yml`
+  runs `--release` for a normal tag only, never a `-test.N` tag; the shape check runs in the unit tests.
 - `run_tests.py`: Runs the Python test suites by layer (`--unit`, `--all`, `--no-slow`, `--coverage`). `test.yml`.
 - `check_large_files.py`: Fails on files over the size limit. `large-file-check.yml`, `test.yml`.
 - `check_file_sizes.py`: Fails if any tracked file exceeds the size limit. `release-gates.yml`.
