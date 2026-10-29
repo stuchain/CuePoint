@@ -24,7 +24,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
-import { launchElectron } from "./support/launchApp";
+import { launchElectron, packagedExecutable } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -291,6 +291,10 @@ async function expectSignedIn(window: Page, masked: string, timeout: number): Pr
 }
 
 test.describe("Beatport sign-in", () => {
+  // The stand-in works through two URL overrides that main honours only in an unpackaged app (see the
+  // top of this file), so against a packaged build every test would wait for a window that never opens.
+  test.skip(packagedExecutable() !== undefined, "the sign-in stand-in is honoured only by an unpackaged app");
+
   let userDataDir: string;
   let cuepointHome: string;
   let stand: Stand;
