@@ -132,7 +132,7 @@ def track_result_from_old(old: "OldTrackResult") -> TrackResult:
     candidates: List[BeatportCandidate] = []
     # The legacy shape held dicts here although the class now types the field as
     # BeatportCandidate objects (see gui_types), so read it as untyped rows.
-    legacy_rows: List[Any] = list(old.candidates)
+    legacy_rows: List[Any] = list(old.candidates or [])
     if legacy_rows:
         for cand_dict in legacy_rows:
             # Try to convert if it's a dict, otherwise skip
