@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from cuepoint.services.interfaces import ICheckpointService
+from cuepoint.utils.atomic_write import write_atomic
 
 # Design 5.69: Keep checkpoints for 7 days
 CHECKPOINT_MAX_AGE_DAYS = 7
@@ -133,10 +134,8 @@ class CheckpointService(ICheckpointService):
             self._log.warning("[reliability] checkpoint too large, skipping save")
             return
         path = self.checkpoint_path()
-        tmp_path = path.with_suffix(path.suffix + ".tmp")
         try:
-            tmp_path.write_text(raw, encoding="utf-8")
-            tmp_path.replace(path)
+            write_atomic(path, raw)
             self._log.info(
                 "[reliability] checkpoint_saved run_id=%s index=%s",
                 run_id,
@@ -144,11 +143,6 @@ class CheckpointService(ICheckpointService):
             )
         except OSError as e:
             self._log.warning("[reliability] checkpoint save failed: %s", e)
-            if tmp_path.exists():
-                try:
-                    tmp_path.unlink()
-                except OSError:
-                    pass
 
     def load(self) -> Optional[CheckpointData]:
         """Load checkpoint from disk. Returns None if missing or invalid."""
