@@ -167,7 +167,10 @@ interface WindowView {
   text: string;
 }
 
-/** Every window's address and the words on it, asked in the main process. */
+/**
+ * Every window's address and the words in it, asked in the main process. The text content, hidden
+ * parts too: the strip says one thing at a time and a running job takes the place of a note.
+ */
 async function windowViews(application: ElectronApplication): Promise<WindowView[]> {
   return application.evaluate(async ({ BrowserWindow }) => {
     const views: Array<{ url: string; crashed: boolean; text: string }> = [];
@@ -179,7 +182,7 @@ async function windowViews(application: ElectronApplication): Promise<WindowView
         if (!contents.isCrashed() && !contents.isLoading()) {
           try {
             text = await Promise.race([
-              contents.executeJavaScript("document.body ? document.body.innerText : ''") as Promise<string>,
+              contents.executeJavaScript("document.body ? document.body.textContent : ''") as Promise<string>,
               new Promise<string>((resolve) => setTimeout(() => resolve(""), 3000)),
             ]);
           } catch {
