@@ -74,6 +74,7 @@ import {
   createRendererRecovery,
   resolveRecoveryPaths,
 } from "./rendererRecovery";
+import { createRendererWatchdog, type RendererWatchdog } from "./rendererWatchdog";
 import { UpdateNotes, openNoteLink, openReleasePage, pruneInstalledUpdates } from "./updateNotes";
 import { compareVersions, isTestVersion } from "./updateRule";
 import { Backups, RESTORE_TIMEOUT_MS, validBackupName } from "./backups";
@@ -354,6 +355,39 @@ const rendererRecovery = createRendererRecovery({
   },
   showRecoveryPage: (): void => showRecoveryPage(),
 });
+
+/**
+ * The main window's page asked on a timer, for the one that is there but wedged: Electron then says
+ * neither crashed nor loading, `render-process-gone` never comes, and the window stays blank (seen
+ * on a Linux CI run after a forced crash). Its process is ended, and goes the way a crash goes.
+ */
+let rendererWatchdog: RendererWatchdog | null = null;
+function watchRenderer(win: BrowserWindow): void {
+  rendererWatchdog?.stop();
+  const contents = win.webContents;
+  const dog = createRendererWatchdog({
+    probe: () => contents.executeJavaScript("1"),
+    canProbe: () =>
+      !win.isDestroyed() &&
+      !quitStarted &&
+      !contents.isLoading() &&
+      !contents.isCrashed() &&
+      !contents.isDevToolsOpened(),
+    kill: (): void => {
+      const pid = contents.getOSProcessId();
+      if (pid > 0 && pid !== process.pid) process.kill(pid, "SIGKILL");
+    },
+    stopped: (details): void => {
+      if (mainWindow === win && !win.isDestroyed()) rendererRecovery.handle(details);
+    },
+  });
+  rendererWatchdog = dog;
+  dog.start();
+  win.on("closed", () => {
+    dog.stop();
+    if (rendererWatchdog === dog) rendererWatchdog = null;
+  });
+}
 
 /** The recovery page: its own small window, with a preload that has two calls, in the place of the stopped one. */
 function showRecoveryPage(): void {
@@ -1765,6 +1799,7 @@ async function createWindow(options: { startEngine?: boolean } = {}): Promise<vo
   });
 
   mainWindow = win;
+  watchRenderer(win);
   // macOS keeps the app running with no window; `dispose` stopped the renewal then, so restart it.
   beatportSignIn?.resume();
   win.on("closed", () => {
@@ -1908,6 +1943,7 @@ app.on("render-process-gone", (_event, contents, details) => {
   reportProcessGone("renderer", details);
   // The main window's page only: reloaded once, or the recovery page on a second stop (HARDEN-05).
   if (mainWindow && !mainWindow.isDestroyed() && contents === mainWindow.webContents) {
+    rendererWatchdog?.noteGone();
     rendererRecovery.handle(details);
   }
 });

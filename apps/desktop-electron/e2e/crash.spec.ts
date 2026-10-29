@@ -677,6 +677,45 @@ test.describe("Crash injection (HARDEN-05)", () => {
     expect(integrityCheck(libraryFile(home))).toBe("ok");
   });
 
+  test("a renderer that stops answering without exiting is replaced, as one that crashed is", async () => {
+    // The state a red Linux CI run showed after a crash: the window is not crashed and not loading, and the page
+    // never answers. A stopped process is that state on demand (there is no SIGSTOP on Windows).
+    test.skip(process.platform === "win32", "a process cannot be stopped this way on Windows");
+    app = await launchApp({ userDataDir, home });
+    const first = await ready(app);
+    await importLibrary(first, await writeExportFile(path.join(workspace, "lib.xml"), plainTracks(10), 10));
+
+    const renderer = await app.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed());
+      if (!win) throw new Error("no window to stop");
+      return win.webContents.getOSProcessId();
+    });
+    process.kill(renderer, "SIGSTOP");
+    try {
+      // Main notices by itself: nothing here touches the window, so no input event can tell it.
+      await expectReloaded(app, 90_000);
+    } finally {
+      try {
+        process.kill(renderer, "SIGCONT");
+      } catch {
+        /* it is gone, which is the point */
+      }
+    }
+    expect(alive(renderer), "the stopped renderer was left running").toBe(false);
+    await expect
+      .poll(() => noteVisible(app!, "CuePoint's window stopped and was reopened."), {
+        timeout: 120_000,
+        message: "the note about the reopened window never showed",
+      })
+      .toBe(true);
+    await expect
+      .poll(async () => (await inWindow(app!, "window.cuepoint.getLibrarySummary().then((s) => s.track_count)").catch(() => -1)) as number, {
+        timeout: 90_000,
+      })
+      .toBe(10);
+    expect(integrityCheck(libraryFile(home))).toBe("ok");
+  });
+
   test("the whole app killed during a refresh is told of at the next launch", async () => {
     const tracks = Number(process.env.CUEPOINT_CRASH_REFRESH_TRACKS ?? "10000");
     const ADDED = 1000;
