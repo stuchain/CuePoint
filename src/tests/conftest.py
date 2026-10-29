@@ -472,3 +472,18 @@ def _forget_discover_picture_misses():
     discovery_service._ART_MISSES.clear()
     yield
     discovery_service._ART_MISSES.clear()
+
+
+@pytest.fixture(autouse=True)
+def _forget_library_state():
+    """The engine's library state is per process (HARDEN-03): one test's must not reach the next.
+
+    It is worked out once and kept, and it holds a hook that watches the database service for
+    damage and one that holds the migrations back; a test that provoked either would leave
+    them set for every test after it.
+    """
+    from cuepoint.engine import library_state
+
+    library_state.reset()
+    yield
+    library_state.reset()

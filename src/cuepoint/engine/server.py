@@ -36,7 +36,7 @@ from cuepoint.engine.support_bundle_api import (
     run_support_bundle,
 )
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
-from cuepoint.engine import backups_api
+from cuepoint.engine import backups_api, library_state
 from cuepoint.services.backup_service import reason_of
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
 from cuepoint.engine.reporting_api import (
@@ -398,6 +398,10 @@ def make_handler(
             The one place a route answers 500 (REPORT-03). The event id goes into the
             envelope as ``error.report_id`` when one was made, so the renderer can name it.
             """
+            library = library_state.status_for(exc)
+            if library is not None:
+                self._send_json(*library)
+                return
             error = payload.get("error")
             code = error.get("code") if isinstance(error, dict) else None
             event_id = (
@@ -416,6 +420,10 @@ def make_handler(
             Beatport refusal) are refusals (DEC-126). A 500 whose code
             names a cause the user owns is sent as mapped too (DEC-153).
             """
+            library = library_state.status_for(exc)
+            if library is not None:
+                self._send_json(*library)
+                return
             status, payload = status_for(exc)
             error = payload.get("error") if isinstance(payload, dict) else None
             code = error.get("code") if isinstance(error, dict) else None
@@ -858,7 +866,15 @@ def make_handler(
                         401, error_payload("UNAUTHORIZED", "Missing or invalid token")
                     )
                     return
-                self._send_json(200, {"ready": True, **health_payload()})
+                self._send_json(
+                    200,
+                    {
+                        "ready": True,
+                        **health_payload(),
+                        # Worked out once (at start); never per call (HARDEN-03).
+                        "library": library_state.library_json(),
+                    },
+                )
                 return
             if path == "/api/v1/logs/dir":
                 if not self._authorized():
@@ -1366,6 +1382,16 @@ def make_handler(
                     401, error_payload("UNAUTHORIZED", "Missing or invalid token")
                 )
                 return
+            if path == "/api/v1/library/recheck":
+                self._read_body()
+                self._send_json(200, {"library": library_state.recompute()})
+                return
+            if path == "/api/v1/library/integrity-check":
+                self._read_body()
+                self._send_json(
+                    202, {"integrityCheck": library_state.start_integrity_check()}
+                )
+                return
             if backups_api.handles("POST", path):
                 self._read_body()
                 self._handle_routed(
@@ -1720,43 +1746,24 @@ def favour_waiting_threads() -> None:
     sys.setswitchinterval(ENGINE_SWITCH_INTERVAL_SECONDS)
 
 
-def run_engine(config: Optional[EngineConfig] = None) -> None:
-    # First, so "may I send?" has its answer before any work starts (REPORT-01, DEC-128).
-    set_reporting_enabled(initial_reporting_enabled(os.environ))
-    # Reporting is set up in the background right after the port is bound (below), not here: the
-    # SDK costs about 150 ms and every packaged start now has a DSN (REPORT-08). A failure before
-    # the port is bound ends the engine, and the app's supervisor reports that exit with the
-    # output tail; after it, a bounded buffer holds reports, breadcrumbs and logged errors until
-    # the setup has finished (see engine_reporting's docstring for what is not covered).
-    watch_jobs(_JOB_STORE)
-    resolve_after_matches(_JOB_STORE)
-    cfg = config or EngineConfig.from_env()
-    if cfg.host not in ALLOWED_HOSTS:
-        raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host!r}")
-    fine_timer_resolution()
-    favour_waiting_threads()
-    # Synchronous and before the server exists: a backup running concurrently
-    # with the first migration would lose the ordering guarantee above. It is
-    # skipped entirely when nothing changed since the last one, so the usual
-    # cost is a few stat() calls.
-    backup = backup_library_on_launch()
-    # HARDEN-04: remove what a killed write left behind (".<name>.cuepoint-tmp-<pid>").
-    sweep_own_folders()
+def _schedule_launch_analysis() -> None:
+    # WAVE-03: an analysis the last engine left unfinished continues, unless it
+    # was paused, once this one has been serving for a while, so a launch is
+    # never slowed by it. The engine is serving from the line below.
+    from cuepoint.engine.waveform_jobs import schedule_launch_analysis
 
-    # Both events are recorded here, after the backup has been taken: resolving
-    # the activity service migrates the database, and doing that any earlier
-    # would turn the launch backup into a copy of the migrated state.
-    if backup is not None:
-        # None means nothing had changed, and a skipped backup is not something
-        # a user needs telling about.
-        record_activity(
-            "backup.created",
-            "Library backed up",
-            {
-                "file": Path(backup.path).name,
-                "reason": reason_of(Path(backup.path).name) or "launch",
-            },
-        )
+    try:
+        schedule_launch_analysis(_JOB_STORE)
+    except Exception as exc:  # noqa: BLE001 — never a reason not to start
+        _logger.warning("[waveforms] the launch analysis was not scheduled: %s", exc)
+
+
+def _start_library_work(cfg: EngineConfig, late: bool = False) -> None:
+    """What the engine does with a library that opened: record the start, background work.
+
+    At start when the library is ``ok``; otherwise once a recheck finds it so
+    (``late``), since none of this can run against a library that is not.
+    """
     # DEC-028/DEC-029: every start is recorded, so a restarting engine leaves a
     # visible trail rather than healing silently.
     record_activity(
@@ -1785,21 +1792,65 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     from cuepoint.engine.discovery_jobs import close_interrupted_discovery_runs
 
     close_interrupted_discovery_runs()
+    if late:
+        _schedule_launch_analysis()
+
+
+def run_engine(config: Optional[EngineConfig] = None) -> None:
+    # First, so "may I send?" has its answer before any work starts (REPORT-01, DEC-128).
+    set_reporting_enabled(initial_reporting_enabled(os.environ))
+    # Reporting is set up in the background right after the port is bound (below), not here: the
+    # SDK costs about 150 ms and every packaged start now has a DSN (REPORT-08). A failure before
+    # the port is bound ends the engine, and the app's supervisor reports that exit with the
+    # output tail; after it, a bounded buffer holds reports, breadcrumbs and logged errors until
+    # the setup has finished (see engine_reporting's docstring for what is not covered).
+    watch_jobs(_JOB_STORE)
+    resolve_after_matches(_JOB_STORE)
+    cfg = config or EngineConfig.from_env()
+    if cfg.host not in ALLOWED_HOSTS:
+        raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host!r}")
+    fine_timer_resolution()
+    favour_waiting_threads()
+    # Synchronous and before the server exists: a backup running concurrently
+    # with the first migration would lose the ordering guarantee above. It is
+    # skipped entirely when nothing changed since the last one, so the usual
+    # cost is a few stat() calls.
+    backup = backup_library_on_launch()
+    # HARDEN-04: remove what a killed write left behind (".<name>.cuepoint-tmp-<pid>").
+    sweep_own_folders()
+    # The library's state, once, here (HARDEN-03): this runs the upgrade, so a
+    # library that cannot open, is too new or fails to upgrade becomes a state
+    # the status route serves instead of a failure on every request.
+    library_ok = library_state.get_library_state()["state"] == library_state.OK
+    library_state.on_ready(lambda: _start_library_work(cfg, late=True))
+
+    # Both events are recorded here, after the backup has been taken: resolving
+    # the activity service migrates the database, and doing that any earlier
+    # would turn the launch backup into a copy of the migrated state.
+    if backup is not None and library_ok:
+        # None means nothing had changed, and a skipped backup is not something
+        # a user needs telling about.
+        record_activity(
+            "backup.created",
+            "Library backed up",
+            {
+                "file": Path(backup.path).name,
+                "reason": reason_of(Path(backup.path).name) or "launch",
+            },
+        )
+    if library_ok:
+        _start_library_work(cfg)
     server = with_error_reporting(
         ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
     )
     # Does nothing without a DSN (see resolve_engine_dsn). The socket is bound, so the app's health
     # checks are answered while the SDK loads; what fails meanwhile is held, then replayed.
     start_engine_reporting_in_background()
-    # WAVE-03: an analysis the last engine left unfinished continues, unless it
-    # was paused, once this one has been serving for a while, so a launch is
-    # never slowed by it. The engine is serving from the line below.
-    from cuepoint.engine.waveform_jobs import schedule_launch_analysis
-
-    try:
-        schedule_launch_analysis(_JOB_STORE)
-    except Exception as exc:  # noqa: BLE001 — never a reason not to start
-        _logger.warning("[waveforms] the launch analysis was not scheduled: %s", exc)
+    # A damaged or half-upgraded library is reported once, now that reports can
+    # be held for the setup above (DEC-126).
+    library_state.report_current()
+    if library_ok:
+        _schedule_launch_analysis()
     _stop_with_parent(server)
     try:
         server.serve_forever()

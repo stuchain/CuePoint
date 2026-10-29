@@ -139,6 +139,9 @@ _ALLOWED = {
     # (or the counters ``persistence/revision_counters.py`` reads) on read-only
     # connections of its own; it queries no table itself.
     "engine/revisions.py",
+    # HARDEN-03: the library state reads the file with plain SELECTs and
+    # PRAGMA quick_check and runs the migrations; it queries no library table.
+    "engine/library_state.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

@@ -626,3 +626,145 @@ class TestScale:
         assert (
             service.connect().execute("SELECT count(*) FROM t").fetchone()[0] == 20_000
         )
+
+
+# ---------------------------------------------------------------------------
+# A full disk and damage seen during the session (HARDEN-03)
+# ---------------------------------------------------------------------------
+
+
+def _scratch(service: DatabaseService) -> None:
+    with service.transaction() as connection:
+        connection.execute("CREATE TABLE scratch (id INTEGER PRIMARY KEY, body BLOB)")
+
+
+def _rows(service: DatabaseService) -> int:
+    return int(service.connect().execute("SELECT count(*) FROM scratch").fetchone()[0])
+
+
+@pytest.mark.unit
+class TestDiskFull:
+    def _fill_up(self, service: DatabaseService) -> None:
+        """Leave SQLite no room to grow: its own SQLITE_FULL, not a mock of it."""
+        connection = service.connect()
+        pages = connection.execute("PRAGMA page_count").fetchone()[0]
+        connection.execute(f"PRAGMA max_page_count={pages}")
+
+    def test_sqlite_full_becomes_r002_and_nothing_is_half_made(self, service):
+        _scratch(service)
+        self._fill_up(service)
+        with pytest.raises(DatabaseError) as raised:
+            with service.transaction() as connection:
+                connection.execute("INSERT INTO scratch (body) VALUES (x'00')")
+                connection.execute(
+                    "INSERT INTO scratch (body) VALUES (?)", (b"\0" * 2_000_000,)
+                )
+        assert raised.value.error_code == "R002"
+        assert raised.value.message == (
+            "Your disk is full. CuePoint can't save changes until there's space."
+        )
+        assert isinstance(raised.value.__cause__, sqlite3.OperationalError)
+        # The first insert went with the second: the change is whole or not at all.
+        assert _rows(service) == 0
+        assert not service.connect().in_transaction
+
+    def test_the_service_works_again_once_there_is_room(self, service):
+        _scratch(service)
+        self._fill_up(service)
+        with pytest.raises(DatabaseError):
+            with service.transaction() as connection:
+                connection.execute(
+                    "INSERT INTO scratch (body) VALUES (?)", (b"\0" * 2_000_000,)
+                )
+        service.connect().execute("PRAGMA max_page_count=1073741823")
+        with service.transaction() as connection:
+            connection.execute("INSERT INTO scratch (body) VALUES (x'01')")
+        assert _rows(service) == 1
+
+    def test_enospc_on_a_write_inside_a_transaction_becomes_r002(self, service):
+        import errno
+
+        _scratch(service)
+        with pytest.raises(DatabaseError) as raised:
+            with service.transaction() as connection:
+                connection.execute("INSERT INTO scratch (body) VALUES (x'00')")
+                raise OSError(errno.ENOSPC, "No space left on device")
+        assert raised.value.error_code == "R002"
+        assert _rows(service) == 0
+
+    def test_other_failures_pass_through_unchanged(self, service):
+        _scratch(service)
+        with pytest.raises(sqlite3.IntegrityError):
+            with service.transaction() as connection:
+                connection.execute("INSERT INTO scratch (id) VALUES (1)")
+                connection.execute("INSERT INTO scratch (id) VALUES (1)")
+        with pytest.raises(ValueError):
+            with service.transaction():
+                raise ValueError("not the disk")
+        assert _rows(service) == 0
+
+    def test_r002_is_not_reported(self):
+        from cuepoint.reporting.expected import is_expected_failure
+        from cuepoint.services import library_errors
+
+        assert is_expected_failure(None, library_errors.disk_full_error())
+        assert is_expected_failure("INTERNAL_ERROR", library_errors.disk_full_error())
+
+
+@pytest.mark.unit
+class TestDamageDuringTheSession:
+    @pytest.fixture
+    def engine_library(self, tmp_path, monkeypatch):
+        """The container's own service over a migrated library, state worked out ok."""
+        from cuepoint.engine import library_state
+        from cuepoint.services import database_service as module
+        from cuepoint.services.bootstrap import bootstrap_services
+        from cuepoint.services.migration_runner import MigrationRunner
+        from cuepoint.utils.di_container import get_container, reset_container
+
+        path = tmp_path / "cuepoint.db"
+        monkeypatch.setattr(module, "default_database_path", lambda: path)
+        reset_container()
+        bootstrap_services()
+        shared = get_container().resolve(IDatabaseService)
+        MigrationRunner(shared).migrate()
+        assert library_state.get_library_state()["state"] == "ok"
+        yield shared
+        for thread in threading.enumerate():
+            if thread.name == "library-damage-backup":
+                thread.join(5)
+        reset_container()
+
+    @pytest.mark.parametrize(
+        "message", ["database disk image is malformed", "file is not a database"]
+    )
+    def test_corruption_raised_in_a_transaction_marks_the_library_damaged(
+        self, engine_library, message
+    ):
+        from cuepoint.engine import library_state
+
+        with pytest.raises(sqlite3.DatabaseError):
+            with engine_library.transaction():
+                raise sqlite3.DatabaseError(message)
+        assert library_state.get_library_state()["state"] == "damaged"
+
+    def test_other_database_errors_leave_the_state_alone(self, engine_library):
+        from cuepoint.engine import library_state
+
+        with pytest.raises(sqlite3.OperationalError):
+            with engine_library.transaction() as connection:
+                connection.execute("SELECT * FROM no_such_table")
+        with pytest.raises(sqlite3.OperationalError):
+            with engine_library.transaction():
+                raise sqlite3.OperationalError("database is locked")
+        assert library_state.get_library_state()["state"] == "ok"
+
+    def test_a_file_that_stops_being_a_database_is_noted_on_open(self, engine_library):
+        from cuepoint.engine import library_state
+
+        engine_library.close_all()
+        engine_library.db_path.write_bytes(b"\x07" * 4096)
+        with pytest.raises(DatabaseError) as raised:
+            engine_library.connect()
+        assert raised.value.error_code == "DB_UNREADABLE"
+        assert library_state.get_library_state()["state"] == "damaged"

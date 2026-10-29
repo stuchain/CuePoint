@@ -34,6 +34,7 @@ from typing import List, Optional, Tuple
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.migrations import Migration, discover_migrations, split_sql_statements
 from cuepoint.persistence import revision_counters
+from cuepoint.services import library_errors
 from cuepoint.services.interfaces import IDatabaseService, IMigrationRunner
 
 _logger = logging.getLogger(__name__)
@@ -112,6 +113,20 @@ def schema_is_ahead(db_path: Path) -> bool:
     applied = _applied_at(db_path)
     known = {m.version for m in _discovered()}
     return bool(applied - known)
+
+
+def schema_and_head(db_path: Path) -> Tuple[int, int]:
+    """``(schema version of the library at db_path, this build's head version)``.
+
+    The first is 0 for a library that has applied nothing. Reads with plain
+    SELECTs and never migrates.
+
+    Raises:
+        sqlite3.Error: If the file cannot be read as a library.
+    """
+    applied = _applied_at(db_path)
+    known = [m.version for m in _discovered()]
+    return (max(applied) if applied else 0, max(known) if known else 0)
 
 
 class MigrationRunner(IMigrationRunner):
@@ -205,6 +220,10 @@ class MigrationRunner(IMigrationRunner):
             self._sync_revision_counters()
             self._db.note_schema_current(versions)
             return []
+
+        # Held back by the engine when the library's state says they must not
+        # run now (HARDEN-03); a no-op everywhere else.
+        library_errors.check_migrations_allowed()
 
         applied: List[Migration] = []
         for migration in pending:

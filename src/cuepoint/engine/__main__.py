@@ -10,6 +10,10 @@ starts without the engine's import cost.
 analyses FILE through a real worker, as the app does, and prints one JSON line
 (``fetch_player_sidecar.py --check-analysis-worker``).
 
+``--unclean-exit`` (or ``CUEPOINT_UNCLEAN_EXIT=1``) says the last session did not
+end properly; the engine echoes it in the library state and does nothing else
+with it (HARDEN-03). The environment variable is the one the desktop app sets.
+
 ``--restore NAME`` restores the backup called NAME and exits, without starting
 the server (HARDEN-01): exit 0, or one JSON error line on stderr and non-zero.
 """
