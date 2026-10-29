@@ -292,8 +292,10 @@ async function expectSignedIn(window: Page, masked: string, timeout: number): Pr
 
 test.describe("Beatport sign-in", () => {
   // The stand-in works through two URL overrides that main honours only in an unpackaged app (see the
-  // top of this file), so against a packaged build every test would wait for a window that never opens.
-  test.skip(packagedExecutable() !== undefined, "the sign-in stand-in is honoured only by an unpackaged app");
+  // top of this file), so a test that signs in would wait for a window that never opens against a
+  // packaged build. Each of those skips itself; the one that never reaches the stand-in runs packaged.
+  const skipPackaged = () =>
+    test.skip(packagedExecutable() !== undefined, "the sign-in stand-in is honoured only by an unpackaged app");
 
   let userDataDir: string;
   let cuepointHome: string;
@@ -312,6 +314,7 @@ test.describe("Beatport sign-in", () => {
   });
 
   test("signs in on the page, keeps the token out of the renderer, and signs out", async () => {
+    skipPackaged();
     stand.introspect = "active";
     const app = await launch(userDataDir, cuepointHome, stand.origin);
     try {
@@ -359,6 +362,7 @@ test.describe("Beatport sign-in", () => {
   });
 
   test("renews the token by itself, by reading the session endpoint, with no window", async () => {
+    skipPackaged();
     stand.introspect = "active";
     const app = await launch(userDataDir, cuepointHome, stand.origin);
     try {
@@ -378,6 +382,7 @@ test.describe("Beatport sign-in", () => {
   });
 
   test("signs in from the header when the session endpoint is still empty", async () => {
+    skipPackaged();
     stand.introspect = "active";
     stand.sessionOpen = false;
     const app = await launch(userDataDir, cuepointHome, stand.origin);
@@ -405,6 +410,7 @@ test.describe("Beatport sign-in", () => {
   });
 
   test("does not take a guest token for a sign-in", async () => {
+    skipPackaged();
     stand.mode = "guest";
     const app = await launch(userDataDir, cuepointHome, stand.origin);
     try {
@@ -426,6 +432,7 @@ test.describe("Beatport sign-in", () => {
   });
 
   test("regression: C20 signs in when introspection names a user scope but no `active`", async () => {
+    skipPackaged();
     stand.introspect = "real";
     const app = await launch(userDataDir, cuepointHome, stand.origin);
     try {
@@ -464,6 +471,7 @@ test.describe("Beatport sign-in", () => {
   }
 
   test("regression: C20 signs in after the person closes the window, by reading the session once more", async () => {
+    skipPackaged();
     // Only the session can vouch for the token, and it answers too slowly for the window's own polling.
     stand.introspect = "forbidden";
     stand.sessionDelayMs = 3_000;
@@ -491,6 +499,7 @@ test.describe("Beatport sign-in", () => {
   });
 
   test("regression: C20 writes a sign-in log that holds no token, header, code or username", async () => {
+    skipPackaged();
     stand.introspect = "real";
     const app = await launch(userDataDir, cuepointHome, stand.origin);
     try {
