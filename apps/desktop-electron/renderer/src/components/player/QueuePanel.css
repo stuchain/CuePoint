@@ -330,7 +330,39 @@ body.cp-queue-resizing {
   display: none;
 }
 
+/* The list and the layer of remove buttons over it share one box (A11Y-01). */
+.cp-queue__stack {
+  position: relative;
+  width: 100%;
+}
+
+.cp-queue__removers {
+  position: absolute;
+  inset: 0;
+  /* The layer takes no click: only a button in it does, and the rows under it get the rest. */
+  pointer-events: none;
+}
+
+/* A × sits on its row's line, at the row's inset, the end the row keeps room for. */
+.cp-queue__remove-slot {
+  position: absolute;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 var(--space-lg);
+  box-sizing: border-box;
+}
+
+/* The room the × takes in the row: its box less the half-difference it hangs out by (CloseButton.css). */
+.cp-queue__remove-room {
+  flex: none;
+  inline-size: calc(var(--control-height-sm) - (var(--control-height-sm) - var(--icon-size-sm)) / 2);
+  block-size: var(--control-height-sm);
+}
+
 /* Taking a track out of the queue is the shared RemoveButton; only its place is the row's. */
 .cp-queue__remove {
   flex: 0 0 auto;
+  pointer-events: auto;
 }

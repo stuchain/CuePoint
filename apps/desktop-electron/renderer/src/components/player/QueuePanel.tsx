@@ -458,8 +458,6 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
           className="cp-queue__scroll"
           ref={scrollRef}
           onScroll={onScroll}
-          role="listbox"
-          aria-label="Queued tracks"
           tabIndex={-1}
           data-refusing={refusing ? "" : undefined}
           onDragOver={(event) => {
@@ -476,7 +474,10 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
         >
           {/* A spacer of the full height, so the scrollbar reflects the whole
               queue while only the visible rows exist. */}
-          <div className="cp-queue__sizer" style={{ height: total * rowHeight }}>
+          {/* The list is the rows alone: a button inside a listbox is not allowed, so each row's remove button is
+              drawn in a layer over the list, beside the rows and not in them (A11Y-01). */}
+          <div className="cp-queue__stack">
+          <div className="cp-queue__sizer" role="listbox" aria-label="Queued tracks" style={{ height: total * rowHeight }}>
             {items.map((item, i) => {
               const index = offset + i;
               // Only the rows near the viewport are drawn; the sizer above
@@ -558,6 +559,27 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                   </span>
                   {item.status !== "failed" && <QueueKey item={item} />}
                   <span className="cp-queue__duration">{formatLength(item.durationSeconds)}</span>
+                  {/* Where the × is drawn (below): the row keeps the room it always had. */}
+                  <span className="cp-queue__remove-room" aria-hidden="true" />
+                </div>
+              );
+            })}
+            {dropAt !== null && dragFrom.current !== null && (
+              // Where the dragged row would land (BAR-8): below the row it
+              // moves down onto, above the row it moves up onto. No animation.
+              <div
+                className="cp-queue__drop"
+                aria-hidden="true"
+                style={{ top: (dropAt > dragFrom.current ? dropAt + 1 : dropAt) * rowHeight }}
+              />
+            )}
+          </div>
+          <div className="cp-queue__removers">
+            {items.map((item, i) => {
+              const index = offset + i;
+              if (index < visible.start - 30 || index > visible.end + 30) return null;
+              return (
+                <div key={item.id} className="cp-queue__remove-slot" style={{ top: index * rowHeight, height: rowHeight }}>
                   {/* Not a tab stop (M467): the row is the one control, and Delete removes it. */}
                   <RemoveButton
                     tabIndex={-1}
@@ -571,15 +593,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                 </div>
               );
             })}
-            {dropAt !== null && dragFrom.current !== null && (
-              // Where the dragged row would land (BAR-8): below the row it
-              // moves down onto, above the row it moves up onto. No animation.
-              <div
-                className="cp-queue__drop"
-                aria-hidden="true"
-                style={{ top: (dropAt > dragFrom.current ? dropAt + 1 : dropAt) * rowHeight }}
-              />
-            )}
+          </div>
           </div>
           {/* A queue of one has nothing to reorder: it says how tracks get here (M311). */}
           {total === 1 && <p className="cp-queue__one">{ONE_TRACK}</p>}

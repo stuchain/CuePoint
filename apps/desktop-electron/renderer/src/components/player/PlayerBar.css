@@ -525,7 +525,7 @@
 /* A track was added to the queue (M383): the count takes the accent for a moment. A change of colour,
    not of place or size, so it needs no motion switch. */
 .cp-player-bar__count[data-pulse] {
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 /* Repeat's state in words beside its icon (BAR-3). */

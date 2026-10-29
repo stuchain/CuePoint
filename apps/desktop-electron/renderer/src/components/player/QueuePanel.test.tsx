@@ -599,7 +599,19 @@ describe("managing the queue (BAR-8)", () => {
     install(2);
     render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
-    expect(within(rows()[0]!).getByRole("button", { name: /Remove/ })).toHaveAttribute("tabindex", "-1");
+    expect(screen.getAllByRole("button", { name: /Remove/ })[0]).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("keeps the remove button beside its row, not inside it (A11Y-01)", async () => {
+    install(2);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    const list = screen.getByRole("listbox", { name: "Queued tracks" });
+    // Nothing interactive in the list or in a row: the × is beside them, in its own layer, one per row.
+    expect(within(list).queryByRole("button")).toBeNull();
+    const buttons = screen.getAllByRole("button", { name: /Remove/ });
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) expect(list.contains(button)).toBe(false);
   });
 
   it("moves to the next track whose title starts with the typed letters (M481)", async () => {
@@ -1097,10 +1109,6 @@ describe("QueuePanel accessibility (HARDEN-08)", () => {
     install(3);
     render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBeGreaterThan(0));
-    // A11Y-01: the per-row remove button sits inside the option. Moving it out is a layout change, so it
-    // waits for a mockup (a11y-findings.md); everything else on the panel is held.
-    await expectNoAxeViolations({
-      known: [{ rule: "nested-interactive", selector: ".cp-queue__row", finding: "A11Y-01" }],
-    });
+    await expectNoAxeViolations();
   });
 });
