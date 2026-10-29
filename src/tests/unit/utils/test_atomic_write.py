@@ -191,3 +191,24 @@ def test_sweep_removes_dead_pid_temps_only(tmp_path):
 def test_pid_alive_for_self():
     assert pid_alive(os.getpid())
     assert not pid_alive(0)
+
+
+def test_sweep_own_folders_clears_dead_temps_in_home_and_below(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    (home / "backups").mkdir(parents=True)
+    (home / "cache" / "artwork" / "ab").mkdir(parents=True)
+    monkeypatch.setenv("CUEPOINT_HOME", str(home))
+    dead = _dead_pid()
+    old = [
+        home / temp_name_for("library.db", pid=dead),
+        home / "backups" / temp_name_for("a.db", pid=dead),
+        home / "cache" / "artwork" / "ab" / temp_name_for("x.jpg", pid=dead),
+    ]
+    live = home / temp_name_for("config.yaml", pid=os.getpid())
+    for path in [*old, live]:
+        path.write_bytes(b"x")
+
+    removed = atomic_write.sweep_own_folders()
+
+    assert sorted(removed) == sorted(old)
+    assert live.exists()

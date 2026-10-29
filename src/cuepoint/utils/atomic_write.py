@@ -264,6 +264,44 @@ def sweep_temp_files(folders: Iterable[PathLike]) -> List[Path]:
     return removed
 
 
+def _folders_below(root: Path, depth: int) -> List[Path]:
+    """``root`` and the folders below it, ``depth`` levels down (missing: none)."""
+    found: List[Path] = []
+    if not root.is_dir():
+        return found
+    found.append(root)
+    if depth <= 0:
+        return found
+    try:
+        children = [
+            Path(e.path) for e in os.scandir(root) if e.is_dir(follow_symlinks=False)
+        ]
+    except OSError:
+        return found
+    for child in children:
+        found.extend(_folders_below(child, depth - 1))
+    return found
+
+
+def sweep_own_folders() -> List[Path]:
+    """Sweep CuePoint's own folders (home, data, backups, the artwork cache).
+
+    Called once at engine start. Never raises: a sweep that cannot run is not
+    worth stopping the engine for.
+    """
+    try:
+        from cuepoint.services.artwork_cache import default_artwork_cache_dir
+        from cuepoint.utils.paths import cuepoint_home
+
+        roots = [cuepoint_home(), default_artwork_cache_dir()]
+        folders: List[Path] = []
+        for root in roots:
+            folders.extend(_folders_below(Path(root), 3))
+        return sweep_temp_files(folders)
+    except Exception:  # noqa: BLE001 - housekeeping only
+        return []
+
+
 __all__: Sequence[str] = (
     "TEMP_MARKER",
     "atomic_file",
@@ -273,6 +311,7 @@ __all__: Sequence[str] = (
     "fsync_folder",
     "pid_alive",
     "stage_temp",
+    "sweep_own_folders",
     "sweep_temp_files",
     "temp_name_for",
     "write_atomic",

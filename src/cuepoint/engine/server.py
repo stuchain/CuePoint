@@ -156,6 +156,7 @@ from cuepoint.reporting.engine_reporting import (
     watch_jobs,
 )
 from cuepoint.reporting.expected import is_expected_failure
+from cuepoint.utils.atomic_write import sweep_own_folders
 from cuepoint.version import __version__, get_release
 
 _logger = logging.getLogger(__name__)
@@ -1739,6 +1740,8 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     # skipped entirely when nothing changed since the last one, so the usual
     # cost is a few stat() calls.
     backup = backup_library_on_launch()
+    # HARDEN-04: remove what a killed write left behind (".<name>.cuepoint-tmp-<pid>").
+    sweep_own_folders()
 
     # Both events are recorded here, after the backup has been taken: resolving
     # the activity service migrates the database, and doing that any earlier
