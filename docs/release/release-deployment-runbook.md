@@ -59,6 +59,14 @@ Add the changes to `docs/release/CHANGELOG.md` under the new version. `python sc
 
 Write the release notes from the template below. Keep the highlights, fixes and known issues. Link known issues to [Troubleshooting](../user-guide/troubleshooting.md) where there is a workaround.
 
+### Known issues
+
+[Known issues](known-issues.md) is the list a release ships with. Before you tag, read each entry against the code and drop the ones this release fixes, add what the acceptance checks found that is not a blocker, and link the list from the version's changelog section. The changelog section is the release notes (DEC-178), so its link is the full `https://github.com/stuchain/CuePoint/blob/main/docs/release/known-issues.md` address, which also works on the GitHub release page.
+
+### Dating the version
+
+A version's changelog heading is `## [X.Y.Z] - YYYY-MM-DD`, and the website's changelog page refuses a version heading without a date. While a release is being prepared its notes sit under `## [Unreleased]`, which needs no date. On tag day, in the same commit that sets the version, rename `## [Unreleased]` to `## [X.Y.Z] - <that day>` and add a new empty `## [Unreleased]` above it.
+
 ## What CI builds
 
 `desktop-electron.yml` runs on pushes to `main`, `feature` and `phase_*` branches and on pull requests to `main` and `feature`. It runs the same job on `ubuntu-latest`, `windows-latest` and `macos-latest` (Node 22, Python 3.12). In order, the job:
@@ -307,3 +315,4 @@ Reproducible here means the engine sidecar is built from pinned inputs, and the 
 - [Rollback Runbook](rollback.md)
 - [Incident Response Runbook](incident-response-runbook.md)
 - [Changelog](CHANGELOG.md)
+- [Known issues](known-issues.md)
