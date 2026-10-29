@@ -476,6 +476,28 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
       return () => ipcRenderer.removeListener("backups:restoreEvent", handler);
     },
   },
+  // The library's state at start, and the way back (HARDEN-03). `getState` carries `uncleanExit`
+  // (main's own answer); `recheck` is "Try again", answered at once, and the settled state is pushed.
+  library: {
+    getState: () => ipcRenderer.invoke("library:getState"),
+    getUncleanExit: () => ipcRenderer.invoke("library:getUncleanExit"),
+    recheck: () => ipcRenderer.invoke("library:recheck"),
+    onStateChanged: (listener) => {
+      const handler = () => listener();
+      ipcRenderer.on("library:stateChanged", handler);
+      return () => ipcRenderer.removeListener("library:stateChanged", handler);
+    },
+  },
+  // After a crashed window was reloaded (HARDEN-05): `take` answers the message once (or null);
+  // `onReopened` is called with it when the page loads again and is listening.
+  windowRecovery: {
+    take: () => ipcRenderer.invoke("windowRecovery:take"),
+    onReopened: (listener) => {
+      const handler = (_event, message) => listener(typeof message === "string" ? message : "");
+      ipcRenderer.on("window:reopened", handler);
+      return () => ipcRenderer.removeListener("window:reopened", handler);
+    },
+  },
   /**
    * The updater (DIST-06). The page can read the state, ask for a check or a restart and
    * hear the changes; it names no address, and main opens only its own release pages.

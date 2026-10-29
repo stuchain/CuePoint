@@ -2492,6 +2492,79 @@ describe("desktop contract", () => {
       expect(backupsSource).toContain("WORK_RUNNING");
     });
   });
+  describe("the library's state and a reloaded window (HARDEN-03, HARDEN-05)", () => {
+    const libraryChannels = ["library:getState", "library:getUncleanExit", "library:recheck"];
+
+    it("handles every library channel in main and invokes it from the preload, and no other", () => {
+      const handled = handledChannels(main).filter((channel) => channel.startsWith("library:")).sort();
+      const invoked = invokedChannels(preload).filter((channel) => channel.startsWith("library:")).sort();
+      expect(handled).toEqual([...libraryChannels].sort());
+      expect(invoked).toEqual([...libraryChannels].sort());
+    });
+
+    it("exposes library: { getState, getUncleanExit, recheck, onStateChanged }", () => {
+      const block = preload.slice(preload.indexOf("library: {"), preload.indexOf("library: {") + 900);
+      for (const method of ["getState:", "getUncleanExit:", "recheck:", "onStateChanged:"]) {
+        expect(block, method).toContain(method);
+      }
+      expect(bridgeTypes).toContain("library?: LibraryBridge");
+      expect(bridgeTypes).toContain("export interface LibraryBridge");
+      expect(bridgeTypes).toContain("export interface LibraryStatus");
+    });
+
+    it("gives the page main's own uncleanExit, and tells it when the state may have changed", () => {
+      expect(main).toMatch(/handle\("library:getState"[\s\S]{0,200}uncleanExit: sessionMarker\.uncleanExit/);
+      expect(preload).toMatch(/ipcRenderer\.on\("library:stateChanged"/);
+      expect(preload).toMatch(/ipcRenderer\.removeListener\("library:stateChanged"/);
+      expect(main).toMatch(/\.send\("library:stateChanged"\)/);
+    });
+
+    it("keeps the state's names in step with the engine's wire", () => {
+      for (const state of ["ok", "damaged", "too_new", "upgrade_failed", "needs_space", "upgrading"]) {
+        expect(bridgeTypes, state).toContain(`"${state}"`);
+      }
+      for (const field of [
+        "appVersion",
+        "libraryVersion",
+        "schemaVersion",
+        "headVersion",
+        "newestGoodBackup",
+        "preUpgradeBackup",
+        "requiredFreeBytes",
+        "failedMigration",
+        "uncleanExit",
+        "computedAt",
+        "integrityCheck",
+        "launchBackupSkipped",
+      ]) {
+        expect(bridgeTypes, field).toContain(field);
+      }
+    });
+
+    it("hands a reloaded window's message over by a call and by a push, on the same channel main sends", () => {
+      expect(handledChannels(main)).toContain("windowRecovery:take");
+      expect(invokedChannels(preload)).toContain("windowRecovery:take");
+      expect(preload).toMatch(/ipcRenderer\.on\("window:reopened"/);
+      expect(preload).toMatch(/ipcRenderer\.removeListener\("window:reopened"/);
+      expect(main).toMatch(/\.send\("window:reopened"/);
+      expect(bridgeTypes).toContain("windowRecovery?: WindowRecoveryBridge");
+    });
+
+    it("tells the engine about an unclean exit and the test hooks, only from main", () => {
+      expect(main).toContain("uncleanExit: (): boolean => sessionMarker.uncleanExit");
+      expect(main).toContain("testHooks: e2eRun");
+      expect(preload).not.toContain("CUEPOINT_TEST_HOOKS");
+      expect(preload).not.toContain("CUEPOINT_UNCLEAN_EXIT");
+    });
+
+    it("takes the session marker only after the single-instance lock, and removes it in the quit's cleanup", () => {
+      expect(main.indexOf("startSession({")).toBeGreaterThan(main.indexOf("enforceSingleInstance(app"));
+      expect(main).toContain("first: firstInstance");
+      const cleanup = main.slice(main.indexOf("quitAfter(app, async () => {"));
+      expect(cleanup).toContain("sessionMarker.release()");
+      expect(cleanup.indexOf("sessionMarker.release()")).toBeGreaterThan(cleanup.indexOf("await engine.stop();"));
+    });
+  });
   describe("the updater (DIST-06)", () => {
     const channels = [
       "updates:getState",

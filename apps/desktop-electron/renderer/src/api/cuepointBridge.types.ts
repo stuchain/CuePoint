@@ -3748,6 +3748,56 @@ export interface BackupsBridge {
   onRestoreEvent: (listener: (event: BackupRestoreEvent) => void) => () => void;
 }
 
+/** What the engine worked the library out to be at start (HARDEN-03). */
+export type LibraryStateName = "ok" | "damaged" | "too_new" | "upgrade_failed" | "needs_space" | "upgrading";
+
+/** A backup the library state names as a way back. */
+export interface LibraryWayBack {
+  name: string;
+  createdAt: string;
+  reason: string;
+}
+
+/** The library's state and the way back from it (HARDEN-03), as `/api/v1/status` carries it. */
+export interface LibraryStatus {
+  state: LibraryStateName;
+  appVersion: string;
+  /** The version that last opened the library; null when it cannot be told. */
+  libraryVersion: string | null;
+  schemaVersion: number | null;
+  headVersion: number | null;
+  /** The newest backup that passes `quick_check`; null when none does (yet). */
+  newestGoodBackup: LibraryWayBack | null;
+  preUpgradeBackup: LibraryWayBack | null;
+  /** With `needs_space`: about how many free bytes the update needs. */
+  requiredFreeBytes: number | null;
+  failedMigration: string | null;
+  /** The last session did not end properly (main's own answer). */
+  uncleanExit: boolean;
+  computedAt: string;
+  integrityCheck: { state: "idle" | "running" | "ok" | "failed"; finishedAt: string | null };
+  /** Set when the launch backup was skipped (no room); null otherwise. */
+  launchBackupSkipped: { reason?: string } | null;
+}
+
+export interface LibraryBridge {
+  getState: () => Promise<LibraryStatus>;
+  /** Whether the last session did not end properly; answers even when the engine is not up. */
+  getUncleanExit: () => Promise<boolean>;
+  /** "Try again": the engine works the state out again. Answers at once; `onStateChanged` says when it has. */
+  recheck: () => Promise<void>;
+  /** Called when the state may have changed (a check failed, a recheck settled). Returns an unsubscribe. */
+  onStateChanged: (listener: () => void) => () => void;
+}
+
+/** A window that was reloaded after it stopped (HARDEN-05). */
+export interface WindowRecoveryBridge {
+  /** The message to show, once: "CuePoint's window stopped and was reopened."; null when there is none. */
+  take: () => Promise<string | null>;
+  /** Called with the message when the reloaded page is listening. Returns an unsubscribe. */
+  onReopened: (listener: (message: string) => void) => () => void;
+}
+
 export interface UpdatesBridge {
   getState: () => Promise<UpdateState>;
   /** Check now; a check that is running is joined. Answers the state it ends in. */
@@ -4313,6 +4363,10 @@ export interface CuePointBridge {
   updates?: UpdatesBridge;
   /** Backups and restore (HARDEN-01b). Absent in a browser tab, or in an older shell. */
   backups?: BackupsBridge;
+  /** The library's state at start and the way back from it (HARDEN-03). Absent in a browser tab, or in an older shell. */
+  library?: LibraryBridge;
+  /** After a stopped window was reloaded (HARDEN-05). Absent in a browser tab, or in an older shell. */
+  windowRecovery?: WindowRecoveryBridge;
   /** How long a page took to draw, by destination id, for main's log. Absent in a browser tab. */
   reportPageSwitch?: (page: string, drawMs: number) => void;
   errorReporting?: {

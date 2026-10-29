@@ -44,6 +44,8 @@
       "!renderer/dist/**/*.map",
       "!**/node_modules/**/*.map",
       "electron/preload.cjs",
+      "electron/recoveryPreload.cjs",
+      "electron/recovery.html",
       "package.json",
       {
         "from": "node_modules/@sentry/browser-utils",

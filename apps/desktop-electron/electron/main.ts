@@ -36,6 +36,7 @@ import {
   processReporter,
   reportOnce,
   reportProcessGone,
+  reportUnexpected,
   setupMainReporting,
   wrapIpcHandler,
 } from "./reporting";
@@ -63,6 +64,15 @@ import { locateBundle, prepareMacUpdate, startInstall } from "./macInstaller";
 import { fetchReleases } from "./releaseList";
 import { scrubText } from "./reportScrub";
 import { enforceSingleInstance, onlyIfFirst } from "./singleInstance";
+import { startSession } from "./sessionLock";
+import { IntegrityChecker, settledLibrary } from "./integrityCheck";
+import {
+  RECOVERY_RELOAD_CHANNEL,
+  RECOVERY_REPORT_CHANNEL,
+  WINDOW_REOPENED_MESSAGE,
+  createRendererRecovery,
+  resolveRecoveryPaths,
+} from "./rendererRecovery";
 import { UpdateNotes, openNoteLink, openReleasePage, pruneInstalledUpdates } from "./updateNotes";
 import { compareVersions, isTestVersion } from "./updateRule";
 import { Backups, RESTORE_TIMEOUT_MS, validBackupName } from "./backups";
@@ -86,6 +96,21 @@ const DEV_URL = process.env.CUEPOINT_RENDERER_URL ?? "http://localhost:5173";
  * The lock is per user-data folder, and every end-to-end run has its own.
  */
 const firstInstance = enforceSingleInstance(app, () => BrowserWindow.getAllWindows()[0] ?? null);
+
+/**
+ * The marker for an unclean exit (HARDEN-03): looked for, and this session's written, only now
+ * that the lock is ours, so a second copy never reads the first's marker as a crash. Removed in
+ * the quit's cleanup. Told to the engine at each launch and to the page.
+ */
+const sessionMarker = startSession({
+  folder: app.getPath("userData"),
+  first: firstInstance,
+  appVersion: app.getVersion(),
+});
+
+/** An end-to-end run: the engine is then started with its test-only routes (HARDEN-05). */
+const e2eRun = (): boolean =>
+  process.env.CUEPOINT_E2E === "1" || displayChoice(process.env[E2E_DISPLAY_ENV]) !== null;
 
 /**
  * Main's own settings, read when first needed: the user-data folder is the
@@ -173,6 +198,10 @@ const engine: EngineSupervisor = new EngineSupervisor({
   // A closure, so `errorReporting` (declared below) is read at launch, not here.
   errorReporting: (): boolean => errorReporting.enabled(),
   build,
+  // The last session did not end (HARDEN-03); the engine looks at its library for it.
+  uncleanExit: (): boolean => sessionMarker.uncleanExit,
+  // The test-only stall route exists only in an end-to-end run (HARDEN-05).
+  testHooks: e2eRun,
   // The engine's exits, restarts and give-ups, once per incident (REPORT-05).
   reporter: processReporter,
   // The window re-reads the status at once on each change, rather than at its next poll: a
@@ -271,6 +300,108 @@ function beatportAuth(): BeatportAuth {
 
 /** The app's one main window, which the sign-in window is modal to. */
 let mainWindow: BrowserWindow | null = null;
+
+/** Tells the window the library's state may have changed (a check failed, a "Try again" settled). */
+function libraryStateChanged(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("library:stateChanged");
+}
+
+/**
+ * Looks at the library for damage after an unclean exit and once a week (HARDEN-03, DEC-181).
+ * Started once the window has shown, never before, and never awaited.
+ */
+const integrity = new IntegrityChecker({
+  engine,
+  settings: {
+    read: () => mainSettingsStore().read(),
+    update: (patch) => mainSettingsStore().update(patch),
+  },
+  uncleanExit: () => sessionMarker.uncleanExit,
+  onChanged: libraryStateChanged,
+});
+
+/** Set when the quit begins: a window that goes then is not one to reopen. */
+let quitStarted = false;
+
+/**
+ * A renderer that stopped (HARDEN-05): reloaded once, with a message the page can show; a second
+ * stop within a minute replaces the window with `recovery.html`.
+ */
+let reopenedNotice: string | null = null;
+let recoveryWindow: BrowserWindow | null = null;
+const rendererRecovery = createRendererRecovery({
+  now: () => Date.now(),
+  isQuitting: () => quitStarted,
+  reload: (): void => {
+    const win = mainWindow;
+    if (!win || win.isDestroyed()) return;
+    reopenedNotice = WINDOW_REOPENED_MESSAGE;
+    win.webContents.once("did-finish-load", () => {
+      // The page may not be listening yet; it can also ask (`windowRecovery.take`).
+      if (!win.isDestroyed()) win.webContents.send("window:reopened", WINDOW_REOPENED_MESSAGE);
+    });
+    win.webContents.reload();
+  },
+  showRecoveryPage: (): void => showRecoveryPage(),
+});
+
+/** The recovery page: its own small window, with a preload that has two calls, in the place of the stopped one. */
+function showRecoveryPage(): void {
+  const old = mainWindow;
+  const recoveryPaths = resolveRecoveryPaths(__dirname);
+  const bounds = old && !old.isDestroyed() ? old.getBounds() : undefined;
+  const theme = mainSettingsStore().read().windowTheme ?? DEFAULT_WINDOW_THEME;
+  const win = new BrowserWindow({
+    ...(bounds ?? { width: DEFAULT_WINDOW_SIZE.width, height: DEFAULT_WINDOW_SIZE.height }),
+    ...WINDOW_MIN_SIZE,
+    backgroundColor: theme.background,
+    autoHideMenuBar: true,
+    show: false,
+    webPreferences: {
+      preload: recoveryPaths.preload,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  recoveryWindow = win;
+  win.on("closed", () => {
+    if (recoveryWindow === win) recoveryWindow = null;
+  });
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  win.webContents.on("will-navigate", (event) => event.preventDefault());
+  win.once("ready-to-show", () => win.show());
+  void win.loadFile(recoveryPaths.page).catch(() => undefined);
+  // The stopped window goes after this one is up, so the app never has no window (and quits).
+  mainWindow = null;
+  if (old && !old.isDestroyed()) old.destroy();
+}
+
+/** The recovery page's two calls, from its own window only. */
+function registerRecoveryHandlers(): void {
+  const fromRecoveryPage = (event: IpcMainInvokeEvent): boolean =>
+    recoveryWindow !== null && !recoveryWindow.isDestroyed() && event.sender === recoveryWindow.webContents;
+  handle(RECOVERY_RELOAD_CHANNEL, (event) => {
+    if (!fromRecoveryPage(event)) return false;
+    const closing = recoveryWindow;
+    rendererRecovery.reset();
+    // The new window first, so the app is never without one; the engine is still running.
+    void createWindow({ startEngine: false }).finally(() => {
+      if (closing && !closing.isDestroyed()) closing.destroy();
+    });
+    return true;
+  });
+  handle(RECOVERY_REPORT_CHANNEL, (event) => {
+    if (!fromRecoveryPage(event)) return false;
+    // Phase 13's report, from main: the page has no app in it to open a dialog. Goes only when
+    // the person has reporting on; the answer says whether it did.
+    const id = reportUnexpected(new Error("The window stopped twice within a minute."), {
+      level: "error",
+      tags: { "renderer.recovery": "stopped-twice" },
+    });
+    return id !== null;
+  });
+}
 
 /**
  * The audio player (PLAYER-03, DEC-050).
@@ -1053,6 +1184,24 @@ function registerIpcHandlers(): void {
   handle("engine:cancelJob", (_event, jobId: string) => engine.cancelJob(jobId));
   // Backups (HARDEN-01b). Asking first while work runs is the page's job; `restore` answers
   // WORK_RUNNING with what runs, and cancels it itself only when told to.
+  // The library's state as the engine worked it out (HARDEN-03). `uncleanExit` is main's own
+  // answer, so it is right even when the engine could not be asked.
+  handle("library:getState", async () => ({
+    ...(await engine.getLibraryStatus()),
+    uncleanExit: sessionMarker.uncleanExit,
+  }));
+  handle("library:getUncleanExit", () => sessionMarker.uncleanExit);
+  handle("library:recheck", async () => {
+    await engine.recheckLibrary();
+    // Answered at once (the engine works on a thread); the page is told when it has settled.
+    void settledLibrary(engine).then(libraryStateChanged, () => undefined);
+  });
+  // What the window was told when it was reopened after a crash, once (HARDEN-05).
+  handle("windowRecovery:take", () => {
+    const notice = reopenedNotice;
+    reopenedNotice = null;
+    return notice;
+  });
   handle("backups:list", () => backups.listBackups());
   handle("backups:create", () => backups.createBackup());
   handle("backups:restore", (_event, name: unknown, options: unknown) => {
@@ -1508,7 +1657,7 @@ function sweepLeftoverTemps(): void {
   void sweepTempFilesAsync(new Set(folders)).catch(() => undefined);
 }
 
-async function createWindow(): Promise<void> {
+async function createWindow(options: { startEngine?: boolean } = {}): Promise<void> {
   /**
    * The engine starts beside the window, not before it.
    *
@@ -1527,17 +1676,20 @@ async function createWindow(): Promise<void> {
    * honest than hiding the window and claiming, on arrival, that the engine
    * was connected when it was not.
    */
-  void engine.start().then(
-    (status) => breadcrumb("engine", status.connected ? "started" : "start did not connect"),
-    (error: unknown) => {
-      // Reached the person through `getStatus()`, which the strip already polls; a
-      // rejection here would otherwise be an unhandled one. It is also reported,
-      // once per launch (REPORT-04). This is only the start that throws: a start that
-      // resolves unhealthy, or with no engine, is the supervisor's to report (REPORT-05).
-      breadcrumb("engine", "failed to start");
-      reportOnce("engine.start", error, { tags: { "engine.phase": "start" } });
-    },
-  );
+  // Not again for the window the recovery page's Reload opens: the engine is already up.
+  if (options.startEngine !== false) {
+    void engine.start().then(
+      (status) => breadcrumb("engine", status.connected ? "started" : "start did not connect"),
+      (error: unknown) => {
+        // Reached the person through `getStatus()`, which the strip already polls; a
+        // rejection here would otherwise be an unhandled one. It is also reported,
+        // once per launch (REPORT-04). This is only the start that throws: a start that
+        // resolves unhealthy, or with no engine, is the supervisor's to report (REPORT-05).
+        breadcrumb("engine", "failed to start");
+        reportOnce("engine.start", error, { tags: { "engine.phase": "start" } });
+      },
+    );
+  }
 
   startMainLog();
 
@@ -1642,6 +1794,7 @@ async function createWindow(): Promise<void> {
     // `enableLargerThanScreen` set, it keeps the size the tests expect.
     win.setSize(size.width, size.height);
     win.showInactive();
+    void integrity.afterFirstPaint();
   } else {
     // Shown when the page first paints; a page that never does is shown after a few seconds, so a
     // broken load is a visible window with an error rather than none at all (M492).
@@ -1652,6 +1805,8 @@ async function createWindow(): Promise<void> {
       if (opening.maximized) win.maximize();
       win.show();
       sweepLeftoverTemps();
+      // After the window is up, and not waited for: the check follows the engine's own answers.
+      void integrity.afterFirstPaint();
     };
     win.once("ready-to-show", reveal);
     setTimeout(reveal, 5000).unref();
@@ -1717,6 +1872,7 @@ app.whenReady().then(onlyIfFirst(firstInstance, () => {
     packaged: app.isPackaged,
   });
   registerIpcHandlers();
+  registerRecoveryHandlers();
   void createWindow();
 }));
 
@@ -1733,8 +1889,12 @@ app.on("window-all-closed", () => {
 // A window's page or a helper process (GPU, utility) that died, with why. A clean
 // exit is not reported. The SDK's own `ChildProcess` integration is off, so each
 // is reported once, here (REPORT-04).
-app.on("render-process-gone", (_event, _contents, details) => {
+app.on("render-process-gone", (_event, contents, details) => {
   reportProcessGone("renderer", details);
+  // The main window's page only: reloaded once, or the recovery page on a second stop (HARDEN-05).
+  if (mainWindow && !mainWindow.isDestroyed() && contents === mainWindow.webContents) {
+    rendererRecovery.handle(details);
+  }
 });
 app.on("child-process-gone", (_event, details) => {
   reportProcessGone(details.type, details);
@@ -1762,6 +1922,7 @@ if (reportingOn) {
 // leave the engine running (EXPORT-07).
 quitAfter(app, async () => {
   markQuitting();
+  quitStarted = true;
   // A restore under way is waited for (never cut short: it may be mid-swap), and the engine is
   // not started again behind this quit. Before anything is stopped, and before an update installs.
   backups.beginQuit();
@@ -1795,6 +1956,8 @@ quitAfter(app, async () => {
   try {
     await engine.stop();
   } finally {
+    // This session ended properly: the next start finds no marker (HARDEN-03).
+    sessionMarker.release();
     // The very last step, after the player and the engine are gone: an update that is ready
     // starts its install, with a relaunch only if Restart now asked (DIST-06, fact 8).
     updater.installAtQuit(process.pid);
