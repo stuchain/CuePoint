@@ -85,9 +85,15 @@ export async function finished(window: Page, jobId: string, timeout = 120_000): 
 /** Nothing running: a job that follows another must not be raced. */
 export async function idle(window: Page, timeout = 120_000): Promise<void> {
   await expect
-    .poll(async () => (await window.evaluate(() => window.cuepoint!.listJobs!({ state: "active" }))).active_count, {
-      timeout,
-    })
+    .poll(
+      async () => {
+        // A refused connection (the engine between two lives) is "not yet", not the end of the test: a
+        // dead engine still fails it, at the timeout.
+        const jobs = await window.evaluate(() => window.cuepoint!.listJobs!({ state: "active" })).catch(() => null);
+        return jobs ? jobs.active_count : -1;
+      },
+      { timeout },
+    )
     .toBe(0);
 }
 

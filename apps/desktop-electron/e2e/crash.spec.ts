@@ -503,10 +503,15 @@ test.describe("Crash injection (HARDEN-05)", () => {
     await expect.poll(async () => (await recorded(window, started.job_id)).state, { timeout: 60_000 }).toBe("failed");
     await expect
       .poll(
-        async () =>
-          (await window.evaluate(() => window.cuepoint!.getRecentActivity!({ limit: 50 }))).events.filter(
-            (event: { type: string }) => event.type === "clean.tags.interrupted",
-          ).length,
+        async () => {
+          // The engine may be between two lives when this asks (a restart has a gap): that is not an answer
+          // yet, and a poll that threw would end the test on the first refused connection. A dead engine
+          // still fails it, at the timeout.
+          const activity = await window
+            .evaluate(() => window.cuepoint!.getRecentActivity!({ limit: 50 }))
+            .catch(() => null);
+          return (activity?.events ?? []).filter((event: { type: string }) => event.type === "clean.tags.interrupted").length;
+        },
         { timeout: 60_000 },
       )
       .toBe(1);
