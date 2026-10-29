@@ -4,7 +4,265 @@ Guide to performance tuning and expected behavior for large libraries.
 
 ## Overview
 
-CuePoint is designed to handle large Rekordbox libraries (10k+ tracks) while maintaining responsive UI and predictable performance. Use this guide to understand expected throughput, memory usage, and tuning options.
+CuePoint is built for a Rekordbox library of up to 50,000 tracks, the largest it supports, and keeps its window responsive across all of it. This guide says what that costs: how long each thing takes on Windows, on a Mac with Apple silicon, on an Intel Mac and on Linux, how much memory the app holds, and what the settings do.
+
+The first section holds the numbers from the same scale run on every system. The sections after it are the measurements behind the design, taken on one Windows 11 desktop while each feature was built.
+
+## Measured on every system
+
+<!-- scale-tables:begin (written by scripts/performance_tables.py; do not edit) -->
+
+Every number in this section is from one scale run (`.github/workflows/scale.yml`), made on the same commit for every system. The tables are written by `scripts/performance_tables.py` from the run's JSON; a cell that says "measured at first scale run" has no run behind it yet.
+
+### Importing and refreshing
+
+`scripts/bench_library.py`: a generated 50,000-track collection, 250 playlists and 175,000 playlist entries.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Import | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Re-import the same file | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Check for changes, nothing changed | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Check for changes, something changed | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Apply a refresh | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The library file | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Browsing the library
+
+The queries behind the Library table, `scripts/bench_library.py`; the slowest of the cases in each row.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Open the library | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Scroll to the very end | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Sort by another column | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Type a search term | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Count what a search finds | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Select a playlist | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Select a folder of playlists | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Filtering the library
+
+Filters and the lists of choices behind them, `scripts/bench_library.py`.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Apply a filter, or add rules to it | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Open the rating or artist list | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Open the genre or label list | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Re-open a list while other filters are on | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Read the BPM range | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### The Statistics page
+
+`scripts/bench_library.py --statistics`: a year of weekly play history and a waveform store; the slowest case of each route.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Plays | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Spreads | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Health | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Clean
+
+`scripts/bench_clean.py`: 50,000 tracks with 30,000 matched (40 candidates each), 8,000 decisions, 10,000 of your own values, 2,000 missing files and 1,500 duplicate groups.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Open Health, every count | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| One Health count (the slowest) | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Check every file | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Look for duplicates | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Prepare
+
+`scripts/bench_sets.py`: a Set at its largest, 1,000 entries in 10 chapters.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| m0025 on a version-24 library | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The plan | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The running order, as the route sends it | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The checks | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The checks, with their wire object | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Suggestions at a dense gap, the whole library | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The same, as the route sends it | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The same, 200 suggestions | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| After the last entry | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| A gap nothing bridges | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Cue points and beat grids
+
+`scripts/bench_marks.py`: a typical collection and one where every track is prepared. A read is shown as its multiple of reading the tracks alone.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Read, typical | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Read, prepared | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Import, prepared | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Refresh preview, prepared, one cue moved | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Backfill, prepared | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Waveforms
+
+`scripts/bench_waveforms.py`: every file has a waveform, its loudness and eight marks; a timing is the slowest of the common case (p95).
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| The store | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| 200 states | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| 200 pictures at width 120 | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| One picture at 1,200 | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| One picture at 1,200 with its marks | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The work list, a refill | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The work list, a count | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| A six-minute detail, reduce and encode | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| One detail, read and decode | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The marks read, typical | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The marks read, prepared | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Upgrading a library
+
+`scripts/bench_migrations.py` and `scripts/bench_search_keys.py`: the first start after an update waits for these.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Sets: m0025 rebuilds the Collection tables | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Play history: m0027 seeds the baseline read | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Accents and search keys
+
+`scripts/bench_search_keys.py`: path keys in one Unicode form (m0032) and the folded search and sort keys (m0033).
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| m0032 rewrites the path keys | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| m0033 fills the search and sort keys | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Search for a name | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Count what a search finds | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Open the library | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Scroll to the very end | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Starting the engine with a full library
+
+`scripts/bench_engine_start.py --library 50000`: the packaged engine on a library with Clean's data and waveforms. The engine answers `/health` as soon as it is listening, then takes the launch backup and works out the library's state.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| First `/health` | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The launch backup is made | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The library is ready, nothing to upgrade | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| The library is ready, one upgrade pending | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Of that, the upgrade and the checks after the copy | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| A quick check of the library file | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Writing tags
+
+`scripts/bench_tag_write.py`: 1,000 files written in place and through the checked copy.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| 1,000 files, through the checked copy | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| 1,000 files, in place | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### The packaged app
+
+`e2e/libraryScale.spec.ts` against the packaged app, one session.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Launch to a usable Library | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Import 50,000 tracks, to "Imported" | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Scroll to the end | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Type a search and see its first row | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Sort | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Open the Statistics page | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Open its Health tab | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Quit and launch again on the full library | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Memory in the packaged app
+
+Resident memory read from the operating system after each step, in MB: main / renderer / engine / mpv (`-` when no player was running).
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| After launch | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| After the import | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| After scrolling to the end | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| After the search | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| After the sort | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| After the Statistics page | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| After launching again on the full library | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Above 50,000: the library at 100,000 tracks
+
+The same run at 100,000 tracks, recorded and not held to a budget. The largest library CuePoint supports stays 50,000.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Import | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Apply a refresh | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Scroll to the very end | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Sort by another column | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Type a search term | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Above 50,000: the engine's start at 100,000 tracks
+
+A full library at 100,000 tracks, as above.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| The library is ready | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| A quick check of the library file | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+### Above 50,000: the packaged app at 100,000 tracks
+
+A full library at 100,000 tracks, as above.
+
+| What | Windows | Linux | Mac (Apple silicon) | Mac (Intel) |
+| --- | --- | --- | --- | --- |
+| Import | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Scroll to the end | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Type a search and see its first row | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Sort | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Open the Statistics page | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+| Resident memory after the Statistics page: main / renderer / engine / mpv | measured at first scale run | measured at first scale run | measured at first scale run | measured at first scale run |
+
+*Runs: Windows: not measured yet; Linux: not measured yet; Mac (Apple silicon): not measured yet; Mac (Intel): not measured yet.*
+
+<!-- scale-tables:end -->
 
 ## The library
 
@@ -360,26 +618,9 @@ and by nothing on the second lap, with 27 row elements in the page.
 (50,000 tracks: import 8.8 s, re-import 11.1 s, an unchanged check under 10 ms,
 apply 10.8 s).
 
-## Performance Budgets
+## Benchmarking a matching run
 
-| Metric | Target | Notes |
-| --- | --- | --- |
-| Startup to ready | < 2s | Modern machine |
-| XML parse (10k tracks) | < 5s | Single-threaded |
-| Query generation (10k) | < 3s | Per-track |
-| Candidate search (10k) | < 20m | Network-bound |
-| Export (10k tracks) | < 60s | Batched writes |
-| UI updates | < 200ms | Throttled to avoid stutter |
-
-## Benchmark Targets
-
-| Dataset | Target | Use Case |
-| --- | --- | --- |
-| 1k tracks | < 5 min | Baseline |
-| 5k tracks | < 15 min | Typical |
-| 10k tracks | < 30 min | Stress |
-
-Run benchmarks with:
+Benchmark a matching run on a sample dataset:
 
 ```bash
 python scripts/bench.py --dataset 1k
