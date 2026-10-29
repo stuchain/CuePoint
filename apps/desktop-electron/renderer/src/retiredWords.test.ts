@@ -51,24 +51,28 @@ function relative(path: string): string {
 }
 
 /**
- * Files whose words are the owner's, word for word, from the Phase 18 mockups he approved on
- * 2026-10-29 (DEC-305), contractions and all: the full-disk line, the unclean-exit line, the
- * recovery screens and the restore questions. The pattern still bans the rest of the app.
+ * Exact words that are the owner's, from the Phase 18 mockups he approved on 2026-10-29 (DEC-305),
+ * contractions and all. Only these strings are let through, in these files: anything else a file
+ * says is held to the rule.
  */
-const CONTRACTIONS_APPROVED: ReadonlyArray<{ file: string; reason: string }> = [
-  { file: "api/stripMessages.ts", reason: "the strip's messages, from mockup 4" },
-  { file: "screens/BackupsSection.tsx", reason: "\"couldn't\" in a failed backup's line" },
-  { file: "screens/backups/useRestoreFlow.tsx", reason: "\"Restore when it's done\" in the busy question, from mockup 2" },
-  { file: "screens/recovery/LibraryRecovery.tsx", reason: "the four recovery screens, from mockup 3" },
+const CONTRACTIONS_APPROVED: ReadonlyArray<{ file: string; text: string }> = [
+  { file: "api/stripMessages.ts", text: "Your disk is full. CuePoint can't save changes until there's space." },
+  { file: "api/stripMessages.ts", text: "CuePoint didn't close properly last time. Your library was checked and is fine." },
+  { file: "screens/recovery/LibraryRecovery.tsx", text: "CuePoint couldn't read your library" },
+  { file: "screens/recovery/LibraryRecovery.tsx", text: "CuePoint couldn't finish updating your library" },
 ];
+
+/** The code with the approved strings taken out, for the contraction pattern only. */
+function withoutApproved(path: string, text: string): string {
+  return CONTRACTIONS_APPROVED.filter((entry) => entry.file === path).reduce((left, entry) => left.split(entry.text).join(""), text);
+}
 
 function offenders(): Map<string, string[]> {
   const found = new Map<string, string[]>();
   for (const [path, source] of Object.entries(sources)) {
     const text = code(source);
-    const approved = CONTRACTIONS_APPROVED.some((entry) => relative(path) === entry.file);
     const hits = Object.entries(BANNED)
-      .filter(([name, pattern]) => !(approved && name === "contraction") && pattern.test(text))
+      .filter(([name, pattern]) => pattern.test(name === "contraction" ? withoutApproved(relative(path), text) : text))
       .map(([name]) => name);
     if (hits.length > 0) found.set(relative(path), hits);
   }
@@ -82,11 +86,12 @@ describe("wording guard (D2, D3)", () => {
     expect(bad, `use the shared words in format/words.ts: ${bad.join("; ")}`).toEqual([]);
   });
 
-  it("keeps the approved-contractions list honest: each file still has one", () => {
+  it("keeps the approved-contractions list honest: each string is still in its file, with a contraction", () => {
     for (const entry of CONTRACTIONS_APPROVED) {
       const source = sources[`/src/${entry.file}`];
       expect(source, entry.file).toBeDefined();
-      expect(BANNED["contraction"]!.test(code(source!)), `${entry.file}: ${entry.reason}`).toBe(true);
+      expect(code(source!).includes(entry.text), `${entry.file}: ${entry.text}`).toBe(true);
+      expect(BANNED["contraction"]!.test(entry.text), entry.text).toBe(true);
     }
   });
 
