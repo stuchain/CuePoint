@@ -8586,3 +8586,31 @@ confirmation:
   (the alternative was an "Original order" item in Columns…).
 
 **Decided with**: User (picks 27 Oct 2026: "all the other use recommended", D6 B, D20 as now, D36 A; 28 Oct 2026: "All ★" for M332, M85, M327 and M50) · **Date**: 2026-10-27, 2026-10-28
+
+## DEC-303 — Page Edges, the Full-Width Zoomed Waveform and a Quiet Source Line (Amends DEC-302 D14, D27/M315, D36)
+
+**Status**: Accepted · **Related**: DEC-302, `changes/polish/header-wave/MOCKUP.png`, `changes/polish/chip-gap/MOCKUP.png`, `changes/polish/page-edges/MOCKUP.png`
+
+**Context**: On his Windows PC the owner found the zoomed waveform starting after an empty dark box
+(M315's inset from the content's edge), the Library's "Up to date ⟳" chip too loud beside a bigger
+file name, the To-check chip touching "newer match differs", and on every page but Library and Keys
+a strip of page margin between the sidebar and the header line and tables. Each had rendered
+options; he picked B for all four.
+
+**Decision**:
+- **Zoomed waveform** The strip runs edge to edge under the window, as the player bar does; the
+  M315 inset (`--detail-strip-inset`, `useContentEdge`) is removed.
+- **Source line** One quiet line in the file name's size and face: a green tick when nothing changed,
+  "Up to date · read <when>", then Check for changes as a small quiet ⟳ at its end (amends D14's
+  check chip). A changed or missing file keeps its warning chip and the primary button.
+- **Review status** "newer match differs" sits 8 px after its chip.
+- **Page edges** Every page's header steps over the left gutter and pads back in, so its divider
+  meets the sidebar and its words keep the title's edge. Clean's body and Prepare's Set do the same
+  (as the Library's pane does, D36): tables, the review foot bar and the Set's rows run to the
+  sidebar, with their first column on the title's edge (`--track-table-edge` for track tables;
+  the fit rules take it off the columns' width). Boxes (Statistics cards, Discover's dig panels,
+  duplicate groups) stay on the title's edge.
+
+**Decided with**: User (picks 29 Oct 2026: "recommended" for the waveform and source line, "B" for
+the chip gap and "B" for page edges) · **Date**: 2026-10-29
+
