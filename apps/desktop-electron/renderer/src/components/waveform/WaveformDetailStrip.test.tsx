@@ -196,7 +196,7 @@ beforeEach(() => {
     return contexts.get(this) as CanvasRenderingContext2D;
   } as never);
   vi.spyOn(window, "getComputedStyle").mockImplementation(
-    () => ({ getPropertyValue: (name: string) => (name === "--waveform-played" ? "#222222" : "#123456") }) as CSSStyleDeclaration,
+    () => ({ getPropertyValue: (name: string) => (name === "--waveform-played" ? "#222222" : name === "--waveform-veil" ? "" : "#123456") }) as CSSStyleDeclaration,
   );
 });
 

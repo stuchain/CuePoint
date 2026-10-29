@@ -609,6 +609,14 @@ describe("empty", () => {
     expect(screen.getByText("No tracks")).toBeInTheDocument();
   });
 
+  it("counts the header and the empty line as the two rows of its grid", () => {
+    renderTable({ source: inMemorySource<Track>([]) });
+    const grid = screen.getByRole("grid");
+    expect(grid).toHaveAttribute("aria-rowcount", "2");
+    const rows = within(grid).getAllByRole("row");
+    expect(rows.map((row) => row.getAttribute("aria-rowindex"))).toEqual(["1", "2"]);
+  });
+
   it("says what the caller wants said", () => {
     renderTable({
       source: inMemorySource<Track>([]),

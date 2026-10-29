@@ -299,7 +299,7 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
       context.globalAlpha = 1;
     }
     const mid = Math.floor(columns / 2) * unit;
-    context.fillStyle = resolvePaint("played", themeTokens);
+    context.fillStyle = resolvePaint("veil", themeTokens);
     context.fillRect(0, top, mid, rows * unit);
     context.fillStyle = resolvePaint("playhead", themeTokens);
     context.fillRect(mid, top, unit, rows * unit);

@@ -18,6 +18,9 @@ export const PAINT_TOKENS: Record<Exclude<WaveformPaint, `#${string}`>, string> 
   high: "--waveform-high",
   mono: "--waveform-mono",
   played: "--waveform-played",
+  // A full-height dimming (what lies outside a plan, the played half of the strip): the played colour, except
+  // where forced colours give it no fill, since one opaque system colour would hide what it lies over.
+  veil: "--waveform-veil",
   grid: "--waveform-grid",
   "memory-cue": "--waveform-memory-cue",
   playhead: "--fg-primary",
@@ -27,7 +30,10 @@ export const PAINT_TOKENS: Record<Exclude<WaveformPaint, `#${string}`>, string> 
 export function resolvePaint(paint: WaveformPaint, style: Pick<CSSStyleDeclaration, "getPropertyValue">): string {
   if (paint.startsWith("#")) return paint;
   const token = PAINT_TOKENS[paint as Exclude<WaveformPaint, `#${string}`>];
-  return style.getPropertyValue(token).trim() || "transparent";
+  const own = style.getPropertyValue(token).trim();
+  if (own) return own;
+  if (paint === "veil") return style.getPropertyValue("--waveform-played").trim() || "transparent";
+  return "transparent";
 }
 
 /** Fill a layout onto a 2D context, in its order. */

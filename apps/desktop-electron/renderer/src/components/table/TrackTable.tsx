@@ -1054,7 +1054,7 @@ export function TrackTable<Row>({
         className="track-table__scroll"
         role="grid"
         aria-label={ariaLabel}
-        aria-rowcount={source.total}
+        aria-rowcount={empty ? 2 : source.total}
         aria-multiselectable={onSelect ? true : undefined}
         aria-activedescendant={activeRowShown && cursorRow != null ? rowId(cursorRow) : undefined}
         // Focusable so the table can be reached, scrolled and asked for a
@@ -1227,7 +1227,7 @@ export function TrackTable<Row>({
         {empty ? (
           // A grid holds rows, and a row holds cells (axe: aria-required-children), so the empty line is a row
           // with one cell. The cell lays out as if it were not there (`display: contents`), so nothing moves.
-          <div className="track-table__empty" role="row">
+          <div className="track-table__empty" role="row" aria-rowindex={2}>
             <div role="gridcell" style={{ display: "contents" }}>
               {/* M349: the shared empty state, not bare words, when the caller gives none. */}
               {loading ? <Loading what="tracks" /> : (emptyState ?? <EmptyState compact headline="No tracks" />)}

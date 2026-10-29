@@ -257,7 +257,7 @@ export function PaneTree({
   };
 
   return (
-    <div ref={containerRef} className="cp-playlist-pane__tree" role={leadingRow || rows.length > 0 ? "tree" : undefined} aria-label={leadingRow || rows.length > 0 ? label : undefined}>
+    <div ref={containerRef} className="cp-playlist-pane__tree" role="tree" aria-label={label}>
       {leadingRow && (
         <div
           role="treeitem"
@@ -397,7 +397,15 @@ export function PaneTree({
         );
       })}
 
-      {children}
+      {/* A tree with nothing in it is not valid ARIA (axe: aria-required-children), so what stands in for the rows, an
+          empty state, is the tree's one entry: a disabled item, which a keyboard walking the tree does not stop on. */}
+      {children != null && children !== false && rows.length === 0 && !leadingRow ? (
+        <div role="treeitem" aria-level={1} aria-disabled="true" aria-selected={false} className="cp-playlist-pane__placeholder">
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </div>
   );
 }

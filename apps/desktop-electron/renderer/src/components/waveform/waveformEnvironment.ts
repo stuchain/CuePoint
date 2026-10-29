@@ -120,7 +120,7 @@ const FORCED_COLOURS_QUERY = "(forced-colors: active)";
 /**
  * What a waveform paint is drawn in while forced colours are on. A canvas's pixels are not recoloured by
  * the system, so a playhead drawn in the theme's near-white would vanish on a light high-contrast page.
- * The bars take the text colour, the played half and the grid the greyed one, the playhead and the memory
+ * The bars take the text colour, the played bars and the grid the greyed one, the full-height veils nothing, the playhead and the memory
  * cues the highlight colour, which every high-contrast theme keeps apart from the page. Normal mode is untouched.
  */
 export const FORCED_PAINTS: Record<string, string> = {
@@ -129,6 +129,8 @@ export const FORCED_PAINTS: Record<string, string> = {
   "--waveform-high": "CanvasText",
   "--waveform-mono": "CanvasText",
   "--waveform-played": "GrayText",
+  // The full-height veils are left unpainted (an opaque system colour would be a solid block over the bars).
+  "--waveform-veil": "transparent",
   "--waveform-grid": "GrayText",
   "--waveform-memory-cue": "Highlight",
   "--fg-primary": "Highlight",

@@ -30,8 +30,17 @@
     outline-offset: -1px;
   }
 
+  /* `.cp-modal:focus` above is as specific as the dialog's own focus rule; the keyboard's ring comes after it,
+     so a dialog the keyboard is on shows the highlight ring and not only its edge. */
+  html .cp-modal:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
   /* A frameless button (quiet, in a bar, in a row) is a button by its fill, which is dropped: it keeps an edge. */
   html .cp-btn {
+    border-style: solid;
+    border-width: 1px;
     border-color: ButtonText;
   }
 

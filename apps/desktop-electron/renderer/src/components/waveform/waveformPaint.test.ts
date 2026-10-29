@@ -51,7 +51,7 @@ describe("painting a layout", () => {
     expect(resolvePaint("#ff8c00", style)).toBe("#ff8c00");
     expect(resolvePaint("grid", { getPropertyValue: () => "" })).toBe("transparent");
     expect(Object.keys(PAINT_TOKENS).sort()).toEqual(
-      ["grid", "high", "low", "memory-cue", "mid", "mono", "played", "playhead"].sort(),
+      ["grid", "high", "low", "memory-cue", "mid", "mono", "played", "playhead", "veil"].sort(),
     );
   });
 

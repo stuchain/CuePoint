@@ -136,7 +136,7 @@ beforeEach(() => {
   vi.spyOn(window, "getComputedStyle").mockImplementation(
     () =>
       ({
-        getPropertyValue: (name: string) => (name === "--waveform-played" ? PLAYED : "#123456"),
+        getPropertyValue: (name: string) => (name === "--waveform-played" ? PLAYED : name === "--waveform-veil" ? "" : "#123456"),
       }) as CSSStyleDeclaration,
   );
 });

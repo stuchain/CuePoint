@@ -45,6 +45,7 @@ export type WaveformPaint =
   | "high"
   | "mono"
   | "played"
+  | "veil"
   | "grid"
   | "memory-cue"
   | "playhead"
@@ -428,12 +429,12 @@ export function layoutWaveform(input: WaveformLayoutInput): WaveformLayout {
   const outside: PaintRect[] = [];
   if (duration > 0 && input.inMs != null && input.inMs > 0) {
     const to = Math.min(columns, Math.floor((input.inMs / duration) * columns));
-    if (to > 0) outside.push({ x: 0, y: top, width: to * unit, height: fullHeight, paint: "played" });
+    if (to > 0) outside.push({ x: 0, y: top, width: to * unit, height: fullHeight, paint: "veil" });
   }
   if (duration > 0 && input.outMs != null && input.outMs < duration) {
     const from = Math.max(0, Math.ceil((input.outMs / duration) * columns));
     if (from < columns) {
-      outside.push({ x: from * unit, y: top, width: (columns - from) * unit, height: fullHeight, paint: "played" });
+      outside.push({ x: from * unit, y: top, width: (columns - from) * unit, height: fullHeight, paint: "veil" });
     }
   }
 

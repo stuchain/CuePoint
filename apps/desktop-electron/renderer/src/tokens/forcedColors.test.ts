@@ -44,8 +44,18 @@ describe("forcedColors.css", () => {
     }
   });
 
+  it("lets the keyboard's ring win on a focused dialog, after the edge rule that is as specific", () => {
+    const edge = rules.findIndex((r) => r.selector.includes("html .cp-modal:focus"));
+    const ring = rules.findIndex((r) => r.selector.split(",").map((x) => x.trim()).includes("html .cp-modal:focus-visible"));
+    expect(ring).toBeGreaterThan(edge);
+    expect(rules[ring]!.body).toMatch(/outline:\s*2px solid Highlight/);
+  });
+
   it("keeps a frameless button's edge, and says a pressed one is on", () => {
     expect(rule("html .cp-btn")?.body).toMatch(/border-color:\s*ButtonText/);
+    // A button that has no border of its own (`border: 0`) gets one, or the colour above has nothing to colour.
+    expect(rule("html .cp-btn")?.body).toMatch(/border-style:\s*solid/);
+    expect(rule("html .cp-btn")?.body).toMatch(/border-width:\s*1px/);
     expect(rule('html .cp-btn[aria-pressed="true"]')?.body).toMatch(/border-color:\s*Highlight/);
   });
 

@@ -295,8 +295,8 @@ describe("the played part and the planned times", () => {
   it("dims what lies before the planned in and after the planned out", () => {
     const layout = layoutWaveform(input({ inMs: 2_000, outMs: 18_000, scale: 2, cssWidth: 200 }));
     expect(layout.outside).toEqual([
-      { x: 0, y: 0, width: 20, height: 40, paint: "played" },
-      { x: 180, y: 0, width: 20, height: 40, paint: "played" },
+      { x: 0, y: 0, width: 20, height: 40, paint: "veil" },
+      { x: 180, y: 0, width: 20, height: 40, paint: "veil" },
     ]);
   });
 
@@ -483,7 +483,7 @@ describe("the order a canvas paints", () => {
       "low",
       "#28e214",
       "played",
-      "played",
+      "veil",
       "memory-cue",
       "playhead",
     ]);

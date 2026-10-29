@@ -56,6 +56,20 @@ describe("the waveform's paints in forced colours", () => {
     expect(resolvePaint("played", themeTokens)).toBe("GrayText");
   });
 
+  it("leaves the full-height veils unpainted, so a played half is no solid grey block", () => {
+    forced(true);
+    document.documentElement.style.setProperty("--waveform-played", "rgba(0, 0, 0, 0.6)");
+    expect(resolvePaint("veil", themeTokens)).toBe("transparent");
+    expect(resolvePaint("played", themeTokens)).toBe("GrayText");
+  });
+
+  it("dims with the theme's played colour in normal mode, as before", () => {
+    forced(false);
+    document.documentElement.style.setProperty("--waveform-played", "rgba(0, 0, 0, 0.6)");
+    expect(resolvePaint("veil", themeTokens)).toBe("rgba(0, 0, 0, 0.6)");
+    document.documentElement.style.removeProperty("--waveform-played");
+  });
+
   it("changes nothing in normal mode: the paints are the theme's own tokens", () => {
     forced(false);
     document.documentElement.style.setProperty("--fg-primary", "#fafafa");
