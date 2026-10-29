@@ -278,3 +278,47 @@ def test_staged_temp_keeps_the_existing_files_mode(tmp_path):
     temp = stage_temp(target, b"new")
     assert temp.stat().st_mode & 0o777 == 0o600
     atomic_write.discard_temp(temp)
+
+
+class _FakeKernel32:
+    """Stands in for kernel32 so the Windows liveness rule runs on any system."""
+
+    def __init__(self, handle, exit_code=None, got_code=True):
+        self.handle = handle
+        self.exit_code = exit_code
+        self.got_code = got_code
+        self.closed = []
+
+    def OpenProcess(self, access, inherit, pid):  # noqa: N802 - the Win32 name
+        return self.handle
+
+    def GetExitCodeProcess(self, handle, ref):  # noqa: N802
+        ref._obj.value = self.exit_code
+        return self.got_code
+
+    def CloseHandle(self, handle):  # noqa: N802
+        self.closed.append(handle)
+
+
+def test_windows_an_exited_process_that_still_opens_is_dead():
+    # The handle a Popen holds keeps the id openable after the child has exited.
+    kernel32 = _FakeKernel32(handle=1234, exit_code=0)
+    assert not atomic_write._windows_pid_alive(99, kernel32, lambda: 0)
+    assert kernel32.closed, "the handle must be closed"
+
+
+def test_windows_a_running_process_is_alive():
+    kernel32 = _FakeKernel32(handle=1234, exit_code=259)  # STILL_ACTIVE
+    assert atomic_write._windows_pid_alive(99, kernel32, lambda: 0)
+    assert kernel32.closed
+
+
+def test_windows_an_unreadable_exit_code_counts_as_alive():
+    kernel32 = _FakeKernel32(handle=1234, exit_code=0, got_code=False)
+    assert atomic_write._windows_pid_alive(99, kernel32, lambda: 0)
+
+
+def test_windows_no_such_process_is_dead_and_access_denied_is_alive():
+    kernel32 = _FakeKernel32(handle=None)
+    assert not atomic_write._windows_pid_alive(99, kernel32, lambda: 87)
+    assert atomic_write._windows_pid_alive(99, kernel32, lambda: 5)

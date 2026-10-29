@@ -113,12 +113,12 @@ def _write_data(stream: IO[Any], data: Data, encoding: str) -> None:
         stream.write(data)
     elif hasattr(data, "read"):
         while True:
-            chunk = data.read(1024 * 1024)  # type: ignore[union-attr]
+            chunk = data.read(1024 * 1024)
             if not chunk:
                 break
             stream.write(chunk.encode(encoding) if isinstance(chunk, str) else chunk)
     else:
-        for chunk in data:  # type: ignore[union-attr]
+        for chunk in data:
             stream.write(chunk.encode(encoding) if isinstance(chunk, str) else chunk)
 
 
@@ -260,21 +260,53 @@ def sweep_stale_copies_of(final: PathLike, keep_extension: bool = False) -> List
     return removed
 
 
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_STILL_ACTIVE = 259
+_ERROR_INVALID_PARAMETER = 87
+
+
+def _windows_pid_alive(
+    pid: int, kernel32: Any = None, get_last_error: Any = None
+) -> bool:
+    """Windows liveness: the id opens *and* the process has not exited.
+
+    ``os.kill(pid, 0)`` does not probe on Windows, and ``OpenProcess`` alone is
+    not enough: an exited process still opens for as long as anything holds a
+    handle to it (a ``Popen`` that has not been waited on, a parent), so its id
+    would read as alive. ``GetExitCodeProcess`` says whether it has finished.
+    A live process that itself exits with code 259 (``STILL_ACTIVE``) is read as
+    still alive; that is rare, and "unknown counts as alive" is the safe side
+    for a sweep that deletes files.
+
+    ``kernel32`` and ``get_last_error`` are injectable so tests can drive this
+    on any system.
+    """
+    import ctypes
+
+    if kernel32 is None:
+        kernel32 = getattr(ctypes, "WinDLL")("kernel32", use_last_error=True)
+        kernel32.OpenProcess.restype = ctypes.c_void_p
+    if get_last_error is None:
+        get_last_error = getattr(ctypes, "get_last_error")
+    handle = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        # Only "no such process id" means dead; access denied and the rest mean alive.
+        return bool(get_last_error() != _ERROR_INVALID_PARAMETER)
+    try:
+        code = ctypes.c_ulong(0)
+        if not kernel32.GetExitCodeProcess(ctypes.c_void_p(handle), ctypes.byref(code)):
+            return True  # cannot tell: alive
+        return bool(code.value == _STILL_ACTIVE)
+    finally:
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
+
+
 def pid_alive(pid: int) -> bool:
     """Whether a process with this id exists (unknown counts as alive)."""
     if pid <= 0:
         return False
     if sys.platform == "win32":  # pragma: no cover - exercised on Windows only
-        import ctypes
-
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
-        kernel32.OpenProcess.restype = ctypes.c_void_p
-        handle = kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
-        if not handle:
-            # Only "no such process id" means dead; access denied and the rest mean alive.
-            return ctypes.get_last_error() != 87  # ERROR_INVALID_PARAMETER
-        kernel32.CloseHandle(ctypes.c_void_p(handle))
-        return True
+        return _windows_pid_alive(pid)
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
