@@ -656,6 +656,10 @@ export class EngineSupervisor {
       parentPid: process.pid,
       decoderPath: this.options.decoderPath?.() ?? null,
       errorReporting: this.options.errorReporting?.() ?? false,
+      // The same two a restore's one-off run is given: without them the engine never learned of an
+      // unclean exit (no library check, no note) and never served its test-only routes.
+      uncleanExit: this.options.uncleanExit?.() ?? false,
+      testHooks: this.options.testHooks?.() ?? false,
       build: this.options.build,
     });
 

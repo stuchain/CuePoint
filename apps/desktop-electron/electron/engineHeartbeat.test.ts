@@ -251,6 +251,20 @@ describe("the engine's heartbeat", () => {
     expect(told.CUEPOINT_TEST_HOOKS).toBe("1");
   });
 
+  it("starts the engine told about an unclean exit and the test hooks, not only a one-off run", async () => {
+    const { spawn } = await import("node:child_process");
+    const told = make({ uncleanExit: () => true, testHooks: () => true });
+    await told.start();
+    const env = vi.mocked(spawn).mock.calls.at(-1)![2]!.env!;
+    expect(env.CUEPOINT_UNCLEAN_EXIT).toBe("1");
+    expect(env.CUEPOINT_TEST_HOOKS).toBe("1");
+    const plain = make();
+    await plain.start();
+    const bare = vi.mocked(spawn).mock.calls.at(-1)![2]!.env!;
+    expect(bare.CUEPOINT_UNCLEAN_EXIT).toBeUndefined();
+    expect(bare.CUEPOINT_TEST_HOOKS).toBeUndefined();
+  });
+
   it("lets go of the health answer's body", async () => {
     const supervisor = make();
     await supervisor.start();
