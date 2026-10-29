@@ -27,7 +27,6 @@ import {
   alive,
   descendants,
   enginesUnder,
-  environOf,
   finished,
   idle,
   importLibrary,
@@ -35,6 +34,7 @@ import {
   killAll,
   launchApp,
   libraryFile,
+  libraryScalar,
   mainPid,
   plainTracks,
   ready,
@@ -45,7 +45,7 @@ import {
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /** Tracks in the import that is killed: several seconds of work on the machines this runs on. */
-const BIG_IMPORT = Number(process.env.CUEPOINT_CRASH_TRACKS ?? "40000");
+const BIG_IMPORT = Number(process.env.CUEPOINT_CRASH_TRACKS ?? "20000");
 /** What the library holds before that import. */
 const BASE_TRACKS = 20;
 
@@ -98,6 +98,33 @@ async function waitForRunning(window: Page, jobId: string, timeout = 120_000): P
       { timeout },
     )
     .toBe("running");
+}
+
+/** Block this thread for a few milliseconds. */
+function nap(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Look in `folder` for an engine's temp file (`.<name>.cuepoint-tmp-<enginePid>`) while the export
+ * job runs; its name when seen, or null when the job ended without it being seen.
+ */
+async function catchTempFile(window: Page, jobId: string, folder: string, engines: number[]): Promise<string | null> {
+  const deadline = Date.now() + 120_000;
+  let nextJobCheck = 0;
+  while (Date.now() < deadline) {
+    for (const name of readdirSync(folder)) {
+      const match = /\.cuepoint-tmp-(\d+)/.exec(name);
+      if (match && engines.includes(Number(match[1]))) return name;
+    }
+    if (Date.now() >= nextJobCheck) {
+      const job = await readJob(window, jobId);
+      if (/succeeded|failed|cancelled/.test(job.state)) return null;
+      nextJobCheck = Date.now() + 200;
+    }
+    nap(1);
+  }
+  throw new Error("the export neither wrote a temp file nor ended");
 }
 
 /** A process id nothing is using, for a temp file that a dead writer might have left. */
@@ -167,10 +194,7 @@ interface WindowView {
   text: string;
 }
 
-/**
- * Every window's address and the words in it, asked in the main process. The text content, hidden
- * parts too: the strip says one thing at a time and a running job takes the place of a note.
- */
+/** Every window's address and the words on it, asked in the main process. */
 async function windowViews(application: ElectronApplication): Promise<WindowView[]> {
   return application.evaluate(async ({ BrowserWindow }) => {
     const views: Array<{ url: string; crashed: boolean; text: string }> = [];
@@ -182,7 +206,7 @@ async function windowViews(application: ElectronApplication): Promise<WindowView
         if (!contents.isCrashed() && !contents.isLoading()) {
           try {
             text = await Promise.race([
-              contents.executeJavaScript("document.body ? document.body.textContent : ''") as Promise<string>,
+              contents.executeJavaScript("document.body ? document.body.innerText : ''") as Promise<string>,
               new Promise<string>((resolve) => setTimeout(() => resolve(""), 3000)),
             ]);
           } catch {
@@ -203,6 +227,46 @@ async function windowSays(application: ElectronApplication, which: (view: Window
   return (await windowViews(application)).some((view) => !view.crashed && which(view) && view.text.includes(words));
 }
 
+/** The app's window has loaded again after a crash: not crashed, not loading, its shell on the page. */
+async function appReloaded(application: ElectronApplication): Promise<boolean> {
+  try {
+    return await application.evaluate(async ({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && !w.webContents.getURL().includes("recovery.html"));
+      if (!win || win.webContents.isCrashed() || win.webContents.isLoading()) return false;
+      // A page still dying does not answer: give it a moment, never the whole poll.
+      return Promise.race([
+        win.webContents.executeJavaScript("!!document.querySelector('main.app-main')") as Promise<boolean>,
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000)),
+      ]);
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether a note is on screen as `toBeVisible()` judges it (shown, not hidden, with a box). The
+ * crashed page's Playwright handle stays dead for good, so the check runs in the window itself.
+ */
+async function noteVisible(application: ElectronApplication, words: string): Promise<boolean> {
+  try {
+    return (
+      (await inWindow(
+        application,
+        `(() => {
+          const el = [...document.querySelectorAll('.cp-status__engine')].find((e) => (e.textContent || '').includes(${JSON.stringify(words)}));
+          if (!el || el.hidden) return false;
+          const style = getComputedStyle(el);
+          const box = el.getBoundingClientRect();
+          return style.visibility !== 'hidden' && style.display !== 'none' && box.width > 0 && box.height > 0;
+        })()`,
+      )) === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Run an expression in the window that shows `onlyUrlPart` (the app's, by default) and answer its value. */
 async function inWindow(application: ElectronApplication, expression: string, onlyUrlPart?: string): Promise<unknown> {
   return application.evaluate(
@@ -214,7 +278,11 @@ async function inWindow(application: ElectronApplication, expression: string, on
           (part ? candidate.webContents.getURL().includes(part) : !candidate.webContents.getURL().includes("recovery.html")),
       );
       if (!win) throw new Error("no such window");
-      return win.webContents.executeJavaScript(code);
+      // A page that is going away does not answer; a poll must be able to ask again.
+      return Promise.race([
+        win.webContents.executeJavaScript(code) as Promise<unknown>,
+        new Promise<never>((_resolve, reject) => setTimeout(() => reject(new Error("the window did not answer")), 8000)),
+      ]);
     },
     { code: expression, part: onlyUrlPart ?? "" },
   );
@@ -255,7 +323,7 @@ test.describe("Crash injection (HARDEN-05)", () => {
 
     const big = await writeExportFile(path.join(workspace, "big.xml"), plainTracks(BIG_IMPORT), BIG_IMPORT);
     const started = await window.evaluate((file) => window.cuepoint!.startLibraryImport!({ xml_path: file }), big);
-    await waitForProgress(window, started.job_id, 1000);
+    await waitForProgress(window, started.job_id, 500);
 
     const main = await mainPid(app);
     const engines = enginesUnder(main);
@@ -272,45 +340,77 @@ test.describe("Crash injection (HARDEN-05)", () => {
     expect(integrityCheck(libraryFile(home))).toBe("ok");
   });
 
-  test("the engine killed during an export leaves no partial XML, and the sweep removes the temp file", async () => {
+  test("the engine killed while it writes an export leaves no partial XML, and the restart sweeps its temp file", async () => {
     app = await launchApp({ userDataDir, home });
     const window = await ready(app);
-    const tracks = Number(process.env.CUEPOINT_CRASH_EXPORT_TRACKS ?? "30000");
+    const tracks = Number(process.env.CUEPOINT_CRASH_EXPORT_TRACKS ?? "15000");
     await importLibrary(window, await writeExportFile(path.join(workspace, "source.xml"), plainTracks(tracks), tracks));
 
     // Under the app's own folder, which the engine sweeps at every start.
     const folder = path.join(home, "Exports");
     mkdirSync(folder);
     const destination = path.join(folder, "CuePoint Export.xml");
-    // What a writer killed in the middle of its write leaves beside the destination: a dead process's temp file.
-    const dead = deadPid();
-    const leftover = path.join(folder, `.CuePoint Export.xml.cuepoint-tmp-${dead}`);
-    writeFileSync(leftover, "<DJ_PLAYLISTS><COLLECTION>");
-
-    const started = await window.evaluate(
-      (target) => window.cuepoint!.startRekordboxExport!({ collection_ids: null, destination_path: target }),
-      destination,
-    );
-    expect(started.refusal).toBeNull();
-    const jobId = started.started!.job_id;
-    await waitForRunning(window, jobId);
-
     const main = await mainPid(app);
-    const engines = enginesUnder(main);
-    expect(engines.length).toBeGreaterThan(0);
-    killAll(engines);
+
+    // The export writes its file whole into `.<name>.cuepoint-tmp-<enginePid>` and renames it over
+    // the destination: a window of tens of milliseconds. The test looks for that file with a tight
+    // loop, stops the engine on the spot where the platform can (SIGSTOP), checks the temp file is
+    // still there and the destination is not, and only then kills it. An attempt that lost the race
+    // (the rename won) is thrown away and tried again; if none catches it, the test fails and says
+    // so rather than passing without having killed a write.
+    let killedMidWrite: { jobId: string; engines: number[]; temp: string } | null = null;
+    for (let attempt = 1; attempt <= 8 && !killedMidWrite; attempt += 1) {
+      rmSync(destination, { force: true });
+      const engines = enginesUnder(main);
+      const started = await window.evaluate(
+        (target) => window.cuepoint!.startRekordboxExport!({ collection_ids: null, destination_path: target }),
+        destination,
+      );
+      expect(started.refusal).toBeNull();
+      const jobId = started.started!.job_id;
+      const temp = await catchTempFile(window, jobId, folder, engines);
+      if (temp !== null) {
+        const pid = Number(/cuepoint-tmp-(\d+)/.exec(temp)![1]);
+        if (process.platform !== "win32") killAll([pid], "SIGSTOP");
+        const stillWriting = existsSync(path.join(folder, temp)) && !existsSync(destination);
+        killAll(engines);
+        if (stillWriting) {
+          killedMidWrite = { jobId, engines, temp };
+          break;
+        }
+      }
+      // Lost the race: let this attempt end (or the restart settle) and go again.
+      if (temp !== null) await waitForRestart(window, main, engines);
+      else await finished(window, jobId);
+      await idle(window);
+    }
+    expect(killedMidWrite, "the engine's temp file was never caught: the write is too quick for the tight loop to see").not.toBeNull();
+    const { jobId, engines, temp } = killedMidWrite!;
     await waitForRestart(window, main, engines);
 
     await expect.poll(async () => (await recorded(window, jobId)).state, { timeout: 60_000 }).toBe("failed");
     expect((await recorded(window, jobId)).error?.code).toBe("JOB_INTERRUPTED");
+    // Nothing partial at the destination, and the temp file the dead engine left is swept as the next one starts.
     expect(existsSync(destination)).toBe(false);
-    // The sweep ran as the engine started: no temp file of a dead process is left.
-    await expect
-      .poll(() => readdirSync(folder).filter((name) => name.includes(".cuepoint-tmp-")), { timeout: 60_000 })
-      .toEqual([]);
+    await expect.poll(() => existsSync(path.join(folder, temp)), { timeout: 60_000 }).toBe(false);
     expect(readdirSync(folder)).toEqual([]);
     await idle(window);
     expect(integrityCheck(libraryFile(home))).toBe("ok");
+  });
+
+  test("a temp file a dead writer left under the app's folder is swept when the engine starts", async () => {
+    app = await launchApp({ userDataDir, home });
+    const window = await ready(app);
+    const folder = path.join(home, "Exports");
+    mkdirSync(folder);
+    const leftover = path.join(folder, `.CuePoint Export.xml.cuepoint-tmp-${deadPid()}`);
+    writeFileSync(leftover, "<DJ_PLAYLISTS><COLLECTION>");
+
+    const main = await mainPid(app);
+    const engines = enginesUnder(main);
+    killAll(engines);
+    await waitForRestart(window, main, engines);
+    await expect.poll(() => existsSync(leftover), { timeout: 60_000 }).toBe(false);
   });
 
   test("the engine killed during a tag write offers to undo it, and no audio file's frames changed", async () => {
@@ -318,7 +418,7 @@ test.describe("Crash injection (HARDEN-05)", () => {
     const window = await ready(app);
 
     // Small generated audio files: copies of a real, tiny MP3, each a track of its own.
-    const files = Number(process.env.CUEPOINT_CRASH_FILES ?? "200");
+    const files = Number(process.env.CUEPOINT_CRASH_FILES ?? "100");
     const music = path.join(workspace, "music");
     mkdirSync(music);
     const audio: GeneratedTrack[] = [];
@@ -337,7 +437,7 @@ test.describe("Crash injection (HARDEN-05)", () => {
     await idle(window);
 
     const started = await window.evaluate((id) => window.cuepoint!.startTagWrite!({ preview_id: id }), previewId);
-    await waitForProgress(window, started.job_id, 5);
+    await waitForProgress(window, started.job_id, 3);
 
     const main = await mainPid(app);
     const engines = enginesUnder(main);
@@ -372,8 +472,6 @@ test.describe("Crash injection (HARDEN-05)", () => {
   });
 
   test("an engine that stops answering is restarted by the heartbeat", async () => {
-    // The stall route's address is read from the engine's own environment, which only Linux serves as a file.
-    test.skip(process.platform !== "linux", "the engine's port and token are read from /proc");
     test.setTimeout(240_000);
     app = await launchApp({ userDataDir, home });
     const window = await ready(app);
@@ -382,24 +480,23 @@ test.describe("Crash injection (HARDEN-05)", () => {
     const main = await mainPid(app);
     const engines = enginesUnder(main);
     expect(engines.length).toBeGreaterThan(0);
-    // The engine is the one that listens: the bootloader of a packaged build has no port of its own.
-    const listening = engines.find((pid) => environOf(pid)?.CUEPOINT_PORT);
-    expect(listening, "no engine process with a port").toBeTruthy();
-    const env = environOf(listening!)!;
-    expect(env.CUEPOINT_TEST_HOOKS).toBe("1");
 
-    const asked = await fetch(`http://${env.CUEPOINT_HOST ?? "127.0.0.1"}:${env.CUEPOINT_PORT}/api/v1/test/stall`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.CUEPOINT_TOKEN}`, "Content-Type": "application/json" },
-      body: "{}",
-    });
-    expect(asked.status).toBe(202);
+    // The engine's port and token are main's alone: it asks the engine to stall (`__cuepointTest`,
+    // there only in a CUEPOINT_E2E run), the same on every platform.
+    const answered = await app.evaluate(() =>
+      (globalThis as { __cuepointTest?: { stallEngine: () => Promise<number> } }).__cuepointTest!.stallEngine(),
+    );
+    expect(answered).toBe(202);
 
-    // 3 missed beats of 15 seconds; two minutes is the most it may take.
+    // How long this takes, by the heartbeat's own numbers (`electron/heartbeat.ts`): a probe every
+    // 15 s, each given 10 s to answer, the next one waited for after the last. The stall begins
+    // anywhere in a 15 s gap, so the first miss is counted by 25 s, the second 25 s later, the
+    // third 25 s after that: 75 s, then the kill, a 1 s restart backoff and the engine coming up.
+    // "Within 60 s" (15 s x 3) leaves out the 10 s each probe waits, so it cannot hold; two minutes
+    // is the real bound, and what is asserted.
     const stalledAt = Date.now();
     await waitForRestart(window, main, engines, 120_000);
-    const seconds = (Date.now() - stalledAt) / 1000;
-    expect(seconds).toBeLessThan(120);
+    expect((Date.now() - stalledAt) / 1000).toBeLessThan(120);
     for (const pid of engines) await expect.poll(() => alive(pid), { timeout: 30_000 }).toBe(false);
 
     // The library is there, and the new engine serves it.
@@ -470,19 +567,20 @@ test.describe("Crash injection (HARDEN-05)", () => {
     expect(integrityCheck(libraryFile(home))).toBe("ok");
   });
 
-  test("a renderer that crashes is reloaded and says so; a second crash within a minute shows the recovery page", async () => {
+  test("a renderer that crashes is reloaded, and the strip says so once the work in it is done", async () => {
     app = await launchApp({ userDataDir, home });
     const first = await ready(app);
     await importLibrary(first, await writeExportFile(path.join(workspace, "lib.xml"), plainTracks(10), 10));
-    const crashedAt = Date.now();
 
     // Playwright keeps the crashed page's handle as crashed for good, so what follows asks the
     // windows themselves, from the main process.
     await crashRenderer(app);
+    await expect.poll(() => appReloaded(app!), { timeout: 60_000, message: "the window did not reload" }).toBe(true);
+    // The strip says one thing at a time: the note waits while a job holds it, and then shows in full.
     await expect
-      .poll(() => windowSays(app!, (w) => !w.url.includes("recovery.html"), "window stopped and was reopened"), {
-        timeout: 60_000,
-        message: "the window did not reload with its note",
+      .poll(() => noteVisible(app!, "CuePoint's window stopped and was reopened."), {
+        timeout: 120_000,
+        message: "the note about the reopened window never showed",
       })
       .toBe(true);
     await expect
@@ -490,10 +588,22 @@ test.describe("Crash injection (HARDEN-05)", () => {
         timeout: 90_000,
       })
       .toBe(10);
+    expect(integrityCheck(libraryFile(home))).toBe("ok");
+  });
 
-    // Again, inside the minute: not a third try, the plain page with its two buttons.
-    expect(Date.now() - crashedAt).toBeLessThan(60_000);
+  test("a second crash within a minute shows the recovery page, and Reload brings the app back", async () => {
+    app = await launchApp({ userDataDir, home });
+    const first = await ready(app);
+    await importLibrary(first, await writeExportFile(path.join(workspace, "lib.xml"), plainTracks(10), 10));
+    const crashedAt = Date.now();
+
     await crashRenderer(app);
+    // The second one as soon as the reloaded window is up, so a slow machine's own pace cannot
+    // push it past the minute the page allows.
+    await expect.poll(() => appReloaded(app!), { timeout: 30_000, message: "the window did not reload" }).toBe(true);
+    await crashRenderer(app);
+    expect(Date.now() - crashedAt, "the second crash came after the minute").toBeLessThan(60_000);
+
     await expect
       .poll(() => windowSays(app!, (w) => w.url.includes("recovery.html"), "CuePoint's window stopped twice"), {
         timeout: 60_000,
@@ -514,7 +624,8 @@ test.describe("Crash injection (HARDEN-05)", () => {
   });
 
   test("the whole app killed during a refresh is told of at the next launch", async () => {
-    const tracks = Number(process.env.CUEPOINT_CRASH_REFRESH_TRACKS ?? "25000");
+    const tracks = Number(process.env.CUEPOINT_CRASH_REFRESH_TRACKS ?? "10000");
+    const ADDED = 1000;
     const first = await launchApp({ userDataDir, home });
     app = first;
     const window = await ready(first);
@@ -523,11 +634,11 @@ test.describe("Crash injection (HARDEN-05)", () => {
 
     // The same export with a new label on every track and some new ones: a refresh with a lot to apply.
     const changed = (function* (): Iterable<GeneratedTrack> {
-      for (let id = 1; id <= tracks + 2000; id += 1) {
+      for (let id = 1; id <= tracks + ADDED; id += 1) {
         yield { id, title: `Track ${String(id).padStart(6, "0")}`, artist: `Artist ${String(id).padStart(6, "0")}`, label: "Relabelled" };
       }
     })();
-    const edited = await writeExportFile(path.join(workspace, "edited.xml"), changed, tracks + 2000);
+    const edited = await writeExportFile(path.join(workspace, "edited.xml"), changed, tracks + ADDED);
     const preview = await window.evaluate((file) => window.cuepoint!.startLibraryRefreshPreview!({ xml_path: file }), edited);
     expect((await finished(window, preview.job_id)).state).toBe("succeeded");
     const diff = (await window.evaluate((id) => window.cuepoint!.getJobResults!(id), preview.job_id)).result as { diff_id: string };
@@ -536,33 +647,41 @@ test.describe("Crash injection (HARDEN-05)", () => {
 
     // The app goes without a word: no quit, no cleanup.
     const main = await mainPid(first);
+    const children = descendants(main, /./);
     const engines = enginesUnder(main);
     process.kill(main, "SIGKILL");
     app = null;
     await first.close().catch(() => undefined);
-    // The engine notices its parent has gone and ends itself; never leave one behind either way.
+    // The engine notices its parent has gone and ends itself; mpv and the rest are reaped either way.
     try {
       await expect.poll(() => engines.filter(alive), { timeout: 30_000 }).toEqual([]);
     } finally {
-      killAll(engines.filter(alive));
+      killAll(children.filter(alive));
     }
 
     // The next launch: told that the last one did not close properly, once the library has been checked.
     app = await launchApp({ userDataDir, home });
     const again = await ready(app);
-    // The strip says one thing at a time and a running job (the launch's file check over this many
-    // tracks) takes its place, so the note is looked for in the strip's text and not for being on top.
-    await expect(again.locator(".cp-status__engine")).toContainText(
-      "CuePoint didn't close properly last time. Your library was checked and is fine.",
-      { timeout: 120_000 },
-    );
+    // The strip says one thing at a time: the note waits while the launch's own jobs hold it, and
+    // then shows in full. Asserted as the person sees it, once those jobs are done.
+    await idle(again, 300_000);
+    await expect(
+      again.getByText("CuePoint didn't close properly last time. Your library was checked and is fine."),
+    ).toBeVisible({ timeout: 120_000 });
     // It was not a damaged library: the screen for that is not up, and the library is whole.
     await expect(again.getByRole("heading", { name: "CuePoint couldn't read your library" })).toHaveCount(0);
     await idle(again);
     expect(integrityCheck(libraryFile(home))).toBe("ok");
     const summary = await again.evaluate(() => window.cuepoint!.getLibrarySummary!());
-    // Either the refresh finished before the kill or it did not happen: never half of one.
-    expect([tracks, tracks + 2000]).toContain(summary.track_count);
+    // The refresh is all or nothing: either every track carries the new label and the added ones are
+    // there, or none does and the library is as it was imported. Never half of one.
+    const relabelled = libraryScalar(libraryFile(home), "SELECT COUNT(*) FROM tracks WHERE label = 'Relabelled'");
+    const total = libraryScalar(libraryFile(home), "SELECT COUNT(*) FROM tracks");
+    expect(total).toBe(summary.track_count);
+    expect([
+      { relabelled: 0, total: tracks },
+      { relabelled: tracks + ADDED, total: tracks + ADDED },
+    ]).toContainEqual({ relabelled, total });
   });
 });
 
