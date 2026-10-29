@@ -83,6 +83,9 @@ class TestEngineSidecarHiddenImports:
         spec = _SPEC.read_text(encoding="utf-8")
 
         assert "manifest=" not in spec
+        # The manifest PyInstaller builds when none is given, not only its template.
+        built = winmanifest.create_application_manifest(None, False, False)
+        assert "<longPathAware" in built.decode("utf-8")
         assert "longPathAware" in winmanifest._DEFAULT_MANIFEST_XML.decode("utf-8")
 
     def test_collecting_the_package_really_names_every_migration(self):

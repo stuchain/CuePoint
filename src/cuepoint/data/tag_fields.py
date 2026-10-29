@@ -60,6 +60,7 @@ from cuepoint.data.tag_save import (
     TagSaveError,
     save_via_copy,
 )
+from cuepoint.utils.long_path import os_path
 from cuepoint.utils.quoting import quoted
 
 #: The fields a tag write replaces, in the order options name them.
@@ -488,6 +489,11 @@ def _slots_for(tag_format: str) -> Dict[str, Tuple[str, ...]]:
     return _SLOTS[tag_format]
 
 
+def _os(path: PathLike) -> str:
+    """``path`` as the operating system opens it (the long-path prefix, HARDEN-06)."""
+    return os_path(str(path), reserve=64) or ""
+
+
 def _load_id3(path: PathLike, suffix: Optional[str] = None) -> Tuple[Any, Any]:
     """``(container, ID3 tags)``: the container is None for an MP3's bare tag.
 
@@ -498,12 +504,12 @@ def _load_id3(path: PathLike, suffix: Optional[str] = None) -> Tuple[Any, Any]:
 
     if (suffix or Path(str(path)).suffix).lower() == ".mp3":
         try:
-            return None, ID3(str(path))
+            return None, ID3(_os(path))
         except ID3NoHeaderError:
-            if not Path(str(path)).is_file():
+            if not Path(_os(path)).is_file():
                 raise TagFieldsError(f"{quoted(path)} is not a file") from None
             return None, ID3()
-    audio = AIFF(str(path))
+    audio = AIFF(_os(path))
     if audio.tags is None:
         audio.add_tags()
     return audio, audio.tags
@@ -511,7 +517,7 @@ def _load_id3(path: PathLike, suffix: Optional[str] = None) -> Tuple[Any, Any]:
 
 def _save_id3(path: PathLike, audio: Any, tags: Any) -> None:
     if audio is None:
-        tags.save(str(path))
+        tags.save(_os(path))
     else:
         audio.save()
 
@@ -520,10 +526,10 @@ def _load_vorbis(path: PathLike, tag_format: str) -> Any:
     if tag_format == FORMAT_FLAC:
         from mutagen.flac import FLAC
 
-        return FLAC(str(path))
+        return FLAC(_os(path))
     from mutagen.oggvorbis import OggVorbis
 
-    return OggVorbis(str(path))
+    return OggVorbis(_os(path))
 
 
 def _id3_value(tags: Any, slots: Sequence[str]) -> FieldValue:

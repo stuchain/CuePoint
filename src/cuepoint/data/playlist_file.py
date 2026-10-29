@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple
+from cuepoint.utils.long_path import os_path
 from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
@@ -98,7 +99,7 @@ def read_title_artist_from_file(file_path: str) -> Tuple[Optional[str], Optional
     Returns:
         (title, artist) or (None, None).
     """
-    path = Path(file_path)
+    path = Path(os_path(str(file_path)))
     if not path.exists() or not path.is_file():
         return (None, None)
     suffix = path.suffix.lower()
@@ -120,7 +121,7 @@ def _read_id3_title_artist(path: str) -> Tuple[Optional[str], Optional[str]]:
     except ImportError:
         return (None, None)
     try:
-        audio = ID3(path)
+        audio = ID3(os_path(path))
     except ID3NoHeaderError:
         return (None, None)
     except Exception:
@@ -143,7 +144,7 @@ def _read_vorbis_title_artist(path: str) -> Tuple[Optional[str], Optional[str]]:
     suffix = Path(path).suffix.lower()
     try:
         if suffix == ".flac":
-            audio = FLAC(path)
+            audio = FLAC(os_path(path))
         else:
             audio = OggVorbis(path)
     except Exception:
@@ -161,7 +162,7 @@ def _read_mutagen_auto_title_artist(path: str) -> Tuple[Optional[str], Optional[
     try:
         import mutagen
 
-        audio = mutagen.File(path)
+        audio = mutagen.File(os_path(path))
     except Exception:
         return (None, None)
     if audio is None:

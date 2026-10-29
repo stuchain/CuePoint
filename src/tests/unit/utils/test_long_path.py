@@ -235,3 +235,59 @@ def test_a_tag_write_opens_the_file_through_the_helper_with_room_for_its_copy(
     tag_save.save_via_copy(target, lambda copy: None, accept=lambda _r: False)
 
     assert calls == [("a.wav", tag_save._SIBLING_ROOM)]
+
+
+# ------------------------------------------------------------- the read side
+
+
+def test_a_tag_snapshot_read_opens_the_prefixed_path_on_windows(windows, monkeypatch):
+    import mutagen.flac
+    import mutagen.id3
+
+    from cuepoint.data import tag_fields
+
+    opened = []
+
+    class Recorder(Exception):
+        def __init__(self, path, *args, **kwargs):
+            opened.append(path)
+            super().__init__("stop here")
+
+    monkeypatch.setattr(mutagen.id3, "ID3", Recorder)
+    monkeypatch.setattr(mutagen.flac, "FLAC", Recorder)
+    long_mp3 = "C:\\Music\\" + "d\\" * 150 + "a.mp3"
+    long_flac = "C:\\Music\\" + "d\\" * 150 + "a.flac"
+
+    for path in (long_mp3, long_flac):
+        with pytest.raises(tag_fields.TagFieldsError):
+            tag_fields.read_tag_fields(path)
+
+    assert opened == ["\\\\?\\" + long_mp3, "\\\\?\\" + long_flac]
+
+
+def test_the_embedded_picture_read_opens_the_prefixed_path_on_windows(
+    windows, monkeypatch
+):
+    import mutagen
+
+    from cuepoint.data import artwork
+
+    opened = []
+    monkeypatch.setattr(mutagen, "File", lambda path, *a, **k: opened.append(path))
+
+    artwork.inspect_embedded(LONG)
+
+    assert opened == ["\\\\?\\" + LONG]
+
+
+def test_the_playlist_tag_read_opens_the_prefixed_path_on_windows(windows, monkeypatch):
+    import mutagen
+
+    from cuepoint.data import playlist_file
+
+    opened = []
+    monkeypatch.setattr(mutagen, "File", lambda path, *a, **k: opened.append(path))
+
+    playlist_file._read_mutagen_auto_title_artist(LONG)
+
+    assert opened == ["\\\\?\\" + LONG]

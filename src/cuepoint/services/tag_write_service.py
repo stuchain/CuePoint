@@ -91,6 +91,7 @@ from typing import (
     Tuple,
 )
 
+from cuepoint.utils.long_path import os_path
 from cuepoint.data.tag_fields import (
     FIELD_BPM,
     FIELD_COMMENT,
@@ -1586,7 +1587,7 @@ class TagWriteService(ITagWriteService):
     ) -> None:
         """Refresh what the database knows about a file CuePoint just wrote."""
         try:
-            size = os.stat(path).st_size
+            size = os.stat(os_path(path)).st_size
         except OSError:
             size = None
         when = self._clock()
@@ -1891,7 +1892,7 @@ class TagWriteService(ITagWriteService):
         self, track_id: int, path: str, after: TagSnapshot, removals: Sequence[str]
     ) -> None:
         try:
-            size = os.stat(path).st_size
+            size = os.stat(os_path(path)).st_size
         except OSError:
             size = None
         when = self._clock()

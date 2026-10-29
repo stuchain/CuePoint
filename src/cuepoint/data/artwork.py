@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List, Optional, Tuple, Union
 
+from cuepoint.utils.long_path import os_path
+
 #: The picture type ID3 and FLAC use for a front cover.
 PICTURE_FRONT_COVER = 3
 
@@ -71,7 +73,7 @@ def inspect_embedded(path: Union[str, Path]) -> EmbeddedRead:
     try:
         import mutagen
 
-        audio = mutagen.File(str(path))
+        audio = mutagen.File(os_path(str(path)))
     except Exception as exc:  # noqa: BLE001 — any file can be anything
         return EmbeddedRead(error=f"tags could not be read: {exc}")
     if audio is None:
