@@ -45,8 +45,8 @@ describe("bridgeErrorFields", () => {
 });
 
 describe("isEngineRefusal", () => {
-  const answering = (status: number | null) => ({
-    engineErrorFields: () => ({ status, code: null, reportId: null }),
+  const answering = (status: number | null, code: string | null = null) => ({
+    engineErrorFields: () => ({ status, code, reportId: null }),
   });
 
   it("is true below 500 and false at 500 or more", () => {
@@ -54,6 +54,10 @@ describe("isEngineRefusal", () => {
     expect(isEngineRefusal(bridged("a"), answering(499))).toBe(true);
     expect(isEngineRefusal(bridged("a"), answering(500))).toBe(false);
     expect(isEngineRefusal(bridged("a"), answering(503))).toBe(false);
+    // A 5xx that is the user's situation is a refusal too; a library that cannot be read is not.
+    expect(isEngineRefusal(bridged("a"), answering(507, "R002"))).toBe(true);
+    expect(isEngineRefusal(bridged("a"), answering(503, "DB_UPGRADING"))).toBe(true);
+    expect(isEngineRefusal(bridged("a"), answering(503, "DB_UNREADABLE"))).toBe(false);
   });
 
   it("is false for an error that is not the engine's", () => {

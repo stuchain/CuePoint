@@ -52,6 +52,13 @@ export const EXPECTED_JOB_ERROR_CODES: readonly string[] = [
   "DB_SCHEMA_TOO_NEW",
   // A route's 500 the user owns (`EXPECTED_ROUTE_ERROR_CODES`).
   "SET_LIST_WRITE_FAILED",
+  // The library's own states (HARDEN-03): a full disk, no room to upgrade, an upgrade waiting for
+  // "Try again" or still running. Not `DB_UNREADABLE` or `DB_MIGRATION_FAILED`: those are reported.
+  "R002",
+  "DB_MIGRATION_BLOCKED",
+  "DB_NEEDS_SPACE",
+  "BACKUP_NEEDS_SPACE",
+  "DB_UPGRADING",
 ];
 
 /** An error with the fields an engine error has across the bridge. */

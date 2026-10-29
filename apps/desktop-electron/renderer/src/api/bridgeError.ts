@@ -9,6 +9,7 @@
  * Needed by REPORT-06: the renderer does not report an engine refusal, and does not
  * report a 500 the engine already reported.
  */
+import { EXPECTED_JOB_ERROR_CODES } from "../reporting/expected";
 import type { BridgeErrorFields, CuePointBridge } from "./cuepointBridge.types";
 
 const NONE: BridgeErrorFields = { status: null, code: null, reportId: null };
@@ -45,11 +46,15 @@ export function bridgeErrorFields(
   return { ...NONE };
 }
 
-/** True for an engine answer below 500: the engine refused, and nothing is broken. */
+/**
+ * True for an engine answer below 500, or one whose code is the user's situation (a full disk,
+ * a library waiting for room or for "Try again"): the engine refused, and nothing is broken.
+ */
 export function isEngineRefusal(
   error: unknown,
   bridge?: Pick<CuePointBridge, "engineErrorFields">,
 ): boolean {
-  const { status } = bridgeErrorFields(error, bridge);
-  return status !== null && status < 500;
+  const { status, code } = bridgeErrorFields(error, bridge);
+  if (status !== null && status < 500) return true;
+  return status !== null && code !== null && EXPECTED_JOB_ERROR_CODES.includes(code);
 }

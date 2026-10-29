@@ -326,7 +326,23 @@ export function reportUnexpected(error: unknown, context: ReportContext = {}): s
 }
 
 /**
- * The rule for an engine error (fact 3). Below 500 it is a refusal: nothing. At 500 or
+ * Engine answers of 500 or more that are the user's situation, so they are not reported
+ * (HARDEN-03, DEC-153): a full disk, no room to update the library, an update waiting for
+ * "Try again" or still running. Keep equal to the library codes in
+ * `EXPECTED_ROUTE_ERROR_CODES` in `src/cuepoint/reporting/expected.py`; `reporting.test.ts`
+ * holds the spellings. `DB_UNREADABLE` and `DB_MIGRATION_FAILED` are left out on purpose.
+ */
+export const EXPECTED_ENGINE_CODES: readonly string[] = [
+  "R002",
+  "DB_NEEDS_SPACE",
+  "DB_MIGRATION_BLOCKED",
+  "BACKUP_NEEDS_SPACE",
+  "DB_UPGRADING",
+];
+
+/**
+ * The rule for an engine error (fact 3). Below 500 it is a refusal: nothing. The same for an
+ * expected code (`EXPECTED_ENGINE_CODES`) at any status. At 500 or
  * more with a `reportId` the engine reported it: a breadcrumb naming that report. At
  * 500 or more without one the engine could not: an event. Answers the event id, if one
  * was made. Anything that is not an `EngineError` is an unexpected error.
@@ -334,6 +350,7 @@ export function reportUnexpected(error: unknown, context: ReportContext = {}): s
 export function reportEngineError(error: unknown): string | null {
   if (!(error instanceof EngineError)) return reportUnexpected(error);
   if (error.status < 500) return null;
+  if (error.code !== null && EXPECTED_ENGINE_CODES.includes(error.code)) return null;
   if (error.reportId !== null) {
     // The raw id, under `report_id`: REPORT-02's scrubber keeps a 32-hex value under that key.
     breadcrumb("engine.report", "the engine reported this error", {

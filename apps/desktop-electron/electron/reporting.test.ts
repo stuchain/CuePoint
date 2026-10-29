@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import * as Node from "@sentry/node";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -10,6 +13,7 @@ import {
   BUILT_IN_MAIN_DSN,
   mainReportingDsn,
   reportEngineError,
+  EXPECTED_ENGINE_CODES,
   processReporter,
   reportOnce,
   reportProcessGone,
@@ -461,6 +465,31 @@ describe("engine errors (fact 3)", () => {
 
     expect(sent).toEqual([]);
     expect(crumbs()).toEqual([]);
+  });
+
+  it("a 5xx whose code is the user's situation records nothing, with or without a report id", async () => {
+    setup();
+
+    for (const code of EXPECTED_ENGINE_CODES) {
+      expect(reportEngineError(new EngineError("Your disk is full.", { status: 507, code }))).toBeNull();
+      expect(reportEngineError(new EngineError("x", { status: 503, code, reportId: "0123456789abcdef0123456789abcdef" }))).toBeNull();
+    }
+    await flush();
+
+    expect(sent).toEqual([]);
+    expect(crumbs()).toEqual([]);
+    // The ones that are bugs when they come up out of the blue still are reported.
+    for (const code of ["DB_UNREADABLE", "DB_MIGRATION_FAILED"]) {
+      expect(EXPECTED_ENGINE_CODES).not.toContain(code);
+    }
+  });
+
+  it("lists the library codes the engine does not report", () => {
+    const py = readFileSync(resolve(__dirname, "../../../src/cuepoint/reporting/expected.py"), "utf8").replace(/\r\n/g, "\n");
+    const start = py.indexOf("EXPECTED_ROUTE_ERROR_CODES: frozenset[str] = frozenset(");
+    const block = py.slice(start, py.indexOf("\n)\n", start));
+    const codes = [...block.matchAll(/^\s+"([^"]+)",/gm)].map((m) => m[1]!).filter((c) => c !== "SET_LIST_WRITE_FAILED");
+    expect([...EXPECTED_ENGINE_CODES].sort()).toEqual(codes.sort());
   });
 
   it("a 500 with a report id adds a breadcrumb naming it and records no event", async () => {
