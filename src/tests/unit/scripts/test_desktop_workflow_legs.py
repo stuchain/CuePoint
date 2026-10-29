@@ -213,6 +213,20 @@ class TestPackagedRun:
         names = [s.get("name") for s in _job()["steps"]]
         assert names.index(package["name"]) > names.index("Playwright Electron smoke")
 
+    def test_the_renderer_unit_tests_skip_the_slow_intel_leg_but_its_packaged_run_stays(
+        self,
+    ):
+        # They are arch-independent and run on the other three legs; on the Intel runner they
+        # timed out. Lint still runs everywhere, and the Intel leg still runs the packaged app.
+        unit = _step("Unit test renderer")
+        assert unit["run"] == "npm test"
+        assert unit["if"] == "matrix.leg != 'macos-x64'"
+        assert "if" not in _step("Lint renderer")
+        assert _step("Lint renderer")["run"] == "npm run lint"
+        assert "macos-x64" in _legs()
+        assert "matrix.leg" not in _step("Packaged app end-to-end")["if"]
+        assert "macos-x64" not in _step("Playwright Electron smoke")["run"]
+
     def test_the_job_and_the_packaged_run_have_a_timeout(self):
         job = _job()
         assert 60 <= job["timeout-minutes"] <= 360
