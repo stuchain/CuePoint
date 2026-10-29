@@ -38,6 +38,7 @@ let getState: ReturnType<typeof vi.fn>;
 let openReleasePage: ReturnType<typeof vi.fn>;
 let showItemInFolder: ReturnType<typeof vi.fn>;
 let showInFolder: ReturnType<typeof vi.fn>;
+let restoreEvent: ((event: { phase: string }) => void) | null = null;
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date(2026, 9, 29, 14, 0) });
@@ -58,7 +59,10 @@ beforeEach(() => {
         ],
         folder: "/home/x/.cuepoint/backups",
       })),
-      onRestoreEvent: () => () => undefined,
+      onRestoreEvent: (listener: (event: { phase: string }) => void) => {
+        restoreEvent = listener;
+        return () => undefined;
+      },
     },
     library: { getState, recheck, getUncleanExit: vi.fn(), onStateChanged: () => () => undefined },
     updates: { openReleasePage },
@@ -95,7 +99,7 @@ describe("Damaged", () => {
   it("Restore this backup restores the newest good backup, then asks for the new state", async () => {
     const onState = show({});
     await user().click(screen.getByRole("button", { name: "Restore this backup" }));
-    expect(restore).toHaveBeenCalledWith("good.db");
+    expect(restore).toHaveBeenCalledWith("good.db", undefined);
     await waitFor(() => expect(onState).toHaveBeenCalledWith(expect.objectContaining({ state: "ok" })));
   });
 
@@ -113,8 +117,8 @@ describe("Damaged", () => {
       await screen.findByText("Choose the backup to restore. Your library file as it is now is set aside first."),
     ).toBeInTheDocument();
     expect(screen.getByText("Before updating to 1.0.0")).toBeInTheDocument();
-    await user().click(screen.getByRole("button", { name: "Restore the backup from Oct 27, 10:10 PM" }));
-    expect(restore).toHaveBeenCalledWith("b2.db");
+    await user().click(screen.getByRole("button", { name: /^Restore the backup from Oct 27, 10:10 PM/ }));
+    expect(restore).toHaveBeenCalledWith("b2.db", undefined);
     await waitFor(() => expect(screen.getByRole("button", { name: "Back" })).toBeEnabled());
     await user().click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByRole("button", { name: "Restore this backup" })).toBeInTheDocument();
@@ -181,7 +185,30 @@ describe("Upgrade failed", () => {
   it("Restore that copy restores the copy from before the update", async () => {
     show(failed);
     await user().click(screen.getByRole("button", { name: "Restore that copy" }));
-    expect(restore).toHaveBeenCalledWith("pre.db");
+    expect(restore).toHaveBeenCalledWith("pre.db", undefined);
+  });
+});
+
+describe("Try again", () => {
+  const failed = { state: "needs_space" as const, requiredFreeBytes: 1 };
+
+  it("keeps the screen while the update runs again, and says so when it takes long", async () => {
+    getState.mockResolvedValue(status({ state: "upgrading", computedAt: "later" }));
+    const onState = show(failed);
+    await user().click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Checking your library…")).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await screen.findByText("Still checking your library…")).toBeInTheDocument();
+    expect(onState).not.toHaveBeenCalled();
+  });
+});
+
+describe("the screen's focus", () => {
+  it("is on the heading when it shows and when the view changes", async () => {
+    show({});
+    expect(screen.getByRole("heading", { level: 1 })).toHaveFocus();
+    await user().click(screen.getByRole("button", { name: "Choose another backup" }));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveFocus());
   });
 });
 
@@ -273,6 +300,24 @@ describe("the gate", () => {
     changed();
     await screen.findByRole("heading", { level: 1 });
     await waitFor(() => expect(screen.queryByText("[DB_UNREADABLE] could not be read")).not.toBeInTheDocument());
+  });
+
+  it("reads the state again when a restore ends, wherever it was asked from", async () => {
+    getState.mockResolvedValue(status({ state: "damaged" }));
+    gate();
+    await screen.findByRole("heading", { level: 1 });
+    getState.mockResolvedValue(status({ state: "ok", computedAt: "after" }));
+    restoreEvent?.({ phase: "restored" });
+    expect(await screen.findByText("The app")).toBeInTheDocument();
+  });
+
+  it("keeps the recovery screen while an update runs again behind it", async () => {
+    getState.mockResolvedValue(status({ state: "needs_space" }));
+    gate();
+    await screen.findByRole("heading", { level: 1 });
+    getState.mockResolvedValue(status({ state: "upgrading", computedAt: "later" }));
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(screen.queryByText("The app")).not.toBeInTheDocument();
   });
 
   it("shows the app again when the library is ok", async () => {

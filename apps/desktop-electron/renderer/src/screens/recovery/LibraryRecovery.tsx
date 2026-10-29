@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 import appIcon from "../../assets/cuepoint-icon.png";
 import type { BackupEntry, LibraryStatus } from "../../api/cuepointBridge.types";
-import { reloadEveryView } from "../../api/reloadEveryView";
 import { userMessage } from "../../api/userMessage";
 import { Button } from "../../components/Button";
 import { GetHelpDialog } from "../../components/GetHelpDialog";
 import { Notice } from "../../components/Notice";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { BackupRows } from "../backups/BackupRows";
+import { runRestore } from "../backups/restoreStore";
 import { backupWhenInSentence } from "../backups/backupWords";
 import "../backups/backups.css";
 import "./recovery.css";
@@ -99,7 +99,10 @@ export function LibraryRecovery({
   const [working, setWorking] = useState<"restore" | "retry" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
+  // "Try again" ran out of waiting before the library said how it ended.
+  const [slow, setSlow] = useState(false);
   const live = useRef(true);
+  const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     live.current = true;
     return () => {
@@ -107,16 +110,26 @@ export function LibraryRecovery({
     };
   }, []);
 
+  // Focus is on the heading when the screen shows and when it changes view, so a screen reader reads where it is.
+  useEffect(() => {
+    const heading = root.current?.querySelector<HTMLElement>("h1");
+    if (!heading) return;
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
+  }, [screen, status.state]);
+
   const words = recoveryWords(status);
   const bridge = window.cuepoint;
 
-  /** Ask for the state until it differs from the one on screen, or give up. */
+  /** Ask for the state until it has settled into one other than the one on screen, or say it is taking long. */
   const settle = useCallback(async () => {
+    setSlow(false);
     for (let tries = 0; tries < SETTLE_TRIES && live.current; tries += 1) {
       await new Promise((resolve) => setTimeout(resolve, settlePollMs));
       try {
         const next = await bridge?.library?.getState();
-        if (next && live.current && (next.computedAt !== status.computedAt || next.state !== status.state)) {
+        // An update still running is not an answer: this screen stays until it ends one way or the other.
+        if (next && live.current && next.state !== "upgrading" && (next.computedAt !== status.computedAt || next.state !== status.state)) {
           onState(next);
           return;
         }
@@ -124,24 +137,21 @@ export function LibraryRecovery({
         // The background process is still coming up; ask again.
       }
     }
+    if (live.current) setSlow(true);
   }, [bridge, onState, settlePollMs, status.computedAt, status.state]);
 
   const restore = async (name: string) => {
-    const backups = bridge?.backups;
-    if (!backups || working) return;
+    if (!bridge?.backups || working) return;
     setWorking("restore");
     setProblem(null);
     try {
-      const result = await backups.restore(name);
+      const result = await runRestore({ name, createdAt: "", reason: "", appVersion: null, bytes: 0 }, false);
       if (!live.current) return;
-      if (!result.ok) {
+      if (result && !result.ok) {
         setProblem(result.message);
         return;
       }
-      reloadEveryView();
       await settle();
-    } catch (cause) {
-      if (live.current) setProblem(userMessage(cause, "Your library was not changed."));
     } finally {
       if (live.current) setWorking(null);
     }
@@ -151,11 +161,12 @@ export function LibraryRecovery({
     if (working) return;
     setWorking("retry");
     setProblem(null);
+    setSlow(false);
     try {
       await bridge?.library?.recheck();
       await settle();
     } catch (cause) {
-      if (live.current) setProblem(userMessage(cause, "CuePoint couldn't check your library."));
+      if (live.current) setProblem(userMessage(cause, "CuePoint could not check your library."));
     } finally {
       if (live.current) setWorking(null);
     }
@@ -164,6 +175,7 @@ export function LibraryRecovery({
   const choose = async () => {
     setScreen("choose");
     setProblem(null);
+    setSlow(false);
     try {
       const found = await bridge?.backups?.list();
       if (!live.current) return;
@@ -172,7 +184,7 @@ export function LibraryRecovery({
     } catch (cause) {
       if (live.current) {
         setBackups([]);
-        setProblem(userMessage(cause, "CuePoint couldn't read the list of backups."));
+        setProblem(userMessage(cause, "CuePoint could not read the list of backups."));
       }
     }
   };
@@ -186,7 +198,7 @@ export function LibraryRecovery({
       if (file && bridge?.showItemInFolder) await bridge.showItemInFolder(file);
       else await bridge?.backups?.showInFolder();
     } catch (cause) {
-      if (live.current) setProblem(userMessage(cause, "CuePoint couldn't show the library file."));
+      if (live.current) setProblem(userMessage(cause, "CuePoint could not show the library file."));
     }
   };
 
@@ -195,7 +207,7 @@ export function LibraryRecovery({
       const opened = await bridge?.updates?.openReleasePage("update");
       if (!opened) await bridge?.updates?.openReleasePage("current");
     } catch (cause) {
-      if (live.current) setProblem(userMessage(cause, "CuePoint couldn't open the download page."));
+      if (live.current) setProblem(userMessage(cause, "CuePoint could not open the download page."));
     }
   };
 
@@ -264,7 +276,7 @@ export function LibraryRecovery({
   }
 
   return (
-    <div className="library-recovery" data-state={status.state}>
+    <div className="library-recovery" data-state={status.state} ref={root}>
       <div className="library-recovery__brand">
         <img className="library-recovery__logo" src={appIcon} alt="" draggable={false} />
         <span>CuePoint</span>
@@ -287,11 +299,10 @@ export function LibraryRecovery({
         ) : (
           <p className="library-recovery__text">{words.text}</p>
         )}
-        {working === "restore" && (
-          <p className="library-recovery__text" role="status">
-            Restoring your library…
-          </p>
-        )}
+        {/* Live regions are on the page before they say anything, so a change is announced. */}
+        <p className="library-recovery__text library-recovery__status" role="status">
+          {working === "restore" ? "Restoring your library…" : working === "retry" && !slow ? "Checking your library…" : slow ? "Still checking your library…" : ""}
+        </p>
         {problem && <Notice kind="danger">{problem}</Notice>}
         <div className="library-recovery__buttons">{buttons}</div>
       </main>

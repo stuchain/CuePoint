@@ -68,3 +68,12 @@
   gap: var(--space-md);
   margin-top: var(--space-md);
 }
+
+/* Said in words that appear and change: on the page from the start, empty, and out of the layout until it speaks. */
+.library-recovery__status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  margin: 0;
+}
