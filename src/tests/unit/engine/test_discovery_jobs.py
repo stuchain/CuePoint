@@ -21,6 +21,7 @@ import pytest
 
 from cuepoint.engine import discovery_jobs as jobs
 from cuepoint.engine import server
+from tests.unit.engine.engine_start import run_engine_to_the_end
 from cuepoint.engine.discovery_jobs import (
     JOB_TYPE_DISCOVERY,
     close_interrupted_discovery_runs,
@@ -367,12 +368,14 @@ class TestRunsACrashLeftOpen:
             jobs, "close_interrupted_discovery_runs", lambda: closed.append(1)
         )
 
-        def stop_here(*_args, **_kwargs):
-            raise RuntimeError("stop")
-
-        monkeypatch.setattr(server, "ThreadingHTTPServer", stop_here)
-        with pytest.raises(RuntimeError, match="stop"):
-            server.run_engine(server.EngineConfig(host="127.0.0.1", port=8123))
+        # No library is opened: the state is settled as ok, as for a fresh install.
+        monkeypatch.setattr(
+            "cuepoint.engine.library_state.compute_library_state",
+            lambda: __import__(
+                "cuepoint.engine.library_state", fromlist=["_base"]
+            )._base(),
+        )
+        run_engine_to_the_end(monkeypatch)
         assert closed == [1]
 
 

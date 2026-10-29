@@ -22,7 +22,10 @@ from __future__ import annotations
 import errno
 import logging
 import sqlite3
-from typing import Callable, List, Optional
+import threading
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Callable, Iterator, List, Optional, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import R002_DISK_FULL, DatabaseError
 
@@ -137,22 +140,47 @@ def translate(exc: BaseException) -> BaseException:
     return exc
 
 
-_migration_block: Optional[DatabaseError] = None
+_migration_block: Optional[Tuple[str, DatabaseError]] = None
+_allowance = threading.local()
 
 
-def block_migrations(reason: Optional[DatabaseError]) -> None:
-    """Hold the library's migrations back (``reason``), or let them run (None).
+def block_migrations(
+    reason: Optional[DatabaseError], library: Optional[Path] = None
+) -> None:
+    """Hold the migrations of the library at ``library`` back (``reason``), or let them run (None).
 
     The engine holds them back while the library's state says they must not run:
-    no room for the copy kept before them, or an upgrade that already failed and
-    waits for "Try again". Nothing blocks them unless the engine says so.
+    it is still being worked out (a request must not migrate beside the copy
+    kept before the upgrade), there is no room for that copy, or an upgrade
+    already failed and waits for "Try again". The block is for one library file,
+    not the process, and nothing blocks anything unless the engine says so.
     """
     global _migration_block
-    _migration_block = reason
+    if reason is None or library is None:
+        _migration_block = None
+    else:
+        _migration_block = (str(library), reason)
 
 
-def check_migrations_allowed() -> None:
-    """Raise the reason given to :func:`block_migrations`, if there is one."""
-    reason = _migration_block
-    if reason is not None:
-        raise reason
+@contextmanager
+def allow_migrations() -> Iterator[None]:
+    """Let the calling thread, and only it, migrate through a block."""
+    before = getattr(_allowance, "depth", 0)
+    _allowance.depth = before + 1
+    try:
+        yield
+    finally:
+        _allowance.depth = before
+
+
+def check_migrations_allowed(library: Optional[Path] = None) -> None:
+    """Raise the reason given to :func:`block_migrations`, if it holds for ``library``.
+
+    The thread inside :func:`allow_migrations` is not held.
+    """
+    held = _migration_block
+    if held is None or getattr(_allowance, "depth", 0) > 0:
+        return
+    if library is not None and str(library) != held[0]:
+        return
+    raise held[1]

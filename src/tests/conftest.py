@@ -483,7 +483,10 @@ def _forget_library_state():
     them set for every test after it.
     """
     from cuepoint.engine import library_state
+    from cuepoint.services import backup_service
 
     library_state.reset()
+    backup_service.LAST_LAUNCH_SKIP = None
     yield
     library_state.reset()
+    backup_service.LAST_LAUNCH_SKIP = None

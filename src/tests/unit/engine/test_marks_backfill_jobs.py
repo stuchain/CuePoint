@@ -22,6 +22,7 @@ import pytest
 
 from cuepoint.engine import marks_backfill_jobs as jobs
 from cuepoint.engine import server
+from tests.unit.engine.engine_start import run_engine_to_the_end
 from cuepoint.engine.jobs import JobState, JobStore, JobTypeBusyError
 from cuepoint.engine.library_refresh import LIBRARY_JOB_TYPES
 from cuepoint.engine.marks_backfill_jobs import (
@@ -272,12 +273,7 @@ class TestForReal:
         monkeypatch.setattr(server, "record_activity", lambda *a, **k: None)
         monkeypatch.setattr(server, "_JOB_STORE", store)
 
-        def stop_here(*_args, **_kwargs):
-            raise RuntimeError("stop")
-
-        monkeypatch.setattr(server, "ThreadingHTTPServer", stop_here)
-        with pytest.raises(RuntimeError, match="stop"):
-            server.run_engine(server.EngineConfig(host="127.0.0.1", port=8123))
+        run_engine_to_the_end(monkeypatch)
         (job,) = [j for j in store.list_all() if j.type == JOB_TYPE_MARKS_BACKFILL]
         assert finished(store, job).state is JobState.SUCCEEDED
         assert resolve("ITrackMarksRepository").counts() == (11, 6)

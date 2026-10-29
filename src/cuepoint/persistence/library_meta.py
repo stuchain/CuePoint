@@ -46,7 +46,7 @@ def record_last_opened_by(version: str) -> bool:
     from cuepoint.services.migration_runner import schema_is_ahead
     from cuepoint.utils.di_container import get_container
 
-    database = get_container().resolve(IDatabaseService)
+    database = get_container().resolve(IDatabaseService)  # type: ignore[type-abstract]
     if schema_is_ahead(database.db_path):
         return False
     set_meta(database, LAST_OPENED_BY, version)

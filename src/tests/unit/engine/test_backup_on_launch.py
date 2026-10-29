@@ -16,7 +16,9 @@ import sqlite3
 
 import pytest
 
+from cuepoint.engine import library_state as library_state_module
 from cuepoint.engine import server
+from tests.unit.engine.engine_start import FakeServer, run_engine_to_the_end
 from cuepoint.services import database_service as database_service_module
 from cuepoint.utils.di_container import reset_container
 
@@ -63,39 +65,39 @@ def _backups(db_path):
 
 @pytest.mark.unit
 class TestWiring:
-    def test_run_engine_backs_up_before_starting_the_server(self, monkeypatch):
-        """The backup must happen before the server exists, not after."""
+    def test_run_engine_binds_the_server_first_and_then_backs_up(
+        self, library, monkeypatch
+    ):
+        """The port is bound first (health answers); the backup precedes the upgrade."""
         calls = []
 
         monkeypatch.setattr(
             server, "backup_library_on_launch", lambda: calls.append("backup")
         )
+        monkeypatch.setattr(
+            library_state_module,
+            "compute_library_state",
+            lambda: calls.append("state") or library_state_module._base(),
+        )
 
-        def fake_server(*_args, **_kwargs):
-            calls.append("server")
-            raise RuntimeError("stop here")
+        class Recording(FakeServer):
+            def __init__(self, *a, **k):
+                calls.append("server")
+                super().__init__(*a, **k)
 
-        monkeypatch.setattr(server, "ThreadingHTTPServer", fake_server)
+        monkeypatch.setattr(server, "ThreadingHTTPServer", Recording)
+        server.run_engine(server.EngineConfig(host="127.0.0.1", port=8123))
+        server._LIBRARY_START.join(30)
 
-        with pytest.raises(RuntimeError, match="stop here"):
-            server.run_engine(server.EngineConfig(host="127.0.0.1", port=8123))
+        assert calls == ["server", "backup", "state"]
 
-        assert calls == ["backup", "server"]
-
-    def test_backup_runs_once_per_launch_not_per_request(self, monkeypatch):
+    def test_backup_runs_once_per_launch_not_per_request(self, library, monkeypatch):
         """Starting the engine takes exactly one backup."""
         calls = []
         monkeypatch.setattr(
             server, "backup_library_on_launch", lambda: calls.append("backup")
         )
-        monkeypatch.setattr(
-            server,
-            "ThreadingHTTPServer",
-            lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("stop here")),
-        )
-
-        with pytest.raises(RuntimeError, match="stop here"):
-            server.run_engine(server.EngineConfig(host="127.0.0.1", port=8123))
+        run_engine_to_the_end(monkeypatch)
 
         assert calls == ["backup"]
 

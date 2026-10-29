@@ -1384,7 +1384,8 @@ def make_handler(
                 return
             if path == "/api/v1/library/recheck":
                 self._read_body()
-                self._send_json(200, {"library": library_state.recompute()})
+                # Answered at once with ``upgrading``; the app polls /status.
+                self._send_json(202, {"library": library_state.recompute()})
                 return
             if path == "/api/v1/library/integrity-check":
                 self._read_body()
@@ -1746,6 +1747,10 @@ def favour_waiting_threads() -> None:
     sys.setswitchinterval(ENGINE_SWITCH_INTERVAL_SECONDS)
 
 
+#: The thread that does the engine's library work after the port is bound (tests wait for it).
+_LIBRARY_START: Optional[threading.Thread] = None
+
+
 def _schedule_launch_analysis() -> None:
     # WAVE-03: an analysis the last engine left unfinished continues, unless it
     # was paused, once this one has been serving for a while, so a launch is
@@ -1758,11 +1763,11 @@ def _schedule_launch_analysis() -> None:
         _logger.warning("[waveforms] the launch analysis was not scheduled: %s", exc)
 
 
-def _start_library_work(cfg: EngineConfig, late: bool = False) -> None:
+def _start_library_work(cfg: EngineConfig) -> None:
     """What the engine does with a library that opened: record the start, background work.
 
-    At start when the library is ``ok``; otherwise once a recheck finds it so
-    (``late``), since none of this can run against a library that is not.
+    Once, when the library's state first comes out ``ok``: none of this can run
+    against a library that is not.
     """
     # DEC-028/DEC-029: every start is recorded, so a restarting engine leaves a
     # visible trail rather than healing silently.
@@ -1792,8 +1797,7 @@ def _start_library_work(cfg: EngineConfig, late: bool = False) -> None:
     from cuepoint.engine.discovery_jobs import close_interrupted_discovery_runs
 
     close_interrupted_discovery_runs()
-    if late:
-        _schedule_launch_analysis()
+    _schedule_launch_analysis()
 
 
 def run_engine(config: Optional[EngineConfig] = None) -> None:
@@ -1811,46 +1815,56 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
         raise ValueError(f"Refusing to bind engine to non-loopback host: {cfg.host!r}")
     fine_timer_resolution()
     favour_waiting_threads()
-    # Synchronous and before the server exists: a backup running concurrently
-    # with the first migration would lose the ordering guarantee above. It is
-    # skipped entirely when nothing changed since the last one, so the usual
-    # cost is a few stat() calls.
-    backup = backup_library_on_launch()
-    # HARDEN-04: remove what a killed write left behind (".<name>.cuepoint-tmp-<pid>").
-    sweep_own_folders()
-    # The library's state, once, here (HARDEN-03): this runs the upgrade, so a
-    # library that cannot open, is too new or fails to upgrade becomes a state
-    # the status route serves instead of a failure on every request.
-    library_ok = library_state.get_library_state()["state"] == library_state.OK
-    library_state.on_ready(lambda: _start_library_work(cfg, late=True))
-
-    # Both events are recorded here, after the backup has been taken: resolving
-    # the activity service migrates the database, and doing that any earlier
-    # would turn the launch backup into a copy of the migrated state.
-    if backup is not None and library_ok:
-        # None means nothing had changed, and a skipped backup is not something
-        # a user needs telling about.
-        record_activity(
-            "backup.created",
-            "Library backed up",
-            {
-                "file": Path(backup.path).name,
-                "reason": reason_of(Path(backup.path).name) or "launch",
-            },
-        )
-    if library_ok:
-        _start_library_work(cfg)
+    # The library's migrations are held back from every request thread until
+    # its state is worked out (HARDEN-03): the launch backup and the pre-upgrade
+    # copy must come first, and they run after the port is bound so the app's
+    # health checks are answered however long an upgrade takes.
+    library_state.begin()
     server = with_error_reporting(
         ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
     )
     # Does nothing without a DSN (see resolve_engine_dsn). The socket is bound, so the app's health
     # checks are answered while the SDK loads; what fails meanwhile is held, then replayed.
     start_engine_reporting_in_background()
-    # A damaged or half-upgraded library is reported once, now that reports can
-    # be held for the setup above (DEC-126).
-    library_state.report_current()
-    if library_ok:
-        _schedule_launch_analysis()
+    launched: Dict[str, Any] = {}
+
+    def on_library_ready() -> None:
+        # Both events are recorded here, after the backup has been taken:
+        # resolving the activity service resolves a repository, which is only
+        # allowed once the library's state says so.
+        backup = launched.get("backup")
+        if backup is not None:
+            # None means nothing had changed, and a skipped backup is not
+            # something a user needs telling about.
+            record_activity(
+                "backup.created",
+                "Library backed up",
+                {
+                    "file": Path(backup.path).name,
+                    "reason": reason_of(Path(backup.path).name) or "launch",
+                },
+            )
+        _start_library_work(cfg)
+
+    def start_library() -> None:
+        # The launch backup first, before anything migrates the database; it is
+        # skipped entirely when nothing changed since the last one, so the
+        # usual cost is a few stat() calls.
+        launched["backup"] = backup_library_on_launch()
+        library_state.note_launch_backup(launched["backup"])
+        # HARDEN-04: remove what a killed write left behind (".<name>.cuepoint-tmp-<pid>").
+        sweep_own_folders()
+        # The library's state, once (HARDEN-03): this runs the upgrade, so a
+        # library that cannot open, is too new or fails to upgrade becomes a
+        # state the status route serves instead of a failure on every request.
+        library_state.run_compute()
+
+    library_state.on_ready(on_library_ready)
+    global _LIBRARY_START
+    _LIBRARY_START = threading.Thread(
+        target=start_library, name="library-start", daemon=True
+    )
+    _LIBRARY_START.start()
     _stop_with_parent(server)
     try:
         server.serve_forever()

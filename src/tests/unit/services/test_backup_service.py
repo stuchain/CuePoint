@@ -887,10 +887,17 @@ class TestRoomForACopy:
             _with_free_space(monkeypatch, 10**11)
             first = copies.ensure_pre_upgrade()
             assert first.reason == "pre-upgrade" and first.pending_versions == (last,)
-            # Even with no room now, the copy already taken covers the retry.
+            assert first.from_schema == last - 1
+            # Without being told to, a new copy is taken: the library may have
+            # been written to since.
+            assert copies.ensure_pre_upgrade().name != first.name
+            # Named, it covers a retry even with no room now.
             _with_free_space(monkeypatch, 1 * MB)
-            assert copies.ensure_pre_upgrade().name == first.name
-            assert len(copies.list_backups()) == 1
+            again = copies.ensure_pre_upgrade(reuse=first.name)
+            assert again.name == first.name and copies.reused_last_copy
+            # A copy from another starting point is not reused.
+            with pytest.raises(Exception):
+                copies.ensure_pre_upgrade(pending=[last, last + 1], reuse=first.name)
         finally:
             service.close_all()
 

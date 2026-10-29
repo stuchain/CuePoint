@@ -69,15 +69,15 @@ EXPECTED_ROUTE_ERROR_CODES: frozenset[str] = frozenset(
     {
         # The set list's destination refused the write: a full or read-only disk.
         "SET_LIST_WRITE_FAILED",
-        # The library's own states (HARDEN-03). A full disk is the user's to fix
-        # and a library that cannot open or upgrade is reported once per session
-        # by the library state, with the versions; per request it would be noise.
+        # The library's own states (HARDEN-03): a full disk, no room to upgrade, an upgrade
+        # that waits for "Try again" or is still running. DB_UNREADABLE and
+        # DB_MIGRATION_FAILED are deliberately not here: the library state reports
+        # them once, with versions, and any other time they are a bug.
         "R002",
-        "DB_UNREADABLE",
-        "DB_MIGRATION_FAILED",
         "DB_MIGRATION_BLOCKED",
         "DB_NEEDS_SPACE",
         "BACKUP_NEEDS_SPACE",
+        "DB_UPGRADING",
     }
 )
 

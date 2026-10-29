@@ -223,7 +223,7 @@ class MigrationRunner(IMigrationRunner):
 
         # Held back by the engine when the library's state says they must not
         # run now (HARDEN-03); a no-op everywhere else.
-        library_errors.check_migrations_allowed()
+        library_errors.check_migrations_allowed(self._db.db_path)
 
         applied: List[Migration] = []
         for migration in pending:

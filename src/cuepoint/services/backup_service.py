@@ -148,6 +148,7 @@ class BackupInfo:
     from_version: Optional[str] = None
     to_version: Optional[str] = None
     pending_versions: Tuple[int, ...] = ()
+    from_schema: Optional[int] = None
 
     @property
     def name(self) -> str:
@@ -298,6 +299,7 @@ class BackupService(IBackupService):
         reason: str = MANUAL_REASON,
         *,
         pending_versions: Optional[Sequence[int]] = None,
+        from_schema: Optional[int] = None,
     ) -> BackupInfo:
         """Write a verified copy of the library and prune old ones.
 
@@ -315,13 +317,14 @@ class BackupService(IBackupService):
 
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         with _CREATE_LOCK:
-            return self._create_locked(reason, source, pending_versions)
+            return self._create_locked(reason, source, pending_versions, from_schema)
 
     def _create_locked(
         self,
         reason: str,
         source: Path,
         pending_versions: Optional[Sequence[int]] = None,
+        from_schema: Optional[int] = None,
     ) -> BackupInfo:
         target, partial = self._reserve(reason)
         from_version = self._recorded_version()
@@ -369,7 +372,7 @@ class BackupService(IBackupService):
                 },
             ) from exc
 
-        self._write_sidecar(target, reason, from_version, pending_versions)
+        self._write_sidecar(target, reason, from_version, pending_versions, from_schema)
         _logger.info("[backup] wrote %s", target.name)
         self.prune()
         return self._info(target)
@@ -385,6 +388,7 @@ class BackupService(IBackupService):
         reason: str,
         from_version: Optional[str],
         pending_versions: Optional[Sequence[int]] = None,
+        from_schema: Optional[int] = None,
     ) -> None:
         """Record the app versions beside a copy; never a reason to lose the copy."""
         from cuepoint.version import __version__
@@ -394,6 +398,7 @@ class BackupService(IBackupService):
             record["fromVersion"] = from_version
             record["toVersion"] = __version__
             record["pendingVersions"] = [int(v) for v in pending_versions or ()]
+            record["fromSchema"] = from_schema
         try:
             _sidecar_path(target).write_text(json.dumps(record), encoding="utf-8")
         except OSError as exc:
@@ -477,32 +482,51 @@ class BackupService(IBackupService):
             _logger.warning("[backup] could not tell if an upgrade is pending: %s", exc)
             return False
 
-    def ensure_pre_upgrade(self, pending: Optional[Sequence[int]] = None) -> BackupInfo:
-        """The ``pre-upgrade`` copy the migrations ``pending`` call for: found or taken.
+    #: Whether the last :meth:`ensure_pre_upgrade` handed back a copy it already had.
+    reused_last_copy = False
 
-        A copy already taken ahead of at least these migrations is reused (a
-        retry after a failed upgrade keeps the copy from before the first
-        attempt). Otherwise one is taken, and **never skipped**: without room
-        for it this raises and the upgrade does not run.
+    def ensure_pre_upgrade(
+        self, pending: Optional[Sequence[int]] = None, reuse: Optional[str] = None
+    ) -> BackupInfo:
+        """The ``pre-upgrade`` copy the migrations ``pending`` call for: taken, or ``reuse``.
+
+        A new copy is taken unless ``reuse`` names a ``pre-upgrade`` copy that
+        was taken ahead of at least these migrations, from a library at the
+        schema version it has now. The caller names one only for a retry in the
+        same session, when nothing has written to the library since (a failed
+        upgrade holds the library closed). Taken **never skipped**: without room
+        this raises and the upgrade does not run.
 
         Raises:
             NeedsSpaceError: The disk has too little free room for the copy.
             DatabaseError: The copy could not be written.
         """
-        if pending is None:
-            from cuepoint.services.migration_runner import pending_versions
+        from cuepoint.services.migration_runner import (
+            pending_versions,
+            schema_and_head,
+        )
 
+        if pending is None:
             pending = pending_versions(self._db.db_path)
         wanted = set(pending)
-        for info in self.list_backups():
-            if info.reason == PRE_UPGRADE_REASON and wanted <= set(
-                info.pending_versions
-            ):
-                return info
+        schema = schema_and_head(self._db.db_path)[0]
+        self.reused_last_copy = False
+        if reuse:
+            for info in self.list_backups():
+                if (
+                    info.name == reuse
+                    and info.reason == PRE_UPGRADE_REASON
+                    and wanted <= set(info.pending_versions)
+                    and info.from_schema == schema
+                ):
+                    self.reused_last_copy = True
+                    return info
         if not self.has_room():
             raise NeedsSpaceError(self.required_free_bytes(), self.free_bytes())
         return self.create_backup(
-            reason=PRE_UPGRADE_REASON, pending_versions=sorted(wanted)
+            reason=PRE_UPGRADE_REASON,
+            pending_versions=sorted(wanted),
+            from_schema=schema,
         )
 
     def backup_on_launch(self) -> Optional[BackupInfo]:
@@ -593,7 +617,11 @@ class BackupService(IBackupService):
             return value if isinstance(value, str) and value else None
 
         pending = record.get("pendingVersions")
+        schema = record.get("fromSchema")
         return BackupInfo(
+            from_schema=schema
+            if isinstance(schema, int) and not isinstance(schema, bool)
+            else None,
             pending_versions=tuple(
                 int(v)
                 for v in pending

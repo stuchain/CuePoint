@@ -21,6 +21,7 @@ import pytest
 
 from cuepoint.engine import server
 from cuepoint.services import database_service as database_service_module
+from tests.unit.engine.engine_start import run_engine_to_the_end
 from cuepoint.utils.di_container import reset_container
 
 
@@ -97,13 +98,7 @@ class TestEngineStart:
         )
         monkeypatch.setattr(server, "backup_library_on_launch", lambda: None)
 
-        def stop_here(*_args, **_kwargs):
-            raise RuntimeError("stop")
-
-        monkeypatch.setattr(server, "ThreadingHTTPServer", stop_here)
-
-        with pytest.raises(RuntimeError, match="stop"):
-            server.run_engine(server.EngineConfig(host="127.0.0.1", port=8123))
+        run_engine_to_the_end(monkeypatch)
 
         assert [args[0] for args, _ in recorded] == ["engine.started"]
 
@@ -129,14 +124,7 @@ class TestBackupEvent:
             path = "/backups/cuepoint-20260902-launch.db"
 
         monkeypatch.setattr(server, "backup_library_on_launch", lambda: FakeBackup())
-        monkeypatch.setattr(
-            server,
-            "ThreadingHTTPServer",
-            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("stop")),
-        )
-
-        with pytest.raises(RuntimeError, match="stop"):
-            server.run_engine(server.EngineConfig(host="127.0.0.1", port=8123))
+        run_engine_to_the_end(monkeypatch)
 
         types = [args[0] for args in recorded]
         assert types == ["backup.created", "engine.started"]
@@ -150,14 +138,7 @@ class TestBackupEvent:
             server, "record_activity", lambda *a, **k: recorded.append(a)
         )
         monkeypatch.setattr(server, "backup_library_on_launch", lambda: None)
-        monkeypatch.setattr(
-            server,
-            "ThreadingHTTPServer",
-            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("stop")),
-        )
-
-        with pytest.raises(RuntimeError, match="stop"):
-            server.run_engine(server.EngineConfig(host="127.0.0.1", port=8123))
+        run_engine_to_the_end(monkeypatch)
 
         assert [args[0] for args in recorded] == ["engine.started"]
 

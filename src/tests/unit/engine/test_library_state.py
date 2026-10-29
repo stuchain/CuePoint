@@ -80,6 +80,23 @@ def make_library(path, *, behind: int = 0, opened_by: str = "1.0.0") -> None:
     service.close_all()
 
 
+def state_now() -> dict:
+    """The state once it is worked out and its way back is looked up."""
+    deadline = time.monotonic() + 20
+    state = library_state.get_library_state()
+    while state["state"] == "upgrading" and time.monotonic() < deadline:
+        time.sleep(0.02)
+        state = library_state.get_library_state()
+    library_state.settle()
+    return library_state.get_library_state()
+
+
+def recompute_now() -> dict:
+    first = library_state.recompute()
+    assert first["state"] == "upgrading"
+    return state_now()
+
+
 def backups_of(path) -> BackupService:
     return BackupService(database_service=DatabaseService(db_path=path))
 
@@ -123,9 +140,15 @@ def engine(library):
 
 
 def state_of(base) -> dict:
-    status, body = call(base, "GET", "/api/v1/status")
-    assert status == 200, body
-    return body["library"]
+    deadline = time.monotonic() + 20
+    while True:
+        status, body = call(base, "GET", "/api/v1/status")
+        assert status == 200, body
+        if body["library"]["state"] != "upgrading" or time.monotonic() > deadline:
+            break
+        time.sleep(0.02)
+    library_state.settle()
+    return call(base, "GET", "/api/v1/status")[1]["library"]
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +159,7 @@ def state_of(base) -> dict:
 class TestStates:
     def test_a_library_that_is_fine_is_ok(self, library):
         make_library(library, opened_by="1.0.0")
-        state = library_state.get_library_state()
+        state = state_now()
         head = _discovered()[-1].version
         assert state["state"] == "ok"
         assert state["appVersion"]
@@ -148,16 +171,16 @@ class TestStates:
         assert state["uncleanExit"] is False
 
     def test_no_library_yet_is_ok(self, library):
-        assert library_state.get_library_state()["state"] == "ok"
+        assert state_now()["state"] == "ok"
         assert not library.exists(), "working out the state created the library"
 
     def test_the_unclean_exit_flag_is_echoed(self, library, monkeypatch):
         monkeypatch.setenv(library_state.UNCLEAN_EXIT_ENV, "1")
-        assert library_state.get_library_state()["uncleanExit"] is True
+        assert state_now()["uncleanExit"] is True
 
     def test_the_unclean_exit_argument_is_the_same_flag(self, library, monkeypatch):
         monkeypatch.setattr("sys.argv", ["engine", "--unclean-exit"])
-        assert library_state.get_library_state()["uncleanExit"] is True
+        assert state_now()["uncleanExit"] is True
 
     @pytest.mark.parametrize("damage", ["noise", "truncated"])
     def test_a_file_that_cannot_be_read_is_damaged(self, library, damage):
@@ -169,7 +192,7 @@ class TestStates:
                 library.with_name(library.name + suffix).unlink(missing_ok=True)
             with open(library, "r+b") as handle:
                 handle.truncate(100)
-        state = library_state.get_library_state()
+        state = state_now()
         assert state["state"] == "damaged"
         assert state["schemaVersion"] is None
 
@@ -186,7 +209,7 @@ class TestStates:
         newest.path.write_bytes(os.urandom(4096))
         noise(library)
 
-        state = library_state.get_library_state()
+        state = state_now()
         assert state["state"] == "damaged"
         assert state["newestGoodBackup"] == {
             "name": middle.name,
@@ -197,7 +220,7 @@ class TestStates:
     def test_with_no_good_backup_there_is_none_to_name(self, library):
         make_library(library)
         noise(library)
-        assert library_state.get_library_state()["newestGoodBackup"] is None
+        assert state_now()["newestGoodBackup"] is None
 
     def test_a_version_above_head_is_too_new(self, library):
         make_library(library, opened_by="9.9.9")
@@ -212,7 +235,7 @@ class TestStates:
         connection.close()
         backups_of(library).create_backup(reason="manual")
 
-        state = library_state.get_library_state()
+        state = state_now()
         assert state["state"] == "too_new"
         assert state["libraryVersion"] == "9.9.9"
         assert state["schemaVersion"] == head + 5
@@ -234,7 +257,7 @@ class TestStates:
             return real(self, migration)
 
         monkeypatch.setattr(MigrationRunner, "_apply", failing)
-        state = library_state.get_library_state()
+        state = state_now()
         assert state["state"] == "upgrade_failed"
         assert state["failedMigration"] == last
         copy = state["preUpgradeBackup"]
@@ -262,10 +285,10 @@ class TestStates:
                 )
             ),
         )
-        assert library_state.get_library_state()["state"] == "upgrade_failed"
+        assert state_now()["state"] == "upgrade_failed"
         monkeypatch.setattr(MigrationRunner, "_apply", real)
 
-        after = library_state.recompute()
+        after = recompute_now()
         assert after["state"] == "ok"
         assert after["schemaVersion"] == last
         # The copy from before the first attempt was reused, not added to.
@@ -282,7 +305,7 @@ class TestStates:
         make_library(library, behind=1)
         last = _discovered()[-1].version
         low_disk(monkeypatch, free=1 * MB)
-        state = library_state.get_library_state()
+        state = state_now()
         assert state["state"] == "needs_space"
         needed = state["requiredFreeBytes"]
         assert needed % MB == 0 and needed >= 50 * MB
@@ -300,7 +323,7 @@ class TestStates:
 
         # Room again, and "Try again" takes the copy and upgrades.
         monkeypatch.undo()
-        again = library_state.recompute()
+        again = recompute_now()
         assert again["state"] == "ok"
         assert again["schemaVersion"] == last
         assert len(backups_of(library).list_backups()) == 1
@@ -355,7 +378,8 @@ class TestServing:
         calls = self._count_computes(monkeypatch)
         state_of(engine)
         status, body = call(engine, "POST", "/api/v1/library/recheck")
-        assert status == 200 and body["library"]["state"] == "ok"
+        assert status == 202 and body["library"]["state"] == "upgrading"
+        state_now()
         assert len(calls) == 2
         state_of(engine)
         assert len(calls) == 2
@@ -523,10 +547,10 @@ class TestReporting:
     def test_damaged_is_reported_once_with_versions(self, library, reports):
         make_library(library, opened_by="1.0.0")
         noise(library)
-        library_state.get_library_state()
+        state_now()
         library_state.report_current()
         library_state.report_current()
-        library_state.recompute()
+        recompute_now()
         assert len(reports) == 1
         message, kw = reports[0]
         assert (
@@ -549,7 +573,7 @@ class TestReporting:
                 )
             ),
         )
-        library_state.get_library_state()
+        state_now()
         library_state.report_current()
         assert [kw["error_code"] for _, kw in reports] == ["LIBRARY_UPGRADE_FAILED"]
         assert f"step {_discovered()[-1].version}" in reports[0][0]
@@ -565,7 +589,7 @@ class TestReporting:
         )
         connection.commit()
         connection.close()
-        library_state.get_library_state()
+        state_now()
         library_state.report_current()
         assert reports == []
         from cuepoint.reporting.expected import is_expected_failure
@@ -606,3 +630,174 @@ def test_words_a_person_reads_never_say_database(library):
             and "schema" not in lowered
             and "engine" not in lowered
         )
+
+
+# ---------------------------------------------------------------------------
+# Starting without holding anything up
+# ---------------------------------------------------------------------------
+
+
+class TestUpgrading:
+    def test_status_answers_upgrading_while_the_upgrade_runs_and_only_it_may_migrate(
+        self, library, engine, monkeypatch
+    ):
+        make_library(library, behind=1)
+        entered, release = threading.Event(), threading.Event()
+        real = BackupService.ensure_pre_upgrade
+
+        def slow(self, *args, **kwargs):
+            entered.set()
+            release.wait(20)
+            return real(self, *args, **kwargs)
+
+        monkeypatch.setattr(BackupService, "ensure_pre_upgrade", slow)
+        library_state.begin()
+        worker = threading.Thread(target=library_state.run_compute, daemon=True)
+        worker.start()
+        assert entered.wait(10)
+        started = time.monotonic()
+        status, body = call(engine, "GET", "/api/v1/status")
+        assert status == 200 and body["library"]["state"] == "upgrading"
+        assert time.monotonic() - started < 2
+        # A request thread that resolves a repository meanwhile cannot migrate.
+        with pytest.raises(DatabaseError) as held:
+            MigrationRunner(DatabaseService(db_path=library)).migrate()
+        assert held.value.error_code == "DB_UPGRADING"
+        assert call(engine, "GET", "/api/v1/library/playlists")[0] == 503
+        release.set()
+        worker.join(20)
+        assert state_of(engine)["state"] == "ok"
+        MigrationRunner(DatabaseService(db_path=library)).migrate()
+
+    def test_a_recheck_holds_requests_off_the_migrations_too(
+        self, library, engine, monkeypatch
+    ):
+        make_library(library, behind=1)
+        low_disk(monkeypatch)
+        assert state_now()["state"] == "needs_space"
+        monkeypatch.undo()
+        entered, release = threading.Event(), threading.Event()
+        real = BackupService.ensure_pre_upgrade
+
+        def slow(self, *args, **kwargs):
+            entered.set()
+            release.wait(20)
+            return real(self, *args, **kwargs)
+
+        monkeypatch.setattr(BackupService, "ensure_pre_upgrade", slow)
+        status, body = call(engine, "POST", "/api/v1/library/recheck")
+        assert status == 202
+        assert entered.wait(10)
+        assert (
+            call(engine, "GET", "/api/v1/status")[1]["library"]["state"] == "upgrading"
+        )
+        with pytest.raises(DatabaseError) as held:
+            MigrationRunner(DatabaseService(db_path=library)).migrate()
+        assert held.value.error_code == "DB_UPGRADING"
+        release.set()
+        assert state_of(engine)["state"] == "ok"
+
+    def test_the_block_belongs_to_the_library_file(self, tmp_path):
+        from cuepoint.services import library_errors
+
+        library_errors.block_migrations(
+            DatabaseError(message="x", error_code="DB_UPGRADING"), tmp_path / "a.db"
+        )
+        library_errors.check_migrations_allowed(tmp_path / "b.db")
+        with pytest.raises(DatabaseError):
+            library_errors.check_migrations_allowed(tmp_path / "a.db")
+        with library_errors.allow_migrations():
+            library_errors.check_migrations_allowed(tmp_path / "a.db")
+
+    def test_the_way_back_is_looked_up_off_the_computing_thread(
+        self, library, monkeypatch
+    ):
+        make_library(library)
+        noise(library)
+        release = threading.Event()
+        real = library_state._newest_good_backup
+        monkeypatch.setattr(
+            library_state, "_newest_good_backup", lambda: release.wait(10) and real()
+        )
+        began = time.monotonic()
+        state = library_state.get_library_state()
+        assert state["state"] == "damaged" and state["newestGoodBackup"] is None
+        assert time.monotonic() - began < 5
+        release.set()
+        library_state.settle()
+
+    def test_a_full_disk_during_a_migration_is_needs_space_and_not_reported(
+        self, library, monkeypatch
+    ):
+        from cuepoint.reporting import engine_reporting
+        from cuepoint.services import library_errors
+
+        make_library(library, behind=1)
+        reports: list = []
+        monkeypatch.setattr(
+            engine_reporting, "report_unexpected", lambda *a, **k: reports.append(a)
+        )
+        monkeypatch.setattr(
+            MigrationRunner,
+            "_apply",
+            lambda self, m: (_ for _ in ()).throw(library_errors.disk_full_error()),
+        )
+        state = state_now()
+        assert state["state"] == "needs_space" and state["requiredFreeBytes"] >= 50 * MB
+        library_state.report_current()
+        assert reports == []
+        with pytest.raises(DatabaseError) as held:
+            MigrationRunner(DatabaseService(db_path=library)).migrate()
+        assert held.value.error_code == "DB_NEEDS_SPACE"
+
+    def test_unreadable_while_ok_and_not_damage_is_not_the_states_to_answer(
+        self, library
+    ):
+        make_library(library)
+        assert state_now()["state"] == "ok"
+        cause = PermissionError("denied")
+        error = DatabaseError(message="x", error_code="DB_UNREADABLE")
+        error.__cause__ = cause
+        assert library_state.status_for(error) is None
+        assert library_state.current_state_name() == "ok"
+        # The same code from damage turns the state and is answered.
+        error.__cause__ = sqlite3.DatabaseError("file is not a database")
+        status, _ = library_state.status_for(error)
+        assert status == 503 and library_state.current_state_name() == "damaged"
+        library_state.settle()
+
+    def test_the_failed_codes_are_not_expected_but_the_waiting_ones_are(self):
+        from cuepoint.reporting.expected import is_expected_failure
+
+        for code in (
+            "R002",
+            "DB_NEEDS_SPACE",
+            "DB_MIGRATION_BLOCKED",
+            "BACKUP_NEEDS_SPACE",
+            "DB_UPGRADING",
+        ):
+            assert is_expected_failure(code), code
+            assert is_expected_failure(
+                None, DatabaseError(message="x", error_code=code)
+            )
+        for code in ("DB_UNREADABLE", "DB_MIGRATION_FAILED"):
+            assert not is_expected_failure(code)
+            assert not is_expected_failure(
+                None, DatabaseError(message="x", error_code=code)
+            )
+
+    def test_a_recheck_forgets_the_last_integrity_check(self, library):
+        make_library(library)
+        state_now()
+        library_state._integrity.update(state="failed", finishedAt="x")
+        recompute_now()
+        assert library_state.library_json()["integrityCheck"] == {
+            "state": "idle",
+            "finishedAt": None,
+        }
+
+    def test_the_integrity_check_opens_the_library_read_only(self, library):
+        make_library(library)
+        before = library.stat().st_mtime_ns
+        assert library_state._quick_check(library) is True
+        assert library.stat().st_mtime_ns == before
