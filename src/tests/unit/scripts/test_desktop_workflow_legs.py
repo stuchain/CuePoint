@@ -196,8 +196,13 @@ class TestPackagedRun:
             "Check no source map ships",
         ):
             assert "!cancelled()" in _step(name)["if"], name
-        assert "steps.package.outcome == 'success'" in _step("Locate the packaged app")["if"]
-        assert "steps.app.outcome == 'success'" in _step("Packaged app end-to-end")["if"]
+        assert (
+            "steps.package.outcome == 'success'"
+            in _step("Locate the packaged app")["if"]
+        )
+        assert (
+            "steps.app.outcome == 'success'" in _step("Packaged app end-to-end")["if"]
+        )
 
     def test_the_job_and_the_packaged_run_have_a_timeout(self):
         job = _job()
