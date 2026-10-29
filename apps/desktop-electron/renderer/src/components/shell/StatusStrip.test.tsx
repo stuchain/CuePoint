@@ -37,14 +37,19 @@ function job(overrides: Partial<EngineJobSummary> = {}): EngineJobSummary {
  * hops (the poll's answer, then the subscription), and a full run on a loaded machine has taken
  * longer than that: "follows progress over SSE" failed at 1,062 ms (PHASE10_PREPARE.md, PHASE12_CLEANUP.md,
  * HARDEN-09). Nothing here is asserted about how long the strip takes, so the wait is generous; a
- * test that is really red takes five seconds to say so instead of one.
+ * test that is really red takes four seconds to say so instead of one. The test's own budget is
+ * longer than two such waits (the SSE test has two), so a slow wait reports what it was waiting for
+ * rather than a bare "timed out in 5000ms".
  */
 const DEFAULT_WAIT_MS = 1000;
+const DEFAULT_TEST_MS = 5000;
 beforeAll(() => {
-  configure({ asyncUtilTimeout: 5000 });
+  configure({ asyncUtilTimeout: 4000 });
+  vi.setConfig({ testTimeout: 15000 });
 });
 afterAll(() => {
   configure({ asyncUtilTimeout: DEFAULT_WAIT_MS });
+  vi.setConfig({ testTimeout: DEFAULT_TEST_MS });
 });
 
 let getEngineStatus: ReturnType<typeof vi.fn>;
