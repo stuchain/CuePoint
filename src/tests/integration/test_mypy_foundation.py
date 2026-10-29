@@ -22,6 +22,7 @@ the clean core stays clean while the legacy surface is paid down separately.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -191,6 +192,12 @@ def test_foundation_modules_have_no_type_errors(platform: str):
             "--namespace-packages",
             "--platform",
             platform,
+            # No cache: a cache shared between the three platform runs (or left by
+            # an earlier run on other files) makes mypy report the errors of the
+            # modules this gate only follows, so the verdict would depend on what
+            # ran before it rather than on the guarded files.
+            "--cache-dir",
+            os.devnull,
             # Report on the guarded files only; legacy modules they import have
             # their own known errors and are not this gate's business.
             "--follow-imports=silent",
