@@ -33,13 +33,20 @@ import pytest
 # because it is also a command a person runs.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 
-from bench_library import build_service, write_export  # noqa: E402
+from bench_library import (  # noqa: E402
+    ENTRIES_PER_PLAYLIST,
+    build_service,
+    write_export,
+)
 
 #: Big enough for the relationships to be real, small enough to run often.
 #: The full 50,000 is `scripts/bench_library.py`, and ``scale.yml`` runs these at
 #: 50,000 (``CUEPOINT_SCALE``, HARDEN-07); 20,000 is the default for a local run.
 TRACKS = int(os.environ.get("CUEPOINT_SCALE", "20000"))
-PLAYLISTS = 60
+#: Enough playlists that their entries outnumber the tracks (a real library has a few
+#: entries per track), whatever ``CUEPOINT_SCALE`` is: 60 of 700 is 42,000 entries, which is
+#: more than 20,000 tracks but not more than 50,000 (the first scale run).
+PLAYLISTS = max(60, -(-TRACKS * 3 // (2 * ENTRIES_PER_PLAYLIST)))
 
 #: Peak allocation a single pass may use per track, in bytes.
 #:
