@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { useEngineOnline } from "../../api/engineOnline";
+import { DISK_FULL_WORDS, useStripMessages } from "../../api/stripMessages";
 import { useLayerStack } from "../../hooks/useLayerStack";
 import { usePresence } from "../../tokens/usePresence";
 import { Button } from "../Button";
@@ -221,7 +222,13 @@ export function StatusStrip() {
   const waiting = !connected && !offline;
   // While the banner above the page is up (`offline`: stopped, restarting, or gave up) it says
   // so in full; the strip stays quiet rather than repeat it in other words.
-  const engineText = offline ? "" : connected ? "Ready" : "Starting…";
+  // A full disk is said in the error look until something is saved again; a once-only note (an
+  // unclean exit that checked out, a reopened window, an interrupted export) takes the place of
+  // "Ready" for a while (HARDEN-03, HARDEN-05).
+  const { diskFull, notice } = useStripMessages();
+  const sayDiskFull = diskFull && !offline;
+  const sayNote = !sayDiskFull && connected && notice !== null;
+  const engineText = sayDiskFull ? DISK_FULL_WORDS : offline ? "" : sayNote ? notice : connected ? "Ready" : "Starting…";
 
   // What a screen reader hears (M468): a job starting, each quarter of it, and how it ended. The
   // visible label changes with every poll and is not itself a live region.
@@ -302,10 +309,16 @@ export function StatusStrip() {
           {/* "Ready" is the idle word, quiet and muted; it is not a green badge that never clears. */}
           <span
             className={`cp-status__engine ${
-              connected ? "cp-status__engine--ok" : waiting ? "cp-status__engine--reconnecting" : "cp-status__engine--error"
+              sayDiskFull
+                ? "cp-status__engine--error"
+                : connected
+                  ? "cp-status__engine--ok"
+                  : waiting
+                    ? "cp-status__engine--reconnecting"
+                    : "cp-status__engine--error"
             }`}
-            // Shown only while nothing else is being said (a job, or "Done · …").
-            hidden={(job !== null || done !== null) && connected ? true : undefined}
+            // Shown only while nothing else is being said (a job, or "Done · …"); a full disk is always said.
+            hidden={(job !== null || done !== null) && connected && !sayDiskFull ? true : undefined}
           >
             {engineText}
           </span>

@@ -65,6 +65,7 @@ import { emitShellCommand } from "./components/shell/shellCommands";
 import { openActivity } from "./components/shell/activityState";
 import { useMenuCommands } from "./components/shell/useMenuCommands";
 import { useWindowTitle } from "./components/shell/useWindowTitle";
+import { useStartupNotices } from "./components/shell/useStartupNotices";
 import { undoTarget } from "./api/menuCommands";
 import { PREPARE_SET_ROUTE, preparePath } from "./screens/prepare/prepareLink";
 import { EntityScreen } from "./screens/discover/EntityScreen";
@@ -113,6 +114,8 @@ function AppShell() {
   const navigate = useNavigate();
   const { runNewestAction, focusNewest } = useToast();
   useWindowTitle();
+  // The strip's once-only notes at start: a reopened window, an unclean exit that checked out, an interrupted export.
+  useStartupNotices();
   // A different page steps in (Changing page, PAGES-12). The phase alternates so each change
   // names a different animation and restarts it without remounting the page; there is none
   // before the first change, so the app does not move as it opens. Worked out while rendering,

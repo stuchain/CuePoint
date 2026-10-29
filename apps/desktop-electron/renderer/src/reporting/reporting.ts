@@ -12,6 +12,7 @@
  */
 import { bridgeErrorFields, isEngineRefusal } from "../api/bridgeError";
 import { isOutage } from "../api/userMessage";
+import { noteIfDiskFull } from "../api/stripMessages";
 import type { CuePointBridge } from "../api/cuepointBridge.types";
 import {
   electronRendererFacade,
@@ -185,6 +186,8 @@ function judgeEvent(event: Record<string, unknown>, hint?: { originalException?:
  * was sent. Never throws.
  */
 export function reportUnexpected(error: unknown, context: UnexpectedContext = {}): string | null {
+  // A full disk is the user's, not a bug: it is not reported, and the strip says it.
+  noteIfDiskFull(error);
   const on = state;
   if (on === null || !on.enabled) return null;
   try {

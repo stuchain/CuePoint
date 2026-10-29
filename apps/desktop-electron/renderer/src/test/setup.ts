@@ -13,10 +13,12 @@ import { afterEach } from "vitest";
 import { resetCoversForTests } from "../api/coverLoader";
 import { resetEngineReadsForTests } from "../api/engineReads";
 import { resetJobsStoreForTests } from "../api/jobsStore";
+import { resetStripMessagesForTests } from "../api/stripMessages";
 
 afterEach(() => {
   cleanup();
   resetJobsStoreForTests();
   resetEngineReadsForTests();
   resetCoversForTests();
+  resetStripMessagesForTests();
 });

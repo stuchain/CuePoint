@@ -10,6 +10,7 @@ import { bridgeErrorFields } from "./bridgeError";
 import type { CuePointBridge } from "./cuepointBridge.types";
 import { LOST_TOUCH, LOST_TOUCH_PARTWAY } from "../format/words";
 import { noteOutage } from "./engineOnline";
+import { noteIfDiskFull } from "./stripMessages";
 
 /** What the user reads when the background process cannot be reached. */
 export const OUTAGE_MESSAGE = LOST_TOUCH;
@@ -67,6 +68,8 @@ const OWN_WORDS: readonly string[] = [NEEDS_DESKTOP, OUTAGE_MESSAGE, OUTAGE_PART
  * started, so an outage cannot promise that nothing was changed.
  */
 export function userMessage(cause: unknown, fallback?: string, options?: { partway?: boolean }): string {
+  // A full disk is also said in the status strip, until something is saved again.
+  noteIfDiskFull(cause);
   try {
     if (cause instanceof Error && OWN_WORDS.includes(cause.message)) return cause.message;
     if (isEngineOutage(cause)) {
