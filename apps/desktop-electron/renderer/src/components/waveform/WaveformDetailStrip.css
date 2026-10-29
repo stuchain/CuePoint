@@ -50,9 +50,8 @@
  */
 .cp-player-slot > .cp-hint:has(> .cp-detail-strip) {
   display: flex;
-  /* From the content's edge (M315): PlayerSlot measures where the page starts, so no grey box sits
-     under the sidebar column; it ends at the window's edge as the bar does. */
-  margin-left: var(--detail-strip-inset, 0px);
+  /* Edge to edge, as the bar is: the M315 inset from the content's edge left an empty box under the
+     sidebar column, so the owner picked full width (header-wave B). */
   width: auto;
   min-height: 0;
 }

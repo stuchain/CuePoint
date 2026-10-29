@@ -1,8 +1,8 @@
 /**
- * Where the zoomed strip is drawn (D27, D11, M315, M318): on Library, Prepare and Keys, below 2x, from the
- * content's edge. The player bar reads the same rules to say why its toggle shows nothing elsewhere.
+ * Where the zoomed strip is drawn (D27, D11, M318): on Library, Prepare and Keys, below 2x, across the whole
+ * window as the bar is (the M315 inset left an empty box under the sidebar, so it was dropped). The player bar reads the same rules to say why its toggle shows nothing elsewhere.
  */
-import { useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { findOwningDestination } from "../shell/navRegistry";
 
 /** The pages that show the zoomed strip (D27, M318): where tracks are chosen and cued. Not Settings, Clean, Discover or Statistics. */
@@ -26,23 +26,4 @@ function routePage(): string | null {
 export function useStripPage(): boolean {
   const page = useSyncExternalStore(subscribeToRoute, routePage, () => null);
   return page === null || STRIP_PAGES.includes(page);
-}
-
-/** Where the page's content starts, in px from the window's left: the strip starts there, not under the sidebar (M315). */
-export function useContentEdge(): number {
-  const [edge, setEdge] = useState(0);
-  useLayoutEffect(() => {
-    const content = document.querySelector<HTMLElement>(".app-shell__content");
-    if (!content) return undefined;
-    const measure = () => setEdge(Math.max(0, Math.round(content.getBoundingClientRect().left)));
-    measure();
-    window.addEventListener("resize", measure);
-    const watcher = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    watcher?.observe(content);
-    return () => {
-      window.removeEventListener("resize", measure);
-      watcher?.disconnect();
-    };
-  }, []);
-  return edge;
 }

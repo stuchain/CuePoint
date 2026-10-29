@@ -55,3 +55,9 @@ describe("Clean's tables take the shared look (M139, M140, M141)", () => {
     expect(playlistsCss).not.toMatch(/thead th\s*\{[^}]*background/);
   });
 });
+
+describe("the Review status cell (chip-gap B)", () => {
+  it("puts 8 px between the chip and \"newer match differs\"", () => {
+    expect(bodyOf(matchCss, ".review-row__disputed")).toMatch(/margin-left:\s*var\(--space-md\)/);
+  });
+});

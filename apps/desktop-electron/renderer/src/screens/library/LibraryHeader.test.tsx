@@ -153,7 +153,7 @@ describe("after an import", () => {
   it("runs the file menu's entries, and says when the file was last read", () => {
     const onCopyPath = vi.fn();
     const handlers = renderHeader({ onCopyPath });
-    expect(screen.getByText(/^last read /)).toBeInTheDocument();
+    expect(screen.getByText(/^· read /)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "collection.xml, file menu" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Import a different file…" }));
     expect(handlers.onImport).toHaveBeenCalledTimes(1);
@@ -198,9 +198,9 @@ describe("after an import", () => {
       />,
     );
     const check = () => screen.getByRole("button", { name: "Check for changes" });
-    // The chip is the button, at chip height: "Up to date ⟳" (M106, M107).
-    expect(check()).toHaveClass("cp-badge");
-    expect(check()).toHaveTextContent("Up to date");
+    // The check is a small quiet ⟳ at the line's end, beside the words "Up to date" (header-wave B moves M106/M107's chip).
+    expect(check()).toHaveClass("cp-btn--quiet", "library-header__check");
+    expect(check().closest(".library-header__source")).toHaveTextContent("Up to date");
     for (const next of [summaryWith(true), summaryWith(false, false)]) {
       view.rerender(
         <LibraryHeader
@@ -255,14 +255,14 @@ describe("after an import", () => {
     renderHeader();
     expect(document.querySelector(".cp-screen-header__beside")).toBeNull();
     expect(document.querySelector(".cp-screen-header__summary .library-header__file")).not.toBeNull();
-    expect(document.querySelector(".cp-screen-header__summary .cp-badge")).not.toBeNull();
+    expect(document.querySelector(".cp-screen-header__summary .library-header__state-words")).not.toBeNull();
   });
 
   it("keeps the file and its state beside the title when only the First steps chip must go", () => {
     widths = { row: 700, title: 350, beside: 200, source: 50, button: 160 };
     renderHeader({ extra: <button type="button">First steps 1/4</button> });
     expect(document.querySelector(".cp-screen-header__beside .library-header__file")).not.toBeNull();
-    expect(document.querySelector(".cp-screen-header__beside .cp-badge")).not.toBeNull();
+    expect(document.querySelector(".cp-screen-header__beside .library-header__state-words")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "First steps 1/4" })).toBeNull();
   });
 
@@ -459,7 +459,7 @@ describe("the source line (K9)", () => {
 
     expect(screen.getByText("collection.xml")).toBeInTheDocument();
     expect(screen.getByText("Up to date")).toBeInTheDocument();
-    expect(screen.getByText(/^last read /)).toHaveAttribute("title", PATH);
+    expect(screen.getByText(/^· read /)).toHaveAttribute("title", PATH);
     expect(screen.queryByText(PATH)).toBeNull();
   });
 
@@ -489,8 +489,8 @@ describe("the source line (K9)", () => {
     const note = screen.getByRole("status");
     expect(note).toHaveTextContent(/could not tell whether this Rekordbox file has changed/);
     expect(note).not.toHaveClass("library-header__state--attention");
-    // Check stays the chip: nothing is known to need a look.
-    expect(screen.getByRole("button", { name: "Check for changes" })).toHaveClass("cp-badge");
+    // Check stays the quiet ⟳ (header-wave B): nothing is known to need a look.
+    expect(screen.getByRole("button", { name: "Check for changes" })).toHaveClass("library-header__check");
   });
 
   it("is the one violet Import before the first import, and none while First steps has its own (C146)", () => {

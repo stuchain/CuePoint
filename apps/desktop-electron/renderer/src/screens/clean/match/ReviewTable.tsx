@@ -179,7 +179,7 @@ const ReviewRow = memo(function ReviewRow({
         )}
         {row.disputed && (
           <Hint text={DISPUTED_HINT} portal>
-            <span className="review-row__disputed"> newer match differs</span>
+            <span className="review-row__disputed">newer match differs</span>
           </Hint>
         )}
       </td>

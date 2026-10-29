@@ -312,8 +312,8 @@ export function LibraryHeader({
     ? ["Folder", countNoun(folder.count, folder.noun)]
     : scopeFactsLine(facts, fallbackCount);
   // D14: the file is one menu button ("collection.xml ⌄": Check for changes, Import a different
-  // file…, Copy path), its state is the refresh button at chip height, and when it was last read is
-  // said in words beside them (M106, M107, M108).
+  // file…, Copy path), then one quiet line in the file name's size: its state, when it was last read
+  // (M108), and the check as a small ⟳ at the end (header-wave B).
   const fileBox = fileMenu.open ? fileMenu.anchor.current?.getBoundingClientRect() : undefined;
   const moreBox = moreMenu.open ? moreMenu.anchor.current?.getBoundingClientRect() : undefined;
   const sourceLine = !showSource ? null : (
@@ -353,36 +353,43 @@ export function LibraryHeader({
           ]}
         />
       )}
-      {/* Nothing needs a look: the state is the check, one button at the chip's height. When the
-          file changed or went missing, the labelled primary button is in the actions instead and
-          the state is only said here. */}
+      {/* Nothing needs a look: one quiet line, "✓ Up to date · read …", then the check as a small ⟳ at
+          its end (header-wave B; was the bold "Up to date ⟳" chip of M106/M107). When the file
+          changed or went missing, the labelled primary button is in the actions instead and the
+          state is only said here. */}
       {needsLook ? (
         <span className={`cp-badge cp-badge--warning library-header__chip`}>{sourceBadge(state)}</span>
       ) : (
+        <span className="library-header__state-words">
+          {state === "unchanged" && <PixelIcon name="check" className="cp-pixel-icon--text library-header__tick" />}
+          {sourceBadge(state)}
+        </span>
+      )}
+      {!readGone && (
+        <span className="library-header__read" title={displayPath(source.xml_path, { keepHome: true })}>
+          · read {formatWhen(source.imported_at)}
+        </span>
+      )}
+      {!needsLook && (
         <Hint
           text={
             checking && busyLabel
               ? busyLabel
-              : `Check ${fileName(source.xml_path)} for changes${readGone ? ` · last read ${formatWhen(source.imported_at)}` : ""}`
+              : `Check ${fileName(source.xml_path)} for changes${readGone ? ` · read ${formatWhen(source.imported_at)}` : ""}`
           }
         >
-          <button
-            type="button"
-            className={`cp-badge cp-badge--${state === "unknown" ? "default" : "success"} library-header__chip library-header__chip--button`}
+          <Button
+            variant="quiet"
+            size="sm"
+            iconOnly
+            icon="refresh"
+            className="library-header__check"
             aria-label={CHECK_FOR_CHANGES}
             aria-busy={checking || undefined}
             disabled={disabled}
             onClick={onCheck}
-          >
-            {sourceBadge(state)}
-            <PixelIcon name="refresh" className="cp-pixel-icon--text" />
-          </button>
+          />
         </Hint>
-      )}
-      {!readGone && (
-        <span className="library-header__read" title={displayPath(source.xml_path, { keepHome: true })}>
-          last read {formatWhen(source.imported_at)}
-        </span>
       )}
     </span>
   );

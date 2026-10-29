@@ -34,12 +34,12 @@ describe("the zoomed strip's look", () => {
     expect(ruleDecls(".cp-detail-strip")["transition"]).toBeUndefined();
   });
 
-  // D27, M315: the strip starts at the content's edge (PlayerSlot measures it), not under the sidebar column.
-  it("starts at the content edge, with no empty grey band under the sidebar", () => {
+  // D27; the M315 content-edge inset is moved to full width (header-wave B): no empty box on the left.
+  it("runs edge to edge, with no inset and no empty box under the sidebar", () => {
     const strip = ruleDecls(".cp-detail-strip");
     for (const name of ["margin-left", "padding-left", "left", "transform"]) expect(strip[name]).toBeUndefined();
     const wrapper = ruleDecls(".cp-player-slot > .cp-hint:has(> .cp-detail-strip)");
-    expect(wrapper["margin-left"]).toBe("var(--detail-strip-inset, 0px)");
+    expect(wrapper["margin-left"]).toBeUndefined();
     expect(wrapper["width"]).toBe("auto");
     expect(wrapper["min-height"]).toBe("0");
   });

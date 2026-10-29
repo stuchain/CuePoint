@@ -362,8 +362,10 @@
   outline-offset: var(--focus-ring-offset-inset);
 }
 
-/* A decision a newer search disagrees with: said in words beside its status. */
+/* A decision a newer search disagrees with: said in words beside its status, 8 px after the chip
+   (chip-gap B; a typed space came out at about 1 px). */
 .review-row__disputed {
+  margin-left: var(--space-md);
   color: var(--warning-text);
   font-size: var(--font-size-xs);
 }

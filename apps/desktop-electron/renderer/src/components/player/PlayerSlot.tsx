@@ -1,10 +1,10 @@
-import { useEffect, type CSSProperties } from "react";
+import { useEffect } from "react";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { PlayerRegion } from "../shell/PlayerRegion";
 import { PlayerAnnouncer } from "./PlayerAnnouncer";
 import { PlayerBar } from "./PlayerBar";
 import { WaveformDetailStrip } from "../waveform/WaveformDetailStrip";
-import { STRIP_MAX_SCALE, useContentEdge, useStripPage } from "../waveform/stripPlaces";
+import { STRIP_MAX_SCALE, useStripPage } from "../waveform/stripPlaces";
 import { useWaveformPrefetch } from "../waveform/useWaveformPrefetch";
 import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
 import { markPlayed, selectCurrentTrackId } from "./playedTracks";
@@ -70,7 +70,6 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   const onStripPage = useStripPage();
   const collapsed = useScaleFactor() >= STRIP_MAX_SCALE;
   const stripOn = detailOn && !compact && onStripPage && !collapsed;
-  const edge = useContentEdge();
   useWaveformPrefetch({ enabled: stripOn });
   const trackId = usePlayerValue(selectCurrentTrackId);
 
@@ -84,7 +83,7 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   // never jumps by the bar's height when something starts.
   return (
     <PlayerRegion>
-      <div className="cp-player-slot" style={{ "--detail-strip-inset": `${edge}px` } as CSSProperties}>
+      <div className="cp-player-slot">
         <PlayerAnnouncer />
         {stripOn && trackId !== null ? <WaveformDetailStrip key={trackId} trackId={trackId} /> : null}
         <PlayerBar

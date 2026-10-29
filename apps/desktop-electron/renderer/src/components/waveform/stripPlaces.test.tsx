@@ -1,9 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { STRIP_MAX_SCALE, STRIP_PAGES, useContentEdge, useStripPage } from "./stripPlaces";
+import { STRIP_MAX_SCALE, STRIP_PAGES, useStripPage } from "./stripPlaces";
 
-/** D27, D11, M315, M318: where the zoomed strip is drawn. */
+/** D27, D11, M318: where the zoomed strip is drawn. */
 afterEach(() => {
   window.location.hash = "";
   document.body.innerHTML = "";
@@ -41,16 +41,5 @@ describe("the pages that show the zoomed strip", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     });
     expect(result.current).toBe(false);
-  });
-});
-
-describe("the content edge", () => {
-  it("is 0 with no shell, and the content's left with one", () => {
-    expect(renderHook(() => useContentEdge()).result.current).toBe(0);
-    const content = document.createElement("div");
-    content.className = "app-shell__content";
-    content.getBoundingClientRect = () => ({ left: 187.4 }) as DOMRect;
-    document.body.append(content);
-    expect(renderHook(() => useContentEdge()).result.current).toBe(187);
   });
 });

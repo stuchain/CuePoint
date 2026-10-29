@@ -85,27 +85,26 @@
   white-space: nowrap;
 }
 
-/* The state is the check (M106, M107): a chip-height button, "Up to date ⟳". */
-.library-header__chip--button {
+/* The state in words, as quiet as "read …" beside it: a green tick when nothing changed, no chip
+   (header-wave B, replacing the bold "Up to date ⟳" chip of M106/M107). */
+.library-header__state-words {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: var(--space-xs);
-  font: inherit;
-  font-weight: var(--font-weight-bold);
-  cursor: default;
+  color: var(--fg-muted);
+  font-family: var(--font-meta);
+  white-space: nowrap;
 }
 
-.library-header__chip--button:hover:not(:disabled) {
-  filter: brightness(1.15);
+.library-header__tick {
+  color: var(--success-text);
 }
 
-.library-header__chip--button:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
-}
-
-.library-header__chip--button:disabled {
-  cursor: default;
+/* The check is the line's last thing, a small quiet ⟳. */
+.library-header__check {
+  flex: none;
+  color: var(--fg-muted);
 }
 
 /* When it was last read, in words, beside the state (M108). */
@@ -118,8 +117,15 @@
   white-space: nowrap;
 }
 
+/* The file name is the line's size and face, not a step bigger (header-wave B). */
+.library-header__source .library-header__file-button,
+.library-header__source .library-header__file-button .cp-btn__label {
+  font-size: inherit;
+}
+
 .library-header__file {
   min-width: 0;
+  font-family: var(--font-meta);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

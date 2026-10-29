@@ -916,7 +916,7 @@ describe("an imported library", () => {
     );
     // The file's name is the menu button; the whole path is in the hint of when it was last read (D14).
     expect(screen.getByText("collection.xml")).toBeInTheDocument();
-    expect(screen.getByText(/^last read /)).toHaveAttribute(
+    expect(screen.getByText(/^· read /)).toHaveAttribute(
       "title",
       expect.stringContaining("C:\\Users\\dj\\Downloads\\collection.xml"),
     );
