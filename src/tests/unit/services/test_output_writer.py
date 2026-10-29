@@ -332,8 +332,10 @@ class TestWriteMainCsvEdgeCases:
         self, sample_track_results, temp_output_dir
     ):
         """Test writing main CSV with file write error."""
-        # Mock open to raise IOError
-        with patch("builtins.open", side_effect=IOError("Disk full")):
+        # The temp file cannot be created (HARDEN-04: through the atomic helper)
+        with patch(
+            "cuepoint.utils.atomic_write.os.open", side_effect=IOError("Disk full")
+        ):
             # The function wraps OSError in RuntimeError
             with pytest.raises(RuntimeError, match="CSV export failed"):
                 write_main_csv(sample_track_results, "test.csv", temp_output_dir)

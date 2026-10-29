@@ -32,6 +32,7 @@ from cuepoint.services.integrity_service import (
     write_checksum_file,
     write_summary_report,
 )
+from cuepoint.utils.atomic_write import atomic_file
 from cuepoint.utils.utils import with_timestamp
 
 # Design 6.30: Buffer size for large outputs (1MB)
@@ -356,8 +357,7 @@ def write_main_csv(
 
         filepath = os.path.join(output_dir, base_filename)
         filepath = os.path.abspath(filepath)  # Ensure absolute path
-        # Design 5.10: Atomic write - write to .tmp then rename
-        tmp_path = filepath + ".tmp"
+        # Design 5.10 / HARDEN-04: atomic write - temp file beside it, fsync, replace
 
         fieldnames = _main_csv_fieldnames(include_metadata)
 
@@ -379,8 +379,12 @@ def write_main_csv(
 
         # Write file and ensure it's fully closed before returning
         try:
-            with open(
-                tmp_path, "w", newline="", encoding="utf-8", buffering=buffer_size
+            with atomic_file(
+                filepath,
+                "w",
+                newline="",
+                encoding="utf-8",
+                buffering=buffer_size,
             ) as f:
                 # Design 9: Write schema header lines first
                 for line in header_lines:
@@ -388,21 +392,6 @@ def write_main_csv(
                 writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
                 writer.writeheader()
                 writer.writerows(all_rows)
-                # Force flush to ensure file is written to disk
-                f.flush()
-                os.fsync(f.fileno())
-
-            # Atomic rename (Design 5.10, 5.32)
-            if os.path.exists(tmp_path):
-                file_size = os.path.getsize(tmp_path)
-                if file_size > 0:
-                    os.replace(tmp_path, filepath)
-                else:
-                    try:
-                        os.unlink(tmp_path)
-                    except OSError:
-                        pass
-                    return None
 
             # Verify file actually exists and has content
             if not os.path.exists(filepath):
