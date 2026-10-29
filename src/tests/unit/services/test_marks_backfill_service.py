@@ -69,7 +69,17 @@ def db(tmp_path, source):
         service, migrations=[m for m in discover_migrations() if m.version <= 25]
     ).migrate()
     tracks = list(iter_collection_tracks(str(source)))
-    TrackRepository(service).add_many(tracks)
+    # Written as the version-25 schema holds a track: the repository writes the
+    # columns of the newest one (the search keys of m0033).
+    have = {r["name"] for r in service.connect().execute("PRAGMA table_info(tracks)")}
+    with service.transaction() as conn:
+        for track in tracks:
+            row = {k: v for k, v in track.to_dict().items() if k in have and k != "id"}
+            conn.execute(
+                f"INSERT INTO tracks ({', '.join(row)}) "
+                f"VALUES ({', '.join('?' for _ in row)})",
+                tuple(row.values()),
+            )
     LibrarySourceRepository(service).replace(
         source_for_import(str(source), NOW, len(tracks), 1)
     )

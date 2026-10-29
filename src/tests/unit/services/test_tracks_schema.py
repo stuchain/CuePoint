@@ -79,6 +79,11 @@ class TestTracksTable:
             # Added by migration 0022 (DISCOVER-03): the label's name key, derived
             # data the repository writes beside the label.
             "label_key",
+            # Added by migration 0033 (HARDEN-06): the folded search and sort keys.
+            "title_search_key",
+            "artist_search_key",
+            "album_search_key",
+            "label_search_key",
         } == columns
 
     def test_library_track_round_trips_through_the_table(self, db):

@@ -37,6 +37,7 @@ from typing import Any, Dict, Iterable, List, Set
 
 import pytest
 
+from cuepoint.core.text_processing import search_fold
 from cuepoint.migrations import discover_migrations
 from cuepoint.models.artwork import (
     BEATPORT_REFUSALS,
@@ -455,6 +456,8 @@ class TestMigration:
             "updated_at",
             *OVERRIDE_FIELDS,
             LABEL_KEY_COLUMN,
+            # And migration 0033's folded key of the label (HARDEN-06).
+            "label_search_key",
         ]
 
     def test_the_override_columns_have_the_imported_columns_types(self, db):
@@ -479,7 +482,7 @@ class TestMigration:
         # The one exception is a derived column (migration 0022): the label's
         # name key is written with the label by the repository and read by the
         # rules, and is never part of a record.
-        stored = set(columns_of(db, table)) - {LABEL_KEY_COLUMN}
+        stored = set(columns_of(db, table)) - {LABEL_KEY_COLUMN, "label_search_key"}
         assert {f.name for f in dataclasses.fields(model)} == stored
 
     def test_every_field_a_beatport_candidate_carries_is_a_column(self, db):
@@ -1228,9 +1231,9 @@ class TestBothLayersUnderTheirNames:
                 conn.execute(
                     "INSERT INTO track_metadata"
                     " (track_id, rating, favorite, key, bpm, genre, label, year,"
-                    "  created_at, updated_at)"
-                    " VALUES (?, 5, 0, ?, ?, ?, ?, ?, 'now', 'now')",
-                    (track_id, *values),
+                    "  created_at, updated_at, label_search_key)"
+                    " VALUES (?, 5, 0, ?, ?, ?, ?, ?, 'now', 'now', ?)",
+                    (track_id, *values, search_fold(values[3])),
                 )
         return repo
 

@@ -377,7 +377,8 @@ class TestCombining:
             playlist_id=playlist_id,
             rules=RuleSet(rules=(rule("genre", "contains", "house"),)),
         )
-        assert [t.rekordbox_track_id for t in seeded.browse(query)] == ["1", "3"]
+        # Âme (3) sorts among the A's, before deadmau5 (1).
+        assert [t.rekordbox_track_id for t in seeded.browse(query)] == ["3", "1"]
         assert seeded.browse_count(query) == 2
 
     def test_an_empty_rule_set_changes_nothing(self, seeded):

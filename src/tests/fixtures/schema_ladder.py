@@ -440,7 +440,7 @@ def seed_rows(track_count: int = 12, seed: int = 7) -> Dict[str, List[Row]]:
                 "key": "9A",
                 "bpm": 125.0,
                 "genre": "Deep House",
-                "label": "Override Label",
+                "label": "Étiquette Spéciale",
                 "year": 2020,
                 "label_key": None,
             },

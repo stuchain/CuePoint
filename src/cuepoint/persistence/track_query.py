@@ -43,6 +43,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from cuepoint.core.text_processing import search_fold
 from cuepoint.models.filter_rule import (
     ARTWORK_ALIAS,
     KEY_BEATPORT_SQL,
@@ -300,6 +301,22 @@ _TAG_OUTER_JOIN = " LEFT JOIN track_tags ON track_tags.track_id = tracks.id"
 # search rather than a useful one.
 _SEARCH_COLUMNS = ("title", "artist", "album", "label")
 
+#: The folded key a searched column is compared through (HARDEN-06, DEC-185).
+#: ``casefold`` + NFKD without marks, filled by migration 0033 and kept by every
+#: write, so "beyonce" finds "Beyoncé" and "ÂME" finds "Âme". The label's is the
+#: effective one (DEC-068): the override's key when there is an override, else
+#: the imported label's, read exactly as the label itself is.
+_SEARCH_KEYS: Dict[str, str] = {
+    "title": "tracks.title_search_key",
+    "artist": "tracks.artist_search_key",
+    "album": "tracks.album_search_key",
+    "label": (
+        f"(CASE WHEN {METADATA_ALIAS}.label IS NOT NULL"
+        f" THEN {METADATA_ALIAS}.label_search_key"
+        " ELSE tracks.label_search_key END)"
+    ),
+}
+
 #: The joins a text search reads: the columns above, as their filter fields
 #: read them (``label`` is overridable), and the key's, for a query that is one
 #: (FLW-5). Primary-key probes, so a search that is not a key pays little.
@@ -362,9 +379,11 @@ def search_clause(query: str) -> Tuple[Optional[str], str, Tuple[object, ...]]:
     text = (query or "").strip()
     if not text:
         return None, "", ()
-    pattern = f"%{escape_like(text)}%"
+    # The keys are folded, so the query is too. A query that folds to nothing
+    # (a lone combining mark) is searched as typed rather than as "everything".
+    pattern = f"%{escape_like(search_fold(text) or text)}%"
     clauses = [
-        f"{field_spec(column).expression} LIKE ? ESCAPE '{LIKE_ESCAPE}'"
+        f"{_SEARCH_KEYS[column]} LIKE ? ESCAPE '{LIKE_ESCAPE}'"
         for column in _SEARCH_COLUMNS
     ]
     params: List[object] = [pattern for _ in _SEARCH_COLUMNS]
@@ -415,8 +434,14 @@ def _ranked_term(name: str, order: Sequence[str]) -> SortTerm:
     )
 
 
-_ARTIST = SortTerm("tracks.artist", text=True)
-_TITLE = SortTerm("tracks.title", text=True)
+# Text sorts by the folded key, then by the original (HARDEN-06, DEC-185): "Âme"
+# sorts among the A's, and two spellings that fold alike keep a fixed order
+# rather than a random one. Neither needs ``COLLATE NOCASE``: the key is already
+# folded, and the original is only a tie-break (binary order is stable).
+_ARTIST = SortTerm("tracks.artist_search_key")
+_ARTIST_RAW = SortTerm("tracks.artist")
+_TITLE = SortTerm("tracks.title_search_key")
+_TITLE_RAW = SortTerm("tracks.title")
 
 #: How the Clean columns sort ascending (CLEAN-13): what needs a person first.
 MATCH_STATE_ORDER: Tuple[str, ...] = (
@@ -433,15 +458,23 @@ FILE_STATUS_ORDER: Tuple[str, ...] = ("missing", "unreadable", "present", "not_c
 # migration 0005 is nullable on purpose (DEC-034: unrated and rated-zero are
 # different answers), and says so here.
 _PRIMARY: Dict[str, Tuple[SortTerm, ...]] = {
-    "artist": (_ARTIST, _TITLE),
-    "title": (_TITLE, _ARTIST),
+    "artist": (_ARTIST, _ARTIST_RAW, _TITLE, _TITLE_RAW),
+    "title": (_TITLE, _TITLE_RAW, _ARTIST, _ARTIST_RAW),
     "album": (
-        SortTerm(_blank_as_null("tracks.album", text=True), text=True, nullable=True),
+        SortTerm(_blank_as_null("tracks.album_search_key", text=True), nullable=True),
+        SortTerm("tracks.album", nullable=True),
     ),
     # The five fields CuePoint can override sort by the value a user sees
     # (DEC-068): the expression the filter field of the same name compiles
     # to, read from the registry rather than written a second time.
-    "label": (_field_term("label", text=True),),
+    "label": (
+        SortTerm(
+            _blank_as_null(_SEARCH_KEYS["label"], text=True),
+            nullable=True,
+            joins=field_spec("label").joins,
+        ),
+        _field_term("label"),
+    ),
     "genre": (_field_term("genre", text=True),),
     # Round the wheel (1A, 1B, 2A ... 12B), then no key: the number first and
     # then the letter, which no spelling of a key sorts as.
@@ -471,7 +504,7 @@ _PRIMARY: Dict[str, Tuple[SortTerm, ...]] = {
 # genre at random, which is not what anyone means by "sort by genre". Every
 # sort that is not already alphabetical falls back to artist then title, so a
 # group of equal values reads like the library does.
-_SECONDARY: Tuple[SortTerm, ...] = (_ARTIST, _TITLE)
+_SECONDARY: Tuple[SortTerm, ...] = (_ARTIST, _ARTIST_RAW, _TITLE, _TITLE_RAW)
 
 #: The only orderings that exist. Anything else is a rejected request.
 SORTABLE_COLUMNS: Tuple[str, ...] = tuple(_PRIMARY)

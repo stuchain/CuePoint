@@ -80,17 +80,28 @@ def v25(tmp_path):
     """A version-25 library with something in every kind of table it has."""
     service = DatabaseService(db_path=tmp_path / "v25.db")
     runner(service, 25).migrate()
-    tracks = TrackRepository(service)
-    tracks.add_many(
-        LibraryTrack(
-            rekordbox_track_id=str(n),
-            file_path=f"/m/{n}.mp3",
-            title=f"T{n}",
-            artist="A, B",
-            bpm=120.0 + n,
+    # Written as the version-25 schema holds a track: the repository writes the
+    # columns of the newest one (the search keys of m0033), which this
+    # library does not have yet.
+    with service.transaction() as conn:
+        conn.executemany(
+            "INSERT INTO tracks (rekordbox_track_id, file_path, normalized_path,"
+            " title, artist, bpm, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    str(n),
+                    f"/m/{n}.mp3",
+                    f"/m/{n}.mp3",
+                    f"T{n}",
+                    "A, B",
+                    120.0 + n,
+                    NOW,
+                    NOW,
+                )
+                for n in range(1, 6)
+            ],
         )
-        for n in range(1, 6)
-    )
     ids = [r["id"] for r in rows(service, "SELECT id FROM tracks ORDER BY id")]
     with service.transaction() as conn:
         for kind, name in (("collection", "Warmups"), ("set", "Friday")):

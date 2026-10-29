@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
+from cuepoint.core.text_processing import search_fold
 from cuepoint.models.library_track import (
     IdentityMatch,
     LibraryTrack,
@@ -71,6 +72,12 @@ from cuepoint.services.interfaces import IDatabaseService, ITrackRepository
 # few megabytes rather than a few hundred at fifty thousand tracks.
 _UPSERT_BATCH_SIZE = 1000
 
+
+def _folded_or_none(text: Optional[str]) -> Optional[str]:
+    """The search key of an optional field: NULL stays NULL (HARDEN-06)."""
+    return None if text is None else search_fold(text)
+
+
 # Column order used for inserts and updates. "id" is excluded: SQLite assigns it.
 _COLUMNS = (
     "rekordbox_track_id",
@@ -84,6 +91,12 @@ _COLUMNS = (
     # Derived from `label` by the name rule (DISCOVER-03, migration 0022) and
     # written in the same statement, so the two can never disagree.
     "label_key",
+    # Folded copies of the four searched and sorted text fields (HARDEN-06,
+    # DEC-185, migration 0033), written in the same statement as the text.
+    "title_search_key",
+    "artist_search_key",
+    "album_search_key",
+    "label_search_key",
     "genre",
     "key",
     "bpm",
@@ -263,6 +276,10 @@ class TrackRepository(ITrackRepository):
     def _values(track: LibraryTrack) -> tuple:
         data = track.to_dict()
         data["label_key"] = label_key_of(track.label)
+        data["title_search_key"] = search_fold(track.title)
+        data["artist_search_key"] = search_fold(track.artist)
+        data["album_search_key"] = _folded_or_none(track.album)
+        data["label_search_key"] = _folded_or_none(track.label)
         return tuple(data[column] for column in _COLUMNS)
 
     @staticmethod
@@ -493,7 +510,8 @@ class TrackRepository(ITrackRepository):
     ) -> List[LibraryTrack]:
         """Return tracks matching ``query``, ordered by artist then title.
 
-        Case-insensitive substring match across title, artist, album and label.
+        Substring match across title, artist, album and label, ignoring case
+        and accents (DEC-185): the query and the stored keys are both folded.
         Deliberately LIKE rather than FTS5: SHELL-04 needs one reviewable
         contract now, and Phase 4 can add ranking behind the same response.
         """
@@ -506,7 +524,8 @@ class TrackRepository(ITrackRepository):
                 # ``tracks.*`` rather than ``*``: the metadata table the label is
                 # searched through has columns named key, bpm and genre too.
                 f"SELECT tracks.* FROM tracks{_search_joins()} WHERE {sql} "
-                "ORDER BY tracks.artist COLLATE NOCASE, tracks.title COLLATE NOCASE "
+                "ORDER BY tracks.artist_search_key, tracks.artist,"
+                " tracks.title_search_key, tracks.title, tracks.id "
                 "LIMIT ? OFFSET ?",
                 (*params, int(limit), int(offset)),
             )

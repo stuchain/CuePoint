@@ -119,9 +119,12 @@ class TestMigration:
 
 
 class TestCollation:
-    def test_the_default_order_index_declares_nocase(self, db):
-        sql = index_sql(db, BROWSE_INDEX).upper()
-        assert sql.count("COLLATE NOCASE") == 2
+    def test_the_default_order_index_is_on_the_folded_keys(self, db):
+        # HARDEN-06 (m0033) rebuilt it: NOCASE folds ASCII only, so the order is
+        # now the folded key, then the original text as the tie-break.
+        sql = index_sql(db, BROWSE_INDEX).lower()
+        assert "artist_search_key, artist, title_search_key, title, id" in sql
+        assert "nocase" not in sql
 
     def test_it_carries_the_row_id_for_the_tiebreak(self, db):
         # Without `id` in the index, the ordering's tiebreak costs a sort even

@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Optional
 
+from cuepoint.core.text_processing import search_fold
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.track_metadata import (
     OVERRIDE_FIELDS,
@@ -237,6 +238,11 @@ class TrackMetadataRepository(ITrackMetadataRepository):
         if column == "label":
             columns.append("label_key")
             values.append(label_key_of(value))
+            # And its folded search and sort key (HARDEN-06): the label people
+            # search is the effective one, so clearing this falls back to the
+            # imported label's key.
+            columns.append("label_search_key")
+            values.append(None if value is None else search_fold(value))
         names = ", ".join(columns)
         marks = ", ".join("?" for _ in columns)
         updates = ", ".join(f"{name} = excluded.{name}" for name in columns)

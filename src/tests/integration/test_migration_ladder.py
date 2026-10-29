@@ -290,6 +290,59 @@ def _m0032(conn: sqlite3.Connection, crossing: Crossing) -> None:
     assert decomposed >= 1, "the seed holds no decomposed key to rewrite"
 
 
+def _fold(text):
+    """The key the migration promises, written out (casefold, NFKD, marks off)."""
+    if text is None:
+        return None
+    return "".join(
+        ch
+        for ch in unicodedata.normalize("NFKD", text.casefold())
+        if not unicodedata.combining(ch)
+    )
+
+
+def _m0033(conn: sqlite3.Connection, crossing: Crossing) -> None:
+    """Every searched field has its folded key, the label's from the override too."""
+    assert _has_columns(
+        conn,
+        "tracks",
+        (
+            "title_search_key",
+            "artist_search_key",
+            "album_search_key",
+            "label_search_key",
+        ),
+    )
+    assert _has_columns(conn, "track_metadata", ("label_search_key",))
+    assert [
+        r[2] for r in conn.execute("PRAGMA index_info(idx_tracks_artist_title)")
+    ] == ["artist_search_key", "artist", "title_search_key", "title", "id"]
+    rows = conn.execute(
+        "SELECT id, title, artist, album, label, title_search_key,"
+        " artist_search_key, album_search_key, label_search_key FROM tracks"
+    ).fetchall()
+    for row in rows:
+        assert row[5] == _fold(row[1]), f"title key of track {row[0]}"
+        assert row[6] == _fold(row[2]), f"artist key of track {row[0]}"
+        assert row[7] == _fold(row[3]), f"album key of track {row[0]}"
+        assert row[8] == _fold(row[4]), f"label key of track {row[0]}"
+    overrides = conn.execute(
+        "SELECT track_id, label, label_search_key FROM track_metadata"
+    ).fetchall()
+    for row in overrides:
+        assert row[2] == _fold(row[1]), f"override label key of track {row[0]}"
+    if not crossing.rows("tracks"):
+        return
+    # The seed's decomposed Beyoncé and Déjà Vu, and its Greek and Japanese
+    # names, are the rows that show the fold did something.
+    keys = {r[5] for r in rows} | {r[6] for r in rows}
+    assert {"deja vu", "beyonce", "夜に駆ける", "καλημερα κοσμε (extended mix)"} <= keys
+    if any(
+        r.get("label") == "Étiquette Spéciale" for r in crossing.rows("track_metadata")
+    ):
+        assert "etiquette speciale" in {r[2] for r in overrides}
+
+
 def _newest_picked(runs: list, kind: str) -> list:
     """The ``picked`` names of the newest run that has any, as m0029 reads them."""
     for run in sorted(runs, key=lambda r: r["id"], reverse=True):
@@ -443,6 +496,7 @@ MIGRATION_ASSERTIONS: Dict[str, Callable[[sqlite3.Connection, Crossing], None]] 
     "m0030_discover_groups": _m0030,
     "m0031_library_meta": table_check("library_meta"),
     "m0032_path_nfc": _m0032,
+    "m0033_search_keys": _m0033,
 }
 
 

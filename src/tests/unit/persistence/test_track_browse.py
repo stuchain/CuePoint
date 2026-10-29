@@ -32,6 +32,7 @@ from typing import Any, List
 
 import pytest
 
+from cuepoint.core.text_processing import search_fold
 from cuepoint.models.collection import KIND_COLLECTION, Collection
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.models.rekordbox_playlist import (
@@ -237,9 +238,9 @@ class TestDefaults:
         assert len(seeded.browse(BrowseQuery(query=""))) == 5
 
     def test_default_order_is_artist_then_title(self, seeded):
-        # apparat, Deadmau5/deadmau5 (tie, split by title), Eric Prydz, Âme.
-        # "Âme" last because NOCASE folds ASCII only.
-        assert ids(seeded.browse()) == ["5", "2", "1", "4", "3"]
+        # Âme, apparat, Deadmau5/deadmau5 (tie, split by title), Eric Prydz.
+        # "Âme" among the A's since HARDEN-06: the order is the folded key.
+        assert ids(seeded.browse()) == ["3", "5", "2", "1", "4"]
 
     def test_default_order_is_case_insensitive(self, seeded):
         # Under BINARY collation "apparat" would sort after every capitalized
@@ -282,8 +283,13 @@ class TestSorting:
         rows = seeded.browse(BrowseQuery(sort=sort, direction=direction), limit=100)
         assert sorted(ids(rows)) == ["1", "2", "3", "4", "5"]
 
+        if sort == "key":
+            # Ordered by the resolved key, which test_key_resolver holds; the
+            # imported spelling is not the order (PAGES-15).
+            return
         present = [v for v in values(rows, self.ATTRIBUTE[sort]) if v is not None]
-        comparable = [v.lower() if isinstance(v, str) else v for v in present]
+        # Compared as the sort compares: folded, so "Âme" sits among the A's.
+        comparable = [search_fold(v) if isinstance(v, str) else v for v in present]
         expected = sorted(comparable, reverse=direction == "desc")
         assert comparable == expected
 
@@ -442,8 +448,8 @@ class TestPlaylistPosition:
     def test_a_folder_orders_by_the_earliest_position_in_it(self, seeded, tree):
         query = BrowseQuery(playlist_id=tree["ROOT/SETS"], sort="playlist_position")
         # warmup [3,1,5,1] and closing [1,2]: 3@0, 1@0 (warmup), 2@1, 5@2.
-        # 1 and 3 tie at 0 and fall back to artist/title.
-        assert ids(seeded.browse(query)) == ["1", "3", "2", "5"]
+        # 1 and 3 tie at 0 and fall back to artist/title ("Âme" before "deadmau5").
+        assert ids(seeded.browse(query)) == ["3", "1", "2", "5"]
 
     def test_refused_without_a_scope(self, seeded):
         with pytest.raises(BrowseQueryError, match="needs a playlist"):
