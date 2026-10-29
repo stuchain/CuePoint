@@ -116,6 +116,7 @@ import {
 } from "./engineClient";
 import type { BuildInfo } from "./buildInfo";
 import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
+import { HEARTBEAT_TIMEOUT_MS, Heartbeat } from "./heartbeat";
 import { withDecoderPath } from "./playerLaunch";
 import { stopProcessTree } from "./processTree";
 import { IncidentTracker, OUTPUT_TAIL_LINES, capLine, type OutputTail, type ProcessReporter } from "./processWatch";
@@ -233,6 +234,18 @@ interface EngineSupervisorOptions {
    * poll (a killed engine can be back before that). Never awaited; a throw is swallowed.
    */
   onStatusChanged?: () => void;
+  /**
+   * Whether the last session of the app ended uncleanly (`sessionLock.ts`), read at each launch.
+   * The engine is told (`CUEPOINT_UNCLEAN_EXIT=1`) so its library check follows (HARDEN-03).
+   */
+  uncleanExit?: () => boolean;
+  /**
+   * Whether the engine is started with its test-only routes (`CUEPOINT_TEST_HOOKS=1`), read at each
+   * launch. `main.ts` says yes only when its own `CUEPOINT_E2E` is set (HARDEN-05).
+   */
+  testHooks?: () => boolean;
+  /** Replaces the heartbeat's 15 s, 10 s and three misses; for tests. */
+  heartbeat?: { intervalMs?: number; timeoutMs?: number; maxMisses?: number };
   /** Replaces `RESTART_BACKOFF_MS`; for tests. */
   restartBackoffMs?: readonly number[];
   /** Replaces `HEALTH_TIMEOUT_MS`; for tests. */
@@ -251,6 +264,10 @@ interface EngineEnvironmentInput {
   parentPid: number;
   decoderPath: string | null;
   errorReporting: boolean;
+  /** The last session ended uncleanly: told to the engine as `CUEPOINT_UNCLEAN_EXIT=1` (HARDEN-03). */
+  uncleanExit?: boolean;
+  /** The engine honours its test-only routes (`CUEPOINT_TEST_HOOKS=1`, HARDEN-05). */
+  testHooks?: boolean;
   build?: Pick<BuildInfo, "release" | "dist" | "environment">;
   env?: NodeJS.ProcessEnv;
 }
@@ -285,6 +302,11 @@ export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.Process
   // Told off, the engine is told off, in the one spelling it reads (REPORT-08). Told nothing, it
   // resolves its own DSN (the sidecar's built-in one when packaged, DEC-148): main's DSN, the
   // Electron project's, is never made up for it. A DSN set by hand is passed on as it is.
+  // Both only ever set by main, so an inherited value never decides them (HARDEN-03, HARDEN-05).
+  if (input.uncleanExit) env.CUEPOINT_UNCLEAN_EXIT = "1";
+  else delete env.CUEPOINT_UNCLEAN_EXIT;
+  if (input.testHooks) env.CUEPOINT_TEST_HOOKS = "1";
+  else delete env.CUEPOINT_TEST_HOOKS;
   if (dsn.toLowerCase() === "off") env.CUEPOINT_SENTRY_DSN = "off";
   else if (dsn === "") delete env.CUEPOINT_SENTRY_DSN;
   return withDecoderPath(env, input.decoderPath);
@@ -358,6 +380,14 @@ export class EngineSupervisor {
   private jobStreams = new Map<string, { abort: AbortController; refs: number }>();
   private restartAttempts = 0;
   private reconnecting = false;
+  /** Asks `/health` while the engine is up and calls it dead after three misses (HARDEN-05). */
+  private heartbeat: Heartbeat | null = null;
+  /** The child the heartbeat gave up on, so its exit is told as a stopped process, not a signal. */
+  private stalledChild: ChildProcess | null = null;
+  /** Whether a stopped (not exited) engine has been reported this session: once. */
+  private stallReported = false;
+  /** The stall now being handled is not the session's first, so it is a breadcrumb only. */
+  private stallRepeat = false;
   /**
    * Whether `/health` has answered for the child now running.
    *
@@ -481,6 +511,8 @@ export class EngineSupervisor {
       parentPid: process.pid,
       decoderPath: this.options.decoderPath?.() ?? null,
       errorReporting: this.options.errorReporting?.() ?? false,
+      uncleanExit: this.options.uncleanExit?.() ?? false,
+      testHooks: this.options.testHooks?.() ?? false,
       build: this.options.build,
     });
     const spec = this.spawnSpec(env, extraArgs);
@@ -640,6 +672,7 @@ export class EngineSupervisor {
     const closed = new Promise<void>((resolve) => child.once("close", () => resolve()));
     child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
       exited = true;
+      if (this.child === child) this.stopHeartbeat();
       // `stop()` and a newer launch let go of a child before it exits: that exit is ours, not a
       // crash, and not an incident (REPORT-05). It must not touch the state of the child that
       // replaced it, nor start a restart.
@@ -650,7 +683,20 @@ export class EngineSupervisor {
       this.changed();
       // An exit during a restart is still one that was not asked for: it is one more exit in
       // the open incident, though the restart already running will do the restarting.
-      this.incidents.exited({ code, signal, uptimeMs: Date.now() - this.spawnedAt });
+      const stalled = this.stalledChild === child;
+      if (stalled) this.stalledChild = null;
+      const uptimeMs = Date.now() - this.spawnedAt;
+      if (stalled && this.stallRepeat) {
+        // Already reported this session: a step on the trail, not another event.
+        try {
+          this.options.reporter?.breadcrumb("process", "engine stopped answering", { uptime_ms: uptimeMs });
+        } catch {
+          /* reporting must never stop a supervisor */
+        }
+      } else {
+        // What it was: a process that stopped answering, killed by us, not one that crashed.
+        this.incidents.exited({ code, signal: stalled ? "heartbeat" : signal, uptimeMs });
+      }
       if (this.reconnecting) return;
       void this.scheduleRestart();
     });
@@ -693,6 +739,7 @@ export class EngineSupervisor {
     }
     // It answers: if it came back from an exit, that is the incident's one event.
     this.incidents.recovered(this.outputTail());
+    this.startHeartbeat(child);
     try {
       this.options.onStarted?.();
     } catch {
@@ -700,6 +747,59 @@ export class EngineSupervisor {
     }
     this.changed();
     return this.getStatus();
+  }
+
+  private stopHeartbeat(): void {
+    this.heartbeat?.stop();
+    this.heartbeat = null;
+  }
+
+  /**
+   * While `child` is up, ask `/health` every 15 s (10 s to answer); three misses in a row call it
+   * stopped (HARDEN-05). This finds a suspended, starved or wholly wedged process. A deadlock inside
+   * one worker it cannot see: `/health` is answered on the server's own thread and reads no data.
+   */
+  private startHeartbeat(child: ChildProcess): void {
+    this.stopHeartbeat();
+    if (this.child !== child) return;
+    const port = this.port;
+    if (!port) return;
+    const timeoutMs = this.options.heartbeat?.timeoutMs ?? HEARTBEAT_TIMEOUT_MS;
+    const beat = new Heartbeat({
+      ...this.options.heartbeat,
+      probe: async () => {
+        const abort = new AbortController();
+        const timer = setTimeout(() => abort.abort(), timeoutMs);
+        timer.unref?.();
+        try {
+          const res = await fetch(`http://127.0.0.1:${port}/health`, { signal: abort.signal });
+          return res.ok;
+        } finally {
+          clearTimeout(timer);
+        }
+      },
+      onDead: () => this.heartbeatLost(child),
+    });
+    this.heartbeat = beat;
+    beat.start();
+  }
+
+  /**
+   * The engine has not answered for three beats: treat it as an exit. The tree is killed, which
+   * is an exit the child handler sees, so the bounded restart (and its count toward DEC-028's
+   * three) is the one a crash gets. Not during maintenance (a restore), and not when it is
+   * stopping on purpose.
+   */
+  private heartbeatLost(child: ChildProcess): void {
+    if (this.child !== child || this.stopping || this.stopRequested || this.maintenance) return;
+    this.heartbeat = null;
+    this.healthy = false;
+    this.stalledChild = child;
+    // Reported once per session: the first stop is an incident like a crash (its one event); a
+    // later one is only a breadcrumb, so a machine that keeps suspending it is not a flood.
+    this.stallRepeat = this.stallReported;
+    this.stallReported = true;
+    stopProcessTree(child, { force: true });
   }
 
   /**
@@ -796,6 +896,7 @@ export class EngineSupervisor {
 
   /** Kill the child and wait for it (or two seconds). What `launch()` and `stop()` both need. */
   private async killChild(): Promise<void> {
+    this.stopHeartbeat();
     if (!this.child) return;
     const proc = this.child;
     this.child = null;
@@ -1788,8 +1889,13 @@ export class EngineSupervisor {
       // Also when a restart has replaced the child this launch spawned: this poll would be asking
       // the old port for the whole budget, and its caller would never be told it had failed.
       if (!this.child || this.child !== child) return false;
+      // One ask never outlasts what is left of the budget (nor 10 s): an engine that accepts the
+      // connection and never answers must not hold the wait, and so a restart, for good (HARDEN-05).
+      const abort = new AbortController();
+      const askTimer = setTimeout(() => abort.abort(), Math.max(1, Math.min(HEARTBEAT_TIMEOUT_MS, deadline - Date.now())));
+      askTimer.unref?.();
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: abort.signal });
         if (res.ok) {
           const body = (await res.json()) as { version?: string };
           this.version = body.version;
@@ -1798,6 +1904,8 @@ export class EngineSupervisor {
         }
       } catch {
         /* retry */
+      } finally {
+        clearTimeout(askTimer);
       }
       await new Promise((r) => setTimeout(r, delayMs));
     }

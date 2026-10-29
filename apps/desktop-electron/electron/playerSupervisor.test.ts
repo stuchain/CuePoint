@@ -135,8 +135,20 @@ class FakeClient extends EventEmitter {
   settledTimePos: number | null = null;
   /** When set, a `time-pos` read waits on it (a never-settling promise models a stuck mpv). */
   timePosGate: Promise<unknown> | null = null;
+  /** What each `idle-active` read gets, in turn (then it answers): a hung mpv never answers (HARDEN-05). */
+  idleActiveScript: Array<"answer" | "hang"> = [];
+  /** How many `idle-active` reads have been made. */
+  idleActiveReads = 0;
+  /** Set to make every `idle-active` read hang from now on. */
+  silent = false;
   async getProperty(name: string): Promise<unknown> {
     this.commands.push(["get_property", name]);
+    if (name === "idle-active") {
+      this.idleActiveReads += 1;
+      const next = this.idleActiveScript.shift();
+      if (this.silent || next === "hang") return new Promise(() => undefined);
+      return false;
+    }
     if (this.timePosGate) return this.timePosGate;
     return name === "time-pos" ? this.settledTimePos : null;
   }
@@ -178,6 +190,8 @@ function harness(
     maxRestartAttempts?: number;
     stableUptimeMs?: number;
     reporter?: ProcessReporter;
+    /** Replaces the heartbeat's timings (HARDEN-05). */
+    heartbeat?: { intervalMs?: number; timeoutMs?: number; maxMisses?: number };
     /** Called with each child as it is spawned, and its index; for tests that make one misbehave. */
     onSpawn?: (child: FakeChild, index: number) => void;
     /** Exclusive output exists only on some platforms (PLAYER-11, DEC-055). */
@@ -201,6 +215,7 @@ function harness(
     maxRestartAttempts: overrides.maxRestartAttempts,
     stableUptimeMs: overrides.stableUptimeMs,
     reporter: overrides.reporter,
+    heartbeat: overrides.heartbeat,
     positionPushIntervalMs: 5,
     createSocketPath: () => `/tmp/sock-${children.length}`,
     spawn: ((binary: string, args: string[]) => {
@@ -1670,5 +1685,77 @@ describe("what the player reports", () => {
     await settle(80);
 
     expect(incidents).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The heartbeat (HARDEN-05)
+// ---------------------------------------------------------------------------
+
+describe("the heartbeat (HARDEN-05)", () => {
+  /** Fast beats: 8 ms apart, 15 ms to answer, three misses. */
+  const beats = { intervalMs: 8, timeoutMs: 15, maxMisses: 3 };
+
+  it("asks idle-active over IPC on its own, and an answer of either kind is an answer", async () => {
+    const { supervisor, clients, children } = track(harness({ heartbeat: beats }));
+    await supervisor.ensureRunning();
+    await until(() => clients[0].idleActiveReads >= 3);
+    expect(children).toHaveLength(1);
+    expect(clients[0].commands).toContainEqual(["get_property", "idle-active"]);
+  });
+
+  it("restarts a player that stops answering after three misses in a row, counting toward the bound", async () => {
+    const { supervisor, children, clients } = track(harness({ heartbeat: beats }));
+    await supervisor.ensureRunning();
+    clients[0].silent = true;
+    await until(() => children.length === 2);
+    expect(children[0].killSignals).toContain("SIGKILL");
+    // Quiet again once it is back; the restart used one of the attempts.
+    await until(() => supervisor.getStatus().running);
+    expect(supervisor.getStatus().restartAttempts).toBe(1);
+    expect(clients[1]).toBeDefined();
+  });
+
+  it("does not restart after two misses and then an answer", async () => {
+    const { supervisor, children, clients } = track(harness({ heartbeat: beats }));
+    await supervisor.ensureRunning();
+    clients[0].idleActiveScript = ["hang", "hang", "answer", "hang", "hang", "answer"];
+    await until(() => clients[0].idleActiveReads >= 7);
+    expect(children).toHaveLength(1);
+    expect(children[0].killSignals).toEqual([]);
+  });
+
+  it("reports a stopped player once per session, and tells it as a stop, not a signal", async () => {
+    const incidents: ProcessIncident[] = [];
+    const crumbs: string[] = [];
+    const reporter: ProcessReporter = {
+      incident: (incident) => incidents.push(incident),
+      breadcrumb: (_category, message) => crumbs.push(message),
+    };
+    const { supervisor, children, clients } = track(
+      harness({ reporter, heartbeat: beats, stableUptimeMs: 30, maxRestartAttempts: 5 }),
+    );
+    await supervisor.ensureRunning();
+    clients[0].silent = true;
+    await until(() => children.length === 2);
+    await until(() => incidents.length === 1, 3000);
+    expect(incidents[0].data.signal).toBe("heartbeat");
+
+    // A second stop in the same session: restarted, but not reported again.
+    await until(() => clients.length === 2 && supervisor.getStatus().running);
+    clients[1].silent = true;
+    await until(() => children.length === 3);
+    await until(() => crumbs.includes("player stopped answering"), 3000);
+    await settle(60);
+    expect(incidents).toHaveLength(1);
+  });
+
+  it("stops asking once the player is stopped", async () => {
+    const { supervisor, clients } = track(harness({ heartbeat: beats }));
+    await supervisor.ensureRunning();
+    await supervisor.stop();
+    const reads = clients[0].idleActiveReads;
+    await settle(60);
+    expect(clients[0].idleActiveReads).toBe(reads);
   });
 });

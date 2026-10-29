@@ -14,6 +14,7 @@ import {
   playerUnavailableReason,
   type ResolvePlayerBinaryOptions,
 } from "./playerLaunch";
+import { Heartbeat } from "./heartbeat";
 import { IncidentTracker, capLine, type ProcessReporter } from "./processWatch";
 
 /**
@@ -205,6 +206,8 @@ interface PlayerSupervisorOptions extends Partial<ResolvePlayerBinaryOptions> {
   restartBackoffMs?: readonly number[];
   maxRestartAttempts?: number;
   stableUptimeMs?: number;
+  /** Replaces the heartbeat's 15 s, 10 s and three misses; for tests. */
+  heartbeat?: { intervalMs?: number; timeoutMs?: number; maxMisses?: number };
   /**
    * Where the player's incidents go (REPORT-05): an exit that was not asked for, each restart, and
    * giving up. `main.ts` passes `processReporter`; the supervisor never imports the Sentry SDK.
@@ -301,6 +304,14 @@ export class PlayerSupervisor {
   private readonly incidents: IncidentTracker;
   /** Ends an incident once a restarted player has stayed up (see `watchStable`). */
   private stableTimer: NodeJS.Timeout | null = null;
+  /** Asks mpv for `idle-active` while it is up and calls it dead after three misses (HARDEN-05). */
+  private heartbeat: Heartbeat | null = null;
+  /** The child the heartbeat gave up on, so its exit is told as a stopped process, not a signal. */
+  private stalledChild: ChildProcess | null = null;
+  /** Whether a stopped (not exited) player has been reported this session: once. */
+  private stallReported = false;
+  /** The stall now being handled is not the session's first, so it is a breadcrumb only. */
+  private stallRepeat = false;
 
   private readonly spawnFn: typeof nodeSpawn;
   private readonly clientFactory: (socketPath: string) => MpvClient;
@@ -556,6 +567,9 @@ export class PlayerSupervisor {
     child.once("exit", (code: number | null, signal: NodeJS.Signals | null) => {
       exited = true;
       if (this.child !== child) return; // superseded by a restart
+      this.stopHeartbeat();
+      const stalled = this.stalledChild === child;
+      if (stalled) this.stalledChild = null;
       const uptimeMs = Date.now() - spawnedAt;
       const ranFor = this.startedAt > 0 ? Date.now() - this.startedAt : 0;
       this.child = null;
@@ -565,7 +579,17 @@ export class PlayerSupervisor {
       this.clearStableTimer();
       this.markStopped();
       if (this.stopping || this.disposed) return;
-      this.incidents.exited({ code, signal, uptimeMs });
+      if (stalled && this.stallRepeat) {
+        // Already reported this session: a step on the trail, not another event.
+        try {
+          this.options.reporter?.breadcrumb("process", "player stopped answering", { uptime_ms: uptimeMs });
+        } catch {
+          /* reporting must never stop a supervisor */
+        }
+      } else {
+        // What it was: a process that stopped answering, killed by us, not one that crashed.
+        this.incidents.exited({ code, signal: stalled ? "heartbeat" : signal, uptimeMs });
+      }
       const stableFor = this.options.stableUptimeMs ?? PLAYER_STABLE_UPTIME_MS;
       if (ranFor >= stableFor && ranFor > 0) {
         // It ran properly for a while, so this is a new problem rather than a
@@ -673,7 +697,45 @@ export class PlayerSupervisor {
     }
     this.startedAt = Date.now();
     this.gaveUpReason = null;
+    this.startHeartbeat(child, client);
     this.push(true);
+  }
+
+  private stopHeartbeat(): void {
+    this.heartbeat?.stop();
+    this.heartbeat = null;
+  }
+
+  /**
+   * While mpv is up, ask it `idle-active` over its IPC every 15 s (10 s to answer); three misses in
+   * a row call it stopped (HARDEN-05, the engine's rule). Any answer counts, `true` or `false`.
+   */
+  private startHeartbeat(child: ChildProcess, client: MpvClient): void {
+    this.stopHeartbeat();
+    const beat = new Heartbeat({
+      ...this.options.heartbeat,
+      probe: async () => {
+        await client.getProperty("idle-active");
+        return true;
+      },
+      onDead: () => this.heartbeatLost(child),
+    });
+    this.heartbeat = beat;
+    beat.start();
+  }
+
+  /** Three beats unanswered: treat it as an exit. Killing it is an exit the handler sees and restarts. */
+  private heartbeatLost(child: ChildProcess): void {
+    if (this.child !== child || this.stopping || this.disposed) return;
+    this.heartbeat = null;
+    this.stalledChild = child;
+    this.stallRepeat = this.stallReported;
+    this.stallReported = true;
+    try {
+      child.kill("SIGKILL");
+    } catch {
+      /* already gone */
+    }
   }
 
   /**
@@ -1014,6 +1076,7 @@ export class PlayerSupervisor {
   /** Stop mpv: ask politely, then insist. */
   async stop(): Promise<void> {
     this.stopping = true;
+    this.stopHeartbeat();
     this.clearStableTimer();
     if (this.restartTimer) {
       clearTimeout(this.restartTimer);
