@@ -88,6 +88,26 @@ jobs:
       contents: read
     secrets: inherit
 
+  # HARDEN-09 (DEC-188): `v1.0.0` waits for every owed check in `docs/release/v1-acceptance.md`.
+  # Like the scale run, it holds back a normal tag only: a test tag (`v*-test.*`) skips it, so an
+  # owed row never stops one, and `publish` below accepts a skipped acceptance only for a test tag.
+  # Cheap, so it runs beside the build and a tag with rows still owed is stopped before publishing.
+  acceptance:
+    needs: gate
+    if: ${{ needs.gate.outputs.prerelease != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: No check is still owed or failing
+        run: python scripts/check_acceptance.py --release
+
   # DEC-170: nothing is signed, so no `--expect-hardened-runtime`. The ad hoc signature
   # electron-builder's hook writes must still verify. The zip is unpacked, not the artifact's
   # folder: an artifact upload drops symlinks and permissions, which a signed bundle depends on.
@@ -123,15 +143,18 @@ jobs:
   # Draft, upload, publish. A release is visible only after the last step, so a failed upload
   # leaves a draft, never a release with files missing.
   publish:
-    needs: [gate, check-macs, scale]
-    # `scale` is skipped for a test tag, and a skipped need would skip this job too; so it is
-    # asked for by hand: the Macs checked, and the scale run green or (test tag only) skipped.
+    needs: [gate, check-macs, scale, acceptance]
+    # `scale` and `acceptance` are skipped for a test tag, and a skipped need would skip this job
+    # too; so each is asked for by hand: the Macs checked, and the scale run and the acceptance
+    # list green or (test tag only) skipped.
     if: >-
       ${{ !cancelled()
       && needs.gate.result == 'success'
       && needs.check-macs.result == 'success'
       && (needs.scale.result == 'success'
-      || (needs.scale.result == 'skipped' && needs.gate.outputs.prerelease == 'true')) }}
+      || (needs.scale.result == 'skipped' && needs.gate.outputs.prerelease == 'true'))
+      && (needs.acceptance.result == 'success'
+      || (needs.acceptance.result == 'skipped' && needs.gate.outputs.prerelease == 'true')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -92,7 +92,13 @@ class TestJobOrder:
         assert jobs["build"]["needs"] == "gate"
         assert jobs["check-macs"]["needs"] == "build"
         assert jobs["scale"]["needs"] == "gate"
-        assert set(jobs["publish"]["needs"]) == {"gate", "check-macs", "scale"}
+        assert jobs["acceptance"]["needs"] == "gate"
+        assert set(jobs["publish"]["needs"]) == {
+            "gate",
+            "check-macs",
+            "scale",
+            "acceptance",
+        }
 
     def test_scale_runs_before_a_normal_tag_is_published_and_not_for_a_test_tag(
         self, release
@@ -350,13 +356,26 @@ class TestPublishConditionTruthTable:
 
     OUTCOMES = ("success", "failure", "skipped", "cancelled")
 
-    def _publishes(self, release, *, test_tag: bool, scale: str, cancelled=False):
-        # The scale job is skipped on a test tag whatever else happens (its own `if`, which
-        # the next test pins), and runs on a normal tag.
+    def _publishes(
+        self,
+        release,
+        *,
+        test_tag: bool,
+        scale: str,
+        cancelled=False,
+        acceptance: str = "success",
+    ):
+        # The scale and acceptance jobs are skipped on a test tag whatever else happens (their own
+        # `if`, which the next tests pin), and run on a normal tag.
         result = "skipped" if test_tag else scale
         return _holds(
             release["jobs"]["publish"]["if"],
-            results={"gate": "success", "check-macs": "success", "scale": result},
+            results={
+                "gate": "success",
+                "check-macs": "success",
+                "scale": result,
+                "acceptance": "skipped" if test_tag else acceptance,
+            },
             prerelease=test_tag,
             cancelled=cancelled,
         )
@@ -387,7 +406,12 @@ class TestPublishConditionTruthTable:
     def test_a_failed_gate_or_mac_check_publishes_nothing(
         self, release, test_tag, failed
     ):
-        results = {"gate": "success", "check-macs": "success", "scale": "success"}
+        results = {
+            "gate": "success",
+            "check-macs": "success",
+            "scale": "success",
+            "acceptance": "success",
+        }
         results[failed] = "failure"
         assert not _holds(
             release["jobs"]["publish"]["if"],
@@ -404,3 +428,53 @@ class TestPublishConditionTruthTable:
 
     def test_a_release_runs_the_50000_job_only(self, release):
         assert release["jobs"]["scale"]["with"] == {"above_reference": False}
+
+    @pytest.mark.parametrize("outcome", OUTCOMES)
+    def test_a_test_tag_publishes_whatever_the_acceptance_list_says(
+        self, release, outcome
+    ):
+        assert (
+            self._publishes(release, test_tag=True, scale="success", acceptance=outcome)
+            is True
+        )
+
+    def test_a_normal_tag_publishes_only_when_the_acceptance_list_is_clear(
+        self, release
+    ):
+        got = {
+            o: self._publishes(release, test_tag=False, scale="success", acceptance=o)
+            for o in self.OUTCOMES
+        }
+        assert got == {
+            "success": True,
+            "failure": False,
+            "skipped": False,
+            "cancelled": False,
+        }
+
+
+class TestAcceptanceGate:
+    """HARDEN-09 (DEC-188): `v1.0.0` waits for every owed check; a test tag does not."""
+
+    def test_the_job_is_skipped_exactly_for_a_test_tag(self, release):
+        assert (
+            release["jobs"]["acceptance"]["if"]
+            == "${{ needs.gate.outputs.prerelease != 'true' }}"
+        )
+
+    def test_it_runs_the_release_check_of_the_checklist(self, release):
+        job = release["jobs"]["acceptance"]
+        assert "python scripts/check_acceptance.py --release" in _runs(job)
+        assert job["runs-on"] == "ubuntu-latest"
+
+    def test_the_gate_job_does_not_run_it(self, release):
+        # The gate runs for a test tag too; only the job above is skipped for one.
+        assert "check_acceptance" not in _runs(release["jobs"]["gate"])
+
+    def test_no_other_workflow_demands_the_release_rule(self):
+        # Ordinary CI must stay green while checks are owed.
+        for path in sorted(_WORKFLOWS.glob("*.yml")):
+            if path.name == "release.yml":
+                continue
+            text = path.read_text(encoding="utf-8")
+            assert "check_acceptance.py --release" not in text, path.name
