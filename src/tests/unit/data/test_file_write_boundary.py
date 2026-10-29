@@ -96,6 +96,9 @@ ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
         # EXPORT-01 removed rekordbox.py's tag-writing wrappers, so CLEAN-10's
         # service is the only route left from the runtime into tag_writer.
         "src/cuepoint/services/tag_write_service.py",
+        # HARDEN-04's bench times a write on generated copies of the repository's
+        # own test tones, in a temporary folder; it never opens a user's file.
+        "scripts/bench_tag_write.py",
     },
     "cuepoint.data.tag_fields": {"src/cuepoint/services/tag_write_service.py"},
     # EXPORT-01 removed this module's writers, so nothing reaches one.

@@ -74,6 +74,7 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
 - `bench_decoder.py`: The waveform decoder per format.
 - `bench_waveform_store.py`: The waveform store at a large library's size.
 - `bench_waveform_analysis.py`: The waveform analysis job.
+- `bench_tag_write.py`: A tag write over 1,000 files, in place and through the checked copy (HARDEN-04).
 - `bench_waveforms.py`: Phase 11 as a whole at 50,000 tracks, run twice.
 - `bench_engine_start.py`: Times the engine from launch to a healthy `/health`, each run in a fresh temporary
   home. `python scripts/bench_engine_start.py [--exe <packaged engine>]`.
