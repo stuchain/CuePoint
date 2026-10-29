@@ -20,7 +20,20 @@ Every number ADR-009 records, taken again rather than trusted:
   tracks is started in this process. The p95 of the Library's search is
   measured idle, with four analyses running (the design chosen), and with
   four of the alternative running. Budget: the chosen design keeps the p95
-  within ``RESPONSIVENESS_BUDGET`` of idle.
+  within ``RESPONSIVENESS_BUDGET`` times the idle p95, which is floored at
+  ``RESPONSIVENESS_FLOOR_MS`` (HARDEN-07). A plain ratio over idle failed on
+  every leg of the first CI run (2.02, 3.58, 2.58 against 1.5) because idle
+  was about 10 ms on Linux: a rise of 10 ms doubles a ratio over a near-zero
+  base and is not something a person could feel. With the floor, anything
+  under 150 ms passes whatever idle was, and a slower idle is held to the
+  plain ratio.
+- **Where the platform cannot be measured it says so.** The alternative design
+  streams through a pipe where there is one and through a temporary file
+  on Windows (which has no ``/dev/stdout``, and is how the engine itself
+  would have to run it); the decoder's peak memory needs ``os.wait4``, which
+  Windows lacks, and ``psutil`` is not a dependency, so it is reported as not
+  measured there; a format whose encoder the build lacks (MP3 without
+  libmp3lame) is reported as skipped.
 
 Nothing touches ``~/.cuepoint``: the library, ``CUEPOINT_HOME`` and the audio
 are temporary, and nothing reaches the network.
@@ -68,8 +81,11 @@ REPEATS = 3
 DEFAULT_TRACKS = 10_000
 SEARCH_REQUESTS = 200
 CONCURRENT_ANALYSES = 4
-#: The chosen design may cost the engine's search at most this factor at p95.
+#: The chosen design may cost the engine's search at most this factor at p95 ...
 RESPONSIVENESS_BUDGET = 1.5
+#: ... over the idle p95, or over this many milliseconds if idle was faster: a
+#: ratio over a base of about 10 ms measures noise (the first CI run, HARDEN-07).
+RESPONSIVENESS_FLOOR_MS = 100.0
 TOKEN = "bench-decoder"
 
 #: What the decoder encodes each format with, where the build has the encoder.
@@ -136,29 +152,42 @@ def _unreduced_graph() -> str:
     return graph[: graph.index(",asplit=2[x][y]")]
 
 
-def engine_side(mpv: Path, source: Path) -> Dict[str, float]:
-    """The design not chosen: full-rate bands through a pipe, reduced here."""
+def engine_side(mpv: Path, source: Path) -> Dict[str, Any]:
+    """The design not chosen: full-rate bands streamed out, reduced here.
+
+    Through a pipe where the platform has ``/dev/stdout``, through a file in a
+    temporary folder on Windows, which has none (``audio_decode.default_transport``);
+    ``via`` says which. The pipe is what ADR-009 measured on macOS and Linux.
+    """
+    via = ad.default_transport()
     started = time.perf_counter()
     cpu_started = time.process_time()
-    child = subprocess.run(
-        [
-            str(mpv),
-            "--no-config",
-            "--terminal=no",
-            "--vid=no",
-            "--ao=pcm",
-            "--ao-pcm-waveheader=no",
-            "--audio-format=float",
-            "--ao-pcm-file=/dev/stdout",
-            f"--af=lavfi=[{_unreduced_graph()}]",
-            "--",
-            str(source),
-        ],
-        capture_output=True,
-        check=False,
-    )
+    with tempfile.TemporaryDirectory(prefix=ad.WORKDIR_PREFIX) as work:
+        target = (
+            str(Path(work) / "stream.f32")
+            if via == ad.TRANSPORT_FILE
+            else "/dev/stdout"
+        )
+        child = subprocess.run(
+            [
+                str(mpv),
+                "--no-config",
+                "--terminal=no",
+                "--vid=no",
+                "--ao=pcm",
+                "--ao-pcm-waveheader=no",
+                "--audio-format=float",
+                f"--ao-pcm-file={target}",
+                f"--af=lavfi=[{_unreduced_graph()}]",
+                "--",
+                str(source),
+            ],
+            capture_output=True,
+            check=False,
+        )
+        stream = Path(target).read_bytes() if via == ad.TRANSPORT_FILE else child.stdout
     samples: "array[float]" = array("f")
-    samples.frombytes(child.stdout[: len(child.stdout) - len(child.stdout) % 16])
+    samples.frombytes(stream[: len(stream) - len(stream) % 16])
     window = ad.DECODE_RATE_HZ // ad.ENVELOPE_RATE_HZ
     for channel in range(4):
         values = samples[channel::4]
@@ -169,7 +198,8 @@ def engine_side(mpv: Path, source: Path) -> Dict[str, float]:
     return {
         "wall_s": round(time.perf_counter() - started, 2),
         "engine_cpu_s": round(time.process_time() - cpu_started, 2),
-        "stream_mb": round(len(child.stdout) / 1e6, 1),
+        "stream_mb": round(len(stream) / 1e6, 1),
+        "via": via,
     }
 
 
@@ -187,7 +217,11 @@ print(usage.ru_maxrss)
 
 
 def decoder_peak_rss_mb(mpv: Path, source: Path) -> Optional[float]:
-    """The decoder child's own peak resident memory, where the platform says."""
+    """The decoder child's own peak resident memory, where the platform says.
+
+    ``None`` is "not measured": Windows has no ``os.wait4``, and ``psutil`` is not
+    a dependency of the app or its dev requirements.
+    """
     if not hasattr(os, "wait4"):
         return None
     with tempfile.TemporaryDirectory(prefix=ad.WORKDIR_PREFIX) as work:
@@ -216,7 +250,10 @@ def measure_formats(mpv: Path, workspace: Path) -> List[Dict[str, Any]]:
         path = workspace / f"six.{suffix}"
         if codec is not None and not encode(mpv, source, path, codec, container):
             rows.append(
-                {"format": suffix, "skipped": f"no {codec} encoder in this build"}
+                {
+                    "format": suffix,
+                    "skipped": f"no {codec} encoder in this build, so not measured",
+                }
             )
             continue
         if codec is None:
@@ -282,6 +319,11 @@ def _running(work: Callable[[], Any]) -> Callable[[], None]:
     return finish
 
 
+def _floored_ratio(loaded_ms: float, idle_ms: float) -> float:
+    """``loaded_ms`` over the idle p95, which is taken as at least ``RESPONSIVENESS_FLOOR_MS``."""
+    return round(loaded_ms / max(idle_ms, RESPONSIVENESS_FLOOR_MS), 2)
+
+
 def measure_responsiveness(mpv: Path, workspace: Path, total: int) -> Dict[str, Any]:
     os.environ["CUEPOINT_HOME"] = str(workspace / "home")
     os.environ["CUEPOINT_SKIP_BEATPORT"] = "1"
@@ -328,6 +370,11 @@ def measure_responsiveness(mpv: Path, workspace: Path, total: int) -> Dict[str, 
         "alternative_p95_ms": alternative,
         "chosen_ratio": round(chosen / idle, 2) if idle else None,
         "alternative_ratio": round(alternative / idle, 2) if idle else None,
+        # What the budget is held to: the same ratios over idle floored at 100 ms.
+        "floor_ms": RESPONSIVENESS_FLOOR_MS,
+        "chosen_added_ms": round(chosen - idle, 1),
+        "chosen_ratio_floored": _floored_ratio(chosen, idle),
+        "alternative_ratio_floored": _floored_ratio(alternative, idle),
     }
 
 
@@ -360,25 +407,38 @@ def report(result: Dict[str, Any]) -> None:
             print(f"  {row['format']:8s} skipped: {row['skipped']}")
             continue
         alt = row["alternative"]
+        peak = row["peak_rss_mb"]
+        peak_text = "peak memory not measured" if peak is None else f"{peak} MB"
+        verb = "in a file" if alt.get("via") == ad.TRANSPORT_FILE else "piped"
         print(
             f"  {row['format']:8s} chosen {row['chosen_s']:5.2f} s, "
-            f"{row['peak_rss_mb']} MB   "
+            f"{peak_text}   "
             f"alternative {alt['wall_s']:5.2f} s, {alt['engine_cpu_s']:.2f} s of the "
-            f"engine's CPU, {alt['stream_mb']} MB piped"
+            f"engine's CPU, {alt['stream_mb']} MB {verb}"
         )
     r = result["responsiveness"]
     print(
         f"Search p95 over {r['tracks']:,} tracks: idle {r['idle_p95_ms']} ms; "
         f"{r['concurrent_analyses']} analyses running: chosen {r['chosen_p95_ms']} ms "
-        f"({r['chosen_ratio']}x), alternative {r['alternative_p95_ms']} ms "
-        f"({r['alternative_ratio']}x)"
+        f"({r['chosen_ratio']}x, {r['chosen_ratio_floored']}x over an idle of at least "
+        f"{r['floor_ms']:g} ms), alternative {r['alternative_p95_ms']} ms "
+        f"({r['alternative_ratio']}x, {r['alternative_ratio_floored']}x)"
     )
 
 
 def over_budget(result: Dict[str, Any]) -> List[str]:
-    ratio = result["responsiveness"]["chosen_ratio"]
-    if ratio is not None and ratio > RESPONSIVENESS_BUDGET:
-        return [f"search p95 is {ratio}x idle with analyses running"]
+    """The chosen design's search p95 over the floored idle, against the budget."""
+    r = result["responsiveness"]
+    idle, chosen = r.get("idle_p95_ms"), r.get("chosen_p95_ms")
+    if not idle or chosen is None:
+        return []
+    ratio = chosen / max(idle, RESPONSIVENESS_FLOOR_MS)
+    if ratio > RESPONSIVENESS_BUDGET:
+        return [
+            f"search p95 is {chosen} ms with analyses running, {ratio:.2f}x an idle of "
+            f"{max(idle, RESPONSIVENESS_FLOOR_MS):g} ms (idle p95 {idle} ms, floored at "
+            f"{RESPONSIVENESS_FLOOR_MS:g})"
+        ]
     return []
 
 
