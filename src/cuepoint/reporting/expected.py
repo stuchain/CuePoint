@@ -69,6 +69,15 @@ EXPECTED_ROUTE_ERROR_CODES: frozenset[str] = frozenset(
     {
         # The set list's destination refused the write: a full or read-only disk.
         "SET_LIST_WRITE_FAILED",
+        # The library's own states (HARDEN-03). A full disk is the user's to fix
+        # and a library that cannot open or upgrade is reported once per session
+        # by the library state, with the versions; per request it would be noise.
+        "R002",
+        "DB_UNREADABLE",
+        "DB_MIGRATION_FAILED",
+        "DB_MIGRATION_BLOCKED",
+        "DB_NEEDS_SPACE",
+        "BACKUP_NEEDS_SPACE",
     }
 )
 
@@ -113,6 +122,10 @@ def is_expected_failure(code: object, cause: BaseException | None = None) -> boo
         elif is_expected_code(code):
             return True
     for exc in chain:
+        # A failure that carries a code of its own (a DatabaseError for a full
+        # disk) is the user's when that code is.
+        if is_expected_code(getattr(exc, "error_code", None)):
+            return True
         if isinstance(exc, _USER_FILE_ERRORS):
             return True
         if isinstance(exc, OSError) and exc.errno in _USER_ERRNOS:

@@ -38,6 +38,7 @@ from typing import Iterator, List, Optional, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.persistence import file_watchers
+from cuepoint.services import library_errors
 from cuepoint.services.interfaces import IConfigService, IDatabaseService
 from cuepoint.services.key_resolver import register_sql_functions
 from cuepoint.utils.paths import cuepoint_home
@@ -287,6 +288,7 @@ class DatabaseService(IDatabaseService):
             connection.execute("SELECT count(*) FROM sqlite_master").fetchone()
         except sqlite3.DatabaseError as exc:
             connection.close()
+            library_errors.note_failure(exc)
             raise DatabaseError(
                 message=(
                     f"The CuePoint library database at {quoted(self.db_path)} could not be "
@@ -353,15 +355,27 @@ class DatabaseService(IDatabaseService):
                 context={"db_path": str(self.db_path)},
             )
 
-        connection.execute("BEGIN IMMEDIATE")
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+        except sqlite3.Error as exc:
+            translated = library_errors.translate(exc)
+            if translated is exc:
+                raise
+            raise translated from exc
         try:
             yield connection
-        except BaseException:
+        except BaseException as exc:
             try:
                 connection.rollback()
             except sqlite3.Error:
                 pass
-            raise
+            # A full disk is told apart from every other failure, and damage is
+            # noted (HARDEN-03). The rollback above has run, so a change that
+            # failed for lack of room leaves nothing half-made.
+            translated = library_errors.translate(exc)
+            if translated is exc:
+                raise
+            raise translated from exc
 
         try:
             connection.commit()
@@ -370,6 +384,9 @@ class DatabaseService(IDatabaseService):
                 connection.rollback()
             except sqlite3.Error:
                 pass
+            translated = library_errors.translate(exc)
+            if translated is not exc:
+                raise translated from exc
             raise DatabaseError(
                 message=f"Could not save changes to the library database: {exc}",
                 error_code="DB_COMMIT_FAILED",
