@@ -29,7 +29,7 @@ export function BackupsSection() {
       setList(await bridge.list());
       setLoadFailed(null);
     } catch (cause) {
-      setLoadFailed(userMessage(cause, "CuePoint couldn't read the list of backups."));
+      setLoadFailed(userMessage(cause, "CuePoint could not read the list of backups."));
     }
   }, [bridge]);
 
@@ -50,7 +50,7 @@ export function BackupsSection() {
       setMade(true);
       await load();
     } catch (cause) {
-      setProblem(userMessage(cause, "CuePoint couldn't make the backup."));
+      setProblem(userMessage(cause, "CuePoint could not make the backup."));
     } finally {
       setMaking(false);
     }
@@ -60,9 +60,9 @@ export function BackupsSection() {
     setProblem(null);
     try {
       const shown = await bridge?.showInFolder();
-      if (shown === false) setProblem("CuePoint can't show the backups folder yet. It is made with the first backup.");
+      if (shown === false) setProblem("CuePoint cannot show the backups folder yet. It is made with the first backup.");
     } catch (cause) {
-      setProblem(userMessage(cause, "CuePoint couldn't show the backups folder."));
+      setProblem(userMessage(cause, "CuePoint could not show the backups folder."));
     }
   };
 
@@ -86,29 +86,26 @@ export function BackupsSection() {
         )}
       </div>
 
-      {restore.restoring && (
-        <SettingsStatus className="backups-section__status" role="status">
-          Restoring your library…
-        </SettingsStatus>
-      )}
+      {/* The two places this section speaks are on the page from the start, empty, so a change is announced. */}
+      <div className="backups-section__status" role="status" aria-live="polite">
+        {restore.restoring && <SettingsStatus>Restoring your library…</SettingsStatus>}
+        {!restore.restoring && restore.waitingLine && <SettingsStatus>{restore.waitingLine}</SettingsStatus>}
+        {made && !problem && !restore.restoring && !restore.waitingLine && (
+          <SettingsStatus tone="success">Backed up just now</SettingsStatus>
+        )}
+      </div>
       {restore.waitingLine && (
-        <div className="backups-section__status settings-actions">
-          <SettingsStatus role="status">{restore.waitingLine}</SettingsStatus>
+        <div className="backups-section__status">
           <Button variant="quiet" onClick={restore.stopWaiting}>
             Cancel restore
           </Button>
         </div>
       )}
-      {made && !problem && (
-        <SettingsStatus tone="success" className="backups-section__status" role="status">
-          Backed up just now
-        </SettingsStatus>
-      )}
-      {(problem || restore.error || loadFailed) && (
-        <SettingsStatus tone="danger" className="backups-section__status" role="alert">
-          {problem ?? restore.error ?? loadFailed}
-        </SettingsStatus>
-      )}
+      <div className="backups-section__status" role="alert">
+        {(problem || restore.error || loadFailed) && (
+          <SettingsStatus tone="danger">{problem ?? restore.error ?? loadFailed}</SettingsStatus>
+        )}
+      </div>
 
       {bridge && list && entries.length === 0 && <EmptyState compact headline="No backups yet" />}
       {entries.length > 0 && <BackupRows entries={entries} disabled={holding} onRestore={restore.ask} />}

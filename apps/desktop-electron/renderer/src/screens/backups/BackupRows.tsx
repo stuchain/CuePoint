@@ -34,7 +34,7 @@ export function BackupRows({
                 variant="secondary"
                 size="sm"
                 disabled={disabled}
-                aria-label={`Restore the backup from ${when}`}
+                aria-label={`Restore the backup from ${when}, ${backupReason(entry)}`}
                 onClick={() => onRestore(entry)}
               >
                 Restore

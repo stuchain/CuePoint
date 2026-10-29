@@ -7,10 +7,11 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 
 import { resetEngineOnlineForTests } from "../../api/engineOnline";
 import { noteDiskFull, showStripNotice } from "../../api/stripMessages";
+import { waitThenRestore } from "../../screens/backups/restoreStore";
 import { MotionProvider } from "../../tokens/MotionContext";
 import { resetActivityForTests } from "./activityState";
 import { StatusStrip } from "./StatusStrip";
-import { useStartupNotices } from "./useStartupNotices";
+import { resetStartupNoticesForTests, useStartupNotices } from "./useStartupNotices";
 
 function Notices() {
   useStartupNotices();
@@ -31,6 +32,7 @@ let bridge: Record<string, unknown>;
 beforeEach(() => {
   localStorage.setItem("cuepoint-onboarding-complete", "1");
   sessionStorage.clear();
+  resetStartupNoticesForTests();
   vi.useFakeTimers({ shouldAdvanceTime: true });
   bridge = {
     getEngineStatus: vi.fn().mockResolvedValue({ connected: true, version: "1.0.0" }),
@@ -51,17 +53,41 @@ afterEach(() => {
 const status = () => screen.getByRole("status");
 
 describe("a full disk", () => {
-  it("says so in the error look instead of Ready, until something is saved", async () => {
+  it("says so in the error look instead of Ready, until a write is known to have succeeded", async () => {
+    let library = 1;
+    (bridge.listJobs as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
+      jobs: [],
+      active_count: 0,
+      revisions: { library, waveforms: 1 },
+    }));
     renderStrip();
     expect(await screen.findByText("Ready")).toBeInTheDocument();
     act(() => noteDiskFull());
     const words = screen.getByText("Your disk is full. CuePoint can't save changes until there's space.");
     expect(words).toHaveClass("cp-status__engine--error");
     expect(screen.queryByText("Ready")).not.toBeInTheDocument();
+    // A change the page only announces is not proof of room.
     act(() => {
       window.dispatchEvent(new Event("cuepoint:library-changed"));
     });
+    expect(screen.getByText("Your disk is full. CuePoint can't save changes until there's space.")).toBeInTheDocument();
+    // The engine's counter moving is.
+    library = 2;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2100);
+    });
     expect(await screen.findByText("Ready")).toBeInTheDocument();
+  });
+});
+
+describe("a restore that waits for work", () => {
+  it("is said in the strip with a Cancel, wherever the person is", async () => {
+    renderStrip();
+    await screen.findByText("Ready");
+    act(() => waitThenRestore({ name: "a.db", createdAt: "", reason: "launch", appVersion: null, bytes: 1 }, "An import"));
+    expect(screen.getByText("Restores your library when the import finishes")).toBeInTheDocument();
+    act(() => screen.getByRole("button", { name: "Cancel restore" }).click());
+    expect(screen.queryByText("Restores your library when the import finishes")).not.toBeInTheDocument();
   });
 });
 

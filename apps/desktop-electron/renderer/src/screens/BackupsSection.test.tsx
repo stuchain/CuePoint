@@ -4,7 +4,7 @@
  * "Stop it and restore now", Cancel and "Restore when done".
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { BackupEntry, BackupRestoreEvent, BackupRestoreResult } from "../api/cuepointBridge.types";
@@ -140,7 +140,7 @@ describe("Back up now", () => {
 describe("Restore", () => {
   it("asks first, naming the moment and why, and restores on Restore", async () => {
     await shown();
-    await user().click(screen.getByRole("button", { name: "Restore the backup from Oct 27, 10:10 PM" }));
+    await user().click(screen.getByRole("button", { name: /^Restore the backup from Oct 27, 10:10 PM/ }));
     const dialog = screen.getByRole("dialog", { name: "Restore this backup?" });
     expect(dialog).toHaveTextContent(
       "Your library goes back to how it was on Tuesday, October 27, 10:10 PM, before updating to 1.0.0.",
@@ -194,7 +194,7 @@ describe("Restore while work runs", () => {
       active_count: 1,
     });
     await shown();
-    await user().click(screen.getByRole("button", { name: "Restore the backup from Oct 27, 10:10 PM" }));
+    await user().click(screen.getByRole("button", { name: /^Restore the backup from Oct 27, 10:10 PM/ }));
     await user().click(within(screen.getByRole("dialog")).getByRole("button", { name: "Restore" }));
     return await screen.findByText("An import is running");
   }
@@ -221,7 +221,7 @@ describe("Restore while work runs", () => {
     await openBusy();
     await user().click(screen.getByRole("button", { name: "Restore when done" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByText("Restores when an import finishes")).toBeInTheDocument();
+    expect(screen.getByText("Restores your library when the import finishes")).toBeInTheDocument();
     expect(restore).toHaveBeenCalledTimes(1);
     listJobs.mockResolvedValue({ jobs: [], active_count: 0 });
     await act(async () => {
@@ -229,6 +229,32 @@ describe("Restore while work runs", () => {
     });
     await waitFor(() => expect(restore).toHaveBeenCalledTimes(2));
     expect(restore).toHaveBeenLastCalledWith("c.db", undefined);
+  });
+
+  it("keeps waiting, and restores, while Settings is not the page shown", async () => {
+    const { unmount } = await (async () => {
+      await openBusy();
+      await user().click(screen.getByRole("button", { name: "Restore when done" }));
+      return { unmount: () => cleanup() };
+    })();
+    unmount();
+    listJobs.mockResolvedValue({ jobs: [], active_count: 0 });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2100);
+    });
+    await waitFor(() => expect(restore).toHaveBeenCalledTimes(2));
+    expect(restore).toHaveBeenLastCalledWith("c.db", undefined);
+  });
+
+  it("reads the library again once, however many ways it hears the restore ended", async () => {
+    const reads = vi.fn();
+    window.addEventListener("cuepoint:library-changed", reads);
+    await shown();
+    act(() => restoreEvent?.({ phase: "restoring" }));
+    act(() => restoreEvent?.({ phase: "restored" }));
+    act(() => restoreEvent?.({ phase: "restored" }));
+    expect(reads).toHaveBeenCalledTimes(1);
+    window.removeEventListener("cuepoint:library-changed", reads);
   });
 
   it("Cancel restore stops waiting", async () => {

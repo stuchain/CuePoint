@@ -14,6 +14,7 @@ import { resetCoversForTests } from "../api/coverLoader";
 import { resetEngineReadsForTests } from "../api/engineReads";
 import { resetJobsStoreForTests } from "../api/jobsStore";
 import { resetStripMessagesForTests } from "../api/stripMessages";
+import { resetRestoreForTests } from "../screens/backups/restoreStore";
 
 afterEach(() => {
   cleanup();
@@ -21,4 +22,5 @@ afterEach(() => {
   resetEngineReadsForTests();
   resetCoversForTests();
   resetStripMessagesForTests();
+  resetRestoreForTests();
 });

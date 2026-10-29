@@ -81,3 +81,9 @@ export function workProgress(done: number | undefined, total: number | undefined
 export function restoreClause(entry: Reasoned): string {
   return entry.reason === "pre-upgrade" && entry.toVersion ? `, before updating to ${entry.toVersion}` : "";
 }
+
+/** "the import" from "An import"; work with no name of its own is "CuePoint's current work". */
+export function workThe(noun: string): string {
+  if (noun === "Background work" || noun.startsWith("CuePoint")) return "CuePoint's current work";
+  return `the ${noun.replace(/^An? /, "").replace(/^./, (c) => c.toLowerCase())}`;
+}

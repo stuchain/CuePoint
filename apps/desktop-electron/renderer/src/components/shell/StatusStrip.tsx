@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { useEngineOnline } from "../../api/engineOnline";
 import { DISK_FULL_WORDS, useStripMessages } from "../../api/stripMessages";
@@ -8,6 +8,7 @@ import { Button } from "../Button";
 import { Hint } from "../Hint";
 import { PixelSpinner } from "../PixelSpinner";
 import { UpdateStatusItem } from "../updates/UpdateStatusItem";
+import { getRestoreSnapshot, stopWaiting, subscribeRestore } from "../../screens/backups/restoreStore";
 import { ActivityButton } from "./ActivityButton";
 import { ActivityPanel } from "./ActivityPanel";
 import { closeActivity, openActivity, useActivityOpen } from "./activityState";
@@ -226,6 +227,8 @@ export function StatusStrip() {
   // unclean exit that checked out, a reopened window, an interrupted export) takes the place of
   // "Ready" for a while (HARDEN-03, HARDEN-05).
   const { diskFull, notice } = useStripMessages();
+  // "Restore when done" is waiting for work to end: said here, wherever the person is, with its Cancel.
+  const waitingRestore = useSyncExternalStore(subscribeRestore, getRestoreSnapshot).waiting;
   const sayDiskFull = diskFull && !offline;
   const sayNote = !sayDiskFull && connected && notice !== null;
   const engineText = sayDiskFull ? DISK_FULL_WORDS : offline ? "" : sayNote ? notice : connected ? "Ready" : "Starting…";
@@ -334,7 +337,13 @@ export function StatusStrip() {
           )}
 
           {!job && done && <span className="cp-status__done">{done}</span>}
+          {waitingRestore && <span className="cp-status__done">{waitingRestore.line}</span>}
         </span>
+        {waitingRestore && (
+          <Button variant="quiet" className="cp-status__cancel" onClick={stopWaiting}>
+            Cancel restore
+          </Button>
+        )}
 
         {job ? (
           <span className="cp-status__job">

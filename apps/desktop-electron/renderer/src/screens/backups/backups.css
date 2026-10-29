@@ -49,3 +49,8 @@
 .backups-section__status {
   margin: var(--space-md) 0 0;
 }
+
+/* A live region with nothing to say takes no room. */
+.backups-section__status:empty {
+  margin: 0;
+}
