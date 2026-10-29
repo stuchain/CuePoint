@@ -60,6 +60,7 @@ def library(tmp_path, monkeypatch):
     reset_container()
     bootstrap_services()
     yield path
+    _close_backup_databases()
     reset_container()
 
 
@@ -97,11 +98,24 @@ def recompute_now() -> dict:
     return state_now()
 
 
+_BACKUP_DATABASES: list = []
+
+
 def backups_of(path) -> BackupService:
-    return BackupService(database_service=DatabaseService(db_path=path))
+    database = DatabaseService(db_path=path)
+    _BACKUP_DATABASES.append(database)
+    return BackupService(database_service=database)
+
+
+def _close_backup_databases() -> None:
+    """Close what ``backups_of`` opened. On Windows an open connection keeps the
+    library and its -wal locked, so a file cannot be overwritten or removed."""
+    while _BACKUP_DATABASES:
+        _BACKUP_DATABASES.pop().close_all()
 
 
 def noise(path) -> None:
+    _close_backup_databases()
     for suffix in ("-wal", "-shm"):
         path.with_name(path.name + suffix).unlink(missing_ok=True)
     path.write_bytes(os.urandom(8192))
