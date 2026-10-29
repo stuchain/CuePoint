@@ -88,12 +88,12 @@ def read_back(path: Path) -> dict:
         }
     if suffix == ".m4a":
         return {
-            "key": tags["KEY\x00"][0],
-            "comment": tags["COMM"][0],
-            "year": tags["DATE"][0],
-            "label": tags["LABE"][0],
-            "bpm": tags["BPM\x00"][0],
-            "genre": tags["GENR"][0],
+            "key": bytes(tags["----:com.apple.iTunes:initialkey"][0]).decode(),
+            "comment": tags["\xa9cmt"][0],
+            "year": tags["\xa9day"][0],
+            "label": bytes(tags["----:com.apple.iTunes:LABEL"][0]).decode(),
+            "bpm": str(tags["tmpo"][0]),
+            "genre": tags["\xa9gen"][0],
         }
     return {
         "key": tags["KEY"][0],
@@ -133,13 +133,6 @@ class TestRoundTrip:
         path = audio_copy(tmp_path, kind)
         write(path)
         assert write(path, key="9B", comment="warm up") == (STATUS_OK, None)
-        if kind == "m4a":
-            # The catch-all writer adds beside what is there rather than replacing.
-            from mutagen.mp4 import MP4
-
-            tags = MP4(str(path)).tags
-            assert "9B" in tags["KEY\x00"] and "warm up" in tags["COMM"]
-            return
         again = read_back(path)
         assert again["key"] == "9B" and again["comment"] == "warm up"
 

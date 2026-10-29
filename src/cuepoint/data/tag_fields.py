@@ -37,8 +37,8 @@ would have nothing to do. Encodings are not part of a value: text is text.
 Formats
 -------
 MP3, AIFF, FLAC and Ogg Vorbis. WAV is skipped by the rule both existing callers
-apply, and every other container is refused: the writer's catch-all path writes
-atoms no player reads into an M4A, which is not a write worth recording.
+apply, and every other container is refused: an M4A's atoms are not recorded or restored
+here (the writer stores them under the standard iTunes atoms).
 
 Pictures
 --------

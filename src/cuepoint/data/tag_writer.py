@@ -97,7 +97,7 @@ def write_key_comment_year_to_file(
     """Write Key, Comment, Year, Label, BPM, and Genre to a single audio file's tags.
 
     Only writes tags that are provided (non-None, non-empty for text). Supports
-    MP3, WAV, AIFF (ID3), and FLAC/OGG (Vorbis comments). Does not raise;
+    MP3, WAV, AIFF (ID3), FLAC/OGG (Vorbis comments) and M4A/MP4 (iTunes atoms). Does not raise;
     returns (status, error_message).
 
     Args:
@@ -163,12 +163,150 @@ def _dispatch(
         return _write_flac(path, key, comment, year, label, bpm, genre)
     if suffix == ".ogg":
         return _write_vorbis(path, key, comment, year, label, bpm, genre, suffix)
+    if suffix in MP4_SUFFIXES:
+        return _write_mp4(path, key, comment, year, label, bpm, genre)
     return _write_mutagen_auto(path, key, comment, year, label, bpm, genre)
 
 
-def _mp4_name(name: str) -> str:
-    """The atom name mutagen stores a key under: four bytes, padded with NUL."""
-    return name.encode("latin-1")[:4].ljust(4, b"\x00").decode("latin-1")
+#: The MP4 family the writer has a dedicated path for.
+MP4_SUFFIXES = (".m4a", ".mp4", ".m4b")
+
+# M4A / MP4 atoms (before 1.0.0 these went under made-up atoms nothing reads).
+#
+# comment, genre, year and BPM use the iTunes atoms every player and Rekordbox
+# read: ``\xa9cmt``, ``\xa9gen``, ``\xa9day`` and ``tmpo`` (a list of integers).
+#
+# key is the freeform ``----:com.apple.iTunes:initialkey``: Mixed In Key writes
+# the key there, and MusicBrainz Picard and mutagen's own docs map "key" to it.
+# label is the freeform ``----:com.apple.iTunes:LABEL``: that is Picard's mapping
+# for a label (M4A has no standard label atom), and it matches the ``LABEL``
+# comment the Vorbis writers use. Freeform values are UTF-8 bytes.
+MP4_ATOMS = {
+    "key": "----:com.apple.iTunes:initialkey",
+    "comment": "\xa9cmt",
+    "year": "\xa9day",
+    "label": "----:com.apple.iTunes:LABEL",
+    "bpm": "tmpo",
+    "genre": "\xa9gen",
+}
+
+#: What versions before 1.0.0 wrote, as mutagen stores them (four bytes, padded
+#: with NUL). Read as a fallback, and removed whenever a file is written.
+MP4_LEGACY_ATOMS = {
+    "key": "KEY\x00",
+    "comment": "COMM",
+    "year": "DATE",
+    "label": "LABE",
+    "bpm": "BPM\x00",
+    "genre": "GENR",
+}
+
+
+def _mp4_text(value: Any) -> str:
+    """One atom value as text: freeform values are bytes, the rest are str or int."""
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value).decode("utf-8", errors="replace")
+    return str(value)
+
+
+def _mp4_bpm(bpm: Optional[str]) -> Optional[int]:
+    """The integer ``tmpo`` holds for a BPM text (``126.4`` -> 126), or None."""
+    if bpm is None:
+        return None
+    try:
+        value = int(round(float(str(bpm).strip())))
+    except (ValueError, OverflowError):
+        return None
+    return value if 0 < value < 65536 else None
+
+
+def read_mp4_fields(tags: Any, legacy_fallback: bool = True) -> "dict[str, str]":
+    """The six fields of an M4A/MP4 tag set, as text, by their standard atoms.
+
+    With ``legacy_fallback`` a field the standard atom does not hold is read from
+    the atom older versions wrote it under, so a file saved before 1.0.0 still
+    shows its values. Fields the file holds nowhere are left out.
+    """
+    found: dict[str, str] = {}
+    for field, atom in MP4_ATOMS.items():
+        names = (atom, MP4_LEGACY_ATOMS[field]) if legacy_fallback else (atom,)
+        for name in names:
+            values = [_mp4_text(v) for v in (tags.get(name) or [])]
+            if values:
+                found[field] = values[0]
+                break
+    return found
+
+
+def _write_mp4(
+    path: Path,
+    key: Optional[str],
+    comment: Optional[str],
+    year: Optional[str],
+    label: Optional[str] = None,
+    bpm: Optional[str] = None,
+    genre: Optional[str] = None,
+) -> Tuple[str, Optional[str]]:
+    """Write the six fields to an M4A/MP4 under the standard atoms (see MP4_ATOMS).
+
+    A value an earlier version stored under a made-up atom and that this call
+    does not replace is carried over to the standard atom; the made-up atoms are
+    then removed, so the file ends up clean.
+    """
+    try:
+        from mutagen.mp4 import MP4, AtomDataType, MP4FreeForm
+    except ImportError:
+        return (STATUS_UNSUPPORTED_FORMAT, "mutagen not available")
+    try:
+        audio = MP4(str(path))
+    except Exception as e:
+        return (STATUS_UNSUPPORTED_FORMAT, str(e))
+    if audio.tags is None:
+        audio.add_tags()
+    tags = audio.tags
+    if tags is None:  # add_tags always sets them
+        return (STATUS_WRITE_ERROR, "Could not create MP4 tags")
+
+    def freeform(text: str) -> Any:
+        return MP4FreeForm(text.encode("utf-8"), dataformat=AtomDataType.UTF8)
+
+    carried = read_mp4_fields(tags)  # standard first, then the made-up atoms
+    new: dict[str, Any] = {}
+    if key:
+        new["key"] = [freeform(key)]
+    if comment:
+        new["comment"] = [comment]
+    year_norm = _normalize_year(year)
+    if year_norm:
+        new["year"] = [year_norm]
+    if label:
+        new["label"] = [freeform(label)]
+    tempo = _mp4_bpm(bpm)
+    if tempo is not None:
+        new["bpm"] = [tempo]
+    if genre:
+        new["genre"] = [genre]
+    for field, atom in MP4_ATOMS.items():
+        if field in new:
+            tags[atom] = new[field]
+        elif atom not in tags and field in carried:
+            text = carried[field]
+            if field == "bpm":
+                number = _mp4_bpm(text)
+                if number is not None:
+                    tags[atom] = [number]
+            elif field in ("key", "label"):
+                tags[atom] = [freeform(text)]
+            else:
+                tags[atom] = [text]
+    for legacy in MP4_LEGACY_ATOMS.values():
+        if legacy in tags:
+            del tags[legacy]
+    try:
+        audio.save()
+    except Exception as e:
+        return (STATUS_WRITE_ERROR, str(e))
+    return (STATUS_OK, None)
 
 
 def _texts(frame: Any) -> List[str]:
@@ -220,6 +358,23 @@ def _verify_comments(
     return True
 
 
+def _verify_mp4(tags: Any, expected: "dict[str, Optional[str]]") -> bool:
+    """The standard atoms hold what was written and no made-up atom is left."""
+    if tags is None:
+        return False
+    held = read_mp4_fields(tags, legacy_fallback=False)
+    for field, wanted in expected.items():
+        if wanted is None:
+            continue
+        if field == "bpm":
+            tempo = _mp4_bpm(wanted)
+            if tempo is not None and held.get("bpm") != str(tempo):
+                return False
+        elif held.get(field) != wanted:
+            return False
+    return not any(name in tags for name in MP4_LEGACY_ATOMS.values())
+
+
 def _verify_tags(
     work: Path,
     suffix: str,
@@ -233,7 +388,7 @@ def _verify_tags(
     """Raise TagSaveError unless the copy's tags read back as the writer wrote them.
 
     The writer's own rules decide the expected text: WAV is Latin-1, years are
-    four digits, MP4 keys are the four-byte atom names mutagen stores. A format
+    four digits, M4A values sit under the standard iTunes atoms. A format
     whose tags this does not know how to read back (APE, ASF, ...) is only
     checked to open.
     """
@@ -263,23 +418,7 @@ def _verify_tags(
             if isinstance(tags, ID3):
                 ok = _verify_id3(tags, expected)
             elif isinstance(audio, MP4):
-                renamed = {
-                    "key": "KEY",
-                    "year": "DATE",
-                    "label": "LABEL",
-                    "bpm": "BPM",
-                    "genre": "GENRE",
-                    "comment": "COMMENT",
-                }
-                tags = audio.tags or {}
-                ok = all(
-                    wanted is None
-                    # The catch-all writer adds beside what a file already holds
-                    # under the name, so the value must be among them.
-                    or wanted
-                    in [str(v) for v in (tags.get(_mp4_name(renamed[f])) or [])]
-                    for f, wanted in expected.items()
-                )
+                ok = _verify_mp4(audio.tags, expected)
             elif isinstance(tags, VComment):
                 ok = _verify_comments(audio, expected, suffix == ".flac")
             else:
@@ -437,27 +576,30 @@ def _write_wav(
             audio.add_tags()
         except Exception as e:
             return (STATUS_WRITE_ERROR, str(e))
+    tags = audio.tags
+    if tags is None:  # add_tags always sets them
+        return (STATUS_WRITE_ERROR, "Could not create ID3 tags")
     # ID3v2.3 only allows Latin-1 (0) and UTF-16 (1); use 0 for maximum compatibility (e.g. Rekordbox).
     encoding = 0
     k = _latin1_safe(key)
     if k:
-        audio.tags["TKEY"] = TKEY(encoding=encoding, text=[k])
+        tags["TKEY"] = TKEY(encoding=encoding, text=[k])
     c = _latin1_safe(comment)
     if c:
-        audio.tags.delall("COMM")
-        audio.tags.add(COMM(encoding=encoding, lang="XXX", desc="", text=[c]))
+        tags.delall("COMM")
+        tags.add(COMM(encoding=encoding, lang="XXX", desc="", text=[c]))
     year_norm = _normalize_year(year)
     if year_norm:
-        _set_id3_year(audio.tags, year_norm, encoding)
+        _set_id3_year(tags, year_norm, encoding)
     lb = _latin1_safe(label)
     if lb:
-        audio.tags["TPUB"] = TPUB(encoding=encoding, text=[lb])
+        tags["TPUB"] = TPUB(encoding=encoding, text=[lb])
     b = _latin1_safe(bpm)
     if b:
-        audio.tags["TBPM"] = TBPM(encoding=encoding, text=[b])
+        tags["TBPM"] = TBPM(encoding=encoding, text=[b])
     g = _latin1_safe(genre)
     if g:
-        audio.tags["TCON"] = TCON(encoding=encoding, text=[g])
+        tags["TCON"] = TCON(encoding=encoding, text=[g])
     # Ensure id3 is the last chunk: remove any existing id3, then save (mutagen appends new id3).
     _delete_wav_id3_chunk(path)
     try:
@@ -564,6 +706,7 @@ def _write_vorbis(
     suffix: Optional[str] = None,
 ) -> Tuple[str, Optional[str]]:
     suffix = (suffix or path.suffix).lower()
+    audio: "FLAC | OggVorbis"
     if suffix == ".flac":
         from mutagen.flac import FLAC
 

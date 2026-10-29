@@ -4,12 +4,6 @@ What is known not to work as well as it should in CuePoint 1.0.0, and what to do
 
 ## In the app
 
-### Values written to M4A and MP4 files are not stored where players look
-
-**What happens.** When you sync to files, a track in an M4A or MP4 file gets its Key, Comment, Year, Label, BPM and Genre written, and the file is checked after the write. But the values are stored in the file under CuePoint's own names (`COMM`, `GENR`, `DATE`, `LABE`, `BPM`, `KEY`), not under the names M4A uses for a comment, a genre or a year (`©cmt`, `©gen`, `©day`). So the Comment in particular does not show in Rekordbox or in a player after **Reload Tag**. MP3, FLAC, WAV, AIFF and OGG files are not affected.
-
-**What to do.** Keep the values in CuePoint, or edit an M4A's comment in Rekordbox itself.
-
 ### The Missing files list has no right-click menu and no double-click to play
 
 **What happens.** On **Clean > Missing files** a row can be selected, but right-clicking it opens no menu and double-clicking it does nothing, unlike the Library's table. A missing file has nothing to play, so the double-click matters less; the missing piece is a menu with the choices the buttons carry.
