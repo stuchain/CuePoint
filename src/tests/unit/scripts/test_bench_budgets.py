@@ -11,6 +11,7 @@ not exist.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -331,6 +332,20 @@ BENCHES = {
     "search_keys": ("bench_search_keys", ["--tracks", "300"], "search_keys"),
     "tag_write": ("bench_tag_write", ["--files", "4"], "tag_write"),
 }
+
+
+@pytest.fixture(autouse=True)
+def _restore_environment():
+    """Put the environment back after each bench.
+
+    A bench's ``main`` sets variables for its own run (``CUEPOINT_SKIP_BEATPORT``
+    among them); left behind, they reach every later test in the process and
+    turn ``BeatportService`` into a no-op there.
+    """
+    saved = dict(os.environ)
+    yield
+    os.environ.clear()
+    os.environ.update(saved)
 
 
 @pytest.mark.parametrize("name", sorted(BENCHES))

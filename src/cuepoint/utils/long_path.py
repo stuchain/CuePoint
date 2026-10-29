@@ -26,7 +26,7 @@ from __future__ import annotations
 import ntpath
 import os
 import re
-from typing import Optional, Union
+from typing import Optional, Union, overload
 
 #: The longest absolute path Windows opens without the prefix: ``MAX_PATH`` is
 #: 260 including the terminating NUL.
@@ -54,6 +54,20 @@ def display_path(path: Optional[str]) -> Optional[str]:
     if path.startswith(_PREFIX):
         return path[len(_PREFIX) :]
     return path
+
+
+@overload
+def os_path(path: Union[str, "os.PathLike[str]"], reserve: int = 0) -> str: ...
+
+
+@overload
+def os_path(path: None, reserve: int = 0) -> None: ...
+
+
+@overload
+def os_path(
+    path: Union[str, "os.PathLike[str]", None], reserve: int = 0
+) -> Optional[str]: ...
 
 
 def os_path(
