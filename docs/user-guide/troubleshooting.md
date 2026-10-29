@@ -142,6 +142,28 @@ If a command-line run is interrupted:
 - Check file isn't open in another program
 - Try different export format
 
+### Writing Tags Fails
+
+CuePoint saves a file's tags through a checked copy: it copies the file next to
+itself, writes the tags into the copy, checks that the tags read back and that
+the audio is byte for byte the same, and only then replaces your file. If
+anything goes wrong your file is left as it was.
+
+**Messages**:
+- *Not enough space to save tags safely*: the folder needs room for a second
+  copy of the file. Free some space and try again.
+- *The file is in use. Try again.*: another program (a player, Rekordbox) holds
+  the file open. Close it there, or stop playback, and try again.
+
+**What a save does not keep**: hard links to the file (the saved file is a new
+file), extended attributes and access-control lists. A symbolic link is
+followed, so the file it points to is updated and the link stays. The file's
+modified time and permissions are kept.
+
+If a write is interrupted, a hidden file named like `.song.cuepoint-tmp-1234.mp3`
+may be left beside the music. CuePoint removes such leftovers the next time it
+writes that file or starts.
+
 ### Export File Empty
 
 **Problem**: Exported file has no data.
