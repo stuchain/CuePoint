@@ -84,6 +84,13 @@ export interface RestoreOptions {
 
 const FAILED_UNCHANGED = "Your library was not changed.";
 
+/** The words with a full stop, and "Your library was not changed." after them unless they already say so. */
+export function withUnchanged(words: string): string {
+  const trimmed = words.trim();
+  const stopped = /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+  return /not changed|nothing was changed/i.test(stopped) ? stopped : `${stopped} ${FAILED_UNCHANGED}`;
+}
+
 /** A backup name from the page: one file name, never a path. */
 export function validBackupName(value: unknown): value is string {
   return (
@@ -297,7 +304,7 @@ export class Backups {
       outcome = {
         ok: false,
         errorCode: "RESTORE_FAILED",
-        message: `Your library could not be restored. ${FAILED_UNCHANGED}`,
+        message: withUnchanged("Your library could not be restored."),
       };
     }
 
@@ -326,7 +333,7 @@ export class Backups {
       return {
         ok: false,
         errorCode: "RESTORE_FAILED",
-        message: `The backup could not be restored. ${FAILED_UNCHANGED}`,
+        message: withUnchanged("The backup could not be restored."),
       };
     }
     if (run.timedOut) {
@@ -357,6 +364,6 @@ export class Backups {
       };
     }
     const words = text(failure?.message) ?? "The backup could not be restored.";
-    return { ok: false, errorCode: code, message: `${words} ${FAILED_UNCHANGED}` };
+    return { ok: false, errorCode: code, message: withUnchanged(words) };
   }
 }

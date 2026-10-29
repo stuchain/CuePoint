@@ -310,7 +310,7 @@ class BackupService(IBackupService):
         source = self._db.db_path
         if not source.exists():
             raise DatabaseError(
-                message="There is no library to back up yet",
+                message="There is no library to back up yet.",
                 error_code="BACKUP_NO_DATABASE",
                 context={"db_path": str(source)},
             )
@@ -344,7 +344,7 @@ class BackupService(IBackupService):
                 raise DatabaseError(
                     message=(
                         "The backup was written but could not be read back, "
-                        "so it was not kept"
+                        "so it was not kept."
                     ),
                     error_code="BACKUP_VERIFY_FAILED",
                     context={"target": str(target), "cause": exc.error_code},
@@ -363,7 +363,7 @@ class BackupService(IBackupService):
                     self.required_free_bytes(), self._free_or_zero()
                 ) from exc
             raise DatabaseError(
-                message="Could not create a backup",
+                message="Could not create a backup.",
                 error_code="BACKUP_FAILED",
                 context={
                     "db_path": str(source),
@@ -705,14 +705,14 @@ class BackupService(IBackupService):
         )
         if not valid:
             raise DatabaseError(
-                message="That is not the name of a backup",
+                message="That is not the name of a backup.",
                 error_code="BACKUP_INVALID_NAME",
                 context={"name": str(name)[:200]},
             )
         path = self.backup_dir / name
         if not path.is_file():
             raise DatabaseError(
-                message="That backup no longer exists",
+                message="That backup no longer exists.",
                 error_code="BACKUP_NOT_FOUND",
                 context={"name": name},
             )
@@ -730,7 +730,7 @@ class BackupService(IBackupService):
         except OSError as exc:
             _logger.warning("[backup] could not delete %s: %s", name, exc)
             raise DatabaseError(
-                message="Could not delete that backup",
+                message="Could not delete that backup.",
                 error_code="BACKUP_DELETE_FAILED",
                 context={"name": name, "cause": str(exc)},
             ) from exc
@@ -748,7 +748,7 @@ class BackupService(IBackupService):
         path = Path(backup_path)
         if not path.is_file():
             raise DatabaseError(
-                message="That backup was not found",
+                message="That backup was not found.",
                 error_code="BACKUP_NOT_FOUND",
                 context={"backup": str(path)},
             )
@@ -761,14 +761,14 @@ class BackupService(IBackupService):
                 connection.close()
         except sqlite3.Error as exc:
             raise DatabaseError(
-                message="This backup could not be read",
+                message="This backup could not be read.",
                 error_code="BACKUP_UNREADABLE",
                 context={"backup": str(path), "cause": str(exc)},
             ) from exc
 
         if result != "ok":
             raise DatabaseError(
-                message="This backup failed its integrity check",
+                message="This backup failed its integrity check.",
                 error_code="BACKUP_CORRUPT",
                 context={"backup": str(path), "quick_check": result},
             )
@@ -816,7 +816,7 @@ class BackupService(IBackupService):
             raise DatabaseError(
                 message=(
                     "The library could not be copied before restoring. "
-                    "Nothing was changed"
+                    "Nothing was changed."
                 ),
                 error_code="RESTORE_FAILED",
                 context={"db_path": str(live), "cause": str(exc)},
@@ -853,7 +853,7 @@ class BackupService(IBackupService):
             raise DatabaseError(
                 message=(
                     "The library could not be set aside before restoring. "
-                    "Nothing was changed"
+                    "Nothing was changed."
                 ),
                 error_code="RESTORE_FAILED",
                 context={"db_path": str(live), "cause": str(exc)},
@@ -866,7 +866,7 @@ class BackupService(IBackupService):
     ) -> DatabaseError:
         _logger.warning("[backup] restore failed: %s", exc)
         return DatabaseError(
-            message="The backup could not be restored. Your library was not changed",
+            message="The backup could not be restored. Your library was not changed.",
             error_code="RESTORE_FAILED",
             context={
                 "backup": str(source),

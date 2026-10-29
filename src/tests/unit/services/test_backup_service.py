@@ -739,8 +739,8 @@ class TestMessagesAndNames:
         with pytest.raises(DatabaseError) as exc:
             backups.verify_backup(bogus)
         assert exc.value.message in {
-            "This backup could not be read",
-            "This backup failed its integrity check",
+            "This backup could not be read.",
+            "This backup failed its integrity check.",
         }
         assert str(tmp_path) not in exc.value.message
 

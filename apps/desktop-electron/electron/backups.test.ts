@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { Backups, validBackupName, type BackupsDeps, type RestoreEvent } from "./backups";
+import { Backups, validBackupName, withUnchanged, type BackupsDeps, type RestoreEvent } from "./backups";
 import type { EngineJobList } from "./engineClient";
 import type { EngineRunResult, EngineStatus } from "./engineSupervisor";
 
@@ -334,5 +334,15 @@ describe("validBackupName", () => {
   it("accepts a file name and nothing else", () => {
     expect(validBackupName("cuepoint-20251007-140200-manual.db")).toBe(true);
     for (const bad of ["", "..", "a/b", "a\\b", "a\0b", ".x", "x".repeat(256), 3]) expect(validBackupName(bad)).toBe(false);
+  });
+});
+
+describe("withUnchanged", () => {
+  it("ends with a full stop and says the library was not changed once", () => {
+    expect(withUnchanged("That backup is damaged")).toBe("That backup is damaged. Your library was not changed.");
+    expect(withUnchanged("That backup is damaged. Your library was not changed.")).toBe(
+      "That backup is damaged. Your library was not changed.",
+    );
+    expect(withUnchanged("Nothing was changed.")).toBe("Nothing was changed.");
   });
 });
