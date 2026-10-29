@@ -177,11 +177,16 @@ describe("user-visible words", () => {
  * entry is checked in every literal that reads as text, the same way as above.
  */
 const TOKEN = /\btokens?\b/i;
-const GLOSSARY: { never: RegExp; say: string; only?: RegExp }[] = [
+const GLOSSARY: { never: RegExp; say: string; only?: RegExp; except?: RegExp }[] = [
   { never: TOKEN, say: "Sign in to Beatport" },
   { never: /\b(revert|reverted|reverting|reverts|put back)\b/i, say: "Undo" },
   { never: /\bgo back to\b/i, say: "Undo" },
-  { never: /\brestor(e|ed|es|ing)\b/i, say: "Undo" },
+  {
+    never: /\brestor(e|ed|es|ing)\b/i,
+    say: "Undo",
+    // A backup is restored (HARDEN-01, DEC-305): "Undo" is for taking back a change, not for going back to a copy.
+    except: /\.\/(screens\/(backups|recovery)\/|screens\/BackupsSection\.tsx|components\/shell\/OfflineBanner\.tsx)/,
+  },
   { never: /\baccepted\b/i, say: "confirmed (a match), Mark OK (a warning)" },
   { never: /rekordbox export|xml export|your export|this export/i, say: "Rekordbox file" },
   { never: /library service/i, say: "not named (CuePoint stopped working in the background)" },
@@ -218,6 +223,7 @@ const GLOSSARY_ALLOWED: { file: RegExp; text: RegExp; reason: string }[] = [
 function glossaryWord(text: string, file: string): string | undefined {
   for (const g of GLOSSARY) {
     if (g.only && !g.only.test(file)) continue;
+    if (g.except?.test(file)) continue;
     const m = g.never.exec(text);
     if (!m) continue;
     if (g.never === TOKEN && GLOSSARY_ALLOWED.some((a) => a.file.test(file) && a.text.test(text.trim()))) continue;

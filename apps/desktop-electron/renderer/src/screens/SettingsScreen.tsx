@@ -5,6 +5,7 @@ import { useLocation } from "react-router-dom";
 import { Button, Panel } from "../components";
 import { AboutUpdatesSection } from "./AboutUpdatesSection";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
+import { BackupsSection } from "./BackupsSection";
 import { BeatportSettingsPanel } from "./BeatportSettingsPanel";
 import { ErrorReportingSettingsPanel } from "./ErrorReportingSettingsPanel";
 import { ExitClearingSettings } from "./ExitClearingSettings";
@@ -182,6 +183,10 @@ export function SettingsScreen({
             <ErrorReportingSettingsPanel onOpenPrivacy={onOpenPrivacy} focusToken={focusReporting}>
               <ExitClearingSettings />
             </ErrorReportingSettingsPanel>
+          </Section>
+
+          <Section id="settings-backups">
+            <BackupsSection />
           </Section>
 
           <Section id="settings-about">

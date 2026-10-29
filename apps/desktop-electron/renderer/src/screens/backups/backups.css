@@ -1,0 +1,52 @@
+/* Backups: the list in Settings and the recovery screen's "Choose another backup" (HARDEN-01, DEC-305). Tokens only. */
+.backup-list {
+  display: flex;
+  flex-direction: column;
+  margin: var(--space-md) 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--divider);
+}
+
+/* Date, reason, size, Restore: the first two share what is left, the size is a fixed column. */
+.backup-list__row {
+  display: grid;
+  grid-template-columns: minmax(calc(150px * var(--scale)), 1.1fr) minmax(calc(170px * var(--scale)), 1.6fr) calc(70px * var(--scale)) auto;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--row-height);
+  padding: var(--space-xs) 0;
+  border-bottom: var(--divider);
+  color: var(--fg-primary);
+  font-size: var(--text-body);
+}
+
+.backup-list__when {
+  font-variant-numeric: tabular-nums;
+}
+
+.backup-list__why {
+  color: var(--fg-muted);
+}
+
+.backup-list__size {
+  color: var(--fg-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.backup-list__acts {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: flex-end;
+}
+
+.backups-section__top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.backups-section__status {
+  margin: var(--space-md) 0 0;
+}

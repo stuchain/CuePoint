@@ -28,6 +28,7 @@ const TITLES = [
   "Beatport",
   "Rekordbox",
   "Privacy",
+  "Backups",
   "About & updates",
 ];
 

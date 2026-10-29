@@ -50,12 +50,23 @@ function relative(path: string): string {
   return path.replace(/^\/src\//, "");
 }
 
+/**
+ * Files whose words are the owner's, word for word, from the Phase 18 mockups he approved on
+ * 2026-10-29 (DEC-305), contractions and all: the full-disk line, the unclean-exit line, the
+ * recovery screens and the restore questions. The pattern still bans the rest of the app.
+ */
+const CONTRACTIONS_APPROVED: ReadonlyArray<{ file: string; reason: string }> = [
+  { file: "screens/BackupsSection.tsx", reason: "\"couldn't\" in a failed backup's line" },
+  { file: "screens/backups/useRestoreFlow.tsx", reason: "\"Restore when it's done\" in the busy question, from mockup 2" },
+];
+
 function offenders(): Map<string, string[]> {
   const found = new Map<string, string[]>();
   for (const [path, source] of Object.entries(sources)) {
     const text = code(source);
+    const approved = CONTRACTIONS_APPROVED.some((entry) => relative(path) === entry.file);
     const hits = Object.entries(BANNED)
-      .filter(([, pattern]) => pattern.test(text))
+      .filter(([name, pattern]) => !(approved && name === "contraction") && pattern.test(text))
       .map(([name]) => name);
     if (hits.length > 0) found.set(relative(path), hits);
   }
@@ -67,6 +78,14 @@ describe("wording guard (D2, D3)", () => {
     const bad = [...offenders()]
       .map(([path, hits]) => `${path} (${hits.join(", ")})`);
     expect(bad, `use the shared words in format/words.ts: ${bad.join("; ")}`).toEqual([]);
+  });
+
+  it("keeps the approved-contractions list honest: each file still has one", () => {
+    for (const entry of CONTRACTIONS_APPROVED) {
+      const source = sources[`/src/${entry.file}`];
+      expect(source, entry.file).toBeDefined();
+      expect(BANNED["contraction"]!.test(code(source!)), `${entry.file}: ${entry.reason}`).toBe(true);
+    }
   });
 
   it("still sees each pattern", () => {

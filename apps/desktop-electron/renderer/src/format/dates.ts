@@ -152,6 +152,17 @@ export function formatDayTime(value: DateInput, options: DateOptions = {}): stri
   );
 }
 
+/** "Tuesday, October 27, 10:10 PM": a moment named in full, for a question about going back to it. */
+export function formatWeekdayMoment(value: DateInput, options: DateOptions = {}): string {
+  const date = toDate(value);
+  if (!date) return "";
+  // The day and the time apart, so the locale's "at" never creeps between them.
+  const day = plain(
+    new Intl.DateTimeFormat(options.locale ?? systemLocale(), { weekday: "long", month: "long", day: "numeric" }).format(date),
+  );
+  return `${day}, ${formatTimeOfDay(date, options)}`;
+}
+
 /** Just the time of day on the computer's clock: "5:35 PM" or "17:35". */
 export function formatTimeOfDay(value: DateInput, options: DateOptions = {}): string {
   const date = toDate(value);
