@@ -241,6 +241,15 @@ def imported(store, source) -> Path:
     return source
 
 
+def _case_insensitive_volume(path: Path) -> bool:
+    """Whether this volume reaches ``path`` by a differently-cased name."""
+    upper = path.parent / path.name.upper()
+    try:
+        return upper.exists() and os.path.samefile(path, upper)
+    except OSError:  # pragma: no cover
+        return False
+
+
 @pytest.fixture
 def folder(tmp_path) -> Path:
     path = tmp_path / "exports"
@@ -608,10 +617,10 @@ class TestTheStart:
         self, engine, store, imported
     ):
         # Upper case names the same file only where the filesystem ignores case
-        # (Windows, macOS); on Linux it is another file, and allowed.
-        upper = imported.parent / imported.name.upper()
-        name = upper.name if upper.exists() else imported.name
-        spelled = str(imported.parent / "." / name)
+        # (Windows, default macOS); on Linux it is another file (see the twin).
+        if not _case_insensitive_volume(imported):
+            pytest.skip("this volume is case-sensitive: the two names are two files")
+        spelled = str(imported.parent / "." / imported.name.upper())
 
         error = refused(
             start(engine, {"destination_path": spelled}), 400, api.DESTINATION_REFUSED
@@ -619,6 +628,20 @@ class TestTheStart:
 
         assert error["reason"] == DESTINATION_IS_SOURCE
         assert export_jobs(store) == []
+
+    def test_a_source_spelled_with_other_case_is_another_file_on_a_case_sensitive_volume(
+        self, engine, store, imported
+    ):
+        if _case_insensitive_volume(imported):
+            pytest.skip("this volume ignores case: the two names are one file")
+        before = imported.read_bytes()
+        spelled = imported.parent / imported.name.upper()
+
+        answer = ok(start(engine, {"destination_path": str(spelled)}), 202)
+
+        wait_until(lambda: store.get(answer["job_id"]).state in TERMINAL, "the export")
+        assert imported.read_bytes() == before, "the source was overwritten"
+        assert spelled.is_file() and spelled != imported
 
     @pytest.mark.parametrize(
         "make, reason",

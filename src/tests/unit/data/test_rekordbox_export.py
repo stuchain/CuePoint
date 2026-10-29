@@ -961,6 +961,30 @@ class TestItRefusesTheWrongThings:
         with pytest.raises(ValidationError):
             refuse_source_as_destination(str(source), str(source).upper())
 
+    def test_the_unicode_form_of_the_source_name_is_the_source_only_where_the_volume_says_so(
+        self, tmp_path: Path
+    ):
+        """APFS ignores the form on lookup, ext4 and NTFS do not.
+
+        The guard asks the volume (``samefile``), so it refuses exactly where
+        the two spellings name one file and allows where they are two files.
+        """
+        import unicodedata
+
+        composed = tmp_path / unicodedata.normalize("NFC", "Beyoncé.xml")
+        composed.write_bytes(COLLECTION)
+        decomposed = tmp_path / unicodedata.normalize("NFD", "Beyoncé.xml")
+        assert str(composed) != str(decomposed)
+        try:
+            same = decomposed.exists() and os.path.samefile(composed, decomposed)
+        except OSError:  # pragma: no cover
+            same = False
+        if same:
+            with pytest.raises(ValidationError):
+                refuse_source_as_destination(str(composed), str(decomposed))
+        else:
+            refuse_source_as_destination(str(composed), str(decomposed))
+
     def test_a_different_file_in_the_same_folder_is_allowed(self, source: Path):
         refuse_source_as_destination(str(source), str(source.parent / "export.xml"))
 
