@@ -144,6 +144,8 @@ def main(argv: List[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report = run(args.files, args.audio_mb)
+    # The size every report carries as `tracks` (the guide's tables select by it).
+    report["tracks"] = args.files
     # The mean 1,000 files take; padded MP3s (--audio-mb) are a different question.
     measured = {"via_copy_s": report["via_copy"]["total_seconds"]}
     report["budget"] = budget_check.evaluate(

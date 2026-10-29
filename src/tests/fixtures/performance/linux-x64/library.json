@@ -1,0 +1,532 @@
+{
+  "tracks": 50000,
+  "playlists": 250,
+  "collections": 200,
+  "tags": 40,
+  "database_mb": 100.6,
+  "phases": [
+    {
+      "name": "generate",
+      "seconds": 3.74,
+      "peak_mb": 0.0,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 50000,
+        "bytes": 20672614
+      }
+    },
+    {
+      "name": "import",
+      "seconds": 18.79,
+      "peak_mb": 56.9,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 50000,
+        "inserted": 50000,
+        "playlists": 250,
+        "entries": 175000
+      }
+    },
+    {
+      "name": "re-import (idempotent)",
+      "seconds": 22.6,
+      "peak_mb": 114.6,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 50000,
+        "inserted": 0,
+        "updated": 50000
+      }
+    },
+    {
+      "name": "organize",
+      "seconds": 11.69,
+      "peak_mb": 0.7,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 50000,
+        "collections": 200,
+        "folders": 8,
+        "tags": 40,
+        "assignments": 199940,
+        "largest_collection": 5000
+      }
+    },
+    {
+      "name": "batch: favorite everything matching",
+      "seconds": 16.53,
+      "peak_mb": 3.0,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 50000,
+        "total": 50000,
+        "changed": 50000,
+        "unchanged": 0
+      }
+    },
+    {
+      "name": "diff, nothing changed",
+      "seconds": 0.0,
+      "peak_mb": 0.0,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 50000,
+        "is_empty": true,
+        "read_the_file": false
+      }
+    },
+    {
+      "name": "diff, nothing changed (forced)",
+      "seconds": 9.41,
+      "peak_mb": 68.5,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 50000,
+        "is_empty": true,
+        "read_the_file": true
+      }
+    },
+    {
+      "name": "generate edited",
+      "seconds": 2.93,
+      "peak_mb": 0.4,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 49750,
+        "bytes": 20612129
+      }
+    },
+    {
+      "name": "diff, edited",
+      "seconds": 10.14,
+      "peak_mb": 69.1,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 50000,
+        "added": 250,
+        "changed": 0,
+        "removed": 500,
+        "referenced_tracks": 500,
+        "referencing_collections": 72
+      }
+    },
+    {
+      "name": "apply refresh",
+      "seconds": 19.56,
+      "peak_mb": 114.5,
+      "rss_mb": null,
+      "detail": {
+        "tracks": 49750,
+        "inserted": 250,
+        "deleted": 500
+      }
+    },
+    {
+      "name": "build a year of play history",
+      "seconds": 0.77,
+      "peak_mb": 7.4,
+      "rss_mb": null,
+      "detail": {
+        "weeks": 52,
+        "play_counts": 26000
+      }
+    }
+  ],
+  "browse": [
+    {
+      "name": "first page, default order",
+      "ms": 1.65,
+      "rows": 100
+    },
+    {
+      "name": "count, whole library",
+      "ms": 0.03,
+      "rows": 50000
+    },
+    {
+      "name": "deep page (offset 49,900)",
+      "ms": 3.41,
+      "rows": 100
+    },
+    {
+      "name": "first page, by title",
+      "ms": 11.86,
+      "rows": 100
+    },
+    {
+      "name": "first page, by bpm",
+      "ms": 22.04,
+      "rows": 100
+    },
+    {
+      "name": "first page, by genre",
+      "ms": 26.16,
+      "rows": 100
+    },
+    {
+      "name": "first page, by rating",
+      "ms": 9.97,
+      "rows": 100
+    },
+    {
+      "name": "first page, by date_added",
+      "ms": 13.75,
+      "rows": 100
+    },
+    {
+      "name": "first page, by duration_seconds",
+      "ms": 14.67,
+      "rows": 100
+    },
+    {
+      "name": "first page, by bpm descending",
+      "ms": 21.26,
+      "rows": 100
+    },
+    {
+      "name": "text query, first page",
+      "ms": 18.65,
+      "rows": 100
+    },
+    {
+      "name": "text query, count",
+      "ms": 24.39,
+      "rows": 616
+    },
+    {
+      "name": "playlist scope, first page",
+      "ms": 2.67,
+      "rows": 100
+    },
+    {
+      "name": "playlist scope, playlist order",
+      "ms": 5.57,
+      "rows": 100
+    },
+    {
+      "name": "playlist scope, count",
+      "ms": 0.16,
+      "rows": 700
+    },
+    {
+      "name": "folder scope, first page",
+      "ms": 42.27,
+      "rows": 100
+    },
+    {
+      "name": "folder scope, count",
+      "ms": 39.89,
+      "rows": 9913
+    },
+    {
+      "name": "filtered page, one rule",
+      "ms": 1.75,
+      "rows": 100
+    },
+    {
+      "name": "filtered count, one rule",
+      "ms": 5.19,
+      "rows": 6250
+    },
+    {
+      "name": "filtered page, three rules",
+      "ms": 5.42,
+      "rows": 100
+    },
+    {
+      "name": "filtered count, three rules",
+      "ms": 11.81,
+      "rows": 756
+    },
+    {
+      "name": "facet: genre",
+      "ms": 16.94,
+      "rows": 8
+    },
+    {
+      "name": "facet: label (120 values)",
+      "ms": 26.95,
+      "rows": 100
+    },
+    {
+      "name": "facet: rating",
+      "ms": 33.25,
+      "rows": 6
+    },
+    {
+      "name": "facet: artist (900, no index)",
+      "ms": 56.55,
+      "rows": 100
+    },
+    {
+      "name": "facet: genre under a filter",
+      "ms": 39.73,
+      "rows": 8
+    },
+    {
+      "name": "facet: bpm range",
+      "ms": 14.25,
+      "rows": 0
+    },
+    {
+      "name": "key population, whole library",
+      "ms": 136.83,
+      "rows": 13
+    },
+    {
+      "name": "key population, three playlists",
+      "ms": 2.65,
+      "rows": 13
+    }
+  ],
+  "organization": [
+    {
+      "name": "Collection scope, first page",
+      "ms": 9.2,
+      "rows": 100
+    },
+    {
+      "name": "Collection scope, count",
+      "ms": 3.36,
+      "rows": 5000
+    },
+    {
+      "name": "membership rule, first page",
+      "ms": 3.38,
+      "rows": 100
+    },
+    {
+      "name": "membership rule, count",
+      "ms": 1.21,
+      "rows": 5000
+    },
+    {
+      "name": "tag rule, first page",
+      "ms": 7.53,
+      "rows": 100
+    },
+    {
+      "name": "tag rule, count",
+      "ms": 4.82,
+      "rows": 5000
+    },
+    {
+      "name": "two tag rules, count",
+      "ms": 6.64,
+      "rows": 0
+    },
+    {
+      "name": "facet: tag",
+      "ms": 57.44,
+      "rows": 40
+    },
+    {
+      "name": "facet: tag under a filter",
+      "ms": 42.42,
+      "rows": 40
+    },
+    {
+      "name": "the Collections tree",
+      "ms": 1.08,
+      "rows": 208
+    },
+    {
+      "name": "the tag vocabulary",
+      "ms": 9.32,
+      "rows": 40
+    },
+    {
+      "name": "reorder inside 5,000 entries",
+      "ms": 7.45,
+      "rows": 5000
+    }
+  ],
+  "statistics": [
+    {
+      "name": "count, whole library",
+      "ms": 0.04,
+      "rows": 49750
+    },
+    {
+      "name": "plays, all time",
+      "ms": 194.3,
+      "rows": 10,
+      "second_ms": 0.035
+    },
+    {
+      "name": "plays, all time, 200 rows",
+      "ms": 268.97,
+      "rows": 200,
+      "second_ms": 0.018
+    },
+    {
+      "name": "plays, since 90 days",
+      "ms": 118.21,
+      "rows": 10,
+      "second_ms": 0.019
+    },
+    {
+      "name": "plays, since the last read",
+      "ms": 43.83,
+      "rows": 10,
+      "second_ms": 0.018
+    },
+    {
+      "name": "spreads",
+      "ms": 510.94,
+      "rows": 49750,
+      "second_ms": 0.02
+    },
+    {
+      "name": "spreads, playlist scope",
+      "ms": 29.69,
+      "rows": 700,
+      "second_ms": 0.018
+    },
+    {
+      "name": "health",
+      "ms": 513.41,
+      "rows": 49750,
+      "second_ms": 0.017
+    },
+    {
+      "name": "health, playlist scope",
+      "ms": 345.87,
+      "rows": 700,
+      "second_ms": 0.019
+    }
+  ],
+  "batch": {
+    "total": 50000,
+    "changed": 50000,
+    "unchanged": 0
+  },
+  "problems": [
+    "library: import_s 18.79 is over its budget of 16.4 on linux-x64",
+    "library: reimport_s 22.6 is over its budget of 20.9 on linux-x64",
+    "library: facet_small_ms 56.55 is over its budget of 18 on linux-x64",
+    "library: statistics_health_ms 513.41 is over its budget of 500 on linux-x64"
+  ],
+  "budget": {
+    "leg": "linux-x64",
+    "provisional": "set after the first green scale run (HARDEN-07, DEC-184)",
+    "enforced": true,
+    "size": 50000,
+    "reference": 50000,
+    "metrics": {
+      "import_s": {
+        "value": 18.79,
+        "budget": 16.4,
+        "over": true
+      },
+      "reimport_s": {
+        "value": 22.6,
+        "budget": 20.9,
+        "over": true
+      },
+      "refresh_unchanged_ms": {
+        "value": 0.0,
+        "budget": 25.0,
+        "over": false
+      },
+      "refresh_diff_s": {
+        "value": 10.14,
+        "budget": 18.2,
+        "over": false
+      },
+      "refresh_apply_s": {
+        "value": 19.56,
+        "budget": 21.0,
+        "over": false
+      },
+      "browse_first_page_ms": {
+        "value": 1.65,
+        "budget": 10.0,
+        "over": false
+      },
+      "browse_deep_page_ms": {
+        "value": 3.41,
+        "budget": 10.0,
+        "over": false
+      },
+      "browse_sort_ms": {
+        "value": 26.16,
+        "budget": 29.0,
+        "over": false
+      },
+      "search_page_ms": {
+        "value": 18.65,
+        "budget": 29.0,
+        "over": false
+      },
+      "search_count_ms": {
+        "value": 24.39,
+        "budget": 36.0,
+        "over": false
+      },
+      "browse_playlist_ms": {
+        "value": 2.67,
+        "budget": 10.0,
+        "over": false
+      },
+      "browse_folder_ms": {
+        "value": 42.27,
+        "budget": 72.0,
+        "over": false
+      },
+      "filter_ms": {
+        "value": 11.81,
+        "budget": 20.0,
+        "over": false
+      },
+      "facet_small_ms": {
+        "value": 56.55,
+        "budget": 18.0,
+        "over": true
+      },
+      "facet_list_ms": {
+        "value": 26.95,
+        "budget": 65.0,
+        "over": false
+      },
+      "facet_filtered_ms": {
+        "value": 39.73,
+        "budget": 53.0,
+        "over": false
+      },
+      "facet_range_ms": {
+        "value": 14.25,
+        "budget": 35.0,
+        "over": false
+      },
+      "statistics_plays_ms": {
+        "value": 268.97,
+        "budget": 500.0,
+        "over": false
+      },
+      "statistics_spreads_ms": {
+        "value": 510.94,
+        "budget": 1000.0,
+        "over": false
+      },
+      "statistics_health_ms": {
+        "value": 513.41,
+        "budget": 500.0,
+        "over": true
+      }
+    },
+    "problems": [
+      "library: import_s 18.79 is over its budget of 16.4 on linux-x64",
+      "library: reimport_s 22.6 is over its budget of 20.9 on linux-x64",
+      "library: facet_small_ms 56.55 is over its budget of 18 on linux-x64",
+      "library: statistics_health_ms 513.41 is over its budget of 500 on linux-x64"
+    ]
+  },
+  "run": {
+    "leg": "linux-x64",
+    "commit": "",
+    "date": "2026-10-29",
+    "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+    "python": "3.13.17"
+  }
+}

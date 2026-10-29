@@ -6,8 +6,14 @@
     "A time under 10 ms is floored at 10 ms: below that a shared runner measures noise.",
     "Where nothing was recorded (or the guide's number is out of date) the base is a first estimate from a Linux container run, said so in _basis.",
     "A leg's scale multiplies every time budget (the Intel Mac's runner is 2.5 times slower than Linux); its overrides replace single budgets.",
-    "A leg that is more than twice as slow as the others is investigated, never loosened."
+    "A leg that is more than twice as slow as the others is investigated, never loosened.",
+    "Ratio budgets (the decoder and waveform-analysis responsiveness limits, 1.5 times idle) are in those benches and are the same on every leg: a ratio compares a leg with itself, so no scale applies."
   ],
+  "recorded_only": {
+    "match_storage": "bench_match_storage.py measures what storing match attempts costs (rows and megabytes per candidate); it is a size estimate, not a speed, so it is recorded in the run's JSON and has no budget",
+    "decoder": "bench_decoder.py holds its own ratio budget (RESPONSIVENESS_BUDGET); nothing is scaled",
+    "waveform_analysis": "bench_waveform_analysis.py holds its own ratio budget (RESPONSIVENESS_BUDGET); nothing is scaled"
+  },
   "legs": {
     "windows-x64": {"scale": 1.0, "overrides": {}},
     "linux-x64": {"scale": 1.0, "overrides": {}},

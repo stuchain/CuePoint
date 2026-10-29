@@ -59,6 +59,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 
+import budget_check  # noqa: E402
 from cuepoint.data import audio_decode as ad  # noqa: E402
 
 TRACK_SECONDS = 360
@@ -412,7 +413,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         shutil.rmtree(workspace, ignore_errors=True)
     report(result)
     if args.json:
-        args.json.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        budget_check.write_json(args.json, result)
     missed = over_budget(result)
     for line in missed:
         print(f"OVER BUDGET: {line}", file=sys.stderr)

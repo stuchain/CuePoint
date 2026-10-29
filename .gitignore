@@ -171,6 +171,8 @@ src/output/
 !scripts/budgets.json
 !src/tests/fixtures/performance/
 !src/tests/fixtures/performance/*.json
+!src/tests/fixtures/performance/*/
+!src/tests/fixtures/performance/*/*.json
 
 # Agent hook config (exception to user-output *.json above). These hooks enforce
 # repo invariants at edit time, so they are source and must survive a clone.

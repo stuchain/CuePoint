@@ -375,3 +375,25 @@ class TestTheGuide:
             (results / "linux-x64" / "library.json").read_text(encoding="utf-8")
         )
         assert before == after
+
+
+class TestTagWrite:
+    def test_the_recorded_run_fills_the_tag_write_table(self, results):
+        text = _written(results)
+        rows = {row[0]: row for row in _section(text, "Writing tags")}
+        report = json.loads(
+            (FIXTURE / "linux-x64" / "tag_write.json").read_text(encoding="utf-8")
+        )
+        assert report["tracks"] == 1000
+        cell = rows["1,000 files, through the checked copy"][2]
+        assert cell == tables.format_value(
+            report["budget"]["metrics"]["via_copy_s"]["value"], "s"
+        )
+        assert rows["1,000 files, through the checked copy"][1] == tables.PLACEHOLDER
+
+    def test_a_leg_with_no_reports_leaves_its_column_as_it_was(self, results):
+        text = _written(results)
+        windows = {
+            row[1] for area in tables.AREAS for row in _section(text, area.title)
+        }
+        assert windows == {tables.PLACEHOLDER}

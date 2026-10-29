@@ -1,0 +1,101 @@
+{
+  "tracks": 50000,
+  "command": [
+    "python",
+    "-m",
+    "cuepoint.engine"
+  ],
+  "build_seconds": 84.8,
+  "database_mb": 307.6,
+  "waveform_store_mb": 15.1,
+  "pending_version": 33,
+  "none_pending": [
+    {
+      "first_health_ms": 687.1,
+      "backup_made_ms": 2112.2,
+      "state_ok_ms": 2112.2
+    },
+    {
+      "first_health_ms": 663.3,
+      "backup_made_ms": 2056.8,
+      "state_ok_ms": 2079.0
+    },
+    {
+      "first_health_ms": 705.4,
+      "backup_made_ms": 2209.9,
+      "state_ok_ms": 2209.9
+    }
+  ],
+  "one_pending": [
+    {
+      "first_health_ms": 770.6,
+      "backup_made_ms": 2155.1,
+      "state_ok_ms": 3039.5
+    },
+    {
+      "first_health_ms": 665.2,
+      "backup_made_ms": 2788.4,
+      "state_ok_ms": 3748.3
+    },
+    {
+      "first_health_ms": 765.7,
+      "backup_made_ms": 2842.8,
+      "state_ok_ms": 3630.3
+    }
+  ],
+  "measured": {
+    "first_health_ms": 687.1,
+    "launch_backup_s": 2.112,
+    "state_ok_s": 2.112,
+    "pending_state_ok_s": 3.63,
+    "pending_migrate_s": 0.842,
+    "quick_check_s": 0.737
+  },
+  "budget": {
+    "leg": "linux-x64",
+    "provisional": "set after the first green scale run (HARDEN-07, DEC-184)",
+    "enforced": true,
+    "size": 50000,
+    "reference": 50000,
+    "metrics": {
+      "first_health_ms": {
+        "value": 687.1,
+        "budget": 3000.0,
+        "over": false
+      },
+      "launch_backup_s": {
+        "value": 2.112,
+        "budget": 20.0,
+        "over": false
+      },
+      "state_ok_s": {
+        "value": 2.112,
+        "budget": 30.0,
+        "over": false
+      },
+      "pending_state_ok_s": {
+        "value": 3.63,
+        "budget": 40.0,
+        "over": false
+      },
+      "pending_migrate_s": {
+        "value": 0.842,
+        "budget": 20.0,
+        "over": false
+      },
+      "quick_check_s": {
+        "value": 0.737,
+        "budget": 20.0,
+        "over": false
+      }
+    },
+    "problems": []
+  },
+  "run": {
+    "leg": "linux-x64",
+    "commit": "",
+    "date": "2026-10-29",
+    "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+    "python": "3.13.17"
+  }
+}

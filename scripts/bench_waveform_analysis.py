@@ -52,7 +52,6 @@ was not.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import platform
 import shutil
@@ -68,6 +67,8 @@ from typing import Any, Dict, List, Optional
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
+
+import budget_check  # noqa: E402
 
 FIXTURES = _ROOT / "src" / "tests" / "fixtures" / "audio"
 FIXTURE_NAMES = (
@@ -664,7 +665,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             _end_worker()
     report(result)
     if args.json:
-        args.json.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        budget_check.write_json(args.json, result)
     problems = over_budget(result)
     for problem in problems:
         print(f"OVER BUDGET: {problem}", file=sys.stderr)

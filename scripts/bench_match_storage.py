@@ -43,7 +43,6 @@ import argparse
 import contextlib
 import io
 import itertools
-import json
 import random
 import socket
 import sys
@@ -56,6 +55,11 @@ from unittest.mock import Mock, patch
 _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
+import budget_check  # noqa: E402
 
 from cuepoint.models.config import SETTINGS  # noqa: E402
 from cuepoint.models.library_track import LibraryTrack  # noqa: E402
@@ -319,7 +323,10 @@ def main(argv: List[str] | None = None) -> int:
     report = measure(args.library)
     _print(report)
     if args.json:
-        args.json.write_text(json.dumps(asdict(report), indent=2), encoding="utf-8")
+        # Recorded only: it has no budget (scripts/budgets.json, `recorded_only`).
+        written = asdict(report)
+        written["tracks"] = report.library
+        budget_check.write_json(args.json, written)
     return 0
 
 

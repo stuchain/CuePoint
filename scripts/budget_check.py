@@ -227,13 +227,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    report = json.loads(args.file.read_text(encoding="utf-8"))
-    report["budget"] = evaluate(
-        args.bench,
-        report["measured"],
-        size=int(report["tracks"]),
-        optional=args.optional,
-    )
+    try:
+        report = json.loads(args.file.read_text(encoding="utf-8"))
+        measured, size = report["measured"], int(report["tracks"])
+    except FileNotFoundError:
+        print(
+            f"::error::{args.file} was not written: the {args.bench} run did not get as far as "
+            "writing its report (see the step before this one)"
+        )
+        return 1
+    except (ValueError, KeyError, TypeError) as exc:
+        print(f"::error::{args.file} is not a {args.bench} report ({exc!r})")
+        return 1
+    report["budget"] = evaluate(args.bench, measured, size=size, optional=args.optional)
     write_json(args.file, report)
     print("\n".join(report_lines(report["budget"])))
     for problem in report["budget"]["problems"]:

@@ -1,0 +1,49 @@
+{
+  "files": 1000,
+  "audio_mb_added_to_mp3": 0.0,
+  "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+  "python": "3.13.17",
+  "file_bytes_total": 9357000,
+  "in_place": {
+    "files": 1000,
+    "failed": 0,
+    "total_seconds": 0.243,
+    "files_per_second": 4110.5,
+    "median_ms": 0.228,
+    "p95_ms": 0.308,
+    "max_ms": 8.327
+  },
+  "via_copy": {
+    "files": 1000,
+    "failed": 0,
+    "total_seconds": 2.946,
+    "files_per_second": 339.4,
+    "median_ms": 2.559,
+    "p95_ms": 5.525,
+    "max_ms": 15.015
+  },
+  "slowdown_factor": 12.12,
+  "tracks": 1000,
+  "budget": {
+    "leg": "linux-x64",
+    "provisional": "set after the first green scale run (HARDEN-07, DEC-184)",
+    "enforced": true,
+    "size": 1000,
+    "reference": 1000,
+    "metrics": {
+      "via_copy_s": {
+        "value": 2.946,
+        "budget": 20.0,
+        "over": false
+      }
+    },
+    "problems": []
+  },
+  "run": {
+    "leg": "linux-x64",
+    "commit": "",
+    "date": "2026-10-29",
+    "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+    "python": "3.13.17"
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "tracks": 50000,
+  "attempts": 30000,
+  "candidates_per_attempt": 40,
+  "decisions": 8000,
+  "overrides": 10000,
+  "missing": 2000,
+  "duplicate_pairs": 1500,
+  "batch": 5000,
+  "seeding_seconds": {
+    "files": 1.7,
+    "tracks": 4.3,
+    "attempts": 59.8,
+    "decisions": 5.6,
+    "overrides": 1.0,
+    "artwork": 0.8
+  },
+  "rows": [
+    {
+      "label": "File check, whole library",
+      "value": 12.25,
+      "unit": "s",
+      "note": "Checked 50,000 files: 2,000 missing"
+    },
+    {
+      "label": "Duplicate scan, every signal",
+      "value": 1.68,
+      "unit": "s",
+      "note": "Found 1,500 possible duplicate groups: 1,500 by artist and title"
+    },
+    {
+      "label": "Review queue: open it",
+      "value": 11.1,
+      "unit": "ms",
+      "note": "12000 tracks"
+    },
+    {
+      "label": "Review queue: scroll to the end",
+      "value": 23.4,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Review queue: sort by score",
+      "value": 26.5,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Health: the whole report",
+      "value": 288.9,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Health: missing or unreadable files",
+      "value": 15.1,
+      "unit": "ms",
+      "note": "2000 tracks"
+    },
+    {
+      "label": "Health: in a duplicate group",
+      "value": 11.4,
+      "unit": "ms",
+      "note": "3000 tracks"
+    },
+    {
+      "label": "Health: not matched",
+      "value": 6.9,
+      "unit": "ms",
+      "note": "20000 tracks"
+    },
+    {
+      "label": "Health: waiting for you",
+      "value": 6.7,
+      "unit": "ms",
+      "note": "12000 tracks"
+    },
+    {
+      "label": "Health: changed after you confirmed",
+      "value": 6.2,
+      "unit": "ms",
+      "note": "0 tracks"
+    },
+    {
+      "label": "Health: no beatport key",
+      "value": 117.9,
+      "unit": "ms",
+      "note": "31000 tracks"
+    },
+    {
+      "label": "Health: no bpm",
+      "value": 17.6,
+      "unit": "ms",
+      "note": "1667 tracks"
+    },
+    {
+      "label": "Health: no genre",
+      "value": 13.6,
+      "unit": "ms",
+      "note": "2500 tracks"
+    },
+    {
+      "label": "Health: no artwork",
+      "value": 76.1,
+      "unit": "ms",
+      "note": "45000 tracks"
+    },
+    {
+      "label": "Library: sort by bpm",
+      "value": 29.2,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Library: sort by key",
+      "value": 130.5,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Library: sort by match_score",
+      "value": 32.2,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Library: sort by match_state",
+      "value": 35.6,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Library: sort by file_status",
+      "value": 29.8,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Library: sort by artist",
+      "value": 3.1,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Library: sort by BPM, scrolled to the end",
+      "value": 96.5,
+      "unit": "ms",
+      "note": ""
+    },
+    {
+      "label": "Apply Beatport values to 5,000 tracks",
+      "value": 2.28,
+      "unit": "s",
+      "note": "5000 changed, 0 unchanged"
+    },
+    {
+      "label": "Revert that",
+      "value": 2.48,
+      "unit": "s",
+      "note": "20000 changes reverted, 0 refused"
+    },
+    {
+      "label": "Database size",
+      "value": 313.0,
+      "unit": "MB",
+      "note": "1,200,000 candidate rows"
+    },
+    {
+      "label": "Database size after VACUUM",
+      "value": 305.5,
+      "unit": "MB",
+      "note": ""
+    }
+  ],
+  "budget": {
+    "leg": "linux-x64",
+    "provisional": "set after the first green scale run (HARDEN-07, DEC-184)",
+    "enforced": true,
+    "size": 50000,
+    "reference": 50000,
+    "metrics": {
+      "health_report_ms": {
+        "value": 288.9,
+        "budget": 470.0,
+        "over": false
+      },
+      "health_count_ms": {
+        "value": 117.9,
+        "budget": 233.0,
+        "over": false
+      },
+      "file_check_s": {
+        "value": 12.25,
+        "budget": 12.9,
+        "over": false
+      },
+      "duplicates_s": {
+        "value": 1.68,
+        "budget": 3.5,
+        "over": false
+      }
+    },
+    "problems": []
+  },
+  "run": {
+    "leg": "linux-x64",
+    "commit": "",
+    "date": "2026-10-29",
+    "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
+    "python": "3.13.17"
+  }
+}

@@ -430,3 +430,55 @@ class TestEngineStartHoldsItsBudget:
         # A migration added after m0033 needs its entry in DOWNGRADES, or the "one pending"
         # launch is skipped for good.
         assert bench.head_version() in bench.DOWNGRADES
+
+
+class TestMissingReports:
+    def test_a_report_the_spec_never_wrote_is_a_message_and_not_a_traceback(
+        self, tmp_path, capsys
+    ):
+        assert budget_check.main(["check", "e2e", str(tmp_path / "e2e.json")]) == 1
+        out = capsys.readouterr().out
+        assert out.startswith("::error::") and "was not written" in out
+
+    def test_a_report_that_is_not_one_is_a_message_too(self, tmp_path, capsys):
+        report = tmp_path / "e2e.json"
+        report.write_text("{}", encoding="utf-8")
+        assert budget_check.main(["check", "e2e", str(report)]) == 1
+        assert "::error::" in capsys.readouterr().out
+        report.write_text("not json", encoding="utf-8")
+        assert budget_check.main(["check", "e2e", str(report)]) == 1
+
+
+class TestEveryBenchIsAccountedFor:
+    def test_each_bench_script_is_budgeted_or_recorded_only_and_says_which(self):
+        data = budget_check.load()
+        recorded = set(data["recorded_only"])
+        budgeted = set(data["benches"])
+        stems = {p.stem.removeprefix("bench_") for p in _SCRIPTS.glob("bench_*.py")}
+        stems.discard("")
+        # bench.py is the matching benchmark; the rest are named bench_<name>.py
+        accounted = (
+            budgeted
+            | recorded
+            | {"tag_write", "waveform_store", "waveforms", "sets", "marks"}
+        )
+        assert stems <= accounted, stems - accounted
+        assert {"match_storage", "decoder", "waveform_analysis"} <= recorded
+        assert not recorded & budgeted
+
+    def test_ratio_budgets_are_stated_as_not_scaling_per_leg(self):
+        how = " ".join(budget_check.load()["_how"])
+        assert "Ratio budgets" in how and "no scale applies" in how
+
+    @pytest.mark.parametrize("name", ["decoder", "waveform_analysis", "match_storage"])
+    def test_these_write_their_json_through_the_stamp(self, name):
+        source = (_SCRIPTS / f"bench_{name}.py").read_text(encoding="utf-8")
+        assert "budget_check.write_json(" in source
+
+    def test_the_tag_write_report_carries_its_size_as_tracks(self, tmp_path):
+        import bench_tag_write
+
+        out = tmp_path / "tag.json"
+        assert bench_tag_write.main(["--files", "4", "--json", str(out)]) == 0
+        report = json.loads(out.read_text(encoding="utf-8"))
+        assert report["tracks"] == 4 and report["run"]["leg"] == "linux-x64"
