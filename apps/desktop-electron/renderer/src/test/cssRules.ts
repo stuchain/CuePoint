@@ -10,8 +10,9 @@ export interface Rule {
   context: string;
 }
 
+/** Drops comments, and reads a Windows (CRLF) checkout's line ends as "\n" so selectors compare the same. */
 export function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, "");
+  return css.replace(/\r\n?/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
 /** Splits CSS into rules, descending into @media/@supports; @keyframes come back whole. */
