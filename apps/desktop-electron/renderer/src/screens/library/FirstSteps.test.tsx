@@ -373,7 +373,7 @@ describe("the chip in the Library header", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByRole("list", { name: "First steps" })).toBeNull();
     // The visible text is short; the button keeps the full sentence as its name.
-    const chip = screen.getByRole("button", { name: "First steps: 1 of 4 done" });
+    const chip = screen.getByRole("button", { name: "First steps 1/4 done" });
     expect(chip).toHaveClass("first-steps-chip");
     expect(chip).toHaveAttribute("aria-haspopup", "dialog");
   });

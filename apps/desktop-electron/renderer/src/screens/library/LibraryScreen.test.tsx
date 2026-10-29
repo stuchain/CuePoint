@@ -837,7 +837,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     renderScreen({ onOpenMatch });
     await tableReady();
 
-    const entry = await screen.findByRole("button", { name: "First steps: 1 of 4 done" });
+    const entry = await screen.findByRole("button", { name: "First steps 1/4 done" });
     expect(screen.queryByRole("dialog", { name: "First steps" })).toBeNull();
     await userEvent.click(entry);
     const list = within(screen.getByRole("dialog", { name: "First steps" }));
@@ -852,20 +852,20 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     await importAnother();
 
     const note = await screen.findByRole("status", { name: "No Beatport keys yet" });
-    const chip = screen.getByRole("button", { name: /First steps:/ });
+    const chip = screen.getByRole("button", { name: /First steps \d/ });
     expect(chip).toHaveTextContent("First steps 1/4");
     expect(screen.getByRole("heading", { level: 1, name: "Library" }).parentElement).toContainElement(chip);
     expect(note).toBeInTheDocument();
 
     await userEvent.click(within(note).getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("button", { name: /First steps:/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /First steps \d/ })).toBeInTheDocument();
   });
 
   it("is gone for good once the first steps were all done", async () => {
     localStorage.setItem("cuepoint-first-steps-done", "1");
     renderScreen({ onOpenMatch: vi.fn() });
     await tableReady();
-    expect(screen.queryByRole("button", { name: /First steps:/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /First steps \d/ })).toBeNull();
   });
 
   it("is silent about keys when some track has one", async () => {

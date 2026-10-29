@@ -285,7 +285,7 @@ describe("saved lists in the scope fields", () => {
       expect(within(field).getByRole("radio", { name: `Every ${noun} in your library (${noun === "artist" ? 3 : 2})` })).toBeChecked();
       expect(within(field).getByRole("radio", { name: "A saved list" })).not.toBeChecked();
       expect(within(field).getByRole("radio", { name: `No ${noun}s` })).not.toBeChecked();
-      expect(within(field).getByRole("button", { name: `New ${noun} list` })).toBeInTheDocument();
+      expect(within(field).getByRole("button", { name: `New list of ${noun}s` })).toBeInTheDocument();
       expect(within(field).queryByRole("radio", { name: /Only the/ })).toBeNull();
     }
   });
@@ -293,7 +293,7 @@ describe("saved lists in the scope fields", () => {
   it("names each field's buttons apart, so a screen reader can tell them", async () => {
     install([]);
     const panel = await renderPanel();
-    for (const name of ["New artist list", "New label list"]) {
+    for (const name of ["New list of artists", "New list of labels"]) {
       expect(within(panel).getAllByRole("button", { name })).toHaveLength(1);
     }
   });
@@ -319,7 +319,7 @@ describe("saved lists in the scope fields", () => {
     expect(within(artists).queryByRole("radio", { name: "A saved list" })).toBeNull();
     expect(within(artists).queryByRole("combobox", { name: "Saved artist list" })).toBeNull();
     expect(within(artists).queryByRole("button", { name: "Edit artist list" })).toBeNull();
-    expect(within(artists).getByRole("button", { name: "New artist list" })).toBeInTheDocument();
+    expect(within(artists).getByRole("button", { name: "New list of artists" })).toBeInTheDocument();
   });
 
   it("chooses the first list with the radio, and asks the engine for that list's names", async () => {
@@ -388,7 +388,7 @@ describe("when the lists cannot be read", () => {
     expect(await within(artists).findByText("The library is busy")).toBeInTheDocument();
     // Neither a radio nor a select that says "none yet": the read failed, which is not the same.
     expect(within(artists).queryByRole("option", { name: "No saved lists yet" })).toBeNull();
-    expect(within(artists).getByRole("button", { name: "New artist list" })).toBeInTheDocument();
+    expect(within(artists).getByRole("button", { name: "New list of artists" })).toBeInTheDocument();
   });
 
   it("says so when the read throws", async () => {
@@ -403,7 +403,7 @@ describe("the list editor", () => {
   async function openNew(panel: HTMLElement, name: "Artists" | "Labels") {
     fireEvent.click(
       within(group(panel, name)).getByRole("button", {
-        name: name === "Artists" ? "New artist list" : "New label list",
+        name: name === "Artists" ? "New list of artists" : "New list of labels",
       }),
     );
     return screen.findByRole("dialog", { name: name === "Artists" ? "New artist list" : "New label list" });

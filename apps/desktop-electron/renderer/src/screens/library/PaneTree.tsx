@@ -257,7 +257,7 @@ export function PaneTree({
   };
 
   return (
-    <div ref={containerRef} className="cp-playlist-pane__tree" role="tree" aria-label={label}>
+    <div ref={containerRef} className="cp-playlist-pane__tree" role={leadingRow || rows.length > 0 ? "tree" : undefined} aria-label={leadingRow || rows.length > 0 ? label : undefined}>
       {leadingRow && (
         <div
           role="treeitem"

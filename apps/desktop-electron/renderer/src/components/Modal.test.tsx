@@ -110,6 +110,26 @@ describe("Modal", () => {
     expect(document.activeElement?.textContent).not.toBe("outside");
   });
 
+  it("wraps from the last control it shows, not from one hidden in a closed section", () => {
+    render(
+      <Modal open title="Test dialog" onClose={() => undefined}>
+        <button type="button">shown</button>
+        <div hidden>
+          <button type="button">tucked away</button>
+        </div>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    screen.getByRole("button", { name: "shown" }).focus();
+
+    const notStopped = fireEvent.keyDown(document.activeElement as Element, { key: "Tab" });
+
+    // The Tab was taken over (it would have left the dialog) and focus went back to the first control.
+    expect(notStopped).toBe(false);
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(document.activeElement?.textContent).not.toBe("shown");
+  });
+
   it("returns focus to whatever opened it", async () => {
     const user = userEvent.setup();
     function Host() {

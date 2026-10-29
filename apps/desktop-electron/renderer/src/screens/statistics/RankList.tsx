@@ -7,7 +7,7 @@
  * and artists by tracks). Only the first `shown` rows are drawn; the card's one link says how
  * many more it can show ("Show all 10") and puts them away again ("Show less").
  */
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 
 import type { FilterRuleSet } from "../../api/cuepointBridge.types";
 import { Card } from "../../components/Card";
@@ -96,29 +96,30 @@ export function RankList({
                   type="button"
                   className="cp-data-grid__row rank__row"
                   style={{ ["--rank-columns" as string]: columns.length }}
-                  aria-label={row.label}
+                  aria-label={`${index + 1}. ${row.label}`}
                   onClick={() => onOpen(row.rules)}
                 >
                   <span className="rank__hash statistics-figure" aria-hidden="true">
                     {index + 1}
-                  </span>
+                  </span>{" "}
                   <span className="rank__name" aria-hidden="true">
                     <span className="rank__text" data-cut-hint="">
                       {row.name}
                       {row.note && <span className="rank__note">{row.note}</span>}
                     </span>
-                  </span>
+                  </span>{" "}
                   <span className="rank__bar" aria-hidden="true">
                     <RankBar share={row.weight / top} />
-                  </span>
+                  </span>{" "}
                   {columns.map((column) => (
-                    <span
-                      key={column}
-                      className={`rank__number statistics-figure${column === columns[columns.length - 1] ? " rank__number--main" : ""}`}
-                      aria-hidden="true"
-                    >
-                      {formatCount(row[column] ?? 0)}
-                    </span>
+                    <Fragment key={column}>
+                      <span
+                        className={`rank__number statistics-figure${column === columns[columns.length - 1] ? " rank__number--main" : ""}`}
+                        aria-hidden="true"
+                      >
+                        {formatCount(row[column] ?? 0)}
+                      </span>{" "}
+                    </Fragment>
                   ))}
                 </button>
               </li>

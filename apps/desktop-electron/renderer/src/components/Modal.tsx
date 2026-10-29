@@ -230,7 +230,9 @@ export function Modal(props: ModalProps) {
       // behind an aria-modal dialog, which is exactly what the attribute
       // promises does not happen.
       const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].filter(
-        (element) => element.getAttribute("aria-disabled") !== "true",
+        // A control inside a closed disclosure (`hidden`) is not a Tab stop; counting it as the last one let
+        // Tab walk out of the dialog from the real last one.
+        (element) => element.getAttribute("aria-disabled") !== "true" && !element.closest("[hidden], [inert]"),
       );
       if (focusable.length === 0) return;
       const first = focusable[0]!;

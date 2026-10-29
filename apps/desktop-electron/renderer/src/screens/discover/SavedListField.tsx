@@ -114,7 +114,7 @@ export function SavedListField({
         variant="quiet"
         size="sm"
         className="discover-new__new-list"
-        aria-label={`New ${noun} list`}
+        aria-label={`New list of ${noun}s`}
         onClick={onNew}
       >
         New list…

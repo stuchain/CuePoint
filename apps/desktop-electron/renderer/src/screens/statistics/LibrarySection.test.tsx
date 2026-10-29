@@ -154,22 +154,22 @@ describe("the Overview tab", () => {
     renderTab();
     const genres = screen.getByRole("list", { name: "Genres" });
     expect(within(genres).getAllByRole("listitem")).toHaveLength(5);
-    expect(within(genres).getByRole("button", { name: "Tech House, 900 tracks" })).toBeInTheDocument();
+    expect(within(genres).getByRole("button", { name: /^\d+\. Tech House, 900 tracks$/ })).toBeInTheDocument();
     // The seven named genres; Other is a rest, not a genre.
     await user.click(within(genres.closest("section")!).getByRole("button", { name: "Show all 7" }));
     expect(within(genres).getAllByRole("listitem")).toHaveLength(7);
     expect(within(genres).queryByRole("button", { name: /^Other/ })).toBeNull();
 
     const artists = screen.getByRole("list", { name: "Artists" });
-    expect(within(artists).getByRole("button", { name: "Chris Stussy, 31 tracks" })).toBeInTheDocument();
+    expect(within(artists).getByRole("button", { name: /^\d+\. Chris Stussy, 31 tracks$/ })).toBeInTheDocument();
     const labels = screen.getByRole("list", { name: "Labels" });
-    expect(within(labels).getByRole("button", { name: "Defected, 64 tracks" })).toBeInTheDocument();
+    expect(within(labels).getByRole("button", { name: /^\d+\. Defected, 64 tracks$/ })).toBeInTheDocument();
   });
 
   it("opens the Library on exactly the tracks a row counted", async () => {
     const user = userEvent.setup();
     renderTab();
-    await user.click(screen.getByRole("button", { name: "Michael Bibi, 22 tracks" }));
+    await user.click(screen.getByRole("button", { name: /^\d+\. Michael Bibi, 22 tracks$/ }));
     expect(screen.getByTestId("where")).toHaveTextContent("/library");
     expect(JSON.parse(screen.getByTestId("where").dataset.rules!)).toEqual(rules("artist_name", "Michael Bibi"));
   });

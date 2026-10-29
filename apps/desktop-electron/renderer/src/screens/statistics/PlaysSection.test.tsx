@@ -542,13 +542,13 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       const artists = within(region).getByRole("list", { name: "Top artists" });
-      await user.click(within(artists).getByRole("button", { name: "B, 15 plays, 2 tracks" }));
+      await user.click(within(artists).getByRole("button", { name: /^\d+\. B, 15 plays, 2 tracks$/ }));
       expect(navigated().state).toEqual({
         cuepointLibraryRules: rules("artist_name", "B"),
       });
 
       const labels = within(region).getByRole("list", { name: "Top labels" });
-      await user.click(within(labels).getByRole("button", { name: "Warm, 21 plays, 2 tracks" }));
+      await user.click(within(labels).getByRole("button", { name: /^\d+\. Warm, 21 plays, 2 tracks$/ }));
       expect(navigated().state).toEqual({
         cuepointLibraryRules: rules("label_name", "Warm"),
       });
@@ -583,7 +583,7 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       const genres = within(region).getByRole("list", { name: "Top genres" });
-      await user.click(within(genres).getByRole("button", { name: "House, 18 plays, 2 tracks" }));
+      await user.click(within(genres).getByRole("button", { name: /^\d+\. House, 18 plays, 2 tracks$/ }));
       expect(navigated().state).toEqual({ cuepointLibraryRules: rules("genre", "House") });
     });
 

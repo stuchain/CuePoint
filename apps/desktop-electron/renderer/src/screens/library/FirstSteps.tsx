@@ -236,7 +236,7 @@ function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "impo
         variant="quiet"
         size="sm"
         className="first-steps-chip"
-        aria-label={`First steps: ${doneCount} of 4 done`}
+        aria-label={`First steps ${doneCount}/4 done`}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((was) => !was)}
