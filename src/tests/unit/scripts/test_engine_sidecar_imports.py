@@ -63,6 +63,28 @@ class TestEngineSidecarHiddenImports:
             "install would then create a database with no tables."
         )
 
+    def test_the_packaged_engine_runs_in_utf8_mode(self):
+        """HARDEN-06: the frozen engine does not depend on the user's code page."""
+        spec = _SPEC.read_text(encoding="utf-8")
+
+        assert '("X utf8", None, "OPTION")' in spec
+
+    def test_the_packaged_engine_is_long_path_aware(self):
+        """HARDEN-06: PyInstaller's own default manifest carries ``longPathAware``.
+
+        The spec passes no manifest of its own, so the default is what is
+        embedded; this fails if the spec starts passing one or a PyInstaller
+        upgrade drops the setting.
+        """
+        winmanifest = pytest.importorskip(
+            "PyInstaller.utils.win32.winmanifest",
+            reason="PyInstaller is a build-time dependency",
+        )
+        spec = _SPEC.read_text(encoding="utf-8")
+
+        assert "manifest=" not in spec
+        assert "longPathAware" in winmanifest._DEFAULT_MANIFEST_XML.decode("utf-8")
+
     def test_collecting_the_package_really_names_every_migration(self):
         """`collect_submodules` has to actually find them all.
 

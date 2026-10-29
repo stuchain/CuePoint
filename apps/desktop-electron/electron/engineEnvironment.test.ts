@@ -46,6 +46,20 @@ describe("the engine's environment", () => {
     });
   });
 
+  it("starts the engine in UTF-8 mode, whatever the user's code page or environment says", () => {
+    const env = engineEnvironment({ ...base, decoderPath: null, env: {} });
+    expect(env.PYTHONUTF8).toBe("1");
+    expect(env.PYTHONIOENCODING).toBe("utf-8");
+
+    const inherited = engineEnvironment({
+      ...base,
+      decoderPath: null,
+      env: { PYTHONUTF8: "0", PYTHONIOENCODING: "cp1252" },
+    });
+    expect(inherited.PYTHONUTF8).toBe("1");
+    expect(inherited.PYTHONIOENCODING).toBe("utf-8");
+  });
+
   it("names the bundled mpv in a packaged app", () => {
     const bundled = path.join("/Applications/CuePoint.app/Contents/Resources", "player", "mpv.exe");
     expect(

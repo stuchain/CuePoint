@@ -304,6 +304,10 @@ export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.Process
     // its own bootloader. The engine ends itself when this process has gone,
     // however it went (EXPORT-07, `parent_watch.py`).
     CUEPOINT_PARENT_PID: String(input.parentPid),
+    // Always UTF-8, never the user's Windows code page (HARDEN-06): a library path, a title or a
+    // log line with a Greek or Japanese letter in it is read and written the same on every system.
+    PYTHONUTF8: "1",
+    PYTHONIOENCODING: "utf-8",
   };
   // Told off, the engine is told off, in the one spelling it reads (REPORT-08). Told nothing, it
   // resolves its own DSN (the sidecar's built-in one when packaged, DEC-148): main's DSN, the

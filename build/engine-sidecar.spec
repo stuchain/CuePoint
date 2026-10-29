@@ -120,7 +120,10 @@ exe = EXE(
     a.binaries,
     a.zipfiles,
     a.datas,
-    [],
+    # Python's UTF-8 mode (HARDEN-06): the engine's default text encoding is
+    # UTF-8 on every platform, not the Windows user's code page. The same
+    # thing `PYTHONUTF8=1` does, frozen in, so it holds without an environment.
+    [("X utf8", None, "OPTION")],
     name=exe_name.replace(".exe", ""),
     debug=False,
     bootloader_ignore_signals=False,
