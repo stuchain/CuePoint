@@ -49,6 +49,20 @@ def _strip_accents(s: str) -> str:
     )
 
 
+#: Letters NFKD does not take apart, folded the way people type them (applied to
+#: casefolded text, so the capitals are covered). ``ß`` is already "ss" by casefold.
+#: ``m0033_search_keys`` holds a frozen copy; a test keeps the two identical.
+SEARCH_FOLD_TABLE = {
+    ord("ø"): "o",
+    ord("ł"): "l",
+    ord("đ"): "d",
+    ord("ð"): "d",
+    ord("æ"): "ae",
+    ord("œ"): "oe",
+    ord("þ"): "th",
+}
+
+
 def search_fold(text: Optional[str]) -> str:
     """The comparison form of a name for search and sort (DEC-185).
 
@@ -56,14 +70,16 @@ def search_fold(text: Optional[str]) -> str:
     a medial one; then NFKD with the combining marks removed (the accent
     stripping above), so "Beyoncé" and "beyonce", or "ÂME" and "Âme", are one
     key. Scripts without case or marks (CJK, Hangul) come through unchanged,
-    which also means they order by code point, after the Latin letters.
+    which also means they order by code point, after the Latin letters. A few
+    letters that are not an accent on another (ø, ł, đ, æ, œ, þ, ð) fold to what
+    people type for them, so "royksopp" finds "Røyksopp".
 
     Unlike :func:`normalize_text` this keeps punctuation and spacing: it is for
     matching what a person typed against what is stored, not for fuzzy match.
     """
     if not text:
         return ""
-    return _strip_accents(str(text).casefold())
+    return _strip_accents(str(text).casefold().translate(SEARCH_FOLD_TABLE))
 
 
 def normalize_text(s: str) -> str:

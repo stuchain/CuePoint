@@ -39,6 +39,7 @@ from typing import Any, Callable, Dict, Sequence
 
 import pytest
 
+from cuepoint.core.text_processing import search_fold
 from cuepoint.migrations import Migration
 from cuepoint.services import database_service as database_service_module
 from cuepoint.services.backup_service import reason_of
@@ -292,13 +293,7 @@ def _m0032(conn: sqlite3.Connection, crossing: Crossing) -> None:
 
 def _fold(text):
     """The key the migration promises, written out (casefold, NFKD, marks off)."""
-    if text is None:
-        return None
-    return "".join(
-        ch
-        for ch in unicodedata.normalize("NFKD", text.casefold())
-        if not unicodedata.combining(ch)
-    )
+    return None if text is None else search_fold(text)
 
 
 def _m0033(conn: sqlite3.Connection, crossing: Crossing) -> None:

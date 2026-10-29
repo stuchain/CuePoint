@@ -497,7 +497,9 @@ class TrackRepository(ITrackRepository):
         ``limit`` is optional but callers displaying a library should pass one:
         a full read of a 50,000-track library materializes every row.
         """
-        sql = f"{_SELECT} ORDER BY artist COLLATE NOCASE, title COLLATE NOCASE"
+        sql = (
+            f"{_SELECT} ORDER BY artist_search_key, artist, title_search_key, title, id"
+        )
         params: tuple = ()
         if limit is not None:
             sql += " LIMIT ? OFFSET ?"

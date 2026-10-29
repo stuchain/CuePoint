@@ -57,6 +57,18 @@ ALTER TABLE track_metadata ADD COLUMN label_search_key TEXT;
 
 _BATCH = 5000
 
+# Letters NFKD does not take apart. A frozen copy of
+# ``core.text_processing.SEARCH_FOLD_TABLE``; a test keeps the two identical.
+FOLD_TABLE = {
+    ord("ø"): "o",
+    ord("ł"): "l",
+    ord("đ"): "d",
+    ord("ð"): "d",
+    ord("æ"): "ae",
+    ord("œ"): "oe",
+    ord("þ"): "th",
+}
+
 
 def _fold(text: Optional[str]) -> Optional[str]:
     """The key of a field: casefold, NFKD, marks removed; NULL stays NULL."""
@@ -64,7 +76,9 @@ def _fold(text: Optional[str]) -> Optional[str]:
         return None
     return "".join(
         ch
-        for ch in unicodedata.normalize("NFKD", str(text).casefold())
+        for ch in unicodedata.normalize(
+            "NFKD", str(text).casefold().translate(FOLD_TABLE)
+        )
         if not unicodedata.combining(ch)
     )
 

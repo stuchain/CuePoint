@@ -19,6 +19,10 @@ the SQL. Values are always bound parameters.
 track called "100% Pure", not every track. The same escape character the text
 search uses is used here, for the same reason.
 
+**Text operators compare as typed.** ``contains`` and ``is`` on a text field
+fold ASCII case only; accent-insensitive matching (DEC-185, HARDEN-06) is the
+search box's and the sorts', not the rules'.
+
 **Empty means "no value at all".** Rekordbox writes a missing text field as
 either a missing attribute or an empty string, and a user asking for tracks
 with no genre means both. For numbers there is no empty string, so empty means

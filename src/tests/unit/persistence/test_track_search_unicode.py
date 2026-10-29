@@ -81,6 +81,14 @@ class TestTheFold:
             ("東京", "東京"),
             ("Ångström", "angstrom"),
             ("ﬁnale", "finale"),
+            ("Røyksopp", "royksopp"),
+            ("Øystein", "oystein"),
+            ("Łódź", "lodz"),
+            ("Đorđe", "dorde"),
+            ("Æon", "aeon"),
+            ("Œuvre", "oeuvre"),
+            ("Þór", "thor"),
+            ("Ðóra", "dora"),
             ("", ""),
             (None, ""),
         ),
@@ -94,7 +102,34 @@ class TestTheFold:
         assert search_fold(composed) == search_fold(decomposed) == "deja vu"
 
 
+class TestTheMigrationFoldsLikeTheApplication:
+    def test_the_frozen_table_and_function_agree(self):
+        from cuepoint.core.text_processing import SEARCH_FOLD_TABLE
+        from cuepoint.migrations import m0033_search_keys as migration
+
+        assert migration.FOLD_TABLE == SEARCH_FOLD_TABLE
+        for text in (
+            "Røyksopp",
+            "Łódź Æon Œuvre Þór Ðóra Đorđe",
+            "Beyoncé",
+            "STRASSE straße",
+            "Σίσυφος",
+            "東京",
+            "",
+        ):
+            assert migration._fold(text) == search_fold(text), text
+        assert migration._fold(None) is None
+
+
 class TestSearchFindsWhatPeopleMean:
+    def test_letters_that_are_not_accents_fold_as_typed(self, repo):
+        _add(repo, "1", artist="Røyksopp", title="Eple")
+        _add(repo, "2", artist="Łukasz", title="Dwa")
+
+        assert _found(repo, "royksopp") == ["Eple"]
+        assert _found(repo, "RØYKSOPP") == ["Eple"]
+        assert _found(repo, "lukasz") == ["Dwa"]
+
     def test_an_unaccented_query_finds_an_accented_artist(self, repo):
         _add(repo, "1", artist="Beyoncé", title="Halo")
         _add(repo, "2", artist="Someone Else", title="Other")
@@ -299,6 +334,30 @@ class TestSortOrder:
             "Σίσυφος",
             "Яндекс",
             "東京",
+        ]
+
+    def test_o_with_a_stroke_sorts_with_the_os(self, repo):
+        for index, name in enumerate(["Zedd", "Øystein", "Oliver", "Paul", "Ola"]):
+            _add(repo, str(index), artist=name)
+
+        assert [t.artist for t in repo.browse(BrowseQuery(), limit=100)] == [
+            "Ola",
+            "Oliver",
+            "Øystein",
+            "Paul",
+            "Zedd",
+        ]
+
+    def test_list_all_is_in_the_same_order(self, repo):
+        for index, name in enumerate(["Zedd", "Âme", "Adam", "Øystein", "Paul"]):
+            _add(repo, str(index), artist=name)
+
+        assert [t.artist for t in repo.list_all()] == [
+            "Adam",
+            "Âme",
+            "Øystein",
+            "Paul",
+            "Zedd",
         ]
 
     def test_titles_sort_the_same_way(self, repo):
