@@ -43,6 +43,7 @@ For end users: installation, usage, troubleshooting.
 | [Exporting to Rekordbox](user-guide/rekordbox-export.md) | Carrying your values and Collections back to Rekordbox, with cue points and beat grids kept |
 | [Workflows](user-guide/workflows.md) | Common workflows |
 | [Troubleshooting](user-guide/troubleshooting.md) | Common errors and fixes |
+| [Accessibility](user-guide/accessibility.md) | Keyboard, screen readers, high contrast, reduced motion, text size, all shortcuts, reporting a barrier |
 | [Glossary](user-guide/glossary.md) | Terms (candidate, confidence, etc.) |
 | [FAQ](faq/index.md) | Frequently asked questions |
 | [Support Policy](user-guide/support-policy.md) | Supported versions, support channels |

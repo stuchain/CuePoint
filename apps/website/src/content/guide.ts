@@ -171,11 +171,19 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     section: "help",
   },
   {
+    file: "accessibility.md",
+    title: "Accessibility",
+    description:
+      "What CuePoint does for keyboard, screen reader, high contrast, reduced motion and large text users, every keyboard shortcut, and how to report a barrier.",
+    order: 18,
+    section: "help",
+  },
+  {
     file: "glossary.md",
     title: "Glossary",
     description:
       "Plain definitions of the words CuePoint uses: Set, chapter, entry, planned time, waveform, hot cue, beat grid, LUFS, LU and more.",
-    order: 18,
+    order: 19,
     section: "help",
   },
   {
@@ -183,7 +191,7 @@ export const GUIDE_ROWS: readonly GuideRow[] = [
     title: "Support policy",
     description:
       "Which systems CuePoint supports, how fast problems are answered, what to send with a report and where the logs are kept.",
-    order: 19,
+    order: 20,
     section: "policy",
   },
 ];

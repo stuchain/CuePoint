@@ -238,7 +238,7 @@ matches only the tracks it had not reached. See [Clean](clean.md#match).
 
 ## Keyboard shortcuts
 
-To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts**. The dialog lists them by context (Everywhere, Library, Keys, Prepare, Tables, Clean, Check the match, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac the list shows the Mac keys (⌘) itself.
+To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts**. The dialog lists them by context (Everywhere, Library, Keys, Prepare, Tables, Clean, Check the match, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. [Accessibility](accessibility.md) has the same list and says how CuePoint works with a screen reader, high contrast and reduced motion. On a Mac the list shows the Mac keys (⌘) itself.
 
 | Shortcut | Does |
 | --- | --- |
