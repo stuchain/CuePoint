@@ -10,14 +10,23 @@ it runs on and says what went over. A bench exits 1 when anything did.
 **Where a number comes from.** A budget is the Windows number recorded in
 ``docs/user-guide/performance.md`` times 1.5, or the Phase 15/16 budget where
 one exists, or (where nothing was ever recorded) a first estimate from a Linux
-run, marked so in ``budgets.json``. Every budget is provisional: it is set per
-leg after the first green scale run, and a leg more than twice as slow as the
-others is investigated, never loosened.
+run, marked so in ``budgets.json``. The budgets were set from the first CI scale
+run (``set_from`` in ``budgets.json`` names it): a metric that run measured is
+held to about 1.25 times its worst value on each leg, and one that fits with
+plenty of room is left alone. A leg more than twice as slow as the others is
+investigated, never loosened.
 
 **Legs.** The four builds the desktop workflow has: ``windows-x64``,
 ``linux-x64``, ``macos-arm64`` and ``macos-x64``. A leg has a ``scale`` that
-multiplies every time budget (the Intel Mac is 2.5, as its runner is) and
-``overrides`` that replace single budgets. A size or a ratio is never scaled.
+multiplies every time budget (the Intel Mac is 2.5, as its runner is; Windows is
+1.5, for its disk) and ``overrides`` that replace single budgets, scaled or not,
+for the bench and metric they name (a metric one leg does far worse on, like a
+migration on Windows, gets its own number rather than a factor everything else
+would share). A leg may also have a ``code_scale``: the factor for the budgets
+that live in a bench's own code rather than in ``budgets.json``
+(:func:`scaled_ms`), which is ``scale`` when absent. Windows sets it to 1.0
+because those benches (the waveform store, the work list) passed there unscaled
+and are not disk-bound. A size or a ratio is never scaled.
 
 **Sizes.** A budget is for its bench's reference size (50,000 tracks, or 1,000
 files for a tag write). A smaller run is held to the same budget (a smaller
@@ -86,9 +95,21 @@ def leg_scale(
     return float(data.get("legs", {}).get(leg or current_leg(), {}).get("scale", 1.0))
 
 
+def code_scale(
+    leg: Optional[str] = None, data: Optional[Mapping[str, Any]] = None
+) -> float:
+    """What a leg multiplies the budgets that live in a bench's code by.
+
+    The leg's ``code_scale``, or its ``scale`` where it has none.
+    """
+    data = data if data is not None else load()
+    entry = data.get("legs", {}).get(leg or current_leg(), {})
+    return float(entry.get("code_scale", entry.get("scale", 1.0)))
+
+
 def scaled_ms(value: float, leg: Optional[str] = None) -> float:
     """``value`` (a time budget a bench already has) with this leg's allowance."""
-    return value * leg_scale(leg)
+    return value * code_scale(leg)
 
 
 def budgets_for(
@@ -128,7 +149,7 @@ def evaluate(
 
     Returns the report a bench puts under ``"budget"`` in its JSON::
 
-        {"leg", "provisional", "enforced", "size", "reference",
+        {"leg", "set_from", "enforced", "size", "reference",
          "metrics": {name: {"value", "budget", "over"}}, "problems": [..]}
 
     ``problems`` is empty when nothing is over (or nothing is enforced, for a
@@ -163,7 +184,7 @@ def evaluate(
                 problems.append(f"{bench}: {name} has a budget and was not measured")
     return {
         "leg": leg,
-        "provisional": data.get("provisional", ""),
+        "set_from": data.get("set_from", ""),
         "enforced": enforced,
         "size": size,
         "reference": reference,

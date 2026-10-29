@@ -8,8 +8,8 @@
 # A 100,000-track run follows on each leg, recorded and not budgeted: the supported maximum is 50,000.
 #
 # When it runs: every Monday, by hand, and from `release.yml` before a normal tag is published.
-# It is not part of a push: a full run is long (Intel Mac the slowest), and the budgets are
-# provisional until the first green run (see `scripts/budgets.json`). A leg more than twice as
+# It is not part of a push: a full run is long (Intel Mac the slowest), and the budgets were set
+# from the first run (see `set_from` in `scripts/budgets.json`; Intel is kept at ×2.5 until it reports). A leg more than twice as
 # slow as the others is investigated, never loosened. A red run blocks a normal tag only, never
 # a `v*-test.*` tag (`release.yml`).
 #

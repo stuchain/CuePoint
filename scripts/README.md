@@ -82,8 +82,8 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
   full library instead (first answer, the launch backup, library ready, with and without a migration pending).
 - `bench_migrations.py`: Migrations m0025 and m0027 over a library of 50,000 tracks (HARDEN-07).
 - `budget_check.py`: The budgets every bench above is held to (`budgets.json`, per leg); `check e2e FILE`
-  holds the packaged-app spec's numbers to them. Budgets are provisional until the first green scale run.
-- `budgets.json`: The budget data: a base, a `scale` and `overrides` for each of the four legs.
+  holds the packaged-app spec's numbers to them. Budgets were set from the first CI scale run (`set_from`); the Intel Mac is kept at 2.5 until its numbers arrive.
+- `budgets.json`: The budget data: a base, a `scale` (and a `code_scale` for budgets written in a bench) and `overrides` for each of the four legs.
 - `performance_tables.py`: Rewrites the tables of `docs/user-guide/performance.md` from a scale run's JSON
   (`.github/workflows/scale.yml` uploads it); `--check` exits 1 when the guide is out of date.
 

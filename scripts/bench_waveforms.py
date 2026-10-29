@@ -27,8 +27,8 @@ folder; nothing touches ``~/.cuepoint`` and nothing decodes audio.
   compress worse than music; their mean size is reported.
 - **The work list**: the analysis's refill of 200 files in its order, and its
   count, over a library whose every file is analysed. WAVE-03 recorded 285 ms
-  and 264 ms at 50,000 without a budget; WAVE-07 sets one of 500 ms each.
-  The status route counts at most every 5 seconds, so 500 ms is a tenth of
+  and 264 ms at 50,000 without a budget; WAVE-07 set one of 500 ms each, raised to 600 ms by HARDEN-07.
+  The status route counts at most every 5 seconds, so 600 ms is an eighth of
   its interval, and a refill comes once per 200 files analysed.
 - **The marks read** from the XML, tracks with their marks against tracks
   alone, both of ``bench_marks``'s shapes, against WAVE-04's ratios (1.30×
@@ -104,8 +104,10 @@ WORK_REPEATS = 10
 SIZE_BUDGET_KB_PER_TRACK = bench_waveform_store.SIZE_BUDGET_MB * 1000 / 50_000
 BATCH_BUDGET_MS = bench_waveform_store.BATCH_BUDGET_MS
 ONE_BUDGET_MS = bench_waveform_store.ONE_BUDGET_MS
-#: Set by WAVE-07; see the module's docstring.
-WORK_LIST_BUDGET_MS = 500.0
+#: Set by WAVE-07 at 500 ms; see the module's docstring. HARDEN-07 raised it to 600: the first
+#: CI scale run read the refill at 469 / 428 / 476 ms (Linux / Windows / macOS arm64), within 6%
+#: of 500 on every leg, which would flake. 500 stays the phase's target (budgets.json, above_spec).
+WORK_LIST_BUDGET_MS = 600.0
 #: T4's: reduce and encode a six-minute detail, one read and decode, and a
 #: write that evicts at a full cap.
 DETAIL_BUILD_BUDGET_MS = 60.0

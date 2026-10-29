@@ -54,10 +54,15 @@ def data() -> dict:
 # ---------------------------------------------------------------------------
 
 FILE = {
-    "provisional": "test",
+    "set_from": "test",
     "legs": {
         "linux-x64": {"scale": 1.0, "overrides": {}},
         "macos-x64": {"scale": 2.5, "overrides": {"demo": {"fixed_s": 99}}},
+        "windows-x64": {
+            "scale": 1.5,
+            "code_scale": 1.0,
+            "overrides": {"demo": {"load_s": 12}},
+        },
     },
     "benches": {
         "demo": {
@@ -78,6 +83,28 @@ class TestTheRules:
 
     def test_an_override_replaces_the_scaled_budget(self):
         assert budget_check.budgets_for("demo", "macos-x64", FILE)["fixed_s"] == 99
+
+    def test_a_leg_scale_applies_and_the_legs_own_number_for_a_metric_beats_it(self):
+        windows = budget_check.budgets_for("demo", "windows-x64", FILE)
+        assert windows["page_ms"] == 30 and windows["fixed_s"] == 7.5
+        # 10 * 1.5 would be 15; the leg's own number for the metric wins, tighter or looser.
+        assert windows["load_s"] == 12
+        assert windows["size_mb"] == 100
+
+    def test_the_budgets_in_a_benchs_code_take_the_code_scale_where_a_leg_has_one(self):
+        # Windows: scale 1.5 for the file's budgets, but 1.0 for those written in a bench.
+        assert budget_check.code_scale("windows-x64", FILE) == 1.0
+        assert budget_check.leg_scale("windows-x64", FILE) == 1.5
+        # A leg with no code_scale uses its scale; an unknown leg is 1.
+        assert budget_check.code_scale("macos-x64", FILE) == 2.5
+        assert budget_check.code_scale("linux-x64", FILE) == 1.0
+        assert budget_check.code_scale("plan9-x64", FILE) == 1.0
+
+    def test_scaled_ms_reads_the_code_scale(self, monkeypatch):
+        monkeypatch.setenv(budget_check.LEG_ENV, "windows-x64")
+        assert budget_check.scaled_ms(500.0) == 500.0
+        monkeypatch.setenv(budget_check.LEG_ENV, "macos-x64")
+        assert budget_check.scaled_ms(500.0) == 1250.0
 
     def test_a_leg_the_file_does_not_know_is_not_scaled(self):
         assert budget_check.budgets_for("demo", "plan9-x64", FILE)["load_s"] == 10
@@ -238,15 +265,70 @@ class TestTheBudgetsFile:
             == set(budget_check.LEGS)
         )
 
-    def test_the_intel_mac_has_the_largest_scale_and_the_rest_one(self, data):
-        scales = {leg: entry["scale"] for leg, entry in data["legs"].items()}
-        assert scales["macos-x64"] == 2.5
-        assert all(scale == 1.0 for leg, scale in scales.items() if leg != "macos-x64")
-
-    def test_every_budget_is_provisional_and_every_bench_says_where_its_numbers_came_from(
+    def test_the_intel_mac_has_the_largest_scale_windows_one_and_a_half_the_rest_one(
         self, data
     ):
-        assert "first green scale run" in data["provisional"]
+        scales = {leg: entry["scale"] for leg, entry in data["legs"].items()}
+        assert scales["macos-x64"] == 2.5
+        # Windows' disk (fsync, Defender) is 1.6 to 1.8 times Linux's on the library benches.
+        assert scales["windows-x64"] == 1.5
+        assert scales["linux-x64"] == scales["macos-arm64"] == 1.0
+
+    def test_windows_does_not_loosen_the_budgets_written_in_the_benches(self, data):
+        assert data["legs"]["windows-x64"]["code_scale"] == 1.0
+
+    def test_windows_migrations_get_their_own_numbers_not_a_factor(self, data):
+        """m0032 is 17 times slower on Windows, so one factor cannot cover it: ~1.5x measured."""
+        windows = budget_check.budgets_for("search_keys", "windows-x64", data)
+        assert windows["m0032_s"] == 6.8  # 4.498 s measured
+        assert windows["m0033_s"] == 5.3  # 3.537 s measured
+        linux = budget_check.budgets_for("search_keys", "linux-x64", data)
+        assert linux["m0032_s"] == 1.0
+        engine = budget_check.budgets_for("engine_start", "windows-x64", data)
+        assert engine["pending_migrate_s"] == 10.3  # 6.833 s measured
+        # The near miss (14.588 of 15 s) now has about a quarter of room.
+        assert 14.588 * 1.2 < engine["pending_state_ok_s"] < 14.588 * 1.35
+
+    def test_the_first_ci_runs_numbers_have_room_on_every_leg(self, data):
+        """Run 40888941398 (Linux, Windows, macOS arm64): each within its budget by 20% or more."""
+        measured = {
+            ("library", "statistics_health_ms"): (491.29, 639.6, 427.94),
+            ("library", "import_s"): (14.99, 24.27, 16.10),
+            ("library", "reimport_s"): (15.83, 24.76, 16.22),
+            ("library", "refresh_apply_s"): (16.37, 29.64, 20.09),
+            ("library", "browse_sort_ms"): (20.72, 33.55, 17.85),
+            ("clean", "file_check_s"): (5.84, 13.12, 6.68),
+            ("clean", "health_report_ms"): (227.9, 411, 178.6),
+            ("migrations", "m0025_s"): (0.44, 0.813, 0.253),
+            ("search_keys", "m0032_s"): (0.267, 4.498, 0.242),
+            ("search_keys", "m0033_s"): (0.839, 3.537, 0.906),
+            ("engine_start", "launch_backup_s"): (4.387, 8.063, 3.499),
+            ("engine_start", "pending_state_ok_s"): (5.04, 14.588, 4.015),
+            ("engine_start", "pending_migrate_s"): (0.824, 6.833, 0.62),
+            ("e2e", "renderer_mb"): (293, 190, 329),
+        }
+        legs = ("linux-x64", "windows-x64", "macos-arm64")
+        for (bench, metric), values in measured.items():
+            for leg, value in zip(legs, values):
+                budget = budget_check.budgets_for(bench, leg, data)[metric]
+                assert value * 1.2 <= budget, (bench, metric, leg, value, budget)
+
+    def test_what_is_above_a_spec_target_is_listed_for_the_last_step(self, data):
+        listed = data["above_spec"]
+        assert listed
+        for entry in listed:
+            assert entry["budget_ms"] > entry["spec_ms"] and entry["note"]
+            assert entry["bench"] in {*data["benches"], "waveforms"}
+        health = data["benches"]["library"]["metrics"]["statistics_health_ms"]
+        assert health == next(
+            e["budget_ms"] for e in listed if e["metric"] == "statistics_health_ms"
+        )
+
+    def test_the_budgets_name_their_run_and_every_bench_says_where_its_numbers_came_from(
+        self, data
+    ):
+        assert "provisional" not in data
+        assert "40888941398" in data["set_from"] and "Intel" in data["set_from"]
         for name, bench in data["benches"].items():
             assert bench["_basis"], name
             assert bench["metrics"], name
@@ -283,11 +365,12 @@ class TestTheBudgetsFile:
 
     def test_the_phase_15_and_16_budgets_are_kept(self, data):
         library = data["benches"]["library"]["metrics"]
+        # Health was 500 until the first CI run read 491 ms on Linux (above_spec lists it).
         assert (
             library["statistics_plays_ms"],
             library["statistics_spreads_ms"],
             library["statistics_health_ms"],
-        ) == (500, 1000, 500)
+        ) == (500, 1000, 620)
         assert data["benches"]["migrations"]["metrics"]["m0025_s"] == 1.0
 
 

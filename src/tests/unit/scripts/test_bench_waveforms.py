@@ -43,7 +43,7 @@ def test_the_budgets_are_the_phases():
     # WAVE-04's ratios, and the work list's, set by WAVE-07.
     assert bench.TYPICAL_READ_BUDGET_RATIO == 1.30
     assert bench.PREPARED_READ_BUDGET_RATIO == 1.40
-    assert bench.WORK_LIST_BUDGET_MS == 500
+    assert bench.WORK_LIST_BUDGET_MS == 600  # HARDEN-07: 500 was within 6% on every leg
     assert bench.DEFAULT_TRACKS == 50_000
     assert bench.DEFAULT_RUNS == 2
 
