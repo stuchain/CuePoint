@@ -1276,9 +1276,10 @@ describe("the columns button in the header's corner (K21)", () => {
     expect(headers).toHaveLength(COLUMNS.length);
     const button = screen.getByRole("button", { name: "Columns" });
     expect(headers.some((header) => header.contains(button))).toBe(false);
-    // It sits in the header row, outside any cell of the ARIA table.
+    // It sits in the header row in a cell of its own, which is a gridcell and not a column's heading: a row
+    // may hold only cells (axe, aria-required-children), and the table's columns stay the caller's.
     expect(button.closest(".track-table__header")).not.toBeNull();
-    expect(button.closest("[role='presentation']")).not.toBeNull();
+    expect(button.closest(".track-table__corner")).toHaveAttribute("role", "gridcell");
   });
 });
 

@@ -1209,7 +1209,7 @@ export function TrackTable<Row>({
             );
           })}
           {onColumns && (
-            <div className="track-table__corner" role="presentation">
+            <div className="track-table__corner" role="gridcell">
               <Hint text="Columns">
                 <Button
                   variant="secondary"
@@ -1225,9 +1225,13 @@ export function TrackTable<Row>({
         </div>
 
         {empty ? (
-          <div className="track-table__empty">
-            {/* M349: the shared empty state, not bare words, when the caller gives none. */}
-            {loading ? <Loading what="tracks" /> : (emptyState ?? <EmptyState compact headline="No tracks" />)}
+          // A grid holds rows, and a row holds cells (axe: aria-required-children), so the empty line is a row
+          // with one cell. The cell lays out as if it were not there (`display: contents`), so nothing moves.
+          <div className="track-table__empty" role="row">
+            <div role="gridcell" style={{ display: "contents" }}>
+              {/* M349: the shared empty state, not bare words, when the caller gives none. */}
+              {loading ? <Loading what="tracks" /> : (emptyState ?? <EmptyState compact headline="No tracks" />)}
+            </div>
           </div>
         ) : (
           <div

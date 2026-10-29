@@ -162,11 +162,12 @@ export function PickerDialog({
           }}
         />
 
-        <ul ref={listRef} className="cp-picker__list" role="listbox" aria-label={title}>
+        {/* With no option to hold, the list is a plain list: an empty listbox is not allowed (axe). */}
+        <ul ref={listRef} className="cp-picker__list" role={shown.length > 0 ? "listbox" : undefined} aria-label={title}>
           {shown.map((item) => {
             const index = choosable.indexOf(item);
             return (
-              <li key={item.id}>
+              <li key={item.id} role="presentation">
                 <button
                   type="button"
                   role="option"
