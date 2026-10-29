@@ -4,8 +4,8 @@
  * One session of the real app against a real engine and a library of `CUEPOINT_SCALE` tracks
  * (50,000 by default; the scale workflow runs it again at 100,000, recorded and not budgeted):
  *
- *   launch to a usable Library -> import a 250-playlist export end to end (to "Imported your
- *   library") -> scroll to the end -> type a search and see its first row -> sort -> open the
+ *   launch to a usable Library -> import a 250-playlist export (timed to the job's own `succeeded`; the
+ *   reload and the Library coming up after it are not timed) -> scroll to the end -> type a search and see its first row -> sort -> open the
  *   Statistics page and its Health tab -> quit and launch again on the full library
  *
  * Each step is timed, and after each the resident memory of the app's four processes (main, the
@@ -175,7 +175,10 @@ test.describe("The packaged app at scale (HARDEN-07)", () => {
       await expect(window.getByRole("heading", { name: "Library", level: 1 })).toBeVisible({ timeout: 60_000 });
       await record(app, "launch", started);
 
-      // --- import, end to end ------------------------------------------------------------------
+      // --- import --------------------------------------------------------------------------------
+      // Timed: from the call that starts the import to the job's own `succeeded` (the engine's
+      // state, read through the bridge). Nothing else is inside the window: not the status
+      // strip, not the reload, not opening the Library, which are checked afterwards.
       // The file dialog cannot be clicked from Playwright; the bridge method is what the button calls.
       started = performance.now();
       const job = await window.evaluate((file) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: file }), xml);
@@ -185,14 +188,20 @@ test.describe("The packaged app at scale (HARDEN-07)", () => {
           intervals: [500],
         })
         .toBe("succeeded");
-      // The strip says "Imported your library" for a while after the job ends; a page that
-      // never showed it would be a bug worth seeing, but one poll missing a short line is not.
+      await record(app, "import", started);
+
+      // --- the Library shows the import (not timed) ------------------------------------------------
+      // The strip says "Imported your library" for a while after the job ends; a page that never
+      // showed it would be a bug worth seeing, but one poll missing a short line is not, and the
+      // wait for it (a 5 s timeout when it is not there) must never be inside a timed window.
       const stripSaw = await window
         .locator(".cp-status")
         .getByText(/Imported your library/)
         .first()
         .waitFor({ timeout: 5_000 })
         .then(() => true, () => false);
+      // eslint-disable-next-line no-console
+      console.log(`the strip showed "Imported your library": ${stripSaw}`);
       // The Library reads the library when it loads: an import started through the bridge is seen on reload.
       await window.reload();
       await window.locator("main.app-main .screen:visible").waitFor({ timeout: 60_000 });
@@ -201,9 +210,6 @@ test.describe("The packaged app at scale (HARDEN-07)", () => {
       await expect(table).toBeVisible({ timeout: 120_000 });
       await expect(rowWithTitle(window, title(1))).toBeVisible({ timeout: 120_000 });
       await expect(window.getByTestId("library-track-count")).toContainText(TRACKS.toLocaleString("en-US"));
-      await record(app, "import", started);
-      // eslint-disable-next-line no-console
-      console.log(`the strip showed "Imported your library": ${stripSaw}`);
 
       // --- scroll to the end ------------------------------------------------------------------
       started = performance.now();
