@@ -8,8 +8,8 @@
  * changed. Second, a job started elsewhere going unnoticed: the strip has to
  * discover jobs it did not start, including one that outlived a reload.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { noteOutage, resetEngineOnlineForTests } from "../../api/engineOnline";
@@ -31,6 +31,21 @@ function job(overrides: Partial<EngineJobSummary> = {}): EngineJobSummary {
     ...overrides,
   };
 }
+
+/**
+ * Testing Library waits one second for a query by default. The strip renders after two asynchronous
+ * hops (the poll's answer, then the subscription), and a full run on a loaded machine has taken
+ * longer than that: "follows progress over SSE" failed at 1,062 ms (PHASE10_PREPARE.md, PHASE12_CLEANUP.md,
+ * HARDEN-09). Nothing here is asserted about how long the strip takes, so the wait is generous; a
+ * test that is really red takes five seconds to say so instead of one.
+ */
+const DEFAULT_WAIT_MS = 1000;
+beforeAll(() => {
+  configure({ asyncUtilTimeout: 5000 });
+});
+afterAll(() => {
+  configure({ asyncUtilTimeout: DEFAULT_WAIT_MS });
+});
 
 let getEngineStatus: ReturnType<typeof vi.fn>;
 let listJobs: ReturnType<typeof vi.fn>;
