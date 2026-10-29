@@ -452,7 +452,12 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await window.getByRole("link", { name: "Settings" }).click();
         // D23: the Rekordbox section's button is "Change file…" (as in the Library).
         const panel = window.locator(".cp-panel").filter({ hasText: "Change file…" });
-        await expect(panel.getByTestId("export-remembered-folder")).toHaveText(exports, { timeout: 30_000 });
+        // D23: the folder is shown with the home folder as "~" (Windows' temp folder is under home, so
+        // only there does the text change); the hint keeps the whole path.
+        const folder = panel.getByTestId("export-remembered-folder");
+        await expect(folder).toHaveAttribute("data-hint", exports, { timeout: 30_000 });
+        const tail = path.join(path.basename(path.dirname(exports)), path.basename(exports));
+        await expect(folder).toHaveText(new RegExp(`${tail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
         // M437: the export's notation is a sentence, not a second "Key notation" row.
         await expect(panel.getByTestId("export-remembered-notation")).toHaveText("Exports write keys as Camelot, like 8A.");
         await expect(panel.getByRole("list")).toContainText("CuePoint Export.xml");
