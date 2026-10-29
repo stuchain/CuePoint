@@ -802,6 +802,13 @@ class IBackupService(ABC):
         ...
 
     @abstractmethod
+    def ensure_pre_upgrade(
+        self, pending: Optional[Sequence[int]] = None
+    ) -> "BackupInfo":
+        """The copy to keep before an upgrade: found or taken, never skipped."""
+        ...
+
+    @abstractmethod
     def restore(self, backup_path: Path) -> "BackupInfo":
         """Replace the library database with a backup."""
         ...

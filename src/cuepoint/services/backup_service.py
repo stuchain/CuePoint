@@ -35,7 +35,18 @@ the two ``pre-restore`` kinds are never pruned automatically.
 ``appVersion`` is the CuePoint version that last opened the library
 (``library_meta.last_opened_by``, if the library has one), and a ``pre-upgrade``
 copy adds ``fromVersion`` (the same) and ``toVersion`` (the build taking the
-copy). A missing or unreadable sidecar just means the version is unknown.
+copy). A missing or unreadable sidecar just means the version is unknown. A
+``pre-upgrade`` sidecar also lists ``pendingVersions``, the migrations the copy
+was taken ahead of, so a retry after a failed upgrade reuses the copy it already
+has instead of taking another.
+
+**Room first (HARDEN-03).** A backup is a whole copy of the library, so one is
+only started when the backup folder's disk has room for it: the library's size
+times :data:`ROOM_FACTOR` plus :data:`ROOM_EXTRA_BYTES`. A launch copy that has
+no room is skipped, with the reason logged and kept in :data:`LAST_LAUNCH_SKIP`
+for the engine's status. The ``pre-upgrade`` copy is never skipped:
+:meth:`BackupService.ensure_pre_upgrade` raises :class:`NeedsSpaceError` and the
+upgrade does not run.
 
 **A damaged library can be restored.** When the library cannot be opened or
 fails its check, restore sets the file and its sidecars aside with a plain copy
@@ -47,6 +58,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import shutil
@@ -55,9 +67,10 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
+from cuepoint.services import library_errors
 from cuepoint.services.interfaces import (
     IBackupService,
     IConfigService,
@@ -90,6 +103,16 @@ REASONS = (
     PRE_RESTORE_DAMAGED_REASON,
 )
 
+#: A backup needs the library's size times this much free room...
+ROOM_FACTOR = 1.2
+#: ...plus this much more, so the disk is not left with nothing (50 MB).
+ROOM_EXTRA_BYTES = 50 * 1024 * 1024
+
+#: Why the most recent launch backup was skipped, or None. Set by
+#: :meth:`BackupService.backup_on_launch`; read by the engine's library status.
+#: ``{"reason": "low_space", "requiredFreeBytes": int, "freeBytes": int}``.
+LAST_LAUNCH_SKIP: Optional[Dict[str, object]] = None
+
 #: How many pre-upgrade copies are kept, apart from the launch and manual ones.
 PRE_UPGRADE_KEEP = 3
 
@@ -98,6 +121,19 @@ _NAME_PATTERN = re.compile(
     + "|".join(re.escape(r) for r in sorted(REASONS, key=len, reverse=True))
     + r")(?:-\d+)?\.db"
 )
+
+
+class NeedsSpaceError(DatabaseError):
+    """The disk has no room for a copy that must be taken before an upgrade."""
+
+    def __init__(self, required_bytes: int, free_bytes: int) -> None:
+        super().__init__(
+            message="There isn't enough free space on this disk to keep a backup.",
+            error_code="BACKUP_NEEDS_SPACE",
+            context={"requiredFreeBytes": required_bytes, "freeBytes": free_bytes},
+        )
+        self.required_bytes = required_bytes
+        self.free_bytes = free_bytes
 
 
 @dataclass(frozen=True)
@@ -111,6 +147,7 @@ class BackupInfo:
     app_version: Optional[str] = None
     from_version: Optional[str] = None
     to_version: Optional[str] = None
+    pending_versions: Tuple[int, ...] = ()
 
     @property
     def name(self) -> str:
@@ -168,6 +205,46 @@ class BackupService(IBackupService):
     def enabled(self) -> bool:
         return bool(self._setting("backup.enabled", True))
 
+    # ----------------------------------------------------------------- room
+
+    def library_size_bytes(self) -> int:
+        """The library's size on disk: the file and its write-ahead log."""
+        total = 0
+        for suffix in ("", "-wal"):
+            try:
+                total += Path(str(self._db.db_path) + suffix).stat().st_size
+            except OSError:
+                pass
+        return total
+
+    def required_free_bytes(self) -> int:
+        """How much free room a copy of the library needs, rounded up to a whole MB."""
+        needed = math.ceil(self.library_size_bytes() * ROOM_FACTOR) + ROOM_EXTRA_BYTES
+        megabyte = 1024 * 1024
+        return int(math.ceil(needed / megabyte) * megabyte)
+
+    def free_bytes(self) -> int:
+        """Free room on the disk the backup folder is (or would be) on."""
+        probe = self.backup_dir
+        while not probe.exists() and probe != probe.parent:
+            probe = probe.parent
+        return int(shutil.disk_usage(probe).free)
+
+    def _free_or_zero(self) -> int:
+        try:
+            return self.free_bytes()
+        except OSError:
+            return 0
+
+    def has_room(self) -> bool:
+        """True when a copy of the library fits with the room left over."""
+        try:
+            return self.free_bytes() >= self.required_free_bytes()
+        except OSError as exc:
+            # Cannot tell: do not stop a backup over a question that failed.
+            _logger.warning("[backup] could not read the free space: %s", exc)
+            return True
+
     # -------------------------------------------------------------- create
 
     def _reserve(self, reason: str) -> "tuple[Path, Path]":
@@ -216,7 +293,12 @@ class BackupService(IBackupService):
             return None
         return None if row is None or row[0] is None else str(row[0])
 
-    def create_backup(self, reason: str = MANUAL_REASON) -> BackupInfo:
+    def create_backup(
+        self,
+        reason: str = MANUAL_REASON,
+        *,
+        pending_versions: Optional[Sequence[int]] = None,
+    ) -> BackupInfo:
         """Write a verified copy of the library and prune old ones.
 
         Raises:
@@ -233,9 +315,14 @@ class BackupService(IBackupService):
 
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         with _CREATE_LOCK:
-            return self._create_locked(reason, source)
+            return self._create_locked(reason, source, pending_versions)
 
-    def _create_locked(self, reason: str, source: Path) -> BackupInfo:
+    def _create_locked(
+        self,
+        reason: str,
+        source: Path,
+        pending_versions: Optional[Sequence[int]] = None,
+    ) -> BackupInfo:
         target, partial = self._reserve(reason)
         from_version = self._recorded_version()
 
@@ -267,6 +354,11 @@ class BackupService(IBackupService):
             self._discard(partial)
             target.unlink(missing_ok=True)
             _logger.warning("[backup] could not write %s: %s", target.name, exc)
+            if library_errors.is_disk_full(exc):
+                # The room that was there when it was checked is gone.
+                raise NeedsSpaceError(
+                    self.required_free_bytes(), self._free_or_zero()
+                ) from exc
             raise DatabaseError(
                 message="Could not create a backup",
                 error_code="BACKUP_FAILED",
@@ -277,7 +369,7 @@ class BackupService(IBackupService):
                 },
             ) from exc
 
-        self._write_sidecar(target, reason, from_version)
+        self._write_sidecar(target, reason, from_version, pending_versions)
         _logger.info("[backup] wrote %s", target.name)
         self.prune()
         return self._info(target)
@@ -288,15 +380,20 @@ class BackupService(IBackupService):
             Path(str(partial) + suffix).unlink(missing_ok=True)
 
     def _write_sidecar(
-        self, target: Path, reason: str, from_version: Optional[str]
+        self,
+        target: Path,
+        reason: str,
+        from_version: Optional[str],
+        pending_versions: Optional[Sequence[int]] = None,
     ) -> None:
         """Record the app versions beside a copy; never a reason to lose the copy."""
         from cuepoint.version import __version__
 
-        record: Dict[str, Optional[str]] = {"appVersion": from_version}
+        record: Dict[str, object] = {"appVersion": from_version}
         if reason == PRE_UPGRADE_REASON:
             record["fromVersion"] = from_version
             record["toVersion"] = __version__
+            record["pendingVersions"] = [int(v) for v in pending_versions or ()]
         try:
             _sidecar_path(target).write_text(json.dumps(record), encoding="utf-8")
         except OSError as exc:
@@ -380,6 +477,34 @@ class BackupService(IBackupService):
             _logger.warning("[backup] could not tell if an upgrade is pending: %s", exc)
             return False
 
+    def ensure_pre_upgrade(self, pending: Optional[Sequence[int]] = None) -> BackupInfo:
+        """The ``pre-upgrade`` copy the migrations ``pending`` call for: found or taken.
+
+        A copy already taken ahead of at least these migrations is reused (a
+        retry after a failed upgrade keeps the copy from before the first
+        attempt). Otherwise one is taken, and **never skipped**: without room
+        for it this raises and the upgrade does not run.
+
+        Raises:
+            NeedsSpaceError: The disk has too little free room for the copy.
+            DatabaseError: The copy could not be written.
+        """
+        if pending is None:
+            from cuepoint.services.migration_runner import pending_versions
+
+            pending = pending_versions(self._db.db_path)
+        wanted = set(pending)
+        for info in self.list_backups():
+            if info.reason == PRE_UPGRADE_REASON and wanted <= set(
+                info.pending_versions
+            ):
+                return info
+        if not self.has_room():
+            raise NeedsSpaceError(self.required_free_bytes(), self.free_bytes())
+        return self.create_backup(
+            reason=PRE_UPGRADE_REASON, pending_versions=sorted(wanted)
+        )
+
     def backup_on_launch(self) -> Optional[BackupInfo]:
         """Take the copy a launch calls for: before an upgrade, or after a change.
 
@@ -388,22 +513,48 @@ class BackupService(IBackupService):
         whether or not the library changed since the last backup, and **even
         when automatic backups are switched off**: it is the way back from a bad
         release (DIST-08), not a convenience. Otherwise a ``launch`` copy is
-        taken if backups are enabled and the library changed.
+        taken if backups are enabled and the library changed, and **skipped
+        when the disk has no room for it** (:data:`LAST_LAUNCH_SKIP`).
 
         Never raises: a backup problem must not stop the application starting.
+        A pre-upgrade copy that could not be taken for lack of room is not
+        hidden by that: the library state (``engine/library_state.py``) asks
+        again and holds the upgrade back.
         Returns the backup taken, or ``None`` if one was not needed.
         """
+        global LAST_LAUNCH_SKIP
+        LAST_LAUNCH_SKIP = None
         try:
             self.sweep_partials()
             if not self._db.db_path.exists():
                 return None
             if self._migrations_pending():
-                return self.create_backup(reason=PRE_UPGRADE_REASON)
+                return self.ensure_pre_upgrade()
             if not self.enabled:
                 return None
             if not self._changed_since_last_backup():
                 return None
+            if not self.has_room():
+                LAST_LAUNCH_SKIP = {
+                    "reason": "low_space",
+                    "requiredFreeBytes": self.required_free_bytes(),
+                    "freeBytes": self.free_bytes(),
+                }
+                _logger.warning(
+                    "[backup] launch backup skipped: not enough free space "
+                    "(needs %d bytes, %d free)",
+                    LAST_LAUNCH_SKIP["requiredFreeBytes"],
+                    LAST_LAUNCH_SKIP["freeBytes"],
+                )
+                return None
             return self.create_backup(reason=LAUNCH_REASON)
+        except NeedsSpaceError as exc:
+            _logger.warning(
+                "[backup] the copy before the upgrade needs %d bytes free; "
+                "the upgrade will wait",
+                exc.required_bytes,
+            )
+            return None
         except Exception as exc:  # noqa: BLE001 - must not block startup
             _logger.warning("[backup] launch backup skipped: %s", exc)
             return None
@@ -441,7 +592,15 @@ class BackupService(IBackupService):
             value = record.get(key)
             return value if isinstance(value, str) and value else None
 
+        pending = record.get("pendingVersions")
         return BackupInfo(
+            pending_versions=tuple(
+                int(v)
+                for v in pending
+                if isinstance(v, int) and not isinstance(v, bool)
+            )
+            if isinstance(pending, list)
+            else (),
             path=path,
             created_at=datetime.fromtimestamp(
                 stat.st_mtime, tz=timezone.utc

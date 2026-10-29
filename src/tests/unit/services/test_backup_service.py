@@ -785,3 +785,128 @@ class TestMessagesAndNames:
         first, partial = backups._reserve("manual")
         second, _ = backups._reserve("manual")
         assert first != second and partial.exists()
+
+
+# ---------------------------------------------------------------------------
+# Room for a copy (HARDEN-03)
+# ---------------------------------------------------------------------------
+
+MB = 1024 * 1024
+
+
+def _with_free_space(monkeypatch, free: int) -> None:
+    from collections import namedtuple
+
+    usage = namedtuple("usage", "total used free")
+    monkeypatch.setattr(
+        "cuepoint.services.backup_service.shutil.disk_usage",
+        lambda _path: usage(10**12, 10**12 - free, free),
+    )
+
+
+@pytest.mark.unit
+class TestRoomForACopy:
+    def test_the_room_needed_is_the_library_times_1_2_plus_50_mb_in_whole_mb(
+        self, db, backups
+    ):
+        import math
+
+        from cuepoint.services import backup_service as module
+
+        _add_track(db, "1", "Song")
+        size = backups.library_size_bytes()
+        assert size > 0
+        expected = math.ceil((math.ceil(size * 1.2) + 50 * MB) / MB) * MB
+        assert backups.required_free_bytes() == expected
+        assert module.ROOM_FACTOR == 1.2 and module.ROOM_EXTRA_BYTES == 50 * MB
+
+    def test_a_launch_backup_with_too_little_room_is_skipped_and_says_why(
+        self, db, backups, monkeypatch, caplog
+    ):
+        from cuepoint.services import backup_service as module
+
+        _add_track(db, "1", "Song")
+        _with_free_space(monkeypatch, 1 * MB)
+        with caplog.at_level("WARNING"):
+            assert backups.backup_on_launch() is None
+        assert backups.list_backups() == []
+        assert not list(backups.backup_dir.glob(".*partial*"))
+        assert module.LAST_LAUNCH_SKIP == {
+            "reason": "low_space",
+            "requiredFreeBytes": backups.required_free_bytes(),
+            "freeBytes": 1 * MB,
+        }
+        assert "not enough free space" in caplog.text
+
+    def test_with_room_the_launch_backup_is_taken_and_the_skip_cleared(
+        self, db, backups, monkeypatch
+    ):
+        from cuepoint.services import backup_service as module
+
+        _add_track(db, "1", "Song")
+        _with_free_space(monkeypatch, 1 * MB)
+        backups.backup_on_launch()
+        assert module.LAST_LAUNCH_SKIP is not None
+        _with_free_space(monkeypatch, 10**11)
+        assert backups.backup_on_launch() is not None
+        assert module.LAST_LAUNCH_SKIP is None
+
+    def _older_library(self, tmp_path):
+        from cuepoint.services.migration_runner import _discovered
+
+        service = DatabaseService(db_path=tmp_path / "old.db")
+        migrations = _discovered()
+        MigrationRunner(service, migrations=migrations[:-1]).migrate()
+        return service, migrations[-1].version
+
+    def test_a_pre_upgrade_copy_with_too_little_room_stops_the_upgrade(
+        self, tmp_path, monkeypatch
+    ):
+        from cuepoint.services.backup_service import NeedsSpaceError
+
+        service, last = self._older_library(tmp_path)
+        try:
+            copies = BackupService(database_service=service)
+            _with_free_space(monkeypatch, 1 * MB)
+            with pytest.raises(NeedsSpaceError) as raised:
+                copies.ensure_pre_upgrade()
+            assert raised.value.required_bytes == copies.required_free_bytes()
+            assert raised.value.error_code == "BACKUP_NEEDS_SPACE"
+            # Launch does not take a smaller copy instead, or go on without one.
+            assert copies.backup_on_launch() is None
+            assert copies.list_backups() == []
+        finally:
+            service.close_all()
+
+    def test_the_pre_upgrade_copy_is_taken_when_there_is_room_and_reused_after(
+        self, tmp_path, monkeypatch
+    ):
+        service, last = self._older_library(tmp_path)
+        try:
+            copies = BackupService(database_service=service)
+            _with_free_space(monkeypatch, 10**11)
+            first = copies.ensure_pre_upgrade()
+            assert first.reason == "pre-upgrade" and first.pending_versions == (last,)
+            # Even with no room now, the copy already taken covers the retry.
+            _with_free_space(monkeypatch, 1 * MB)
+            assert copies.ensure_pre_upgrade().name == first.name
+            assert len(copies.list_backups()) == 1
+        finally:
+            service.close_all()
+
+    def test_a_copy_that_runs_out_of_room_while_written_needs_space(
+        self, db, backups, monkeypatch
+    ):
+        import errno
+
+        from cuepoint.services.backup_service import NeedsSpaceError
+
+        _add_track(db, "1", "Song")
+        _with_free_space(monkeypatch, 10**11)
+        monkeypatch.setattr(
+            "cuepoint.services.backup_service.os.replace",
+            lambda *a: (_ for _ in ()).throw(OSError(errno.ENOSPC, "full")),
+        )
+        with pytest.raises(NeedsSpaceError):
+            backups.create_backup(reason="manual")
+        assert backups.list_backups() == []
