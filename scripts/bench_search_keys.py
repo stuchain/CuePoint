@@ -20,6 +20,9 @@ Usage::
 
     python scripts/bench_search_keys.py                  # 50,000 tracks
     python scripts/bench_search_keys.py --tracks 5000     # a quicker pass
+    python scripts/bench_search_keys.py --json out.json   # and write the report
+
+Exit status 1 when a budget (``scripts/budgets.json``) is missed (HARDEN-07).
 """
 
 from __future__ import annotations
@@ -31,9 +34,12 @@ import tempfile
 import time
 import unicodedata
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import budget_check  # noqa: E402
 
 from cuepoint.persistence.track_query import BrowseQuery  # noqa: E402
 from cuepoint.persistence.track_repository import TrackRepository  # noqa: E402
@@ -97,51 +103,78 @@ def _seed(service: DatabaseService, count: int) -> None:
 
 
 def _timed(label: str, work) -> float:
+    """Run ``work``, print its time and return it in milliseconds."""
     start = time.perf_counter()
     work()
-    elapsed = time.perf_counter() - start
-    print(f"{label:<44}{elapsed * 1000:>10.1f} ms")
+    elapsed = (time.perf_counter() - start) * 1000
+    print(f"{label:<44}{elapsed:>10.1f} ms")
     return elapsed
 
 
-def main() -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--tracks", type=int, default=50_000)
-    args = parser.parse_args()
+    parser.add_argument("--json", type=Path, default=None, help="write the report")
+    args = parser.parse_args(argv)
 
     migrations = list(_discovered())
     before_32 = [m for m in migrations if m.version < 32]
     through_32 = [m for m in migrations if m.version <= 32]
     through_33 = [m for m in migrations if m.version <= 33]
 
+    measured: Dict[str, float] = {}
     with tempfile.TemporaryDirectory() as folder:
         service = DatabaseService(db_path=Path(folder) / "cuepoint.db")
         try:
             MigrationRunner(service, migrations=before_32).migrate()
             _seed(service, args.tracks)
             print(f"{args.tracks:,} tracks")
-            _timed(
-                "m0032_path_nfc",
-                lambda: MigrationRunner(service, migrations=through_32).migrate(),
+            measured["m0032_s"] = (
+                _timed(
+                    "m0032_path_nfc",
+                    lambda: MigrationRunner(service, migrations=through_32).migrate(),
+                )
+                / 1000
             )
-            _timed(
-                "m0033_search_keys",
-                lambda: MigrationRunner(service, migrations=through_33).migrate(),
+            measured["m0033_s"] = (
+                _timed(
+                    "m0033_search_keys",
+                    lambda: MigrationRunner(service, migrations=through_33).migrate(),
+                )
+                / 1000
             )
             repo = TrackRepository(service)
-            _timed("search 'ame' (folded, first 50)", lambda: repo.search("ame"))
-            _timed("search count 'beyonce'", lambda: repo.search_count("beyonce"))
-            _timed(
+            measured["search_ms"] = _timed(
+                "search 'ame' (folded, first 50)", lambda: repo.search("ame")
+            )
+            measured["search_count_ms"] = _timed(
+                "search count 'beyonce'", lambda: repo.search_count("beyonce")
+            )
+            measured["browse_first_page_ms"] = _timed(
                 "browse page 1 (default order)",
                 lambda: repo.browse(BrowseQuery(), limit=100),
             )
-            _timed(
+            measured["browse_deep_page_ms"] = _timed(
                 "browse page 400 (default order)",
-                lambda: repo.browse(BrowseQuery(), limit=100, offset=39_900),
+                lambda: repo.browse(
+                    BrowseQuery(), limit=100, offset=max(0, args.tracks - 100)
+                ),
             )
         finally:
             service.close_all()
-    return 0
+
+    measured = {name: round(value, 3) for name, value in measured.items()}
+    result: Dict[str, Any] = {
+        "tracks": args.tracks,
+        "measured": measured,
+        "budget": budget_check.evaluate("search_keys", measured, size=args.tracks),
+    }
+    print("\n".join(budget_check.report_lines(result["budget"])))
+    if args.json:
+        budget_check.write_json(args.json, result)
+    for problem in result["budget"]["problems"]:
+        print(f"OVER BUDGET: {problem}", file=sys.stderr)
+    return 1 if result["budget"]["problems"] else 0
 
 
 if __name__ == "__main__":

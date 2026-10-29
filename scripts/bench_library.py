@@ -41,12 +41,15 @@ Usage::
     python scripts/bench_library.py --tracks 5000        # a quicker pass
     python scripts/bench_library.py --json report.json   # machine-readable
     python scripts/bench_library.py --statistics         # and the Statistics routes
+
+Exit status 1 when a phase went wrong or a budget (``scripts/budgets.json``,
+HARDEN-07) is missed. Budgets are for 50,000 tracks; a larger run is recorded
+and not held.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import shutil
 import sys
 import tempfile
@@ -59,7 +62,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import budget_check  # noqa: E402
 from cuepoint.engine.revisions import (  # noqa: E402
     LIBRARY,
     WAVEFORMS,
@@ -765,12 +770,14 @@ def measure_batch(batch_service, phases, total: int):
 HISTORY_WEEKS = 52
 HISTORY_MOVED_PER_WEEK = 500
 
-#: What the plays route has to answer within on the development machine.
-PLAYS_BUDGET_MS = 500
-
-#: And the spreads and the health routes (STATS-03).
-SPREADS_BUDGET_MS = 1000
-HEALTH_BUDGET_MS = 500
+#: The Statistics routes' budgets (500, 1,000 and 500 ms: STATS-02, STATS-03) are
+#: in ``scripts/budgets.json`` with the rest, as ``statistics_*_ms``; they are
+#: measured only with ``--statistics``.
+STATISTICS_METRICS = (
+    "statistics_plays_ms",
+    "statistics_spreads_ms",
+    "statistics_health_ms",
+)
 
 
 def build_play_history(
@@ -1159,16 +1166,6 @@ def run(
         problems.append("the tag facet did not offer every tag")
     if by_org["the tag vocabulary"]["rows"] != DEFAULT_TAGS:
         problems.append("the tag vocabulary lost a tag")
-    for case in statistics_cases:
-        budget = {
-            "plays": PLAYS_BUDGET_MS,
-            "spreads": SPREADS_BUDGET_MS,
-            "health": HEALTH_BUDGET_MS,
-        }.get(case["name"].split(",")[0])
-        if budget is not None and case["ms"] > budget:
-            problems.append(
-                f"{case['name']} took {case['ms']} ms; the budget is {budget}"
-            )
     by_stat = {case["name"]: case for case in statistics_cases}
     if statistics_cases and by_stat["spreads"]["rows"] != tracks - removed + added:
         problems.append("the spreads did not count the library they were asked of")
@@ -1202,7 +1199,7 @@ def run(
         for candidate in workspace.glob("library.db*")
         if candidate.is_file()
     )
-    return {
+    result = {
         "tracks": tracks,
         "playlists": playlists,
         "collections": DEFAULT_COLLECTIONS,
@@ -1219,6 +1216,69 @@ def run(
         },
         "problems": problems,
     }
+    result["budget"] = budget_check.evaluate(
+        "library",
+        budget_metrics(result),
+        size=tracks,
+        optional=() if with_statistics else STATISTICS_METRICS,
+    )
+    problems.extend(result["budget"]["problems"])
+    return result
+
+
+def _slowest(cases: List[Dict[str, Any]], *names: str, prefix: bool = False) -> float:
+    """The slowest ``ms`` among the cases called ``names`` (or starting with them)."""
+    found = [
+        float(case["ms"])
+        for case in cases
+        if (case["name"].startswith(names) if prefix else case["name"] in names)
+    ]
+    if not found:
+        raise KeyError(f"no browse case called {names}")
+    return max(found)
+
+
+def budget_metrics(result: Dict[str, Any]) -> Dict[str, float]:
+    """The numbers held to ``scripts/budgets.json``, in the unit their names end in.
+
+    A metric over several cases is the slowest of them. The statistics metrics
+    are there only when the run measured them.
+    """
+    phases = {phase["name"]: phase for phase in result["phases"]}
+    browse = result["browse"]
+    measured: Dict[str, float] = {
+        "import_s": phases["import"]["seconds"],
+        "reimport_s": phases["re-import (idempotent)"]["seconds"],
+        "refresh_unchanged_ms": phases["diff, nothing changed"]["seconds"] * 1000,
+        "refresh_diff_s": phases["diff, edited"]["seconds"],
+        "refresh_apply_s": phases["apply refresh"]["seconds"],
+        "browse_first_page_ms": _slowest(browse, "first page, default order"),
+        "browse_deep_page_ms": _slowest(browse, "deep page", prefix=True),
+        "browse_sort_ms": _slowest(browse, "first page, by ", prefix=True),
+        "search_page_ms": _slowest(browse, "text query, first page"),
+        "search_count_ms": _slowest(browse, "text query, count"),
+        "browse_playlist_ms": _slowest(browse, "playlist scope, first page"),
+        "browse_folder_ms": _slowest(browse, "folder scope, first page"),
+        "filter_ms": _slowest(
+            browse,
+            "filtered page, one rule",
+            "filtered count, one rule",
+            "filtered page, three rules",
+            "filtered count, three rules",
+        ),
+        "facet_small_ms": _slowest(
+            browse, "facet: rating", "facet: artist (900, no index)"
+        ),
+        "facet_list_ms": _slowest(browse, "facet: genre", "facet: label (120 values)"),
+        "facet_filtered_ms": _slowest(browse, "facet: genre under a filter"),
+        "facet_range_ms": _slowest(browse, "facet: bpm range"),
+    }
+    for case in result.get("statistics", []):
+        route = case["name"].split(",")[0]
+        if route in ("plays", "spreads", "health"):
+            key = f"statistics_{route}_ms"
+            measured[key] = max(measured.get(key, 0.0), float(case["ms"]))
+    return {name: round(value, 3) for name, value in measured.items()}
 
 
 def report(result: Dict[str, Any]) -> None:
@@ -1268,6 +1328,9 @@ def report(result: Dict[str, Any]) -> None:
                 f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}"
                 f"{'-' if second is None else format(second, '.3f'):>16}"
             )
+    if result.get("budget"):
+        print()
+        print("\n".join(budget_check.report_lines(result["budget"])))
     if result["problems"]:
         print("\nPROBLEMS:")
         for problem in result["problems"]:
@@ -1299,7 +1362,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         result = run(args.tracks, args.playlists, workspace, args.statistics)
         report(result)
         if args.json:
-            args.json.write_text(json.dumps(result, indent=2), encoding="utf-8")
+            budget_check.write_json(args.json, result)
             print(f"\nwrote {args.json}")
         return 1 if result["problems"] else 0
     finally:

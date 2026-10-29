@@ -21,6 +21,7 @@ Marked slow; ``scripts/run_tests.py --no-slow`` skips it.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -33,7 +34,9 @@ import bench_waveforms  # noqa: E402
 
 pytestmark = [pytest.mark.performance, pytest.mark.slow]
 
-TRACKS = 5_000
+#: ``CUEPOINT_SCALE`` sets the size: ``scale.yml`` runs these at 50,000 on every
+#: build leg (HARDEN-07); without it a local run uses the smaller default below.
+TRACKS = int(os.environ.get("CUEPOINT_SCALE", "5000"))
 
 #: Timings may run to this many times their budget here; see the docstring.
 CEILING = 4.0
@@ -83,8 +86,9 @@ def test_every_measurement_is_taken(result):
 
 def test_the_store_is_inside_its_budget_for_its_size(result):
     store = _rows(result)[f"The store, {TRACKS:,} waveforms"]
-    # 5.2 KB a track: WAVE-02's 5 for the waveforms, and WAVE-08's loudness.
-    assert store["budget"] == pytest.approx(26.0)
+    # 5.2 KB a track: WAVE-02's 5 for the waveforms, and WAVE-08's loudness
+    # (26 MB at 5,000 tracks, 260 MB at 50,000).
+    assert store["budget"] == pytest.approx(5.2 * TRACKS / 1000)
     assert not store["over_budget"], store
 
 

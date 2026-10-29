@@ -35,7 +35,6 @@ Exit status 1 when a budget is missed.
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import platform
 import random
@@ -49,6 +48,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "src"))
+sys.path.insert(0, str(_ROOT / "scripts"))
+
+import budget_check  # noqa: E402
 
 from cuepoint.core.waveform import BAND_COUNT, COLUMNS, Waveform, compand, encode  # noqa: E402
 from cuepoint.data.audio_decode import ANALYSIS_VERSION, LOUDNESS_VERSION  # noqa: E402
@@ -270,6 +272,15 @@ def run(workspace: Path, total: int, worst_case: bool, repeats: int) -> Dict[str
     }
 
 
+def _timing_budgets() -> List[tuple]:
+    """The p95 budgets, with this leg's time allowance (``scripts/budgets.json``)."""
+    return [
+        ("states_200", budget_check.scaled_ms(BATCH_BUDGET_MS)),
+        ("pictures_200_at_120", budget_check.scaled_ms(BATCH_BUDGET_MS)),
+        ("one_at_1200", budget_check.scaled_ms(ONE_BUDGET_MS)),
+    ]
+
+
 def over_budget(result: Dict[str, Any]) -> List[str]:
     """What missed its budget, in words; empty when everything held.
 
@@ -279,11 +290,7 @@ def over_budget(result: Dict[str, Any]) -> List[str]:
     missed = []
     if not result["worst_case"] and result["store_mb"] > SIZE_BUDGET_MB:
         missed.append(f"store {result['store_mb']} MB > {SIZE_BUDGET_MB} MB")
-    for name, budget in (
-        ("states_200", BATCH_BUDGET_MS),
-        ("pictures_200_at_120", BATCH_BUDGET_MS),
-        ("one_at_1200", ONE_BUDGET_MS),
-    ):
+    for name, budget in _timing_budgets():
         if result[name]["p95_ms"] > budget:
             missed.append(f"{name} p95 {result[name]['p95_ms']} ms > {budget} ms")
     return missed
@@ -299,11 +306,7 @@ def report(result: Dict[str, Any]) -> None:
         f" mean blob {result['mean_blob_bytes']} bytes, built in"
         f" {result['build_seconds']} s"
     )
-    for name, budget in (
-        ("states_200", BATCH_BUDGET_MS),
-        ("pictures_200_at_120", BATCH_BUDGET_MS),
-        ("one_at_1200", ONE_BUDGET_MS),
-    ):
+    for name, budget in _timing_budgets():
         timing = result[name]
         print(
             f"  {name}: median {timing['median_ms']} ms, p95 {timing['p95_ms']} ms,"
@@ -327,7 +330,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         result = run(Path(folder), args.tracks, args.worst_case, args.repeats)
     report(result)
     if args.json:
-        args.json.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        budget_check.write_json(args.json, result)
     missed = over_budget(result)
     for line in missed:
         print(f"OVER BUDGET: {line}")

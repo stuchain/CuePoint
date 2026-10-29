@@ -47,7 +47,6 @@ Exit status 1 when a budget is missed.
 from __future__ import annotations
 
 import argparse
-import json
 import random
 import shutil
 import statistics
@@ -58,6 +57,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import budget_check  # noqa: E402
 
 DEFAULT_TRACKS = 50_000
 READ_REPEATS = 5
@@ -353,7 +355,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         shutil.rmtree(workspace, ignore_errors=True)
     report(result)
     if args.json:
-        args.json.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        budget_check.write_json(args.json, result)
     missed = over_budget(result)
     if missed:
         print("\nOver budget:", ", ".join(missed))

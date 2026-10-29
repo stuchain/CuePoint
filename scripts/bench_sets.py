@@ -43,7 +43,6 @@ Exit status 1 when a budget is missed, so a release run can gate on it.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import shutil
 import sqlite3
@@ -55,6 +54,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import budget_check  # noqa: E402
 
 DEFAULT_TRACKS = 50_000
 NOW = "2026-09-29T12:00:00+00:00"
@@ -443,6 +445,9 @@ def run(total: int, workspace: Path) -> Dict[str, Any]:
     rows: List[Dict[str, Any]] = []
 
     def row(label: str, value: float, unit: str, note: str = "", budget=None):
+        # A slower leg (the Intel Mac) has more time; a size is not scaled.
+        if budget is not None and unit == "ms":
+            budget = budget_check.scaled_ms(budget)
         over = budget is not None and value > budget
         rows.append(
             {
@@ -591,7 +596,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             shutil.rmtree(workspace, ignore_errors=True)
     report(result)
     if args.json:
-        args.json.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        budget_check.write_json(args.json, result)
     missed = over_budget(result)
     if missed:
         print("\nOver budget:", ", ".join(missed))

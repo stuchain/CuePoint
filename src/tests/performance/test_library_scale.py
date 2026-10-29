@@ -21,6 +21,7 @@ not.
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 import tracemalloc
@@ -35,8 +36,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 from bench_library import build_service, write_export  # noqa: E402
 
 #: Big enough for the relationships to be real, small enough to run often.
-#: The full 50,000 is `scripts/bench_library.py`.
-TRACKS = 20_000
+#: The full 50,000 is `scripts/bench_library.py`, and ``scale.yml`` runs these at
+#: 50,000 (``CUEPOINT_SCALE``, HARDEN-07); 20,000 is the default for a local run.
+TRACKS = int(os.environ.get("CUEPOINT_SCALE", "20000"))
 PLAYLISTS = 60
 
 #: Peak allocation a single pass may use per track, in bytes.

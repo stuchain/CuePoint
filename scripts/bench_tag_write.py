@@ -8,7 +8,8 @@ HARDEN-04 makes every tag write work on a copy of the audio file, check it
 (tags read back; audio payload byte-identical) and swap it in with
 ``os.replace``. That costs a copy, two payload hashes and an ``fsync`` per file.
 This measures it against the old in-place write, so the step records "before
-and after"; HARDEN-07 owns the budget, so this asserts nothing.
+and after". HARDEN-07 holds the checked copy to a budget (``scripts/budgets.json``): exit
+status 1 when 1,000 files take longer than it allows.
 
 The files are generated in a temporary directory from the small recorded tones
 under ``src/tests/fixtures/audio`` (MP3 and FLAC, alternating), optionally with
@@ -21,6 +22,7 @@ Usage::
     python scripts/bench_tag_write.py --files 200
     python scripts/bench_tag_write.py --audio-mb 8     # MP3s ~8 MB each
     python scripts/bench_tag_write.py --json           # one JSON object on stdout
+    python scripts/bench_tag_write.py --json out.json  # ...or written to a file
 """
 
 from __future__ import annotations
@@ -38,6 +40,9 @@ from typing import Any, Dict, List
 
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "src"))
+sys.path.insert(0, str(_ROOT / "scripts"))
+
+import budget_check  # noqa: E402
 
 FIXTURES = _ROOT / "src" / "tests" / "fixtures" / "audio"
 DEFAULT_FILES = 1000
@@ -129,13 +134,33 @@ def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--files", type=int, default=DEFAULT_FILES)
     parser.add_argument("--audio-mb", type=float, default=0.0)
-    parser.add_argument("--json", action="store_true", help="print one JSON object")
+    parser.add_argument(
+        "--json",
+        nargs="?",
+        const="-",
+        default=None,
+        help="print one JSON object, or write it to the file named",
+    )
     args = parser.parse_args(argv)
 
     report = run(args.files, args.audio_mb)
-    if args.json:
+    # The mean 1,000 files take; padded MP3s (--audio-mb) are a different question.
+    measured = {"via_copy_s": report["via_copy"]["total_seconds"]}
+    report["budget"] = budget_check.evaluate(
+        "tag_write",
+        measured,
+        size=args.files
+        if not args.audio_mb
+        else budget_check.reference_size("tag_write") + 1,
+    )
+    problems = report["budget"]["problems"]
+    for problem in problems:
+        print(f"OVER BUDGET: {problem}", file=sys.stderr)
+    if args.json == "-":
         print(json.dumps(report, indent=2))
-        return 0
+        return 1 if problems else 0
+    if args.json:
+        budget_check.write_json(Path(args.json), report)
     print(f"Tag write over {report['files']} files ({report['platform']})")
     for label in ("in_place", "via_copy"):
         row = report[label]
@@ -145,7 +170,8 @@ def main(argv: List[str] | None = None) -> int:
             f"  max {row['max_ms']:.2f} ms  failed {row['failed']}"
         )
     print(f"  checked copy is {report['slowdown_factor']}x the in-place time")
-    return 0
+    print("\n".join(budget_check.report_lines(report["budget"])))
+    return 1 if problems else 0
 
 
 if __name__ == "__main__":

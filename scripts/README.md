@@ -78,7 +78,14 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
 - `bench_search_keys.py`: The path and search-key migrations (m0032, m0033) and searches on the keys at 50,000 tracks (HARDEN-06).
 - `bench_waveforms.py`: Phase 11 as a whole at 50,000 tracks, run twice.
 - `bench_engine_start.py`: Times the engine from launch to a healthy `/health`, each run in a fresh temporary
-  home. `python scripts/bench_engine_start.py [--exe <packaged engine>]`.
+  home. `python scripts/bench_engine_start.py [--exe <packaged engine>]`. With `--library 50000` it starts on a
+  full library instead (first answer, the launch backup, library ready, with and without a migration pending).
+- `bench_migrations.py`: Migrations m0025 and m0027 over a library of 50,000 tracks (HARDEN-07).
+- `budget_check.py`: The budgets every bench above is held to (`budgets.json`, per leg); `check e2e FILE`
+  holds the packaged-app spec's numbers to them. Budgets are provisional until the first green scale run.
+- `budgets.json`: The budget data: a base, a `scale` and `overrides` for each of the four legs.
+- `performance_tables.py`: Rewrites the tables of `docs/user-guide/performance.md` from a scale run's JSON
+  (`.github/workflows/scale.yml` uploads it); `--check` exits 1 when the guide is out of date.
 
 ## Notes
 

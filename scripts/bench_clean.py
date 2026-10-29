@@ -29,12 +29,15 @@ Usage::
     python scripts/bench_clean.py                  # 50,000 tracks
     python scripts/bench_clean.py --tracks 5000    # a quicker pass, scaled
     python scripts/bench_clean.py --json report.json
+
+Exit status 1 when a budget (``scripts/budgets.json``, HARDEN-07) is missed.
+``seed`` builds the same library without measuring it: ``bench_engine_start.py``
+starts the engine on one.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import shutil
 import statistics
@@ -45,6 +48,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import budget_check  # noqa: E402
 
 #: Everything below scales with the library, in the proportions the step names.
 DEFAULT_TRACKS = 50_000
@@ -81,18 +87,25 @@ def _mb(size: int) -> float:
     return round(size / (1024 * 1024), 1)
 
 
-def run(total: int, workspace: Path) -> Dict[str, Any]:
+def seed(
+    total: int, workspace: Path, database_path: Optional[Path] = None
+) -> Dict[str, Any]:
+    """Build the library Clean is measured on, in this process, and return what it made.
+
+    ``database_path`` is where the library goes (default: ``workspace/cuepoint.db``).
+    The services are bootstrapped against it and left open: the caller measures
+    or closes them. The files are written under ``workspace/music``.
+    """
     os.environ["CUEPOINT_HOME"] = str(workspace / "home")
     os.environ["CUEPOINT_SKIP_BEATPORT"] = "1"
     os.environ.pop("CUEPOINT_BEATPORT_FIXTURE", None)
 
     from cuepoint.services import database_service
 
-    database_path = workspace / "cuepoint.db"
+    database_path = database_path or workspace / "cuepoint.db"
     database_service.default_database_path = lambda: database_path
 
     from cuepoint.models.beatport_candidate import BeatportCandidate
-    from cuepoint.models.filter_rule import FilterRule, RuleSet
     from cuepoint.models.library_track import LibraryTrack
     from cuepoint.models.result import TrackResult
     from cuepoint.models.track import Track
@@ -101,15 +114,8 @@ def run(total: int, workspace: Path) -> Dict[str, Any]:
         SOURCE_CUEPOINT,
     )
     from cuepoint.persistence.artwork_repository import EmbeddedRecord
-    from cuepoint.persistence.track_query import BrowseQuery
     from cuepoint.services import interfaces as I
-    from cuepoint.services.batch_service import (
-        OPERATION_APPLY_MATCH,
-        BatchOperation,
-        BatchSelection,
-    )
     from cuepoint.services.bootstrap import bootstrap_services
-    from cuepoint.services.health_service import HEALTH_RULES
     from cuepoint.utils.di_container import get_container, reset_container
 
     reset_container()
@@ -282,6 +288,50 @@ def run(total: int, workspace: Path) -> Dict[str, Any]:
                 ]
             )
     seeding["artwork"] = time.perf_counter() - started
+    return {
+        "total": total,
+        "ids": ids,
+        "paths": paths,
+        "database_path": database_path,
+        "db": db,
+        "resolve": resolve,
+        "seeding": seeding,
+        "attempts": attempts,
+        "decisions": decisions,
+        "overrides": overrides,
+        "missing": missing,
+        "pairs": pairs,
+        "batch_size": batch_size,
+    }
+
+
+def run(total: int, workspace: Path) -> Dict[str, Any]:
+    seeded = seed(total, workspace)
+    ids = seeded["ids"]
+    db = seeded["db"]
+    resolve = seeded["resolve"]
+    database_path = seeded["database_path"]
+    seeding = seeded["seeding"]
+    attempts, decisions, overrides = (
+        seeded["attempts"],
+        seeded["decisions"],
+        seeded["overrides"],
+    )
+    missing, pairs, batch_size = (
+        seeded["missing"],
+        seeded["pairs"],
+        seeded["batch_size"],
+    )
+
+    from cuepoint.models.filter_rule import FilterRule, RuleSet
+    from cuepoint.persistence.track_query import BrowseQuery
+    from cuepoint.services import interfaces as I
+    from cuepoint.services.batch_service import (
+        OPERATION_APPLY_MATCH,
+        BatchOperation,
+        BatchSelection,
+    )
+    from cuepoint.services.health_service import HEALTH_RULES
 
     # --------------------------------------------------------- measurements
     library = resolve(I.ILibraryService)
@@ -395,7 +445,7 @@ def run(total: int, workspace: Path) -> Dict[str, Any]:
     row("Database size", _mb(size), "MB", f"{candidate_rows:,} candidate rows")
     row("Database size after VACUUM", _mb(vacuumed_copy.stat().st_size), "MB")
 
-    return {
+    result = {
         "tracks": total,
         "attempts": attempts,
         "candidates_per_attempt": CANDIDATES_PER_ATTEMPT,
@@ -406,6 +456,26 @@ def run(total: int, workspace: Path) -> Dict[str, Any]:
         "batch": len(accepted),
         "seeding_seconds": {k: round(v, 1) for k, v in seeding.items()},
         "rows": rows,
+    }
+    result["budget"] = budget_check.evaluate(
+        "clean", budget_metrics(result), size=total
+    )
+    return result
+
+
+def budget_metrics(result: Dict[str, Any]) -> Dict[str, float]:
+    """The numbers held to ``scripts/budgets.json``: Health, the file check, duplicates."""
+    rows = {entry["label"]: entry for entry in result["rows"]}
+    counts = [
+        entry["value"]
+        for label, entry in rows.items()
+        if label.startswith("Health: ") and label != "Health: the whole report"
+    ]
+    return {
+        "health_report_ms": rows["Health: the whole report"]["value"],
+        "health_count_ms": max(counts),
+        "file_check_s": rows["File check, whole library"]["value"],
+        "duplicates_s": rows["Duplicate scan, every signal"]["value"],
     }
 
 
@@ -451,9 +521,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                 pass
             shutil.rmtree(workspace, ignore_errors=True)
     report(result)
+    print()
+    print("\n".join(budget_check.report_lines(result["budget"])))
     if args.json:
-        args.json.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    return 0
+        budget_check.write_json(args.json, result)
+    for problem in result["budget"]["problems"]:
+        print(f"OVER BUDGET: {problem}", file=sys.stderr)
+    return 1 if result["budget"]["problems"] else 0
 
 
 if __name__ == "__main__":

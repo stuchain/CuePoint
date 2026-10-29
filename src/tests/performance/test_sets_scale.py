@@ -21,6 +21,7 @@ Marked slow; ``scripts/run_tests.py --no-slow`` skips it.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -33,7 +34,9 @@ import bench_sets  # noqa: E402
 
 pytestmark = [pytest.mark.performance, pytest.mark.slow]
 
-TRACKS = 5_000
+#: ``CUEPOINT_SCALE`` sets the size: ``scale.yml`` runs these at 50,000 on every
+#: build leg (HARDEN-07); without it a local run uses the smaller default below.
+TRACKS = int(os.environ.get("CUEPOINT_SCALE", "5000"))
 
 
 @pytest.fixture

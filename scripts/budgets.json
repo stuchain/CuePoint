@@ -1,0 +1,124 @@
+{
+  "provisional": "set after the first green scale run (HARDEN-07, DEC-184)",
+  "_how": [
+    "A budget is for 50,000 tracks (1,000 files for a tag write). A smaller run is held to it; a larger one is recorded, not held.",
+    "Base: the Windows number in docs/user-guide/performance.md times 1.5, or the Phase 15/16 budget where one exists.",
+    "A time under 10 ms is floored at 10 ms: below that a shared runner measures noise.",
+    "Where nothing was recorded (or the guide's number is out of date) the base is a first estimate from a Linux container run, said so in _basis.",
+    "A leg's scale multiplies every time budget (the Intel Mac's runner is 2.5 times slower than Linux); its overrides replace single budgets.",
+    "A leg that is more than twice as slow as the others is investigated, never loosened."
+  ],
+  "legs": {
+    "windows-x64": {"scale": 1.0, "overrides": {}},
+    "linux-x64": {"scale": 1.0, "overrides": {}},
+    "macos-arm64": {
+      "scale": 1.0,
+      "overrides": {
+        "engine_start": {"first_health_ms": 12000},
+        "e2e": {"launch_s": 40, "relaunch_s": 60}
+      }
+    },
+    "macos-x64": {
+      "scale": 2.5,
+      "overrides": {
+        "engine_start": {"first_health_ms": 30000},
+        "e2e": {"launch_s": 100, "relaunch_s": 150}
+      }
+    }
+  },
+  "benches": {
+    "library": {
+      "reference": 50000,
+      "_basis": "Windows 11 desktop, performance.md, times 1.5; facet_small_ms: estimate (the guide's 7 and 12 ms predate the facet queries; 33 and 57 ms on Linux, times 1.5); statistics_* are the Phase 15/16 budgets",
+      "metrics": {
+        "import_s": 16.4,
+        "reimport_s": 20.9,
+        "refresh_unchanged_ms": 25,
+        "refresh_diff_s": 18.2,
+        "refresh_apply_s": 21.0,
+        "browse_first_page_ms": 10,
+        "browse_deep_page_ms": 10,
+        "browse_sort_ms": 29,
+        "search_page_ms": 29,
+        "search_count_ms": 36,
+        "browse_playlist_ms": 10,
+        "browse_folder_ms": 72,
+        "filter_ms": 20,
+        "facet_small_ms": 85,
+        "facet_list_ms": 65,
+        "facet_filtered_ms": 53,
+        "facet_range_ms": 35,
+        "statistics_plays_ms": 500,
+        "statistics_spreads_ms": 1000,
+        "statistics_health_ms": 500
+      }
+    },
+    "clean": {
+      "reference": 50000,
+      "_basis": "Windows 11 desktop, performance.md, times 1.5",
+      "metrics": {
+        "health_report_ms": 470,
+        "health_count_ms": 233,
+        "file_check_s": 12.9,
+        "duplicates_s": 3.5
+      }
+    },
+    "migrations": {
+      "reference": 50000,
+      "_basis": "m0025: the Phase 16 budget (1 s; 324 ms recorded). m0027: estimate, 58 ms on Linux, floored at 1 s",
+      "metrics": {
+        "m0025_s": 1.0,
+        "m0027_s": 1.0
+      }
+    },
+    "search_keys": {
+      "reference": 50000,
+      "_basis": "m0033: about 0.6 s recorded at HARDEN-06 and 1.07 s on Linux, times 1.5; the rest: estimates from a Linux run (m0032 0.28 s, search 1.3 ms, count 30 ms)",
+      "metrics": {
+        "m0032_s": 1.0,
+        "m0033_s": 1.6,
+        "search_ms": 10,
+        "search_count_ms": 60,
+        "browse_first_page_ms": 10,
+        "browse_deep_page_ms": 10
+      }
+    },
+    "engine_start": {
+      "reference": 50000,
+      "_basis": "estimates from a Linux run on 308 MB (first /health 0.69 s from source, launch copy 2.1 s, library ok 2.1 s, one migration pending 3.6 s, quick_check 0.74 s), about 4 times that; the packaged one-file engine on a Mac takes about 10 s to unpack on a cold start, so the Macs have their own first_health_ms",
+      "metrics": {
+        "first_health_ms": 5000,
+        "launch_backup_s": 10,
+        "state_ok_s": 10,
+        "pending_state_ok_s": 15,
+        "pending_migrate_s": 5,
+        "quick_check_s": 5
+      }
+    },
+    "tag_write": {
+      "reference": 1000,
+      "_basis": "estimate: 1,000 files through the checked copy took 2.95 s on Linux; Windows is slower (fsync, antivirus)",
+      "metrics": {
+        "via_copy_s": 20
+      }
+    },
+    "e2e": {
+      "reference": 50000,
+      "_basis": "estimates (nothing was measured in the packaged app but the renderer: 186-222 MB, times 1.5): the import is the engine's 10.9 s times 1.5 plus the job's own overhead",
+      "metrics": {
+        "launch_s": 30,
+        "import_s": 25,
+        "scroll_end_s": 5,
+        "search_s": 5,
+        "sort_s": 5,
+        "statistics_s": 10,
+        "statistics_health_s": 5,
+        "relaunch_s": 40,
+        "main_mb": 400,
+        "renderer_mb": 350,
+        "engine_mb": 1200,
+        "mpv_mb": 300
+      }
+    }
+  }
+}

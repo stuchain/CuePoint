@@ -50,7 +50,6 @@ Exit status 1 when any run misses a budget.
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import platform
 import random
@@ -69,6 +68,7 @@ sys.path.insert(0, str(_SCRIPTS.parent / "src"))
 sys.path.insert(0, str(_SCRIPTS))
 
 import bench_marks  # noqa: E402
+import budget_check  # noqa: E402
 import bench_waveform_store  # noqa: E402
 
 from cuepoint.core.waveform import COLUMNS  # noqa: E402
@@ -144,6 +144,9 @@ def _row(
     *,
     over: Optional[bool] = None,
 ) -> Dict[str, Any]:
+    # A slower leg (the Intel Mac) has more time; a size or a ratio is not scaled.
+    if budget is not None and unit.startswith("ms"):
+        budget = budget_check.scaled_ms(budget)
     return {
         "label": label,
         "value": round(value, 2),
@@ -502,7 +505,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         shutil.rmtree(workspace, ignore_errors=True)
     report(result)
     if args.json:
-        args.json.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        budget_check.write_json(args.json, result)
     missed = over_budget(result)
     for line in missed:
         print(f"OVER BUDGET: {line}")
