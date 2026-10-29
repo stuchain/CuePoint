@@ -55,6 +55,11 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from cuepoint.data.tag_save import (
+    MESSAGE_TAGS_DIFFER,
+    TagSaveError,
+    save_via_copy,
+)
 from cuepoint.utils.quoting import quoted
 
 #: The fields a tag write replaces, in the order options name them.
@@ -234,9 +239,14 @@ def read_tag_fields(path: PathLike) -> TagSnapshot:
         TagFieldsError: If its tags cannot be read.
     """
     tag_format = _require_format(path)
+    return _read_fields(path, tag_format, Path(str(path)).suffix.lower())
+
+
+def _read_fields(path: PathLike, tag_format: str, suffix: str) -> TagSnapshot:
+    """``read_tag_fields`` for a file whose name may not say what it is (a copy)."""
     try:
         if tag_format == FORMAT_ID3:
-            _audio, tags = _load_id3(path)
+            _audio, tags = _load_id3(path, suffix)
             fields = {
                 field: _id3_value(tags, slots) for field, slots in _ID3_SLOTS.items()
             }
@@ -278,23 +288,36 @@ def restore_tag_fields(path: PathLike, values: Mapping[str, FieldValue]) -> None
     if not wanted:
         return
     slots_by_field = _SLOTS[tag_format]
-    try:
+    suffix = Path(str(path)).suffix.lower()
+
+    def apply(work: Path) -> None:
         if tag_format == FORMAT_ID3:
-            audio, tags = _load_id3(path)
+            audio, tags = _load_id3(work, suffix)
             for field, value in wanted.items():
                 for slot in slots_by_field[field]:
                     _set_id3_slot(tags, slot, (value or {}).get(slot))
-            _save_id3(path, audio, tags)
+            _save_id3(work, audio, tags)
         else:
-            vorbis = _load_vorbis(path, tag_format)
+            vorbis = _load_vorbis(work, tag_format)
             if vorbis.tags is None:
                 vorbis.add_tags()
             for field, value in wanted.items():
                 for slot in slots_by_field[field]:
                     _set_vorbis_slot(vorbis.tags, slot, (value or {}).get(slot))
             vorbis.save()
+
+    def verify(work: Path) -> None:
+        read = _read_fields(work, tag_format, suffix)
+        for field, value in wanted.items():
+            if read.value(field) != value:
+                raise TagSaveError(MESSAGE_TAGS_DIFFER)
+
+    try:
+        save_via_copy(path, apply, verify=verify)
     except (TagFieldsError, ValueError):
         raise
+    except TagSaveError as exc:
+        raise TagFieldsError(str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed restore
         raise TagFieldsError(
             f"The tags of {quoted(path)} could not be written: {exc}"
@@ -322,11 +345,14 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
     data = bytes(jpeg)
     if not data:
         raise ValueError("A picture to embed cannot be empty")
-    try:
+    suffix = Path(str(path)).suffix.lower()
+    wanted_hash = picture_hash(data)
+
+    def apply(work: Path) -> None:
         if tag_format == FORMAT_ID3:
             from mutagen.id3 import APIC
 
-            audio, tags = _load_id3(path)
+            audio, tags = _load_id3(work, suffix)
             if tags.getall("APIC"):
                 raise PictureAlreadyPresent(f"{quoted(path)} already holds a picture")
             tags.add(
@@ -338,9 +364,9 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
                     data=data,
                 )
             )
-            _save_id3(path, audio, tags)
+            _save_id3(work, audio, tags)
         else:
-            vorbis = _load_vorbis(path, tag_format)
+            vorbis = _load_vorbis(work, tag_format)
             if _vorbis_pictures(vorbis, tag_format):
                 raise PictureAlreadyPresent(f"{quoted(path)} already holds a picture")
             picture = _flac_picture(data, width, height)
@@ -353,8 +379,17 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
                     base64.b64encode(picture.write()).decode("ascii")
                 ]
             vorbis.save()
+
+    def verify(work: Path) -> None:
+        if wanted_hash not in _read_fields(work, tag_format, suffix).pictures:
+            raise TagSaveError(MESSAGE_TAGS_DIFFER)
+
+    try:
+        save_via_copy(path, apply, verify=verify)
     except (TagFieldsError, ValueError):
         raise
+    except TagSaveError as exc:
+        raise TagFieldsError(str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed write
         raise TagFieldsError(
             f"A picture could not be embedded in {quoted(path)}: {exc}"
@@ -373,16 +408,18 @@ def remove_picture(path: PathLike, sha256: str) -> bool:
         TagFieldsError: If the file cannot be read or saved.
     """
     tag_format = _require_format(path)
-    try:
+    suffix = Path(str(path)).suffix.lower()
+
+    def apply(work: Path) -> bool:
         if tag_format == FORMAT_ID3:
-            audio, tags = _load_id3(path)
+            audio, tags = _load_id3(work, suffix)
             for frame in tags.getall("APIC"):
                 if picture_hash(frame.data) == sha256:
                     del tags[frame.HashKey]
-                    _save_id3(path, audio, tags)
+                    _save_id3(work, audio, tags)
                     return True
             return False
-        vorbis = _load_vorbis(path, tag_format)
+        vorbis = _load_vorbis(work, tag_format)
         if tag_format == FORMAT_FLAC:
             for block in list(vorbis.metadata_blocks):
                 if (
@@ -403,8 +440,22 @@ def remove_picture(path: PathLike, sha256: str) -> bool:
                         vorbis.save()
                         return True
         return False
+
+    def verify(work: Path) -> None:
+        # Exactly one picture with this hash went; the original is still as it was.
+        before = _read_fields(path, tag_format, suffix).pictures
+        after = _read_fields(work, tag_format, suffix).pictures
+        if after.count(sha256) != before.count(sha256) - 1:
+            raise TagSaveError(MESSAGE_TAGS_DIFFER)
+
+    try:
+        return save_via_copy(
+            path, apply, verify=verify, accept=lambda removed: removed is True
+        )
     except TagFieldsError:
         raise
+    except TagSaveError as exc:
+        raise TagFieldsError(str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 — surfaced as a failed restore
         raise TagFieldsError(
             f"A picture could not be removed from {quoted(path)}: {exc}"
@@ -430,12 +481,15 @@ def _slots_for(tag_format: str) -> Dict[str, Tuple[str, ...]]:
     return _SLOTS[tag_format]
 
 
-def _load_id3(path: PathLike) -> Tuple[Any, Any]:
-    """``(container, ID3 tags)``: the container is None for an MP3's bare tag."""
+def _load_id3(path: PathLike, suffix: Optional[str] = None) -> Tuple[Any, Any]:
+    """``(container, ID3 tags)``: the container is None for an MP3's bare tag.
+
+    ``suffix`` says what the file is when its name does not (a copy beside it).
+    """
     from mutagen.aiff import AIFF
     from mutagen.id3 import ID3, ID3NoHeaderError
 
-    if Path(str(path)).suffix.lower() == ".mp3":
+    if (suffix or Path(str(path)).suffix).lower() == ".mp3":
         try:
             return None, ID3(str(path))
         except ID3NoHeaderError:

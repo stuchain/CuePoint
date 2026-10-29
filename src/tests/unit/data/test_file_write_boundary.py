@@ -53,6 +53,7 @@ WRITING_FUNCTIONS: Dict[str, FrozenSet[str]] = {
             "_write_id3_in_container",
             "_write_vorbis",
             "_write_mutagen_auto",
+            "_dispatch",
         }
     ),
     "cuepoint.data.tag_fields": frozenset(

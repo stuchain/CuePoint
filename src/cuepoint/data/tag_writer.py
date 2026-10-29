@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 import struct
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, List, Optional, Tuple
+
+from cuepoint.data.tag_save import MESSAGE_TAGS_DIFFER, TagSaveError, save_via_copy
 
 _logger = logging.getLogger(__name__)
 
@@ -121,20 +123,172 @@ def write_key_comment_year_to_file(
     genre = _str_opt(genre)
     suffix = path.suffix.lower().strip()
     try:
-        if suffix == ".mp3":
-            return _write_id3(path, key, comment, year, label, bpm, genre)
-        if suffix == ".wav":
-            return _write_wav(path, key, comment, year, label, bpm, genre)
-        if suffix in (".aiff", ".aif"):
-            return _write_id3_in_container(path, key, comment, year, label, bpm, genre)
-        if suffix == ".flac":
-            return _write_flac(path, key, comment, year, label, bpm, genre)
-        if suffix == ".ogg":
-            return _write_vorbis(path, key, comment, year, label, bpm, genre)
-        return _write_mutagen_auto(path, key, comment, year, label, bpm, genre)
+        # HARDEN-04 / DEC-183: every write goes to a copy beside the file, which
+        # is checked and then replaces the original (see tag_save).
+        return save_via_copy(
+            path,
+            lambda work: _dispatch(work, suffix, key, comment, year, label, bpm, genre),
+            accept=lambda outcome: outcome[0] == STATUS_OK,
+            verify=lambda work: _verify_tags(
+                work, suffix, key, comment, year, label, bpm, genre
+            ),
+        )
+    except TagSaveError as e:
+        _logger.warning("Tag write refused for %s: %s", file_path, e)
+        return (STATUS_WRITE_ERROR, str(e))
     except Exception as e:
         _logger.warning("Tag write failed for %s", file_path, exc_info=True)
         return (STATUS_WRITE_ERROR, str(e))
+
+
+def _dispatch(
+    path: Path,
+    suffix: str,
+    key: Optional[str],
+    comment: Optional[str],
+    year: Optional[str],
+    label: Optional[str],
+    bpm: Optional[str],
+    genre: Optional[str],
+) -> Tuple[str, Optional[str]]:
+    """Run the writer for a format on ``path`` (the copy; ``suffix`` is the file's)."""
+    if suffix == ".mp3":
+        return _write_id3(path, key, comment, year, label, bpm, genre)
+    if suffix == ".wav":
+        return _write_wav(path, key, comment, year, label, bpm, genre)
+    if suffix in (".aiff", ".aif"):
+        return _write_id3_in_container(path, key, comment, year, label, bpm, genre)
+    if suffix == ".flac":
+        return _write_flac(path, key, comment, year, label, bpm, genre)
+    if suffix == ".ogg":
+        return _write_vorbis(path, key, comment, year, label, bpm, genre, suffix)
+    return _write_mutagen_auto(path, key, comment, year, label, bpm, genre)
+
+
+def _mp4_name(name: str) -> str:
+    """The atom name mutagen stores a key under: four bytes, padded with NUL."""
+    return name.encode("latin-1")[:4].ljust(4, b"\x00").decode("latin-1")
+
+
+def _texts(frame: Any) -> List[str]:
+    return ["\x00".join(str(item) for item in getattr(frame, "text", []))]
+
+
+def _verify_id3(tags: Any, expected: "dict[str, Optional[str]]") -> bool:
+    singles = {
+        "key": "TKEY",
+        "year": "TDRC",
+        "label": "TPUB",
+        "bpm": "TBPM",
+        "genre": "TCON",
+    }
+    for field, frame_id in singles.items():
+        wanted = expected.get(field)
+        if wanted is None:
+            continue
+        frames = tags.getall(frame_id)
+        if not frames or _texts(frames[0])[0] != wanted:
+            return False
+    comment = expected.get("comment")
+    if comment is not None:
+        if comment not in [_texts(frame)[0] for frame in tags.getall("COMM")]:
+            return False
+    return True
+
+
+def _verify_comments(
+    audio: Any, expected: "dict[str, Optional[str]]", flac: bool
+) -> bool:
+    names = {
+        "key": "KEY",
+        "year": "DATE",
+        "label": "LABEL",
+        "bpm": "BPM",
+        "genre": "GENRE",
+        "comment": "COMMENT",
+    }
+    for field, name in names.items():
+        wanted = expected.get(field)
+        if wanted is None:
+            continue
+        if [str(v) for v in (audio.get(name) or [])] != [wanted]:
+            return False
+        if field == "key" and flac:
+            if [str(v) for v in (audio.get("INITIALKEY") or [])] != [wanted]:
+                return False
+    return True
+
+
+def _verify_tags(
+    work: Path,
+    suffix: str,
+    key: Optional[str],
+    comment: Optional[str],
+    year: Optional[str],
+    label: Optional[str],
+    bpm: Optional[str],
+    genre: Optional[str],
+) -> None:
+    """Raise TagSaveError unless the copy's tags read back as the writer wrote them.
+
+    The writer's own rules decide the expected text: WAV is Latin-1, years are
+    four digits, MP4 keys are the four-byte atom names mutagen stores. A format
+    whose tags this does not know how to read back (APE, ASF, ...) is only
+    checked to open.
+    """
+    wav = suffix == ".wav"
+    clean = _latin1_safe if wav else _str_opt
+    expected = {
+        "key": clean(key),
+        "comment": clean(comment),
+        "year": _normalize_year(year),
+        "label": clean(label),
+        "bpm": clean(bpm),
+        "genre": clean(genre),
+    }
+    from mutagen import File
+    from mutagen.id3 import ID3
+    from mutagen._vorbis import VComment  # noqa: PLC2701
+    from mutagen.mp4 import MP4
+
+    try:
+        if suffix == ".mp3":
+            ok = _verify_id3(ID3(str(work)), expected)
+        else:
+            audio = File(str(work))
+            if audio is None:
+                raise TagSaveError(MESSAGE_TAGS_DIFFER)
+            tags = getattr(audio, "tags", None)
+            if isinstance(tags, ID3):
+                ok = _verify_id3(tags, expected)
+            elif isinstance(audio, MP4):
+                renamed = {
+                    "key": "KEY",
+                    "year": "DATE",
+                    "label": "LABEL",
+                    "bpm": "BPM",
+                    "genre": "GENRE",
+                    "comment": "COMMENT",
+                }
+                tags = audio.tags or {}
+                ok = all(
+                    wanted is None
+                    # The catch-all writer adds beside what a file already holds
+                    # under the name, so the value must be among them.
+                    or wanted
+                    in [str(v) for v in (tags.get(_mp4_name(renamed[f])) or [])]
+                    for f, wanted in expected.items()
+                )
+            elif isinstance(tags, VComment):
+                ok = _verify_comments(audio, expected, suffix == ".flac")
+            else:
+                ok = tags is not None  # unknown tag kind: it opened and has tags
+    except TagSaveError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - a copy that cannot be read back
+        raise TagSaveError(MESSAGE_TAGS_DIFFER) from exc
+    if not ok:
+        raise TagSaveError(MESSAGE_TAGS_DIFFER)
 
 
 def _write_id3(
@@ -227,10 +381,19 @@ def _write_wav_list_info(
     except ImportError:
         _logger.debug("mutagen.wave not available for LIST-INFO write")
         return
-    try:
-        with open(path, "r+b") as f:
+
+    def append(work: Path) -> None:
+        with open(work, "r+b") as f:
             wave_file = _WaveFile(f)
             wave_file.insert_chunk("LIST", b"INFO" + data)
+
+    def has_list(work: Path) -> None:
+        with open(work, "rb") as f:
+            if "LIST" not in _WaveFile(f):
+                raise TagSaveError(MESSAGE_TAGS_DIFFER)
+
+    try:
+        save_via_copy(path, append, verify=has_list)  # HARDEN-04: copy, check, swap
     except Exception as e:
         _logger.warning("Could not write LIST-INFO to WAV %s: %s", path, e)
 
@@ -397,8 +560,9 @@ def _write_vorbis(
     label: Optional[str] = None,
     bpm: Optional[str] = None,
     genre: Optional[str] = None,
+    suffix: Optional[str] = None,
 ) -> Tuple[str, Optional[str]]:
-    suffix = path.suffix.lower()
+    suffix = (suffix or path.suffix).lower()
     if suffix == ".flac":
         from mutagen.flac import FLAC
 
