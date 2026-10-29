@@ -9,7 +9,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { sweepTempFiles, writeAtomic } from "./atomicWrite";
+import { sweepTempFilesAsync, writeAtomic } from "./atomicWrite";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
 import { RESTORE_FILES_LIMIT, TagWriteRelease } from "./tagWriteRelease";
 import { BEATPORT_PARTITION, BeatportAuth, ElectronSignInHost } from "./beatportAuth";
@@ -553,7 +553,19 @@ function showSaveDialogFor(
   win: BrowserWindow | null,
   options: Electron.SaveDialogOptions,
 ): Promise<Electron.SaveDialogReturnValue> {
-  return win ? dialog.showSaveDialog(win, options) : dialog.showSaveDialog(options);
+  const asked = win ? dialog.showSaveDialog(win, options) : dialog.showSaveDialog(options);
+  // HARDEN-04: the folder a file is saved to is where a killed write leaves a temporary file,
+  // so the next start sweeps the last few.
+  return asked.then((result) => {
+    if (!result.canceled && result.filePath) {
+      try {
+        mainSettingsStore().rememberExportFolder(path.dirname(result.filePath));
+      } catch {
+        // A convenience; the save goes on without it.
+      }
+    }
+    return result;
+  });
 }
 
 /**
@@ -1480,6 +1492,22 @@ function startMainLog(): void {
   log.info("app", "started", { version: app.getVersion(), platform: process.platform, arch: process.arch });
 }
 
+/**
+ * HARDEN-04: what a killed write left behind (".<name>.cuepoint-tmp-<pid>") goes: in main's own
+ * folder, where a set list was last saved and the last few folders exports went to. Once, after
+ * the window shows, and never in the way of it.
+ */
+let sweptLeftoverTemps = false;
+function sweepLeftoverTemps(): void {
+  if (sweptLeftoverTemps) return;
+  sweptLeftoverTemps = true;
+  const settings = mainSettingsStore().read();
+  const folders = [app.getPath("userData"), settings.setListFolder, ...settings.lastExportFolders].filter(
+    (folder): folder is string => typeof folder === "string",
+  );
+  void sweepTempFilesAsync(new Set(folders)).catch(() => undefined);
+}
+
 async function createWindow(): Promise<void> {
   /**
    * The engine starts beside the window, not before it.
@@ -1623,6 +1651,7 @@ async function createWindow(): Promise<void> {
       shown = true;
       if (opening.maximized) win.maximize();
       win.show();
+      sweepLeftoverTemps();
     };
     win.once("ready-to-show", reveal);
     setTimeout(reveal, 5000).unref();
@@ -1672,14 +1701,6 @@ if (displayChoice(process.env[E2E_DISPLAY_ENV]) !== null) {
 app.whenReady().then(onlyIfFirst(firstInstance, () => {
   // A second copy has already exited (`enforceSingleInstance`) and starts nothing.
   breadcrumb("app", "ready");
-  // HARDEN-04: what a killed write left behind (".<name>.cuepoint-tmp-<pid>") goes, in main's own
-  // folder and where a set list was last saved. The folders the engine last exported to are the
-  // engine's to sweep (not recorded here yet).
-  sweepTempFiles(
-    [app.getPath("userData"), mainSettingsStore().read().setListFolder].filter(
-      (folder): folder is string => typeof folder === "string",
-    ),
-  );
   // What an installed update left behind goes, and a first launch of an updating build marks
   // its own version as seen so "What's new" offers nothing for it (DEC-172).
   if (app.isPackaged) {

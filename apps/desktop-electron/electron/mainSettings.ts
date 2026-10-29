@@ -65,7 +65,15 @@ interface MainSettings {
    * made already in that colour rather than flashing white (M492). Null before the first report.
    */
   windowTheme: WindowTheme | null;
+  /**
+   * The folders exports were last saved to, newest first, at most `MAX_EXPORT_FOLDERS`, so the
+   * next start can sweep what a killed write left in them (HARDEN-04).
+   */
+  lastExportFolders: string[];
 }
+
+/** How many export folders are remembered. */
+export const MAX_EXPORT_FOLDERS = 5;
 
 function defaults(): MainSettings {
   return {
@@ -76,6 +84,7 @@ function defaults(): MainSettings {
     pendingInstall: null,
     windowState: null,
     windowTheme: null,
+    lastExportFolders: [],
   };
 }
 
@@ -88,6 +97,16 @@ function isoDate(value: unknown): string | null {
 /** `X.Y.Z` or `X.Y.Z-test.N` with no `v`, else null. */
 function schemeVersion(value: unknown): string | null {
   return typeof value === "string" && !value.startsWith("v") && parseVersion(value) ? value : null;
+}
+
+/** Absolute folder names, no repeats, at most `MAX_EXPORT_FOLDERS`; anything else is dropped. */
+function exportFolders(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const folders: string[] = [];
+  for (const item of value) {
+    if (typeof item === "string" && path.isAbsolute(item) && !folders.includes(item)) folders.push(item);
+  }
+  return folders.slice(0, MAX_EXPORT_FOLDERS);
 }
 
 /** The settings a file's text holds; anything unreadable reads as the default. */
@@ -110,6 +129,7 @@ export function parseMainSettings(text: string): MainSettings {
     pendingInstall: schemeVersion(record.pendingInstall),
     windowState: parseWindowState(record.windowState),
     windowTheme: parseWindowTheme(record.windowTheme),
+    lastExportFolders: exportFolders(record.lastExportFolders),
   };
 }
 
@@ -123,6 +143,13 @@ export class MainSettingsStore {
     } catch {
       return defaults();
     }
+  }
+
+  /** Remember a folder an export went to, newest first, keeping the last few. */
+  rememberExportFolder(folder: string): void {
+    if (!path.isAbsolute(folder)) return;
+    const others = this.read().lastExportFolders.filter((known) => known !== folder);
+    this.update({ lastExportFolders: [folder, ...others].slice(0, MAX_EXPORT_FOLDERS) });
   }
 
   /** Change some settings, keeping the rest, and write the file whole. */

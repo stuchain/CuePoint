@@ -23,7 +23,8 @@ import path from "node:path";
 /** Marks a temporary file; the name ends `<marker><pid>` or `<marker><pid>-<n>`. */
 export const TEMP_MARKER = ".cuepoint-tmp-";
 
-const TEMP_NAME = /^\..+\.cuepoint-tmp-(\d+)(?:-\d+)?$/;
+// A copy of an audio file keeps its extension: `.<stem>.cuepoint-tmp-<pid>[-<n>].<ext>`.
+const TEMP_NAME = /^\..+\.cuepoint-tmp-(\d+)(?:-\d+)?(?:\.[^.]+)?$/;
 
 export type AtomicData = string | Uint8Array | Iterable<string | Uint8Array> | AsyncIterable<string | Uint8Array>;
 
@@ -35,9 +36,11 @@ export interface AtomicWriteOptions {
 }
 
 /** The temporary file name for a file called `name`. */
-export function tempNameFor(name: string, pid: number = process.pid, serial = 0): string {
-  const base = `.${name}${TEMP_MARKER}${pid}`;
-  return serial === 0 ? base : `${base}-${serial}`;
+export function tempNameFor(name: string, pid: number = process.pid, serial = 0, keepExtension = false): string {
+  const extension = keepExtension ? path.extname(name) : "";
+  const stem = keepExtension ? name.slice(0, name.length - extension.length) : name;
+  const base = `.${stem}${TEMP_MARKER}${pid}`;
+  return (serial === 0 ? base : `${base}-${serial}`) + extension;
 }
 
 function asBytes(chunk: string | Uint8Array, encoding: BufferEncoding): Uint8Array {
@@ -222,6 +225,38 @@ export function sweepTempFiles(folders: Iterable<string>, isAlive: (pid: number)
       const file = path.join(folder, entry.name);
       try {
         fs.rmSync(file, { force: true });
+        removed.push(file);
+      } catch {
+        // Left for the next start.
+      }
+    }
+  }
+  return removed;
+}
+
+/**
+ * `sweepTempFiles` without holding up the main thread: the same folders, the same rule, one
+ * folder at a time. Run it after the window shows, not before.
+ */
+export async function sweepTempFilesAsync(
+  folders: Iterable<string>,
+  isAlive: (pid: number) => boolean = pidAlive,
+): Promise<string[]> {
+  const removed: string[] = [];
+  for (const folder of folders) {
+    let entries: fs.Dirent[];
+    try {
+      entries = await fs.promises.readdir(folder, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const match = TEMP_NAME.exec(entry.name);
+      if (!match || !entry.isFile()) continue;
+      if (isAlive(Number(match[1]))) continue;
+      const file = path.join(folder, entry.name);
+      try {
+        await fs.promises.rm(file, { force: true });
         removed.push(file);
       } catch {
         // Left for the next start.

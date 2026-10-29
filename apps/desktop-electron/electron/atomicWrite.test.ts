@@ -7,6 +7,7 @@ import {
   TEMP_MARKER,
   pidAlive,
   sweepTempFiles,
+  sweepTempFilesAsync,
   tempNameFor,
   writeAtomic,
   writeAtomicSync,
@@ -38,6 +39,11 @@ describe("names", () => {
   it("names the temporary file beside the target with the process id", () => {
     expect(tempNameFor("a.json", 42)).toBe(".a.json.cuepoint-tmp-42");
     expect(tempNameFor("a.json", 42, 2)).toBe(".a.json.cuepoint-tmp-42-2");
+  });
+
+  it("can keep the extension last, for a copy of an audio file", () => {
+    expect(tempNameFor("song.mp3", 7, 0, true)).toBe(".song.cuepoint-tmp-7.mp3");
+    expect(tempNameFor("song.mp3", 7, 2, true)).toBe(".song.cuepoint-tmp-7-2.mp3");
   });
 });
 
@@ -184,5 +190,23 @@ describe("sweepTempFiles", () => {
     fs.writeFileSync(mine, "x");
     expect(sweepTempFiles([dir])).toEqual([]);
     expect(fs.existsSync(mine)).toBe(true);
+  });
+});
+
+describe("sweepTempFilesAsync", () => {
+  it("removes the same files the synchronous sweep does, including copies that kept their extension", async () => {
+    const dir = folder();
+    const dead = 4_000_000;
+    const plain = path.join(dir, tempNameFor("a.json", dead));
+    const copy = path.join(dir, tempNameFor("song.mp3", dead, 1, true));
+    const mine = path.join(dir, tempNameFor("song.mp3", process.pid, 0, true));
+    const music = path.join(dir, "song.mp3");
+    for (const file of [plain, copy, mine, music]) fs.writeFileSync(file, "x");
+
+    const removed = await sweepTempFilesAsync([dir, path.join(dir, "missing")], (pid) => pid === process.pid);
+
+    expect(removed.sort()).toEqual([plain, copy].sort());
+    expect(fs.existsSync(mine)).toBe(true);
+    expect(fs.existsSync(music)).toBe(true);
   });
 });

@@ -26,7 +26,7 @@ function settingsFile(): string {
 }
 
 const GIGS = path.resolve("/music/gigs");
-const DEFAULTS = { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null, windowState: null, windowTheme: null };
+const DEFAULTS = { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null, windowState: null, windowTheme: null, lastExportFolders: [] };
 
 describe("reading", () => {
   it("answers the defaults before anything was written", () => {
@@ -214,5 +214,24 @@ describe("the window's remembered state (M491, M492)", () => {
     expect(read.windowState).toBeNull();
     expect(read.windowTheme).toBeNull();
     expect(read.setListFolder).toBe(GIGS);
+  });
+});
+
+describe("the export folders (HARDEN-04)", () => {
+  it("remembers the last five, newest first, without repeats", () => {
+    const store = new MainSettingsStore(settingsFile());
+    for (const name of ["a", "b", "c", "d", "e", "f", "c"]) store.rememberExportFolder(path.resolve(`/exports/${name}`));
+    expect(store.read().lastExportFolders).toEqual(
+      ["c", "f", "e", "d", "b"].map((name) => path.resolve(`/exports/${name}`)),
+    );
+  });
+
+  it("ignores a folder that is not absolute, and reads a damaged list as empty", () => {
+    const file = settingsFile();
+    const store = new MainSettingsStore(file);
+    store.rememberExportFolder("relative/folder");
+    expect(store.read().lastExportFolders).toEqual([]);
+    fs.writeFileSync(file, JSON.stringify({ lastExportFolders: ["relative", 7, path.resolve("/ok")] }));
+    expect(store.read().lastExportFolders).toEqual([path.resolve("/ok")]);
   });
 });
