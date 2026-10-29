@@ -11,6 +11,7 @@ or break a running job.
 
 from __future__ import annotations
 
+import threading
 import time
 
 import pytest
@@ -196,3 +197,125 @@ class TestEnsureRepository:
         store.ensure_repository()
         store.ensure_repository()
         assert calls == [1]
+
+    def test_two_first_calls_run_the_provider_once(self):
+        started = threading.Event()
+        release = threading.Event()
+        runs = []
+
+        def provider():
+            runs.append(threading.current_thread().name)
+            started.set()
+            release.wait(5)
+            return "repository"
+
+        store = JobStore(job_repository_provider=provider)
+        seen = []
+
+        def first_call():
+            seen.append(store._get_repository())
+
+        first = threading.Thread(target=first_call)
+        first.start()
+        assert started.wait(5)
+        # The second arrives while the provider runs: it waits, it does not run it again or see None.
+        second = threading.Thread(target=first_call)
+        second.start()
+        time.sleep(0.1)
+        assert seen == []
+        release.set()
+        first.join(5)
+        second.join(5)
+        assert runs == [first.name]
+        assert seen == ["repository", "repository"]
+
+    def test_a_provider_that_asks_for_the_store_again_does_not_deadlock(self):
+        holder = {}
+
+        def provider():
+            holder["inner"] = holder["store"]._get_repository()
+            return "repository"
+
+        store = JobStore(job_repository_provider=provider)
+        holder["store"] = store
+        assert store._get_repository() == "repository"
+        assert holder["inner"] is None
+
+    def test_a_failing_provider_is_not_retried(self):
+        runs = []
+
+        def provider():
+            runs.append(1)
+            raise RuntimeError("no database")
+
+        store = JobStore(job_repository_provider=provider)
+        assert store._get_repository() is None
+        assert store._get_repository() is None
+        assert runs == [1]
+
+    def test_the_engine_provider_closes_out_a_job_the_last_engine_left_running(
+        self, repo, monkeypatch
+    ):
+        from cuepoint.engine import server
+        from cuepoint.persistence.job_repository import JobRecord
+        from cuepoint.utils import di_container
+
+        repo.save(
+            JobRecord(
+                id="left-running",
+                type="library_import",
+                state="running",
+                demo=False,
+                progress=None,
+                error=None,
+                created_at="2026-01-01T00:00:00+00:00",
+                updated_at="2026-01-01T00:00:00+00:00",
+            )
+        )
+
+        class Container:
+            def resolve(self, _interface):
+                return repo
+
+        monkeypatch.setattr(di_container, "get_container", lambda: Container())
+        store = JobStore(job_repository_provider=server._resolve_job_repository)
+        # No job is created: resolving is enough.
+        store.ensure_repository()
+        record = repo.get("left-running")
+        assert record.state == "failed"
+        assert record.error["code"] == "JOB_INTERRUPTED"
+
+    def test_starting_the_library_work_resolves_the_job_repository_first(
+        self, monkeypatch
+    ):
+        from cuepoint.engine import (
+            credit_index_jobs,
+            discovery_jobs,
+            marks_backfill_jobs,
+            server,
+        )
+
+        calls = []
+
+        class Store:
+            def ensure_repository(self):
+                calls.append("ensure_repository")
+
+        monkeypatch.setattr(server, "_JOB_STORE", Store())
+        monkeypatch.setattr(
+            server, "record_activity", lambda *a, **k: calls.append("activity")
+        )
+        monkeypatch.setattr(server, "record_library_opened_by", lambda: None)
+        monkeypatch.setattr(server, "_schedule_launch_analysis", lambda: None)
+        monkeypatch.setattr(
+            credit_index_jobs, "start_credit_index_if_stale", lambda store: None
+        )
+        monkeypatch.setattr(
+            marks_backfill_jobs, "start_marks_backfill_if_needed", lambda store: None
+        )
+        monkeypatch.setattr(
+            discovery_jobs, "close_interrupted_discovery_runs", lambda: None
+        )
+
+        server._start_library_work(server.EngineConfig(host="127.0.0.1", port=8765))
+        assert calls[0] == "ensure_repository"

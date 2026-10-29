@@ -157,6 +157,8 @@ class JobStore:
         self._repository = job_repository
         self._repository_provider = job_repository_provider
         self._repository_resolved = job_repository is not None
+        self._resolve_lock = threading.RLock()
+        self._resolving = False
         self._last_progress_persist: Dict[str, float] = {}
         self._start_listeners: List[Callable[[Job], None]] = []
         self._end_listeners: List[Callable[[Job], None]] = []
@@ -214,15 +216,31 @@ class JobStore:
         self._get_repository()
 
     def _get_repository(self) -> Optional[Any]:
-        """Return the repository, resolving it once if a provider was given."""
+        """Return the repository, resolving it once if a provider was given.
+
+        The provider does real work (it closes out the last process's jobs), so
+        it runs once, under a lock: a second thread that arrives while it runs
+        waits for it and then sees the result, and the store counts as resolved
+        only when the provider has returned. A provider that asks for the store
+        again from its own thread gets ``None`` rather than a deadlock.
+        """
         if self._repository_resolved:
             return self._repository
-        self._repository_resolved = True
-        if self._repository_provider is not None:
+        with self._resolve_lock:
+            if self._repository_resolved:
+                return self._repository
+            if self._resolving:
+                return None
+            self._resolving = True
             try:
-                self._repository = self._repository_provider()
-            except Exception:  # noqa: BLE001 — persistence is best-effort
-                self._repository = None
+                if self._repository_provider is not None:
+                    try:
+                        self._repository = self._repository_provider()
+                    except Exception:  # noqa: BLE001 — persistence is best-effort
+                        self._repository = None
+            finally:
+                self._resolving = False
+                self._repository_resolved = True
         return self._repository
 
     def _persist(self, job: Job, *, force: bool) -> None:
