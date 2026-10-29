@@ -6,9 +6,9 @@
  * Nothing here touches a CuePoint the person has open: every launch gets its own `--user-data-dir`
  * and `CUEPOINT_HOME`, and processes are found as descendants of the app that was launched.
  *
- * `CUEPOINT_E2E_EXECUTABLE` runs a spec against a packaged build, as the other specs do.
+ * `CUEPOINT_E2E_EXECUTABLE` runs a spec against a packaged build; `support/launchApp.ts` chooses.
  */
-import { expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { expect, type ElectronApplication, type Page } from "@playwright/test";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createWriteStream, existsSync, readFileSync, readdirSync } from "node:fs";
 import { once } from "node:events";
@@ -16,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -40,10 +41,7 @@ export function launchApp(options: LaunchOptions): Promise<ElectronApplication> 
     ...options.env,
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${options.userDataDir}`], env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${options.userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${options.userDataDir}`], env });
 }
 
 /** The first window, past onboarding, with the engine answering. */

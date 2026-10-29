@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { _electron as electron } from "playwright";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,6 +7,7 @@ import { waitForEngine } from "./engineReady";
 import { clickRowAt } from "./rowClick";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 import { probeScrollbar } from "./scrollbarProbe";
+import { launchElectron } from "./support/launchApp";
 
 /**
  * The Keys page (PAGES-16, FLW-21): tick two playlists, read the counts, click
@@ -65,7 +65,7 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
   >;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  const app = await electron.launch({
+  const app = await launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

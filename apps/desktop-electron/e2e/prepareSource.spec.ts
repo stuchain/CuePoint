@@ -14,7 +14,7 @@
  *
  * `CUEPOINT_E2E_EXECUTABLE` runs it against a packaged build.
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
 import { setInnerSize } from "./windowSizes";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -85,10 +86,7 @@ ${tracks.join("\n")}
 function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
   const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 async function finished(win: Page, jobId: string) {

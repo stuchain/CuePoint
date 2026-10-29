@@ -8,7 +8,7 @@
  * half a pixel of rounding. The Library checks run at 1,024, 1,366 and 1,920 px wide from 1x to 3x,
  * and everything at 1x and 1.5x in the 1,264 x 735 page a Windows window leaves.
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 import { showTrackDetails } from "./rowClick";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -59,7 +60,7 @@ ${tracks.join("\n")}
 function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
   const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  return electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 /**

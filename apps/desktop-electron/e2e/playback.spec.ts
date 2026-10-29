@@ -1,7 +1,6 @@
 import {
   test,
   expect,
-  _electron as electron,
   type ElectronApplication,
   type Page,
 } from "@playwright/test";
@@ -13,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { clickRowAt } from "./rowClick";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { launchElectron } from "./support/launchApp";
 
 /**
  * Phase 5 end to end, in the running app (PLAYER-12).
@@ -78,7 +78,7 @@ function launch(
     ...extraEnv,
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  return electron.launch({
+  return launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

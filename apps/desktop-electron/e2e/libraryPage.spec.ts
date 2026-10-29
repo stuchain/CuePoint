@@ -21,7 +21,6 @@
 import {
   test,
   expect,
-  _electron as electron,
   type ElectronApplication,
   type Page,
 } from "@playwright/test";
@@ -32,6 +31,7 @@ import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 import { selectAllMatching } from "./filterRow";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -74,7 +74,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  return electron.launch({
+  return launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

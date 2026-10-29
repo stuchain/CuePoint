@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { _electron as electron } from "playwright";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -24,13 +24,12 @@ test.describe("Electron desktop smoke (TC-UI-001)", () => {
     delete env.ELECTRON_RUN_AS_NODE;
 
     // `CUEPOINT_E2E_EXECUTABLE` runs the same check against a packaged build, as the other specs
-    // do (DIST-02: "the Intel app starts" on the Intel runner).
-    const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-    const app = await electron.launch(
-      packaged
-        ? { executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env }
-        : { cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env },
-    );
+    // do (DIST-02: "the Intel app starts" on the Intel runner); `support/launchApp.ts` chooses.
+    const app = await launchElectron({
+      cwd: DESKTOP_ROOT,
+      args: [".", `--user-data-dir=${userDataDir}`],
+      env,
+    });
 
     try {
       const window = await app.firstWindow({ timeout: 60_000 });

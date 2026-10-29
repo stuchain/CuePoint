@@ -1,5 +1,4 @@
 import { test, expect, type Page } from "@playwright/test";
-import { _electron as electron } from "playwright";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { clickRowAt } from "./rowClick";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { launchElectron } from "./support/launchApp";
 
 /**
  * Playing from the Library table, by hand (PLAYER-09, DEC-012, DEC-013).
@@ -115,7 +115,7 @@ test("plays and queues from the Library table", async () => {
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  const app = await electron.launch({
+  const app = await launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

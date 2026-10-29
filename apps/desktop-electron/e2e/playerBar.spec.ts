@@ -13,12 +13,12 @@
  * anything.
  */
 import { test, expect, type Page } from "@playwright/test";
-import { _electron as electron } from "playwright";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { launchElectron } from "./support/launchApp";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const AUDIO = path.resolve(ROOT, "../../src/tests/fixtures/audio");
@@ -28,7 +28,7 @@ test("the player bar fits the shell at every scale", async () => {
   const env = { ...process.env, NODE_ENV: "production",
     CUEPOINT_HOME: mkdtempSync(path.join(tmpdir(), "cp-home-")) } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ cwd: ROOT,
+  const app = await launchElectron({ cwd: ROOT,
     args: [".", `--user-data-dir=${mkdtempSync(path.join(tmpdir(), "cp-ud-"))}`], env });
   try {
     const win: Page = await app.firstWindow({ timeout: 60_000 });
@@ -191,7 +191,7 @@ test("the waveform is centred and the key chip fits", async () => {
   const env = { ...process.env, NODE_ENV: "production",
     CUEPOINT_HOME: mkdtempSync(path.join(tmpdir(), "cp-home-")) } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ cwd: ROOT,
+  const app = await launchElectron({ cwd: ROOT,
     args: [".", `--user-data-dir=${mkdtempSync(path.join(tmpdir(), "cp-ud-"))}`], env });
   try {
     const win: Page = await app.firstWindow({ timeout: 60_000 });
@@ -291,7 +291,7 @@ test("a disabled player-bar control shows the themed tip on a real hover", async
   const env = { ...process.env, NODE_ENV: "production",
     CUEPOINT_HOME: mkdtempSync(path.join(tmpdir(), "cp-home-")) } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ cwd: ROOT,
+  const app = await launchElectron({ cwd: ROOT,
     args: [".", `--user-data-dir=${mkdtempSync(path.join(tmpdir(), "cp-ud-"))}`], env });
   try {
     const win: Page = await app.firstWindow({ timeout: 60_000 });

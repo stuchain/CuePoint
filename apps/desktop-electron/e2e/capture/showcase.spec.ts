@@ -20,7 +20,7 @@
  *
  * The main suite's config ignores this folder; `captureConfig.test.ts` holds that.
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Locator, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Locator, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
@@ -31,6 +31,7 @@ import { untilAnalysed } from "../analysisProgress";
 import { waitForEngine } from "../engineReady";
 import { NO_PLAYER, hasPlayer } from "../playerAvailable";
 import { SEED_MATCHES_PY, buildShowcase, removeWritten, writeShowcase, type Showcase, type Written } from "../fixtures/showcase/showcase";
+import { launchElectron } from "../support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..", "..");
@@ -187,10 +188,7 @@ function launch(userDataDir: string, cuepointHome: string, fixture: string): Pro
   delete env.CUEPOINT_SKIP_BEATPORT;
   delete env.BEATPORT_ACCESS_TOKEN;
   const args = [`--user-data-dir=${userDataDir}`, `--force-device-scale-factor=${SCALE}`];
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args, env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", ...args], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", ...args], env });
 }
 
 async function ready(app: ElectronApplication): Promise<Page> {

@@ -27,7 +27,6 @@
 import {
   test,
   expect,
-  _electron as electron,
   type ElectronApplication,
   type Locator,
   type Page,
@@ -43,6 +42,7 @@ import { waitForEngine } from "./engineReady";
 import { setInnerSize } from "./windowSizes";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 import { clickRowAt, showTrackDetails } from "./rowClick";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -236,7 +236,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
     CUEPOINT_SKIP_BEATPORT: "1",
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  return electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 async function finished(win: Page, jobId: string) {

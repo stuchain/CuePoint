@@ -12,13 +12,14 @@
  * This one does neither: it imports, quits, relaunches over the same library,
  * and goes to the Library without waiting for the engine.
  */
-import { test, expect, _electron as electron, type ElectronApplication } from "@playwright/test";
+import { test, expect, type ElectronApplication } from "@playwright/test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -57,7 +58,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  return electron.launch({
+  return launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

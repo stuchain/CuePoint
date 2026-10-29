@@ -25,13 +25,14 @@
  * to this journey. The token is a placeholder in a sandboxed config; nothing
  * reaches Beatport.
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { clickRowAt } from "./rowClick";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -100,10 +101,7 @@ function launch(
   delete env.BEATPORT_ACCESS_TOKEN;
   if (beatport) env.CUEPOINT_BEATPORT_FIXTURE = beatport;
   else delete env.CUEPOINT_BEATPORT_FIXTURE;
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 async function ready(app: ElectronApplication): Promise<Page> {

@@ -1,11 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
-import { _electron as electron } from "playwright";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { launchElectron } from "./support/launchApp";
 
 /**
  * The queue panel in the running app (PLAYER-08, DEC-013).
@@ -42,7 +42,7 @@ test("the queue panel shows the real queue and edits it", async () => {
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  const app = await electron.launch({
+  const app = await launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

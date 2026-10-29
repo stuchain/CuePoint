@@ -10,7 +10,6 @@
 import {
   test,
   expect,
-  _electron as electron,
   type ElectronApplication,
   type Page,
 } from "@playwright/test";
@@ -23,6 +22,7 @@ import { gunzipSync } from "node:zlib";
 
 import { chooseMenuItem } from "./appMenu";
 import { waitForEngine } from "./engineReady";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -73,7 +73,7 @@ function launch(userDataDir: string, dsn: string | null): Promise<ElectronApplic
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.CUEPOINT_SENTRY_DSN;
   if (dsn !== null) env.CUEPOINT_SENTRY_DSN = dsn;
-  return electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 async function ready(window: Page): Promise<void> {

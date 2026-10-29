@@ -20,7 +20,7 @@
  * `CUEPOINT_MPV_PATH` names the `mpv` a Linux build uses. Each launch gets its
  * own `--user-data-dir` and `CUEPOINT_HOME`.
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import { resolvePlayerBinary } from "../electron/playerLaunch";
 import { waitForEngine } from "./engineReady";
 import { showTrackDetails } from "./rowClick";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -163,10 +164,7 @@ function forgetLoudness(cuepointHome: string): number {
 function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
   const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 async function ready(app: ElectronApplication): Promise<Page> {

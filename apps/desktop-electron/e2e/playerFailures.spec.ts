@@ -1,10 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { _electron as electron } from "playwright";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { launchElectron } from "./support/launchApp";
 
 /**
  * Files that will not play, in the running app (PLAYER-10, DEC-054).
@@ -75,7 +75,7 @@ test("a queue of files that are not there says one thing and stops", async () =>
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  const app = await electron.launch({
+  const app = await launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

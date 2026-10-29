@@ -23,7 +23,6 @@
 import {
   test,
   expect,
-  _electron as electron,
   type ElectronApplication,
   type Page,
 } from "@playwright/test";
@@ -34,6 +33,7 @@ import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { clickRowAt } from "./rowClick";
 import { probeScrollbar } from "./scrollbarProbe";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -105,10 +105,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
   delete env.ELECTRON_RUN_AS_NODE;
 
   // `CUEPOINT_E2E_EXECUTABLE` runs the journey, and the memory run, against a packaged build.
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 async function ready(app: ElectronApplication): Promise<Page> {

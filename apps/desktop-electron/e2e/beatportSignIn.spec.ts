@@ -16,7 +16,7 @@
  * is not a sign-in, signing out forgets it, and the token itself never appears in the renderer's
  * page, storage or any bridge answer.
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -24,6 +24,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -219,7 +220,7 @@ async function launch(userDataDir: string, cuepointHome: string, origin: string)
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.CUEPOINT_SKIP_BEATPORT;
   delete env.BEATPORT_ACCESS_TOKEN;
-  const app = await electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  const app = await launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
   // The stand-in's home page objects to being left (beforeunload). Electron decides that itself, not
   // through a dialog, so Playwright must not try to answer one: a listener stops its automatic answer.
   app.on("window", (page) => page.on("dialog", () => undefined));

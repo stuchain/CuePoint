@@ -21,7 +21,7 @@
  *
  * (The sizes spec, `scale.spec.ts`, is about the five text sizes and has nothing to do with this.)
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, createWriteStream } from "node:fs";
 import { once } from "node:events";
 import { tmpdir } from "node:os";
@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
 import { footprint, readProcessTable, type Footprint } from "./processMemory";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -100,10 +101,7 @@ async function writeExport(dir: string): Promise<string> {
 function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
   const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 /** The app's four processes, in MB, read from the OS. */

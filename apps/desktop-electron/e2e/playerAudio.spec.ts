@@ -1,10 +1,10 @@
 import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
-import { _electron as electron } from "playwright";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { launchElectron } from "./support/launchApp";
 
 /**
  * Audio output settings in the running app (PLAYER-11, DEC-055).
@@ -41,7 +41,7 @@ function launch(userDataDir: string, home: string): Promise<ElectronApplication>
     CUEPOINT_HOME: home,
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  return electron.launch({
+  return launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

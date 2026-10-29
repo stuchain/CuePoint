@@ -16,7 +16,7 @@ export default defineConfig({
     environment: "node",
     // The showcase fixture, the capture config (SITE-04) and the process-table reader (HARDEN-07) are the only tests
     // under e2e/ vitest runs; the Playwright specs there are its own.
-    include: ["electron/**/*.test.ts", "e2e/fixtures/showcase/*.test.ts", "e2e/capture/*.test.ts", "e2e/processMemory.test.ts"],
+    include: ["electron/**/*.test.ts", "e2e/fixtures/showcase/*.test.ts", "e2e/capture/*.test.ts", "e2e/processMemory.test.ts", "e2e/support/*.test.ts"],
     // The renderer runs its own suite from renderer/.
     exclude: ["renderer/**", "node_modules/**", "e2e/*.spec.ts", "e2e/capture/*.spec.ts"],
     // Headroom for the integration tests, which start real mpv processes and

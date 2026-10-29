@@ -7,7 +7,7 @@
  *
  * A box measure of the running app; every number is printed so the margin is on record.
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
 import { setInnerSize } from "./windowSizes";
+import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -64,7 +65,7 @@ ${tracks.join("\n")}
 function launch(userDataDir: string, cuepointHome: string): Promise<ElectronApplication> {
   const env = { ...process.env, NODE_ENV: "production", CUEPOINT_HOME: cuepointHome } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  return electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 /** How a row fits: its own spill, the spill of the page, anything past its edge, and any cut text. */

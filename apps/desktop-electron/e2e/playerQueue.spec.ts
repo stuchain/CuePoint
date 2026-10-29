@@ -1,5 +1,4 @@
 import { test, expect, type Page } from "@playwright/test";
-import { _electron as electron } from "playwright";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -7,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { launchElectron } from "./support/launchApp";
 
 /**
  * A view becomes a playing queue, through the whole stack (PLAYER-05, DEC-012).
@@ -75,7 +75,7 @@ test("playing a view queues exactly what the table shows, in its order", async (
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
 
-  const app = await electron.launch({
+  const app = await launchElectron({
     cwd: DESKTOP_ROOT,
     args: [".", `--user-data-dir=${userDataDir}`],
     env,

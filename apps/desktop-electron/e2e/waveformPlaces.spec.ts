@@ -21,7 +21,7 @@
  * `CUEPOINT_MPV_PATH` names the `mpv` a Linux build uses. Each launch gets its
  * own `--user-data-dir` and `CUEPOINT_HOME`.
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
+import { test, expect, type ElectronApplication, type Page } from "@playwright/test";
 import { showTrackDetails } from "./rowClick";
 import { copyFileSync, linkSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 
 import { resolvePlayerBinary } from "../electron/playerLaunch";
 import { waitForEngine } from "./engineReady";
+import { launchElectron } from "./support/launchApp";
 
 /** GitHub's Intel Mac runner, where the scroll check records long tasks instead of failing (DEC-231). */
 const INTEL_MAC_RUNNER = Boolean(process.env.CI) && process.platform === "darwin" && process.arch === "x64";
@@ -110,10 +111,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
     string
   >;
   delete env.ELECTRON_RUN_AS_NODE;
-  const packaged = process.env.CUEPOINT_E2E_EXECUTABLE;
-  return packaged
-    ? electron.launch({ executablePath: packaged, args: [`--user-data-dir=${userDataDir}`], env })
-    : electron.launch({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
 }
 
 async function ready(app: ElectronApplication): Promise<Page> {
