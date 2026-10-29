@@ -29,6 +29,8 @@ new migration cannot ship without saying what it asserts.
 
 from __future__ import annotations
 
+import json
+import shutil
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -63,10 +65,6 @@ class Crossing:
     def rows(self, table: str) -> list:
         """The rows the table had before the upgrade (none if it did not exist)."""
         return list(self.before.get(table, {}).get("rows", []))
-
-    def ran_over_data(self, version: int) -> bool:
-        """True when ``version`` was applied to a library that already had rows."""
-        return self.from_version < version
 
 
 def _has_table(conn: sqlite3.Connection, name: str) -> bool:
@@ -147,7 +145,7 @@ def _m0001(conn: sqlite3.Connection, _crossing: Crossing) -> None:
 def _m0012(conn: sqlite3.Connection, crossing: Crossing) -> None:
     """The candidates table was rebuilt: same ids, same scores, same winner."""
     assert _has_columns(conn, "match_candidates", ["title_sim", "artist_sim"])
-    if crossing.ran_over_data(12) and "match_candidates" in crossing.before:
+    if "match_candidates" in crossing.before:
         cols = [c for c in crossing.before["match_candidates"]["columns"]]
         _same_rows_after(conn, crossing, "match_candidates", cols)
         _same_rows_after(
@@ -164,7 +162,7 @@ def _m0016(conn: sqlite3.Connection, crossing: Crossing) -> None:
     assert _has_columns(conn, "duplicate_groups", ["member_hash"])
     # The view must run, and show only groups of two or more not dismissed.
     conn.execute("SELECT track_id, signal, group_id FROM duplicate_track_signals")
-    if crossing.ran_over_data(16) and "duplicate_groups" in crossing.before:
+    if crossing.rows("duplicate_groups"):
         hashes = {
             r[0] for r in conn.execute("SELECT member_hash FROM duplicate_groups")
         }
@@ -173,13 +171,25 @@ def _m0016(conn: sqlite3.Connection, crossing: Crossing) -> None:
 
 def _m0019(conn: sqlite3.Connection, crossing: Crossing) -> None:
     assert _has_columns(conn, "track_match", ["candidate_score"])
-    if crossing.ran_over_data(19) and "track_match" in crossing.before:
+    if "track_match" in crossing.before:
         wrong = _scalar(
             conn,
             "SELECT count(*) FROM track_match t JOIN match_candidates c"
             " ON c.id = t.candidate_id WHERE t.candidate_score IS NOT c.score",
         )
         assert wrong == 0, "candidate_score was not filled from the candidate"
+
+
+def _m0022(conn: sqlite3.Connection, crossing: Crossing) -> None:
+    """Keys are derived data a job fills later: rows from before have none."""
+    for table in ("tracks", "track_metadata"):
+        assert _has_columns(conn, table, ["label_key"])
+        was = crossing.before.get(table)
+        if was is not None and "label_key" not in was["columns"] and was["rows"]:
+            filled = _scalar(
+                conn, f'SELECT count(*) FROM "{table}" WHERE label_key IS NOT NULL'
+            )
+            assert filled == 0, f"{table}: old rows got a label_key from the migration"
 
 
 def _m0025(conn: sqlite3.Connection, crossing: Crossing) -> None:
@@ -190,7 +200,7 @@ def _m0025(conn: sqlite3.Connection, crossing: Crossing) -> None:
         ),
         index_check("idx_collections_kind", "idx_collection_tracks_entry"),
     )(conn, crossing)
-    if crossing.ran_over_data(25) and "collections" in crossing.before:
+    if "collections" in crossing.before:
         for table in ("collections", "collection_tracks", "rekordbox_export_playlists"):
             if table in crossing.before:
                 _same_rows_after(
@@ -199,30 +209,30 @@ def _m0025(conn: sqlite3.Connection, crossing: Crossing) -> None:
         # AUTOINCREMENT carried across the rebuild: the next id is not reused.
         top = _scalar(conn, "SELECT max(id) FROM collections")
         seq = _scalar(conn, "SELECT seq FROM sqlite_sequence WHERE name='collections'")
-        assert seq is not None and seq >= top
+        if top is not None:
+            assert seq is not None and seq >= top
 
 
 def _m0027(conn: sqlite3.Connection, crossing: Crossing) -> None:
     all_of(
         table_check("library_reads", "play_counts"), index_check("idx_play_counts_read")
     )(conn, crossing)
-    if crossing.ran_over_data(27):
-        # Tracks that had a play count become the first read, a 'seed'.
-        # (Only when a library had been read at all: the seed read copies the
-        # time of the newest library_source row.)
-        expected = sorted(
-            (r["id"], r["play_count"])
-            for r in crossing.rows("tracks")
-            if r.get("play_count") is not None and crossing.rows("library_source")
+    # Tracks that had a play count become the first read, a 'seed'.
+    # (Only when a library had been read at all: the seed read copies the
+    # time of the newest library_source row.)
+    expected = sorted(
+        (r["id"], r["play_count"])
+        for r in crossing.rows("tracks")
+        if r.get("play_count") is not None and crossing.rows("library_source")
+    )
+    seeded = sorted(
+        (r[0], r[1])
+        for r in conn.execute(
+            "SELECT p.track_id, p.play_count FROM play_counts p"
+            " JOIN library_reads r ON r.id = p.read_id AND r.kind = 'seed'"
         )
-        seeded = sorted(
-            (r[0], r[1])
-            for r in conn.execute(
-                "SELECT p.track_id, p.play_count FROM play_counts p"
-                " JOIN library_reads r ON r.id = p.read_id AND r.kind = 'seed'"
-            )
-        )
-        assert seeded == expected
+    )
+    assert seeded == expected
 
 
 def _m0029(conn: sqlite3.Connection, crossing: Crossing) -> None:
@@ -230,24 +240,40 @@ def _m0029(conn: sqlite3.Connection, crossing: Crossing) -> None:
         table_check("discover_lists", "discover_list_members"),
         index_check("idx_discover_list_members_order"),
     )(conn, crossing)
-    if crossing.ran_over_data(29) and "discovery_runs" in crossing.before:
-        rows = conn.execute(
-            "SELECT name_key, id FROM discover_lists"
-            " WHERE name_key IN ('my labels', 'my artists')"
-        ).fetchall()
-        lists = {r[0]: r[1] for r in rows}
-        assert set(lists) == {"my labels", "my artists"}, (
-            "the newest picked run should seed 'My labels' and 'My artists'"
-        )
-        labels = [
+    for kind, name_key in (("labels", "my labels"), ("artists", "my artists")):
+        picked = _newest_picked(crossing.rows("discovery_runs"), kind)
+        if not picked:
+            continue
+        row = conn.execute(
+            "SELECT id FROM discover_lists WHERE name_key = ?", (name_key,)
+        ).fetchone()
+        assert row is not None, f"the newest picked run should seed '{name_key}'"
+        members = [
             r[0]
             for r in conn.execute(
                 "SELECT member FROM discover_list_members WHERE list_id = ?"
                 " ORDER BY position",
-                (lists["my labels"],),
+                (row[0],),
             )
         ]
-        assert labels == ["Λύρα", "ソニー"], "trimmed, de-duplicated, in order"
+        expected = []
+        for value in picked:
+            value = value.strip()
+            if value and len(value) <= 300 and value not in expected:
+                expected.append(value)
+        assert members == expected, "trimmed, de-duplicated, in order"
+
+
+def _newest_picked(runs: list, kind: str) -> list:
+    """The ``picked`` names of the newest run that has any, as m0029 reads them."""
+    for run in sorted(runs, key=lambda r: r["id"], reverse=True):
+        try:
+            picked = json.loads(run["params_json"])[kind]["picked"]
+        except (TypeError, ValueError, KeyError):
+            continue
+        if isinstance(picked, list) and picked:
+            return [v for v in picked if isinstance(v, str)]
+    return []
 
 
 def _m0030(conn: sqlite3.Connection, crossing: Crossing) -> None:
@@ -256,7 +282,7 @@ def _m0030(conn: sqlite3.Connection, crossing: Crossing) -> None:
         column_check("discovery_run_sources", "group_key"),
         index_check("idx_discovery_run_sources_group"),
     )(conn, crossing)
-    if crossing.ran_over_data(30) and "discovery_run_sources" in crossing.before:
+    if crossing.rows("discovery_run_sources"):
         cols = crossing.before["discovery_run_sources"]["columns"]
         _same_rows_after(conn, crossing, "discovery_run_sources", cols)
         keys = {
@@ -367,10 +393,7 @@ MIGRATION_ASSERTIONS: Dict[str, Callable[[sqlite3.Connection, Crossing], None]] 
         "track_credits",
         "derived_indexes",
     ),
-    "m0022_label_keys": all_of(
-        column_check("tracks", "label_key"),
-        column_check("track_metadata", "label_key"),
-    ),
+    "m0022_label_keys": _m0022,
     "m0023_beatport_identity": lambda conn, _c: _view_runs(
         conn, "library_beatport_tracks", "library_beatport_credits"
     ),
@@ -511,7 +534,7 @@ class TestTheTableIsComplete:
             service.close_all()
 
     def test_the_seed_puts_rows_in_every_table_at_every_version(self, tmp_path):
-        for version in (2, 13, 25, HEAD):
+        for version in range(1, HEAD + 1):
             path = ladder.build_library_at(version, directory=tmp_path / f"v{version}")
             empty = [
                 t
@@ -672,32 +695,116 @@ class TestTheWholeLadderFromTheStart:
         finally:
             service.close_all()
 
+    @pytest.mark.parametrize("start", [1, 12, 24, HEAD - 1], ids=lambda v: f"from-v{v}")
     def test_a_fresh_database_at_the_newest_version_matches_an_upgraded_one(
-        self, tmp_path
+        self, tmp_path, start
     ):
-        """A user who installs today and one who upgraded hold the same tables."""
+        """A user who installs today and one who upgraded hold the same schema.
+
+        Compared by every table's column set and by the name and table of every
+        index, view and trigger in ``sqlite_master``.
+        """
         fresh = open_library(tmp_path / "fresh.db")
-        old = ladder.build_library_at(1, directory=tmp_path / "old")
-        upgraded = open_library(old)
+        upgraded = open_library(
+            ladder.build_library_at(start, directory=tmp_path / "old")
+        )
         try:
             MigrationRunner(fresh).migrate()
             MigrationRunner(upgraded).migrate()
 
             def shape(service: DatabaseService):
                 conn = service.connect()
-                return {
-                    t: ladder.columns_of(conn, t)
+                tables = {
+                    t: sorted(ladder.columns_of(conn, t))
                     for t in ladder.table_names(conn)
-                    if t != "revision_counters"
                 }
+                objects = {
+                    (r[0], r[1], r[2])
+                    for r in conn.execute(
+                        "SELECT type, name, tbl_name FROM sqlite_master"
+                        " WHERE type IN ('index', 'view', 'trigger')"
+                        " AND name NOT LIKE 'sqlite_%'"
+                    )
+                }
+                return tables, objects
 
-            # Order of columns can differ (ALTER appends); the set may not.
-            fresh_shape = {t: sorted(c) for t, c in shape(fresh).items()}
-            upgraded_shape = {t: sorted(c) for t, c in shape(upgraded).items()}
-            assert fresh_shape == upgraded_shape
+            fresh_tables, fresh_objects = shape(fresh)
+            old_tables, old_objects = shape(upgraded)
+            # Column order can differ (ALTER appends); the set may not.
+            assert old_tables == fresh_tables
+            assert old_objects == fresh_objects, (
+                f"only upgraded: {sorted(old_objects - fresh_objects)}; "
+                f"only fresh: {sorted(fresh_objects - old_objects)}"
+            )
         finally:
             fresh.close_all()
             upgraded.close_all()
+
+
+LIBRARIES = sorted(
+    (Path(__file__).parent.parent / "fixtures" / "libraries").glob("*.db")
+)
+
+
+@pytest.mark.parametrize(
+    "library",
+    LIBRARIES
+    or [
+        pytest.param(
+            None,
+            marks=pytest.mark.skip(
+                reason="no real library fixtures yet: add one per published "
+                "v1.0.0-test.N build to src/tests/fixtures/libraries/*.db"
+            ),
+        )
+    ],
+    ids=lambda p: p.name if p is not None else "none",
+)
+class TestRealLibrariesFromEarlierBuilds:
+    """Libraries a published build wrote, each migrated to the newest version."""
+
+    def test_at_once_and_one_step_at_a_time(self, tmp_path, library):
+        at_once = tmp_path / "once" / "cuepoint.db"
+        stepwise = tmp_path / "steps" / "cuepoint.db"
+        for target in (at_once, stepwise):
+            target.parent.mkdir()
+            shutil.copyfile(library, target)
+        before = ladder.snapshot_of(at_once)
+        start = max(
+            sqlite3.connect(str(at_once))
+            .execute("SELECT version FROM schema_version")
+            .fetchall()
+        )[0]
+
+        service = open_library(at_once)
+        try:
+            MigrationRunner(service).migrate()
+            ladder.assert_sound(service.connect(), HEAD)
+            ladder.assert_nothing_lost(service.connect(), before, library.name)
+            run_assertions(
+                service.connect(),
+                [m for m in ladder.all_migrations() if m.version > start],
+                Crossing(start, before),
+            )
+        finally:
+            service.close_all()
+
+        service = open_library(stepwise)
+        try:
+            previous = before
+            for migration in [m for m in ladder.all_migrations() if m.version > start]:
+                MigrationRunner(
+                    service, migrations=ladder.migrations_through(migration.version)
+                ).migrate()
+                conn = service.connect()
+                ladder.assert_sound(conn, migration.version)
+                ladder.assert_nothing_lost(conn, previous, library.name)
+                run_assertions(
+                    conn, [migration], Crossing(migration.version - 1, previous)
+                )
+                previous = ladder.snapshot(conn)
+        finally:
+            service.close_all()
 
 
 # -------------------------------------------------------- the launch itself
@@ -764,9 +871,7 @@ class TestLaunchBackup:
         ]
         assert reasons.count(PRE_UPGRADE_REASON) == 1
 
-    def test_the_copy_taken_at_every_older_version_opens_and_upgrades(
-        self, tmp_path, monkeypatch
-    ):
+    def test_the_copy_taken_at_every_older_version_opens_and_upgrades(self, tmp_path):
         """A user rolling back to the copy from any release can still go forward."""
         from cuepoint.services.backup_service import PRE_UPGRADE_REASON, BackupService
 
@@ -778,9 +883,6 @@ class TestLaunchBackup:
             try:
                 backups = BackupService(database_service=service)
                 taken = backups.backup_on_launch()
-                if version == 1:
-                    # Nothing applied beyond the baseline's record: still an upgrade.
-                    assert taken is not None
                 assert taken is not None and taken.reason == PRE_UPGRADE_REASON
                 copy_path = taken.path
             finally:

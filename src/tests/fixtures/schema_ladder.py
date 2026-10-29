@@ -1190,9 +1190,14 @@ def build_library_at(
         The database path. The file is closed, in WAL mode, with no open
         connection.
     """
+    import atexit
+    import shutil
     import tempfile
 
-    folder = Path(directory) if directory is not None else Path(tempfile.mkdtemp())
+    if directory is None:
+        directory = Path(tempfile.mkdtemp(prefix="cuepoint-ladder-"))
+        atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    folder = Path(directory)
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / "cuepoint.db"
     service = DatabaseService(db_path=path)

@@ -70,6 +70,14 @@ _CHILD_MIGRATION = textwrap.dedent(
     """
     import json, sys, time
     from pathlib import Path
+
+    import os
+
+    def write_marker(path, text):
+        # Whole or absent: the parent never reads half a marker.
+        temp = path.with_name(path.name + ".tmp")
+        temp.write_text(text, encoding="utf-8")
+        os.replace(temp, path)
     from cuepoint.migrations import Migration
     from cuepoint.services.database_service import DatabaseService
     from cuepoint.services.migration_runner import MigrationRunner, _discovered
@@ -78,14 +86,14 @@ _CHILD_MIGRATION = textwrap.dedent(
     service = DatabaseService(db_path=db_path)
 
     def hold_here():
-        marker.write_text("held", encoding="utf-8")
+        write_marker(marker, "held")
         time.sleep(300)  # the parent kills this process long before it ends
         return 1
 
     service.connect().create_function("hold_here", 0, hold_here)
     migrations = list(_discovered()) + [Migration(**extra)]
     MigrationRunner(service, migrations=migrations).migrate()
-    marker.write_text("finished: the kill never came", encoding="utf-8")
+    write_marker(marker, "finished: the kill never came")
     """
 )
 
@@ -94,26 +102,61 @@ _CHILD_BACKUP = textwrap.dedent(
     import sys, time
     from pathlib import Path
 
-    db_path, marker = Path(sys.argv[1]), Path(sys.argv[2])
+    import os
+
+    def write_marker(path, text):
+        # Whole or absent: the parent never reads half a marker.
+        temp = path.with_name(path.name + ".tmp")
+        temp.write_text(text, encoding="utf-8")
+        os.replace(temp, path)
+
+    db_path, marker, mode = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
 
     from cuepoint.services import database_service as database_service_module
     from cuepoint.services.backup_service import BackupService
+    from cuepoint.services.database_service import DatabaseService
     from cuepoint.utils.di_container import reset_container
 
     database_service_module.default_database_path = lambda: db_path
     reset_container()
 
-    def hold_before_the_copy_is_finished(self, backup_path):
-        # The copy is written into its hidden .partial; it is not yet a backup.
-        marker.write_text(str(backup_path), encoding="utf-8")
-        time.sleep(300)
+    if mode == "after-copy":
+        def hold_before_the_copy_is_finished(self, backup_path):
+            # The copy is all written into its hidden .partial; not yet a backup.
+            write_marker(marker, str(backup_path))
+            time.sleep(300)
 
-    BackupService.verify_backup = hold_before_the_copy_is_finished
+        BackupService.verify_backup = hold_before_the_copy_is_finished
+    else:
+        class PagedConnection:
+            # Copies one page at a time and stops after the first.
+
+            def __init__(self, real):
+                self._real = real
+
+            def __getattr__(self, name):
+                return getattr(self._real, name)
+
+            def backup(self, target, **_kwargs):
+                def progress(status, remaining, total):
+                    if remaining > 0:
+                        row = target.execute("PRAGMA database_list").fetchone()
+                        write_marker(marker, row[2])
+                        time.sleep(300)
+
+                self._real.backup(target, pages=1, progress=progress)
+
+        real_connect = DatabaseService.connect
+
+        def connect(self):
+            return PagedConnection(real_connect(self))
+
+        DatabaseService.connect = connect
 
     from cuepoint.engine import server
 
     server.backup_library_on_launch()
-    marker.write_text("finished: the kill never came", encoding="utf-8")
+    write_marker(marker, "finished: the kill never came")
     """
 )
 
@@ -135,13 +178,27 @@ def _spawn(script: str, tmp_path: Path, *args: str) -> subprocess.Popen:
     env["CUEPOINT_HOME"] = str(tmp_path / "home")
     path = tmp_path / "child.py"
     path.write_text(script, encoding="utf-8")
-    return subprocess.Popen(
+    # A log file, not pipes: nothing reads a pipe while the child sleeps, and a
+    # full one would block the child before it reached its marker.
+    log = tmp_path / "child.log"
+    handle = log.open("wb")
+    proc = subprocess.Popen(
         [sys.executable, str(path), *args],
         env=env,
         cwd=str(tmp_path),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=handle,
+        stderr=subprocess.STDOUT,
     )
+    proc.log_path = log  # type: ignore[attr-defined]
+    proc.log_handle = handle  # type: ignore[attr-defined]
+    return proc
+
+
+def _log_of(proc: subprocess.Popen) -> str:
+    try:
+        return proc.log_path.read_text(encoding="utf-8", errors="replace")[-3000:]  # type: ignore[attr-defined]
+    except OSError:
+        return "(no log)"
 
 
 def _kill_at(proc: subprocess.Popen, marker: Path) -> str:
@@ -149,29 +206,28 @@ def _kill_at(proc: subprocess.Popen, marker: Path) -> str:
     deadline = time.monotonic() + WAIT_SECONDS
     try:
         while time.monotonic() < deadline:
-            if marker.exists():
-                text = marker.read_text(encoding="utf-8")
+            # The child replaces the marker into place whole; empty means not yet.
+            text = marker.read_text(encoding="utf-8") if marker.exists() else ""
+            if text:
                 assert not text.startswith("finished"), (
-                    f"the child ran to the end instead of pausing: {text}"
+                    f"the child ran to the end instead of pausing: {text}\n"
+                    f"{_log_of(proc)}"
                 )
                 proc.kill()
                 proc.wait(timeout=30)
                 return text
             if proc.poll() is not None:
-                _out, err = proc.communicate()
                 raise AssertionError(
                     f"the child exited ({proc.returncode}) before its marker:\n"
-                    f"{err.decode('utf-8', 'replace')[-2000:]}"
+                    f"{_log_of(proc)}"
                 )
             time.sleep(0.05)
-        raise AssertionError("the child never reached its marker")
+        raise AssertionError(f"the child never reached its marker:\n{_log_of(proc)}")
     finally:
         if proc.poll() is None:
             proc.kill()
             proc.wait(timeout=30)
-        for stream in (proc.stdout, proc.stderr):
-            if stream is not None:
-                stream.close()
+        proc.log_handle.close()  # type: ignore[attr-defined]
 
 
 # ------------------------------------------------------ killed in a migration
@@ -278,15 +334,22 @@ class TestKilledInTheMiddleOfAMigration:
 # ------------------------------------------------ killed during the backup
 
 
+@pytest.mark.parametrize(
+    "mode", ["after-copy", "mid-copy"], ids=["copy-written", "copy-truncated"]
+)
 class TestKilledDuringThePreUpgradeBackup:
     @pytest.fixture
-    def killed(self, tmp_path):
+    def killed(self, tmp_path, mode):
         library = ladder.build_library_at(HEAD - 1, directory=tmp_path / "lib")
         before = ladder.snapshot_of(library)
         marker = tmp_path / "marker"
-        proc = _spawn(_CHILD_BACKUP, tmp_path, str(library), str(marker))
+        proc = _spawn(_CHILD_BACKUP, tmp_path, str(library), str(marker), mode)
         partial_path = Path(_kill_at(proc, marker))
         assert proc.returncode != 0
+        if mode == "mid-copy":
+            assert partial_path.stat().st_size < library.stat().st_size, (
+                "the mid-copy kill should leave a truncated file"
+            )
         return library, before, partial_path
 
     @staticmethod
