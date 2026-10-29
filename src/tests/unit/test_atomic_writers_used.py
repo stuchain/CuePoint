@@ -29,19 +29,61 @@ _REPO = Path(__file__).resolve().parents[3]
 _PYTHON_ROOT = _REPO / "src" / "cuepoint"
 _ELECTRON_ROOT = _REPO / "apps" / "desktop-electron" / "electron"
 
-#: Python files that may put a file in place by hand, and why.
-PYTHON_ALLOWED: Dict[str, str] = {
-    "src/cuepoint/utils/atomic_write.py": "the helper itself",
-    "src/cuepoint/persistence/waveform_store.py": (
-        "sets a damaged waveform store aside (renames CuePoint's own derived data)"
-    ),
-    "src/cuepoint/utils/paths.py": (
-        "moves a legacy settings folder aside to <name>.old when migrating it"
-    ),
-    "src/cuepoint/services/backup_service.py": (
-        "the restore's replace of the library over itself, which verifies a "
-        "safety copy first (HARDEN-01a); backups write their own temp names"
-    ),
+#: Python calls that may put a file in place by hand: per file, the start of the
+#: call's source text and why it is not a user-facing or library write. A new
+#: call in an allowed file is still a hit unless its text starts with one of these.
+PYTHON_ALLOWED: Dict[str, List[Tuple[str, str]]] = {
+    "src/cuepoint/utils/atomic_write.py": [
+        ("os.replace(temp, path)", "the helper itself")
+    ],
+    "src/cuepoint/data/tag_save.py": [
+        (
+            "shutil.copyfileobj(source, target",
+            "fills the exclusive temporary copy of the audio file, which is "
+            "checked and then put in place by the helper",
+        )
+    ],
+    "src/cuepoint/data/rekordbox_export.py": [
+        (
+            "shutil.copy2(destination, backup)",
+            "the dated safety copy of the previous export, fsynced right after",
+        )
+    ],
+    "src/cuepoint/persistence/waveform_store.py": [
+        (
+            "source.replace(",
+            "sets a damaged waveform store aside (CuePoint's own derived data)",
+        )
+    ],
+    "src/cuepoint/utils/paths.py": [
+        (
+            "shutil.copytree(",
+            "migrates a legacy settings folder (CuePoint's own state)",
+        ),
+        ("shutil.copy2(", "migrates a legacy settings folder (CuePoint's own state)"),
+        ("old_path.rename(", "moves the legacy settings folder aside to <name>.old"),
+    ],
+    "src/cuepoint/services/integrity_service.py": [
+        (
+            "shutil.copyfileobj(f_in, f_out)",
+            "gzips CuePoint's own audit log in its output folder",
+        ),
+        (
+            "shutil.copy2(filepath, bak_path)",
+            "keeps a .bak of CuePoint's own checksum file before it is rewritten",
+        ),
+    ],
+    "src/cuepoint/services/backup_service.py": [
+        (
+            "os.replace(",
+            "backups write .partial files and verify them; a restore verifies a "
+            "safety copy first (HARDEN-01a)",
+        ),
+        (
+            "shutil.copyfile(",
+            "the restore's safety copy of a damaged library before it is replaced",
+        ),
+    ],
 }
 
 #: Receivers of a one-argument ``.replace(...)`` that are not files.
@@ -49,22 +91,44 @@ NOT_FILE_RECEIVERS: Dict[str, str] = {
     "self._source": "a repository replacing its database row (library_import_service)",
 }
 
-#: TypeScript files that may, and why.
-TYPESCRIPT_ALLOWED: Dict[str, str] = {
-    "apps/desktop-electron/electron/atomicWrite.ts": "the helper itself",
-    "apps/desktop-electron/electron/mainLog.ts": "log rotation (logging)",
-    "apps/desktop-electron/electron/beatportSignInLog.ts": "log rotation (logging)",
-    "apps/desktop-electron/electron/macInstaller.ts": (
-        "DIST-06's Mac swap: a shell script moves the app bundle aside and the "
-        "new one in, and the script file itself is a temporary installer"
-    ),
-    "apps/desktop-electron/electron/logTextDialog.ts": (
-        "declares and calls an injected writer; main.ts passes writeAtomic"
-    ),
+#: TypeScript lines that may, and why: per file, the start of the trimmed line.
+TYPESCRIPT_ALLOWED: Dict[str, List[Tuple[str, str]]] = {
+    "apps/desktop-electron/electron/atomicWrite.ts": [
+        ("await handle.writeFile(", "the helper itself"),
+        ("await fs.promises.rename(", "the helper itself"),
+        ("fs.renameSync(", "the helper itself"),
+    ],
+    "apps/desktop-electron/electron/mainLog.ts": [
+        ("appendFile", "logging"),
+        ("rename", "log rotation (logging)"),
+        ("await fs.rename(", "log rotation (logging)"),
+        ("await fs.appendFile(", "logging"),
+        ("if (keep > 1) await fs.rename(", "log rotation (logging)"),
+    ],
+    "apps/desktop-electron/electron/beatportSignInLog.ts": [
+        ("appendFile", "logging"),
+        ("rename", "log rotation (logging)"),
+        ("await this.fs.rename(", "log rotation (logging)"),
+        ("await this.fs.appendFile(", "logging"),
+    ],
+    "apps/desktop-electron/electron/macInstaller.ts": [
+        (
+            "fs.writeFileSync(script,",
+            "DIST-06: the temporary installer script that does the Mac swap (its "
+            "own mv commands are in a shell string, not a TypeScript call)",
+        )
+    ],
+    "apps/desktop-electron/electron/logTextDialog.ts": [
+        (
+            "await deps.writeFile(",
+            "calls the injected writer; main.ts passes writeAtomic",
+        ),
+    ],
 }
 
 _TS_PATTERN = re.compile(
     r"\brenameSync\b|\.rename\(|\brename\(|\bwriteFileSync\b|\bwriteFile\b(?!\s*:)"
+    r"|\bcreateWriteStream\b|\bcopyFile(?:Sync)?\b|\bappendFile(?:Sync)?\b|\bcpSync\b"
 )
 
 
@@ -72,27 +136,61 @@ def _relative(path: Path) -> str:
     return path.relative_to(_REPO).as_posix()
 
 
+_OS_NAMES = frozenset({"replace", "rename", "renames", "link", "symlink"})
+_SHUTIL_NAMES = frozenset(
+    {"move", "copyfile", "copy", "copy2", "copyfileobj", "copytree"}
+)
+
+
 def hits_in_source(source: str) -> List[Tuple[int, str]]:
-    """``(line, what)`` for every hand-made put-in-place call in some Python."""
+    """``(line, snippet)`` for every hand-made put-in-place call in some Python.
+
+    Resolves ``import os as x`` / ``import shutil as y`` and
+    ``from os import replace [as z]`` / ``from shutil import copyfile ...``, so a
+    renamed import is the same hit. One-argument ``.replace(p)`` / ``.rename(p)``
+    is ``Path``'s; so is a two-argument one on a ``Path(...)`` expression
+    (``str.replace`` takes two arguments, which is why those are not flagged
+    elsewhere).
+    """
+    tree = ast.parse(source)
+    modules: Dict[str, str] = {}  # local name -> "os" | "shutil"
+    functions: Dict[str, str] = {}  # local name -> "os.replace" etc.
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in ("os", "shutil"):
+                    modules[alias.asname or alias.name] = alias.name
+        elif isinstance(node, ast.ImportFrom) and node.module in ("os", "shutil"):
+            names = _OS_NAMES if node.module == "os" else _SHUTIL_NAMES
+            for alias in node.names:
+                if alias.name in names:
+                    functions[alias.asname or alias.name] = (
+                        f"{node.module}.{alias.name}"
+                    )
+
     hits: List[Tuple[int, str]] = []
-    for node in ast.walk(ast.parse(source)):
-        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
             continue
         func = node.func
-        owner = func.value.id if isinstance(func.value, ast.Name) else None
-        if owner == "os" and func.attr in ("replace", "rename", "renames"):
-            hits.append((node.lineno, f"os.{func.attr}"))
-        elif owner == "shutil" and func.attr == "move":
-            hits.append((node.lineno, "shutil.move"))
-        elif (
-            func.attr in ("replace", "rename")
-            and len(node.args) == 1
-            and not node.keywords
-        ):
-            # str.replace and dataclasses.replace take two arguments; one is a path.
-            receiver = ast.unparse(func.value)
-            if receiver not in NOT_FILE_RECEIVERS:
-                hits.append((node.lineno, f"Path.{func.attr}"))
+        snippet = ast.unparse(node)
+        if isinstance(func, ast.Name) and func.id in functions:
+            hits.append((node.lineno, snippet))
+        elif isinstance(func, ast.Attribute):
+            owner = func.value.id if isinstance(func.value, ast.Name) else None
+            module = modules.get(owner or "")
+            if (module == "os" and func.attr in _OS_NAMES) or (
+                module == "shutil" and func.attr in _SHUTIL_NAMES
+            ):
+                hits.append((node.lineno, snippet))
+            elif func.attr in ("replace", "rename") and not node.keywords:
+                receiver = ast.unparse(func.value)
+                one_path = len(node.args) == 1
+                path_expression = len(node.args) == 2 and receiver.startswith(
+                    ("Path(", "pathlib.Path(")
+                )
+                if (one_path or path_expression) and receiver not in NOT_FILE_RECEIVERS:
+                    hits.append((node.lineno, snippet))
     return sorted(hits)
 
 
@@ -105,6 +203,7 @@ def python_hits() -> List[Tuple[str, int, str]]:
 
 
 def typescript_hits() -> List[Tuple[str, int, str]]:
+    """``(file, line, trimmed source line)`` for every hand-made write."""
     hits: List[Tuple[str, int, str]] = []
     for path in sorted(_ELECTRON_ROOT.rglob("*.ts")):
         if path.name.endswith((".test.ts", ".integration.test.ts", ".d.ts")):
@@ -113,68 +212,108 @@ def typescript_hits() -> List[Tuple[str, int, str]]:
             code = line.strip()
             if code.startswith(("//", "*", "/*")):
                 continue
-            match = _TS_PATTERN.search(line)
-            if match:
-                hits.append((_relative(path), number, match.group(0)))
+            if _TS_PATTERN.search(code):
+                hits.append((_relative(path), number, code))
     return hits
+
+
+def _allowed(table: Dict[str, List[Tuple[str, str]]], file: str, text: str) -> bool:
+    return any(text.startswith(prefix) for prefix, _ in table.get(file, []))
 
 
 @pytest.mark.unit
 def test_python_writers_use_the_helper():
     stray = [
-        f"{file}:{line} {what}"
-        for file, line, what in python_hits()
-        if file not in PYTHON_ALLOWED
+        f"{file}:{line} {text}"
+        for file, line, text in python_hits()
+        if not _allowed(PYTHON_ALLOWED, file, text)
     ]
     assert stray == [], (
         "These put a file in place by hand. Use cuepoint.utils.atomic_write "
-        "(write_atomic, atomic_file, stage_temp/commit_temp), or add the file "
-        "to PYTHON_ALLOWED with a reason:\n" + "\n".join(stray)
+        "(write_atomic, atomic_file, stage_temp and its pair), or add the call to "
+        "PYTHON_ALLOWED with a reason:\n" + "\n".join(stray)
     )
 
 
 @pytest.mark.unit
 def test_electron_writers_use_the_helper():
     stray = [
-        f"{file}:{line} {what}"
-        for file, line, what in typescript_hits()
-        if file not in TYPESCRIPT_ALLOWED
+        f"{file}:{line} {text}"
+        for file, line, text in typescript_hits()
+        if not _allowed(TYPESCRIPT_ALLOWED, file, text)
     ]
     assert stray == [], (
-        "These put a file in place by hand. Use electron/atomicWrite.ts "
-        "(writeAtomic, writeAtomicSync), or add the file to TYPESCRIPT_ALLOWED "
-        "with a reason:\n" + "\n".join(stray)
+        "These write a file by hand. Use electron/atomicWrite.ts (writeAtomic, "
+        "writeAtomicSync), or add the line to TYPESCRIPT_ALLOWED with a reason:\n"
+        + "\n".join(stray)
     )
 
 
 @pytest.mark.unit
-def test_every_allowed_file_exists_and_has_a_reason():
-    # backup_service.py arrives with HARDEN-01a; until then its entry is only a
-    # reservation and the file may not exist yet.
-    pending = {"src/cuepoint/services/backup_service.py"}
-    for table in (PYTHON_ALLOWED, TYPESCRIPT_ALLOWED):
-        for file, reason in table.items():
-            assert reason.strip(), file
-            if file not in pending:
-                assert (_REPO / file).is_file(), f"{file} is allowed but gone"
+def test_every_allowance_has_a_reason_and_still_matches_something():
+    python_found = python_hits()
+    typescript_found = typescript_hits()
+    for table, found in (
+        (PYTHON_ALLOWED, python_found),
+        (TYPESCRIPT_ALLOWED, typescript_found),
+    ):
+        for file, entries in table.items():
+            assert (_REPO / file).is_file(), f"{file} is allowed but gone"
+            for prefix, reason in entries:
+                assert reason.strip(), (file, prefix)
+                assert any(
+                    f == file and text.startswith(prefix) for f, _line, text in found
+                ), (
+                    f"{file}: nothing starts with {prefix!r} any more; remove the allowance"
+                )
 
 
 @pytest.mark.unit
-def test_the_scan_finds_what_it_is_meant_to():
-    """The scan itself: a hand-made rename is a hit, a string replace is not."""
+def test_the_python_scan_finds_what_it_is_meant_to():
     source = (
         "import os, shutil\n"
+        "import os as o\n"
+        "import shutil as sh\n"
+        "from os import replace, rename as mv\n"
+        "from shutil import copyfile\n"
         "from pathlib import Path\n"
         "os.replace('a', 'b')\n"
+        "o.rename('a', 'b')\n"
+        "sh.move('a', 'b')\n"
+        "replace('a', 'b')\n"
+        "mv('a', 'b')\n"
+        "copyfile('a', 'b')\n"
         "Path('a').replace('b')\n"
+        "Path('a').replace('b', 'c')\n"
         "'x'.replace('a', 'b')\n"
-        "Path('a').rename(Path('b'))\n"
-        "shutil.move('a', 'b')\n"
         "service.rename(1, 'name')\n"
+        "shutil.copyfile('a', 'b')\n"
+        "dataclasses.replace(x, y=1)\n"
     )
-    assert hits_in_source(source) == [
-        (3, "os.replace"),
-        (4, "Path.replace"),
-        (6, "Path.rename"),
-        (7, "shutil.move"),
+    assert [line for line, _ in hits_in_source(source)] == [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        17,
     ]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "line",
+    [
+        "fs.createWriteStream(path)",
+        "await fs.promises.copyFile(a, b)",
+        "fs.copyFileSync(a, b)",
+        "await fs.promises.appendFile(a, text)",
+        "fs.writeFileSync(a, b)",
+        "await fs.promises.rename(a, b)",
+    ],
+)
+def test_the_typescript_pattern_finds_the_ways_to_write(line):
+    assert _TS_PATTERN.search(line)
