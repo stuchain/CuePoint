@@ -545,6 +545,70 @@ class TestIntegrityCheck:
 # ---------------------------------------------------------------------------
 
 
+class TestRecomputeAnswer:
+    """``recompute`` answers ``upgrading`` however fast or slow the recheck is."""
+
+    def test_a_recheck_that_finishes_first_is_still_answered_upgrading(
+        self, library, monkeypatch
+    ):
+        make_library(library)
+        noise(library)
+        assert state_now()["state"] == "damaged"
+
+        class RunsAtOnce(threading.Thread):
+            """A thread whose work is done before ``start`` returns."""
+
+            def start(self):
+                super().start()
+                self.join(20)
+
+        monkeypatch.setattr(library_state.threading, "Thread", RunsAtOnce)
+        first = library_state.recompute()
+        # Regression: the answer was read after the thread started, so a recheck
+        # that was already done gave back its own result ("damaged").
+        assert first["state"] == "upgrading"
+        monkeypatch.undo()
+        assert state_now()["state"] == "damaged"
+
+    def test_a_recheck_asked_while_the_last_compute_reports_runs_after_it(
+        self, library, monkeypatch
+    ):
+        make_library(library)
+        noise(library)
+        in_report = threading.Event()
+        let_go = threading.Event()
+        computes: list[int] = []
+        real_compute = library_state.compute_library_state
+        real_report = library_state.report_current
+
+        def counting():
+            computes.append(1)
+            return real_compute()
+
+        def held_report():
+            in_report.set()
+            assert let_go.wait(20)
+            real_report()
+
+        monkeypatch.setattr(library_state, "compute_library_state", counting)
+        monkeypatch.setattr(library_state, "report_current", held_report)
+        first = threading.Thread(target=library_state.run_compute, daemon=True)
+        first.start()
+        assert in_report.wait(20)
+        # The state is published (not "upgrading") while the compute still holds its lock.
+        assert library_state.current_state_name() == "damaged"
+        answer = library_state.recompute()
+        assert answer["state"] == "upgrading"
+        let_go.set()
+        first.join(20)
+        deadline = time.monotonic() + 20
+        while len(computes) < 2 and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert len(computes) == 2, "the recheck was dropped"
+        monkeypatch.setattr(library_state, "report_current", real_report)
+        assert state_now()["state"] == "damaged"
+
+
 class TestReporting:
     @pytest.fixture
     def reports(self, monkeypatch):

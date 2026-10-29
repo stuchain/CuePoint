@@ -381,15 +381,18 @@ def note_launch_backup(info: Any) -> None:
         _session_copy = info.name
 
 
-def run_compute() -> Dict[str, Any]:
+def run_compute(*, wait: bool = False) -> Dict[str, Any]:
     """Work the state out, publish it, and start what a library that opened needs.
 
     Never under ``_lock``: status requests are answered (``upgrading``) while
     this runs, however long the upgrade takes. One compute at a time; a caller
-    that finds another running returns the state published meanwhile.
+    that finds another running returns the state published meanwhile, unless
+    ``wait``: a recheck asked for while the previous compute is still finishing
+    (it has published, and is reporting) waits its turn and then runs, so the
+    answer it was promised is not lost to the earlier one.
     """
     global _state, _ready_fired
-    if not _compute_lock.acquire(blocking=False):
+    if not _compute_lock.acquire(blocking=wait):
         return get_library_state()
     try:
         with _lock:
@@ -451,12 +454,28 @@ def recompute() -> Dict[str, Any]:
         get_container().resolve(IDatabaseService).close_all()
     except Exception as exc:  # noqa: BLE001
         _logger.warning("[library] could not let go of the old connections: %s", exc)
+    finishing = False
     if _compute_lock.locked():
-        return get_library_state()
+        with _lock:
+            running = _state is None or _state["state"] == UPGRADING
+        if running:
+            return get_library_state()
+        # The compute holding the lock has already published its result and is
+        # reporting it. Asking again is not answered with that old result: the
+        # recheck runs once the lock is free.
+        finishing = True
     # The block goes up here, before the thread starts, so no request slips in.
     _publish_upgrading()
-    threading.Thread(target=run_compute, name="library-recheck", daemon=True).start()
-    return get_library_state()
+    # The answer is taken before the thread starts: a library that is quick to
+    # check can be done before this returns, and the caller was told "upgrading".
+    answer = get_library_state()
+    threading.Thread(
+        target=run_compute,
+        kwargs={"wait": finishing},
+        name="library-recheck",
+        daemon=True,
+    ).start()
+    return answer
 
 
 def on_ready(callback: Optional[Callable[[], None]]) -> None:
