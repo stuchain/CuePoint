@@ -21,7 +21,7 @@ const SIZES: SizeState = {
   options: [
     { value: 1, label: "Small (1×)" },
     { value: 1.25, label: "Compact (1.25×)" },
-    { value: 1.5, label: "Medium (1.5×) — default" },
+    { value: 1.5, label: "Medium (1.5×) - default" },
     { value: 2, label: "Large (2×)" },
     { value: 3, label: "Extra large (3×)" },
   ],

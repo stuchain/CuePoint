@@ -572,7 +572,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         const yours = panel.getByRole("region", { name: "Your file" });
         const candidates = panel.getByRole("radiogroup", { name: "Beatport candidates" });
         await expect(candidates).toBeVisible({ timeout: 30_000 });
-        await expect(panel.getByRole("button", { name: "None of these — leave it out" })).toBeVisible();
+        await expect(panel.getByRole("button", { name: "None of these - leave it out" })).toBeVisible();
         // your cover, decoded by the app from the fixture
         await expect(yours.locator("img.review-panel__art")).toBeVisible({ timeout: 30_000 });
         await expect

@@ -1047,7 +1047,7 @@ export function TrackTable<Row>({
           reader reads a pile of groups. It is a grid, not a table (M457): the
           rows are selected and moved through with the keys, and the focus stays
           here while aria-activedescendant names the current row. `aria-rowcount`
-          is the whole result, not the window — the rows in the DOM are tens of a
+          is the whole result, not the window - the rows in the DOM are tens of a
           possible fifty thousand, and saying "3 of 3" would be a lie. */}
       <div
         ref={scrollRef}

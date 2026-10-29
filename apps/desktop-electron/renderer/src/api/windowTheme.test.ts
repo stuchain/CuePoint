@@ -4,13 +4,13 @@ import { cssColourToHex, readWindowTheme, startWindowThemeSync, windowTitle } fr
 
 describe("windowTitle (M501)", () => {
   it("is the page and CuePoint", () => {
-    expect(windowTitle("Library")).toBe("Library — CuePoint");
+    expect(windowTitle("Library")).toBe("Library - CuePoint");
   });
 
   it("is the playing track while one plays", () => {
-    expect(windowTitle("Library", { title: "Strobe", artist: "deadmau5" })).toBe("Strobe — deadmau5 — CuePoint");
-    expect(windowTitle("Library", { title: "Strobe" })).toBe("Strobe — CuePoint");
-    expect(windowTitle("Library", { title: "  ", artist: null })).toBe("Library — CuePoint");
+    expect(windowTitle("Library", { title: "Strobe", artist: "deadmau5" })).toBe("Strobe - deadmau5 - CuePoint");
+    expect(windowTitle("Library", { title: "Strobe" })).toBe("Strobe - CuePoint");
+    expect(windowTitle("Library", { title: "  ", artist: null })).toBe("Library - CuePoint");
   });
 
   it("is CuePoint alone with nothing to say", () => {
@@ -19,9 +19,9 @@ describe("windowTitle (M501)", () => {
   });
 
   it("cleans control characters and spaces, and cuts a long name", () => {
-    expect(windowTitle("Li\u0000brary\n\n  Two")).toBe("Li brary Two — CuePoint");
+    expect(windowTitle("Li\u0000brary\n\n  Two")).toBe("Li brary Two - CuePoint");
     const long = windowTitle("x".repeat(500));
-    expect(long.length).toBeLessThanOrEqual(120 + " — CuePoint".length);
+    expect(long.length).toBeLessThanOrEqual(120 + " - CuePoint".length);
     expect(long).toContain("…");
   });
 });

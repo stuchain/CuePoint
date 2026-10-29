@@ -181,7 +181,7 @@ test("choosing an output device, keeping it, and surviving it going away", async
     await expect
       .poll(async () => win.evaluate(() => window.__audioToasts ?? []), { timeout: 30_000 })
       .toContainEqual(
-        "The selected audio device is not available — playing through the system default.",
+        "The selected audio device is not available - playing through the system default.",
       );
 
     // The choice is kept — the interface may be back in a minute — while what

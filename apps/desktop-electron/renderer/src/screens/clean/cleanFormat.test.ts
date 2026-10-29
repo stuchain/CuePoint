@@ -56,7 +56,7 @@ describe("where a track stands", () => {
 
   it("says when a newer match disagrees", () => {
     expect(decisionLine(state({ decided_by: "user", disputed: true }))).toBe(
-      "Confirmed by you — changed after you confirmed",
+      "Confirmed by you - changed after you confirmed",
     );
   });
 
@@ -121,11 +121,11 @@ describe("sentences about what was done", () => {
 
   it("names an attempt by when, what came of it, and its notes", () => {
     const attempt = { id: 5, outcome: "matched" as const, finished_at: "<recorded>" };
-    expect(attemptLabel(attempt, 0, 5)).toBe("<recorded> — matched (latest, decided)");
+    expect(attemptLabel(attempt, 0, 5)).toBe("<recorded> - matched (latest, decided)");
     expect(attemptLabel({ ...attempt, outcome: "no_match" }, 1, null)).toBe(
-      "<recorded> — no match",
+      "<recorded> - no match",
     );
-    expect(attemptLabel({ ...attempt, outcome: "error" }, 2, null)).toBe("<recorded> — search failed");
+    expect(attemptLabel({ ...attempt, outcome: "error" }, 2, null)).toBe("<recorded> - search failed");
   });
 });
 

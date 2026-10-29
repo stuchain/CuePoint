@@ -106,13 +106,13 @@ describe("size of text and controls", () => {
 
   it("words the sizes, marking the default", () => {
     // " — default" goes on whichever size is the default, so this holds when it moves.
-    const mark = (size: number) => (size === (DEFAULT_SCALE as number) ? " — default" : "");
+    const mark = (size: number) => (size === (DEFAULT_SCALE as number) ? " - default" : "");
     expect(scaleOptionLabel(1)).toBe(`Extra small (1×)${mark(1)}`);
     expect(scaleOptionLabel(1.5)).toBe(`Medium (1.5×)${mark(1.5)}`);
     expect(scaleOptionLabel(2)).toBe(`Large (2×)${mark(2)}`);
     expect(scaleOptionLabel(3)).toBe(`Extra large (3×)${mark(3)}`);
     expect(
-      SCALE_OPTIONS.filter((o) => scaleOptionLabel(o).endsWith(" — default")),
+      SCALE_OPTIONS.filter((o) => scaleOptionLabel(o).endsWith(" - default")),
     ).toEqual([DEFAULT_SCALE]);
   });
 
@@ -127,7 +127,7 @@ describe("size of text and controls", () => {
     expect(options.map((o) => o.textContent)).toEqual([
       "Extra small (1×)",
       "Small (1.25×)",
-      "Medium (1.5×) — default",
+      "Medium (1.5×) - default",
       "Large (2×)",
       "Extra large (3×)",
     ]);

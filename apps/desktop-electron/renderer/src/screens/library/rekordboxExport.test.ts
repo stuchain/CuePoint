@@ -576,7 +576,7 @@ describe("what the tree says beside a name", () => {
   it("names a folder and a Smart Collection, and a broken one as broken", () => {
     expect(label("folder")).toBe("folder");
     expect(label("smart")).toBe("Smart Collection");
-    expect(label("smart", 0, true)).toBe("Smart Collection — broken");
+    expect(label("smart", 0, true)).toBe("Smart Collection - broken");
   });
 });
 
@@ -599,7 +599,7 @@ describe("Settings", () => {
   it("describes each past export by how it ended", () => {
     const [cancelled, written] = HISTORY.exports;
     expect(historyOutcome(written!)).toBe("4 tracks · 3 with new tags · 4 playlists · Camelot (8A)");
-    expect(historyOutcome(cancelled!)).toBe("Stopped — nothing was written");
+    expect(historyOutcome(cancelled!)).toBe("Stopped - nothing was written");
     expect(historyOutcome({ ...written!, outcome: "failed", error: "Disk full" })).toBe(
       "Failed: Disk full",
     );

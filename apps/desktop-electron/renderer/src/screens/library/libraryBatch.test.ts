@@ -183,7 +183,7 @@ describe("what it says afterwards", () => {
 
   it("counts what changed, not what it looked at", () => {
     expect(batchSummary(tag, result({ total: 52, changed: 40, unchanged: 12 }))).toContain(
-      "Tagged 40 tracks “Peak-time” — 12 already had it.",
+      "Tagged 40 tracks “Peak-time” - 12 already had it.",
     );
   });
 
@@ -199,7 +199,7 @@ describe("what it says afterwards", () => {
     expect(withShortfall(line, remove, result({ total: 6, changed: 6 }))).toBe(line);
     expect(
       withShortfall(line, remove, result({ total: 10, changed: 6, unchanged: 1, failed: 3 })),
-    ).toBe(`${line} — 1 were not in it, 3 could not be changed.`);
+    ).toBe(`${line} - 1 were not in it, 3 could not be changed.`);
     expect(
       withShortfall(line, remove, result({ total: 10, changed: 6, cancelled: true })),
     ).toBe(`Stopped early. ${line}`);

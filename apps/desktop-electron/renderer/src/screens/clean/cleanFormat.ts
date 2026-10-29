@@ -73,7 +73,7 @@ export function decisionLine(state: TrackMatchState): string {
     default:
       line = MATCH_STATE.notLookedUp;
   }
-  return state.disputed ? `${line} — changed after you confirmed` : line;
+  return state.disputed ? `${line} - changed after you confirmed` : line;
 }
 
 /**
@@ -188,7 +188,7 @@ export function attemptLabel(
   const notes = [index === 0 ? "latest" : null, attempt.id === decidedOn ? "decided" : null]
     .filter(Boolean)
     .join(", ");
-  return `${(attempt.finished_at && (formatDayTime(attempt.finished_at) || attempt.finished_at)) || ""} — ${outcome}${notes ? ` (${notes})` : ""}`;
+  return `${(attempt.finished_at && (formatDayTime(attempt.finished_at) || attempt.finished_at)) || ""} - ${outcome}${notes ? ` (${notes})` : ""}`;
 }
 
 export function exportedLine(count_: number, filePath: string): string {

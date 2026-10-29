@@ -40,7 +40,7 @@ export function fileSkipText(reason: string): string {
     case "unsupported_format":
       return "formats CuePoint does not write (only MP3, AIFF, FLAC and Ogg Vorbis)";
     case "not_checked":
-      return "files not checked at their current path — check files first";
+      return "files not checked at their current path - check files first";
     case "missing":
       return "files that are missing";
     case "unreadable":

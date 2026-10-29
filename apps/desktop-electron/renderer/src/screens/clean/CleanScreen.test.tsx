@@ -658,13 +658,13 @@ describe("missing files", () => {
     bridge.getLibraryHealth!.mockResolvedValue({
       ...MATCHED,
       unavailable_roots: [
-        { root: "E:\\", tracks: 4812, summary: "4,812 tracks on E:\\ — the drive is not connected" },
+        { root: "E:\\", tracks: 4812, summary: "4,812 tracks on E:\\ - the drive is not connected" },
       ],
     });
     renderClean("missing");
     expect(await screen.findByText(/right-click the track/)).toBeInTheDocument();
     expect(
-      await screen.findByText("At the last check: 4,812 tracks on E:\\ — the drive is not connected."),
+      await screen.findByText("At the last check: 4,812 tracks on E:\\ - the drive is not connected."),
     ).toBeInTheDocument();
     expect(await screen.findByText("E:\\gone\\9.mp3")).toBeInTheDocument();
     expect(lastBrowse().filters).toEqual(fixture.rules.missing_files);

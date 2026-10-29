@@ -137,7 +137,7 @@ describe("the bar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Rule" }), "any_of");
 
-    const group = screen.getByRole("group", { name: "Match state — choose any" });
+    const group = screen.getByRole("group", { name: "Match state - choose any" });
     await userEvent.click(within(group).getByRole("button", { name: "Rejected" }));
     await userEvent.click(within(group).getByRole("button", { name: "Waiting for you" }));
     expect(within(group).getByRole("button", { name: "Rejected" })).toHaveAttribute(

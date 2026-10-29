@@ -16,7 +16,7 @@ export const TextFieldDefault: Story = {
 
 export const TextFieldError: Story = {
   render: () => (
-    <TextField label="Beatport token" error="Token expired — sign in again." />
+    <TextField label="Beatport token" error="Token expired - sign in again." />
   ),
 };
 

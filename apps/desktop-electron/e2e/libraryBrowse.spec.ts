@@ -180,7 +180,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
     }
   });
 
-  test("browses, scopes, sorts, filters, selects, inspects — and survives a refresh", async () => {
+  test("browses, scopes, sorts, filters, selects, inspects - and survives a refresh", async () => {
     test.setTimeout(240_000);
     const tracks = Array.from({ length: 40 }, (_, index) => spec(index + 1));
     const app = await launch(userDataDir, cuepointHome);

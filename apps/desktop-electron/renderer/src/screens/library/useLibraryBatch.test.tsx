@@ -181,7 +181,7 @@ describe("a batch that became a job", () => {
 
     await waitFor(() =>
       expect(onMessage).toHaveBeenCalledWith(
-        expect.stringContaining("Tagged 38 tracks “Peak-time” — 2 already had it."),
+        expect.stringContaining("Tagged 38 tracks “Peak-time” - 2 already had it."),
         "success",
       ),
     );

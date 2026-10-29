@@ -319,12 +319,12 @@ describe("a waveform that is waiting (PRP-12)", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("transition-from")).toHaveTextContent(
-        "Not made yet — 312 of 4,000",
+        "Not made yet - 312 of 4,000",
       ),
     );
     expect(screen.getByTestId("transition-from")).toHaveAttribute(
       "data-hint",
-      "Waveform not made yet — analysis is 312 of 4,000",
+      "Waveform not made yet - analysis is 312 of 4,000",
     );
     const links = screen.getAllByRole("button", { name: "See progress" });
     expect(links).toHaveLength(2);

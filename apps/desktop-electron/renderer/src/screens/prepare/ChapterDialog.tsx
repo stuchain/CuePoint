@@ -25,7 +25,7 @@ import "./prepare.css";
 
 /** What a chapter is, before the fields that set it (PRP-11). */
 const CHAPTER_LEAD =
-  "A chapter is a part of the Set — warm-up, peak, closing — with its own target length and tempo range.";
+  "A chapter is a part of the Set - warm-up, peak, closing - with its own target length and tempo range.";
 
 interface ChapterDialogProps {
   /** The chapter, or null when the dialog is closed. */

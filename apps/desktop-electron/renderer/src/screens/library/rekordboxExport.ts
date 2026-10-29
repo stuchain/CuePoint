@@ -68,7 +68,7 @@ export function keyFormatConsequence(format: RekordboxKeyFormat): string | null 
   if (format === "normal") return null;
   const name = format === "camelot" ? "Camelot keys (8A)" : "short keys (Amin)";
   return (
-    `If you import this file into CuePoint later, its ${name} become CuePoint's own key — ` +
+    `If you import this file into CuePoint later, its ${name} become CuePoint's own key - ` +
     "mixed with classic keys (Am) on any track this file does not rewrite."
   );
 }
@@ -467,7 +467,7 @@ export function exportNodeLabel(
     case "folder":
       return "folder";
     case "smart":
-      return node.broken ? "Smart Collection — broken" : "Smart Collection";
+      return node.broken ? "Smart Collection - broken" : "Smart Collection";
     case "set":
       return `Set · ${formatCount(node.entry_count)}`;
     default:
@@ -523,7 +523,7 @@ export function rememberedFolderLine(remembered: RememberedRekordboxExport): str
     return "Nothing exported yet. The first export's save dialog opens in your Documents folder.";
   }
   if (!remembered.folder_exists) {
-    return `${remembered.folder} — no longer there, so the next save dialog opens in your Documents folder.`;
+    return `${remembered.folder} - no longer there, so the next save dialog opens in your Documents folder.`;
   }
   return remembered.folder;
 }
@@ -539,7 +539,7 @@ export function historyOutcome(record: RekordboxExportRecord): string {
         keyFormatName(record.key_format),
       ].join(" · ");
     case "cancelled":
-      return "Stopped — nothing was written";
+      return "Stopped - nothing was written";
     default:
       return `Failed: ${record.error ?? "no reason was given"}`;
   }

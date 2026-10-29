@@ -51,10 +51,10 @@ describe("what the user is told", () => {
 
   it("says that playback stopped, when it did", () => {
     expect(failureMessage(12, null, null, true)).toBe(
-      "12 tracks could not be played — playback stopped",
+      "12 tracks could not be played - playback stopped",
     );
     expect(failureMessage(1, "Strobe", null, true)).toBe(
-      "Could not play “Strobe” — playback stopped",
+      "Could not play “Strobe” - playback stopped",
     );
   });
 

@@ -523,14 +523,14 @@ export class PlaybackController {
       if (audio.activeExclusive) {
         await fallback(
           { exclusive: false },
-          "Exclusive output was not available — playing through the shared device.",
+          "Exclusive output was not available - playing through the shared device.",
         );
         return;
       }
       if (audio.activeDevice !== SYSTEM_DEFAULT_DEVICE) {
         await fallback(
           { device: SYSTEM_DEFAULT_DEVICE },
-          "The selected audio device is not available — playing through the system default.",
+          "The selected audio device is not available - playing through the system default.",
         );
         return;
       }

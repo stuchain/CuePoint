@@ -487,7 +487,7 @@ describe("dropping tracks (the pane's first drop target)", () => {
 
     await waitFor(() =>
       expect(onNotify).toHaveBeenCalledWith(
-        "Added 2 tracks to Warmups — 3 already there.",
+        "Added 2 tracks to Warmups - 3 already there.",
         "info",
       ),
     );

@@ -1784,7 +1784,7 @@
     "reason": "names of our own fields, parameters and code values, never a user value",
     "verdict": "exempt"
   },
-  "cuepoint/persistence/filter_sql.py::_compile_membership::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
+  "cuepoint/persistence/filter_sql.py::_compile_membership::{spec.label} cannot be filtered with {operator!r} - the filter model allows it but the query builder does not implement it": {
     "holds": "our own field, label or code name",
     "reason": "names of our own fields, parameters and code values, never a user value",
     "verdict": "exempt"
@@ -1794,7 +1794,7 @@
     "reason": "names of our own fields, parameters and code values, never a user value",
     "verdict": "exempt"
   },
-  "cuepoint/persistence/filter_sql.py::_compile_values::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
+  "cuepoint/persistence/filter_sql.py::_compile_values::{spec.label} cannot be filtered with {operator!r} - the filter model allows it but the query builder does not implement it": {
     "holds": "our own field, label or code name",
     "reason": "names of our own fields, parameters and code values, never a user value",
     "verdict": "exempt"
@@ -1809,7 +1809,7 @@
     "reason": "names of our own fields, parameters and code values, never a user value",
     "verdict": "exempt"
   },
-  "cuepoint/persistence/filter_sql.py::compile_rule::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
+  "cuepoint/persistence/filter_sql.py::compile_rule::{spec.label} cannot be filtered with {operator!r} - the filter model allows it but the query builder does not implement it": {
     "holds": "our own field, label or code name",
     "reason": "names of our own fields, parameters and code values, never a user value",
     "verdict": "exempt"

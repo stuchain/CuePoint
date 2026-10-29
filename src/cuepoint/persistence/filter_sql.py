@@ -188,7 +188,7 @@ def _compile_membership(
 
     # Unreachable while the model and this module agree; see `compile_rule`.
     raise FilterRuleError(
-        f"{spec.label} cannot be filtered with {operator!r} — the filter model "
+        f"{spec.label} cannot be filtered with {operator!r} - the filter model "
         "allows it but the query builder does not implement it"
     )
 
@@ -259,7 +259,7 @@ def _compile_values(
 
     # Unreachable while the model and this module agree; see `compile_rule`.
     raise FilterRuleError(
-        f"{spec.label} cannot be filtered with {operator!r} — the filter model "
+        f"{spec.label} cannot be filtered with {operator!r} - the filter model "
         "allows it but the query builder does not implement it"
     )
 
@@ -544,7 +544,7 @@ def compile_rule(rule: FilterRule) -> Tuple[str, Tuple[Any, ...]]:
     # Unreachable while the model and this module agree; a loud failure rather
     # than a clause that quietly matches everything if they ever stop agreeing.
     raise FilterRuleError(
-        f"{spec.label} cannot be filtered with {operator!r} — the filter model "
+        f"{spec.label} cannot be filtered with {operator!r} - the filter model "
         "allows it but the query builder does not implement it"
     )
 

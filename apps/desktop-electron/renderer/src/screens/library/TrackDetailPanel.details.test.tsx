@@ -477,7 +477,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     expect(screen.getByRole("status")).toHaveTextContent("4 selected");
     // M405: no "…" inside a spoken name.
     const link = screen.getByRole("button", { name: "Edit values for 4 tracks" });
-    expect(link).toHaveAttribute("title", "Edit values for 4 tracks — the fields below change only this one");
+    expect(link).toHaveAttribute("title", "Edit values for 4 tracks - the fields below change only this one");
     expect(link).toHaveTextContent("Edit values…");
     expect(link.closest("p")).toContainElement(screen.getByRole("status"));
     fireEvent.click(link);

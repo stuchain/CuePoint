@@ -30,7 +30,7 @@ export function announcementFor(snapshot: PlayerSnapshot | null): string {
   const item = snapshot.queue.currentItem;
   if (!item) return "";
   const meta = formatTrackMeta(item);
-  const name = meta ? `${item.title} — ${meta}` : item.title;
+  const name = meta ? `${item.title} - ${meta}` : item.title;
   if (snapshot.playback.paused) return `Paused: ${name}`;
   if (!snapshot.playback.playing) return `Stopped: ${name}`;
   return `Playing: ${name}`;

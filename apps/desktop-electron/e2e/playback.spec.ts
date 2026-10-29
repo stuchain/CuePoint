@@ -164,7 +164,7 @@ test.describe("Phase 5 end to end", () => {
     workspace = mkdtempSync(path.join(tmpdir(), "cuepoint-xml-"));
   });
 
-  test("plays, queues, reorders, takes the keyboard — and remembers nothing", async () => {
+  test("plays, queues, reorders, takes the keyboard - and remembers nothing", async () => {
     test.skip(!hasPlayer, NO_PLAYER);
     test.setTimeout(240_000);
     let app = await launch(userDataDir, home);

@@ -293,7 +293,7 @@ describeWithMpv("a queue playing through real mpv", () => {
     expect(notices[0]!.kind).toBe("track-failed");
     expect(notices[0]!.count).toBeGreaterThan(1);
     expect(notices[0]!.stopped).toBe(true);
-    expect(notices[0]!.message).toMatch(/tracks could not be played — playback stopped$/);
+    expect(notices[0]!.message).toMatch(/tracks could not be played - playback stopped$/);
     // Nothing is playing and every item carries the mark the panel shows.
     expect(controller.snapshot().playback.playing).toBe(false);
     expect(

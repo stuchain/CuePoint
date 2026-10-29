@@ -176,7 +176,7 @@ describe("where a node may be dropped", () => {
     expect(canMoveInto(sets, sets)).toBe(false);
   });
 
-  it("not into its own subtree — the tree bug that hides both (ORG-04)", () => {
+  it("not into its own subtree - the tree bug that hides both (ORG-04)", () => {
     expect(canMoveInto(sets, peak)).toBe(false);
   });
 

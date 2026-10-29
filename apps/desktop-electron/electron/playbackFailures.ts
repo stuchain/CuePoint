@@ -93,7 +93,7 @@ export function failureMessage(
   }
   // Said only when the failures are why nothing is playing any more. A run that
   // ended because the next track played fine needs no such warning.
-  return stopped ? `${message} — playback stopped` : message;
+  return stopped ? `${message} - playback stopped` : message;
 }
 
 /**

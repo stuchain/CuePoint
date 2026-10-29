@@ -229,13 +229,13 @@ describe("Add to Set, as a batch", () => {
 
   it("reports what was added and what was already there, from the engine's result", () => {
     expect(batchSummary(action, ADDED_TO_SET)).toBe(
-      "Added 1 track to “Friday” — 1 were already there.",
+      "Added 1 track to “Friday” - 1 were already there.",
     );
   });
 
   it("says nothing about undo, for a Set or a Collection", () => {
     expect(batchSummary(action, { ...ADDED_TO_SET, changed: 40 })).toBe(
-      "Added 40 tracks to “Friday” — 1 were already there.",
+      "Added 40 tracks to “Friday” - 1 were already there.",
     );
     expect(batchConsequence("add_to_collection", "set")).toBe(
       "It runs in the background, and you can keep working. Adding tracks to a Set or removing them is not recorded in History.",

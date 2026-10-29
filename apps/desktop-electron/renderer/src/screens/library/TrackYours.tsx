@@ -243,7 +243,7 @@ export function TrackYours({
           onBlur={() => editor.flushNotes()}
         />
         {/* `aria-live` rather than `role="status"`: the panel already has one
-            status — how many tracks are selected — and a second would make
+            status - how many tracks are selected - and a second would make
             "the status" ambiguous to a screen reader and to a test. */}
         <p className="cp-track-yours__state" aria-live="polite">
           {editor.notesState === "saving" ? "Saving…" : ""}

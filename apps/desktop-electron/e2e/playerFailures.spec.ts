@@ -111,7 +111,7 @@ test("a queue of files that are not there says one thing and stops", async () =>
 
     const raised = await toasts(win);
     expect(raised).toHaveLength(1);
-    expect(raised[0]!.text).toMatch(/^\d+ tracks could not be played — playback stopped$/);
+    expect(raised[0]!.text).toMatch(/^\d+ tracks could not be played - playback stopped$/);
     // Playback stopped rather than spinning, and every item carries the mark.
     const state = await win.evaluate(async () => {
       const bridge = (window as never as Bridge).cuepoint;

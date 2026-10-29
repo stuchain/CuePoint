@@ -468,7 +468,7 @@ export function CollectionsPane({
       const tracks = countNoun(added, "track");
       say(
         skipped
-          ? `Added ${tracks} to ${target.name} — ${skipped} already there.`
+          ? `Added ${tracks} to ${target.name} - ${skipped} already there.`
           : `Added ${tracks} to ${target.name}.`,
         "info",
       );

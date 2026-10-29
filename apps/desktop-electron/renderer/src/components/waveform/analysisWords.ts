@@ -181,9 +181,9 @@ export function waitingWaveformWords(status: WaveformAnalysisStatus | null | und
   const lead = "Waveform not made yet";
   if (!status) return lead;
   if (status.state === "unavailable") return DECODER_MISSING_WORDS;
-  if (status.state === "paused") return `${lead} — analysis is paused`;
+  if (status.state === "paused") return `${lead} - analysis is paused`;
   if (status.present <= 0) return lead;
-  return `${lead} — analysis is ${count(status.analysed + status.failed)} of ${count(status.present)}`;
+  return `${lead} - analysis is ${count(status.analysed + status.failed)} of ${count(status.present)}`;
 }
 
 /**
@@ -194,9 +194,9 @@ export function waitingWaveformShort(status: WaveformAnalysisStatus | null | und
   const lead = "Not made yet";
   if (!status) return lead;
   if (status.state === "unavailable") return DECODER_MISSING_WORDS;
-  if (status.state === "paused") return `${lead} — paused`;
+  if (status.state === "paused") return `${lead} - paused`;
   if (status.present <= 0) return lead;
-  return `${lead} — ${count(status.analysed + status.failed)} of ${count(status.present)}`;
+  return `${lead} - ${count(status.analysed + status.failed)} of ${count(status.present)}`;
 }
 
 /** The Inspector's title over a waveform that is a picture only (WAVE-06). */

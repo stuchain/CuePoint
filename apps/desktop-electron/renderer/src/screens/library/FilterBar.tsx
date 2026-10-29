@@ -464,7 +464,7 @@ export function FilterBar({
         <div
           className="cp-filter-bar__sources"
           role="group"
-          aria-label={`${field.label} — choose any`}
+          aria-label={`${field.label} - choose any`}
         >
           {sources.length === 0 && (
             <span className="cp-filter-bar__hint">No playlists, Collections or Sets yet.</span>
@@ -505,7 +505,7 @@ export function FilterBar({
         <div
           className="cp-filter-bar__tags"
           role="group"
-          aria-label={arity === "list" ? "Tags — choose any" : "Tags"}
+          aria-label={arity === "list" ? "Tags - choose any" : "Tags"}
         >
           {choosable.length === 0 && (
             <span className="cp-filter-bar__hint">No tags here yet.</span>
@@ -557,7 +557,7 @@ export function FilterBar({
         <div
           className="cp-filter-bar__tags"
           role="group"
-          aria-label={`${field.label} — choose any`}
+          aria-label={`${field.label} - choose any`}
         >
           {choices.map((choice) => {
             const on = picked.includes(choice.value);

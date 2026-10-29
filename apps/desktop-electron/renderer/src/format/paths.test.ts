@@ -75,7 +75,7 @@ describe("pathParts and the file name first", () => {
 
   it("puts the name first", () => {
     expect(displayPathNameFirst("/Users/dj/Music/rekordbox/collection.xml")).toBe(
-      "collection.xml — ~/Music/rekordbox",
+      "collection.xml - ~/Music/rekordbox",
     );
     expect(displayPathNameFirst("collection.xml")).toBe("collection.xml");
     expect(displayPathNameFirst("")).toBe("");

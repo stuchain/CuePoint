@@ -75,5 +75,5 @@ export function displayPathNameFirst(
 ): string {
   const { name, folder } = pathParts(path, options);
   if (name === "") return "";
-  return folder === "" ? name : `${name} — ${folder}`;
+  return folder === "" ? name : `${name} - ${folder}`;
 }

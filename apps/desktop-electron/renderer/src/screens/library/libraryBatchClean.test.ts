@@ -63,20 +63,20 @@ describe("the question above the threshold", () => {
 describe("what happened", () => {
   it("counts decisions, and says why the rest were left", () => {
     expect(batchSummary(accept, result({ changed: 1, unchanged: 3 }))).toBe(
-      "Confirmed the match on 1 track — 3 were already decided or had nothing proposed.",
+      "Confirmed the match on 1 track - 3 were already decided or had nothing proposed.",
     );
     expect(batchSummary(reject, result({ changed: 1 }))).toBe("Rejected the match on 1 track.");
   });
 
   it("counts applied and typed values", () => {
     expect(batchSummary(apply, result({ changed: 1, unchanged: 2 }))).toBe(
-      "Applied Beatport's key and BPM to 1 track — 2 had no confirmed match or already held those values.",
+      "Applied Beatport's key and BPM to 1 track - 2 had no confirmed match or already held those values.",
     );
     expect(batchSummary(setBpm, result({ changed: 1, unchanged: 1 }))).toBe(
-      "Set the BPM to 128 on 1 track — 1 already had it.",
+      "Set the BPM to 128 on 1 track - 1 already had it.",
     );
     expect(batchSummary(clearKey, result({ changed: 1, unchanged: 4 }))).toBe(
-      "Cleared your key on 1 track — 4 were already not set.",
+      "Cleared your key on 1 track - 4 were already not set.",
     );
   });
 

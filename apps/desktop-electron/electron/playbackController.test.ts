@@ -579,7 +579,7 @@ describe("recovering from a failure (PLAYER-10)", () => {
     expect(notices[0]).toMatchObject({
       stopped: true,
       count: 1,
-      message: "Could not play “a” (loading failed) — playback stopped",
+      message: "Could not play “a” (loading failed) - playback stopped",
     });
     expect(calls.some((call) => call.kind === "stop")).toBe(true);
   });
@@ -614,7 +614,7 @@ describe("recovering from a failure (PLAYER-10)", () => {
     expect(notices[0]).toMatchObject({
       stopped: true,
       count: 3,
-      message: "3 tracks could not be played — playback stopped",
+      message: "3 tracks could not be played - playback stopped",
     });
     expect(calls.some((call) => call.kind === "stop")).toBe(true);
     expect(controller.queueWindow(0, 10).items.map((item) => item.status)).toEqual([
@@ -644,7 +644,7 @@ describe("recovering from a failure (PLAYER-10)", () => {
     expect(notices[0]).toMatchObject({
       stopped: true,
       count: 2,
-      message: "2 tracks could not be played — playback stopped",
+      message: "2 tracks could not be played - playback stopped",
     });
   });
 
@@ -786,7 +786,7 @@ describe("falling back when the audio output fails (PLAYER-11)", () => {
       expect.objectContaining({
         kind: "audio-fallback",
         stopped: false,
-        message: "Exclusive output was not available — playing through the shared device.",
+        message: "Exclusive output was not available - playing through the shared device.",
       }),
     ]);
   });
@@ -824,7 +824,7 @@ describe("falling back when the audio output fails (PLAYER-11)", () => {
       remember: false,
     });
     expect(notices[0]!.message).toBe(
-      "The selected audio device is not available — playing through the system default.",
+      "The selected audio device is not available - playing through the system default.",
     );
   });
 

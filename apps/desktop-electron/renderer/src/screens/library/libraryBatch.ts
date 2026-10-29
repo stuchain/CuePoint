@@ -264,7 +264,7 @@ export function withShortfall(
     parts.push(`${formatCount(result.failed)} could not be changed`);
   }
   const sentence =
-    parts.length > 0 ? `${line} — ${parts.join(", ")}.` : alwaysStop ? `${line}.` : line;
+    parts.length > 0 ? `${line} - ${parts.join(", ")}.` : alwaysStop ? `${line}.` : line;
   return result.cancelled ? `Stopped early. ${sentence}` : sentence;
 }
 

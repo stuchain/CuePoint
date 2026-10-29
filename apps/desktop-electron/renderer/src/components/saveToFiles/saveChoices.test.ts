@@ -213,7 +213,7 @@ describe("what the button says", () => {
     const state = saveState({ ...base, preview: skipped, total: 0 });
     expect(state).toMatchObject({
       enabled: false,
-      reason: "6 files skipped: files not checked at their current path — check files first",
+      reason: "6 files skipped: files not checked at their current path - check files first",
     });
   });
 

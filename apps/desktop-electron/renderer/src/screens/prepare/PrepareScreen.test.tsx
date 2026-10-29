@@ -1016,7 +1016,7 @@ describe("a heading's menu", () => {
     // What a chapter is, before the fields that set it (PRP-11).
     expect(
       within(dialog).getByText(
-        "A chapter is a part of the Set — warm-up, peak, closing — with its own target length and tempo range.",
+        "A chapter is a part of the Set - warm-up, peak, closing - with its own target length and tempo range.",
       ),
     ).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/^Name/)).toHaveValue("Warm-up");

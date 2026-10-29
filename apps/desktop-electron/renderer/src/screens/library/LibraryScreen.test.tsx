@@ -981,7 +981,7 @@ describe("an imported library", () => {
    * browser, so the same query now has to find a table. Inverted rather than
    * deleted, so the change of mind stays visible to whoever reads this next.
    */
-  it("lists tracks — DEC-039 made this page the browser", async () => {
+  it("lists tracks - DEC-039 made this page the browser", async () => {
     renderScreen();
     await screen.findByTestId("library-track-count");
 
@@ -2526,7 +2526,7 @@ describe("organizing a selection (ORG-11)", () => {
 
       expect(
         await screen.findByText(
-          "Stopped early. Removed 2 tracks from “Warmups” — 1 were not in it, 1 could not be changed.",
+          "Stopped early. Removed 2 tracks from “Warmups” - 1 were not in it, 1 could not be changed.",
         ),
       ).toBeInTheDocument();
     });

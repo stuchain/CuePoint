@@ -91,7 +91,7 @@ describe("the Rekordbox export in Settings", () => {
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveAttribute("data-outcome", "cancelled");
-    expect(items[0]).toHaveTextContent("Stopped — nothing was written");
+    expect(items[0]).toHaveTextContent("Stopped - nothing was written");
     expect(items[1]).toHaveAttribute("data-outcome", "written");
     expect(items[1]).toHaveTextContent("CuePoint Export 2026-09-21.xml");
     expect(items[1]).toHaveTextContent("4 tracks · 3 with new tags · 4 playlists · Camelot (8A)");

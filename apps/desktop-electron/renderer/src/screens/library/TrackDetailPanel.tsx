@@ -452,7 +452,7 @@ export function TrackDetailPanel({
             <span role="status">{formatCount(selectionCount)} selected</span>
             {onEditValues && (
               <>
-                <Hint text={`Edit values for ${formatCount(selectionCount)} tracks — the fields below change only this one`}>
+                <Hint text={`Edit values for ${formatCount(selectionCount)} tracks - the fields below change only this one`}>
                   <Button
                     variant="secondary"
                     size="sm"

@@ -38,7 +38,7 @@ export function scaleName(scale: number): string {
 export function scaleOptionLabel(scale: number): string {
   const name = SCALE_NAMES[scale] ?? `${scale}×`;
   const base = SCALE_NAMES[scale] ? `${name} (${scale}×)` : name;
-  return scale === DEFAULT_SCALE ? `${base} — default` : base;
+  return scale === DEFAULT_SCALE ? `${base} - default` : base;
 }
 
 /**

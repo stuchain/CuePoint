@@ -125,7 +125,7 @@ describe("a Set in the tree", () => {
     fireEvent.dragOver(rowFor("Friday", "set"), drag);
     fireEvent.drop(rowFor("Friday", "set"), drag);
     await waitFor(() => expect(onDropTracks).toHaveBeenCalledWith(FRIDAY.id, { ids: [4, 5] }));
-    expect(onNotify).toHaveBeenCalledWith("Added 1 track to Friday — 1 already there.", "info");
+    expect(onNotify).toHaveBeenCalledWith("Added 1 track to Friday - 1 already there.", "info");
   });
 });
 

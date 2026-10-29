@@ -417,7 +417,7 @@ function AppShell() {
                 A retired page's path lands on the page that replaced it (DEC-071,
                 DEC-100), so a bookmark or an old link still arrives somewhere
                 real: `/match` and `/results` on Clean, `/incrate` on Discover, and
-                `/` — Tools' landing page — on the Library.
+                `/` - Tools' landing page - on the Library.
               */}
               {retiredRedirects().map((redirect) => (
                 <Route
@@ -430,7 +430,7 @@ function AppShell() {
                 A path that matches no destination goes home rather than showing
                 nothing. This is the belt to the registry's braces: DEC-027's
                 fallback keeps a stale stored destination from landing here, and
-                this keeps any other unmatched path — a stray link, a future typo —
+                this keeps any other unmatched path - a stray link, a future typo —
                 from showing an empty content area. It redirects rather than
                 rendering home in place, so the address, the sidebar and launch
                 memory all agree on where the user is.

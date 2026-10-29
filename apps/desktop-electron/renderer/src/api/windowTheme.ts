@@ -78,10 +78,10 @@ export function windowTitle(
       .replace(/[\u0000-\u001f\u007f]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-  const track = [clean(playing?.title), clean(playing?.artist)].filter((part) => part !== "").join(" — ");
+  const track = [clean(playing?.title), clean(playing?.artist)].filter((part) => part !== "").join(" - ");
   const lead = track !== "" ? track : clean(page);
   const cut = lead.length > TITLE_MAX ? `${lead.slice(0, TITLE_MAX - 1).trimEnd()}…` : lead;
-  return cut === "" ? "CuePoint" : `${cut} — CuePoint`;
+  return cut === "" ? "CuePoint" : `${cut} - CuePoint`;
 }
 
 const SETTLE_MS = 120;

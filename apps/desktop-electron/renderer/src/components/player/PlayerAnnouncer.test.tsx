@@ -88,7 +88,7 @@ afterEach(() => {
 
 describe("what is said", () => {
   it("names the track and who made it", () => {
-    expect(announcementFor(snapshot())).toBe("Playing: Strobe — deadmau5 · 8A · 128 BPM");
+    expect(announcementFor(snapshot())).toBe("Playing: Strobe - deadmau5 · 8A · 128 BPM");
   });
 
   it("says paused, and stopped", () => {

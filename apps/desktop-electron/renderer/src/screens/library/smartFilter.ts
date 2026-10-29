@@ -119,7 +119,7 @@ export function smartStatus(
 ): string | null {
   if (!attached) return null;
   return isModified(attached, rules)
-    ? `Smart Collection “${attached.name}” — modified, not saved`
+    ? `Smart Collection “${attached.name}” - modified, not saved`
     : `Smart Collection “${attached.name}”`;
 }
 
@@ -159,7 +159,7 @@ export function canSaveSmart(rules: FilterRuleSet | null): {
   why: string;
 } {
   if ((rules?.rules.length ?? 0) === 0) {
-    return { ok: false, why: "Add a filter first — a Smart Collection is its rules." };
+    return { ok: false, why: "Add a filter first - a Smart Collection is its rules." };
   }
   return { ok: true, why: "" };
 }

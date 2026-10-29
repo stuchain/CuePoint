@@ -32,7 +32,7 @@ export function PlacePicker({ sources, chosen, onChange }: PlacePickerProps) {
     <div
       className="clean-places"
       role="group"
-      aria-label="Playlists, Collections and Sets — choose any"
+      aria-label="Playlists, Collections and Sets - choose any"
     >
       {sources.length === 0 && (
         <span className="clean-places__hint">No playlists, Collections or Sets yet.</span>

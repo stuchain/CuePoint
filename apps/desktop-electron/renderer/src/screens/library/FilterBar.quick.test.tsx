@@ -410,7 +410,7 @@ describe("In playlist (FLW-7)", () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Add filter" }));
     fireEvent.change(screen.getByLabelText("Field"), { target: { value: "in_playlist" } });
-    const list = within(screen.getByRole("group", { name: "In playlist — choose any" }));
+    const list = within(screen.getByRole("group", { name: "In playlist - choose any" }));
     expect(list.getByText("Rekordbox playlists")).toBeInTheDocument();
     expect(list.getByText("Collections")).toBeInTheDocument();
     expect(list.getByText("Sets")).toBeInTheDocument();

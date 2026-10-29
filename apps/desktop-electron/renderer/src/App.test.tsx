@@ -180,7 +180,7 @@ describe("App shell", () => {
     await user.click(navLink("Settings"));
     await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
-    await waitFor(() => expect(document.title).toBe("Settings — CuePoint"));
+    await waitFor(() => expect(document.title).toBe("Settings - CuePoint"));
   });
 
   it("shows the player bar before anything has played, as Nothing playing (area 83)", () => {

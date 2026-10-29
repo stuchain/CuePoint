@@ -362,7 +362,7 @@ describe("Add to a Set… (DEC-104, DEC-058)", () => {
       }),
     );
     expect(
-      await screen.findByText("Added 1 track to “Friday” — 1 were already there."),
+      await screen.findByText("Added 1 track to “Friday” - 1 were already there."),
     ).toBeInTheDocument();
   });
 
@@ -374,7 +374,7 @@ describe("Add to a Set… (DEC-104, DEC-058)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add to a Set" });
     await userEvent.click(within(dialog).getAllByRole("option")[1]!);
     expect(
-      await screen.findByText("Added 40 tracks to “Friday” — 1 were already there."),
+      await screen.findByText("Added 40 tracks to “Friday” - 1 were already there."),
     ).toBeInTheDocument();
   });
 

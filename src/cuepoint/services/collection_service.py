@@ -1179,7 +1179,7 @@ def _decode_rules(text: Optional[str]) -> RuleSet:
         payload: Any = json.loads(text or "")
     except ValueError:
         raise FilterRuleError(
-            "its saved rules are not readable — the stored filter is not valid JSON"
+            "its saved rules are not readable - the stored filter is not valid JSON"
         ) from None
     # Anything that is not an object is refused by ``RuleSet.from_dict``, which
     # already names it. A second check here could only change the wording, and a
