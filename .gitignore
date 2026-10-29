@@ -441,3 +441,7 @@ apps/website/.astro/
 # labels the website's showcase library is checked against (SITE-04); without it
 # the showcase test cannot hold that every name in it is invented.
 !apps/desktop-electron/e2e/fixtures/showcase/real-names.json
+
+# The accessibility scan exclusions (HARDEN-08): source, empty when nothing is outstanding.
+!apps/desktop-electron/e2e/a11yExclusions.json
+!apps/desktop-electron/e2e/keyboardTabOrders.json

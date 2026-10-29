@@ -130,6 +130,7 @@
     ]
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "^1.52.0",
     "@sentry/cli": "3.8.0",
     "cross-env": "^7.0.3",
