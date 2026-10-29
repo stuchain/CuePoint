@@ -31,9 +31,10 @@ which is why the spec did not.
 Migrations are append-only: never edit one that has shipped, since users'
 databases already record it as applied. Correct a mistake with a new migration.
 
-If a future migration needs procedural logic (for example backfilling a derived
-column), extend the runner to call an optional ``upgrade(connection)`` hook
-instead of widening ``SQL``.
+A migration that needs procedural logic (for example backfilling a derived
+column) defines an optional ``upgrade(connection)`` as well. The runner calls it
+after ``SQL``, inside the same transaction, so a failure in either rolls back
+both. It is handed the migration's own connection and must not commit.
 """
 
 from __future__ import annotations
@@ -43,7 +44,7 @@ import pkgutil
 import re
 import sqlite3
 from dataclasses import dataclass
-from typing import List
+from typing import Callable, List, Optional
 
 _MODULE_PATTERN = re.compile(r"^m(\d{4})_[a-z0-9_]+$")
 _LINE_COMMENT = re.compile(r"--[^\n]*")
@@ -100,6 +101,7 @@ class Migration:
     description: str
     sql: str
     module_name: str
+    upgrade: Optional[Callable[[sqlite3.Connection], None]] = None
 
 
 def discover_migrations() -> List[Migration]:
@@ -138,6 +140,7 @@ def discover_migrations() -> List[Migration]:
                 description=str(module.DESCRIPTION),
                 sql=str(module.SQL),
                 module_name=module_info.name,
+                upgrade=getattr(module, "upgrade", None),
             )
         )
 

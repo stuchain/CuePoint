@@ -291,7 +291,12 @@ class TestKilledInTheMiddleOfAMigration:
         # two real migrations after it ran in the child.
         service, _runner = self._fresh_runner(path)
         try:
-            ladder.assert_nothing_lost(service.connect(), before, "after the kill")
+            ladder.assert_nothing_lost(
+                service.connect(),
+                before,
+                "after the kill",
+                ladder.rewritten_between(START, HEAD),
+            )
         finally:
             service.close_all()
 
@@ -325,7 +330,12 @@ class TestKilledInTheMiddleOfAMigration:
                 }
                 for table, data in before.items()
             }
-            ladder.assert_nothing_lost(conn, trimmed, "resumed upgrade")
+            ladder.assert_nothing_lost(
+                conn,
+                trimmed,
+                "resumed upgrade",
+                ladder.rewritten_between(START, HEAD),
+            )
             assert runner.migrate() == []
         finally:
             service.close_all()
@@ -382,7 +392,12 @@ class TestKilledDuringThePreUpgradeBackup:
             conn = service.connect()
             top = conn.execute("SELECT max(version) FROM schema_version").fetchone()[0]
             assert top == HEAD - 1
-            ladder.assert_nothing_lost(conn, before, "after the killed backup")
+            ladder.assert_nothing_lost(
+                conn,
+                before,
+                "after the killed backup",
+                ladder.rewritten_between(HEAD - 1, HEAD),
+            )
             # And nothing was added either: the same tables, the same rows.
             assert set(ladder.snapshot(conn)) == set(before)
             for table, data in before.items():
@@ -430,7 +445,11 @@ class TestKilledDuringThePreUpgradeBackup:
             assert conn.execute("SELECT max(version) FROM schema_version").fetchone()[
                 0
             ] == (HEAD - 1)
-            ladder.assert_nothing_lost(conn, before, "the pre-upgrade copy")
+            ladder.assert_nothing_lost(
+                conn,
+                before,
+                "the pre-upgrade copy",
+            )
         finally:
             service.close_all()
 
@@ -439,6 +458,11 @@ class TestKilledDuringThePreUpgradeBackup:
         try:
             MigrationRunner(live).migrate()
             ladder.assert_sound(live.connect(), HEAD)
-            ladder.assert_nothing_lost(live.connect(), before, "upgrade after the kill")
+            ladder.assert_nothing_lost(
+                live.connect(),
+                before,
+                "upgrade after the kill",
+                ladder.rewritten_between(HEAD - 1, HEAD),
+            )
         finally:
             live.close_all()

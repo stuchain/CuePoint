@@ -11,6 +11,8 @@ a re-link flag whenever the fallback is what matched.
 
 from __future__ import annotations
 
+import unicodedata
+
 import pytest
 
 from cuepoint.models.library_track import (
@@ -54,6 +56,39 @@ class TestNormalizePath:
 
     def test_root_is_preserved(self):
         assert normalize_path("/") == "/"
+
+    def test_composed_and_decomposed_spellings_are_one_key(self):
+        composed = unicodedata.normalize("NFC", "/Music/Beyoncé/Déjà Vu.m4a")
+        decomposed = unicodedata.normalize("NFD", composed)
+        assert composed != decomposed
+        assert normalize_path(composed) == normalize_path(decomposed)
+        assert normalize_path(decomposed) == composed.casefold()
+
+    def test_the_key_is_composed(self):
+        key = normalize_path(unicodedata.normalize("NFD", "/Müsik/Ünicode ✦/東京.mp3"))
+        assert key == unicodedata.normalize("NFC", key)
+
+    def test_the_form_and_case_and_slashes_together(self):
+        a = normalize_path(unicodedata.normalize("NFD", "C:\\Music\\ÂME\\a.mp3"))
+        b = normalize_path(unicodedata.normalize("NFC", "c:/music/âme//a.mp3"))
+        assert a == b
+
+    def test_normalizing_a_key_again_changes_nothing(self):
+        key = normalize_path(unicodedata.normalize("NFD", "/Music/Ångström/ǰ.mp3"))
+        assert normalize_path(key) == key
+
+    def test_a_decomposed_path_resolves_to_the_composed_track(self):
+        stored = _track("1", unicodedata.normalize("NFC", "/Music/Beyoncé/a.mp3"))
+        incoming = unicodedata.normalize("NFD", "/Music/Beyoncé/a.mp3")
+        match = resolve_identity(
+            "99",
+            incoming,
+            find_by_rekordbox_id=lambda _id: None,
+            find_by_normalized_path=lambda key: (
+                stored if key == stored.normalized_path else None
+            ),
+        )
+        assert match.track is stored and match.relinked
 
     def test_unicode_paths(self):
         assert normalize_path("/Müsik/Träck.mp3") == "/müsik/träck.mp3"

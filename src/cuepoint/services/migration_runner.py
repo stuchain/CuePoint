@@ -282,6 +282,8 @@ class MigrationRunner(IMigrationRunner):
                 # implicitly COMMIT and take the DDL outside this transaction.
                 for statement in split_sql_statements(migration.sql):
                     conn.execute(statement)
+                if migration.upgrade is not None:
+                    migration.upgrade(conn)
                 conn.execute(
                     f"INSERT INTO {SCHEMA_VERSION_TABLE} "
                     "(version, description, applied_at) VALUES (?, ?, ?)",

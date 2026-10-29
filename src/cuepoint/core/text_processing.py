@@ -20,7 +20,7 @@ Key functions:
 import html
 import re
 import unicodedata
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from rapidfuzz import fuzz, process
 
@@ -47,6 +47,23 @@ def _strip_accents(s: str) -> str:
     return "".join(
         ch for ch in unicodedata.normalize("NFKD", s) if not unicodedata.combining(ch)
     )
+
+
+def search_fold(text: Optional[str]) -> str:
+    """The comparison form of a name for search and sort (DEC-185).
+
+    ``casefold`` first, so "STRASSE" and "straße" meet and a final sigma equals
+    a medial one; then NFKD with the combining marks removed (the accent
+    stripping above), so "Beyoncé" and "beyonce", or "ÂME" and "Âme", are one
+    key. Scripts without case or marks (CJK, Hangul) come through unchanged,
+    which also means they order by code point, after the Latin letters.
+
+    Unlike :func:`normalize_text` this keeps punctuation and spacing: it is for
+    matching what a person typed against what is stored, not for fuzzy match.
+    """
+    if not text:
+        return ""
+    return _strip_accents(str(text).casefold())
 
 
 def normalize_text(s: str) -> str:

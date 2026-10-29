@@ -29,6 +29,7 @@ until the table is given rows here; that is the point.
 from __future__ import annotations
 
 import json
+import posixpath
 import random
 import sqlite3
 import unicodedata
@@ -74,6 +75,38 @@ def migrate_through(service: DatabaseService, version: int) -> None:
 
 
 # --------------------------------------------------------------------- rows
+
+
+def stored_path_key(path: str) -> str:
+    """The key a build from before m0032 stored: folded, but in whatever form it came.
+
+    The NFD track's key is therefore decomposed, which is what m0032 rewrites.
+    """
+    candidate = (path or "").strip().replace("\\", "/")
+    if not candidate:
+        return ""
+    candidate = posixpath.normpath(candidate)
+    if len(candidate) > 1:
+        candidate = candidate.rstrip("/")
+    return candidate.casefold()
+
+
+#: Columns a migration rewrites on purpose, by the version that does it: the
+#: row-for-row comparison skips them for a crossing that includes the version,
+#: and that migration's own assertion checks the new value instead.
+REWRITTEN_AT: Dict[int, Dict[str, Tuple[str, ...]]] = {
+    32: {"tracks": ("normalized_path",)},
+}
+
+
+def rewritten_between(low: int, high: int) -> Dict[str, Tuple[str, ...]]:
+    """Columns rewritten by a migration with ``low < version <= high``."""
+    merged: Dict[str, Tuple[str, ...]] = {}
+    for version, tables in REWRITTEN_AT.items():
+        if low < version <= high:
+            for table, columns in tables.items():
+                merged[table] = tuple(dict.fromkeys(merged.get(table, ()) + columns))
+    return merged
 
 
 def _tracks(rng: random.Random, count: int) -> List[Row]:
@@ -167,7 +200,7 @@ def _tracks(rng: random.Random, count: int) -> List[Row]:
             "id": index + 1,
             "rekordbox_track_id": str(1000 + index),
             "file_path": path,
-            "normalized_path": unicodedata.normalize("NFC", path).lower(),
+            "normalized_path": stored_path_key(path),
             "title": base.get("title", ""),
             "artist": base.get("artist", ""),
             "remixer": base.get("remixer"),
@@ -1266,9 +1299,17 @@ def assert_sound(conn: sqlite3.Connection, version: int) -> None:
 
 
 def assert_nothing_lost(
-    conn: sqlite3.Connection, before: Dict[str, Dict[str, Any]], label: str
+    conn: sqlite3.Connection,
+    before: Dict[str, Dict[str, Any]],
+    label: str,
+    rewritten: Optional[Dict[str, Sequence[str]]] = None,
 ) -> None:
-    """Every row of every table that was there is there, with the same values."""
+    """Every row of every table that was there is there, with the same values.
+
+    ``rewritten`` names columns a crossed migration changes on purpose (see
+    :data:`REWRITTEN_AT`); they are left out of the comparison, and the
+    migration's own assertion checks them.
+    """
     after = snapshot(conn)
     for table, was in before.items():
         assert table in after, f"{label}: table {table} disappeared"
@@ -1278,7 +1319,8 @@ def assert_nothing_lost(
         assert len(have["rows"]) >= len(was["rows"]), (
             f"{label}: {table} had {len(was['rows'])} rows, now {len(have['rows'])}"
         )
-        columns = was["columns"]
+        skipped = set((rewritten or {}).get(table, ()))
+        columns = [c for c in was["columns"] if c not in skipped]
         old = project(was["rows"], columns)
         new = project(have["rows"], columns)
         if len(have["rows"]) == len(was["rows"]):

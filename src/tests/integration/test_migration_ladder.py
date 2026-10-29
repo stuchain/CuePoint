@@ -32,6 +32,7 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Sequence
@@ -264,6 +265,31 @@ def _m0029(conn: sqlite3.Connection, crossing: Crossing) -> None:
         assert members == expected, "trimmed, de-duplicated, in order"
 
 
+def _m0032(conn: sqlite3.Connection, crossing: Crossing) -> None:
+    """Path keys are composed; file_path is exactly what it was."""
+    rows = {
+        r[0]: (r[1], r[2])
+        for r in conn.execute("SELECT id, file_path, normalized_path FROM tracks")
+    }
+    before = {r["id"]: r for r in crossing.rows("tracks")}
+    if not before:
+        return
+    decomposed = 0
+    for track_id, was in before.items():
+        file_path, key = rows[track_id]
+        assert file_path == was["file_path"], "file_path was rewritten"
+        assert key == unicodedata.normalize("NFC", key), f"{key!r} is not composed"
+        if was["normalized_path"] != unicodedata.normalize(
+            "NFC", was["normalized_path"]
+        ):
+            decomposed += 1
+            assert key == unicodedata.normalize("NFC", was["normalized_path"])
+        else:
+            assert key == was["normalized_path"], "a composed key was changed"
+    # The seed's decomposed track is what proves the rewrite did something.
+    assert decomposed >= 1, "the seed holds no decomposed key to rewrite"
+
+
 def _newest_picked(runs: list, kind: str) -> list:
     """The ``picked`` names of the newest run that has any, as m0029 reads them."""
     for run in sorted(runs, key=lambda r: r["id"], reverse=True):
@@ -416,6 +442,7 @@ MIGRATION_ASSERTIONS: Dict[str, Callable[[sqlite3.Connection, Crossing], None]] 
     "m0029_discover_lists": _m0029,
     "m0030_discover_groups": _m0030,
     "m0031_library_meta": table_check("library_meta"),
+    "m0032_path_nfc": _m0032,
 }
 
 
@@ -605,7 +632,12 @@ class TestUpgradeAtOnce:
             assert [m.version for m in applied] == list(range(version + 1, HEAD + 1))
 
             ladder.assert_sound(conn, HEAD)
-            ladder.assert_nothing_lost(conn, before, f"v{version} -> head")
+            ladder.assert_nothing_lost(
+                conn,
+                before,
+                f"v{version} -> head",
+                ladder.rewritten_between(version, HEAD),
+            )
             assert_relations(conn)
             if version >= 2:
                 assert_unicode_survived(conn)
@@ -649,7 +681,12 @@ class TestUpgradeOneStepAtATime:
 
                 conn = service.connect()
                 ladder.assert_sound(conn, current)
-                ladder.assert_nothing_lost(conn, previous, f"step to m{current:04d}")
+                ladder.assert_nothing_lost(
+                    conn,
+                    previous,
+                    f"step to m{current:04d}",
+                    ladder.rewritten_between(current - 1, current),
+                )
                 run_assertions(conn, [migration], Crossing(current - 1, previous))
 
                 # Rows for the tables this step made, so the next steps carry them.
@@ -678,7 +715,12 @@ class TestTheWholeLadderFromTheStart:
                 ).migrate()
                 conn = service.connect()
                 ladder.assert_sound(conn, migration.version)
-                ladder.assert_nothing_lost(conn, previous, f"m{migration.version:04d}")
+                ladder.assert_nothing_lost(
+                    conn,
+                    previous,
+                    f"m{migration.version:04d}",
+                    ladder.rewritten_between(migration.version - 1, migration.version),
+                )
                 run_assertions(
                     conn, [migration], Crossing(migration.version - 1, previous)
                 )
@@ -858,7 +900,12 @@ class TestLaunchBackup:
             assert_sound_head = MigrationRunner(service).migrate()
             assert [m.version for m in assert_sound_head] == [HEAD]
             ladder.assert_sound(service.connect(), HEAD)
-            ladder.assert_nothing_lost(service.connect(), before, "launch upgrade")
+            ladder.assert_nothing_lost(
+                service.connect(),
+                before,
+                "launch upgrade",
+                ladder.rewritten_between(HEAD - 1, HEAD),
+            )
         finally:
             service.close_all()
 
@@ -893,7 +940,10 @@ class TestLaunchBackup:
                 MigrationRunner(restored).migrate()
                 ladder.assert_sound(restored.connect(), HEAD)
                 ladder.assert_nothing_lost(
-                    restored.connect(), before, f"copy of v{version}"
+                    restored.connect(),
+                    before,
+                    f"copy of v{version}",
+                    ladder.rewritten_between(version, HEAD),
                 )
             finally:
                 restored.close_all()

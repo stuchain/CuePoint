@@ -27,6 +27,7 @@ rating and collection membership attached to those tracks.
 from __future__ import annotations
 
 import posixpath
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Optional
@@ -39,6 +40,11 @@ def utc_now_iso() -> str:
 
 def normalize_path(file_path: Optional[str]) -> str:
     """Return a comparable form of a file path.
+
+    The Unicode form is composed (NFC) first, so a name a Mac file system hands
+    back decomposed ("Beyonce" + combining acute) and the composed one
+    Rekordbox writes on Windows are one key (HARDEN-06). Only this comparison
+    key is composed: ``file_path`` stays as the disk spells it.
 
     Normalization is deliberately **platform-independent**: separators become
     ``/``, redundant segments are collapsed, and the result is case-folded. A
@@ -56,7 +62,7 @@ def normalize_path(file_path: Optional[str]) -> str:
     if not file_path:
         return ""
 
-    candidate = str(file_path).strip()
+    candidate = unicodedata.normalize("NFC", str(file_path)).strip()
     if not candidate:
         return ""
 
@@ -67,7 +73,9 @@ def normalize_path(file_path: Optional[str]) -> str:
     if len(candidate) > 1:
         candidate = candidate.rstrip("/")
 
-    return candidate.casefold()
+    # Casefolding can leave a sequence uncomposed; compose once more so the
+    # key is stable when it is normalized again.
+    return unicodedata.normalize("NFC", candidate.casefold())
 
 
 @dataclass
