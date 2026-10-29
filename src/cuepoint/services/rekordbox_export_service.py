@@ -105,6 +105,7 @@ from cuepoint.data.rekordbox_export import (
 )
 from cuepoint.exceptions.cuepoint_exceptions import ValidationError
 from cuepoint.models.collection import Collection
+from cuepoint.utils.long_path import os_path
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.rekordbox_export import (
     EXPORT_CANCELLED,
@@ -999,13 +1000,13 @@ class RekordboxExportService(IRekordboxExportService):
                 f"An export is saved as an {EXPORT_SUFFIX} file: {quoted(destination)}",
                 destination,
             )
-        if os.path.isdir(destination):
+        if os.path.isdir(os_path(destination)):
             raise ExportDestinationError(
                 DESTINATION_IS_FOLDER,
                 f"That is a folder, not a file to save to: {quoted(destination)}",
                 destination,
             )
-        if not os.path.isdir(os.path.dirname(destination)):
+        if not os.path.isdir(os_path(os.path.dirname(destination))):
             raise ExportDestinationError(
                 DESTINATION_FOLDER_MISSING,
                 f"The folder to save into does not exist: {quoted(destination)}",

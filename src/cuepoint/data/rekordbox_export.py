@@ -121,6 +121,7 @@ from cuepoint.utils.atomic_write import (
     fsync_folder,
     stage_temp,
 )
+from cuepoint.utils.long_path import display_path, os_path
 from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
@@ -134,6 +135,9 @@ _logger = logging.getLogger(__name__)
 #: spelling of ``TrackID`` on a *playlist entry* and sits in the importer's own
 #: ``TrackID or ID or Key`` identity fallback. Writing it would put a key where a
 #: track id is looked for.
+#: Characters the temporary and dated backup names add to the destination's path.
+_SIBLING_ROOM = 80
+
 ATTR_KEY = "Tonality"
 ATTR_BPM = "AverageBpm"
 ATTR_GENRE = "Genre"
@@ -1358,7 +1362,9 @@ def _write_atomically(
     the user's, and removing it again would be deleting something rather than
     declining to write it.
     """
-    destination = Path(destination_path)
+    # A path past Windows' 259 characters is opened through the long-path prefix;
+    # room is left for the temporary and dated backup names made beside it.
+    destination = Path(os_path(str(destination_path), reserve=_SIBLING_ROOM))
     parent = destination.parent
     parent.mkdir(parents=True, exist_ok=True)
 
@@ -1386,6 +1392,7 @@ def _write_atomically(
             if backup is not None:
                 Path(backup).unlink(missing_ok=True)
             raise
-        return backup
+        # What is recorded and shown is the ordinary spelling, never the prefix.
+        return display_path(backup)
     finally:
         discard_temp(temp_path)

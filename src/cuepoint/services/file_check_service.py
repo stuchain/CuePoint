@@ -84,6 +84,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from cuepoint.data.rekordbox import is_readable
+from cuepoint.utils.long_path import os_path
 from cuepoint.models.file_status import (
     FILE_MISSING,
     FILE_PRESENT,
@@ -230,8 +231,9 @@ def check_file(path: str) -> Tuple[str, Optional[int]]:
     Returns:
         ``(status, size)``, where size is set only for a present file.
     """
+    target = os_path(path)
     try:
-        info = os.stat(path)
+        info = os.stat(target)
     except PermissionError:
         # Something on the way refused. There may well be a file, and what
         # would fix it is permission, not Rekordbox's Relocate.
@@ -240,7 +242,7 @@ def check_file(path: str) -> Tuple[str, Optional[int]]:
         return FILE_MISSING, None
     if not stat.S_ISREG(info.st_mode):
         return FILE_UNREADABLE, None
-    if not is_readable(Path(path)):
+    if not is_readable(Path(target)):
         return FILE_UNREADABLE, None
     return FILE_PRESENT, int(info.st_size)
 
@@ -263,7 +265,7 @@ def nearest_existing_folder(path: str) -> Optional[str]:
     root = flavour.normpath(root)
     current = flavour.dirname(flavour.normpath(path))
     while True:
-        if current != "/" and os.path.isdir(current):
+        if current != "/" and os.path.isdir(os_path(current)):
             return str(current)
         if current == root or len(current) <= len(root):
             return None

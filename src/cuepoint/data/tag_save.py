@@ -45,6 +45,7 @@ import sys
 from pathlib import Path
 from typing import Any, BinaryIO, Callable, Dict, Optional, TypeVar, Union
 
+from cuepoint.utils.long_path import os_path
 from cuepoint.utils.atomic_write import (
     commit_temp,
     create_temp,
@@ -71,6 +72,9 @@ MESSAGE_AUDIO_DIFFERS = (
 SPARE_BYTES = 1024 * 1024
 
 _CHUNK = 1024 * 1024
+
+#: Characters a temporary copy's name adds to the file's own path.
+_SIBLING_ROOM = 64
 
 
 class TagSaveError(Exception):
@@ -302,7 +306,8 @@ def save_via_copy(
         Exception: Whatever ``operation`` or ``verify`` raised; the original is
             untouched.
     """
-    original = Path(os.path.realpath(os.fspath(path)))
+    # A temporary copy is made beside it, so leave room for its longer name.
+    original = Path(os_path(os.path.realpath(os.fspath(path)), reserve=_SIBLING_ROOM))
     before = original.stat()
     if not os.access(original, os.W_OK):
         raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), str(original))

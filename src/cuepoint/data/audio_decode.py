@@ -125,6 +125,8 @@ from typing import (
     Union,
 )
 
+from cuepoint.utils.long_path import os_path
+
 _logger = logging.getLogger(__name__)
 
 #: Changes whenever a change here changes what an envelope holds. WAVE-02
@@ -481,7 +483,8 @@ def decoder_arguments(
         "--audio-format=float",
         f"--af=lavfi=[{filter_graph()}]",
         "--",
-        str(source),
+        # A path past Windows' 259 characters is handed over prefixed (HARDEN-06).
+        os_path(str(source)),
     ]
 
 
@@ -978,7 +981,7 @@ def _check_source(source: Path) -> None:
     if not source.is_absolute():
         raise DecodeFailed(REASON_UNDECODABLE, "not an absolute path")
     try:
-        status = source.stat()
+        status = os.stat(os_path(str(source)))
     except FileNotFoundError as exc:
         raise FileGone(str(source)) from exc
     except NotADirectoryError as exc:
@@ -1354,7 +1357,7 @@ def _outcome(
             f"expected {EXPECTED_OUTPUT})"
         )
     if returncode != 0:
-        if not source.exists():
+        if not os.path.exists(os_path(str(source))):
             raise FileGone(str(source))
         if not log.errors:
             # A failed load that logged no error found nothing to decode: a

@@ -56,6 +56,7 @@ from cuepoint.data.set_list_file import (
 )
 from cuepoint.exceptions.cuepoint_exceptions import ValidationError
 from cuepoint.models import file_status
+from cuepoint.utils.long_path import os_path
 from cuepoint.services.interfaces import (
     IActivityService,
     IDatabaseService,
@@ -187,13 +188,13 @@ def check_destination(path: str) -> str:
             f"A set list is saved as a .txt, .csv or .m3u8 file: {quoted(destination)}",
             destination,
         )
-    if os.path.isdir(destination):
+    if os.path.isdir(os_path(destination)):
         raise SetListDestinationError(
             DESTINATION_IS_FOLDER,
             f"That is a folder, not a file to save to: {quoted(destination)}",
             destination,
         )
-    if not os.path.isdir(os.path.dirname(destination)):
+    if not os.path.isdir(os_path(os.path.dirname(destination))):
         raise SetListDestinationError(
             DESTINATION_FOLDER_MISSING,
             f"The folder to save into does not exist: {quoted(destination)}",

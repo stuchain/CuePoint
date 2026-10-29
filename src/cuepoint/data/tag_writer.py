@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
 from cuepoint.data.tag_save import MESSAGE_TAGS_DIFFER, TagSaveError, save_via_copy
+from cuepoint.utils.long_path import os_path
 
 _logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ def write_key_comment_year_to_file(
         Tuple of (status, error_message).
     """
     # Resolve to absolute path so we always open the same file (avoids relative-path issues)
-    path = Path(str(file_path).strip()).resolve()
+    path = Path(os_path(str(Path(str(file_path).strip()).resolve()), reserve=64))
     if not path.exists():
         return (STATUS_FILE_NOT_FOUND, f"File not found: {file_path}")
     # Normalize so empty/whitespace is not written and key is never skipped
