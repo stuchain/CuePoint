@@ -34,11 +34,12 @@ import logging
 import os
 import re
 import shutil
-import tempfile
 import threading
 import time
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+from cuepoint.utils.atomic_write import commit_temp, discard_temp, stage_temp
 
 _logger = logging.getLogger(__name__)
 
@@ -129,10 +130,8 @@ class ArtworkCache:
                 self._total = None
         path.parent.mkdir(parents=True, exist_ok=True)
         previous = path.stat().st_size if path.is_file() else 0
-        handle, temporary = tempfile.mkstemp(dir=str(path.parent), suffix=".part")
+        temporary = stage_temp(path, data)
         try:
-            with os.fdopen(handle, "wb") as out:
-                out.write(data)
             replaced = _replace(temporary, path)
         except BaseException:
             _discard(temporary)
@@ -204,7 +203,7 @@ class ArtworkCache:
         return found
 
 
-def _replace(temporary: str, path: Path) -> bool:
+def _replace(temporary: Path, path: Path) -> bool:
     """Rename ``temporary`` over ``path``; False when a copy already there stays.
 
     Windows refuses the rename with "Access is denied" while the thumbnail is
@@ -217,7 +216,7 @@ def _replace(temporary: str, path: Path) -> bool:
     """
     for attempt in range(REPLACE_ATTEMPTS):
         try:
-            os.replace(temporary, path)
+            commit_temp(temporary, path)
             return True
         except PermissionError:
             if attempt + 1 < REPLACE_ATTEMPTS:
@@ -230,12 +229,9 @@ def _replace(temporary: str, path: Path) -> bool:
     return False  # pragma: no cover - the loop always returns or raises
 
 
-def _discard(temporary: str) -> None:
+def _discard(temporary: Path) -> None:
     """Delete a temporary file, if it is still there."""
-    try:
-        os.remove(temporary)
-    except OSError:
-        pass
+    discard_temp(temporary)
 
 
 def clear_artwork_cache() -> None:
