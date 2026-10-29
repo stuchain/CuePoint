@@ -4,6 +4,12 @@ What is known not to work as well as it should in CuePoint 1.0.0, and what to do
 
 ## In the app
 
+### M4A, MP4 and M4B files are not written by Save to files or Sync
+
+**What happens.** When you save to files or sync, a track in an M4A, MP4 or M4B file is skipped and counted under "formats CuePoint does not write (only MP3, AIFF, FLAC and Ogg Vorbis)". Its Key, Comment, Year, Label, BPM and Genre are not written, and there is no undo for it because nothing changed. MP3, FLAC, AIFF and OGG files are written as usual. CuePoint's writer for the standard M4A tags is in the app but is not switched on in this release.
+
+**What to do.** Keep the values in CuePoint, or edit an M4A's comment in Rekordbox itself.
+
 ### The Missing files list has no right-click menu and no double-click to play
 
 **What happens.** On **Clean > Missing files** a row can be selected, but right-clicking it opens no menu and double-clicking it does nothing, unlike the Library's table. A missing file has nothing to play, so the double-click matters less; the missing piece is a menu with the choices the buttons carry.
