@@ -374,6 +374,40 @@ def with_error_reporting(server: ThreadingHTTPServer) -> ThreadingHTTPServer:
 INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
+#: The environment variable that turns the engine's test-only routes on (HARDEN-05). The app passes
+#: it only when its own ``CUEPOINT_E2E`` is set, so a packaged app started normally has none.
+TEST_HOOKS_ENV = "CUEPOINT_TEST_HOOKS"
+
+#: The stall route's path, served only with ``TEST_HOOKS_ENV`` set to ``1``.
+TEST_STALL_PATH = "/api/v1/test/stall"
+
+#: How long a stall lasts when the request names no length: longer than any test.
+DEFAULT_STALL_SECONDS = 3600.0
+
+
+def hooks_enabled() -> bool:
+    """Whether the test-only routes exist for this process."""
+    return os.environ.get(TEST_HOOKS_ENV, "").strip() == "1"
+
+
+def stall_server(server: Any, seconds: float) -> None:
+    """Make ``server`` stop answering: its accept loop blocks on the next connection.
+
+    A suspended or wholly wedged process, as far as ``/health`` can tell, and the same on every
+    platform (Windows has no ``SIGSTOP``). ``serve_forever`` calls ``verify_request`` for each
+    connection it accepts, on its own thread, so one that waits holds the loop: nothing is
+    answered, in the process or out of it, until the wait ends. Only the request that
+    follows is swallowed, and the process is left to be killed by whoever notices.
+    """
+    release = threading.Event()
+
+    def verify_request(request: Any, client_address: Any) -> bool:
+        release.wait(seconds)
+        return False
+
+    server.verify_request = verify_request
+
+
 def make_handler(
     config: EngineConfig, store: Optional[JobStore] = None
 ) -> Type[BaseHTTPRequestHandler]:
@@ -1381,6 +1415,21 @@ def make_handler(
                 self._send_json(
                     401, error_payload("UNAUTHORIZED", "Missing or invalid token")
                 )
+                return
+            if path == TEST_STALL_PATH and hooks_enabled():
+                raw = self._read_body()
+                seconds = DEFAULT_STALL_SECONDS
+                try:
+                    asked = json.loads(raw.decode("utf-8")) if raw else {}
+                    if isinstance(asked, dict) and isinstance(
+                        asked.get("seconds"), (int, float)
+                    ):
+                        seconds = max(0.0, float(asked["seconds"]))
+                except ValueError:
+                    pass
+                self._send_json(202, {"stalled": True, "seconds": seconds})
+                # After the answer has gone: the next connection is the one that is held.
+                stall_server(self.server, seconds)
                 return
             if path == "/api/v1/library/recheck":
                 self._read_body()
