@@ -1819,6 +1819,9 @@ def _start_library_work(cfg: EngineConfig) -> None:
     Once, when the library's state first comes out ``ok``: none of this can run
     against a library that is not.
     """
+    # Close out what the last engine left running, and offer its interrupted tag
+    # writes, now: not at the first job, which may be a long way off (HARDEN-05).
+    _JOB_STORE.ensure_repository()
     # DEC-028/DEC-029: every start is recorded, so a restarting engine leaves a
     # visible trail rather than healing silently.
     record_activity(

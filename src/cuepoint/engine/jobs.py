@@ -203,6 +203,16 @@ class JobStore:
                     exc_info=True,
                 )
 
+    def ensure_repository(self) -> None:
+        """Resolve the repository now rather than at the first job.
+
+        The engine's provider closes out the records a previous process left
+        running, and offers its interrupted tag writes and matches. Left to the
+        first job, that waited for work this process might never start, and an
+        import the last engine died in stayed "running" in every list.
+        """
+        self._get_repository()
+
     def _get_repository(self) -> Optional[Any]:
         """Return the repository, resolving it once if a provider was given."""
         if self._repository_resolved:

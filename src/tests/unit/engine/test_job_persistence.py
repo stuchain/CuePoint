@@ -183,3 +183,16 @@ class TestProgressSampling:
         store._update(job, state=JobState.FAILED, error={"code": "X", "message": "y"})
 
         assert repo.get(job.id).state == "failed"
+
+
+@pytest.mark.unit
+class TestEnsureRepository:
+    """The provider runs when asked for, not only at the first job (HARDEN-05)."""
+
+    def test_provider_runs_without_any_job(self):
+        calls = []
+        store = JobStore(job_repository_provider=lambda: calls.append(1))
+        assert calls == []
+        store.ensure_repository()
+        store.ensure_repository()
+        assert calls == [1]
