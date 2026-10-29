@@ -81,6 +81,9 @@ jobs:
     needs: gate
     if: ${{ needs.gate.outputs.prerelease != 'true' }}
     uses: ./.github/workflows/scale.yml
+    with:
+      # A release holds the 50,000-track run only; 100,000 is recorded by the weekly run.
+      above_reference: false
     permissions:
       contents: read
     secrets: inherit

@@ -20,12 +20,23 @@ on:
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
+    inputs:
+      above_reference:
+        description: Also run 100,000 tracks (recorded, never budgeted)
+        type: boolean
+        default: true
   workflow_call:
+    inputs:
+      above_reference:
+        description: Also run 100,000 tracks (recorded, never budgeted); a release passes false
+        type: boolean
+        default: true
 
-# One run at a time per branch; a run in progress is never cancelled. The group is spelled out:
-# called from `release.yml`, `github.workflow` is the caller's name, which the build shares.
+# One run at a time per branch and trigger; a run in progress is never cancelled. The group is
+# spelled out: called from `release.yml`, `github.workflow` is the caller's name, which the build
+# shares. The trigger is in it so the weekly run does not queue behind (or replace) a release's.
 concurrency:
-  group: scale-${{ github.ref }}
+  group: scale-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -132,7 +143,7 @@ jobs:
       - name: Make the folder for the JSON
         shell: bash
         run: |
-          mkdir -p scale-out scale-out-100k
+          mkdir -p scale-out
 
       # ---- The scale tests, at 50,000 tracks (by path: they carry the `performance` marker) ----
       - name: Scale tests (50,000 tracks)
@@ -230,7 +241,9 @@ jobs:
             Windows) exe="release/win-unpacked/CuePoint.exe" ;;
             macOS) exe="release/${{ matrix.mac_dir }}/CuePoint.app/Contents/MacOS/CuePoint" ;;
             Linux)
-              exe="$(find release/linux-unpacked -maxdepth 1 -type f -perm -u+x ! -name '*.so*' ! -name 'chrome*' ! -name 'libffmpeg*' | head -n 1)"
+              # `build.linux.executableName` in package.json: electron-builder names the file so.
+              name="$(node -p "require('./package.json').build.linux.executableName")"
+              exe="release/linux-unpacked/${name}"
               ;;
           esac
           test -f "$exe" || { echo "::error::No packaged app at $exe"; exit 1; }
@@ -276,10 +289,115 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      # ---- 100,000 tracks: recorded, never budgeted, never failing the run ----
+  # 100,000 tracks, after the 50,000 run has uploaded its JSON: recorded, never budgeted, and it
+  # can never fail the run (job-level continue-on-error). A release passes `above_reference:
+  # false` and runs the 50,000 job only. It builds its own app, so nothing here reads the
+  # 50,000 job's steps.
+  scale-100k:
+    needs: scale
+    # `format` so that no input at all (the weekly run) reads as true and only `false` skips it.
+    if: ${{ !cancelled() && format('{0}', inputs.above_reference) != 'false' }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: windows-x64
+            runner: windows-latest
+            builder_arch: ""
+          - leg: linux-x64
+            runner: ubuntu-latest
+            builder_arch: ""
+          - leg: macos-arm64
+            runner: macos-latest
+            builder_arch: "--arm64"
+            chip: arm64
+            mac_dir: mac-arm64
+          - leg: macos-x64
+            runner: macos-15-intel
+            builder_arch: "--x64"
+            chip: x64
+            mac_dir: mac
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+
+    env:
+      CUEPOINT_BUILD_COMMIT: ${{ github.sha }}
+      CUEPOINT_BENCH_LEG: ${{ matrix.leg }}
+      PYTHONPATH: src
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            apps/desktop-electron/package-lock.json
+            apps/desktop-electron/renderer/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Install desktop dependencies
+        working-directory: apps/desktop-electron
+        run: |
+          npm ci
+          npm ci --prefix renderer
+
+      - name: Build desktop shell
+        working-directory: apps/desktop-electron
+        run: npm run build
+
+      - name: Build engine sidecar (packaged)
+        run: python scripts/build_engine_sidecar.py
+
+      # PLAYER-01 (DEC-049). Exits 0 with a notice on Linux, which pins no binary.
+      - name: Fetch player sidecar (mpv)
+        run: python scripts/fetch_player_sidecar.py
+
+      # The Linux runner has no mpv and no audio device: a distribution mpv, and a PulseAudio null
+      # sink for it to open (as the Playwright step of desktop-electron.yml does).
+      - name: Install mpv and a null sound device (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mpv pulseaudio
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null
+          pactl set-default-sink ci_null
+          echo "CUEPOINT_MPV_PATH=/usr/bin/mpv" >> "$GITHUB_ENV"
+
+      # The Windows runner has no sound device, so mpv opens no output; Scream is a virtual one.
+      - name: Give the Windows runner a sound device
+        if: runner.os == 'Windows'
+        uses: LABSN/sound-ci-helpers@v1
+
+      - name: Install Playwright Chromium
+        working-directory: apps/desktop-electron
+        run: npx playwright install chromium
+
+      - name: Make the folder for the JSON
+        shell: bash
+        run: |
+          mkdir -p scale-out-100k
+
       - name: Scale tests (100,000 tracks)
         if: ${{ !cancelled() }}
-        continue-on-error: true
         timeout-minutes: 90
         env:
           CUEPOINT_SCALE: "100000"
@@ -294,23 +412,38 @@ jobs:
 
       - name: Bench the library (100,000 tracks)
         if: ${{ !cancelled() }}
-        continue-on-error: true
         timeout-minutes: 90
         shell: bash
         run: python scripts/bench_library.py --tracks 100000 --statistics --json scale-out-100k/library.json
 
       - name: Bench the packaged engine's start (100,000 tracks)
         if: ${{ !cancelled() }}
-        continue-on-error: true
         timeout-minutes: 60
         shell: bash
         run: |
           engine="$(ls apps/desktop-electron/resources/engine/*/cuepoint-engine*)"
           python scripts/bench_engine_start.py --library 100000 --exe "$engine" --json scale-out-100k/engine_start.json
 
+      - name: Unpack the app
+        if: ${{ !cancelled() }}
+        id: unpack
+        working-directory: apps/desktop-electron
+        shell: bash
+        run: |
+          npm run pack -- ${{ matrix.builder_arch }}
+          case "$RUNNER_OS" in
+            Windows) exe="release/win-unpacked/CuePoint.exe" ;;
+            macOS) exe="release/${{ matrix.mac_dir }}/CuePoint.app/Contents/MacOS/CuePoint" ;;
+            Linux)
+              name="$(node -p "require('./package.json').build.linux.executableName")"
+              exe="release/linux-unpacked/${name}"
+              ;;
+          esac
+          test -f "$exe" || { echo "::error::No packaged app at $exe"; exit 1; }
+          echo "exe=$PWD/$exe" >> "$GITHUB_OUTPUT"
+
       - name: Packaged app at 100,000 tracks
         if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-        continue-on-error: true
         timeout-minutes: 90
         working-directory: apps/desktop-electron
         shell: bash
@@ -326,6 +459,15 @@ jobs:
             npx playwright test e2e/libraryScale.spec.ts
           fi
 
+      - name: Upload Playwright failures (100,000 tracks)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scale-100k-playwright-failures-${{ matrix.leg }}
+          path: apps/desktop-electron/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload the 100,000-track JSON
         if: always()
         uses: actions/upload-artifact@v4
@@ -338,7 +480,7 @@ jobs:
   # The guide's tables, written from what the four legs measured. Nothing is filled in that was
   # not measured: a leg that failed to report leaves its column as it was.
   tables:
-    needs: scale
+    needs: [scale, scale-100k]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:

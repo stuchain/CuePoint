@@ -321,3 +321,86 @@ class TestBuildWorkflow:
         ):
             assert needed in paths
         assert "**" not in paths
+
+
+def _holds(
+    expression: str, *, results: dict, prerelease: bool, cancelled: bool
+) -> bool:
+    """Evaluate a ``${{ }}`` condition made only of ``needs.X.result``, ``&&``, ``||``,
+    ``==``, ``!=``, ``!cancelled()`` and parentheses (the subset ``publish`` uses)."""
+    import re
+
+    text = " ".join(expression.split())
+    text = re.sub(r"^\$\{\{\s*|\s*\}\}$", "", text)
+    text = text.replace("!cancelled()", "(not CANCELLED)")
+    text = text.replace("&&", " and ").replace("||", " or ")
+    text = text.replace("needs.gate.outputs.prerelease", "PRERELEASE")
+    text = re.sub(r"needs\.([a-z-]+)\.result", r'RESULTS["\1"]', text)
+    assert not re.search(r"needs\.|github\.|inputs\.", text), text
+    scope = {
+        "RESULTS": results,
+        "PRERELEASE": "true" if prerelease else "false",
+        "CANCELLED": cancelled,
+    }
+    return bool(eval(text, {"__builtins__": {}}, scope))  # noqa: S307
+
+
+class TestPublishConditionTruthTable:
+    """A normal or a test tag, and the scale run succeeding, failing, skipped or cancelled."""
+
+    OUTCOMES = ("success", "failure", "skipped", "cancelled")
+
+    def _publishes(self, release, *, test_tag: bool, scale: str, cancelled=False):
+        # The scale job is skipped on a test tag whatever else happens (its own `if`, which
+        # the next test pins), and runs on a normal tag.
+        result = "skipped" if test_tag else scale
+        return _holds(
+            release["jobs"]["publish"]["if"],
+            results={"gate": "success", "check-macs": "success", "scale": result},
+            prerelease=test_tag,
+            cancelled=cancelled,
+        )
+
+    @pytest.mark.parametrize("scale", OUTCOMES)
+    def test_a_test_tag_publishes_whatever_scale_would_have_done(self, release, scale):
+        assert self._publishes(release, test_tag=True, scale=scale) is True
+
+    def test_a_normal_tag_publishes_only_on_a_green_scale_run(self, release):
+        got = {
+            o: self._publishes(release, test_tag=False, scale=o) for o in self.OUTCOMES
+        }
+        assert got == {
+            "success": True,
+            "failure": False,
+            "skipped": False,
+            "cancelled": False,
+        }
+
+    @pytest.mark.parametrize("test_tag", [False, True])
+    def test_a_cancelled_run_publishes_nothing(self, release, test_tag):
+        assert not self._publishes(
+            release, test_tag=test_tag, scale="success", cancelled=True
+        )
+
+    @pytest.mark.parametrize("test_tag", [False, True])
+    @pytest.mark.parametrize("failed", ["gate", "check-macs"])
+    def test_a_failed_gate_or_mac_check_publishes_nothing(
+        self, release, test_tag, failed
+    ):
+        results = {"gate": "success", "check-macs": "success", "scale": "success"}
+        results[failed] = "failure"
+        assert not _holds(
+            release["jobs"]["publish"]["if"],
+            results=results,
+            prerelease=test_tag,
+            cancelled=False,
+        )
+
+    def test_the_scale_job_is_skipped_exactly_for_a_test_tag(self, release):
+        assert (
+            release["jobs"]["scale"]["if"]
+            == "${{ needs.gate.outputs.prerelease != 'true' }}"
+        )
+
+    def test_a_release_runs_the_50000_job_only(self, release):
+        assert release["jobs"]["scale"]["with"] == {"above_reference": False}

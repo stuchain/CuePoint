@@ -117,6 +117,7 @@
         "AppImage"
       ],
       "icon": "build/icons",
+      "executableName": "cuepoint",
       "artifactName": "CuePoint-${version}-linux-${arch}.${ext}"
     },
     "detectUpdateChannel": false,

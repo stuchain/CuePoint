@@ -58,6 +58,8 @@ class TestTriggers:
         # Not `github.workflow`: called from release.yml that is the caller's name, which the
         # build workflow's group would share.
         assert "github.workflow" not in scale["concurrency"]["group"]
+        # The weekly run and a release's do not queue behind (or replace) each other.
+        assert "github.event_name" in scale["concurrency"]["group"]
 
 
 class TestLegs:
@@ -108,8 +110,11 @@ class TestScaleTests:
         for name in ("library", "marks", "sets", "waveforms")
     ]
 
-    @pytest.mark.parametrize("size", ["50000", "100000"])
-    def test_the_four_scale_tests_run_by_path_at_the_size(self, job, size):
+    @pytest.mark.parametrize(
+        ("which", "size"), [("scale", "50000"), ("scale-100k", "100000")]
+    )
+    def test_the_four_scale_tests_run_by_path_at_the_size(self, scale, which, size):
+        job = scale["jobs"][which]
         step = next(
             s
             for s in job["steps"]
@@ -179,34 +184,68 @@ class TestPackagedApp:
 
 
 class TestHundredThousand:
-    def _steps(self, job):
-        return [
-            s
-            for s in job["steps"]
-            if "100,000" in s.get("name", "") and "JSON" not in s.get("name", "")
-        ]
+    @pytest.fixture()
+    def big(self, scale) -> dict:
+        return scale["jobs"]["scale-100k"]
 
-    def test_it_is_recorded_and_never_fails_the_run(self, job):
-        steps = self._steps(job)
-        assert len(steps) >= 4
-        for step in steps:
-            assert step["continue-on-error"] is True, step["name"]
+    def test_it_is_its_own_job_that_can_never_fail_the_run(self, scale, big):
+        assert big["continue-on-error"] is True
+        assert big["needs"] == "scale"
+        assert big["timeout-minutes"] >= 240
+        assert big["strategy"]["matrix"] == scale["jobs"]["scale"]["strategy"]["matrix"]
+        # Not in the 50,000 job: nothing there can be slowed or failed by it.
+        for step in scale["jobs"]["scale"]["steps"]:
+            assert "100,000" not in step.get("name", "").replace("100,000-track", "")
 
-    def test_it_is_not_held_to_a_budget(self, job):
-        for step in self._steps(job):
-            assert "budget_check.py" not in step.get("run", "")
+    def test_a_release_leaves_it_out_and_an_input_less_run_keeps_it(self, scale, big):
+        for trigger in ("workflow_call", "workflow_dispatch"):
+            option = scale["on"][trigger]["inputs"]["above_reference"]
+            assert option["type"] == "boolean" and option["default"] is True
+        # `format` makes an absent input (the weekly run) read as true; only `false` skips it.
+        assert "format('{0}', inputs.above_reference) != 'false'" in big["if"]
+        assert "!cancelled()" in big["if"]
 
-    def test_it_runs_at_that_size(self, job):
-        assert _step(job, "Scale tests (100,000 tracks)")["env"]["CUEPOINT_SCALE"] == (
+    def test_it_is_not_held_to_a_budget(self, big):
+        assert "budget_check.py" not in _runs(big)
+
+    def test_it_runs_at_that_size(self, big):
+        assert _step(big, "Scale tests (100,000 tracks)")["env"]["CUEPOINT_SCALE"] == (
             "100000"
         )
         assert (
-            "--tracks 100000" in _step(job, "Bench the library (100,000 tracks)")["run"]
+            "--tracks 100000" in _step(big, "Bench the library (100,000 tracks)")["run"]
         )
-        engine = _step(job, "Bench the packaged engine's start (100,000 tracks)")
+        engine = _step(big, "Bench the packaged engine's start (100,000 tracks)")
         assert "--library 100000" in engine["run"]
-        app = _step(job, "Packaged app at 100,000 tracks")
-        assert app["env"]["CUEPOINT_SCALE"] == "100000"
+        assert _step(big, "Packaged app at 100,000 tracks")["env"][
+            "CUEPOINT_SCALE"
+        ] == ("100000")
+
+    def test_it_builds_its_own_app_and_reads_nothing_from_the_50000_job(self, big):
+        names = [s.get("name") for s in big["steps"]]
+        assert names.index("Unpack the app") < names.index(
+            "Packaged app at 100,000 tracks"
+        )
+        app = _step(big, "Packaged app at 100,000 tracks")
+        assert "steps.unpack.outcome == 'success'" in app["if"]
+        assert (
+            app["env"]["CUEPOINT_E2E_EXECUTABLE"] == "${{ steps.unpack.outputs.exe }}"
+        )
+        # A step id is the job's own, so the only `needs` it may read is none at all.
+        assert "needs." not in str(big["steps"])
+
+    def test_its_failures_and_json_are_kept_under_its_own_names(self, scale, big):
+        shots = _step(big, "Upload Playwright failures (100,000 tracks)")
+        assert shots["if"] == "always()"
+        assert (
+            shots["with"]["name"] == "scale-100k-playwright-failures-${{ matrix.leg }}"
+        )
+        fifty = _step(scale["jobs"]["scale"], "Upload Playwright failures")
+        assert fifty["with"]["name"] != shots["with"]["name"]
+        last = big["steps"][-1]
+        assert (
+            last["name"] == "Upload the 100,000-track JSON" and last["if"] == "always()"
+        )
 
 
 class TestArtifacts:
@@ -215,16 +254,60 @@ class TestArtifacts:
         assert up["if"] == "always()"
         assert up["with"]["name"] == "scale-json-${{ matrix.leg }}"
 
-    def test_the_100k_json_has_its_own_name(self, job):
-        up = _step(job, "Upload the 100,000-track JSON")
+    def test_the_100k_json_has_its_own_name(self, scale):
+        up = _step(scale["jobs"]["scale-100k"], "Upload the 100,000-track JSON")
         assert up["with"]["name"] == "scale-json-100k-${{ matrix.leg }}"
 
     def test_the_tables_are_written_from_what_every_leg_measured(self, scale):
         tables = scale["jobs"]["tables"]
-        assert tables["needs"] == "scale"
+        assert tables["needs"] == ["scale", "scale-100k"]
         assert "performance_tables.py scale-results" in _runs(tables)
         download = next(
             s for s in tables["steps"] if "download-artifact" in s.get("uses", "")
         )
         assert download["with"]["pattern"] == "scale-json-*"
         assert "!cancelled()" in tables["if"]
+
+
+class TestOrderAndTolerance:
+    def test_the_50000_json_is_uploaded_before_the_100000_job_starts(self, scale):
+        # `needs` waits for the whole job, upload step included, and the upload is `always()`.
+        assert scale["jobs"]["scale-100k"]["needs"] == "scale"
+        job = scale["jobs"]["scale"]
+        names = [s.get("name") for s in job["steps"]]
+        assert names.index("Upload the JSON") > names.index(
+            "Packaged app at 50,000 tracks"
+        )
+        assert _step(job, "Upload the JSON")["if"] == "always()"
+
+    def test_the_tables_job_runs_when_a_leg_or_the_big_run_is_missing(self, scale):
+        tables = scale["jobs"]["tables"]
+        assert "!cancelled()" in tables["if"]
+        assert "scale-100k" in tables["needs"]
+
+    def test_the_tables_script_takes_a_run_with_missing_legs(self, tmp_path):
+        import sys
+
+        sys.path.insert(0, str(_SCRIPTS))
+        import performance_tables as tables
+
+        assert tables.load_runs(tmp_path / "no-such-folder") == []
+        (tmp_path / "windows-x64").mkdir()  # a leg that uploaded nothing
+        assert tables.load_runs(tmp_path) == []
+        assert tables.render([]).count(tables.PLACEHOLDER) > 0
+
+
+class TestLinuxApp:
+    def test_the_executable_is_named_by_package_json(self, job):
+        import json
+
+        package = json.loads(
+            (_REPO_ROOT / "apps/desktop-electron/package.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        name = package["build"]["linux"]["executableName"]
+        assert name
+        run = _step(job, "Unpack the app")["run"]
+        assert "build.linux.executableName" in run
+        assert "find " not in run and "head -n" not in run
