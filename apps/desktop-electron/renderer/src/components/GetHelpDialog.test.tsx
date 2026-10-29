@@ -6,6 +6,7 @@ import { fakeFacade } from "../reporting/fakeFacade.testFixture";
 import { reportUnexpected, resetRendererReporting, setupRendererReporting } from "../reporting/reporting";
 import { GetHelpDialog } from "./GetHelpDialog";
 import type { CuePointBridge } from "../api/cuepointBridge.types";
+import { expectNoAxeViolations } from "../test/axe";
 
 function installBridge(enabled: boolean, version = "1.2.3", extra: Record<string, unknown> = {}) {
   const bridge = {
@@ -303,5 +304,19 @@ describe("the look of Get help (C12, C118, C123)", () => {
     // Quiet by its variant, not by an override (M263).
     expect(open).toHaveClass("cp-btn--quiet");
     expect(open.parentElement).toHaveClass("cp-button-row");
+  });
+});
+
+describe("GetHelpDialog accessibility (HARDEN-08)", () => {
+  afterEach(() => {
+    resetRendererReporting();
+    delete (window as { cuepoint?: unknown }).cuepoint;
+  });
+
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    await start(true);
+    render(<GetHelpDialog open onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByRole("textbox")).toBeEnabled());
+    await expectNoAxeViolations();
   });
 });

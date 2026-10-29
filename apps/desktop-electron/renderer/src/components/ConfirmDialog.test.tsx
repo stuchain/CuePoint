@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 import { ConfirmDialog } from "./ConfirmDialog";
+import { expectNoAxeViolations } from "../test/axe";
 
 describe("ConfirmDialog", () => {
   it("shows Cancel and the act, and runs each", () => {
@@ -53,5 +54,16 @@ describe("ConfirmDialog", () => {
       </ConfirmDialog>,
     );
     expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+  });
+});
+
+describe("ConfirmDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    render(
+      <ConfirmDialog open title="Delete “Warm-up”?" confirmLabel="Delete Set" onConfirm={() => {}} onCancel={() => {}} danger>
+        This cannot be undone.
+      </ConfirmDialog>,
+    );
+    await expectNoAxeViolations();
   });
 });

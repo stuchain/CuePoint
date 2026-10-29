@@ -11,6 +11,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { PickerDialog, type PickerItem } from "./PickerDialog";
+import { expectNoAxeViolations } from "../../test/axe";
 
 const ITEMS: PickerItem[] = [
   { id: 1, label: "Sets", depth: 0, disabled: true, icon: "folder" },
@@ -196,5 +197,17 @@ describe("the dialog itself", () => {
   it("renders nothing when it is not open", () => {
     draw({ open: false });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("PickerDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    draw();
+    await expectNoAxeViolations();
+  });
+
+  it("has none with nothing to choose", async () => {
+    draw({ items: [] });
+    await expectNoAxeViolations();
   });
 });

@@ -30,6 +30,7 @@ import css from "./statistics.css?raw";
 import grid from "../../components/table/DataTable.css?raw";
 import { STATISTICS_SCOPE_STORAGE_KEY } from "./statisticsScope";
 import { useLibraryJobsFinished } from "./useStatistics";
+import { expectNoAxeViolations } from "../../test/axe";
 
 vi.mock("../library/followJob", () => ({
   followJob: () => ({
@@ -1071,3 +1072,26 @@ describe("revisiting the page (C19d)", () => {
 function plays_(neverPlayed: number): StatisticsPlays {
   return plays({ never_played: count(neverPlayed) });
 }
+
+describe("Statistics accessibility (HARDEN-08)", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    install();
+  });
+
+  afterEach(() => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+  });
+
+  it.each(["Overview", "Plays", "Health"])("has no WCAG 2.2 A or AA violations on the %s tab", async (name) => {
+    renderPage();
+    const tab = await screen.findByRole("tab", { name });
+    await userEvent.click(tab);
+    await waitFor(() => expect(tab).toHaveAttribute("aria-selected", "true"));
+    // Scan the loaded tab, not its loading line.
+    const id = name.toLowerCase() as "overview" | "plays" | "health";
+    await waitFor(() => expect(panel(id).textContent?.length ?? 0).toBeGreaterThan(80));
+    expect(panel(id).querySelector("[aria-busy='true']")).toBeNull();
+    await expectNoAxeViolations();
+  });
+});

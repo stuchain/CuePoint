@@ -8,6 +8,7 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { PlayerBar } from "./PlayerBar";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
 import { resetPlayerStore } from "./playerStore";
+import { expectNoAxeViolations } from "../../test/axe";
 
 /**
  * The player, audited rather than assumed (PLAYER-12).
@@ -242,5 +243,16 @@ describe("the shortcuts dialog lists what the player takes", () => {
     // Home / End move along it. Space ticks a row in Clean's review, where the player's Space is not taken.
     const shared = new Set(["Delete", "Alt+Up / Alt+Down", "Enter", "Up / Down", "Home / End", "Space"]);
     expect(keys.filter((key) => !shared.has(key) && others.includes(key))).toEqual([]);
+  });
+});
+
+describe("the player bar passes axe (HARDEN-08)", () => {
+  it.each([
+    ["playing", snapshot()],
+    ["paused, shuffle on, repeat all, muted", snapshot({ paused: true, shuffle: true, repeat: "all", muted: true })],
+  ])("has no WCAG 2.2 A or AA violations while %s", async (_name, state) => {
+    renderBar(state);
+    await waitFor(() => expect(screen.getByRole("slider", { name: "Seek" })).toBeEnabled());
+    await expectNoAxeViolations();
   });
 });

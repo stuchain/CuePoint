@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { SelectAllButton, SelectionBar } from "./SelectionBar";
 import css from "./SelectionBar.css?raw";
 import { DOUBLE_CLICK_MS } from "../hooks/useDoubleClickGrace";
+import { expectNoAxeViolations } from "../test/axe";
 
 describe("SelectionBar (C9, C215)", () => {
   it("is not drawn when nothing is selected", () => {
@@ -130,5 +131,17 @@ describe("the floating toasts (M283)", () => {
   it("are not lifted by a bar above the list", () => {
     render(<SelectionBar count={2} onClear={() => undefined} />);
     expect(document.documentElement.style.getPropertyValue("--selection-bar-room")).toBe("");
+  });
+});
+
+describe("SelectionBar accessibility (HARDEN-08)", () => {
+  it("is a named toolbar with no WCAG 2.2 A or AA violations", async () => {
+    render(
+      <SelectionBar count={2} onClear={() => {}}>
+        <button type="button">Add to queue</button>
+      </SelectionBar>,
+    );
+    expect(screen.getByRole("toolbar", { name: "Selection" })).toBeInTheDocument();
+    await expectNoAxeViolations();
   });
 });

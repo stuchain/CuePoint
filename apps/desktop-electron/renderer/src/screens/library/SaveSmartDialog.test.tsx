@@ -11,6 +11,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { FilterRuleSet, LibraryFilterVocabulary } from "../../api/cuepointBridge.types";
 import { SaveSmartDialog } from "./SaveSmartDialog";
 import { SMART_NAME_MAX_LENGTH } from "./smartFilter";
+import { expectNoAxeViolations } from "../../test/axe";
 
 const VOCABULARY: LibraryFilterVocabulary = {
   fields: [
@@ -189,5 +190,12 @@ describe("the shared shape (C105, C109, C111)", () => {
     show();
     expect(screen.getByLabelText("Name")).toHaveFocus();
     expect(screen.getByText(/keeps answering/i)).toHaveClass("cp-modal__lead");
+  });
+});
+
+describe("SaveSmartDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    show();
+    await expectNoAxeViolations();
   });
 });

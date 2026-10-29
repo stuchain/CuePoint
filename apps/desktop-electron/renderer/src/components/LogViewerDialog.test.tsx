@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OPEN_LOG_FOLDER } from "../format/words";
 import { LogViewerDialog } from "./LogViewerDialog";
+import { expectNoAxeViolations } from "../test/axe";
 
 function installBridge(overrides: Record<string, unknown> = {}) {
   (window as unknown as { cuepoint: unknown }).cuepoint = {
@@ -106,5 +107,14 @@ describe("LogViewerDialog", () => {
     expect(clearCuepointLogs).not.toHaveBeenCalled();
     await userEvent.click(await screen.findByRole("button", { name: "Clear logs" }));
     await waitFor(() => expect(clearCuepointLogs).toHaveBeenCalled());
+  });
+});
+
+describe("LogViewerDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    installBridge();
+    render(<LogViewerDialog open onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText(/line one/)).toBeInTheDocument());
+    await expectNoAxeViolations();
   });
 });

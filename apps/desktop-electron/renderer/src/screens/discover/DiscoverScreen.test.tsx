@@ -39,6 +39,7 @@ import { DISCOVER_SECTION_STORAGE_KEY } from "./discoverSections";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { HIDE_OWNED_STORAGE_KEY } from "./useHideOwned";
 import { foundLine } from "./discoverFormat";
+import { expectNoAxeViolations } from "../../test/axe";
 
 const LOADED = { timeout: 3000 };
 
@@ -1657,5 +1658,37 @@ describe("revisiting the page (C19d)", () => {
     expect(failed()).toBe(true);
     await waitFor(() => expect(failed()).toBe(false));
     await waitFor(() => expect(reads()).toEqual({ options: before.options + 1, runs: before.runs + 1 }));
+  });
+});
+
+describe("Discover accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations on Results, with a dig's tracks showing", async () => {
+    renderDiscover();
+    await openRun(1);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    await expectNoAxeViolations();
+  });
+
+  it("has none on Results with a track picked and its action bar showing", async () => {
+    renderDiscover();
+    await openRun(1);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    fireEvent.click(rowsOf("Tracks this dig found")[0]!);
+    await screen.findByRole("toolbar", { name: /Tracks this dig found: actions/ });
+    await expectNoAxeViolations();
+  });
+
+  it("has none on New dig", async () => {
+    renderDiscover();
+    await openNewSearch();
+    await expectNoAxeViolations();
+  });
+
+  it("has none on the Wantlist", async () => {
+    localStorage.setItem(DISCOVER_SECTION_STORAGE_KEY, "wantlist");
+    renderDiscover();
+    await waitFor(() => expect(rowsOf("Wantlist").length).toBeGreaterThan(0), LOADED);
+    expect(actionsBar("Wantlist")).toBeInTheDocument();
+    await expectNoAxeViolations();
   });
 });

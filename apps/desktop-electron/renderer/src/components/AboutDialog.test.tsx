@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 
 import { AboutDialog, TAGLINE, versionWords } from "./AboutDialog";
 import type { AppBuildInfo, CuePointBridge } from "../api/cuepointBridge.types";
+import { expectNoAxeViolations } from "../test/axe";
 
 function installBridge(build: AppBuildInfo | null, withEngine = true) {
   window.cuepoint = {
@@ -91,5 +92,18 @@ describe("versionWords", () => {
       "1.2.3 (build 456)",
     );
     expect(versionWords("1.2.3", null)).toBe("1.2.3");
+  });
+});
+
+describe("AboutDialog accessibility (HARDEN-08)", () => {
+  afterEach(() => {
+    delete (window as { cuepoint?: unknown }).cuepoint;
+  });
+
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    installBridge({ version: "2.0.0", release: "cuepoint@2.0.0", dist: "abc1234", environment: "production" });
+    render(<AboutDialog open onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId("about-version")).toHaveTextContent("2.0.0"));
+    await expectNoAxeViolations();
   });
 });

@@ -54,6 +54,7 @@ import {
   cleanSectionState,
   cleanTrackState,
 } from "./cleanLink";
+import { expectNoAxeViolations } from "../../test/axe";
 
 const UNTOUCHED = fixture.untouched.health as LibraryHealth;
 
@@ -1495,5 +1496,34 @@ describe("revisiting the page (C19d)", () => {
         playlists: before.playlists + 1,
       }),
     );
+  });
+});
+
+describe("Clean accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations on Match, Playlists", async () => {
+    renderClean();
+    await screen.findByRole("table", { name: /Your playlists/ });
+    await screen.findByText("Peak time");
+    await expectNoAxeViolations();
+  });
+
+  it("has none on Match, Past matches", async () => {
+    renderClean(undefined, "past");
+    await screen.findByRole("tab", { name: "Past matches" });
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Past matches" })).toHaveAttribute("aria-selected", "true"));
+    await expectNoAxeViolations();
+  });
+
+  it("has none on Missing files", async () => {
+    renderClean("missing");
+    await screen.findByRole("list", { name: "How to fix a missing file" });
+    await screen.findByText("E:\\gone\\9.mp3");
+    await expectNoAxeViolations();
+  });
+
+  it("has none on Duplicates", async () => {
+    renderClean("duplicates");
+    await screen.findByRole("list", { name: "Possible duplicate groups" });
+    await expectNoAxeViolations();
   });
 });

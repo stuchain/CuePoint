@@ -20,6 +20,7 @@ import sidebarCss from "./Sidebar.css?raw";
 import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
 import { HINT_HOVER_DELAY_MS } from "../Hint";
 import { SIDEBAR_COLLAPSED_STORAGE_KEY, neededHeightFor, railTight } from "./sidebarState";
+import { expectNoAxeViolations } from "../../test/axe";
 
 function renderSidebar(initialPath = "/") {
   return render(
@@ -845,5 +846,14 @@ describe("the Clean count (M507)", () => {
     };
     renderSidebar("/");
     expect(await within(nav()).findByRole("link", { name: "Clean" })).not.toHaveTextContent(/\d/);
+  });
+});
+
+describe("Sidebar accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations, open or collapsed", async () => {
+    renderSidebar();
+    await expectNoAxeViolations();
+    await userEvent.click(toggle());
+    await expectNoAxeViolations();
   });
 });

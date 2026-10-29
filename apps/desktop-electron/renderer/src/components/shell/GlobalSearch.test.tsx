@@ -23,6 +23,7 @@ import type {
   LibrarySearchResponse,
   LibraryTrackRow,
 } from "../../api/cuepointBridge.types";
+import { expectNoAxeViolations } from "../../test/axe";
 
 function response(overrides: Partial<LibrarySearchResponse> = {}): LibrarySearchResponse {
   return {
@@ -538,5 +539,14 @@ describe("the command palette look (C135, C119)", () => {
     expect(decl(".cp-global-search__option--active", "border-inline-start")).toBeUndefined();
     expect(decl(".cp-global-search__option", "cursor")).toBe("default");
     expect(searchCss).not.toMatch(/selected-row-background|cursor:\s*pointer|__play/);
+  });
+});
+
+describe("GlobalSearch accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations with results showing", async () => {
+    searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
+    await type("strobe");
+    await screen.findByRole("option", { name: /strobe/i });
+    await expectNoAxeViolations();
   });
 });

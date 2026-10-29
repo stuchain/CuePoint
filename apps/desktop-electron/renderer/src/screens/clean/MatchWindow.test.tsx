@@ -14,6 +14,7 @@ import { MatchWindow } from "./MatchWindow";
 import type { CleanTracks } from "./cleanTracks";
 import { cleanMatchOpening, cleanMatchState } from "./cleanLink";
 import fixture from "./cleanEmpty.fixture.json";
+import { expectNoAxeViolations } from "../../test/axe";
 
 type Mock = ReturnType<typeof vi.fn>;
 let bridge: Record<string, Mock>;
@@ -300,5 +301,15 @@ describe("the window", () => {
     render(<MatchWindow open tracks={null} health={empty} onStart={onStart} onClose={() => {}} />);
     expect(screen.getByRole("button", { name: /^Match / })).toBeDisabled();
     expect(screen.getByRole("dialog")).toHaveTextContent("Every track has been looked up.");
+  });
+});
+
+describe("MatchWindow accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations, on the tracks not looked up and on chosen playlists", async () => {
+    const { dialog } = show();
+    await expectNoAxeViolations();
+    fireEvent.click(within(dialog).getByRole("radio", { name: /^Tracks in chosen playlists/ }));
+    await within(dialog).findByRole("checkbox", { name: "Friday" });
+    await expectNoAxeViolations();
   });
 });

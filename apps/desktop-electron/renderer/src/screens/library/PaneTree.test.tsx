@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
+import { expectNoAxeViolations } from "../../test/axe";
 
 // A Windows checkout reads the stylesheet with CRLF line ends.
 const css = rawCss.replace(/\r\n/g, "\n");
@@ -97,5 +98,12 @@ describe("a narrow pane", () => {
   it("steps each level in by the chevron's width, not a whole twisty", () => {
     // Moved for M83: the width is in the pane's own text size (20em), not 260 CSS px.
     expect(css).toMatch(/@container library-pane \(max-width: 20em\)\s*\{[^}]*--tree-step: calc\(12px \* var\(--scale\)\)/);
+  });
+});
+
+describe("PaneTree accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    renderTree();
+    await expectNoAxeViolations();
   });
 });

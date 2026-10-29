@@ -16,6 +16,7 @@ import { TrackContextMenu } from "./TrackContextMenu";
 import { MotionProvider } from "../tokens/MotionContext";
 import tokens from "../tokens/tokens.css?raw";
 import css from "./Modal.css?raw";
+import { expectNoAxeViolations } from "../test/axe";
 
 function open(props: Partial<Parameters<typeof Modal>[0]> = {}) {
   const onClose = vi.fn();
@@ -749,5 +750,16 @@ describe("one stack of layers (M469)", () => {
     expect(onClose).not.toHaveBeenCalled();
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Modal accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    render(
+      <Modal open title="Test dialog" onClose={() => {}}>
+        <button type="button">first</button>
+      </Modal>,
+    );
+    await expectNoAxeViolations();
   });
 });

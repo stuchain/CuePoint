@@ -35,6 +35,7 @@ import { KeysScreen } from "./KeysScreen";
 import { KEYS_COLUMNS, rowWithRating } from "./KeysTracks";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
 import type { KeysOpening } from "./keysLink";
+import { expectNoAxeViolations } from "../../test/axe";
 
 vi.mock("../../reporting/reporting", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../reporting/reporting")>()),
@@ -1396,5 +1397,25 @@ describe("when there is nothing to count", () => {
     expect(await screen.findByText("The keys could not be counted")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await opened();
+  });
+});
+
+describe("Keys accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations in the List view with a key picked and its tracks showing", async () => {
+    renderKeys();
+    await opened();
+    const table = await screen.findByRole("grid", { name: "Tracks in these keys" }, LOADED);
+    await within(table).findByText("Track 1", undefined, LOADED);
+    fireEvent.click(rowButton("8A"));
+    await screen.findByRole("heading", { level: 2, name: "Tracks in 8A" });
+    await expectNoAxeViolations();
+  });
+
+  it("has none in the Wheel view", async () => {
+    renderKeys();
+    await opened();
+    showWheel();
+    await screen.findByRole("group", { name: "Keys" });
+    await expectNoAxeViolations();
   });
 });

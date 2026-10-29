@@ -30,6 +30,7 @@ import { buildCollectionTree, type CollectionTreeNode } from "./collectionTree";
 import fixture from "./rekordboxExport.fixture.json";
 import { OPEN_IN_REKORDBOX } from "./rekordboxExport";
 import { RekordboxExportDialog, type RekordboxExportDialogProps } from "./RekordboxExportDialog";
+import { expectNoAxeViolations } from "../../test/axe";
 
 type Fixture = keyof typeof fixture;
 const answer = (name: Fixture) => fixture[name] as unknown as RekordboxExportPreviewAnswer;
@@ -1075,5 +1076,13 @@ describe("the playlists line and the lead (M513, M514)", () => {
         "Makes the file Rekordbox imports. It does not change your music files; Sync to files writes tags into them.",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("RekordboxExportDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    renderDialog();
+    await screen.findByRole("dialog");
+    await expectNoAxeViolations();
   });
 });

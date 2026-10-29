@@ -13,6 +13,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { RefreshDiff, RefreshReferences } from "../../api/cuepointBridge.types";
 import { applyLabel } from "./libraryFormat";
 import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
+import { expectNoAxeViolations } from "../../test/axe";
 
 const NO_REFERENCES: RefreshReferences = {
   collection_count: 0,
@@ -142,5 +143,12 @@ describe("RefreshPreviewDialog", () => {
     expect(screen.queryByText(/already matches this file/)).not.toBeInTheDocument();
     fireEvent.click(apply());
     expect(onApply).toHaveBeenCalledWith({ confirmReferences: false });
+  });
+});
+
+describe("RefreshPreviewDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations, with the acknowledgement showing", async () => {
+    renderDialog(removing(RATED_ONLY));
+    await expectNoAxeViolations();
   });
 });

@@ -8,6 +8,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { EditValuesDialog } from "./EditValuesDialog";
 import { BATCH_RECORDED_NOTE } from "./libraryBatch";
+import { expectNoAxeViolations } from "../../test/axe";
 
 describe("EditValuesDialog", () => {
   it("shows the track's current values, and none for a field without one", () => {
@@ -118,5 +119,12 @@ describe("EditValuesDialog", () => {
 
   it("asks with the shared text above the threshold", () => {
     expect(BATCH_RECORDED_NOTE).toMatch(/^It runs in the background; you can keep working\./);
+  });
+});
+
+describe("EditValuesDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    render(<EditValuesDialog open count={1} onClose={vi.fn()} onEdit={vi.fn()} current={{ key: "8A", bpm: "128", genre: null }} />);
+    await expectNoAxeViolations();
   });
 });

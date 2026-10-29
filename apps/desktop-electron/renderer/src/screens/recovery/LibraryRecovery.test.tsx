@@ -10,6 +10,7 @@ import type { LibraryStatus } from "../../api/cuepointBridge.types";
 import { ToastProvider, useToast } from "../../components/Toast";
 import { LibraryGate } from "./LibraryGate";
 import { LibraryRecovery, libraryFileFrom, megabytesNeeded } from "./LibraryRecovery";
+import { expectNoAxeViolations } from "../../test/axe";
 
 const TODAY_941 = new Date(2026, 9, 29, 9, 41).toISOString();
 
@@ -332,5 +333,14 @@ describe("the gate", () => {
     getState.mockResolvedValue(status({ state: "ok" }));
     changed();
     expect(await screen.findByText("The app")).toBeInTheDocument();
+  });
+});
+
+describe("the recovery screen accessibility (HARDEN-08)", () => {
+  it.each(["damaged", "too_new", "upgrade_failed", "needs_space"] as const)("has no WCAG 2.2 A or AA violations in %s", async (state) => {
+    getState.mockResolvedValue(status({ state }));
+    render(<LibraryGate><p>The app</p></LibraryGate>);
+    expect(await screen.findByRole("heading", { level: 1 })).toBeInTheDocument();
+    await expectNoAxeViolations();
   });
 });

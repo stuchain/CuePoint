@@ -5,6 +5,7 @@ import { render, screen } from "@testing-library/react";
 import { BatchConfirmDialog } from "./BatchConfirmDialog";
 import type { BatchAction } from "./libraryBatch";
 import type { LibraryBatchController } from "./useLibraryBatch";
+import { expectNoAxeViolations } from "../../test/axe";
 
 function ask(action: BatchAction, count: number) {
   const batch: LibraryBatchController = {
@@ -33,4 +34,11 @@ describe("BatchConfirmDialog", () => {
       expect(screen.getByRole("button", { name: "Change 1 track" })).toBeInTheDocument();
     },
   );
+});
+
+describe("BatchConfirmDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    ask({ kind: "apply_match", value: ["bpm"], target: "BPM" }, 4213);
+    await expectNoAxeViolations();
+  });
 });

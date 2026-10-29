@@ -36,6 +36,7 @@ import css from "./prepare.css?raw";
 import { PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
 import { SETS_NEED_DESKTOP, WHAT_A_SET_IS } from "./prepareFormat";
 import { LAST_SET_STORAGE_KEY, PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
+import { expectNoAxeViolations } from "../../test/axe";
 
 /** What a button draws: the name of its icon, else its words. */
 const markOf = (b: HTMLElement): string | null => b.querySelector("[data-icon]")?.getAttribute("data-icon") ?? b.textContent;
@@ -2210,5 +2211,45 @@ describe("the transition strip's caption and Accept (FLW-19)", () => {
     await waitFor(() =>
       expect(sets.acknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "tempo_jump" }),
     );
+  });
+});
+
+describe("Prepare accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations with a Set open", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    await expectNoAxeViolations();
+  });
+
+  it("has none with an entry selected and its buttons showing", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    within(rowAt(2)).getByRole("group", { name: "Selected tracks" });
+    await expectNoAxeViolations();
+  });
+
+  it("has none with the Mix-in and Mix-out columns shown", async () => {
+    showTimesInStorage();
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    await expectNoAxeViolations();
+  });
+
+  it("has none with the header's Export menu open", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    openExportMenu();
+    await screen.findByRole("menu");
+    await expectNoAxeViolations();
+  });
+
+  it("has none with the Rekordbox export dialog open", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    openExportMenu();
+    fireEvent.click(await menuItem("Export to Rekordbox…"));
+    await screen.findByRole("dialog", { name: "Export to Rekordbox" });
+    await expectNoAxeViolations();
   });
 });

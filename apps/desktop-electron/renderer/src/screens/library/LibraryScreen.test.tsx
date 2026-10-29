@@ -45,6 +45,7 @@ import type {
   RefreshDiff,
 } from "../../api/cuepointBridge.types";
 import { findMenuItem, menuItem } from "./menuPick.test.util";
+import { expectNoAxeViolations } from "../../test/axe";
 
 function category<T>(count = 0, items: T[] = []) {
   return { count, items, truncated: count > items.length };
@@ -4210,5 +4211,42 @@ describe("revisiting the page (C19d)", () => {
       fields: before.fields + 1,
       tags: before.tags + 1,
     });
+  });
+});
+
+describe("Library accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations in the empty state, before anything is imported", async () => {
+    renderScreen();
+    await screen.findByText(/Export Collection in xml format/i);
+    await expectNoAxeViolations();
+  });
+
+  it("has none with the library loaded: the pane, the filter bar and the table", async () => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen();
+    await tableReady();
+    await screen.findByRole("tree", { name: "Playlists" });
+    await screen.findByRole("tree", { name: "Collections" });
+    await expectNoAxeViolations();
+  });
+
+  it("has none with rows selected and the selection bar showing", async () => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen();
+    await tableReady();
+    await userEvent.click(screen.getByText("Track 1"));
+    fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+    await screen.findByText(/3 selected/);
+    expect(screen.getAllByRole("toolbar", { name: "Selection" }).length).toBeGreaterThan(0);
+    await expectNoAxeViolations();
+  });
+
+  it("has none with a row's context menu open", async () => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    renderScreen();
+    await tableReady();
+    fireEvent.contextMenu(screen.getByText("Track 1").closest("[role=row]")!, { clientX: 100, clientY: 100 });
+    await screen.findByRole("menu");
+    await expectNoAxeViolations();
   });
 });

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 
 import { DiagnosticsDialog } from "./DiagnosticsDialog";
 import type { CuePointBridge } from "../api/cuepointBridge.types";
+import { expectNoAxeViolations } from "../test/axe";
 
 function installBridge(overrides: Record<string, unknown> = {}) {
   window.cuepoint = {
@@ -51,5 +52,14 @@ describe("DiagnosticsDialog", () => {
     delete (window as { cuepoint?: unknown }).cuepoint;
     render(<DiagnosticsDialog open onClose={() => {}} />);
     expect(screen.getByText("Diagnostics needs the CuePoint desktop app.")).toBeInTheDocument();
+  });
+});
+
+describe("DiagnosticsDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    installBridge();
+    render(<DiagnosticsDialog open onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId("diagnostics-version")).toHaveTextContent("2.0.0"));
+    await expectNoAxeViolations();
   });
 });

@@ -19,6 +19,7 @@ import { ThemeProvider } from "../tokens/ThemeContext";
 import { BEATPORT_TOKEN_FIELD_ID, SettingsScreen } from "./SettingsScreen";
 import { SETTINGS_SECTIONS } from "./settingsSections";
 import { settingsFocusState } from "./settingsLink";
+import { expectNoAxeViolations } from "../test/axe";
 
 const TITLES = [
   "Appearance",
@@ -366,5 +367,26 @@ describe("Saved", () => {
       "mutedPro",
     );
     expect(within(region("Appearance")).getByRole("status")).toHaveTextContent("Saved");
+  });
+});
+
+describe("Settings accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations, every section including Backups", async () => {
+    (window.cuepoint as unknown as { backups: unknown }).backups = {
+      list: async () => ({
+        backups: [
+          { name: "a.db", createdAt: new Date(2026, 9, 29, 13, 2).toISOString(), reason: "manual", appVersion: "1.0.0", bytes: 4_000_000 },
+        ],
+        folder: "/home/x/.cuepoint/backups",
+      }),
+      create: async () => null,
+      restore: async () => ({ ok: true, engineRunning: true }),
+      showInFolder: async () => true,
+      onRestoreEvent: () => () => undefined,
+    };
+    renderSettings();
+    await screen.findByText("You made this");
+    await screen.findByRole("region", { name: "Backups" });
+    await expectNoAxeViolations();
   });
 });

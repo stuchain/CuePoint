@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ShortcutsDialog } from "./ShortcutsDialog";
+import { expectNoAxeViolations } from "../test/axe";
 
 describe("ShortcutsDialog", () => {
   it("lists the menu's keys and Prepare's", () => {
@@ -111,5 +112,12 @@ describe("the fixed head and the shared table look (C58, C72, C119)", () => {
     for (const heading of within(dialog).getAllByRole("heading", { level: 3 })) {
       expect(heading).toHaveClass("cp-text-subhead");
     }
+  });
+});
+
+describe("ShortcutsDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    render(<ShortcutsDialog open onClose={vi.fn()} />);
+    await expectNoAxeViolations();
   });
 });

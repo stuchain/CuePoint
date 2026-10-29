@@ -17,6 +17,7 @@ import userEvent from "@testing-library/user-event";
 
 import App from "./App";
 import { LAST_DESTINATION_STORAGE_KEY } from "./components/shell";
+import { expectNoAxeViolations } from "./test/axe";
 
 /**
  * What home shows without an engine: the Library's import prompt. Home is the
@@ -796,5 +797,42 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
     // The Library itself is kept alive, hidden (C19e), so its row can still be in the
     // document; the panel describing it is not.
     expect(inspector).not.toBeInTheDocument();
+  });
+});
+
+describe("the whole shell accessibility (HARDEN-08)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem("cuepoint-onboarding-complete", "1");
+    localStorage.setItem("cuepoint-phase14-note-seen", "1");
+    window.location.hash = "";
+    window.scrollTo = vi.fn();
+    Element.prototype.scrollTo = vi.fn();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("has no WCAG 2.2 A or AA violations on the Library's import prompt, in the sidebar, the page, the status strip and the player bar", async () => {
+    render(<App />);
+    await screen.findByText(HOME);
+    await expectNoAxeViolations();
+  });
+
+  it.each(["Clean", "Discover", "Prepare", "Settings"])("has none on %s", async (name) => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(navLink(name));
+    await screen.findByRole("heading", { level: 1 }, LOADED);
+    await expectNoAxeViolations();
+  });
+
+  it("has none with the keyboard shortcuts dialog open over the shell", async () => {
+    render(<App />);
+    fireEvent.keyDown(window, { key: "F1" });
+    await screen.findByRole("dialog", { name: /keyboard shortcuts/i });
+    await expectNoAxeViolations();
   });
 });

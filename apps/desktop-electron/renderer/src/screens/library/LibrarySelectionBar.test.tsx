@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 
 import { ACTION_GROUPS, type TrackActionGroup } from "./trackActions";
 import { LibrarySelectionBar } from "./LibrarySelectionBar";
+import { expectNoAxeViolations } from "../../test/axe";
 
 function groups(reason: string | null = null): TrackActionGroup[] {
   return ACTION_GROUPS.map(({ id, label }) => ({
@@ -143,5 +144,13 @@ describe("the Library's selection bar", () => {
     rerender(<LibrarySelectionBar {...props} selected={0} />);
     rerender(<LibrarySelectionBar {...props} selected={3} />);
     expect(screen.getByRole("button", { name: "Play" }).tabIndex).toBe(0);
+  });
+});
+
+describe("LibrarySelectionBar accessibility (HARDEN-08)", () => {
+  it("is a named toolbar with no WCAG 2.2 A or AA violations", async () => {
+    renderBar();
+    expect(screen.getByRole("toolbar", { name: "Selection" })).toBeInTheDocument();
+    await expectNoAxeViolations();
   });
 });

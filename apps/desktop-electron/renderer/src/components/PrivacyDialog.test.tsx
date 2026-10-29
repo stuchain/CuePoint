@@ -9,6 +9,7 @@ import { CLEAR_CACHE_ON_EXIT_KEY, CLEAR_LOGS_ON_EXIT_KEY } from "../screens/exit
 import { settingsFocus } from "../screens/settingsLink";
 import { ToastProvider } from "./Toast";
 import { PrivacyDialog } from "./PrivacyDialog";
+import { expectNoAxeViolations } from "../test/axe";
 
 function install(get: () => Promise<{ enabled: boolean; configured: boolean }>) {
   window.cuepoint = { errorReporting: { get, set: async (v: boolean) => ({ enabled: v }) } } as unknown as CuePointBridge;
@@ -252,5 +253,14 @@ describe("the exit-clearing choices live in Settings → Privacy only (SET-7, PA
     );
     expect(cache()).not.toBeChecked();
     vi.restoreAllMocks();
+  });
+});
+
+describe("PrivacyDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    install(async () => ({ enabled: true, configured: true }));
+    show();
+    await screen.findByRole("dialog");
+    await expectNoAxeViolations();
   });
 });

@@ -18,6 +18,7 @@ import { MotionProvider } from "../../tokens/MotionContext";
 import { DONE_HOLD_MS, StatusStrip, announcedQuarter } from "./StatusStrip";
 import { JOB_EXPLAINERS } from "./useActiveJob";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
+import { expectNoAxeViolations } from "../../test/axe";
 
 function job(overrides: Partial<EngineJobSummary> = {}): EngineJobSummary {
   return {
@@ -823,5 +824,20 @@ describe("what a screen reader hears of a job (M468)", () => {
 
   it("works out the quarter a percentage has reached", () => {
     expect([null, 0, 24, 25, 49, 50, 99, 100].map(announcedQuarter)).toEqual([0, 0, 0, 25, 25, 50, 75, 100]);
+  });
+});
+
+describe("StatusStrip accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations when ready", async () => {
+    render(<StatusStrip />);
+    await screen.findByText("Ready");
+    await expectNoAxeViolations();
+  });
+
+  it("has none with a running job", async () => {
+    listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
+    render(<StatusStrip />);
+    await screen.findByText("Matching on Beatport · 3 of 10");
+    await expectNoAxeViolations();
   });
 });

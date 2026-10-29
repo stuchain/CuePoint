@@ -7,6 +7,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { NameFolderDialog } from "./NameFolderDialog";
+import { expectNoAxeViolations } from "../test/axe";
 
 const FOLDERS = [
   { id: 2, name: "Sets", depth: 0 },
@@ -100,5 +101,18 @@ describe("working and greyed", () => {
   it("shows the button working while it works", () => {
     show({ busy: true });
     expect(screen.getByRole("button", { name: "Create the Set" })).toBeDisabled();
+  });
+});
+
+describe("NameFolderDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    show();
+    await expectNoAxeViolations();
+  });
+
+  it("has none with a refusal showing under the name", async () => {
+    show();
+    await userEvent.click(screen.getByRole("button", { name: "Create the Set" }));
+    await expectNoAxeViolations();
   });
 });

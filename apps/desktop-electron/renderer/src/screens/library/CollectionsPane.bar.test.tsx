@@ -16,6 +16,7 @@ import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { CollectionsPane } from "./CollectionsPane";
 import { buildCollectionTree, collectionRows, findCollection } from "./collectionTree";
 import { FRIDAY, GIGS, SMART, TREE, WARMUP } from "./librarySets.testFixture";
+import { expectNoAxeViolations } from "../../test/axe";
 
 function paneWith(
   selected: CollectionNode | null,
@@ -332,5 +333,21 @@ describe("one list for both menus", () => {
   it("shows a Set's Copy set list in the '•••' menu as in the right-click menu", async () => {
     paneWith(FRIDAY);
     expect(await rowActions()).toContain("Copy set list");
+  });
+});
+
+describe("Collections accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations in the tree, its + New menu and the selected row's menu", async () => {
+    paneWith(GIGS);
+    await expectNoAxeViolations();
+    await userEvent.click(screen.getByRole("button", { name: "+ New" }));
+    await screen.findByRole("menu");
+    await expectNoAxeViolations();
+  });
+
+  it("has none with the selected row's ••• menu open", async () => {
+    paneWith(WARMUP);
+    await openRowMenu();
+    await expectNoAxeViolations();
   });
 });

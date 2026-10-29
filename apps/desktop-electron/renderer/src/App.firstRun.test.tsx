@@ -8,6 +8,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import App from "./App";
+import { expectNoAxeViolations } from "./test/axe";
 
 type Send = (id: string) => void;
 let send: Send;
@@ -197,3 +198,13 @@ describe("someone who finished the old tour", () => {
 function footerClose(): HTMLElement {
   return screen.getAllByRole("button", { name: "Close" }).find((b) => !b.classList.contains("cp-close"))!;
 }
+
+describe("the first-run guide in the whole app accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations with the guide open over the shell, and after Next", async () => {
+    render(<App />);
+    await screen.findByRole("dialog", { name: "Getting started" });
+    await expectNoAxeViolations();
+    await toScreen(2);
+    await expectNoAxeViolations();
+  });
+});

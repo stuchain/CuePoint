@@ -7,6 +7,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import type { OverrideField } from "../../api/cuepointBridge.types";
 import { ApplyValuesDialog } from "./ApplyValuesDialog";
+import { expectNoAxeViolations } from "../../test/axe";
 
 type Preview = NonNullable<Parameters<typeof ApplyValuesDialog>[0]["preview"]>;
 
@@ -107,5 +108,13 @@ describe("ApplyValuesDialog", () => {
     show(undefined, 1);
     fireEvent.click(screen.getByRole("checkbox", { name: "Year" }));
     expect(screen.getByRole("button", { name: "Copy to 1 track" })).toBeEnabled();
+  });
+});
+
+describe("ApplyValuesDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations, counted", async () => {
+    show(counting());
+    await waitFor(() => expect(screen.getAllByRole("checkbox").length).toBeGreaterThan(0));
+    await expectNoAxeViolations();
   });
 });

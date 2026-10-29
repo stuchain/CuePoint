@@ -24,6 +24,7 @@ import { ScreenHeader } from "./ScreenHeader";
 import { setSelectedTrack } from "./selectedTrack";
 import { INSPECTOR_STORAGE_KEY } from "./inspectorState";
 import { useLayerStack } from "../../hooks/useLayerStack";
+import { expectNoAxeViolations } from "../../test/axe";
 
 // Outside a provider the scale is the default, 1.5×: 213 in 1× units draws as 320px.
 const DEFAULT_PX = 320;
@@ -891,5 +892,16 @@ describe("the shortcut leaves focus where it was (M472)", () => {
     hide().focus();
     await user.keyboard("{Control>}i{/Control}");
     expect(screen.getByRole("button", { name: /^track details$/i })).toHaveFocus();
+  });
+});
+
+describe("TrackInspector accessibility (HARDEN-08)", () => {
+  beforeEach(() => select());
+
+  it("has no WCAG 2.2 A or AA violations, showing or hidden", async () => {
+    render(<TrackInspector />);
+    await expectNoAxeViolations();
+    await userEvent.click(hide());
+    await expectNoAxeViolations();
   });
 });

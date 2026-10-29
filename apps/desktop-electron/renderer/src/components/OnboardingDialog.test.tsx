@@ -12,6 +12,7 @@ import illustrationsCss from "./OnboardingIllustrations.css?raw";
 
 import { OnboardingDialog } from "./OnboardingDialog";
 import { TAGLINE } from "./AboutDialog";
+import { expectNoAxeViolations } from "../test/axe";
 
 const DONE = "cuepoint-onboarding-complete";
 const NOTE = "cuepoint-phase14-note-seen";
@@ -512,5 +513,13 @@ describe("the actions on its screens", () => {
     await next();
     expect(screen.queryByRole("button", { name: "Import a Rekordbox file…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
+  });
+});
+
+describe("the first-run guide accessibility (HARDEN-08)", () => {
+  it.each([1, 2, 3, 4])("has no WCAG 2.2 A or AA violations on screen %i", async (step) => {
+    mount();
+    await goTo(step);
+    await expectNoAxeViolations();
   });
 });

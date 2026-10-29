@@ -16,6 +16,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import type { TagUsage } from "../../api/cuepointBridge.types";
 import { TagManagerDialog } from "./TagManagerDialog";
+import { expectNoAxeViolations } from "../../test/axe";
 
 function tag(over: Partial<TagUsage> = {}): TagUsage {
   return {
@@ -288,5 +289,12 @@ describe("after a write", () => {
       />,
     );
     expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Peak time");
+  });
+});
+
+describe("TagManagerDialog accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    show();
+    await expectNoAxeViolations();
   });
 });

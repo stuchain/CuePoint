@@ -13,6 +13,7 @@ import { QUEUE_ARTIST_MIN_WIDTH, QUEUE_DEFAULT_WIDTH, resetQueueWidthForTests, s
 import queueCss from "./QueuePanel.css?raw";
 import { formatCount } from "../../format/counts";
 import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
+import { expectNoAxeViolations } from "../../test/axe";
 
 /**
  * The queue panel (PLAYER-08, DEC-013).
@@ -1088,5 +1089,18 @@ describe("its words (C73, C161, C163)", () => {
     render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     const heading = await screen.findByRole("heading", { name: /Queue/ });
     expect(heading.querySelector(".cp-queue__count")).toHaveTextContent(formatCount(1234));
+  });
+});
+
+describe("QueuePanel accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    install(3);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+    // A11Y-01: the per-row remove button sits inside the option. Moving it out is a layout change, so it
+    // waits for a mockup (a11y-findings.md); everything else on the panel is held.
+    await expectNoAxeViolations({
+      known: [{ rule: "nested-interactive", selector: ".cp-queue__row", finding: "A11Y-01" }],
+    });
   });
 });

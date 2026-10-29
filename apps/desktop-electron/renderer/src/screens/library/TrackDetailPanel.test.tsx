@@ -38,6 +38,7 @@ import { copySummary, tracksAsText, writeClipboard } from "./trackClipboard";
 import { formatBpm } from "../../components/format/bpm";
 import { useTrackDetail } from "./useTrackDetail";
 import { HISTORY_LIMIT } from "./useTrackHistory";
+import { expectNoAxeViolations } from "../../test/axe";
 
 const TRACK: LibraryTrackRow = {
   id: 12,
@@ -796,5 +797,13 @@ describe("reading one track", () => {
     const { result } = renderHook(() => useTrackDetail(12));
 
     await waitFor(() => expect(result.current.error).toMatch(/needs the CuePoint desktop app/i));
+  });
+});
+
+describe("Track details accessibility (HARDEN-08)", () => {
+  it.each(["overview", "beatport", "where", "yours"] as const)("has no WCAG 2.2 A or AA violations on the %s tab", async (tab) => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, tab);
+    render(<TrackDetailPanel detail={DETAIL} />);
+    await expectNoAxeViolations();
   });
 });

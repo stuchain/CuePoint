@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { reportUnexpected } from "../../reporting/reporting";
 import { DiscoverSelectionBar } from "./DiscoverSelectionBar";
+import { expectNoAxeViolations } from "../../test/axe";
 
 vi.mock("../../reporting/reporting", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../reporting/reporting")>()),
@@ -69,5 +70,16 @@ describe("DiscoverSelectionBar", () => {
     expect(errors).not.toHaveBeenCalled();
     expect(screen.queryByRole("menu")).toBeNull();
     errors.mockRestore();
+  });
+});
+
+describe("DiscoverSelectionBar accessibility (HARDEN-08)", () => {
+  it("is a named toolbar with no WCAG 2.2 A or AA violations, and so is its open menu", async () => {
+    render(bar(async () => [{ id: "play", label: "Play", onSelect: vi.fn() }], 3));
+    expect(screen.getByRole("toolbar", { name: "Selection" })).toBeInTheDocument();
+    await expectNoAxeViolations();
+    fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    await screen.findByRole("menu", { name: "Play" });
+    await expectNoAxeViolations();
   });
 });

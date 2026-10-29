@@ -20,6 +20,7 @@ import { TrackContextMenu, starsItem, useMenuButton, type TrackContextMenuItem }
 import css from "./TrackContextMenu.css?raw";
 import tokensCss from "../tokens/tokens.css?raw";
 import { parseRules, stripComments } from "../test/cssRules";
+import { expectNoAxeViolations } from "../test/axe";
 
 function items(overrides: Partial<TrackContextMenuItem>[] = []): TrackContextMenuItem[] {
   const base: TrackContextMenuItem[] = [
@@ -975,5 +976,12 @@ describe("a long name (M295)", () => {
     expect(flat).toMatch(/\.cp-track-menu__label \{[^}]*text-overflow:\s*ellipsis/);
     open({ items: items([{ label: "Remove from “a playlist with a very long name indeed”" }]) });
     expect(document.querySelector(".cp-track-menu__label")).toHaveAttribute("data-cut-hint");
+  });
+});
+
+describe("TrackContextMenu accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations", async () => {
+    open();
+    await expectNoAxeViolations();
   });
 });

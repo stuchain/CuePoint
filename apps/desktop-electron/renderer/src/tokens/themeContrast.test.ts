@@ -363,3 +363,167 @@ describe("the :root fallback (TH-22)", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------------------------------
+// HARDEN-08 (DEC-186): WCAG 2.2 AA for every text token in every theme.
+// ---------------------------------------------------------------------------------------------------
+
+type PairKind = "text" | "large-or-ui";
+type Resolve = (t: Record<string, string>) => string;
+interface ContrastPair {
+  id: string;
+  kind: PairKind;
+  /** Resolves the foreground colour of the pair in a theme. */
+  fg: Resolve;
+  /** The surfaces it is drawn on, by name, resolved in a theme. */
+  on: Record<string, Resolve>;
+}
+
+/** 4.5:1 is for text, 3:1 for large text, control borders, focus rings and other parts of a control (WCAG 1.4.3, 1.4.11). */
+const FLOOR: Record<PairKind, number> = { text: 4.5, "large-or-ui": 3 };
+
+const token = (name: string): Resolve => (t) => t[name]!;
+/** The surfaces text is set on: the page, panels, rows, the toolbar, a hovered slab and a selected row. */
+const SURFACES: Record<string, Resolve> = {
+  "bg-app": token("bg-app"),
+  "bg-panel": token("bg-panel"),
+  "bg-panel-alt": token("bg-panel-alt"),
+  "bg-input": token("bg-input"),
+  "bg-toolbar": token("bg-toolbar"),
+  "hover slab": (t) => t["hover-fill"] ?? t["bg-panel-alt"]!,
+  "selected row": (t) => mixHex(t["accent-primary"]!, t["bg-input"]!, SELECTED_ACCENT_MIX),
+};
+const only = (...names: string[]): Record<string, Resolve> => Object.fromEntries(names.map((n) => [n, SURFACES[n]!]));
+const onToken = (name: string): Record<string, Resolve> => ({ [name]: token(name) });
+
+const CONTRAST_PAIRS: ContrastPair[] = [
+  { id: "fg-primary", kind: "text", fg: token("fg-primary"), on: SURFACES },
+  // On a hovered slab muted text is the lifted --fg-muted-on-slab (next pair), as the hover rules set it.
+  { id: "fg-muted", kind: "text", fg: token("fg-muted"), on: only("bg-app", "bg-panel", "bg-panel-alt", "bg-input", "bg-toolbar", "selected row") },
+  {
+    id: "fg-muted-on-slab (muted lifted 20% towards the text)",
+    kind: "text",
+    fg: (t) => mixHex(t["fg-muted"]!, t["fg-primary"]!, 80),
+    on: only("bg-panel-alt", "hover slab"),
+  },
+  // Greyed text is exempt from 1.4.3; the app holds it to the large-text 3:1 so it stays findable.
+  { id: "fg-disabled", kind: "large-or-ui", fg: token("fg-disabled"), on: only("bg-app", "bg-panel", "bg-input", "bg-toolbar") },
+  { id: "link", kind: "text", fg: token("link"), on: only("bg-app", "bg-panel", "bg-panel-alt", "bg-input", "bg-toolbar", "selected row") },
+  { id: "accent-primary as text", kind: "text", fg: token("accent-primary"), on: only("bg-input", "selected row") },
+  { id: "accent-primary as a mark", kind: "large-or-ui", fg: token("accent-primary"), on: only("bg-app", "bg-panel", "bg-toolbar") },
+  { id: "accent-success as a mark", kind: "large-or-ui", fg: token("accent-success"), on: only("bg-panel", "bg-input") },
+  { id: "accent-warning as a mark", kind: "large-or-ui", fg: token("accent-warning"), on: only("bg-panel", "bg-input") },
+  { id: "accent-danger as text", kind: "text", fg: token("accent-danger"), on: only("bg-input") },
+  { id: "accent-danger as a mark", kind: "large-or-ui", fg: token("accent-danger"), on: only("bg-panel") },
+  { id: "accent-info as a mark", kind: "large-or-ui", fg: token("accent-info"), on: only("bg-panel", "bg-input") },
+  ...(["danger", "success", "warning"] as const).map(
+    (tone): ContrastPair => ({
+      id: `${tone}-text (the status colour lifted 60% towards the text)`,
+      kind: "text",
+      fg: (t) => mixHex(t[`accent-${tone}`]!, t["fg-primary"]!, 60),
+      on: only("bg-panel", "bg-input", "bg-toolbar"),
+    }),
+  ),
+  { id: "fg-on-accent on accent-fill", kind: "text", fg: token("fg-on-accent"), on: onToken("accent-fill") },
+  { id: "fg-primary on danger-fill", kind: "text", fg: token("fg-primary"), on: onToken("danger-fill") },
+  {
+    id: "fg-on-status",
+    kind: "text",
+    fg: token("fg-on-status"),
+    on: {
+      ...onToken("accent-success"),
+      ...onToken("accent-warning"),
+      ...onToken("accent-info"),
+      ...onToken("accent-danger"),
+      ...onToken("accent-write"),
+    },
+  },
+  // Control borders (1.4.11): a field or button is found by its edge.
+  { id: "border-control", kind: "large-or-ui", fg: token("border-control"), on: only("bg-app", "bg-panel", "bg-panel-alt", "bg-input", "bg-toolbar") },
+  // The ring that shows where the keyboard is (2.4.7, 2.4.11, 1.4.11).
+  { id: "focus-ring-color", kind: "large-or-ui", fg: token("focus-ring-color"), on: SURFACES },
+  // The mark of the current tab (1.4.11).
+  { id: "tab-underline-color", kind: "large-or-ui", fg: token("tab-underline-color"), on: only("bg-toolbar") },
+];
+
+/**
+ * Pairs that fail today and need a colour change, which is a visual change and waits for the owner's go on a
+ * mockup. Each is recorded in /mnt/project-files/phase18-hardening/a11y-findings.md under its finding id, with
+ * the measured ratio here: the test passes while the ratio is what was measured or better, and fails if an entry
+ * starts passing so the list shrinks as the colours are fixed. Nothing is skipped silently.
+ * Key: `${theme} | ${pair id} | ${surface}`.
+ */
+const KNOWN_FAILING: Record<string, { finding: string; measured: number }> = {
+  "clubNeon | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 4.45 },
+  "clubNeon | border-control | bg-panel-alt": { finding: "A11Y-C5", measured: 2.75 },
+  "mutedPro | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 3.76 },
+  "mutedPro | border-control | bg-panel-alt": { finding: "A11Y-C5", measured: 2.8 },
+  "mutedPro | fg-muted | bg-panel-alt": { finding: "A11Y-C1", measured: 4.29 },
+  "mutedPro | fg-muted | selected row": { finding: "A11Y-C3", measured: 4.42 },
+  "neoDark | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 3.35 },
+  "neoDark | border-control | bg-panel-alt": { finding: "A11Y-C5", measured: 2.16 },
+  "neoDark | fg-muted | bg-panel-alt": { finding: "A11Y-C1", measured: 4.07 },
+  "neoDark | link | bg-panel-alt": { finding: "A11Y-C2", measured: 3.84 },
+  "qtEvolved | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 3.31 },
+  "qtEvolved | border-control | bg-panel-alt": { finding: "A11Y-C5", measured: 2.55 },
+  "qtEvolved | fg-muted | bg-panel-alt": { finding: "A11Y-C1", measured: 3.73 },
+  "qtEvolved | fg-muted | selected row": { finding: "A11Y-C3", measured: 4.38 },
+  "qtEvolved | link | bg-panel-alt": { finding: "A11Y-C2", measured: 3.38 },
+  "qtEvolved | link | selected row": { finding: "A11Y-C2", measured: 3.97 },
+  "retro16 | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 3.75 },
+  "retro16 | focus-ring-color | hover slab": { finding: "A11Y-C6", measured: 2.81 },
+};
+
+const rounded = (value: number) => Math.round(value * 100) / 100;
+
+describe("every text token against its surfaces, in every theme (HARDEN-08, DEC-186)", () => {
+  for (const [theme, t] of BUILT_IN) {
+    for (const pair of CONTRAST_PAIRS) {
+      for (const [surface, resolve] of Object.entries(pair.on)) {
+        const key = `${theme} | ${pair.id} | ${surface}`;
+        it(`${key} reaches ${FLOOR[pair.kind]}:1`, () => {
+          const ratio = rounded(contrastRatio(pair.fg(t), resolve(t)));
+          const known = KNOWN_FAILING[key];
+          if (ratio >= FLOOR[pair.kind]) {
+            expect(known, `${key} now passes at ${ratio}:1: delete its entry from KNOWN_FAILING`).toBeUndefined();
+            return;
+          }
+          expect(known, `${key} fails at ${ratio}:1 and is not in KNOWN_FAILING`).toBeDefined();
+          expect(ratio, `${key} got worse than the measured ${known?.measured}:1`).toBeGreaterThanOrEqual(known!.measured);
+        });
+      }
+    }
+  }
+
+  it("lists only pairs that exist", () => {
+    const keys = new Set<string>();
+    for (const [theme] of BUILT_IN) {
+      for (const pair of CONTRAST_PAIRS) for (const surface of Object.keys(pair.on)) keys.add(`${theme} | ${pair.id} | ${surface}`);
+    }
+    expect(Object.keys(KNOWN_FAILING).filter((key) => !keys.has(key))).toEqual([]);
+  });
+
+});
+
+/**
+ * A custom theme's derived colours are held to the same floors where the derivation controls them (the text,
+ * surface and accent colours are the user's own and are exempt, as in the floors above): the link, the focus ring,
+ * the control border, and the text on the accent fill, lowered to what black or white reaches on those surfaces.
+ */
+describe.each(CUSTOM)("derived pairs in %s (HARDEN-08)", (_name, t) => {
+  it("reaches 4.5:1 for the link on the panel and the page, as far as any colour can", () => {
+    const own = [t["bg-panel"]!, t["bg-app"]!];
+    for (const surface of own) expect(contrastRatio(t["link"]!, surface)).toBeGreaterThanOrEqual(reachable(4.5, own));
+  });
+  it("reaches 3:1 for the focus ring on the page, panel, alt panel and toolbar, as far as any colour can", () => {
+    const own = [t["bg-app"]!, t["bg-panel"]!, t["bg-panel-alt"]!, t["bg-toolbar"]!];
+    for (const surface of own) expect(contrastRatio(t["focus-ring-color"]!, surface)).toBeGreaterThanOrEqual(reachable(3, own));
+  });
+  it("reaches 3:1 for the control border on the panel and the toolbar", () => {
+    const own = [t["bg-panel"]!, t["bg-toolbar"]!];
+    for (const surface of own) expect(contrastRatio(t["border-control"]!, surface)).toBeGreaterThanOrEqual(reachable(3, own));
+  });
+  it("reaches 4.5:1 for the text on the accent fill", () => {
+    expect(contrastRatio(t["fg-on-accent"]!, t["accent-fill"]!)).toBeGreaterThanOrEqual(4.5);
+  });
+});

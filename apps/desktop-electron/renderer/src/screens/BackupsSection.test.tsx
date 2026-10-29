@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 
 import type { BackupEntry, BackupRestoreEvent, BackupRestoreResult } from "../api/cuepointBridge.types";
 import { BackupsSection } from "./BackupsSection";
+import { expectNoAxeViolations } from "../test/axe";
 
 const NOW = new Date(2026, 9, 29, 14, 0, 0);
 const at = (month: number, day: number, hour: number, minute: number) =>
@@ -272,5 +273,44 @@ describe("Restore while work runs", () => {
     await openBusy();
     await user().click(screen.getByRole("button", { name: "Restore when done" }));
     expect(screen.getByRole("button", { name: "Back up now" })).toBeDisabled();
+  });
+});
+
+describe("Settings › Backups accessibility (HARDEN-08)", () => {
+  it("has no WCAG 2.2 A or AA violations in the list", async () => {
+    await shown();
+    await expectNoAxeViolations();
+  });
+
+  it("has none with the restore question open", async () => {
+    await shown();
+    await user().click(screen.getByRole("button", { name: /^Restore the backup from Oct 27, 10:10 PM/ }));
+    await screen.findByRole("dialog", { name: "Restore this backup?" });
+    await expectNoAxeViolations();
+  });
+
+  it("has none with the question that names running work", async () => {
+    restore.mockResolvedValueOnce({
+      ok: false,
+      errorCode: "WORK_RUNNING",
+      message: "Work is running.",
+      running: [{ id: "job-1", type: "library_import", state: "running" }],
+    });
+    listJobs.mockResolvedValue({
+      jobs: [{ id: "job-1", type: "library_import", state: "running", progress: { completed_tracks: 312, total_tracks: 2400 } }],
+      active_count: 1,
+    });
+    await shown();
+    await user().click(screen.getByRole("button", { name: /^Restore the backup from Oct 27, 10:10 PM/ }));
+    await user().click(within(screen.getByRole("dialog")).getByRole("button", { name: "Restore" }));
+    await screen.findByText("An import is running");
+    await expectNoAxeViolations();
+  });
+
+  it("has none while a restore failed", async () => {
+    await shown();
+    act(() => restoreEvent?.({ phase: "failed", errorCode: "RESTORE_FAILED", message: "Your library was not changed." }));
+    await screen.findByRole("alert");
+    await expectNoAxeViolations();
   });
 });
