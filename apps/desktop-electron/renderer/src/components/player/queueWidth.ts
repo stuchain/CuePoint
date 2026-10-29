@@ -24,6 +24,9 @@ function clamp1x(width: number): number {
   return Math.min(QUEUE_MAX_WIDTH, Math.max(QUEUE_MIN_WIDTH, width));
 }
 
+/** The panel's width, in 1x pixels, from which a row shows its artist and label beside the title (queue A). */
+export const QUEUE_ARTIST_MIN_WIDTH = 280;
+
 /**
  * The drawn width in real pixels: the 1x width times the scale, between 200 and 448 times the
  * scale, and (when the window is known) no more than half of it. The minimum wins when the two

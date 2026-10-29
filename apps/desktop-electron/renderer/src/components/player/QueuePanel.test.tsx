@@ -9,7 +9,7 @@ import { QueuePanel } from "./QueuePanel";
 import { ROW_HEIGHT_FALLBACK } from "../table/trackTableLayout";
 import { resetPlayerStore } from "./playerStore";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
-import { resetQueueWidthForTests } from "./queueWidth";
+import { QUEUE_ARTIST_MIN_WIDTH, QUEUE_DEFAULT_WIDTH, resetQueueWidthForTests, setQueueWidth1x } from "./queueWidth";
 import queueCss from "./QueuePanel.css?raw";
 import { formatCount } from "../../format/counts";
 import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
@@ -179,15 +179,50 @@ describe("round 3 gap fixes (P3)", () => {
     expect(screen.getByRole("button", { name: "Clear queue…" }).className).toMatch(/cp-btn--quiet/);
   });
 
-  it("puts a row's artist and facts on a line of their own under the title (M309)", async () => {
+  it("lays a row out on one line: title, artist, key column, length (queue A)", async () => {
     install(2);
     render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
-    const text = rows()[0]!.querySelector(".cp-queue__text")!;
-    const line = text.querySelector(":scope > .cp-queue__row-line");
-    expect(line).not.toBeNull();
-    expect(line!.querySelector(".cp-queue__row-meta")).not.toBeNull();
-    expect(text.querySelector(":scope > .cp-queue__row-title")).not.toBeNull();
+    const row = rows()[0]!;
+    const text = row.querySelector(".cp-queue__text")!;
+    expect(text.querySelector(":scope > .cp-queue__row-title")!.textContent).toBe("Track 0");
+    expect(text.querySelector(":scope > .cp-queue__row-meta")!.textContent).toBe("Artist 0");
+    // The key is a column of its own after the text, and the BPM is no longer in the row.
+    expect(text.nextElementSibling!.classList.contains("cp-queue__key")).toBe(true);
+    expect(row.querySelector(".cp-queue__key .key-chip")!.textContent).toBe("8A");
+    expect(row.textContent).not.toMatch(/BPM/);
+    expect(row.querySelector(".cp-queue__row-line")).toBeNull();
+  });
+
+  it("keeps the key column on a row with no key, so the lengths line up (queue A)", async () => {
+    install(2, [makeItem(0, { status: "playing", key: null }), makeItem(1)]);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    const key = rows()[0]!.querySelector(".cp-queue__key")!;
+    expect(key).not.toBeNull();
+    expect(key.childElementCount).toBe(0);
+  });
+
+  it("shows the artist column only from the wide width (queue A)", async () => {
+    install(2);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    const panel = container.querySelector(".cp-queue")!;
+    // The default width (213 times the text size) is under the line: the title keeps the room.
+    expect(QUEUE_DEFAULT_WIDTH).toBeLessThan(QUEUE_ARTIST_MIN_WIDTH);
+    expect(panel.hasAttribute("data-wide")).toBe(false);
+    act(() => setQueueWidth1x(QUEUE_ARTIST_MIN_WIDTH));
+    await waitFor(() => expect(panel.hasAttribute("data-wide")).toBe(true));
+    act(() => setQueueWidth1x(QUEUE_DEFAULT_WIDTH));
+  });
+
+  it("puts the gestures at the foot of the head, not under it (queue H1)", async () => {
+    install(2);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    const gestures = screen.getByText(/^Drag to reorder/);
+    expect(gestures.parentElement!.classList.contains("cp-queue__header")).toBe(true);
+    expect(gestures.parentElement!.lastElementChild).toBe(gestures);
   });
 
   it("leaves as a still copy marked data-leaving when it closes, with motion on (M380)", async () => {
@@ -852,10 +887,26 @@ describe("its header (C29, C129)", () => {
     expect(rule).toBeUndefined();
   });
 
-  // M309: the key chip, BPM and year keep their room; the artist gives way.
-  it("keeps the key chip, BPM and year at their size while the artist is cut", () => {
-    const facts = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue__row-facts")!;
-    expect(Object.fromEntries(declarations(facts.body))["flex"]).toBe("none");
+  // Queue A: the key column keeps its room and the widest chip's width; the title and artist give way.
+  it("keeps the key column at the widest chip's width while the names are cut", () => {
+    const key = Object.fromEntries(declarations(parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue__key")!.body));
+    expect(key["flex"]).toBe("none");
+    expect(key["min-inline-size"]).toBe("calc(3ch + 2 * var(--chip-pad))");
+    expect(key["font-size"]).toBe("var(--font-size-chip)");
+  });
+
+  // Queue A: the artist is hidden until the panel is wide; the failure line is never hidden by it.
+  it("shows the artist column only on a wide panel", () => {
+    const rules = parseRules(stripComments(queueCss));
+    expect(Object.fromEntries(declarations(rules.find((r) => r.selector === ".cp-queue__row-meta")!.body))["display"]).toBe("none");
+    const wide = rules.find((r) => r.selector === ".cp-queue[data-wide] .cp-queue__row-meta:not(.cp-queue__failed)");
+    expect(wide).toBeDefined();
+  });
+
+  // Queue H1: Clear queue is centred on the title's row, as the close mark is.
+  it("sits Clear queue on the close mark's line", () => {
+    const clear = Object.fromEntries(declarations(parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue__clear")!.body));
+    expect(clear["margin-top"]).toBe("calc((var(--toolbar-height) - var(--control-height-sm)) / 2)");
   });
 
   // M66: one inset both sides, the head's, so the two × columns line up (M309).

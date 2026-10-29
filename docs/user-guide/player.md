@@ -76,6 +76,9 @@ The queue opens as wide as Track details and its left edge can be dragged (or
 moved with the arrow keys once it has focus) to make it wider or narrower, up to
 half the window. The width scales with the text size, and CuePoint remembers it.
 
+Each track is one row: its title, then its key and length. Drag the queue wider and
+the artist and label appear beside the title.
+
 The panel says the gestures under its title: "Drag to reorder · Alt+↑/↓ moves
 · Delete removes · Enter plays".
 

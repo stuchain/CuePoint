@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { QueueItem, QueueItemInput } from "../../api/cuepointBridge.types";
 import { KEYS } from "../../api/keyboardShortcuts";
 import { formatLength } from "../../format/durations";
@@ -15,10 +15,10 @@ import { PixelIcon } from "../PixelIcon";
 import { useRowHeight } from "../table/trackTableLayout";
 import { useToast } from "../Toast";
 import { TrackContextMenu, type TrackContextMenuItem } from "../TrackContextMenu";
-import { formatBpm } from "../format/bpm";
 import { KeyChip } from "../wheel/KeyChip";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import {
+  QUEUE_ARTIST_MIN_WIDTH,
   QUEUE_DEFAULT_WIDTH,
   QUEUE_MIN_WIDTH,
   queueMaxPx,
@@ -61,7 +61,7 @@ import "./QueuePanel.css";
  * width is `queueWidth.ts`'s; the panel pushes the page the way Track details does.
  */
 
-/** An entry is one of the table's rows (every track list has the one row height): the title, and under it the artist and facts muted (M309). */
+/** An entry is one of the table's rows, on one line (queue A): title, artist when wide, key, length. */
 const TABLE_ROWS_PER_ENTRY = 1;
 
 /** A keyboard nudge of the resize handle, in pixels. */
@@ -109,35 +109,22 @@ function failureLine(failure: string | undefined): string {
 }
 
 /**
- * A row's facts after its title (M309): artist and label first, which give way to an ellipsis, then the
- * key chip, BPM and year, which keep their room, so the chip is never cut off the row's end.
+ * A row's artist and label (queue A): one more column of the row's one line, shown only when the panel
+ * is wide enough (`QUEUE_ARTIST_MIN_WIDTH`), and cut with "..." before the title is.
  */
-function QueueFacts({ item }: { item: QueueItem }) {
+function QueueArtist({ item }: { item: QueueItem }) {
   const lead = [item.artist, item.label ?? ""].map((part) => part.trim()).filter((part) => part !== "");
-  const bpm = formatBpm(item.bpm ?? null);
-  const year = item.year ? String(item.year) : "";
-  const key = (item.key ?? "").trim();
-  const tail: ReactNode[] = [];
-  if (key) tail.push(<KeyChip value={key} />);
-  if (bpm) tail.push(`${bpm} BPM`);
-  if (year) tail.push(year);
   return (
-    <span className="cp-queue__row-line">
-      <span className="cp-queue__row-meta cp-data" data-cut-hint="">
-        {lead.join(FACTS_SEPARATOR)}
-      </span>
-      {tail.length > 0 && (
-        <span className="cp-queue__row-facts cp-data">
-          {tail.map((part, index) => (
-            <Fragment key={index}>
-              {index > 0 ? FACTS_SEPARATOR : null}
-              {part}
-            </Fragment>
-          ))}
-        </span>
-      )}
+    <span className="cp-queue__row-meta cp-data" data-cut-hint="">
+      {lead.join(FACTS_SEPARATOR)}
     </span>
   );
+}
+
+/** The key column (queue A): the chip, or nothing, always the chip's width so the lengths line up. */
+function QueueKey({ item }: { item: QueueItem }) {
+  const key = (item.key ?? "").trim();
+  return <span className="cp-queue__key">{key ? <KeyChip value={key} /> : null}</span>;
 }
 
 interface QueueMenu {
@@ -393,6 +380,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
       aria-label="Playback queue"
       style={{ width: `${width}px` }}
       data-width={width}
+      data-wide={width >= QUEUE_ARTIST_MIN_WIDTH * scale ? "" : undefined}
       // Escape closes the panel that has focus (C29).
       onKeyDown={(event) => {
         if (onClose && escapeClosesPanel(event) && isTopLayer()) {
@@ -438,11 +426,14 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
         </h2>
         {/* Quiet (M312): Clear queue is not the loudest control in the panel; it asks before it clears. */}
         {total > 1 && (
-          <Button variant="quiet" size="sm" onClick={() => setConfirmingClear(true)}>
+          <Button variant="quiet" size="sm" className="cp-queue__clear" onClick={() => setConfirmingClear(true)}>
             Clear queue…
           </Button>
         )}
         <CloseButton onClick={onClose} aria-label="Close the queue" />
+        {/* The gestures, once and muted, at the foot of the head (D27, M313; queue H1): in the band the
+            page's taller header leaves, so the head's line stays on the page header's line. */}
+        {total > 0 && <p className="cp-queue__gestures">{GESTURES}</p>}
       </header>
 
       <ConfirmDialog
@@ -455,9 +446,6 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
       >
         The playing track keeps playing.
       </ConfirmDialog>
-
-      {/* The gestures, once and muted, under the head (D27, M313). */}
-      {total > 0 && <p className="cp-queue__gestures">{GESTURES}</p>}
 
       {total === 0 ? (
         <EmptyState
@@ -562,12 +550,13 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                     {item.status === "failed" ? (
                       // DEC-054: the skip stays visible after the toast is gone,
                       // and BAR-9 says why, as text and not only a title. It
-                      // takes the meta line's place so the row keeps its height.
+                      // takes the artist's place so the row keeps its height.
                       <span className="cp-queue__row-meta cp-queue__failed">{failureLine(item.failure)}</span>
                     ) : (
-                      <QueueFacts item={item} />
+                      <QueueArtist item={item} />
                     )}
                   </span>
+                  {item.status !== "failed" && <QueueKey item={item} />}
                   <span className="cp-queue__duration">{formatLength(item.durationSeconds)}</span>
                   {/* Not a tab stop (M467): the row is the one control, and Delete removes it. */}
                   <RemoveButton

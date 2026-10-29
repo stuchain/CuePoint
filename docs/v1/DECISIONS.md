@@ -8672,3 +8672,26 @@ every pick the recommended one.
   Before restoring. Dates are the app's own helpers ("Today, 1:02 PM", "Oct 27, 10:10 PM").
 
 **Decided with**: User (picks 29 Oct 2026, 12:48 Athens: all recommended) · **Date**: 2026-10-29
+
+
+## DEC-306 — The Queue on One Line per Track (Amends M309, M313, D27)
+
+**Status**: Accepted · **Related**: DEC-304, `changes/polish/queue/MOCKUP.png`
+
+**Context**: M309 put a queue row's title on one line and its artist, key chip, BPM and year on a
+second, both inside one table row height. At 1.5x each line was about 19 px and the key chip 27 px,
+so the chip spilled over the title and the next row's line. The chip, BPM and year were one group
+pushed to the right, so no two chips lined up. A track with no artist kept an empty second line.
+The head took the page header's height (DEC-304), leaving an empty band above the gestures line, and
+Clear queue sat higher than the close mark.
+
+**Decision**:
+- **Queue A** A row is one line at the table's row height: grip, number, title, the artist and label
+  when the panel is at least 280 px times the text size wide, a key column as wide as the widest chip
+  (empty when the track has no key, so the lengths line up), the length, and the remove mark. The BPM
+  and year leave the row. A track that did not play keeps its reason on two lines in the row.
+- **Head H1** The gestures line sits at the head's foot, in the band the page's header leaves, so the
+  head's line stays on the page header's line. Clear queue is centred on the title's row, as the close
+  mark is.
+
+**Decided with**: User (29 Oct 2026: "A"; H1 as recommended) · **Date**: 2026-10-29

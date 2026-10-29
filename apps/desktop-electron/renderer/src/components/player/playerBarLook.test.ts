@@ -365,9 +365,12 @@ describe("the player and its panels after the round 3 gap fixes (P3)", () => {
     expect(refusal).not.toHaveProperty("padding");
   });
 
-  it("puts a queue row's artist and facts on a second line under the title (M309)", () => {
-    expect(decls(queueCss, ".cp-queue__text")["flex-direction"]).toBe("column");
-    expect(decls(queueCss, ".cp-queue__row-line")["display"]).toBe("flex");
+  // Moved by queue A (29 Oct 2026): M309's two lines in one row height left the key chip spilling over
+  // the title, so a queue row is one line again, the key a column of its own.
+  it("lays a queue row's title, artist and key on one line (queue A)", () => {
+    expect(decls(queueCss, ".cp-queue__text")).toMatchObject({ display: "flex", "align-items": "center" });
+    expect(decls(queueCss, ".cp-queue__text")).not.toHaveProperty("flex-direction");
+    expect(decls(queueCss, ".cp-queue__key")["flex"]).toBe("none");
   });
 
   it("gives both side heads one title look, and Track details none of its own (M50)", () => {
