@@ -196,7 +196,7 @@ def _fingerprint_ogg(handle: BinaryIO, length: int, digest: Any) -> None:
         try:
             page = OggPage(handle)
         except Exception as exc:  # noqa: BLE001 - a damaged page
-            raise TagSaveError(f"An Ogg page could not be read: {exc}") from exc
+            raise TagSaveError("An Ogg page could not be read") from exc
         serial = page.serial
         packets = page.packets
         for index, packet in enumerate(packets):

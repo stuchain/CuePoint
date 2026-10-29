@@ -135,6 +135,10 @@ FieldValue = Optional[Dict[str, Any]]
 PathLike = Union[str, Path]
 
 
+class _HoldsPicture(Exception):
+    """Inside a copy: the file already holds a picture (said in words by the caller)."""
+
+
 class TagFieldsError(Exception):
     """A file's tags could not be read or written."""
 
@@ -239,32 +243,33 @@ def read_tag_fields(path: PathLike) -> TagSnapshot:
         TagFieldsError: If its tags cannot be read.
     """
     tag_format = _require_format(path)
-    return _read_fields(path, tag_format, Path(str(path)).suffix.lower())
-
-
-def _read_fields(path: PathLike, tag_format: str, suffix: str) -> TagSnapshot:
-    """``read_tag_fields`` for a file whose name may not say what it is (a copy)."""
     try:
-        if tag_format == FORMAT_ID3:
-            _audio, tags = _load_id3(path, suffix)
-            fields = {
-                field: _id3_value(tags, slots) for field, slots in _ID3_SLOTS.items()
-            }
-            pictures = tuple(picture_hash(frame.data) for frame in tags.getall("APIC"))
-        else:
-            audio = _load_vorbis(path, tag_format)
-            comments = audio.tags
-            fields = {
-                field: _vorbis_value(comments, slots)
-                for field, slots in _SLOTS[tag_format].items()
-            }
-            pictures = _vorbis_pictures(audio, tag_format)
+        return _read_fields(path, tag_format, Path(str(path)).suffix.lower())
     except TagFieldsError:
         raise
     except Exception as exc:  # noqa: BLE001 — any file can be anything
         raise TagFieldsError(
             f"The tags of {quoted(path)} could not be read: {exc}"
         ) from exc
+
+
+def _read_fields(path: PathLike, tag_format: str, suffix: str) -> TagSnapshot:
+    """``read_tag_fields`` for a file whose name may not say what it is (a copy).
+
+    Raises whatever mutagen raises; ``read_tag_fields`` says it in words.
+    """
+    if tag_format == FORMAT_ID3:
+        _audio, tags = _load_id3(path, suffix)
+        fields = {field: _id3_value(tags, slots) for field, slots in _ID3_SLOTS.items()}
+        pictures = tuple(picture_hash(frame.data) for frame in tags.getall("APIC"))
+    else:
+        audio = _load_vorbis(path, tag_format)
+        comments = audio.tags
+        fields = {
+            field: _vorbis_value(comments, slots)
+            for field, slots in _SLOTS[tag_format].items()
+        }
+        pictures = _vorbis_pictures(audio, tag_format)
     return TagSnapshot(tag_format, fields, pictures)
 
 
@@ -354,7 +359,7 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
 
             audio, tags = _load_id3(work, suffix)
             if tags.getall("APIC"):
-                raise PictureAlreadyPresent(f"{quoted(path)} already holds a picture")
+                raise _HoldsPicture()
             tags.add(
                 APIC(
                     encoding=3,
@@ -368,7 +373,7 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
         else:
             vorbis = _load_vorbis(work, tag_format)
             if _vorbis_pictures(vorbis, tag_format):
-                raise PictureAlreadyPresent(f"{quoted(path)} already holds a picture")
+                raise _HoldsPicture()
             picture = _flac_picture(data, width, height)
             if tag_format == FORMAT_FLAC:
                 vorbis.add_picture(picture)
@@ -386,6 +391,8 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
 
     try:
         save_via_copy(path, apply, verify=verify)
+    except _HoldsPicture:
+        raise PictureAlreadyPresent(f"{quoted(path)} already holds a picture") from None
     except (TagFieldsError, ValueError):
         raise
     except TagSaveError as exc:

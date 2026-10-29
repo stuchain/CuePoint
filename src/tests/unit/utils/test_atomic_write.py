@@ -13,9 +13,9 @@ import pytest
 from cuepoint.utils import atomic_write
 from cuepoint.utils.atomic_write import (
     atomic_file,
+    commit_temp,
     pid_alive,
     stage_temp,
-    commit_temp,
     sweep_temp_files,
     temp_name_for,
     write_atomic,
@@ -23,7 +23,9 @@ from cuepoint.utils.atomic_write import (
 
 
 def _leftovers(folder: Path) -> list[str]:
-    return sorted(p.name for p in folder.iterdir() if atomic_write.TEMP_MARKER in p.name)
+    return sorted(
+        p.name for p in folder.iterdir() if atomic_write.TEMP_MARKER in p.name
+    )
 
 
 def test_temp_name_shape():
@@ -88,8 +90,14 @@ def test_temp_is_beside_target_with_pid_name(tmp_path, monkeypatch):
 def test_data_is_fsynced_before_replace(tmp_path, monkeypatch):
     order = []
     real_fsync, real_replace = os.fsync, os.replace
-    monkeypatch.setattr(atomic_write.os, "fsync", lambda fd: (order.append("fsync"), real_fsync(fd))[1])
-    monkeypatch.setattr(atomic_write.os, "replace", lambda a, b: (order.append("replace"), real_replace(a, b))[1])
+    monkeypatch.setattr(
+        atomic_write.os, "fsync", lambda fd: (order.append("fsync"), real_fsync(fd))[1]
+    )
+    monkeypatch.setattr(
+        atomic_write.os,
+        "replace",
+        lambda a, b: (order.append("replace"), real_replace(a, b))[1],
+    )
     write_atomic(tmp_path / "f", b"x")
     assert order.index("fsync") < order.index("replace")
 
