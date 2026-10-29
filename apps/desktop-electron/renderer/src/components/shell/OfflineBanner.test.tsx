@@ -53,6 +53,17 @@ describe("OfflineBanner", () => {
     expect(screen.getByRole("button", { name: "Start it again" })).toBeInTheDocument();
   });
 
+  it("says the library is being restored, with no button to start it again", async () => {
+    getEngineStatus.mockResolvedValue({ connected: false, error: "Restoring", reconnecting: false });
+    bridge({ restartEngine: vi.fn() });
+    render(<OfflineBanner onGetHelp={() => undefined} />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Restoring your library…");
+    expect(alert).not.toHaveTextContent("stopped working");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
   it("is the shared danger notice with a grey button, not a copy of it with a violet one (M287)", async () => {
     getEngineStatus.mockResolvedValue(STOPPED);
     bridge({ restartEngine: vi.fn() });

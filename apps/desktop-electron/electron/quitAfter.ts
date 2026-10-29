@@ -34,7 +34,8 @@ export function quitAfter(
     timeoutMs = QUIT_CLEANUP_TIMEOUT_MS,
     setTimer = (callback: () => void, ms: number) => setTimeout(callback, ms),
   }: {
-    timeoutMs?: number;
+    /** A function is read when the quit starts: a restore under way needs longer. */
+    timeoutMs?: number | (() => number);
     setTimer?: (callback: () => void, ms: number) => unknown;
   } = {},
 ): void {
@@ -49,7 +50,7 @@ export function quitAfter(
     state = "cleaning";
 
     const limit = new Promise<void>((resolve) => {
-      setTimer(resolve, timeoutMs);
+      setTimer(resolve, typeof timeoutMs === "function" ? timeoutMs() : timeoutMs);
     });
     let finished: Promise<unknown>;
     try {

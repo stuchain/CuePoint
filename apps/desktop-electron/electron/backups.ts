@@ -59,9 +59,10 @@ export interface BackupsDeps {
     createBackup(): Promise<BackupEntry>;
     listJobs(params: { state: "active"; limit: number }): Promise<EngineJobList>;
     cancelJob(jobId: string): Promise<unknown>;
-    stopForMaintenance(): Promise<void>;
+    /** Stops the engine; the token it returns is what lets `start` bring it back. */
+    stopForMaintenance(): Promise<unknown>;
     runOnce(args: readonly string[], timeoutMs: number): Promise<EngineRunResult>;
-    start(): Promise<EngineStatus>;
+    start(token?: unknown): Promise<EngineStatus>;
   };
   shell: {
     openPath(target: string): Promise<string>;
@@ -118,8 +119,24 @@ function text(value: unknown): string | null {
 
 export class Backups {
   private restoring = false;
+  private quitting = false;
+  private idle: Promise<void> = Promise.resolve();
+  private settle: () => void = () => undefined;
 
   constructor(private readonly deps: BackupsDeps) {}
+
+  /**
+   * The app is quitting: no restore begins, and a restore under way does not start the engine
+   * again. The restore itself is never cut short (it may be mid-swap); the quit waits for it.
+   */
+  beginQuit(): void {
+    this.quitting = true;
+  }
+
+  /** Resolves when no restore is going on. */
+  settled(): Promise<void> {
+    return this.restoring ? this.idle : Promise.resolve();
+  }
 
   /** True while a restore is going on. */
   isRestoring(): boolean {
@@ -211,7 +228,11 @@ export class Backups {
         message: "Your library is already being restored.",
       };
     }
+    if (this.quitting) {
+      return { ok: false, errorCode: "APP_QUITTING", message: "CuePoint is closing. Your library was not changed." };
+    }
     this.restoring = true;
+    this.idle = new Promise<void>((resolve) => (this.settle = resolve));
     try {
       let running: RunningWork[];
       try {
@@ -240,18 +261,34 @@ export class Backups {
           };
         }
       }
+      // Work may have started while the cancelled work wound down: look once more, right before.
+      try {
+        running = await this.runningWork();
+      } catch {
+        running = [{ id: "", type: "unknown", state: "unknown" }];
+      }
+      if (running.length > 0) {
+        return {
+          ok: false,
+          errorCode: "WORK_RUNNING",
+          message: "CuePoint is busy. Your library was not changed.",
+          running: running.filter((job) => job.id !== ""),
+        };
+      }
       return await this.stopRestoreStart(name);
     } finally {
       this.restoring = false;
+      this.settle();
     }
   }
 
   /** Steps 2 to 5: the engine is started again whatever happens before it. */
   private async stopRestoreStart(name: string): Promise<RestoreResult> {
     let outcome: RestoreResult;
+    let token: unknown;
     this.notify({ phase: "stopping" });
     try {
-      await this.deps.engine.stopForMaintenance();
+      token = await this.deps.engine.stopForMaintenance();
       this.notify({ phase: "restoring" });
       outcome = this.outcomeOf(
         await this.deps.engine.runOnce(["--restore", name], this.deps.restoreTimeoutMs ?? RESTORE_TIMEOUT_MS),
@@ -264,12 +301,15 @@ export class Backups {
       };
     }
 
-    this.notify({ phase: "starting" });
     let engineRunning = false;
-    try {
-      engineRunning = (await this.deps.engine.start()).connected;
-    } catch {
-      engineRunning = false;
+    // A quit that began meanwhile is stopping the engine for good: not started again behind it.
+    if (!this.quitting) {
+      this.notify({ phase: "starting" });
+      try {
+        engineRunning = (await this.deps.engine.start(token)).connected;
+      } catch {
+        engineRunning = false;
+      }
     }
 
     if (outcome.ok) {
@@ -304,7 +344,18 @@ export class Backups {
       return safety ? { ok: true, safetyBackup: safety, engineRunning: false } : { ok: true, engineRunning: false };
     }
     const failure = lastJsonLine(run.stderr);
-    const code = text(failure?.error_code) ?? "RESTORE_FAILED";
+    const code = text(failure?.error_code);
+    // Only a failure the restore itself reported is known to have left the library as it was; a
+    // crash or a signal is not, so CuePoint says it checks.
+    if (!code) {
+      return {
+        ok: false,
+        errorCode: "RESTORE_FAILED",
+        message:
+          "The backup could not be restored. CuePoint checked your library when it opened again; " +
+          "if anything looks wrong, restore a backup again.",
+      };
+    }
     const words = text(failure?.message) ?? "The backup could not be restored.";
     return { ok: false, errorCode: code, message: `${words} ${FAILED_UNCHANGED}` };
   }

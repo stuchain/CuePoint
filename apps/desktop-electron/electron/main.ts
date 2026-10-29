@@ -53,7 +53,7 @@ import type {
 } from "./engineClient";
 import { resolvePlayerBinary } from "./playerLaunch";
 import { PlayerSupervisor } from "./playerSupervisor";
-import { quitAfter } from "./quitAfter";
+import { QUIT_CLEANUP_TIMEOUT_MS, quitAfter } from "./quitAfter";
 import { inFlight, callsBetween, setEngineCallSink } from "./engineCallTiming";
 import { createMainLog, type MainLog } from "./mainLog";
 import { createPageSwitchLog, type PageSwitchLog } from "./pageSwitchLog";
@@ -63,7 +63,7 @@ import { scrubText } from "./reportScrub";
 import { enforceSingleInstance, onlyIfFirst } from "./singleInstance";
 import { UpdateNotes, openNoteLink, openReleasePage, pruneInstalledUpdates } from "./updateNotes";
 import { compareVersions, isTestVersion } from "./updateRule";
-import { Backups, validBackupName } from "./backups";
+import { Backups, RESTORE_TIMEOUT_MS, validBackupName } from "./backups";
 import { Updater, type UpdateState, type WindowsUpdater } from "./updater";
 import {
   E2E_DISPLAY_ENV,
@@ -196,6 +196,9 @@ const backups = new Backups({
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("backups:restoreEvent", event);
   },
 });
+
+/** What a person cannot start while a restore holds the library (HARDEN-01b). */
+const BLOCKED_DURING_RESTORE = /^(engine:(start|resume|apply)|backups:create$|engine:restart$)/;
 
 /**
  * The Beatport sign-in (C12). Built when first needed, after the app is ready: the sign-in
@@ -561,6 +564,13 @@ function handle(
   channel: string,
   handler: (event: IpcMainInvokeEvent, ...args: any[]) => unknown,
 ): void {
+  if (BLOCKED_DURING_RESTORE.test(channel)) {
+    const run = handler;
+    handler = (event, ...args) => {
+      if (backups.isRestoring()) throw new Error("Your library is being restored. Try again in a moment.");
+      return run(event, ...args);
+    };
+  }
   ipcMain.handle(channel, wrapIpcHandler(channel, handler));
 }
 
@@ -1712,6 +1722,10 @@ if (reportingOn) {
 // leave the engine running (EXPORT-07).
 quitAfter(app, async () => {
   markQuitting();
+  // A restore under way is waited for (never cut short: it may be mid-swap), and the engine is
+  // not started again behind this quit. Before anything is stopped, and before an update installs.
+  backups.beginQuit();
+  await backups.settled();
   beatportSignIn?.dispose();
   // The sign-in log's last lines, best effort: never held up for more than a moment.
   await Promise.race([
@@ -1745,6 +1759,9 @@ quitAfter(app, async () => {
     // starts its install, with a relaunch only if Restart now asked (DIST-06, fact 8).
     updater.installAtQuit(process.pid);
   }
+}, {
+  // A restore under way is waited for, so the quit's limit is its own (read when the quit starts).
+  timeoutMs: () => (backups.isRestoring() ? RESTORE_TIMEOUT_MS + 60_000 : QUIT_CLEANUP_TIMEOUT_MS),
 });
 
 app.on("activate", onlyIfFirst(firstInstance, () => {

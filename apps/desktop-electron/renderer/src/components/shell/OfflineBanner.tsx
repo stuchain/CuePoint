@@ -77,7 +77,10 @@ export function OfflineBanner({ onGetHelp, pulse = 0 }: OfflineBannerProps) {
 
   let text: string;
   let action: "restart" | "help" | null = null;
-  if (starting) {
+  if (status?.error === "Restoring") {
+    // A restore holds the library (HARDEN-01b): nothing to press, and not a failure to explain.
+    text = "Restoring your library…";
+  } else if (starting) {
     text = `${STOPPED_IN_BACKGROUND} Starting it again${attempt ? ` (${attempt} of ${AUTO_RESTARTS})` : ""}…`;
   } else if (failed) {
     text = "CuePoint could not start in the background. Quit and open CuePoint again.";

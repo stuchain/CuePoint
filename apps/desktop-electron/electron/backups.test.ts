@@ -5,6 +5,7 @@ import type { EngineJobList } from "./engineClient";
 import type { EngineRunResult, EngineStatus } from "./engineSupervisor";
 
 const UP: EngineStatus = { connected: true };
+const TOKEN = { maintenance: true };
 const DOWN: EngineStatus = { connected: false, error: "Engine not running" };
 
 function jobs(...states: string[]): EngineJobList {
@@ -49,13 +50,14 @@ function harness(options: { active?: string[][]; run?: () => Promise<EngineRunRe
       stopForMaintenance: async () => {
         calls.push("stop");
         status = DOWN;
+        return TOKEN;
       },
       runOnce: async (args, timeout) => {
         calls.push(`run:${args.join(" ")}:${timeout > 0}`);
         return (options.run ?? (async () => ran()))();
       },
-      start: async () => {
-        calls.push("start");
+      start: async (token) => {
+        calls.push(token === TOKEN ? "start" : "start:no-token");
         status = UP;
         return UP;
       },
@@ -115,10 +117,12 @@ describe("restore", () => {
     expect(h.events.map((e) => e.phase)).toEqual(["stopping", "restoring", "starting", "failed"]);
   });
 
-  it("gives a plain failure when stderr is not the expected line", async () => {
+  it("gives a plain failure when stderr is not the expected line, without claiming the library is unchanged", async () => {
     const h = harness({ run: async () => ran({ code: 3, stderr: "Traceback..." }) });
     const result = await h.backups.restore("a.db");
     expect(result).toMatchObject({ ok: false, errorCode: "RESTORE_FAILED" });
+    expect((result as { message: string }).message).toContain("checked your library when it opened again");
+    expect((result as { message: string }).message).not.toContain("was not changed");
     expect(h.calls.at(-1)).toBe("start");
   });
 
@@ -142,17 +146,6 @@ describe("restore", () => {
   it("starts the engine when the restore times out", async () => {
     const h = harness({ run: async () => ran({ code: null, timedOut: true }) });
     expect(await h.backups.restore("a.db")).toMatchObject({ ok: false, errorCode: "RESTORE_TIMED_OUT" });
-    expect(h.calls.at(-1)).toBe("start");
-  });
-
-  it("starts the engine when stopping it throws", async () => {
-    const h = harness();
-    h.deps.engine.stopForMaintenance = async () => {
-      h.calls.push("stop");
-      throw new Error("stuck");
-    };
-    expect(await h.backups.restore("a.db")).toMatchObject({ ok: false });
-    expect(h.calls).not.toContain("run:--restore a.db:true");
     expect(h.calls.at(-1)).toBe("start");
   });
 
@@ -217,7 +210,8 @@ describe("work that is running", () => {
     const steps = h.calls;
     expect(steps.indexOf("cancel:job-0")).toBeGreaterThan(-1);
     expect(steps.indexOf("cancel:job-0")).toBeLessThan(steps.indexOf("stop"));
-    expect(steps.filter((c) => c === "listJobs").length).toBe(3);
+    // the check, two waits, and the look right before stopping
+    expect(steps.filter((c) => c === "listJobs").length).toBe(4);
     expect(steps.at(-1)).toBe("start");
   });
 
@@ -229,6 +223,13 @@ describe("work that is running", () => {
     expect(result).toMatchObject({ ok: false, errorCode: "WORK_NOT_STOPPED" });
     expect(h.calls).not.toContain("stop");
     expect(h.calls).not.toContain("start");
+  });
+
+  it("looks again right before stopping and refuses if work started meanwhile", async () => {
+    const h = harness({ active: [["running"], [], ["running"]] });
+    const result = await h.backups.restore("a.db", { cancelRunning: true });
+    expect(result).toMatchObject({ ok: false, errorCode: "WORK_RUNNING" });
+    expect(h.calls).not.toContain("stop");
   });
 
   it("will not restore when it cannot tell whether work is running", async () => {
@@ -268,6 +269,35 @@ describe("one restore at a time", () => {
     const h = harness({ run: async () => ran({ code: 1 }) });
     expect((await h.backups.restore("a.db")).ok).toBe(false);
     expect(h.backups.isRestoring()).toBe(false);
+  });
+});
+
+describe("quitting during a restore", () => {
+  it("waits for the restore, and does not start the engine behind the quit", async () => {
+    let release: (value: EngineRunResult) => void = () => undefined;
+    const h = harness({ run: () => new Promise<EngineRunResult>((resolve) => (release = resolve)) });
+    const restoring = h.backups.restore("a.db");
+    await vi.waitFor(() => expect(h.calls.some((c) => c.startsWith("run:"))).toBe(true));
+
+    h.backups.beginQuit();
+    let settled = false;
+    void h.backups.settled().then(() => (settled = true));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    release(ran());
+    expect((await restoring).ok).toBe(true);
+    await h.backups.settled();
+    expect(settled).toBe(true);
+    expect(h.calls).not.toContain("start");
+    expect(h.calls).not.toContain("start:no-token");
+  });
+
+  it("begins no restore once quitting", async () => {
+    const h = harness();
+    h.backups.beginQuit();
+    expect(await h.backups.restore("a.db")).toMatchObject({ ok: false, errorCode: "APP_QUITTING" });
+    expect(h.calls).toEqual([]);
   });
 });
 

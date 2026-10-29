@@ -290,6 +290,14 @@ export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.Process
   return withDecoderPath(env, input.decoderPath);
 }
 
+/** How long a one-off run gets after its kill (or its exit) to settle. */
+const RUN_KILL_GRACE_MS = 2000;
+
+/** Proof that the caller is the one that stopped the engine for maintenance. */
+export interface MaintenanceToken {
+  readonly maintenance: true;
+}
+
 /** How a one-off run of the engine ended (`runOnce`). */
 export interface EngineRunResult {
   /** The exit code; null when it did not exit by itself (timed out, or never spawned). */
@@ -379,6 +387,8 @@ export class EngineSupervisor {
   private stopRequested = false;
   /** Set by `stopForMaintenance()`, cleared by the next `start()`: the strip says why it is stopped. */
   private maintenance = false;
+  /** Who may end the maintenance: the token `stopForMaintenance()` handed out. */
+  private maintenanceToken: MaintenanceToken | null = null;
   /**
    * Counts the times someone other than an automatic restart took over (`stop()`, `restart()`). An
    * automatic restart remembers the count it began under and does nothing once it has changed, so a
@@ -492,6 +502,12 @@ export class EngineSupervisor {
       const timer = setTimeout(() => {
         timedOut = true;
         if (child) stopProcessTree(child, { force: true });
+        // `close` may never come (a grandchild holding the pipes): settle anyway after a grace.
+        const grace = setTimeout(
+          () => finish({ code: null, stdout, stderr, timedOut: true }),
+          RUN_KILL_GRACE_MS,
+        );
+        grace.unref?.();
       }, timeoutMs);
       timer.unref?.();
       try {
@@ -513,19 +529,32 @@ export class EngineSupervisor {
       child.on("error", (error: Error) =>
         finish({ code: null, stdout, stderr, timedOut, spawnError: error.message }),
       );
-      // `close`, not `exit`: everything the child wrote has been read by then.
+      // `close` has everything the child wrote; `exit` is the fallback if the pipes never close.
       child.on("close", (code: number | null) => finish({ code, stdout, stderr, timedOut }));
+      child.on("exit", (code: number | null) => {
+        const late = setTimeout(() => finish({ code, stdout, stderr, timedOut }), RUN_KILL_GRACE_MS);
+        late.unref?.();
+      });
     });
   }
 
   /**
    * Stop the engine so something else may hold the library (a restore). Stops it as `stop()` does,
    * so nothing is counted as a crash or a restart, and the status says "Restoring" rather than
-   * "not running" until the next `start()`.
+   * "not running" until the next `start()`. Until then `start()` and `restart()` refuse unless
+   * given the token returned here, so a Restart pressed meanwhile cannot bring the engine up
+   * beside a restore.
    */
-  async stopForMaintenance(): Promise<void> {
+  async stopForMaintenance(): Promise<MaintenanceToken> {
+    const token: MaintenanceToken = { maintenance: true };
     this.maintenance = true;
-    await this.stop();
+    this.maintenanceToken = token;
+    try {
+      await this.stop();
+    } catch {
+      /* the token is still the caller's: it must be able to start the engine again */
+    }
+    return token;
   }
 
   getRepoRoot(): string {
@@ -538,9 +567,14 @@ export class EngineSupervisor {
    * Deliberately not `async`: the start is recorded before this returns, so
    * a window created straight after it cannot ask for anything in between.
    */
-  start(): Promise<EngineStatus> {
+  start(token?: MaintenanceToken): Promise<EngineStatus> {
+    // While stopped for maintenance (a restore holds the library), only the holder may start it.
+    if (this.maintenance && (!token || token !== this.maintenanceToken)) {
+      return Promise.resolve(this.getStatus());
+    }
     this.stopRequested = false;
     this.maintenance = false;
+    this.maintenanceToken = null;
     const run = this.launch();
     this.startup = run;
     void run
@@ -724,13 +758,14 @@ export class EngineSupervisor {
    * Resets the attempt counter: this is a deliberate act, not a continuation
    * of the automatic attempts that already gave up.
    */
-  async restart(): Promise<EngineStatus> {
+  async restart(token?: MaintenanceToken): Promise<EngineStatus> {
+    if (this.maintenance && (!token || token !== this.maintenanceToken)) return this.getStatus();
     // Ends a restart that is waiting, and makes one that is starting stand down when it finishes.
     this.generation += 1;
     this.endBackoff();
     this.restartAttempts = 0;
     this.reconnecting = false;
-    const status = await this.start();
+    const status = await this.start(token);
     this.changed();
     return status;
   }

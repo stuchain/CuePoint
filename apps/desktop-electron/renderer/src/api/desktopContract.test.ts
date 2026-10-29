@@ -2476,6 +2476,13 @@ describe("desktop contract", () => {
       expect(main).toMatch(/\.send\("backups:restoreEvent"/);
     });
 
+    it("refuses restart and job-starting channels while a restore runs, and holds the quit for it", () => {
+      expect(main).toContain("BLOCKED_DURING_RESTORE = /^(engine:(start|resume|apply)|backups:create$|engine:restart$)/");
+      expect(main).toContain("backups.isRestoring()");
+      expect(main).toContain("backups.beginQuit();");
+      expect(main.indexOf("await backups.settled();")).toBeLessThan(main.indexOf("await engine.stop();"));
+    });
+
     it("keeps the restore's types in step with main's", () => {
       for (const phase of ["stopping", "restoring", "starting", "restored", "failed"]) {
         expect(bridgeTypes, phase).toContain(`"${phase}"`);

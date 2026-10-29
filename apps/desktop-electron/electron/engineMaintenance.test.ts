@@ -71,7 +71,7 @@ describe("stopForMaintenance", () => {
     const supervisor = make();
     expect((await supervisor.start()).connected).toBe(true);
 
-    await supervisor.stopForMaintenance();
+    const token = await supervisor.stopForMaintenance();
     expect(supervisor.getStatus()).toMatchObject({ connected: false, error: "Restoring", reconnecting: false, restartAttempts: 0 });
 
     // Longer than the 5 ms backoff: a restart that was going to happen would have by now.
@@ -79,8 +79,21 @@ describe("stopForMaintenance", () => {
     expect(supervisor.getStatus()).toMatchObject({ connected: false, error: "Restoring", restartAttempts: 0 });
     expect(changes).not.toContain("Reconnecting");
 
-    expect((await supervisor.start()).connected).toBe(true);
+    expect((await supervisor.start(token)).connected).toBe(true);
     expect(supervisor.getStatus().error).toBeUndefined();
+  });
+
+  it("refuses start() and restart() without the token, and accepts restart() with it", async () => {
+    const supervisor = make();
+    await supervisor.start();
+    const token = await supervisor.stopForMaintenance();
+
+    expect((await supervisor.start()).connected).toBe(false);
+    expect((await supervisor.restart()).connected).toBe(false);
+    expect((await supervisor.start({ maintenance: true })).connected).toBe(false);
+    expect(supervisor.getStatus()).toMatchObject({ connected: false, error: "Restoring" });
+
+    expect((await supervisor.restart(token)).connected).toBe(true);
   });
 });
 
@@ -104,6 +117,18 @@ describe("runOnce", () => {
     const run = await make().runOnce(["--restore", "hang.db"], 300);
     expect(run.timedOut).toBe(true);
   });
+
+  it("settles even when the killed process's pipes never close", async () => {
+    // A grandchild keeps the pipes open after its parent is killed.
+    const file = path.join(dir, "grand.cjs");
+    writeFileSync(
+      file,
+      `require("child_process").spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "inherit", detached: true }).unref(); setInterval(()=>{},1000);`,
+    );
+    const supervisor = new EngineSupervisor({ command: () => ({ command: process.execPath, args: [file] }) });
+    const run = await supervisor.runOnce([], 200);
+    expect(run.timedOut).toBe(true);
+  }, 15_000);
 
   it("answers rather than rejects when the program cannot be spawned", async () => {
     const supervisor = new EngineSupervisor({ command: () => ({ command: path.join(dir, "no-such-binary"), args: [] }) });
