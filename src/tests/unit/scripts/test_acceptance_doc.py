@@ -77,8 +77,11 @@ class TestTheDocument:
 
     def test_a_result_that_is_not_owed_carries_an_iso_date(self, rows):
         for row in rows:
-            if row.result != "owed":
-                assert ca._ISO_DATE_RE.match(row.date), row.line
+            outcome = row.per_system()
+            assert outcome is not None, row.line
+            for system, (result, when) in outcome.items():
+                if result != "owed":
+                    assert ca._ISO_DATE_RE.match(when), (row.line, system)
 
     def test_linux_is_only_ever_checked_by_ci(self, rows):
         # Q-198, DEC-187: Linux has its automated checks and nothing by hand.
@@ -138,7 +141,8 @@ class TestWhatTheChecklistMustHold:
     def test_the_screen_reader_passes_are_rows(self, rows):
         by_name = {
             "NVDA": ["Windows"],
-            "VoiceOver": ["macOS Apple Silicon", "macOS Intel"],
+            # A screen reader needs a person at hardware: Apple Silicon only (DEC-308).
+            "VoiceOver": ["macOS Apple Silicon"],
         }
         for name, systems in by_name.items():
             [row] = [r for r in rows if name in r.check]
@@ -161,11 +165,14 @@ class TestWhatTheChecklistMustHold:
             assert row.result == "not applicable (DEC-170)"
         first_install = [r for r in rows if r.check.startswith("First install by hand")]
         assert len(first_install) == 1
-        assert first_install[0].result == "owed"
         assert set(first_install[0].system_list) == {
             "macOS Apple Silicon",
             "macOS Intel",
         }
+        # The by-hand pass is on Apple Silicon; the Intel runner covers Intel (DEC-308).
+        outcome = first_install[0].per_system()
+        assert outcome["macOS Apple Silicon"][0] == "owed"
+        assert outcome["macOS Intel"][0].startswith("covered by CI (")
 
     def test_the_hardware_only_checks_are_run_by_hand(self, rows):
         for words in (
@@ -178,6 +185,24 @@ class TestWhatTheChecklistMustHold:
         ):
             [row] = [r for r in rows if words in r.check]
             assert "by hand" in row.how_list, words
+
+    def test_no_by_hand_row_leaves_intel_owed(self, rows):
+        # DEC-308: the owner's by-hand checks run on Apple Silicon; Intel is covered by CI.
+        for row in rows:
+            if row.how_list == ["by hand"] and "macOS Intel" in row.system_list:
+                result = row.per_system()["macOS Intel"][0]
+                assert result != "owed", f"line {row.line}: {row.check}"
+
+    def test_the_hardware_checks_do_not_name_intel(self, rows):
+        for words in (
+            "exclusive output",
+            "unplug",
+            "no gap",
+            "Rekordbox 6",
+            "VoiceOver",
+        ):
+            [row] = [r for r in rows if words in r.check]
+            assert "macOS Intel" not in row.system_list, words
 
     def test_the_known_reds_are_written_down(self):
         text = _DOC.read_text(encoding="utf-8")
@@ -235,6 +260,54 @@ class TestStructure:
             "| c | README.md:1 | Windows | CI | not applicable (DEC-170) | 2026-10-29 |"
         )
         assert _problems(GOOD, passed, failed, na) == []
+
+    def test_intel_may_be_covered_by_ci_and_no_other_system(self):
+        intel = "| c | README.md:1 | macOS Intel | by hand | covered by CI (the Intel runner) | 2026-10-29 |"
+        win = "| c | README.md:1 | Windows | by hand | covered by CI (the Intel runner) | 2026-10-29 |"
+        assert _problems(intel) == []
+        assert any("covered by CI" in p for p in _problems(win))
+
+    def test_each_system_has_its_own_result_and_date(self):
+        row = (
+            "| c | README.md:1 | Windows, macOS Intel | by hand "
+            "| Windows: pass; macOS Intel: owed | Windows: 2026-10-12; macOS Intel: - |"
+        )
+        assert _problems(row) == []
+        [parsed] = ca.parse(_doc(row))
+        assert parsed.per_system() == {
+            "Windows": ("pass", "2026-10-12"),
+            "macOS Intel": ("owed", "-"),
+        }
+        assert parsed.is_owed
+
+    def test_a_per_system_date_must_fit_its_result(self):
+        row = (
+            "| c | README.md:1 | Windows, macOS Intel | by hand "
+            "| Windows: pass; macOS Intel: owed | Windows: -; macOS Intel: 2026-10-12 |"
+        )
+        problems = _problems(row)
+        assert any("Windows: date" in p for p in problems)
+        assert any("macOS Intel: owed, so it has no date" in p for p in problems)
+
+    def test_per_system_cells_must_name_exactly_the_rows_systems(self):
+        missing = (
+            "| c | README.md:1 | Windows, macOS Intel | by hand "
+            "| Windows: pass | Windows: 2026-10-12 |"
+        )
+        twice = (
+            "| c | README.md:1 | Windows | by hand "
+            "| Windows: pass; Windows: fail | Windows: 2026-10-12; Windows: 2026-10-12 |"
+        )
+        for row in (missing, twice):
+            assert any("exactly the row's systems" in p for p in _problems(row))
+
+    def test_a_row_is_held_only_for_the_systems_still_owed(self):
+        row = (
+            "| c | README.md:1 | Windows, macOS Intel | by hand "
+            "| Windows: pass; macOS Intel: owed | Windows: 2026-10-12; macOS Intel: - |"
+        )
+        [held] = ca.release_problems(ca.parse(_doc(row)))
+        assert "macOS Intel owed" in held and "Windows" not in held
 
     def test_a_row_needs_a_check(self):
         row = "|  | README.md:1 | Windows | CI | owed | - |"
@@ -329,7 +402,8 @@ class TestReleaseRule:
 
     def test_each_held_row_is_named_with_its_systems(self):
         [held] = self._held(GOOD)
-        assert "Do the thing" in held and "Windows, macOS Intel" in held
+        assert "Do the thing" in held
+        assert "Windows owed" in held and "macOS Intel owed" in held
 
     def test_a_long_check_is_shortened_in_the_report(self):
         row = "| " + "word " * 60 + "| README.md:1 | Windows | CI | owed | - |"
