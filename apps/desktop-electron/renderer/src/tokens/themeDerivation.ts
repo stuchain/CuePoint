@@ -26,6 +26,7 @@ const TOKEN_KEYS = [
   "fg-on-accent",
   "fg-on-status",
   "accent-primary",
+  "accent-text",
   "accent-secondary",
   "accent-success",
   "accent-warning",
@@ -298,6 +299,8 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
   const worstOn = (text: string) => Math.min(...statuses.map((c) => contrastRatio(text, c)));
   const fgOnStatus = worstOn("#000000") >= 4.5 || worstOn("#000000") >= worstOn("#ffffff") ? "#000000" : "#ffffff";
   const link = holdContrast(accentPrimary, [bgApp, bgPanel], 4.5);
+  // The accent drawn as text (a row mark, a count, a hint): held at 4.5:1 on the page, the panel and the selected row.
+  const accentText = holdContrast(accentPrimary, [bgApp, bgPanel, mixHex(accentPrimary, bgInput, SELECTED_ACCENT_MIX)], 4.5);
   const focusRing = holdContrast(accentPrimary, [bgApp, bgPanel, bgPanelAlt, bgToolbar], 3);
 
   return {
@@ -325,6 +328,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "fg-on-accent": fgOnAccent,
     "fg-on-status": fgOnStatus,
     "accent-primary": accentPrimary,
+    "accent-text": accentText,
     "accent-secondary": bgPanelAlt,
     "accent-success": accentSuccess,
     "accent-warning": accentWarning,

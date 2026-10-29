@@ -409,7 +409,8 @@ const CONTRAST_PAIRS: ContrastPair[] = [
   // Greyed text is exempt from 1.4.3; the app holds it to the large-text 3:1 so it stays findable.
   { id: "fg-disabled", kind: "large-or-ui", fg: token("fg-disabled"), on: only("bg-app", "bg-panel", "bg-input", "bg-toolbar") },
   { id: "link", kind: "text", fg: token("link"), on: only("bg-app", "bg-panel", "bg-panel-alt", "bg-input", "bg-toolbar", "selected row") },
-  { id: "accent-primary as text", kind: "text", fg: token("accent-primary"), on: only("bg-input", "selected row") },
+  // The accent drawn as text is its own token (A11Y-C4): `--accent-primary` is a fill, a border and an icon.
+  { id: "accent-text", kind: "text", fg: token("accent-text"), on: only("bg-app", "bg-panel", "bg-input", "selected row") },
   { id: "accent-primary as a mark", kind: "large-or-ui", fg: token("accent-primary"), on: only("bg-app", "bg-panel", "bg-toolbar") },
   { id: "accent-success as a mark", kind: "large-or-ui", fg: token("accent-success"), on: only("bg-panel", "bg-input") },
   { id: "accent-warning as a mark", kind: "large-or-ui", fg: token("accent-warning"), on: only("bg-panel", "bg-input") },
@@ -448,31 +449,13 @@ const CONTRAST_PAIRS: ContrastPair[] = [
 
 /**
  * Pairs that fail today and need a colour change, which is a visual change and waits for the owner's go on a
- * mockup. Each is recorded in /mnt/project-files/phase18-hardening/a11y-findings.md under its finding id, with
+ * mockup. Empty since the owner approved A11Y-C1 to C6 (a11y-findings.md); an entry is added here, with its finding id,
+ * for any pair that is later found failing and waits. Each is recorded in /mnt/project-files/phase18-hardening/a11y-findings.md under its finding id, with
  * the measured ratio here: the test passes while the ratio is what was measured or better, and fails if an entry
  * starts passing so the list shrinks as the colours are fixed. Nothing is skipped silently.
  * Key: `${theme} | ${pair id} | ${surface}`.
  */
-const KNOWN_FAILING: Record<string, { finding: string; measured: number }> = {
-  "clubNeon | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 4.45 },
-  "clubNeon | border-control | bg-panel-alt": { finding: "A11Y-C5", measured: 2.75 },
-  "mutedPro | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 3.76 },
-  "mutedPro | border-control | bg-panel-alt": { finding: "A11Y-C5", measured: 2.8 },
-  "mutedPro | fg-muted | bg-panel-alt": { finding: "A11Y-C1", measured: 4.29 },
-  "mutedPro | fg-muted | selected row": { finding: "A11Y-C3", measured: 4.42 },
-  "neoDark | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 3.35 },
-  "neoDark | border-control | bg-panel-alt": { finding: "A11Y-C5", measured: 2.16 },
-  "neoDark | fg-muted | bg-panel-alt": { finding: "A11Y-C1", measured: 4.07 },
-  "neoDark | link | bg-panel-alt": { finding: "A11Y-C2", measured: 3.84 },
-  "qtEvolved | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 3.31 },
-  "qtEvolved | border-control | bg-panel-alt": { finding: "A11Y-C5", measured: 2.55 },
-  "qtEvolved | fg-muted | bg-panel-alt": { finding: "A11Y-C1", measured: 3.73 },
-  "qtEvolved | fg-muted | selected row": { finding: "A11Y-C3", measured: 4.38 },
-  "qtEvolved | link | bg-panel-alt": { finding: "A11Y-C2", measured: 3.38 },
-  "qtEvolved | link | selected row": { finding: "A11Y-C2", measured: 3.97 },
-  "retro16 | accent-primary as text | selected row": { finding: "A11Y-C4", measured: 3.75 },
-  "retro16 | focus-ring-color | hover slab": { finding: "A11Y-C6", measured: 2.81 },
-};
+const KNOWN_FAILING: Record<string, { finding: string; measured: number }> = {};
 
 const rounded = (value: number) => Math.round(value * 100) / 100;
 

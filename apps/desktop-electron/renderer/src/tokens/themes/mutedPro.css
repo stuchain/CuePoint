@@ -14,18 +14,20 @@
   /* Table rows and hover: the defaults Retro tunes (C93). */
   --row-divider: #383f4e;
   --hover-fill: #343d4f;
-  --border-control: #7b8190;
+  --border-control: #828796;
   --tab-underline-color: #818cf8;
   --bevel-highlight: #6b7280;
   --bevel-shadow: #111318;
 
   --fg-primary: #e8eaed;
-  --fg-muted: #9ca3af;
+  --fg-muted: #a1a7b3;
   --fg-disabled: #7d8593;
   --fg-on-accent: #1c1f26;
   --fg-on-status: #000000;
 
   --accent-primary: #818cf8;
+  /* Accent drawn as text: held at 4.5:1 on the page, the panel and the selected row (A11Y-C4). */
+  --accent-text: #959ef6;
   --accent-secondary: #343d4f;
   /* Status colours stand 12 degrees of hue or more from all 24 key colours (M332): keyColourContrast.test.ts. */
   --accent-success: #34b380;

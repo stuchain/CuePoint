@@ -5,6 +5,11 @@
  * place in the app where a column of small values is read closely.
  */
 
+/* The key chip that opens the wheel is a button: 24px tall at Extra small (WCAG 2.5.8). */
+.cp-track-detail .key-chip--button {
+  min-block-size: var(--target-min);
+}
+
 .cp-track-detail {
   /* One facts grid (area 84): the label column every row, Beatport field and history entry
      shares; values are Inter (--font-data) like a table's. */

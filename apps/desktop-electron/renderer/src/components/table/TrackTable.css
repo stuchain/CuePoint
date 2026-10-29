@@ -369,7 +369,7 @@
   /* A multiple of the art's 12-unit grid, so no art pixel is fractional (as --icon-size). */
   width: var(--track-table-mark);
   height: var(--track-table-mark);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 /* "Now playing" for a screen reader, clipped to nothing rather than hidden: display:none would
@@ -598,7 +598,7 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   justify-content: center;
   padding: var(--space-lg);
   border: round(down, calc(2px * var(--scale)), 1px) dashed var(--accent-primary);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-control);
   font-size: var(--font-size-sm);
   text-align: center;

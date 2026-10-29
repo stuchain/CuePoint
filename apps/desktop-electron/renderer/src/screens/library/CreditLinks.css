@@ -6,7 +6,10 @@
  * as the Inspector's other links do.
  */
 .cp-credit-link {
-  display: inline;
+  /* At least 24px tall (WCAG 2.5.8), the text centred; at larger text sizes the line is taller already. */
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
   padding: 0;
   border: none;
   background: transparent;

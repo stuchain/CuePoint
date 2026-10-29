@@ -83,6 +83,14 @@
   cursor: default;
 }
 
+/* The header's text is 17px tall at Extra small; its click target is 24px or more (WCAG 2.5.8) without the look or
+   the rows moving: padding makes the box taller and the same negative margin gives the room back. (A pseudo-element
+   would do for a pointer, but a checker measures the box.) */
+.cp-playlist-pane__fold {
+  padding-block: calc(var(--target-min) / 6);
+  margin-block: calc(-1 * var(--target-min) / 6);
+}
+
 .cp-playlist-pane__fold:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);

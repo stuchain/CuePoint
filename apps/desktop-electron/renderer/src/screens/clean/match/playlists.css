@@ -47,7 +47,7 @@
 }
 
 .playlists__to-check {
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 /* The row's own buttons: one fixed end column, right-aligned (C76). */

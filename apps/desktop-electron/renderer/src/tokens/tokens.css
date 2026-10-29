@@ -201,6 +201,8 @@
   --font-size-chip: var(--font-size-label);
   /* One chip box (P30): 18 high, 6 either side, square. Status, key, filter, tag and Activity chips. */
   --chip-height: round(nearest, calc(18px * var(--scale)), 1px);
+  /* The smallest a pointer target is (WCAG 2.5.8): CSS pixels, not scaled, since the rule is in CSS pixels. */
+  --target-min: 24px;
   --chip-pad: var(--space-sm);
   /* The four weights (TY19): a rule names one of these, never a number. */
   --font-weight-regular: 400;

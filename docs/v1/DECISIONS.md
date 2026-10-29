@@ -8695,3 +8695,35 @@ Clear queue sat higher than the close mark.
   mark is.
 
 **Decided with**: User (29 Oct 2026: "A"; H1 as recommended) · **Date**: 2026-10-29
+
+
+## DEC-307 — Accessibility Colour and Target Fixes (HARDEN-08; Amends DEC-186 Findings A11Y-C1 to C6, T1 to T3, 01)
+
+**Status**: Accepted · **Related**: DEC-186, DEC-306, `/phase18-hardening/a11y-mockups/index.md`
+
+**Context**: The WCAG 2.2 AA pass found ten things that change what is seen, so none was built without a
+mockup. Eighteen token pairs fall short of 4.5:1 (text) or 3:1 (control edges, focus rings), three pointer
+targets are under 24 px at Extra small, and the queue's remove button sat inside its row, a control in a control.
+
+**Decision** (the owner took the recommended option of each):
+- **C1 to C3** `--fg-muted` is lighter in neoDark (#aaaab2), qtEvolved (#ababab) and mutedPro (#a1a7b3), so muted
+  text reads at 4.5:1 on the raised panel and the selected row. `--link` is lighter in neoDark (#b39cfa) and
+  qtEvolved (#69afff).
+- **C4** A new `--accent-text` token is the accent drawn as text (the row mark, the drop hint, a count, a
+  hint), held at 4.5:1 on the page, the panel and the selected row, and derived the same way for a custom
+  theme. `--accent-primary` stays the fill, border and icon colour.
+- **C5** `--border-control` is brighter in neoDark (#8a8a91), qtEvolved (#8a8a8a), clubNeon (#717190) and
+  mutedPro (#828796), so a field or button edge holds 3:1 on the raised panel.
+- **C6** retro16's `--focus-ring-color` is #b97bf1 (3.01:1 on the hover slab).
+- **T1 to T3** A 24 px target (`--target-min`): the Collections and Playlists header gets a 24 px click area (padding taken back as margin, so nothing moves),
+  the credit links in Track details are 24 px tall, the key chip button in Track details is
+  24 px tall. At the default text size nothing changes; at Extra small the credit links and the chip grow.
+- **A11Y-01** The queue's remove buttons are drawn in a layer over the list, beside the rows and not in
+  them, each in its row's place; the row keeps the room for it, so the DEC-306 layout is unchanged.
+  Hovering the × no longer lights its row.
+- **Forced colours** stays as built (HARDEN-08): system-colour rules in `forcedColors.css`, the waveform
+  painting system colours with no solid veil.
+- `themeContrast.test.ts` now holds every pair with an empty `KNOWN_FAILING`, and the rendered scan
+  holds the rest with `a11yExclusions.json`, which is empty.
+
+**Decided with**: User (picks 29 Oct 2026, 19:23 Athens: all recommended) · **Date**: 2026-10-29

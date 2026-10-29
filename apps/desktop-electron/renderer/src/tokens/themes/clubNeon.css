@@ -15,7 +15,7 @@
   /* Table rows and hover: the defaults Retro tunes (C93). */
   --row-divider: #34344f;
   --hover-fill: #24243a;
-  --border-control: #6a6a8a;
+  --border-control: #717190;
   --tab-underline-color: #e040fb;
   --bevel-highlight: #5a5a80;
   --bevel-shadow: #050508;
@@ -27,6 +27,8 @@
   --fg-on-status: #000000;
 
   --accent-primary: #e040fb;
+  /* Accent drawn as text: held at 4.5:1 on the page, the panel and the selected row (A11Y-C4). */
+  --accent-text: #e044fb;
   --accent-secondary: #24243a;
   /* Status colours stand 12 degrees of hue or more from all 24 key colours (M332): keyColourContrast.test.ts. */
   --accent-success: #00e68a;

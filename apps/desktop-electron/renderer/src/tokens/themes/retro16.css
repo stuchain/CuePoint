@@ -28,6 +28,8 @@
   --fg-on-status: #000000;
 
   --accent-primary: #c77dff;
+  /* Accent drawn as text: held at 4.5:1 on the page, the panel and the selected row (A11Y-C4). */
+  --accent-text: #cc96fe;
   --accent-secondary: #2d4563;
   /* Status colours stand 12 degrees of hue or more from all 24 key colours (M332): keyColourContrast.test.ts. */
   --accent-success: #4caf50;
@@ -42,7 +44,7 @@
   --accent-fill: #b673f0;
   --danger-fill: #c62828;
   --link: #d29bff;
-  --focus-ring-color: #b673f0;
+  --focus-ring-color: #b97bf1;
   --color-scheme: dark;
 
   --overlay-backdrop: rgba(0, 0, 0, 0.7);
