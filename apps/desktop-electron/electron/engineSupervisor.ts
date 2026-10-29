@@ -9,6 +9,7 @@ import {
   EngineClient,
   type BackupEntry,
   type BackupList,
+  type LibraryStatus,
   type ActivityFeed,
   type BeatportTokenStatusWire,
   type EngineJobList,
@@ -1724,6 +1725,18 @@ export class EngineSupervisor {
 
   async listBackups(): Promise<BackupList> {
     return (await this.readyClient()).listBackups();
+  }
+
+  async getLibraryStatus(): Promise<LibraryStatus> {
+    return (await this.readyClient()).getLibraryStatus();
+  }
+
+  async startIntegrityCheck(): Promise<{ state: string; finishedAt: string | null }> {
+    return (await this.readyClient()).startIntegrityCheck();
+  }
+
+  async recheckLibrary(): Promise<void> {
+    return (await this.readyClient()).recheckLibrary();
   }
 
   async createBackup(): Promise<BackupEntry> {

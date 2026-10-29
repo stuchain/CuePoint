@@ -3205,6 +3205,33 @@ export interface BackupEntry {
   toVersion?: string | null;
 }
 
+/** The states the engine works the library out to be at start (HARDEN-03). */
+export type LibraryStateName = "ok" | "damaged" | "too_new" | "upgrade_failed" | "needs_space" | "upgrading";
+
+/** One backup the library state names as a way back. */
+export interface LibraryWayBack {
+  name: string;
+  createdAt: string;
+  reason: string;
+}
+
+/** The `library` object on `/api/v1/status` (HARDEN-03). */
+export interface LibraryStatus {
+  state: LibraryStateName;
+  appVersion: string;
+  libraryVersion: string | null;
+  schemaVersion: number | null;
+  headVersion: number | null;
+  newestGoodBackup: LibraryWayBack | null;
+  preUpgradeBackup: LibraryWayBack | null;
+  requiredFreeBytes: number | null;
+  failedMigration: string | null;
+  uncleanExit: boolean;
+  computedAt: string;
+  integrityCheck: { state: "idle" | "running" | "ok" | "failed"; finishedAt: string | null };
+  launchBackupSkipped: { reason?: string } | null;
+}
+
 export interface BackupList {
   backups: BackupEntry[];
   /** Where the backups are kept; null when the engine does not say. */
@@ -4768,6 +4795,34 @@ export class EngineClient {
   async listBackups(): Promise<BackupList> {
     const res = await fetch(this.url("/api/v1/backups"), { headers: this.headers() });
     return readJson(res);
+  }
+
+  /** The library's state as the engine worked it out at start (served from a cache, never recomputed). */
+  async getLibraryStatus(): Promise<LibraryStatus> {
+    const res = await fetch(this.url("/api/v1/status"), { headers: this.headers() });
+    const body = await readJson<{ library: LibraryStatus }>(res);
+    return body.library;
+  }
+
+  /** Start the background `quick_check` (answers 202 at once); poll `getLibraryStatus` for its end. */
+  async startIntegrityCheck(): Promise<{ state: string; finishedAt: string | null }> {
+    const res = await fetch(this.url("/api/v1/library/integrity-check"), {
+      method: "POST",
+      headers: this.headers(),
+      body: "{}",
+    });
+    const body = await readJson<{ integrityCheck: { state: string; finishedAt: string | null } }>(res);
+    return body.integrityCheck;
+  }
+
+  /** Work the state out again ("Try again", after a restore); answers 202 at once, poll the status. */
+  async recheckLibrary(): Promise<void> {
+    const res = await fetch(this.url("/api/v1/library/recheck"), {
+      method: "POST",
+      headers: this.headers(),
+      body: "{}",
+    });
+    await readJson<unknown>(res);
   }
 
   /** Back up now (reason `manual`). */

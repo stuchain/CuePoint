@@ -70,6 +70,11 @@ interface MainSettings {
    * next start can sweep what a killed write left in them (HARDEN-04).
    */
   lastExportFolders: string[];
+  /**
+   * When a `quick_check` of the library last finished and passed, as an ISO date; null before the
+   * first. The next one is due 7 days later, or after an unclean exit (HARDEN-03, DEC-181).
+   */
+  lastIntegrityCheckAt: string | null;
 }
 
 /** How many export folders are remembered. */
@@ -85,6 +90,7 @@ function defaults(): MainSettings {
     windowState: null,
     windowTheme: null,
     lastExportFolders: [],
+    lastIntegrityCheckAt: null,
   };
 }
 
@@ -130,6 +136,7 @@ export function parseMainSettings(text: string): MainSettings {
     windowState: parseWindowState(record.windowState),
     windowTheme: parseWindowTheme(record.windowTheme),
     lastExportFolders: exportFolders(record.lastExportFolders),
+    lastIntegrityCheckAt: isoDate(record.lastIntegrityCheckAt),
   };
 }
 

@@ -26,7 +26,7 @@ function settingsFile(): string {
 }
 
 const GIGS = path.resolve("/music/gigs");
-const DEFAULTS = { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null, windowState: null, windowTheme: null, lastExportFolders: [] };
+const DEFAULTS = { setListFolder: null, errorReporting: true, lastCheckedAt: null, lastSeenVersion: null, pendingInstall: null, windowState: null, windowTheme: null, lastExportFolders: [], lastIntegrityCheckAt: null };
 
 describe("reading", () => {
   it("answers the defaults before anything was written", () => {
@@ -233,5 +233,21 @@ describe("the export folders (HARDEN-04)", () => {
     expect(store.read().lastExportFolders).toEqual([]);
     fs.writeFileSync(file, JSON.stringify({ lastExportFolders: ["relative", 7, path.resolve("/ok")] }));
     expect(store.read().lastExportFolders).toEqual([path.resolve("/ok")]);
+  });
+});
+
+describe("the integrity check date (HARDEN-03)", () => {
+  it("is kept as an ISO date and read back, and anything else reads as none", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cuepoint-settings-"));
+    try {
+      const store = new MainSettingsStore(path.join(dir, "main-settings.json"));
+      expect(store.read().lastIntegrityCheckAt).toBeNull();
+      store.update({ lastIntegrityCheckAt: "2026-10-29T12:00:00.000Z" });
+      expect(store.read().lastIntegrityCheckAt).toBe("2026-10-29T12:00:00.000Z");
+      fs.writeFileSync(path.join(dir, "main-settings.json"), JSON.stringify({ lastIntegrityCheckAt: "yesterday" }));
+      expect(store.read().lastIntegrityCheckAt).toBeNull();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
