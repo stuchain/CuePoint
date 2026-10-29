@@ -11,11 +11,10 @@
 /* Date, reason, size, Restore: the first two share what is left, the size is a fixed column. */
 .backup-list__row {
   display: grid;
-  grid-template-columns: minmax(calc(150px * var(--scale)), 1.1fr) minmax(calc(170px * var(--scale)), 1.6fr) calc(70px * var(--scale)) auto;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr) calc(70px * var(--scale)) auto;
   align-items: center;
   gap: var(--space-md);
-  min-height: var(--row-height);
-  padding: var(--space-xs) 0;
+  padding: round(nearest, calc(var(--space-xs) * 0.75), 1px) 0;
   border-bottom: var(--divider);
   color: var(--fg-primary);
   font-size: var(--text-body);
