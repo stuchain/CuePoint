@@ -2,9 +2,19 @@
 
 This guide takes you from installing CuePoint to a first set of matched, reviewed tracks.
 
+## System requirements
+
+- **Windows**: Windows 10 or newer, 64-bit (x64).
+- **Mac with an Apple chip (M1 or later)**: macOS 14 or newer.
+- **Intel Mac**: macOS 15 or newer.
+- **Linux**: experimental, with no built-in player.
+- **Your library**: a Rekordbox collection exported as XML, up to 50,000 tracks.
+
+The [Support Policy](support-policy.md) has the detail, and [Performance](performance.md) says how long a library of that size takes.
+
 ## Install
 
-Download the installer for your system from [GitHub Releases](https://github.com/stuchain/CuePoint/releases). The [Support Policy](support-policy.md) lists the supported systems.
+Download the installer for your system from [GitHub Releases](https://github.com/stuchain/CuePoint/releases). The requirements above are the supported systems.
 
 - **macOS**: open the DMG, drag CuePoint to Applications, and open it from there. Use the Apple Silicon download on a Mac with an M-series chip and the Intel download on an Intel Mac. Apple menu > About This Mac shows which you have.
 - **Windows**: run the installer and follow the steps. Start CuePoint from the Start menu.
