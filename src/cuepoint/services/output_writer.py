@@ -542,7 +542,7 @@ def write_candidates_csv(
     # Get fieldnames from first candidate
     fieldnames = list(all_candidates[0].keys())
 
-    with open(filepath, "w", newline="", encoding="utf-8") as f:
+    with atomic_file(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
         writer.writeheader()
         writer.writerows(all_candidates)
@@ -590,7 +590,7 @@ def write_queries_csv(
     # Get fieldnames from first query
     fieldnames = list(all_queries[0].keys())
 
-    with open(filepath, "w", newline="", encoding="utf-8") as f:
+    with atomic_file(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
         writer.writeheader()
         writer.writerows(all_queries)
@@ -665,7 +665,7 @@ def write_review_csv(
             ]
         )
 
-    with open(filepath, "w", newline="", encoding="utf-8") as f:
+    with atomic_file(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
         writer.writeheader()
         for result in review_results:
@@ -706,7 +706,7 @@ def write_review_candidates_csv(
 
     fieldnames = list(all_candidates[0].keys())
 
-    with open(filepath, "w", newline="", encoding="utf-8") as f:
+    with atomic_file(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(all_candidates)
@@ -741,7 +741,7 @@ def write_review_queries_csv(
 
     fieldnames = list(all_queries[0].keys())
 
-    with open(filepath, "w", newline="", encoding="utf-8") as f:
+    with atomic_file(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(all_queries)
@@ -953,10 +953,11 @@ def write_json_file(
         # Write to file (with compression if requested)
         try:
             if compress:
-                with gzip.open(final_filepath, "wt", encoding="utf-8") as f:
-                    f.write(json_str)
+                with atomic_file(final_filepath, "wb") as raw:
+                    with gzip.GzipFile(fileobj=raw, mode="wb") as zipped:
+                        zipped.write(json_str.encode("utf-8"))
             else:
-                with open(final_filepath, "w", encoding="utf-8") as f:
+                with atomic_file(final_filepath, "w", encoding="utf-8") as f:
                     f.write(json_str)
         except OSError as e:
             raise OSError(f"Failed to write export file: {e}")
@@ -1120,7 +1121,8 @@ def write_excel_file(
 
     # Save workbook
     try:
-        wb.save(file_path)
+        with atomic_file(file_path, "wb") as handle:
+            wb.save(handle)
     except Exception as e:
         raise OSError(f"Failed to write Excel file: {e}") from e
     finally:
@@ -1235,7 +1237,7 @@ def write_performance_report(
     filename = f"{base_filename}_performance_{timestamp}.txt"
     filepath = os.path.join(output_dir, filename)
 
-    with open(filepath, "w", encoding="utf-8") as f:
+    with atomic_file(filepath, "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines))
 
     return filepath

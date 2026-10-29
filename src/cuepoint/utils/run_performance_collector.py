@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from cuepoint.utils.atomic_write import atomic_file
+
 logger = logging.getLogger(__name__)
 
 
@@ -183,6 +185,6 @@ class RunPerformanceCollector:
         """Export report to JSON file (Design 6.65)."""
         report = self.get_report(version=version)
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
+        with atomic_file(path, "w", encoding="utf-8") as f:
             json.dump(report.to_dict(), f, indent=2)
         logger.info("[perf] exported report to %s", path)

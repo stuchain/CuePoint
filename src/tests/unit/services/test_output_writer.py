@@ -658,7 +658,9 @@ class TestWriteJsonFile:
         from cuepoint.services.output_writer import write_json_file
 
         # Mock open to raise IOError
-        with patch("builtins.open", side_effect=IOError("Disk full")):
+        with patch(
+            "cuepoint.utils.atomic_write.os.open", side_effect=IOError("Disk full")
+        ):
             filepath = os.path.join(temp_output_dir, "test.json")
             # The function wraps OSError in RuntimeError
             with pytest.raises(RuntimeError, match="JSON export failed"):
