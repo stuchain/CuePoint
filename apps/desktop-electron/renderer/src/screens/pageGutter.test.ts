@@ -110,9 +110,14 @@ describe("the shared page margin", () => {
   it("is backed by the sticky header's backdrop", () => {
     const d = decls(header, ".cp-screen-header::before");
     expect(d["top"]).toBe("calc(-1 * var(--screen-header-stick, var(--page-gutter-top)))");
-    expect(d["left"]).toBe("calc(-1 * var(--page-gutter-x))");
+    // Page-edges B: the header itself steps over the left gutter, so its backdrop starts at its own edge.
+    expect(d["left"]).toBe("0");
+    expect(decls(header, ".cp-screen-header")["margin-inline-start"]).toBe("calc(-1 * var(--safe-left))");
+    expect(decls(header, ".cp-screen-header")["padding-inline-start"]).toBe("var(--safe-left)");
     // M502: the backdrop reaches the page's own right edge; P5 moves it from --page-gutter-x to --safe-right.
     expect(d["right"]).toMatch(/^calc\(-1 \* var\(--(page-gutter-x|safe-right)\)\)$/);
-    expect(decls(header, ".cp-screen-header--inset")["padding-inline"]).toBe("0");
+    // Page-edges B: inset no longer zeroes the start, which carries the gutter the header pads back in.
+    expect(decls(header, ".cp-screen-header--inset")["padding-inline-end"]).toBe("0");
+    expect(decls(header, ".cp-screen-header--inset")["padding-inline"]).toBeUndefined();
   });
 });

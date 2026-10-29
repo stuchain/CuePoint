@@ -33,7 +33,32 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  /* Page-edges B: the body meets the sidebar's edge, as the Library's pane does (D36), so its tables
+     and bars run to it. Its rows pad back in by the gutter, below, so every word stays on the title's
+     edge; the duplicate groups are boxes and stay on it too. */
+  margin-inline-start: calc(-1 * var(--safe-left));
   overflow: hidden;
+}
+
+.clean-screen__body :is(
+    .match-area__row,
+    .match-area__back,
+    .review__filter,
+    .review__footer,
+    .clean-missing > .clean-note,
+    .clean-missing > .cp-toolbar,
+    .clean-duplicates
+  ) {
+  padding-inline-start: var(--safe-left);
+}
+
+.clean-missing__table > .track-table {
+  --track-table-edge: var(--safe-left);
+}
+
+/* A table's first cell holds its words (or its tick) on the title's edge. */
+.clean-screen__body .cp-data-table :is(th, td):first-child {
+  padding-inline-start: var(--safe-left);
 }
 
 /* ------------------------------------------------------------ shared parts */

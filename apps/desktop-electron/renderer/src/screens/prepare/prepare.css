@@ -187,6 +187,11 @@
 .prepare-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--space-xl) var(--prepare-source-width, 360px);
+  /* Page-edges B: the Set meets the sidebar's edge, as the Library's pane does (D36). The layout steps
+     out over the page's left gutter and the Set's column takes it, so the side table keeps its place;
+     the rows pad back in by the gutter (--track-table-edge) and the lanes and strip stay on the
+     title's edge. */
+  margin-inline-start: calc(-1 * var(--safe-left));
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -255,6 +260,7 @@ body.prepare-resizing {
 .prepare-set > .prepare-lanes,
 .prepare-set > .prepare-transition {
   flex: none;
+  margin-inline-start: var(--safe-left);
 }
 
 .prepare-set__rows {
@@ -265,6 +271,7 @@ body.prepare-resizing {
 }
 
 .prepare-set__rows > .track-table {
+  --track-table-edge: var(--safe-left);
   flex: 1;
 }
 

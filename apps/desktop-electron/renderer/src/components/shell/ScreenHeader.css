@@ -9,7 +9,11 @@
   gap: var(--space-xs);
   /* Whole pixels at every scale (M81). */
   padding-bottom: round(nearest, var(--space-md), 1px);
-  /* One rule at rest, the divider (M329); the sticky edge joins it only when scrolled (M215). */
+  /* One rule at rest, the divider (M329); the sticky edge joins it only when scrolled (M215). It runs
+     to the sidebar's edge on every page (page-edges B): the header steps out over the page's left
+     gutter and pads back in, so its words stay on the title edge. */
+  margin-inline-start: calc(-1 * var(--safe-left));
+  padding-inline-start: var(--safe-left);
   border-bottom: var(--divider);
   /* Divider to the first content: 12, for every page. */
   margin-bottom: var(--space-lg);
@@ -27,8 +31,8 @@
   margin-bottom: 0;
 }
 
-/* The header sits inside the page margin. Its backdrop reaches out over the margin above and to
-   both sides, so rows scrolling under the sticky header do not show in it. */
+/* The header covers the left gutter itself (page-edges B). Its backdrop reaches out over the margin
+   above and to the right, so rows scrolling under the sticky header do not show in it. */
 .cp-screen-header::before {
   content: "";
   position: absolute;
@@ -36,7 +40,7 @@
   top: calc(-1 * var(--screen-header-stick, var(--page-gutter-top)));
   right: calc(-1 * var(--safe-right));
   bottom: 0;
-  left: calc(-1 * var(--page-gutter-x));
+  left: 0;
   background: var(--bg-app);
 }
 
@@ -231,7 +235,7 @@
 }
 
 /* Kept for callers that still pass `inset`: the page margin now comes from .screen, so there is
-   nothing to add here. */
+   nothing to add here (the start keeps the gutter it pads back in, page-edges B). */
 .cp-screen-header--inset {
-  padding-inline: 0;
+  padding-inline-end: 0;
 }

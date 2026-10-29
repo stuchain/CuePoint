@@ -53,6 +53,7 @@ import {
   shrinkWidths,
   stickyFits,
   stickyLeft,
+  tableEdge,
   totalWidth,
   widthAfterDrag,
   type ColumnWidths,
@@ -591,7 +592,8 @@ export function TrackTable<Row>({
     const element = scrollRef.current;
     if (!element) return undefined;
     const measure = () => {
-      setViewportWidth(element.clientWidth);
+      // The room before the first column (page-edges B) is not the columns' to share.
+      setViewportWidth(element.clientWidth - tableEdge(element));
       setCornerWidth(element.querySelector<HTMLElement>(".track-table__corner")?.clientWidth ?? 0);
       // The scrollbars the bottom bar keeps clear of: it sits above the horizontal one and left of
       // the vertical one. Set on the element, so a scrollbar coming or going costs no render.

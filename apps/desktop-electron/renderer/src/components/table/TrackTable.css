@@ -35,6 +35,9 @@
   /* M118: the room before the first column's text, the same whether that room holds the speaker or
      the drag grip, so Title keeps its x in a Collection (grip) and in a playlist or Set (none). */
   --track-table-lead: calc(var(--space-xs) + var(--track-table-mark) + var(--space-xs));
+  /* Page-edges B: room before the first column, so a table that runs out to the sidebar's edge keeps
+     its words on the title's edge. 0 unless the page sets it (Prepare's Set, Missing files). */
+  --track-table-edge: 0px;
 }
 
 /* M91: the scroll bar's track starts under the header, so the header ends where the track begins
@@ -68,6 +71,7 @@
   display: grid;
   grid-template-columns: var(--track-table-columns);
   min-width: var(--track-table-min-width);
+  padding-left: var(--track-table-edge);
   position: sticky;
   top: 0;
   z-index: 3;
@@ -265,7 +269,7 @@
 
 .track-table__body {
   position: relative;
-  min-width: var(--track-table-min-width);
+  min-width: calc(var(--track-table-min-width) + var(--track-table-edge));
 }
 
 .track-table__row {
@@ -273,6 +277,7 @@
   grid-template-columns: var(--track-table-columns);
   align-items: stretch;
   box-sizing: border-box;
+  padding-left: var(--track-table-edge);
   position: absolute;
   left: 0;
   width: 100%;

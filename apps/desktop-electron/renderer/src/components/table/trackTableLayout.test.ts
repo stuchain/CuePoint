@@ -31,6 +31,7 @@ import {
   readRowHeight,
   resolveWidths,
   stickyLeft,
+  tableEdge,
   totalWidth,
   widthAfterDrag,
   type TrackColumnDef,
@@ -358,5 +359,20 @@ describe("widthsAfterResize (B2)", () => {
   });
   it("adds nothing when the room is not measured", () => {
     expect(widthsAfterResize(cols, [500, 300, 200], 0, 0, 420)).toEqual({ title: 420, artist: 300, bpm: 200 });
+  });
+});
+
+describe("tableEdge (page-edges B)", () => {
+  it("is the header's left padding, and 0 with no header", () => {
+    expect(tableEdge(null)).toBe(0);
+    const scope = document.createElement("div");
+    expect(tableEdge(scope)).toBe(0);
+    const header = document.createElement("div");
+    header.className = "track-table__header";
+    header.style.paddingLeft = "15px";
+    scope.append(header);
+    document.body.append(scope);
+    expect(tableEdge(scope)).toBe(15);
+    scope.remove();
   });
 });

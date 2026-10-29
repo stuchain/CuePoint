@@ -371,6 +371,18 @@ export function readRowHeight(): number {
 }
 
 /**
+ * The room a table keeps before its first column when it runs out to the sidebar's edge
+ * (`--track-table-edge`, page-edges B), in px: read from its header's left padding, which is that
+ * room resolved. 0 for a table that keeps none, or before it is drawn.
+ */
+export function tableEdge(scope: Element | null): number {
+  const header = scope?.querySelector(".track-table__header");
+  if (!header) return 0;
+  const parsed = Number.parseFloat(getComputedStyle(header).paddingLeft);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+/**
  * The row height the stylesheet is using, measured again when the size or the
  * row density changes: `--row-height` derives from both (`tokens/layout.css`),
  * and a virtualizer told the old height puts every row in the wrong place.

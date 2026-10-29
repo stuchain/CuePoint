@@ -88,7 +88,7 @@ import { ChapterDialog } from "./ChapterDialog";
 import { NewSetFromListDialog, RenameSetDialog } from "./NewSetDialogs";
 import { PrepareLayout } from "./PrepareLayout";
 import { ENTRY_BUTTONS_COLUMN, ENTRY_BUTTONS_DEFAULT_PX, ENTRY_TITLE_KEEP_PX } from "./entryButtonsRoom";
-import { columnMinWidth } from "../../components/table/trackTableLayout";
+import { columnMinWidth, tableEdge } from "../../components/table/trackTableLayout";
 import { EntryButtons } from "./prepareEditing";
 import { PrepareEditingContext, type PrepareEditing, type TimeSaveResult } from "./prepareEditingContext";
 import { SetEntryZone } from "./SetEntryZone";
@@ -571,7 +571,8 @@ export function PrepareScreen({
     [columns.visible, hideTimes],
   );
   const narrowDrop = useMemo(
-    () => columnsToDrop(timedColumns, columns.widths, rowsWidth > 0 ? rowsWidth - endPx : rowsWidth),
+    // The rows keep the page's gutter before their first column (page-edges B); the columns share the rest.
+    () => columnsToDrop(timedColumns, columns.widths, rowsWidth > 0 ? rowsWidth - endPx - tableEdge(rowsBox.current) : rowsWidth),
     [timedColumns, columns.widths, rowsWidth, endPx],
   );
   const fittingColumns = useMemo(
