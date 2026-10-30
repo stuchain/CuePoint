@@ -72,7 +72,7 @@ def generate_report(
         "dependency_audit": {},
         "compatibility": {
             "docs": "docs/user-guide/support-policy.md",
-            "maintenance_policy": "docs/policy/maintenance-policy.md",
+            "maintenance_policy": "docs/policy/support-sla.md",
         },
     }
 
@@ -133,7 +133,7 @@ def generate_report(
         "",
         f"Overall: {'PASS' if report['dependency_audit']['overall'] else 'FAIL'}",
         "",
-        "See docs/policy/maintenance-policy.md for maintenance cadence and SLA.",
+        "See docs/policy/support-sla.md for maintenance cadence and SLA.",
         "See docs/user-guide/support-policy.md for OS/Python support.",
     ])
 

@@ -20,7 +20,7 @@ CuePoint follows [Semantic Versioning](https://semver.org). The cadence below is
 | Hotfix | A patch shipped out of cycle | A critical fix (security, data loss, crash) that cannot wait. Skip the planning phase; keep the release gates. | Immediately |
 | Test build | `X.Y.Z-test.N` | A GitHub pre-release for testers. The website offers only normal releases. | As needed (DEC-145) |
 
-For breaking changes, see the [Breaking Change Policy](../policy/breaking-change-policy.md) and the [Deprecation Policy](../policy/deprecation-policy.md).
+For breaking changes, see the [Breaking Change Policy](../policy/compatibility.md) and the [Deprecation Policy](../policy/compatibility.md).
 
 ## Updates
 
@@ -53,7 +53,7 @@ The version lives in `src/cuepoint/version.py` (`__version__`). The desktop `app
 
 ### Changelog
 
-Add the changes to `docs/release/CHANGELOG.md` under the new version. `python scripts/validate_changelog.py` fails unless the changelog has an entry for the current version or a non-empty `[Unreleased]` section. See the [Changelog Policy](../policy/changelog-policy.md).
+Add the changes to `docs/release/CHANGELOG.md` under the new version. `python scripts/validate_changelog.py` fails unless the changelog has an entry for the current version or a non-empty `[Unreleased]` section. See the [Changelog Policy](../policy/compatibility.md).
 
 ### Release notes
 
@@ -154,7 +154,7 @@ Before you tag, confirm:
 - **XML size is capped.** The Rekordbox parser rejects a file over `MAX_XML_SIZE_BYTES` (100 MiB); `test_parse_rekordbox_rejects_oversized_xml` covers it.
 - **Privacy controls work.** **Help > Privacy...** offers clear cache and clear logs, now or on exit.
 
-For vulnerability reports, see the [Security Response Process](../security/security-response-process.md).
+For vulnerability reports, see the [Security Response Process](../security/security.md).
 
 ### Manual, on the built installers
 

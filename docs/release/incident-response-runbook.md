@@ -150,4 +150,4 @@ What to keep, and how to recover when a repository or a release is lost.
 - [Support SLA](../policy/support-sla.md)
 - [Rollback](rollback.md)
 - [Release Deployment Runbook](release-deployment-runbook.md)
-- [Support SLA Playbook](../security/support-sla-playbook.md)
+- [Support SLA Playbook](../policy/support-sla.md)

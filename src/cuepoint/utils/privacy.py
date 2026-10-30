@@ -6,7 +6,7 @@ Privacy utilities (Step 8.4).
 
 CuePoint v1.0 is privacy-first:
 - No usage telemetry by default (error reports are separate: the desktop app's released builds
-  send them to Sentry unless the user turns them off, see docs/policy/telemetry.md)
+  send them to Sentry unless the user turns them off, see docs/policy/data-processing-notice.md)
 - Local processing only
 - User control to clear cache/logs/config
 """

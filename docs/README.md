@@ -12,9 +12,9 @@ CuePoint enriches Rekordbox playlists with Beatport metadata and keeps each matc
 | [`faq/`](faq/index.md) | Short answers, with links to the guide | Users and contributors |
 | [`development/`](development/architecture.md) | Setup, architecture, the CLI, the updater, testing, match rules, Beatport parsing, the Beatport v4 reference | Contributors |
 | [`release/`](release/release-deployment-runbook.md) | The release runbook, key management, rollback, incident response, the changelog | Maintainers |
-| [`policy/`](policy/index.md) | Privacy, terms, telemetry, support, maintenance, deprecation and changelog policies | Everyone, and maintainers |
-| [`compliance/`](compliance/privacy-compliance.md) | Privacy, licence and accessibility compliance | Maintainers |
-| [`security/`](security/security-response-process.md) | Vulnerability reporting and patching | Reporters and maintainers |
+| [`policy/`](policy/index.md) | Privacy, terms, support and maintenance, compatibility (deprecations, schema, changelog) | Everyone, and maintainers |
+| [`compliance/`](compliance/compliance.md) | Privacy, licence and accessibility compliance | Maintainers |
+| [`security/`](security/security.md) | Vulnerability reporting and patching | Reporters and maintainers |
 | [`schema/`](schema/migration-guide.md) | Output schema migration and the Rekordbox compatibility matrix | Contributors |
 | [`v1/`](v1/ROADMAP.md) and [`ui-overhaul/adr/`](ui-overhaul/README.md) | The design record: the roadmap, decisions, the finished phase specs (`v1/archive/`) and the architecture decision records. History of why, not a how-to. | Contributors |
 
@@ -85,9 +85,9 @@ For contributors: setup, architecture, extending the codebase.
 
 | Section | Description |
 | --- | --- |
-| [Privacy Compliance](compliance/privacy-compliance.md) | Data handling |
-| [Security Response](security/security-response-process.md) | Vulnerability reporting |
-| [License Compliance](compliance/license-compliance.md) | Third-party licences |
+| [Compliance](compliance/compliance.md) | Privacy, licence and accessibility compliance |
+| [Security](security/security.md) | Reporting a vulnerability, and how it is answered and patched |
+| [Code of conduct](../.github/CODE_OF_CONDUCT.md) | How people treat each other here |
 
 ---
 
@@ -100,7 +100,7 @@ For contributors: setup, architecture, extending the codebase.
 
 ## For maintainers
 
-Release and ops docs: the [Release Deployment Runbook](release/release-deployment-runbook.md) (versions, CI, signing, testing, publishing, templates, the Pages site, reproducible builds), [Key Management](release/key-management.md), [Rollback](release/rollback.md), [Incident Response](release/incident-response-runbook.md), the [Changelog Policy](policy/changelog-policy.md) and the [Support SLA](policy/support-sla.md).
+Release and ops docs: the [Release Deployment Runbook](release/release-deployment-runbook.md) (versions, CI, signing, testing, publishing, templates, the Pages site, reproducible builds), [Key Management](release/key-management.md), [Rollback](release/rollback.md), [Incident Response](release/incident-response-runbook.md), the [Changelog Policy](policy/compatibility.md) and the [Support SLA](policy/support-sla.md).
 
 ### Who owns which docs
 

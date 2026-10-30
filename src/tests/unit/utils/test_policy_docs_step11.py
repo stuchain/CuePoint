@@ -177,11 +177,11 @@ class TestPolicyDocsExist:
         assert (repo_root / "docs" / "policy" / "data-processing-notice.md").exists()
 
     def test_code_of_conduct_exists(self):
-        """docs/policy/code-of-conduct.md exists."""
+        """.github/CODE_OF_CONDUCT.md exists."""
         repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / "docs" / "policy" / "code-of-conduct.md").exists()
+        assert (repo_root / ".github" / "CODE_OF_CONDUCT.md").exists()
 
     def test_community_contributions_exists(self):
-        """docs/policy/community-contributions.md exists."""
+        """.github/CONTRIBUTING.md exists."""
         repo_root = Path(__file__).resolve().parents[4]
-        assert (repo_root / "docs" / "policy" / "community-contributions.md").exists()
+        assert (repo_root / ".github" / "CONTRIBUTING.md").exists()

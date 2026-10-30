@@ -10,7 +10,7 @@ This page defines supported environments, support windows, and end-of-life (EOL)
 | **P1** | Major functionality broken, no workaround | 48 hours |
 | **P2** | Minor issue, workaround exists | 5 business days |
 
-For detailed triage and escalation procedures, see [Support SLA](../policy/support-sla.md) and the [Support SLA Playbook](../security/support-sla-playbook.md).
+For detailed triage and escalation procedures, see [Support SLA](../policy/support-sla.md) and the [Support SLA Playbook](../policy/support-sla.md).
 
 ## Supported Platforms
 

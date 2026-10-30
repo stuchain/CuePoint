@@ -71,7 +71,6 @@ def find_support_policy() -> Optional[Path]:
     candidates = [
         base / "docs" / "support-sla.md",  # bundled (PyInstaller)
         base / "docs" / "policy" / "support-sla.md",
-        base / "docs" / "security" / "support-sla-playbook.md",
     ]
     for p in candidates:
         if p.exists():

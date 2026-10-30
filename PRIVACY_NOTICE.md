@@ -34,7 +34,7 @@ When CuePoint hits an unexpected error, a released build sends one error report 
 
 **How to turn it off:** **Settings → Privacy → Send error reports**, or **Help → Privacy**, then **Change these in Settings → Privacy**. It takes effect at once, with no restart: nothing is sent after that, and nothing is saved to send later. A report that has already reached Sentry stays there until Sentry deletes it.
 
-CuePoint's CLI has its own usage telemetry, which is separate, opt-in and off unless you enable it (see the [Telemetry Policy](telemetry.md)).
+CuePoint's CLI has its own usage telemetry, which is separate, opt-in and off unless you enable it (see the [Telemetry Policy](data-processing-notice.md)).
 
 ### User-initiated network requests
 CuePoint may make network requests when you use features that require them:

@@ -66,3 +66,45 @@ See [Coding Standards](https://github.com/stuchain/CuePoint/blob/main/docs/devel
 - **Start here**: [docs/README.md](https://github.com/stuchain/CuePoint/blob/main/docs/README.md)
 - **Architecture**: [docs/development/architecture.md](https://github.com/stuchain/CuePoint/blob/main/docs/development/architecture.md)
 - **Match rules**: [docs/development/match-rules-and-scoring.md](https://github.com/stuchain/CuePoint/blob/main/docs/development/match-rules-and-scoring.md)
+
+## Community
+
+### Taking Part in the Community
+
+- **Ask questions** in [GitHub Discussions](https://github.com/stuchain/CuePoint/discussions). Search first, and give context and details.
+- **Share ideas** there too. Explain the problem and what you propose, be open to feedback, and consider alternatives.
+- **Help others.** Answer when you can, be patient with newcomers, and give constructive feedback.
+- **Report bugs** in [GitHub Issues](https://github.com/stuchain/CuePoint/issues) with the issue templates. Include the steps to reproduce.
+- **Report security problems** as described in the [Security Policy](SECURITY.md), not in a public discussion.
+
+Before you post, search for an existing discussion or issue, check the [FAQ](../docs/faq/index.md) and the [documentation](../docs/README.md), gather the details, and keep the post clear and short. When you reply, be helpful and respectful, give examples where you can, and link to relevant resources.
+
+### Moderation
+
+We keep the community respectful and inclusive. Moderators may remove inappropriate content, warn or ban people who break the [Code of Conduct](CODE_OF_CONDUCT.md), close discussions that do not follow these guidelines, and take other steps as needed.
+
+### Contributor Expectations
+
+1. **Code of Conduct**: All contributors must adhere to the [Code of Conduct](CODE_OF_CONDUCT.md).
+2. **Quality**: Follow the contributor checklist (tests, docs, lint, changelog) above.
+3. **License**: By contributing, you agree that your contributions will be licensed under the **Apache License, Version 2.0**, the same terms as the project (`LICENSE` at the repository root).
+
+### Maintainer Expectations
+
+1. **Review**: We aim to review PRs within a reasonable timeframe (see [Support SLA](../docs/policy/support-sla.md) for response targets).
+2. **Feedback**: We provide constructive feedback and guidance.
+3. **Attribution**: Contributors are credited in release notes and the changelog.
+
+### Contribution Types
+
+| Type | Process | Response Target |
+| --- | --- | --- |
+| Bug report | Issue template | Per Support SLA (P1/P2) |
+| Feature request | Issue template | Per Support SLA (P2) |
+| Pull request | PR + review | Best effort, typically within 5 days |
+| Documentation | PR to docs/ | Same as code PRs |
+
+### Intellectual Property
+
+- Contributions are made under the **Apache License, Version 2.0**.
+- You retain copyright; by submitting a PR, you grant the project a license to use, modify, and distribute your contribution.

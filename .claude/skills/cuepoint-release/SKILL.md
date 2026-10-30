@@ -59,7 +59,7 @@ architectural enough to need an ADR.
 
 ## Phase 3 - changelog and release notes
 
-- `docs/release/CHANGELOG.md` is the source. Follow `docs/policy/changelog-policy.md`. Entries
+- `docs/release/CHANGELOG.md` is the source. Follow `docs/policy/compatibility.md`. Entries
   cover the whole range from the survey, written for the person using CuePoint.
 - Cut `[Unreleased]` into a dated version section as part of an authorized release.
   `python scripts/validate_changelog.py` fails unless the changelog has an entry for the current
@@ -189,7 +189,7 @@ After publishing, verify rather than assume:
   `docs/release/incident-response-runbook.md`.
 - Known issues and workarounds: `docs/user-guide/troubleshooting.md`. Supported systems:
   `docs/user-guide/support-policy.md`. Support targets: `docs/policy/support-sla.md`.
-- Changelog: `docs/release/CHANGELOG.md` and `docs/policy/changelog-policy.md`.
+- Changelog: `docs/release/CHANGELOG.md` and `docs/policy/compatibility.md`.
 - Workflows: `desktop-electron.yml`, `release-gates.yml`, `test.yml`, `security-scan.yml`,
   `compliance-check.yml`, `license-compliance.yml`, `docs-check.yml`, `website.yml`.
 - Versions: `src/cuepoint/version.py` and the desktop `package.json` `version`.
