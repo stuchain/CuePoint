@@ -347,6 +347,15 @@ test.describe("The Library page (LIBRARY-11)", () => {
           scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
           window: { width: window.innerWidth, height: window.innerHeight },
           headerHeight: document.querySelector(".library-header")!.getBoundingClientRect().height,
+          // Where each piece of the header sits, so a header that grows names what moved (Intel only, 30 Oct).
+          headerPieces: [...document.querySelectorAll<HTMLElement>(
+            ".library-header .cp-screen-header__main > *, .library-header .cp-screen-header__title-row > *, .library-header .cp-screen-header__summary > *",
+          )]
+            .filter((el) => el.offsetParent)
+            .map((el) => {
+              const r = el.getBoundingClientRect();
+              return `${String(el.className).split(" ")[0]} ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)} "${(el.textContent ?? "").trim().slice(0, 40)}"`;
+            }),
           barLines,
           barLabels: barButtons.map((el) => el.getAttribute("aria-label") ?? el.textContent!.trim()),
           barCut: bar ? bar.scrollWidth > bar.clientWidth : false,
@@ -379,7 +388,10 @@ test.describe("The Library page (LIBRARY-11)", () => {
         WHOLE_ROWS_LIBRARY_CLOSED,
       );
       // 110 plus the path line above the title, which is always shown (round 7, question 4).
-      expect(closed.parts[".library-header"], "the header is one line of controls with Track details closed").toBeLessThanOrEqual(134);
+      expect(
+        closed.parts[".library-header"],
+        `the header is one line of controls with Track details closed; pieces: ${closed.headerPieces.join(" | ")}`,
+      ).toBeLessThanOrEqual(134);
       // The "Track details" tab is a toggle button (aria-pressed, C61).
       const showDetails = window.getByRole("button", { name: "Track details", exact: true });
       if ((await showDetails.getAttribute("aria-pressed")) === "false") await showDetails.click();
