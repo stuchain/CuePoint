@@ -338,8 +338,19 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
           .evaluate(() => window.cuepoint!.getRecentActivity!({ limit: 10 }))
           .then((read) => read.events.map((event) => `${event.type} ${JSON.stringify(event.detail ?? {})}`))
           .catch((error: unknown) => [`(could not read the feed: ${String(error)})`]);
+        // Control+Shift+A is ignored over another modal dialog (M473): name every dialog on screen.
+        const dialogs = await window
+          .evaluate(() =>
+            [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')]
+              .filter((node) => (node as HTMLElement).offsetParent !== null || getComputedStyle(node).position === "fixed")
+              .map((node) => {
+                const named = node.getAttribute("aria-label") ?? document.getElementById(node.getAttribute("aria-labelledby") ?? "")?.textContent;
+                return `${named ?? "(no name)"} modal=${node.getAttribute("aria-modal")} text=${node.textContent?.replace(/\s+/g, " ").trim().slice(0, 160)}`;
+              }),
+          )
+          .catch((error: unknown) => [`(could not read the dialogs: ${String(error)})`]);
         throw new Error(
-          `${String(cause)}\nActivity showed ${shown.length} entries:\n${shown.join("\n")}\nThe engine's newest events:\n${feed.join("\n")}`,
+          `${String(cause)}\nDialogs on screen:\n${dialogs.join("\n")}\nActivity showed ${shown.length} entries:\n${shown.join("\n")}\nThe engine's newest events:\n${feed.join("\n")}`,
         );
       }
       await entry.getByRole("button", { name: "Undo", exact: true }).click();
