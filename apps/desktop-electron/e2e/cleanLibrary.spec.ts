@@ -311,7 +311,9 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(row(window, "Tone Two").locator('[data-column="bpm"]')).toHaveText(/^126/, { timeout: 15_000 });
 
       // Reverted as one, from the batch's own entry.
-      await window.keyboard.press("Control+Shift+A");
+      // From the strip's button: Control+Shift+A at this point sometimes opened nothing on the CI
+      // runners, with no dialog in the way and the engine's batch recorded (10-30).
+      await window.getByRole("button", { name: "Activity", exact: true }).click();
       const activity = window.getByRole("dialog", { name: "Activity" });
       // The batch's own entry; its revert is recorded as another, which names it.
       const entry = activity
@@ -338,7 +340,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
           .evaluate(() => window.cuepoint!.getRecentActivity!({ limit: 10 }))
           .then((read) => read.events.map((event) => `${event.type} ${JSON.stringify(event.detail ?? {})}`))
           .catch((error: unknown) => [`(could not read the feed: ${String(error)})`]);
-        // Control+Shift+A is ignored over another modal dialog (M473): name every dialog on screen.
+        // Name every dialog on screen, in case another one sits over Activity.
         const dialogs = await window
           .evaluate(() =>
             [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')]
