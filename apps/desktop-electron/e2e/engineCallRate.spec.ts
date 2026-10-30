@@ -79,7 +79,7 @@ async function recordEngineCalls(app: ElectronApplication): Promise<void> {
     };
     const timed = (handler: Handler) => (handler as Handler & { __timed?: boolean }).__timed === true;
     const set = handlers.set.bind(handlers);
-    for (const [channel, handler] of [...handlers.entries()]) {
+    for (const [channel, handler] of handlers.entries()) {
       if (channel.startsWith("engine:") && !timed(handler)) set(channel, wrap(channel, handler));
     }
     handlers.set = (channel, handler) =>
@@ -88,7 +88,7 @@ async function recordEngineCalls(app: ElectronApplication): Promise<void> {
 }
 
 async function engineCalls(app: ElectronApplication): Promise<Record<string, number[]>> {
-  return app.evaluate(() => ({ ...((globalThis as unknown as { __engineCalls?: Record<string, number[]> }).__engineCalls ?? {}) }));
+  return app.evaluate(() => ({ ...((globalThis as unknown as { __engineCalls?: Record<string, number[]> }).__engineCalls) }));
 }
 
 /** The most calls in any one-second window, per channel, with the window's start. */
