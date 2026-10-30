@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 18: Production Hardening, Detailed Step Specifications
 
-Status: **Specified 2026-10-07; Decision Round 21 resolved the same day (DEC-179…DEC-188, all as recommended). No step is implemented yet.** Ten steps, HARDEN-01…HARDEN-10.
+Status: **Specified 2026-10-07; Decision Round 21 resolved the same day (DEC-179…DEC-188, all as recommended). HARDEN-01 to HARDEN-10 are implemented (2026-10-29; DEC-305, DEC-307, DEC-308); the owner's by-hand checks in `docs/release/v1-acceptance.md` and the `v1.0.0` tag are left. Where this spec says macOS 12+, the shipped minimum is macOS 14 on Apple Silicon and 15 on Intel (DEC-296; `docs/user-guide/support-policy.md`).** Ten steps, HARDEN-01…HARDEN-10.
 Writing the steps raised ten questions that no earlier round answered. They are asked as Decision
 Round 21 (Q-190…Q-199). Where a step below says "if Q-NNN …", the recommended branch is written
 out, and the step is built as the answer says. Per the process, no implementation happens from this

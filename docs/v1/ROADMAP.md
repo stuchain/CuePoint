@@ -1,13 +1,13 @@
 # CuePoint — Evolution Roadmap
 
-Status: **Phases 0–11 implemented (see below). Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 resolved (DEC-189…DEC-198); Round 21 resolved (DEC-179…DEC-188); DEC-199…DEC-201 add Phase 14's task walkthrough; Round 22 resolved (DEC-202…DEC-209, Phase 14's full review).**
+Status: **Phases 0–18 implemented (see below); v1.0.0 waits on the owner's checks in `docs/release/v1-acceptance.md`. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 resolved (DEC-189…DEC-198); Round 21 resolved (DEC-179…DEC-188); DEC-199…DEC-201 add Phase 14's task walkthrough; Round 22 resolved (DEC-202…DEC-209, Phase 14's full review).**
 
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
-- **Phase 12** is the cleanup.
-- **Phases 13–17** are error reporting, the pages revisited, statistics, distribution and the
-  website.
-- **Phase 18,** Production Hardening, is v1's last phase.
+- **Phase 12,** the cleanup, is implemented.
+- **Phases 13–17** (error reporting, the pages revisited, statistics, distribution and the
+  website) are implemented; their owed by-hand checks are listed in `docs/release/v1-acceptance.md`.
+- **Phase 18,** Production Hardening, v1's last phase, is implemented (2026-10-29).
 - **Phases 19 and 20** are future releases (DEC-125).
 
 Phase 12 is specified (`PHASE12_CLEANUP.md`), and so are Phase 13 (`PHASE13_REPORTING.md`), Phase 14
@@ -1054,6 +1054,11 @@ bought before launch (DEC-196); and asked for the app to get an icon, built in P
     - forms tested.
 
 ## Phase 18 — Production Hardening — v1's final phase
+
+**Implemented 2026-10-29:** HARDEN-01 to HARDEN-10 are built (DEC-305, DEC-307, DEC-308). What is
+left is the owner's: the by-hand rows of `docs/release/v1-acceptance.md` on Windows and an Apple
+Silicon Mac, then the merge to `main` and the `v1.0.0` tag. Known issues at 1.0.0 are in
+`docs/release/known-issues.md`.
 
 Specified 2026-10-07 in `PHASE18_HARDENING.md`, in ten steps (HARDEN-01…HARDEN-10): backups the user
 can make and restore, every upgrade tested with data, a way back when the library cannot open, crash

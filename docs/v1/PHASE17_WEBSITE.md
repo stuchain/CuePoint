@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 17: The Website, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet.** Thirteen steps, SITE-01…SITE-13.
+Status: **Specified 2026-10-07. SITE-01 to SITE-13 are implemented; the site is live at usecuepoint.com and is published from the `website` branch (DEC-235).** Thirteen steps, SITE-01…SITE-13.
 Writing the steps raised ten questions that Decision Round 14 did not answer. They were asked as
 Decision Round 20 (Q-180…Q-189) and answered the same day (DEC-189…DEC-198); each step below names
 the decision that settles it. Per the process, no implementation happens

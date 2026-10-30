@@ -86,6 +86,29 @@ React renderer  ->  window.cuepoint (preload.cjs, contextBridge)  ->  Electron m
 
 The pages below describe two of the paths through it in detail.
 
+## Staying safe and recovering (Phase 18)
+
+What keeps the library and the app usable when something goes wrong. The intent is in
+`docs/v1/PHASE18_HARDENING.md`; the code is the reference.
+
+- **Backups** (`services/backup_service.py`, `engine/backups_api.py`): a copy of the library each
+  launch after a change and before every upgrade, plus **Back up now**, kept in `backups/` beside the
+  library. A restore runs with the server stopped (`engine/restore_mode.py`, `--restore NAME`).
+- **The library's state** (`engine/library_state.py`): the engine binds its port first, then works
+  out the library's state on a thread (migrations included) and serves it from `/api/v1/status`. A
+  damaged, too-new, half-upgraded or out-of-space library gets a recovery screen instead of failing
+  every request.
+- **Whole-or-nothing writes** (`utils/atomic_write.py`): every file CuePoint writes, audio tags
+  included, goes to a temp copy that is swapped in; leftovers of a killed write are swept at start.
+- **Process supervision** (`electron/`): a heartbeat asks `/health` every 15 s and restarts an engine
+  that misses three (`heartbeat.ts`, `engineSupervisor.ts`); a stop kills the engine's whole process
+  tree (`processTree.ts`); the engine ends itself when the app that started it has gone
+  (`engine/parent_watch.py`). A renderer that crashes is reloaded once, and a second crash within a
+  minute shows `recovery.html` (`rendererRecovery.ts`); one that hangs without crashing is found by
+  `rendererWatchdog.ts`. `sessionLock.ts` notices that the last session did not end cleanly.
+- **Paths** (`utils/long_path.py`): Windows paths past 260 characters, UNC shares, and NFC-normalized
+  path, search and sort keys (migrations 0032 and 0033).
+
 ## Library Browsing (desktop)
 
 The Library page browses a collection that does not fit in the renderer. Every

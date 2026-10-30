@@ -1,6 +1,6 @@
 # CuePoint v1.0.0 — Phase 14: The Pages Revisited, Detailed Step Specifications
 
-Status: **Specified 2026-10-07. No step is implemented yet.** Sixteen steps, PAGES-01…PAGES-16.
+Status: **Specified 2026-10-07. PAGES-01 to PAGES-16 are implemented; the phase is complete (see `ROADMAP.md`).** Sixteen steps, PAGES-01…PAGES-16.
 The page reviews DEC-131 asks for are written in `PHASE14_REVIEWS.md`, 107 proposals across eleven
 surfaces, each with a screenshot of the app as it is today (`phase14/`). The user marked them on
 2026-10-07, taking the recommendation on every one (DEC-159): 100 accepted; NAV-4, STR-4, BAR-6

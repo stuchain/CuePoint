@@ -33,6 +33,21 @@ The desktop app has three more suites, none of which `run_tests.py` runs:
 | Electron main process | `apps/desktop-electron/electron/*.test.ts` | `npm test` in `apps/desktop-electron` (vitest, Node environment) |
 | Electron end to end | `apps/desktop-electron/e2e/` | `npm run test:e2e` in `apps/desktop-electron` (Playwright; run `npm run test:e2e:install` once) |
 
+Beyond those, from Phase 18:
+
+- **Crash and recovery e2e** (`crash.spec.ts`, `libraryRecovery.spec.ts`, `backups.spec.ts`) kill
+  and stall real processes. With `CUEPOINT_E2E=1` the app turns on test-only hooks (the engine's
+  `/api/v1/test/stall` route, `__cuepointTest` in main); a packaged app started normally has none.
+  When an engine call cannot be reached, `e2e/support/engineEvidence.ts` adds the supervisor's view,
+  the engine's logs and thread stacks to the failure.
+- **Accessibility** (`a11y.spec.ts`, `keyboard.spec.ts`): axe on every page, contrast, and the
+  keyboard tab orders in `keyboardTabOrders.json`.
+- **The packaged app** runs the `@packaged-smoke` specs on every push and the whole suite on a
+  release (`desktop-electron.yml`).
+- **Scale** (`scale.yml`): 50,000 tracks on all four systems against `scripts/budgets.json`.
+- **Release acceptance**: `scripts/check_acceptance.py --release` fails a release while a row of
+  `docs/release/v1-acceptance.md` is still open.
+
 ## When to Add Tests
 
 | Change Type | Add |
