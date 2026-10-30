@@ -111,6 +111,20 @@ TYPESCRIPT_ALLOWED: Dict[str, List[Tuple[str, str]]] = {
         ("await this.fs.rename(", "log rotation (logging)"),
         ("await this.fs.appendFile(", "logging"),
     ],
+    "apps/desktop-electron/electron/engineEvidenceForTest.ts": [
+        (
+            "import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync }",
+            "end-to-end runs only (CUEPOINT_E2E): engine evidence files in test-results, not user data",
+        ),
+        (
+            'writeFileSync(request, "")',
+            "end-to-end runs only (CUEPOINT_E2E): engine evidence files in test-results, not user data",
+        ),
+        (
+            "writeFileSync(path.join(dir, `main-",
+            "end-to-end runs only (CUEPOINT_E2E): engine evidence files in test-results, not user data",
+        ),
+    ],
     "apps/desktop-electron/electron/macInstaller.ts": [
         (
             "fs.writeFileSync(script,",
