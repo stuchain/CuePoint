@@ -89,6 +89,28 @@ def _logged_warnings(caplog) -> list[str]:
     return _warnings(caplog)
 
 
+def _notes(caplog) -> list[str]:
+    return [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno == logging.DEBUG and r.name == "cuepoint.engine.request_timing"
+    ]
+
+
+def _logged_notes(caplog) -> list[str]:
+    """The over-100 ms lines, once the server has counted and written one.
+
+    Like ``_logged_warnings``: both happen in ``track``'s ``finally``, after the
+    answer has gone out.
+    """
+    deadline = time.monotonic() + 5.0
+    while not (_notes(caplog) and request_timing.noted_counts()):
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(0.01)
+    return _notes(caplog)
+
+
 def test_slow_request_logs_one_line_without_the_query(port, monkeypatch, caplog):
     monkeypatch.setattr(request_timing, "_clock", _SlowClock(0.6))
     with caplog.at_level(logging.DEBUG):
@@ -151,13 +173,9 @@ def test_requests_over_the_note_threshold_are_counted_per_route(
     monkeypatch.setattr(request_timing, "_clock", _SlowClock(0.2))
     with caplog.at_level(logging.DEBUG, logger="cuepoint.engine.request_timing"):
         _get(port, f"/api/v1/jobs/{JOB_ID}/results")
+        debug = _logged_notes(caplog)
     assert request_timing.noted_counts() == {"/api/v1/jobs/{id}/results": 1}
     assert _warnings(caplog) == []
-    debug = [
-        r.getMessage()
-        for r in caplog.records
-        if r.levelno == logging.DEBUG and r.name == "cuepoint.engine.request_timing"
-    ]
     assert debug == [
         "[engine] request over 100 ms: GET /api/v1/jobs/{id}/results 200 ms"
     ]
