@@ -206,9 +206,11 @@ def _fill_way_back(computed_at: str, state_name: str) -> None:
 
     thread = threading.Thread(target=fill, name="library-way-back", daemon=True)
     with _lock:
+        # Started before it is listed, so settle() never joins a thread that has not started
+        # (fill() waits on _lock until this block ends).
+        thread.start()
         _fill_threads[:] = [t for t in _fill_threads if t.is_alive()]
         _fill_threads.append(thread)
-    thread.start()
 
 
 def settle(timeout: float = 10.0) -> None:
