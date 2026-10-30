@@ -1013,7 +1013,7 @@ when nothing replaces it, so that the link check stays clean. The record's text 
 | --- | --- | --- | --- | --- | --- |
 | `README.md` | 86 | 2026-10-05 | 6 | incrate 6 | **update**. Becomes the map of where each kind of doc lives. |
 | `how-to-run.md` | 40 | 2026-08-29 | 3 | — | **merge** into `docs/development/developer-setup.md`. Links to repoint: `README.md`. |
-| `incrate-spec.md` | 116 | 2026-09-28 | 10 | incrate 5, retired_ui 2 | **delete**. inCrate retired (DEC-100). Links to repoint: `docs/README.md`, `docs/ui-overhaul/adr/007-discover-on-the-library.md`, `docs/v1/PHASE9_DISCOVER.md`. |
+| `incrate-spec.md` | 116 | 2026-09-28 | 10 | incrate 5, retired_ui 2 | **delete**. inCrate retired (DEC-100). Links to repoint: `docs/README.md`, `docs/ui-overhaul/adr/007-discover-on-the-library.md`, `docs/v1/archive/PHASE9_DISCOVER.md`. |
 | `index.md` | 21 | 2026-10-05 | — | incrate 1 | **update** |
 | `release-checklist.md` | 116 | 2026-02-10 | 1 | — | **merge** into `docs/release/release-deployment-runbook.md`. Links to repoint: `docs/README.md`. |
 | `roadmap.md` | 7 | 2026-02-15 | 4 | — | **delete**. Links point at `docs/v1/ROADMAP.md` instead. Links to repoint: `docs/development/metadata-sources-caching-strategy.md`, `docs/v1/ROADMAP.md`. |
@@ -1082,7 +1082,7 @@ when nothing replaces it, so that the link check stays clean. The record's text 
 | `csv-and-excel-export.md` | 42 | 2026-09-19 | 1 | — | **keep** |
 | `data-integrity.md` | 43 | 2026-02-10 | 1 | — | **keep** |
 | `dialogs-and-help.md` | 54 | 2026-09-19 | 1 | qt 1, retired_ui 3 | **delete**. Qt dialogs. Links to repoint: `docs/features/README.md`. |
-| `incrate.md` | 25 | 2026-09-28 | 2 | incrate 11, retired_ui 2 | **delete**. inCrate retired (DEC-100). Links to repoint: `docs/features/README.md`, `docs/v1/PHASE9_DISCOVER.md`. |
+| `incrate.md` | 25 | 2026-09-28 | 2 | incrate 11, retired_ui 2 | **delete**. inCrate retired (DEC-100). Links to repoint: `docs/features/README.md`, `docs/v1/archive/PHASE9_DISCOVER.md`. |
 | `main-window-and-navigation.md` | 49 | 2026-09-19 | 1 | qt 1, retired_ui 8 | **delete**. Qt main window; `docs/user-guide/the-window.md` describes the app's. Links to repoint: `docs/features/README.md`. |
 | `matching-and-scoring.md` | 45 | 2026-02-10 | 1 | — | **keep** |
 | `mix-parsing.md` | 35 | 2026-02-10 | 1 | — | **keep** |

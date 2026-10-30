@@ -209,7 +209,7 @@ way, as earlier phases did.
 **Objective**: List everything this phase could remove, with the evidence for each, grouped so the
 user can approve or strike it. Delete nothing.
 
-**User-visible result**: None in the app. The user gets `docs/v1/PHASE12_AUDIT.md` to read and mark.
+**User-visible result**: None in the app. The user gets `docs/v1/archive/PHASE12_AUDIT.md` to read and mark.
 
 **Dependencies**: None.
 
@@ -287,7 +287,7 @@ user can approve or strike it. Delete nothing.
 
 **Complexity**: **M**
 
-**Outcome**: Implemented (2026-10-06). The audit is `docs/v1/PHASE12_AUDIT.md`. It lists groups A to
+**Outcome**: Implemented (2026-10-06). The audit is `docs/v1/archive/PHASE12_AUDIT.md`. It lists groups A to
 J with their evidence and a proposed verdict for every item, and nothing is deleted. The user approved
 all ten groups on 2026-10-06, after answering the audit's three questions: the release tooling and the
 two fixture-regenerating scripts are deleted, and `sentry-sdk` is removed for Phase 13 to re-add.

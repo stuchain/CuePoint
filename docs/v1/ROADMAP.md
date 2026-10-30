@@ -2,6 +2,9 @@
 
 Status: **Phases 0–18 implemented (see below); v1.0.0 waits on the owner's checks in `docs/release/v1-acceptance.md`. Decision Rounds 1–16 resolved (DEC-001…DEC-153); Round 17 resolved (DEC-154…DEC-160); DEC-161 adds a 1.5× default size; Round 18 resolved (DEC-162…DEC-168); Round 19 resolved (DEC-169…DEC-178); Round 20 resolved (DEC-189…DEC-198); Round 21 resolved (DEC-179…DEC-188); DEC-199…DEC-201 add Phase 14's task walkthrough; Round 22 resolved (DEC-202…DEC-209, Phase 14's full review).**
 
+The phase specs named below (`PHASE*.md`, with Phase 14's screenshots) are finished and live in
+`archive/`; this roadmap, `DECISIONS.md` and `PIXEL_DESIGN_SYSTEM.md` stay here.
+
 Phase numbers follow the order of implementation (DEC-146):
 - **Phases 0–11** are implemented.
 - **Phase 12,** the cleanup, is implemented.
@@ -63,7 +66,7 @@ No implementation happens from this document alone — every phase step requires
 
 ## Phase 0 — Repository Audit ✅ Complete
 
-Delivered: `CURRENT_ARCHITECTURE.md`, `GAP_ANALYSIS.md`, `PIXEL_DESIGN_SYSTEM.md`. No production
+Delivered: `CURRENT_ARCHITECTURE.md`, `GAP_ANALYSIS.md` (both removed 2026-10-30; `docs/development/architecture.md` is current), `PIXEL_DESIGN_SYSTEM.md`. No production
 code changed. CuePoint behaves identically to before this phase, as required.
 
 ## Phase 1 — Foundation ✅ Complete (2026-09-02)

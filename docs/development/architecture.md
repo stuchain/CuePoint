@@ -35,12 +35,17 @@ Desktop: Library tracks → Query Generation → Search → Match/Score → matc
 
 | Module | Purpose |
 | --- | --- |
-| `core/matcher.py` | Matching and scoring logic |
-| `core/query_generator.py` | Search query generation |
-| `core/text_processing.py` | Normalization, similarity scoring |
-| `core/mix_parser.py` | Remix/extended/original mix parsing |
-| `data/beatport.py` | Beatport search and page parsing |
-| `data/rekordbox.py` | Rekordbox XML parsing |
+| `core/matcher.py` | Matching and scoring: `best_beatport_match` runs the queries, `consider` scores a candidate (title, artists, key, year, mix type), guards reject subset matches, and a strong enough match ends the search early |
+| `core/query_generator.py` | `make_search_queries`: title and artist, remix phrases, n-grams of the title, capped by `max_queries_per_track` and the time budget |
+| `core/text_processing.py` | `sanitize_title_for_search`, `normalize_text`, `score_components` (similarity) |
+| `core/mix_parser.py` | Original, extended, radio, remix, dub, VIP and other mix types; remixer names; the mix bonus and the early-exit test |
+| `data/beatport_search.py`, `data/beatport.py` | Beatport search and track parsing |
+| `data/providers.py`, `services/beatport_service.py` | The provider the matcher calls, with retries and the circuit breaker |
+| `data/rekordbox.py` | Rekordbox XML parsing (`parse_rekordbox`, 100 MiB limit), the artist read from a title when empty, `inspect_rekordbox_xml` for preflight |
+| `models/result.py`, `models/beatport_candidate.py` | `TrackResult` and a candidate |
+
+The command-line tool's run, arguments and output are in [The command-line tool](cli.md); the
+desktop updater is in [Update system](update-system.md).
 
 ## How a Track Is Matched
 
@@ -89,7 +94,7 @@ The pages below describe two of the paths through it in detail.
 ## Staying safe and recovering (Phase 18)
 
 What keeps the library and the app usable when something goes wrong. The intent is in
-`docs/v1/PHASE18_HARDENING.md`; the code is the reference.
+`docs/v1/archive/PHASE18_HARDENING.md`; the code is the reference.
 
 - **Backups** (`services/backup_service.py`, `engine/backups_api.py`): a copy of the library each
   launch after a change and before every upgrade, plus **Back up now**, kept in `backups/` beside the

@@ -108,7 +108,7 @@ analysis can be paused and carries on after a restart. See
 
 `python main.py --xml collection.xml --playlist "My Playlist"` matches one
 playlist from a Rekordbox file and writes CSV files, as it always has. See
-[CLI and arguments](../features/cli-and-arguments.md).
+[CLI and arguments](../development/cli.md).
 
 ## Supported environments and limits
 

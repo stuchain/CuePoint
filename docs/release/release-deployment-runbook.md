@@ -5,7 +5,7 @@ The one runbook for releasing CuePoint's Electron desktop app: how versions are 
 ## Where things stand
 
 - **A release is a tag (DIST-04).** Pushing `vX.Y.Z` or `vX.Y.Z-test.N` runs `.github/workflows/release.yml`, which builds every download with `desktop-electron.yml` (DEC-147) and publishes one GitHub release (see [Publish](#publish)). Nothing is uploaded by hand.
-- **The app updates itself (DIST-06, DIST-07).** Windows and macOS builds check GitHub's release list at launch and every 4 hours, choose a release by DEC-145's rule, and install it on **Restart now** or at quit. Linux shows a download link. The release you publish is the update: there is no appcast, no feed to upload and no step beyond [pushing the tag](#publish). See [Updates](#updates) and `docs/features/update-system.md`.
+- **The app updates itself (DIST-06, DIST-07).** Windows and macOS builds check GitHub's release list at launch and every 4 hours, choose a release by DEC-145's rule, and install it on **Restart now** or at quit. Linux shows a download link. The release you publish is the update: there is no appcast, no feed to upload and no step beyond [pushing the tag](#publish). See [Updates](#updates) and `docs/development/update-system.md`.
 - **Windows builds are unsigned.** The macOS build is unsigned too: it carries only an ad hoc signature (DEC-170). A Developer ID signature and notarization would be added later, and the hooks do it only when credentials are present (see [Signing and notarizing](#signing-and-notarizing)).
 
 ## Release types

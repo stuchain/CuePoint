@@ -5,7 +5,7 @@
 Accepted (PLAYER-01, 2026-09-05); **confirmed at the end of Phase 5**
 (PLAYER-12, 2026-09-06) with the consequences recorded below actually
 observed rather than predicted. Supersedes the original HTML5-first
-recommendation recorded in `docs/v1/OPEN_QUESTIONS.md` Q-005.
+recommendation recorded as Q-005 (the questions are answered in `docs/v1/DECISIONS.md`).
 
 ## Context
 

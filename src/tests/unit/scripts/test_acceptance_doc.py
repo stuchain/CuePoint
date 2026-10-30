@@ -121,7 +121,7 @@ class TestWhatTheChecklistMustHold:
         ],
     )
     def test_every_phase_with_owed_checks_has_a_row(self, rows, phase_file):
-        assert f"docs/v1/{phase_file}" in self._sources(rows)
+        assert f"docs/v1/archive/{phase_file}" in self._sources(rows)
 
     def test_the_runbooks_manual_checks_are_rows(self, rows):
         text = " ".join(row.check for row in rows)
@@ -158,8 +158,8 @@ class TestWhatTheChecklistMustHold:
         assert len(notarization) == 2
         sources = {r.references[0].partition(":")[0] for r in notarization}
         assert sources == {
-            "docs/v1/PHASE5_PLAYER.md",
-            "docs/v1/PHASE8_EXPORT.md",
+            "docs/v1/archive/PHASE5_PLAYER.md",
+            "docs/v1/archive/PHASE8_EXPORT.md",
         }
         for row in notarization:
             assert row.result == "not applicable (DEC-170)"

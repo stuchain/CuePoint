@@ -24,7 +24,7 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
   the dead-code guard: exit 1 on a Python module, script or Electron/renderer file nothing shipped or run
   reaches (a file only tests reach counts as dead), or on a stale `ALLOWLIST` entry. `test.yml` runs
   `--check`. By hand, `python scripts/audit_dead_code.py --output report.md`; Phase 12's audit
-  (`docs/v1/PHASE12_AUDIT.md`) is written from it.
+  (`docs/v1/archive/PHASE12_AUDIT.md`) is written from it.
 - `check_acceptance.py`: Checks `docs/release/v1-acceptance.md`, the list of every check owed before
   `v1.0.0` (HARDEN-09): each row has a check, a source that exists, systems, a how, a result and, once it is
   not `owed`, a date. With `--release` it also exits 1 while any row is `owed` or `fail` (DEC-188). `release.yml`

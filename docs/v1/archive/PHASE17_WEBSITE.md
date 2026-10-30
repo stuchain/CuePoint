@@ -79,7 +79,7 @@ Claude Code loads them once a session touches `apps/website/`. Each step names t
 | The user guide, 16 pages, 4,066 lines | `docs/user-guide/*.md` |
 | The changelog, Keep a Changelog format, checked in CI | `docs/release/CHANGELOG.md`, `scripts/validate_changelog.py` |
 | The privacy notice and terms of the app | `PRIVACY_NOTICE.md`, `docs/policy/privacy-notice.md`, `docs/policy/terms-of-use.md` (rewritten by REPORT-08 for Sentry) |
-| The app driven by Playwright against the real engine, with Beatport stubbed, for screenshots | `apps/desktop-electron/e2e/` (40 specs); used for `docs/v1/phase14/` |
+| The app driven by Playwright against the real engine, with Beatport stubbed, for screenshots | `apps/desktop-electron/e2e/` (40 specs); used for `docs/v1/archive/phase14/` |
 | Releases with every download, named by system and chip, a checksum file and notes; a tag publishes them | DIST-03, DIST-04 (Phase 16) |
 | The website skills | `apps/website/.claude/skills/` (26), `apps/website/.claude/README.md` |
 

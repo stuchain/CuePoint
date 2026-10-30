@@ -10,14 +10,13 @@ CuePoint enriches Rekordbox playlists with Beatport metadata and keeps each matc
 | --- | --- | --- |
 | [`user-guide/`](user-guide/getting-started.md) | How to use the app: install, import, match, review, discover, prepare, troubleshoot | Users |
 | [`faq/`](faq/index.md) | Short answers, with links to the guide | Users and contributors |
-| [`features/`](features/README.md) | How the CLI and matching pipeline are built: one page per feature, with code references | Contributors |
-| [`development/`](development/architecture.md) | Setup, architecture, testing, match rules, Beatport parsing, the Beatport v4 reference | Contributors |
+| [`development/`](development/architecture.md) | Setup, architecture, the CLI, the updater, testing, match rules, Beatport parsing, the Beatport v4 reference | Contributors |
 | [`release/`](release/release-deployment-runbook.md) | The release runbook, key management, rollback, incident response, the changelog | Maintainers |
 | [`policy/`](policy/index.md) | Privacy, terms, telemetry, support, maintenance, deprecation and changelog policies | Everyone, and maintainers |
 | [`compliance/`](compliance/privacy-compliance.md) | Privacy, licence and accessibility compliance | Maintainers |
 | [`security/`](security/security-response-process.md) | Vulnerability reporting and patching | Reporters and maintainers |
 | [`schema/`](schema/migration-guide.md) | Output schema migration and the Rekordbox compatibility matrix | Contributors |
-| [`v1/`](v1/ROADMAP.md) and [`ui-overhaul/adr/`](ui-overhaul/README.md) | The design record: the roadmap, decisions, phase specs and the architecture decision records. History of why, not a how-to. | Contributors |
+| [`v1/`](v1/ROADMAP.md) and [`ui-overhaul/adr/`](ui-overhaul/README.md) | The design record: the roadmap, decisions, the finished phase specs (`v1/archive/`) and the architecture decision records. History of why, not a how-to. | Contributors |
 
 Where a page and the code disagree, the code is right: fix the page.
 
@@ -58,7 +57,8 @@ For contributors: setup, architecture, extending the codebase.
 | --- | --- |
 | [Contributing](../.github/CONTRIBUTING.md) | How to contribute (start here) |
 | [Architecture Overview](development/architecture.md) | The desktop process model, the matching pipeline, core services |
-| [Feature internals](features/README.md) | How each CLI and pipeline feature is built |
+| [The command-line tool](development/cli.md) | Its arguments, what a run does, its output and integrity checks |
+| [Update system](development/update-system.md) | How the desktop app finds, downloads and installs a new version |
 | [Developer Setup](development/developer-setup.md) | Environment, running from source, scripts, tooling, coding standards |
 | [Beatport v4 API Reference](development/beatport-v4-api.md) | The Beatport API routes, auth and errors that Discover uses |
 | [Match Rules & Scoring](development/match-rules-and-scoring.md) | How to add match rules |

@@ -8640,7 +8640,7 @@ long dash (—) between words.
 
 ## DEC-305 — Phase 18 Screens: Backups Section, Restore Dialogs, Recovery Screen, Status Messages (Owner's Mockup Picks 2026-10-29)
 
-**Status**: Accepted · **Related**: DEC-179, DEC-180, DEC-182, DEC-173, DEC-155, DEC-158, `docs/v1/PHASE18_HARDENING.md` (HARDEN-01, HARDEN-03, HARDEN-05)
+**Status**: Accepted · **Related**: DEC-179, DEC-180, DEC-182, DEC-173, DEC-155, DEC-158, `docs/v1/archive/PHASE18_HARDENING.md` (HARDEN-01, HARDEN-03, HARDEN-05)
 
 **Context**: Phase 18 needs five screens (HARDEN-01, -03, -05): Settings › Backups, the restore
 questions, a recovery screen for a library that cannot be used, the status strip's own messages, and

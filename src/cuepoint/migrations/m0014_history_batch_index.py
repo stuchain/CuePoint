@@ -14,7 +14,7 @@ no batch id, and they never need to be found this way, so they are not in it.
 ids only grow, so the index hands the rows back in that order with no sort.
 
 The numbers, from a library of 50,000 tracks whose history holds 1,000,000
-changes, are in ``docs/v1/PHASE7_CLEAN.md`` under CLEAN-06: without the index a
+changes, are in ``docs/v1/archive/PHASE7_CLEAN.md`` under CLEAN-06: without the index a
 batch's ids are a scan of the whole table, and the time grows with every edit a
 user ever makes, which is the one table in the database that never shrinks.
 """

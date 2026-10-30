@@ -124,7 +124,7 @@ describe("generate", () => {
 });
 
 describe("PAGES-14 tokens", () => {
-  // the exact expressions of docs/v1/PHASE14_PAGES.md
+  // the exact expressions of docs/v1/archive/PHASE14_PAGES.md
   const PAGES14 = `
     @property --row-height { syntax: "<length>"; inherits: true; initial-value: 36px; }
     :root {

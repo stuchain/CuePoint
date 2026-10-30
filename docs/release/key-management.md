@@ -21,7 +21,7 @@ No workflow in `.github/workflows/` sets any of these today. The secrets the wor
 
 No build is signed with a certificate. Windows builds are unsigned: nothing in the repository configures Windows code signing, so SmartScreen may warn on a first download. The Macs carry only the ad hoc signature that the `afterPack` hook gives the bundle, so Gatekeeper blocks a first download until the user clears the quarantine flag (see the [user guide](../user-guide/getting-started.md#install)). The release workflow reads no signing secret.
 
-The unsigned state shapes the updater (see `docs/features/update-system.md`):
+The unsigned state shapes the updater (see `docs/development/update-system.md`):
 
 - Windows updates through `electron-updater`, which accepts an unsigned installer when no publisher is configured. Each download is checked against the SHA-512 in the release's manifest.
 - The Macs do not use `electron-updater`, because its Squirrel.Mac installer refuses an unsigned app. CuePoint downloads the chip's zip itself, checks its SHA-512, size, version and chip, and swaps the app after quit. A file the app downloads itself carries no quarantine flag, so Gatekeeper does not stop the new copy.

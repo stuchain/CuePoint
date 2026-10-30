@@ -391,15 +391,17 @@ class TestScripts:
         assert _scripts(result)["scripts/orphan.py"].status == "not-run"
 
     def test_the_audit_naming_a_candidate_does_not_make_it_referenced(self, tree):
-        audit_doc = tree / "docs" / "v1" / "PHASE12_AUDIT.md"
+        audit_doc = tree / "docs" / "v1" / "archive" / "PHASE12_AUDIT.md"
         audit_doc.parent.mkdir(parents=True)
         audit_doc.write_text(
-            "| `scripts/orphan.py` | delete |\nSee [old](../old.md).\n"
+            "| `scripts/orphan.py` | delete |\nSee [old](../../old.md).\n"
         )
         result = audit.run_audit(tree)
         assert _scripts(result)["scripts/orphan.py"].status == "unreferenced"
         docs = {d.path: d for d in result.docs}
-        assert "docs/v1/PHASE12_AUDIT.md" not in str(docs["docs/old.md"].referenced_by)
+        assert "docs/v1/archive/PHASE12_AUDIT.md" not in str(
+            docs["docs/old.md"].referenced_by
+        )
 
     def test_the_readme_is_not_a_script(self, result):
         assert "scripts/README.md" not in _scripts(result)

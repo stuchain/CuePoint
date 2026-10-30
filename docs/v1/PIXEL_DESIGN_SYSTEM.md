@@ -3,7 +3,7 @@
 Status: **Audit — describes what exists today.** This is the baseline the target vision's design
 system work must preserve and extend (per the evolution spec: "the pixel-art identity that exists
 today must survive and become MORE polished, not disappear"). No changes proposed here yet — see
-`OPEN_QUESTIONS.md` for the open design-direction questions this audit feeds.
+`DECISIONS.md` for how the design-direction questions this audit fed were answered.
 
 Source of truth in-repo: `apps/desktop-electron/renderer/src/tokens/` (`tokens.css`, `layout.css`,
 `fonts.css`, `themes/*.css`, `theme.ts`, `scale.ts`, `customThemes.ts`, `themeDerivation.ts`), plus
@@ -195,7 +195,7 @@ opacity is never stepped (DEC-134, DEC-135). Since DEC-298 there are two looks, 
 
 This is a genuinely mature, internally consistent token system — the "reuse, don't redesign" case
 from the target vision applies directly. The gaps worth deciding on (not deciding here, just
-flagging — see `OPEN_QUESTIONS.md`):
+flagging — answered in `DECISIONS.md`):
 
 1. **Icons**: stay with styled Unicode glyphs (cheap, already working) vs. invest in real pixel
    sprite iconography (matches the "pixel-art identity" ambition more literally, but is real

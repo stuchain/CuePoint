@@ -52,7 +52,7 @@ _COVERED_RE = re.compile(r"^covered by CI \(.+\)$")
 #: The one system whose by-hand checks the Intel runner's packaged suite may stand in for (DEC-308).
 COVERED_BY_CI_SYSTEMS = ("macOS Intel",)
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-#: ``docs/v1/PHASE5_PLAYER.md:1334`` or ``...:1317-1421``.
+#: ``docs/v1/archive/PHASE5_PLAYER.md:1334`` or ``...:1317-1421``.
 _REFERENCE_RE = re.compile(r"^(?P<path>[^\s:]+):(?P<first>\d+)(?:-(?P<last>\d+))?$")
 
 
