@@ -157,6 +157,8 @@ import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
 const trackIdOf = (row: LibraryTrackRow) => row.id;
 
+/** How many of a selection's rows a row's menu reads before it opens: one gathering page. */
+const MENU_ROWS = 500;
 /** What the page is doing, when it is doing something. */
 type Busy = null | "importing" | "checking" | "applying";
 
@@ -851,8 +853,11 @@ export function LibraryScreen({
   const openMenuFor = useCallback(
     async (row: LibraryTrackRow, index: number, x: number, y: number) => {
       const inSelection = row.id != null && isSelected(selection.selection, row.id);
+      // The menu opens at once (30 Oct 2026, "open now, collect on Play"): a big selection brings only
+      // its first MENU_ROWS rows, enough for the menu's marks when that is all of it; Play, Play next and
+      // Add to queue gather the rest when chosen (`gather` below).
       const rows =
-        inSelection && selection.count > 1 ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [row];
+        inSelection && selection.count > 1 ? await selection.gatherRows(Math.min(selection.count, MENU_ROWS)) : [row];
       // Playback takes rows and is capped; an organization action takes the
       // selection *as a description* and is not. The two must not be confused:
       // gathering 47,913 rows to tag them is the mistake DEC-045 exists to
@@ -1170,6 +1175,9 @@ export function LibraryScreen({
   const groupsFor = useCallback(
     (state: NonNullable<typeof menu>): TrackActionGroup[] => {
       const { target, rows, index, first, credits, kind } = state;
+      // The rows to queue: the menu's own when it holds them all, else the selection's, gathered now.
+      const queueRows = async () =>
+        kind === "row" && rows.length < target.count ? selection.gatherRows(QUEUE_ACTION_LIMIT) : rows;
       const checking = clean.handlersFor(target);
       const path = kind === "row" ? (rows.length === 1 ? rows[0].file_path : null) : revealPath;
       const revealId =
@@ -1203,9 +1211,9 @@ export function LibraryScreen({
             onPlay: () =>
               void (target.count === 1 && index >= 0
                 ? playback.playRow(index)
-                : playback.playRows(rows)),
-            onPlayNext: () => void playback.playNext(rows),
-            onAddToQueue: () => void playback.addToQueue(rows),
+                : queueRows().then((all) => playback.playRows(all))),
+            onPlayNext: () => void queueRows().then((all) => playback.playNext(all)),
+            onAddToQueue: () => void queueRows().then((all) => playback.addToQueue(all)),
           },
           organization: {
             onAddToCollection: () => openPicker("collection", target),
@@ -1260,7 +1268,9 @@ export function LibraryScreen({
             // anyone meant.
             onCopy: () =>
               void (kind === "row"
-                ? copyRows(async () => rows.slice(0, COPY_LIMIT), rows.length)
+                ? rows.length < target.count
+                  ? copyRows(() => selection.gatherRows(COPY_LIMIT), target.count)
+                  : copyRows(async () => rows.slice(0, COPY_LIMIT), rows.length)
                 : handleCopy()),
             onReveal: path ? () => reveal(revealId, path) : null,
           },
@@ -1285,7 +1295,7 @@ export function LibraryScreen({
       revealPath,
       scopedCollection,
       scopedSet,
-      selection.selection,
+      selection,
       setList.available,
       tags,
       tagsRead.value,

@@ -1695,6 +1695,29 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
     await screen.findByText(/3 selected/);
   }
 
+  // 30 Oct 2026, "open now, collect on Play": a row's menu inside a big selection reads one page and
+  // opens; the queue's rows are gathered only when Add to queue is chosen.
+  it("opens at once on a big selection and gathers its rows only for the queue", async () => {
+    const many = Array.from({ length: 1_200 }, (_, at) => track(at + 1));
+    bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) => browseAnswer(params, many));
+    renderScreen();
+    await tableReady();
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await screen.findByText(/everything matching/);
+
+    const before = bridge.browseLibrary.mock.calls.length;
+    await openMenu("Track 2");
+    const pagesForTheMenu = bridge.browseLibrary.mock.calls.slice(before).filter(([params]) => Number((params as { limit?: number }).limit) === 500);
+    expect(pagesForTheMenu).toHaveLength(1);
+    // Not all in hand: both favorite entries are offered (favorites fix A).
+    expect(await findMenuItem("Add to favorites")).toBeTruthy();
+    expect(await findMenuItem("Remove from favorites")).toBeTruthy();
+
+    await userEvent.click((await menuItem("Add to queue")));
+    await waitFor(() => expect(bridge.player.addToQueue).toHaveBeenCalledTimes(1));
+    expect(bridge.player.addToQueue.mock.calls[0]![0]).toHaveLength(1_200);
+  }, 15_000);
+
   it("acts on the row under the pointer when nothing is selected", async () => {
     renderScreen();
     await tableReady();
