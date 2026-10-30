@@ -279,6 +279,41 @@ describe("the engine's heartbeat", () => {
     expect(init.headers.Authorization).toMatch(/^Bearer [0-9a-f]{48}$/);
   });
 
+  it("describes itself to a failed end-to-end call only in a run with the test hooks on, with no token", async () => {
+    const off = make();
+    await off.start();
+    expect(() => off.diagnosticsForTest()).toThrow(/test hooks/);
+
+    const on = make({ testHooks: () => true });
+    await on.start();
+    const first = on.diagnosticsForTest();
+    expect(first).toMatchObject({
+      healthy: true,
+      spawned: 1,
+      exits: 0,
+      lastExit: null,
+      heartbeatActive: true,
+      heartbeatMisses: 0,
+      restartAttempts: 0,
+    });
+    expect(first.pid).toBeGreaterThan(0);
+    expect(first.port).toBeGreaterThan(0);
+    expect(JSON.stringify(first)).not.toMatch(/[0-9a-f]{48}/);
+
+    // An engine that exits on its own is counted, with how it ended, and a restart follows.
+    spawned.at(-1)!.finish();
+    await run(10);
+    expect(on.diagnosticsForTest()).toMatchObject({
+      healthy: false,
+      exits: 1,
+      lastExit: { code: null, signal: "SIGKILL" },
+      reconnecting: true,
+      restartAttempts: 1,
+    });
+    await run(1000 + 50);
+    expect(on.diagnosticsForTest()).toMatchObject({ healthy: true, spawned: 2, exits: 1 });
+  });
+
   it("lets go of the health answer's body", async () => {
     const supervisor = make();
     await supervisor.start();

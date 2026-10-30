@@ -16,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { rememberHome, rememberWindow, withEngineEvidence } from "./support/engineEvidence";
 import { launchElectron } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,12 +42,16 @@ export function launchApp(options: LaunchOptions): Promise<ElectronApplication> 
     ...options.env,
   } as Record<string, string>;
   delete env.ELECTRON_RUN_AS_NODE;
-  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${options.userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${options.userDataDir}`], env }).then((app) => {
+    rememberHome(app, options.home);
+    return app;
+  });
 }
 
 /** The first window, past onboarding, with the engine answering. */
 export async function ready(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
+  rememberWindow(window, app);
   await setSeen(window);
   await window.reload();
   await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
@@ -71,7 +76,9 @@ export function mainPid(app: ElectronApplication): Promise<number> {
 // Jobs
 
 export async function jobState(window: Page, jobId: string): Promise<string> {
-  return window.evaluate((id) => window.cuepoint!.getJob!(id).then((job: any) => job?.state ?? "missing"), jobId);
+  return withEngineEvidence(window, "getJob", () =>
+    window.evaluate((id) => window.cuepoint!.getJob!(id).then((job: any) => job?.state ?? "missing"), jobId),
+  );
 }
 
 /** Wait for a job to end, whichever way, and return its final record. */
@@ -89,7 +96,10 @@ export async function idle(window: Page, timeout = 120_000): Promise<void> {
       async () => {
         // A refused connection (the engine between two lives) is "not yet", not the end of the test: a
         // dead engine still fails it, at the timeout.
-        const jobs = await window.evaluate(() => window.cuepoint!.listJobs!({ state: "active" })).catch(() => null);
+        // The evidence is gathered on the way (a few times at most) even though the poll goes on.
+        const jobs = await withEngineEvidence(window, "listJobs", () =>
+          window.evaluate(() => window.cuepoint!.listJobs!({ state: "active" })),
+        ).catch(() => null);
         return jobs ? jobs.active_count : -1;
       },
       { timeout },
@@ -98,7 +108,9 @@ export async function idle(window: Page, timeout = 120_000): Promise<void> {
 }
 
 export async function importLibrary(window: Page, xmlPath: string): Promise<string> {
-  const started = await window.evaluate((file) => window.cuepoint!.startLibraryImport!({ xml_path: file }), xmlPath);
+  const started = await withEngineEvidence(window, "startLibraryImport", () =>
+    window.evaluate((file) => window.cuepoint!.startLibraryImport!({ xml_path: file }), xmlPath),
+  );
   const job = await finished(window, started.job_id, 180_000);
   expect(job.state).toBe("succeeded");
   await idle(window);

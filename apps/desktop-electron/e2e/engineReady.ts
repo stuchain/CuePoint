@@ -20,6 +20,8 @@
  */
 import { expect, type Page } from "@playwright/test";
 
+import { withEngineEvidence } from "./support/engineEvidence";
+
 /**
  * How long to wait, matching the supervisor's own health budget.
  *
@@ -33,20 +35,22 @@ export async function waitForEngine(
   window: Page,
   timeout: number = ENGINE_READY_TIMEOUT_MS,
 ): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        try {
-          const status = await window.evaluate(() =>
-            (window as never as Record<string, any>).cuepoint?.getEngineStatus?.(),
-          );
-          return status?.connected === true;
-        } catch {
-          // The bridge is not there yet, or the page is mid-navigation.
-          return false;
-        }
-      },
-      { timeout, message: "the engine never reported itself connected" },
-    )
-    .toBe(true);
+  await withEngineEvidence(window, "waitForEngine", async () => {
+    await expect
+      .poll(
+        async () => {
+          try {
+            const status = await window.evaluate(() =>
+              (window as never as Record<string, any>).cuepoint?.getEngineStatus?.(),
+            );
+            return status?.connected === true;
+          } catch {
+            // The bridge is not there yet, or the page is mid-navigation.
+            return false;
+          }
+        },
+        { timeout, message: "the engine never reported itself connected" },
+      )
+      .toBe(true);
+  });
 }

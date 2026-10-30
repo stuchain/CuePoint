@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { sweepTempFilesAsync, writeAtomic } from "./atomicWrite";
-import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
+import { EngineSupervisor, resolvePreloadPath, type EngineDiagnostics } from "./engineSupervisor";
 import { RESTORE_FILES_LIMIT, TagWriteRelease } from "./tagWriteRelease";
 import { BEATPORT_PARTITION, BeatportAuth, ElectronSignInHost } from "./beatportAuth";
 import { beatportEndpoints } from "./beatportAuthRules";
@@ -326,8 +326,13 @@ integrity.noteStart();
  * the stall is asked from here.
  */
 if (testHooksEnabled()) {
-  (globalThis as { __cuepointTest?: { stallEngine: () => Promise<number> } }).__cuepointTest = {
+  (
+    globalThis as {
+      __cuepointTest?: { stallEngine: () => Promise<number>; engineDiagnostics: () => EngineDiagnostics };
+    }
+  ).__cuepointTest = {
     stallEngine: () => engine.stallForTest(),
+    engineDiagnostics: () => engine.diagnosticsForTest(),
   };
 }
 

@@ -344,6 +344,25 @@ export interface EngineRunResult {
 /** What a launch answers when `stop()` came before it could spawn. */
 const STOPPED: EngineStatus = { connected: false, error: "Engine not running" };
 
+/** The supervisor's view of the engine for a failed end-to-end call (no token, no secrets). */
+export interface EngineDiagnostics {
+  pid: number | null;
+  port: number | null;
+  healthy: boolean;
+  status: EngineStatus;
+  restartAttempts: number;
+  reconnecting: boolean;
+  spawned: number;
+  exits: number;
+  lastExit: { code: number | null; signal: string | null; uptimeMs: number } | null;
+  heartbeatActive: boolean;
+  heartbeatMisses: number;
+  stopRequested: boolean;
+  maintenance: boolean;
+  stdout: string[];
+  stderr: string[];
+}
+
 export class EngineSupervisor {
   constructor(private readonly options: EngineSupervisorOptions = {}) {
     this.incidents = new IncidentTracker("engine", options.reporter);
@@ -440,6 +459,36 @@ export class EngineSupervisor {
    * undone by the loop it replaced.
    */
   private generation = 0;
+
+  /** How many engines this supervisor has spawned and how the last one ended; for `diagnosticsForTest`. */
+  private spawnCount = 0;
+  private exitCount = 0;
+  private lastExit: { code: number | null; signal: string | null; uptimeMs: number } | null = null;
+
+  /**
+   * What an end-to-end spec prints when an engine call fails (`__cuepointTest.engineDiagnostics`):
+   * the supervisor's view, with no token. Test hooks only, like `stallForTest`.
+   */
+  diagnosticsForTest(): EngineDiagnostics {
+    if (!(this.options.testHooks?.() ?? false)) throw new Error("test hooks are not enabled");
+    return {
+      pid: this.child?.pid ?? null,
+      port: this.port,
+      healthy: this.healthy,
+      status: this.getStatus(),
+      restartAttempts: this.restartAttempts,
+      reconnecting: this.reconnecting,
+      spawned: this.spawnCount,
+      exits: this.exitCount,
+      lastExit: this.lastExit,
+      heartbeatActive: this.heartbeat?.active ?? false,
+      heartbeatMisses: this.heartbeat?.missed ?? 0,
+      stopRequested: this.stopRequested,
+      maintenance: this.maintenance,
+      stdout: [...this.stdoutTail],
+      stderr: [...this.stderrTail],
+    };
+  }
 
   /** The last lines of the engine's stdout and stderr, oldest first. Survives restarts. */
   recentOutput(): { stdout: readonly string[]; stderr: readonly string[] } {
@@ -698,6 +747,7 @@ export class EngineSupervisor {
     });
 
     this.spawnedAt = Date.now();
+    this.spawnCount += 1;
     this.drain(this.child, "stdout");
     this.drain(this.child, "stderr");
 
@@ -763,6 +813,10 @@ export class EngineSupervisor {
    * child (the second call finds it already let go of).
    */
   private childGone(child: ChildProcess, code: number | null, signal: NodeJS.Signals | null): void {
+    if (this.child === child) {
+      this.exitCount += 1;
+      this.lastExit = { code, signal, uptimeMs: Date.now() - this.spawnedAt };
+    }
     if (this.child === child) this.stopHeartbeat();
     // `stop()` and a newer launch let go of a child before it exits: that exit is ours, not a
     // crash, and not an incident (REPORT-05). It must not touch the state of the child that

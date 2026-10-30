@@ -18,6 +18,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { rememberHome, rememberWindow, withEngineEvidence } from "./support/engineEvidence";
 import { waitForEngine } from "./engineReady";
 import { openAddFilter } from "./addFilter";
 import { selectAllMatching } from "./filterRow";
@@ -123,11 +124,15 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
     string
   >;
   delete env.ELECTRON_RUN_AS_NODE;
-  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env });
+  return launchElectron({ cwd: DESKTOP_ROOT, args: [".", `--user-data-dir=${userDataDir}`], env }).then((app) => {
+    rememberHome(app, cuepointHome);
+    return app;
+  });
 }
 
 async function ready(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
+  rememberWindow(window, app);
   await window.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
   await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
@@ -136,14 +141,14 @@ async function ready(app: ElectronApplication): Promise<Page> {
 }
 
 async function importAndCheck(window: Page, xmlPath: string) {
-  const started = await window.evaluate(
-    (file) => window.cuepoint!.startLibraryImport!({ xml_path: file }),
-    xmlPath,
+  const started = await withEngineEvidence(window, "startLibraryImport", () =>
+    window.evaluate((file) => window.cuepoint!.startLibraryImport!({ xml_path: file }), xmlPath),
   );
   await expect
     .poll(
       async () =>
-        (await window.evaluate((id) => window.cuepoint!.getJob!(id), started.job_id))!.state,
+        (await withEngineEvidence(window, "getJob", () => window.evaluate((id) => window.cuepoint!.getJob!(id), started.job_id)))!
+          .state,
       { timeout: 60_000 },
     )
     .toBe("succeeded");
@@ -151,7 +156,9 @@ async function importAndCheck(window: Page, xmlPath: string) {
   await expect
     .poll(
       async () => {
-        const health = await window.evaluate(() => window.cuepoint!.getLibraryHealth!());
+        const health = await withEngineEvidence(window, "getLibraryHealth", () =>
+          window.evaluate(() => window.cuepoint!.getLibraryHealth!()),
+        );
         return health.counts.find((count) => count.id === "missing_files")?.count;
       },
       { timeout: 60_000 },
@@ -161,7 +168,8 @@ async function importAndCheck(window: Page, xmlPath: string) {
   await expect
     .poll(
       async () =>
-        (await window.evaluate(() => window.cuepoint!.listJobs!({ state: "active" }))).active_count,
+        (await withEngineEvidence(window, "listJobs", () => window.evaluate(() => window.cuepoint!.listJobs!({ state: "active" }))))
+          .active_count,
       { timeout: 60_000 },
     )
     .toBe(0);
