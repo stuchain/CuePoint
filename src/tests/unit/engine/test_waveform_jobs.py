@@ -233,7 +233,7 @@ class TestSteppingAside:
 
             store.create_job(job_type=JOB_TYPE_FILE_CHECK, runner=checking)
 
-        store.create_job(job_type=JOB_TYPE_LIBRARY_IMPORT, runner=importing)
+        imported = store.create_job(job_type=JOB_TYPE_LIBRARY_IMPORT, runner=importing)
         gate.release.set()
         wait_for(lambda: first.state == JobState.CANCELLED, "the step aside")
         assert first.error["reason"] == STOP_STEPPED_ASIDE
@@ -246,6 +246,10 @@ class TestSteppingAside:
         )
         # Nothing analyses while the check decides which files may be opened.
         assert len(analysis_jobs(store)) == 1
+        # The real check outlasts the import's own end; a slow runner may not
+        # have recorded that end yet, and the check ending first starts the run
+        # as the import's instead.
+        wait_for(lambda: imported.state == JobState.SUCCEEDED, "the import's end")
         check_done.set()
         settle(store)
 
