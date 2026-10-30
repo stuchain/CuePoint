@@ -16,6 +16,11 @@
  *
  * `writeAtomic` is the async form; `writeAtomicSync` is for the few callers
  * that are synchronous by contract (the settings store).
+ *
+ * On Windows a rename onto a file that another rename, an antivirus scan or the
+ * indexer holds for a moment fails with EPERM, EACCES or EBUSY; the rename is
+ * tried again for about a second before the write fails. Async writes to one
+ * target in this process also wait for each other, in the order they were asked.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -103,11 +108,66 @@ export function fsyncFolderSync(folder: string): void {
   }
 }
 
+/** The waits between tries of a rename Windows refused as busy: about a second in all. */
+export const BUSY_RETRY_DELAYS_MS: readonly number[] = [10, 20, 40, 80, 160, 320, 370];
+
+function isBusy(error: unknown, platform: NodeJS.Platform): boolean {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  return platform === "win32" && (code === "EPERM" || code === "EACCES" || code === "EBUSY");
+}
+
+/** `fs.promises.rename`, tried again while Windows says the target is busy. */
+export async function renameRetrying(from: string, to: string, platform: NodeJS.Platform = process.platform): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await fs.promises.rename(from, to);
+      return;
+    } catch (error) {
+      if (!isBusy(error, platform) || attempt >= BUSY_RETRY_DELAYS_MS.length) throw error;
+      await new Promise((resolve) => setTimeout(resolve, BUSY_RETRY_DELAYS_MS[attempt]));
+    }
+  }
+}
+
+/** `fs.renameSync`, tried again while Windows says the target is busy. */
+export function renameRetryingSync(from: string, to: string, platform: NodeJS.Platform = process.platform): void {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (error) {
+      if (!isBusy(error, platform) || attempt >= BUSY_RETRY_DELAYS_MS.length) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, BUSY_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+}
+
+/** The write each target is waiting on, by its full path (any case on Windows). */
+const queued = new Map<string, Promise<unknown>>();
+
+function queueKey(file: string): string {
+  const full = path.resolve(file);
+  return process.platform === "win32" ? full.toLowerCase() : full;
+}
+
 /**
  * Replace `file` with `data` whole or not at all. A failure anywhere leaves the old file as
- * it was and no temporary file behind. Returns the number of bytes written.
+ * it was and no temporary file behind. Returns the number of bytes written. A second write to
+ * the same file in this process starts when the first has finished.
  */
-export async function writeAtomic(file: string, data: AtomicData, options: AtomicWriteOptions = {}): Promise<number> {
+export function writeAtomic(file: string, data: AtomicData, options: AtomicWriteOptions = {}): Promise<number> {
+  const key = queueKey(file);
+  const ahead = queued.get(key) ?? Promise.resolve();
+  const write = ahead.then(() => writeAtomicNow(file, data, options));
+  const settled = write.catch(() => undefined);
+  queued.set(key, settled);
+  void settled.then(() => {
+    if (queued.get(key) === settled) queued.delete(key);
+  });
+  return write;
+}
+
+async function writeAtomicNow(file: string, data: AtomicData, options: AtomicWriteOptions): Promise<number> {
   const encoding = options.encoding ?? "utf8";
   const folder = path.dirname(file);
   const base = path.basename(file);
@@ -140,7 +200,7 @@ export async function writeAtomic(file: string, data: AtomicData, options: Atomi
     handle = undefined;
     const mode = await modeForAsync(file, undefined);
     if (mode !== undefined) await fs.promises.chmod(temporary, mode);
-    await fs.promises.rename(temporary, file);
+    await renameRetrying(temporary, file);
     temporary = "";
   } catch (error) {
     await handle?.close().catch(() => undefined);
@@ -177,7 +237,7 @@ export function writeAtomicSync(file: string, data: string | Uint8Array, options
     fd = undefined;
     const mode = modeFor(file, undefined);
     if (mode !== undefined) fs.chmodSync(temporary, mode);
-    fs.renameSync(temporary, file);
+    renameRetryingSync(temporary, file);
     temporary = "";
   } catch (error) {
     if (fd !== undefined) {

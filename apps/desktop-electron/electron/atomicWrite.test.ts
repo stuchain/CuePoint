@@ -4,8 +4,11 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  BUSY_RETRY_DELAYS_MS,
   TEMP_MARKER,
   pidAlive,
+  renameRetrying,
+  renameRetryingSync,
   sweepTempFiles,
   sweepTempFilesAsync,
   tempNameFor,
@@ -121,8 +124,84 @@ describe("writeAtomic", () => {
     const dir = folder();
     const file = path.join(dir, "f");
     await Promise.all([writeAtomic(file, "one"), writeAtomic(file, "two")]);
-    expect(["one", "two"]).toContain(fs.readFileSync(file, "utf8"));
+    expect(fs.readFileSync(file, "utf8")).toBe("two");
     expect(leftovers(dir)).toEqual([]);
+  });
+
+  it("lets writes to one target land one at a time, in the order they were asked", async () => {
+    const dir = folder();
+    const file = path.join(dir, "settings.json");
+    const real = fs.promises.rename.bind(fs.promises);
+    let inFlight = 0;
+    let most = 0;
+    vi.spyOn(fs.promises, "rename").mockImplementation(async (from, to) => {
+      inFlight += 1;
+      most = Math.max(most, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight -= 1;
+      return real(from, to);
+    });
+    await Promise.all(["1", "2", "3", "4"].map((text) => writeAtomic(file, text)));
+    expect(most).toBe(1);
+    expect(fs.readFileSync(file, "utf8")).toBe("4");
+  });
+
+  it("goes on with the next write to a target after one fails", async () => {
+    const dir = folder();
+    const file = path.join(dir, "f");
+    const real = fs.promises.rename.bind(fs.promises);
+    vi.spyOn(fs.promises, "rename")
+      .mockRejectedValueOnce(Object.assign(new Error("disk"), { code: "EIO" }))
+      .mockImplementation(real);
+    const [first, second] = await Promise.allSettled([writeAtomic(file, "one"), writeAtomic(file, "two")]);
+    expect(first.status).toBe("rejected");
+    expect(second.status).toBe("fulfilled");
+    expect(fs.readFileSync(file, "utf8")).toBe("two");
+    expect(leftovers(dir)).toEqual([]);
+  });
+
+  it("does not hold up writes to other targets", async () => {
+    const dir = folder();
+    await Promise.all([writeAtomic(path.join(dir, "a"), "a"), writeAtomic(path.join(dir, "b"), "b")]);
+    expect(fs.readFileSync(path.join(dir, "a"), "utf8")).toBe("a");
+    expect(fs.readFileSync(path.join(dir, "b"), "utf8")).toBe("b");
+  });
+});
+
+describe("a rename Windows refuses as busy", () => {
+  const busy = (code: string) => Object.assign(new Error(`${code}: operation not permitted, rename`), { code });
+
+  it.each(["EPERM", "EACCES", "EBUSY"])("is tried again on Windows after %s", async (code) => {
+    const rename = vi.spyOn(fs.promises, "rename").mockRejectedValueOnce(busy(code)).mockRejectedValueOnce(busy(code)).mockResolvedValue();
+    await renameRetrying("from", "to", "win32");
+    expect(rename).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives up after about a second, with the last error", async () => {
+    const rename = vi.spyOn(fs.promises, "rename").mockRejectedValue(busy("EPERM"));
+    const started = Date.now();
+    await expect(renameRetrying("from", "to", "win32")).rejects.toThrow("EPERM");
+    expect(rename).toHaveBeenCalledTimes(BUSY_RETRY_DELAYS_MS.length + 1);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(900);
+  });
+
+  it("is not tried again for another error, or on another system", async () => {
+    const rename = vi.spyOn(fs.promises, "rename").mockRejectedValue(busy("ENOENT"));
+    await expect(renameRetrying("from", "to", "win32")).rejects.toThrow("ENOENT");
+    rename.mockRejectedValue(busy("EPERM"));
+    await expect(renameRetrying("from", "to", "darwin")).rejects.toThrow("EPERM");
+    expect(rename).toHaveBeenCalledTimes(2);
+  });
+
+  it("is tried again by the synchronous form too", () => {
+    let calls = 0;
+    vi.spyOn(fs, "renameSync").mockImplementation(() => {
+      calls += 1;
+      if (calls < 3) throw busy("EBUSY");
+    });
+    renameRetryingSync("from", "to", "win32");
+    expect(calls).toBe(3);
+    expect(() => renameRetryingSync("from", "to", "linux")).not.toThrow();
   });
 });
 
