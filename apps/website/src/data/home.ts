@@ -69,27 +69,27 @@ export type AppShotId =
 export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   window: {
     label: "The CuePoint window",
-    alt: "The CuePoint window on a library of tracks, with the Camelot wheel open and the selected track's key lit with the keys that mix with it.",
+    alt: "The CuePoint window on a library of tracks, with the Camelot wheel open on the playing track's key, lit with the keys that mix with it.",
     ...WINDOW,
   },
   clean: {
     label: "Clean",
-    alt: "The Clean page's Match area as a table: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
+    alt: "The Clean page's Match area: the tracks a Beatport match left to check, each beside what Beatport matched it with.",
     ...WINDOW,
   },
   "clean-compare": {
     label: "Clean: one at a time",
-    alt: "Clean's Match area, One at a time: a track from the library beside the best match Beatport found, with its likelihood, the other results, and the Correct button.",
+    alt: "Clean's Check the match panel: a track from the library beside the candidates Beatport found, with Use this match and None of these.",
     ...WINDOW,
   },
   library: {
     label: "The Library",
-    alt: "The Library page: the table of tracks with the Collections and playlists beside it, and the Track details panel open on one track, showing its cover, key and waveform.",
+    alt: "The Library page: the table of tracks with the Collections and playlists beside it, and one track selected with the actions for it above the table.",
     ...WINDOW,
   },
   keys: {
     label: "Keys",
-    alt: "The Keys page: the keys of three playlists counted on the Camelot wheel, with one key opened and its tracks counted beneath.",
+    alt: "The Keys page: the keys of three playlists counted on the Camelot wheel, with the key that holds the most tracks picked.",
     ...WINDOW,
   },
   discover: {
@@ -104,17 +104,17 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   },
   statistics: {
     label: "Statistics",
-    alt: "The Statistics page's Your library section: four charts of how the whole library spreads by genre, tempo, year and date added, with the count on every bar.",
+    alt: "The Statistics page's Overview: how the whole library spreads by genre, label and artist, with the count on every bar.",
     ...WINDOW,
   },
   waveforms: {
     label: "Waveforms and the player",
-    alt: "The player bar with a paused track's waveform, and Track details showing the track's waveform, loudness and cue points.",
+    alt: "The player bar with a paused track's waveform, and Track details showing the whole track's waveform with its cue points listed beneath.",
     ...WINDOW,
   },
   export: {
     label: "Export to Rekordbox",
-    alt: "The Export to Rekordbox window: how many tracks and which playlists the new Rekordbox file will hold, before anything is written.",
+    alt: "The Export to Rekordbox window: how many tracks and playlists the new Rekordbox file will hold, and what goes in it, before anything is written.",
     ...WINDOW,
   },
 };

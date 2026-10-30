@@ -49,16 +49,16 @@ type Bridge = Record<string, any>;
  * (home.ts's words, kept to what the picture shows; reviewed by hand once).
  */
 const ALT: Record<string, string> = {
-  library: "The Library page: the table of tracks with the Collections and playlists beside it, and the Track details panel open on one track, showing its cover, key and waveform.",
-  window: "The CuePoint window on a library of tracks, with the Camelot wheel open and the selected track's key lit with the keys that mix with it.",
-  waveforms: "The player bar with a paused track's waveform, and Track details showing the track's waveform, loudness and cue points.",
-  keys: "The Keys page: the keys of three playlists counted on the Camelot wheel, with one key opened and its tracks counted beneath.",
-  statistics: "The Statistics page's Your library section: four charts of how the whole library spreads by genre, tempo, year and date added, with the count on every bar.",
+  library: "The Library page: the table of tracks with the Collections and playlists beside it, and one track selected with the actions for it above the table.",
+  window: "The CuePoint window on a library of tracks, with the Camelot wheel open on the playing track's key, lit with the keys that mix with it.",
+  waveforms: "The player bar with a paused track's waveform, and Track details showing the whole track's waveform with its cue points listed beneath.",
+  keys: "The Keys page: the keys of three playlists counted on the Camelot wheel, with the key that holds the most tracks picked.",
+  statistics: "The Statistics page's Overview: how the whole library spreads by genre, label and artist, with the count on every bar.",
   prepare: "The Prepare page: a Set as a running order in chapters, with the checks between tracks and the transition strip open on one of them.",
-  export: "The Export to Rekordbox window: how many tracks and which playlists the new Rekordbox file will hold, before anything is written.",
+  export: "The Export to Rekordbox window: how many tracks and playlists the new Rekordbox file will hold, and what goes in it, before anything is written.",
   discover: "The Discover page after a search: new tracks found on a Beatport chart by an artist in the library, with their artists and labels.",
-  clean: "The Clean page's Match area as a table: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
-  "clean-compare": "Clean's Match area, the Review of a run: a track from the library beside the best match Beatport found, with its likelihood, the other results, and the Correct button.",
+  clean: "The Clean page's Match area: the tracks a Beatport match left to check, each beside what Beatport matched it with.",
+  "clean-compare": "Clean's Check the match panel: a track from the library beside the candidates Beatport found, with Use this match and None of these.",
 };
 
 function python(): string {
@@ -237,6 +237,8 @@ async function settled(window: Page) {
 }
 
 async function shoot(window: Page, id: keyof typeof ALT, taken: Record<string, string>) {
+  // the pointer on the status bar's empty middle, so no hint opens over the picture
+  await window.mouse.move(WINDOW.width / 2, WINDOW.height - 4);
   await settled(window);
   const file = path.join(OUT_DIR, `${id}-${THEME}.png`);
   await window.screenshot({ path: file, type: "png", animations: "disabled", caret: "hide" });
@@ -388,7 +390,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         if (await button.count()) await button.click();
         await expect(window.getByRole("button", { name: state === "rail" ? "Expand sidebar" : "Collapse sidebar" })).toBeVisible();
       };
-      await test.step("library: the table with Track details open", async () => {
+      await test.step("library: the table with one track selected", async () => {
         await openLibrary(window);
         // the sidebar as a rail, the way a person with this window keeps it: the table gets its columns
         await sidebar("rail");
@@ -401,22 +403,27 @@ test.describe("the website's pictures (SITE-04)", () => {
         }
         expect(selected, "a visible row with a key").toBeTruthy();
         await titleCell(window, selected).click();
+        // Track details stays closed in this picture and the next: beside it, at this window's width, the
+        // selection bar's menu buttons are squeezed into each other (the owner's pick, 2026-10-30)
         const details = window.getByRole("complementary", { name: "Track details" });
+        // the click opens the panel a moment later: wait for it, then close it
         await expect(details).toBeVisible();
-        await expect(details.locator("[data-testid=inspector-waveform] canvas")).toBeVisible({ timeout: 30_000 });
+        await details.getByRole("button", { name: "Hide track details" }).click();
+        await expect(details).toBeHidden();
         await shoot(window, "library", taken);
       });
 
       await test.step("window: the Camelot wheel open on the selected track's key", async () => {
         // the whole window, with the sidebar's page names on it
         await sidebar("expanded");
-        await window.getByRole("button", { name: "Camelot wheel", exact: true }).click();
+        // the wheel opens from a coloured key chip (K8): the player bar's, with Track details closed
+        const opener = window.locator(".cp-player-bar").getByRole("button", { name: /^Show .+ on the Camelot wheel$/ });
+        await opener.click();
         const wheel = window.getByRole("dialog", { name: "Camelot wheel" });
-        await expect(wheel).toContainText(`Selected: ${selected}`, { timeout: 15_000 });
-        await expect(wheel.locator("[data-lit]").first()).toBeVisible();
+        await expect(wheel.locator("[data-lit]").first()).toBeVisible({ timeout: 15_000 });
         await shoot(window, "window", taken);
-        // the button closes it too; Escape would also clear the table's selection
-        await window.getByRole("button", { name: "Camelot wheel", exact: true }).click();
+        // the chip closes it too; Escape would also clear the table's selection
+        await opener.click();
         await expect(wheel).toBeHidden();
       });
 
@@ -425,16 +432,20 @@ test.describe("the website's pictures (SITE-04)", () => {
       await test.step("waveforms: the player bar and Track details' waveform, loudness and cues", async () => {
         await titleCell(window, selected).click();
         const details = window.getByRole("complementary", { name: "Track details" });
+        // the panel was closed for the pictures before: the header's Details button opens it again
+        if (!(await details.isVisible())) await window.getByRole("button", { name: "Track details", exact: true }).filter({ visible: true }).click();
         await expect(details.locator("[data-testid=inspector-waveform] canvas")).toBeVisible({ timeout: 30_000 });
         // Overview holds the facts, the waveform and the cues: fold Rekordbox's details, so they sit together
         await details.getByRole("tab", { name: "Overview" }).click();
-        const rekordbox = details.getByRole("button", { name: /^Details from Rekordbox/ });
-        if ((await rekordbox.getAttribute("aria-expanded")) === "true") await rekordbox.click();
+        const rekordbox = details.getByRole("button", { name: /^From your Rekordbox file/ });
+        if ((await rekordbox.count()) && (await rekordbox.getAttribute("aria-expanded")) === "true") await rekordbox.click();
         const cues = details.getByRole("button", { name: /^Cue points/ });
         if ((await cues.getAttribute("aria-expanded")) === "false") await cues.click();
         await details.locator("[data-testid=inspector-waveform]").evaluate((el) => el.scrollIntoView({ block: "start" }));
         await expect(cues).toBeInViewport();
         await shoot(window, "waveforms", taken);
+        await details.getByRole("button", { name: "Hide track details" }).click();
+        await expect(details).toBeHidden();
       });
 
       await test.step("keys: one playlist counted, one key opened", async () => {
@@ -442,17 +453,15 @@ test.describe("the website's pictures (SITE-04)", () => {
         await expect(window.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible();
         const sources = window.getByRole("group", { name: "Sources" });
         for (const name of ["Peak time", "Festival set", "Rooftop"]) await sources.getByRole("checkbox", { name, exact: true }).check();
-        await expect(window.getByRole("status").filter({ hasText: "in 3 playlists" })).toBeVisible({ timeout: 30_000 });
-        // The page opens on the wheel (K15); these steps read the list.
-        await window.getByRole("toolbar", { name: "Track list" }).getByRole("button", { name: "List" }).click();
-        const list = window.getByRole("group", { name: "Keys in these sources" });
-        // the key with the most tracks in it
-        const counts = await list.locator(".keys-counts__count").allInnerTexts();
-        const best = counts.map((text, index) => ({ n: Number(text.replace(/\D/g, "")) || 0, index })).sort((a, b) => b.n - a.n)[0]!;
-        await list.getByRole("button").nth(best.index).click();
-        await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
-        // back to the wheel for the picture, then the wheel at the top and the tracks under it
-        await window.getByRole("tab", { name: "Wheel" }).click();
+        await expect(window.getByRole("status").filter({ hasText: "3 playlists" }).first()).toBeVisible({ timeout: 30_000 });
+        // the key with the most tracks in it, picked on the wheel (each segment is named "6A, G minor, 9 tracks")
+        const segments = window.getByRole("group", { name: "Keys", exact: true }).getByRole("button");
+        await expect(segments.first()).toBeVisible({ timeout: 30_000 });
+        const names = await segments.evaluateAll((els) => els.map((el) => el.getAttribute("aria-label") ?? el.textContent ?? ""));
+        const best = names.map((name, index) => ({ n: Number(/(\d+) tracks?$/.exec(name)?.[1] ?? 0), index })).sort((a, b) => b.n - a.n)[0]!;
+        // the segments are drawn shapes: click through the DOM
+        await segments.nth(best.index).evaluate((el) => (el as HTMLElement).click());
+        await expect(window.getByRole("grid", { name: "Tracks in these keys" }).locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
         await window.getByRole("heading", { name: "Keys", level: 1 }).evaluate((el) => el.scrollIntoView({ block: "start" }));
         await shoot(window, "keys", taken);
       });
@@ -461,20 +470,14 @@ test.describe("the website's pictures (SITE-04)", () => {
         await window.getByRole("link", { name: "Statistics", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Statistics", level: 1 })).toBeVisible();
         await expect(window.getByRole("combobox", { name: "Which tracks" })).toHaveValue("library", { timeout: 30_000 });
-        const plays = window.getByRole("region", { name: "Plays" });
-        const library = window.getByRole("region", { name: "Your library" });
-        const health = window.getByRole("region", { name: "Health" });
-        await expect(plays.getByRole("list", { name: "Most played" })).toBeVisible({ timeout: 30_000 });
-        await expect(library.locator('[data-panel="genre"]')).toBeVisible({ timeout: 30_000 });
-        await expect(health.locator('[data-panel="files"]')).toBeVisible({ timeout: 30_000 });
-        // nothing is selected on this page: the panel away gives the sections their width
+        // the Overview tab: how the whole library spreads, a chart per field with the count on every bar
+        await window.getByRole("tab", { name: "Overview" }).click();
+        const overview = window.getByRole("tabpanel", { name: "Overview" });
+        await expect(overview.getByRole("region", { name: "Genres" })).toBeVisible({ timeout: 30_000 });
+        // nothing is selected on this page: the panel away gives the charts their width
         const hide = window.getByRole("button", { name: "Hide track details" });
         if (await hide.count()) await hide.click();
-        // the page is taller than the window: the spreads, four charts that show the library at a
-        // glance, are the picture (the Plays list above them is a list; the scope sits above that)
-        await window.getByRole("heading", { name: "Your library", level: 2 }).evaluate((el) => el.scrollIntoView({ block: "start" }));
-        await expect(library.locator('[data-panel="genre"]')).toBeInViewport();
-        await expect(library.locator('[data-panel="tempo"]')).toBeInViewport();
+        await idle(window);
         await shoot(window, "statistics", taken);
       });
 
@@ -497,7 +500,9 @@ test.describe("the website's pictures (SITE-04)", () => {
         await openLibrary(window);
         await window.locator('[data-slot="library-header"]').getByRole("button", { name: "Export to Rekordbox…" }).click();
         const dialog = window.getByRole("dialog", { name: "Export to Rekordbox" });
-        await expect(dialog.getByTestId("export-track-count")).toBeVisible({ timeout: 30_000 });
+        await expect(dialog.getByTestId("export-summary")).toBeVisible({ timeout: 30_000 });
+        // "No playlists · Change" opens the tick list (M513)
+        await dialog.getByTestId("export-chosen").getByRole("button", { name: "Change" }).click();
         await dialog.getByRole("checkbox", { name: /^Rooftop, Oct 10/ }).check();
         await dialog.getByRole("checkbox", { name: /^Club night/ }).check();
         await expect(dialog.getByText(/Working out what the export would write/)).toHaveCount(0, { timeout: 30_000 });
@@ -514,7 +519,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         await expect(panel).toBeVisible({ timeout: 30_000 });
         await panel.getByRole("checkbox", { name: "House", exact: true }).check();
         await panel.getByRole("button", { name: "Start dig" }).click();
-        await expect(window.getByText(/^Found \d+ tracks from 1 chart/)).toBeVisible({ timeout: 90_000 });
+        await expect(window.getByText(/found \d+ tracks from 1 chart/i).first()).toBeVisible({ timeout: 90_000 });
         // The shot of the table: Everything, after the cards.
         await window.getByRole("button", { name: /^Everything · / }).click();
         const found = window.getByRole("grid", { name: "Tracks this dig found" });
@@ -532,30 +537,15 @@ test.describe("the website's pictures (SITE-04)", () => {
       });
 
       await test.step("clean: the Review of a playlist after it is matched", async () => {
-        await window.getByRole("link", { name: "Clean", exact: true }).click();
+        await window.getByRole("link", { name: /^Clean\b/ }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
-        // Match opens on Playlists (C22): tick the live playlist and press Match.
-        const live = showcase.playlists.find((p) => p.name === showcase.livePlaylist)!;
-        await window.getByRole("checkbox", { name: `Match ${showcase.livePlaylist}`, exact: true }).check({ timeout: 30_000 });
-        await window.getByRole("button", { name: "Match ticked playlists" }).click();
-        await expect(window.getByText(`Matching ${live.trackIds.length} tracks on Beatport.`, { exact: true })).toBeVisible({ timeout: 30_000 });
-        // the job's end, not the toast's: the toast goes on its own
-        await idle(window);
+        // the seeded matches open on their Review (step 3 of 3): every track, what Beatport matched it
+        // with, and the ones left for a yes or no
+        const queue = window.getByRole("table", { name: /^Every track of this playlist/ });
+        await expect(queue.locator("td.review-row__theirs").first()).not.toBeEmpty({ timeout: 30_000 });
         // Errors and warnings stay until closed (DEC-281): close any still showing.
         await closeToasts(window);
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
-        // the page opened afresh, so its counts hold what the match left for a yes or no
-        await openLibrary(window);
-        await window.getByRole("link", { name: "Clean", exact: true }).click();
-        await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
-        // the run's Review: every track, with what was found for it and where it stands
-        // the match landed on its Review; the page kept it, and its row's Review opens it again
-        const reviewTab = window.getByRole("tab", { name: `Review ${showcase.livePlaylist}` });
-        if (await reviewTab.count()) await reviewTab.click();
-        else await window.getByRole("button", { name: `Review ${showcase.livePlaylist}`, exact: true }).click();
-        const queue = window.getByRole("region", { name: /^Review / }).getByRole("table");
-        await expect(queue.getByRole("row")).not.toHaveCount(1, { timeout: 30_000 });
-        await expect(queue.locator("td.review-row__theirs").first()).not.toBeEmpty({ timeout: 30_000 });
         await expect(window.locator(".cp-status")).toContainText("Ready");
         await shoot(window, "clean", taken);
       });
@@ -565,19 +555,20 @@ test.describe("the website's pictures (SITE-04)", () => {
         await closeToasts(window);
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
         // a click on a row opens the side panel: your file and every candidate Beatport found
-        await window.getByRole("region", { name: /^Review / }).locator("tr.review-row").first().locator("td.review-row__yours").click();
-        const panel = window.getByRole("complementary", { name: "Track details" });
-        const yours = panel.getByRole("region", { name: "Your file" });
+        await window.getByRole("table", { name: /^Every track of this playlist/ }).locator("tr.review-row").first().locator("td.review-row__yours").click();
+        const panel = window.getByRole("complementary", { name: /^Candidates for / });
+        const yours = panel.getByRole("region", { name: "Your track" });
         const candidates = panel.getByRole("radiogroup", { name: "Beatport candidates" });
         await expect(candidates).toBeVisible({ timeout: 30_000 });
-        await expect(panel.getByRole("button", { name: "None of these - leave it out" })).toBeVisible();
-        // your cover, decoded by the app from the fixture
-        await expect(yours.locator("img.review-panel__art")).toBeVisible({ timeout: 30_000 });
+        await expect(panel.getByRole("button", { name: "None of these, leave it out" })).toBeVisible();
+        await expect(yours).toBeVisible();
         await expect
           .poll(() => panel.locator("img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0)), {
             timeout: 30_000,
           })
           .toBe(true);
+        // the panel scrolls: the candidates in view, under your track
+        await candidates.evaluate((el) => el.scrollIntoView({ block: "end" }));
         await expect(candidates).toBeInViewport();
         await shoot(window, "clean-compare", taken);
       });
