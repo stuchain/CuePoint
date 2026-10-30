@@ -445,3 +445,6 @@ apps/website/.astro/
 # The accessibility scan exclusions (HARDEN-08): source, empty when nothing is outstanding.
 !apps/desktop-electron/e2e/a11yExclusions.json
 !apps/desktop-electron/e2e/keyboardTabOrders.json
+
+# Raw captures for the README (scripts/readme-gifs.sh)
+.github/readme/raw/

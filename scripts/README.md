@@ -66,6 +66,7 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
 - `merge_update_manifests.py`: Merges the arm64 and x64 `latest-mac.yml` into one (DIST-03; run by the release workflow).
 - `generate_test_xml.py`: Generates synthetic Rekordbox XML fixtures (`--benchmark` for `bench.py`).
 - `make_audio_fixtures.py`: Regenerates the tiny committed audio fixtures in `src/tests/fixtures/audio/`.
+- `readme-gifs.sh`: Turns the captures of `npm run capture:readme` (`apps/desktop-electron`) into the README's GIFs and PNGs in `.github/readme/`.
 
 ### Benchmarks
 

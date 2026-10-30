@@ -27,6 +27,7 @@
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
     "capture:showcase": "playwright test --config e2e/capture/playwright.capture.config.ts",
+    "capture:readme": "cross-env CUEPOINT_CAPTURE_README=1 playwright test --config e2e/capture/playwright.capture.config.ts readme",
     "pack": "npm run build && electron-builder --dir --publish never",
     "dist": "npm run build && electron-builder --publish never",
     "package": "electron-builder --publish never"
