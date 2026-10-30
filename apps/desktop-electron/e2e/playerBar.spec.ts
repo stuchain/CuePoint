@@ -143,7 +143,11 @@ test("the player bar fits the shell at every scale", async () => {
         const hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
         if (toasts) toasts.style.visibility = "";
         const ok = r !== undefined && r.width > 0 && r.right <= b.right + 1 && (hit === chip || chip!.contains(hit));
-        return ok ? "shown" : `covered by ${hit ? `${hit.tagName.toLowerCase()}.${String(hit.className)}` : "nothing"}`;
+        if (ok) return "shown";
+        // Say where it was, so a red names its cause: "nothing" means the centre lies outside the window.
+        const at = r ? `chip ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}` : "no chip";
+        const where = `${at}; bar ${Math.round(b.left)},${Math.round(b.top)} ${Math.round(b.width)}x${Math.round(b.height)}; window ${innerWidth}x${innerHeight}`;
+        return `covered by ${hit ? `${hit.tagName.toLowerCase()}.${String(hit.className)}` : "nothing"} (${where})`;
       }, scale);
       expect(shown, `the key chip stays visible beside a very long artist at ${scale}x`).toBe("shown");
     }

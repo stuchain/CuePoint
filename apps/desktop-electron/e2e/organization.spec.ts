@@ -777,8 +777,11 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
         if (!(await favorite.isVisible())) {
           await table.locator(".track-table__row").first().click({ button: "right", timeout: 2_000 });
         }
-        await favorite.click({ timeout: 2_000 });
-      }).toPass({ timeout: 30_000 });
+        // A row's menu inside a selection of 50,000 opens once the selection's rows are gathered
+        // (QUEUE_ACTION_LIMIT), which takes seconds on a slow runner: it is waited for, not clicked
+        // again, since a second right-click starts the gathering over.
+        await favorite.click({ timeout: 20_000 });
+      }).toPass({ timeout: 90_000 });
 
       await expect.poll(favorited, { timeout: 180_000 }).toBe(50_000);
 
