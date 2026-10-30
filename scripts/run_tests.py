@@ -50,6 +50,33 @@ def run_pytest(
     return subprocess.run(cmd, cwd=str(root)).returncode
 
 
+def run_unit_with_coverage(path: str, marker_parts: list[str]) -> int:
+    """Run the unit layer under coverage, then its timing tests without it.
+
+    Coverage traces every Python line, which slows the engine enough to break a
+    timing budget (``@performance``) that holds everywhere else; those run in a
+    second pass, untraced, rather than with a looser budget.
+    """
+    traced = " and ".join([*marker_parts, "not performance"])
+    exit_code = run_pytest(
+        path,
+        by_path=True,
+        extra=[
+            "-m",
+            traced,
+            "--cov=src/cuepoint",
+            "--cov-report=term",
+            "--cov-report=xml",
+        ],
+    )
+    if exit_code != 0:
+        return exit_code
+    timed = " and ".join([*marker_parts, "performance"])
+    exit_code = run_pytest(path, by_path=True, extra=["-m", timed])
+    # 5: no test carries the marker, which is not a failure.
+    return 0 if exit_code == 5 else exit_code
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run test suites by layer (3.34).")
     parser.add_argument("--unit", action="store_true", help="Run unit tests only")
@@ -100,10 +127,9 @@ def main() -> None:
             if marker_parts:
                 ex.extend(["-m", " and ".join(marker_parts)])
             if args.coverage and name == "unit":
-                ex.extend(
-                    ["--cov=src/cuepoint", "--cov-report=term", "--cov-report=xml"]
-                )
-            exit_code = run_pytest(path, by_path=True, extra=ex)
+                exit_code = run_unit_with_coverage(path, marker_parts)
+            else:
+                exit_code = run_pytest(path, by_path=True, extra=ex)
             if exit_code != 0:
                 break
     else:

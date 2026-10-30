@@ -657,6 +657,8 @@ class TestAThousandTracks:
         assert done_tracks(container) == Counter(ids)
         assert container.resolve(IMatchService).resumable() == []
 
+    # A timing budget: run untraced, outside the coverage pass (run_tests.py).
+    @pytest.mark.performance
     def test_the_engine_answers_browse_requests_while_it_runs(
         self, container, store, processor
     ):
