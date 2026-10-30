@@ -450,6 +450,7 @@ test.describe("Beatport sign-in", () => {
 
   for (const introspect of ["forbidden", "html"] as const) {
     test(`regression: C20 signs in through the session's scope when introspection answers ${introspect}, and renews`, async () => {
+      skipPackaged();
       stand.introspect = introspect;
       const app = await launch(userDataDir, cuepointHome, stand.origin);
       try {

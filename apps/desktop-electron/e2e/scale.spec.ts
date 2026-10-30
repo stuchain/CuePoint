@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 import { hasFetchedPlayer } from "./playerAvailable";
-import { launchElectron } from "./support/launchApp";
+import { launchElectron, packagedExecutable } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -275,11 +275,13 @@ test.describe("the sizes (PAGES-14)", () => {
       await openAt(win, 3);
       await win.getByRole("link", { name: "Settings", exact: true }).click();
       await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
-      // The Playback panel says the player is missing in its problem notice (an alert).
-      const error = win.locator(".cp-audio-settings").getByRole("alert").filter({ hasText: "No audio player found" });
+      // The Playback panel says the player is missing in its problem notice (an alert). A packaged
+      // build words it as a build without one (`playerUnavailableReason`).
+      const missing = packagedExecutable() ? "This build does not include the audio player" : "No audio player found";
+      const error = win.locator(".cp-audio-settings").getByRole("alert").filter({ hasText: missing });
       await error.scrollIntoViewIfNeeded();
       await expect(error).toBeVisible({ timeout: 30_000 });
-      await expect(error).toContainText("No audio player found");
+      await expect(error).toContainText(missing);
       for (const inner of [null, WINDOWS_INNER]) {
         if (inner) await setInnerSize(app, win, inner);
         const spill = await win.evaluate(() => {

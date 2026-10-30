@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 
 import { waitForEngine } from "./engineReady";
-import { launchElectron } from "./support/launchApp";
+import { launchElectron, packagedExecutable } from "./support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -155,13 +155,13 @@ test.describe("main reports (REPORT-04)", () => {
       const [event] = events;
       expect(event!.tags["ipc.channel"]).toBe("errorReporting:set");
       // The build it came from (REPORT-07): the release the engine reports at /health too, and
-      // `development`, because a run from source is not a packaged app (DEC-150).
+      // `development` for a run from source, `production` for a packaged app (DEC-150).
       const status = await window.evaluate(
         () => (window as never as { cuepoint: { getEngineStatus: () => Promise<{ version?: string }> } }).cuepoint.getEngineStatus(),
       );
       expect(status.version).toBeTruthy();
       expect(event!.release).toBe(`cuepoint@${status.version}`);
-      expect(event!.environment).toBe("development");
+      expect(event!.environment).toBe(packagedExecutable() ? "production" : "development");
       // Main and the engine, started together, are one build (REPORT-07, DEC-126). No route in the
       // harness makes the engine report an event without production code, so what the engine would
       // stamp on one is read from what it was given: its own environment (the engine reads the
@@ -243,7 +243,9 @@ test.describe("main reports (REPORT-04)", () => {
   });
 
   test("with no DSN nothing is set up, and the app still works", async () => {
-    const app = await launch(userDataDir, null);
+    // A packaged app with the variable unset uses the built-in DSN and would send this test's
+    // failure to the real Sentry (ELECTRON-6, 10-30); there "off" is its only way to have none.
+    const app = await launch(userDataDir, packagedExecutable() ? "off" : null);
     try {
       const window = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(window);

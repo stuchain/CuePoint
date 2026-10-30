@@ -56,6 +56,8 @@ const CONDITIONAL_STOPS: RegExp[] = [
   /^status \| link \| Check files on the Clean page\.$/,
   /^[^|]+ \| button \| (Analyze waveforms|Analyze N waveforms|Analyze again)$/,
   /^region "Waveforms" \| button \| (Pause|Resume)$/,
+  // Shown only where the updater works: a packaged app (`installed`), or once a check has run.
+  /^region "About & updates" \| button \| Check for updates$/,
 ];
 
 const withoutConditionalStops = (stops: string[]): string[] => stops.filter((stop) => !CONDITIONAL_STOPS.some((pattern) => pattern.test(stop)));
