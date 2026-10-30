@@ -349,6 +349,19 @@ jobs:
           echo "source maps in app.asar: $inside, beside it: $beside"
           test "$inside" = "0" && test "$beside" = "0" || { echo "::error::A source map ships in the package"; exit 1; }
 
+      # The source run above leaves its profiles and engine homes in the temp folder (`cuepoint-*`, `cp-*`),
+      # and the Windows runner ran out of disk in the packaged release run that follows (test.5,
+      # 10-30). Nothing reads them again, so they go, and the free space is printed before and after.
+      - name: Free the source run's temp folders
+        if: ${{ !cancelled() && steps.app.outcome == 'success' }}
+        shell: bash
+        run: |
+          tmp="$(node -p "require('os').tmpdir()")"
+          df -h "$tmp" || true
+          find "$tmp" -maxdepth 1 \( -name 'cuepoint-*' -o -name 'cp-*' -o -name 'showcase-*' \) -exec rm -rf {} + 2>/dev/null || true
+          rm -rf apps/desktop-electron/test-results
+          df -h "$tmp" || true
+
       # HARDEN-09. The end-to-end suite against that app, not the source tree: `CUEPOINT_E2E_EXECUTABLE`
       # is read by `e2e/support/launchApp.ts`, which every spec starts the app through. A push (or pull
       # request) runs the specs tagged `@packaged-smoke` (start, import, play, export, quit); a release
