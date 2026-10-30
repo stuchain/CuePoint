@@ -319,7 +319,29 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
         .filter({ hasText: /Set the BPM to 126(\.0)? on 3 tracks/ })
         .filter({ hasNotText: "changes of" });
       // M450: the batch button reads "Undo all of these".
-      await entry.getByRole("button", { name: "Undo all of these" }).click();
+      try {
+        await entry.getByRole("button", { name: "Undo all of these" }).click();
+      } catch (cause) {
+        // Sometimes red in CI and never here: say what Activity held, so the next red run names why.
+        const shown = await activity
+          .getByRole("listitem")
+          .evaluateAll((items) =>
+            items.map((item) => {
+              const buttons = [...item.querySelectorAll("button")].map(
+                (button) => `[${button.textContent?.trim()}${button.disabled ? " (disabled)" : ""}]`,
+              );
+              return `${item.textContent?.replace(/\s+/g, " ").trim()} ${buttons.join(" ")}`;
+            }),
+          )
+          .catch((error: unknown) => [`(could not read the list: ${String(error)})`]);
+        const feed = await window
+          .evaluate(() => window.cuepoint!.getRecentActivity!({ limit: 10 }))
+          .then((read) => read.events.map((event) => `${event.type} ${JSON.stringify(event.detail ?? {})}`))
+          .catch((error: unknown) => [`(could not read the feed: ${String(error)})`]);
+        throw new Error(
+          `${String(cause)}\nActivity showed ${shown.length} entries:\n${shown.join("\n")}\nThe engine's newest events:\n${feed.join("\n")}`,
+        );
+      }
       await entry.getByRole("button", { name: "Undo", exact: true }).click();
       await expect(entry).toContainText("Undid 3 changes.", { timeout: 15_000 });
       await window.keyboard.press("Escape");
