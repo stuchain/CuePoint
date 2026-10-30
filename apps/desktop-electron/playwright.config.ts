@@ -1,4 +1,6 @@
 import { defineConfig } from "@playwright/test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Every launch's window opens on the leftmost display and is shown without
@@ -22,6 +24,12 @@ process.env.CUEPOINT_SENTRY_DSN ??= "off";
  * (`electron/testHooks.ts`, HARDEN-05). A packaged app started normally has no such variable.
  */
 process.env.CUEPOINT_E2E ??= "1";
+
+/**
+ * Where the app writes what it saw when a call could not reach the engine
+ * (`electron/engineEvidenceForTest.ts`), inside `test-results/` so a CI failure uploads it.
+ */
+process.env.CUEPOINT_E2E_EVIDENCE_DIR ??= path.resolve(path.dirname(fileURLToPath(import.meta.url)), "test-results", "engine-evidence");
 
 export default defineConfig({
   testDir: "./e2e",

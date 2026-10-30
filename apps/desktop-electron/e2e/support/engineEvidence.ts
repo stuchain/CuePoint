@@ -111,7 +111,24 @@ export function formatEvidence(input: {
     out.push(`--- ${log.file} (last ${EVIDENCE_LOG_LINES}) ---`, ...log.lines);
   }
   if (input.logs.length === 0) out.push("--- no cuepoint.log found under CUEPOINT_HOME ---");
+  // Repeated last: a CI log tool that keeps only the tail of a long report still shows it.
+  out.push(summaryLine(input));
   return out.join("\n");
+}
+
+/** The report's key facts on one line, for the end of it. */
+export function summaryLine(input: Parameters<typeof formatEvidence>[0]): string {
+  const { view } = input;
+  if ("unavailable" in view) return `SUMMARY ${input.what}: supervisor unavailable (${view.unavailable})`;
+  const socket = input.stacks?.find((line) => line.includes("listening socket fileno"));
+  return (
+    `SUMMARY ${input.what}: pid=${view.pid ?? "none"} port=${view.port ?? "none"} ` +
+    `listening=${input.listening ?? "unknown"}${input.probe ? ` (${input.probe})` : ""} ` +
+    `exits=${view.exits} misses=${view.heartbeatMisses} ` +
+    `ms since spawn=${view.sinceSpawnMs ?? "?"} healthy=${view.sinceHealthyMs ?? "?"} heartbeat=${view.sinceHeartbeatMs ?? "never"} ` +
+    `netstat=${input.netstat ? JSON.stringify(input.netstat.join(" | ")) : "n/a"} ` +
+    `engine=${socket ? socket.trim() : input.stacks ? "no socket line" : "not asked"}`
+  );
 }
 
 /** Whether something accepts a connection on the loopback `port`, and the error code when not. */
@@ -266,6 +283,8 @@ export async function withEngineEvidence<T>(target: EngineSource | Page, what: s
     console.error(report);
     try {
       await test.info().attach(`engine-evidence-${seen.count + 1}.txt`, { body: report, contentType: "text/plain" });
+      // An attachment's body stays in the report; a file in the test's folder reaches the uploaded artifact.
+      writeFileSync(test.info().outputPath(`engine-evidence-${seen.count + 1}.txt`), report);
     } catch {
       /* not inside a test: the printed copy stands */
     }

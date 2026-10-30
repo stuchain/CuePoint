@@ -66,6 +66,7 @@ import { scrubText } from "./reportScrub";
 import { enforceSingleInstance, onlyIfFirst } from "./singleInstance";
 import { startSession } from "./sessionLock";
 import { testHooksEnabled } from "./testHooks";
+import { EngineEvidenceWriter } from "./engineEvidenceForTest";
 import { IntegrityChecker, settledLibrary } from "./integrityCheck";
 import {
   RECOVERY_RELOAD_CHANNEL,
@@ -765,8 +766,22 @@ function handle(
       return run(event, ...args);
     };
   }
+  if (testHooksEnabled()) {
+    const run = handler;
+    handler = async (event, ...args) => {
+      try {
+        return await run(event, ...args);
+      } catch (error) {
+        engineEvidence.note(channel, error);
+        throw error;
+      }
+    };
+  }
   ipcMain.handle(channel, wrapIpcHandler(channel, handler));
 }
+
+/** End-to-end runs only: what main sees when a call cannot reach the engine (`engineEvidenceForTest.ts`). */
+const engineEvidence = new EngineEvidenceWriter({ diagnostics: () => engine.diagnosticsForTest() });
 
 /**
  * What a Statistics call may carry (STATS-04): nothing, or an object whose `limit` is a finite

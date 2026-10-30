@@ -108,5 +108,9 @@ describe("engine evidence", () => {
     expect(text).toContain("port 5555 listening: false (ECONNREFUSED)");
     expect(text).toContain("LISTENING 42");
     expect(text).toContain("listening socket fileno -1");
+    const last = text.split("\n").at(-1)!;
+    expect(last).toContain("SUMMARY startLibraryImport: pid=42 port=5555 listening=false (ECONNREFUSED)");
+    expect(last).toContain('netstat="TCP 127.0.0.1:5555 0.0.0.0:0 LISTENING 42"');
+    expect(last).toContain("engine=pid 42; listening socket fileno -1");
   });
 });
