@@ -8,6 +8,10 @@ import { reportUnexpected } from "../../reporting/reporting";
  * audio files do not, and changes since the last Rekordbox export. Asked of the engine, never
  * counted here, and asked again when `refreshKey` changes and when the window is looked at again
  * (an edit elsewhere, an export, a sync). Null while unknown or with no engine to ask.
+ *
+ * `refreshKey` is compared by its value, not its identity: a caller passes a new array each render,
+ * and asking on every render sent about 140 requests a second during an import, which used up
+ * Windows' local ports and failed every engine call after them.
  */
 export function useLibraryPending(refreshKey: unknown): LibraryPending | null {
   const [pending, setPending] = useState<LibraryPending | null>(null);
@@ -29,7 +33,8 @@ export function useLibraryPending(refreshKey: unknown): LibraryPending | null {
     };
   }, []);
 
-  useEffect(() => read(), [read, refreshKey]);
+  const key = JSON.stringify(refreshKey ?? null);
+  useEffect(() => read(), [read, key]);
   useEffect(() => {
     let stop = () => {};
     const onFocus = () => {

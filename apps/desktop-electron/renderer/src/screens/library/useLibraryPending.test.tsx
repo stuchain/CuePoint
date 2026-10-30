@@ -28,4 +28,18 @@ describe("useLibraryPending (M511)", () => {
     });
     await waitFor(() => expect(ask).toHaveBeenCalledTimes(3));
   });
+
+  it("asks once for a key with the same values, however often the caller renders", async () => {
+    const ask = vi.fn().mockResolvedValue(ANSWER);
+    (window as unknown as { cuepoint?: unknown }).cuepoint = { getLibraryPending: ask };
+    // A new array each render, as LibraryScreen passes it.
+    const { result, rerender } = renderHook(({ at }) => useLibraryPending([at, null, true]), {
+      initialProps: { at: "2026-10-30" },
+    });
+    await waitFor(() => expect(result.current).toEqual(ANSWER));
+    for (let i = 0; i < 20; i += 1) rerender({ at: "2026-10-30" });
+    expect(ask).toHaveBeenCalledTimes(1);
+    rerender({ at: "2026-10-31" });
+    await waitFor(() => expect(ask).toHaveBeenCalledTimes(2));
+  });
 });
