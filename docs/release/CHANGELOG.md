@@ -84,6 +84,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Past matches has no Delete.** Digs can be deleted from Discover, but the engine has no endpoint to delete a Clean match run, so Past matches only opens, resumes, matches again and saves the review list.
 - **UI consistency foundation.** Buttons have six button looks (primary, secondary, write, danger, confirm-delete and quiet; a bare button is secondary), status text uses the text colours, font weights have names, and chips, notices, toasts, menus and dialogs are shared. Writing to files is **Sync** ("Up to date" when nothing is waiting), match states read Confirmed, To check, No match, Not looked up yet and Rejected, tables share one look, and column widths are remembered in 1x units so a text-size change keeps them. Waveform colours follow Rekordbox in every theme.
 
+## [1.0.0-test.5] - 2026-10-30
+
+A test build of the coming 1.0.0. It carries everything in the changelog's **Unreleased** section; what to try first:
+
+- **Backups, in Settings, with Restore**, and the screens that appear when the library cannot be opened, after a crash or on a full disk.
+- **Keys written as Camelot, Musical or Both**, **Music in any folder** (long and network paths), and Windows high contrast.
+- **Discover:** continue a dig that stopped partway, Back from a chart keeps your place and is instant, and the Beatport sign-in renewing no longer stops a dig or a match.
+- **Smoother motion and one look across every page**, a steady Statistics page while a dig runs, and Prepare's Notes keeping what you type.
+
 ## [1.0.0-test.4] - 2026-10-18
 
 ### Added
