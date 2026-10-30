@@ -9,7 +9,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-import { organizationMenuItems, targetTagCount, type OrganizationMenuHandlers } from "./trackMenu";
+import { organizationMenuItems, targetMarks, targetTagCount, type OrganizationMenuHandlers } from "./trackMenu";
 
 function handlers(): OrganizationMenuHandlers {
   return {
@@ -169,5 +169,21 @@ describe("the entries do what they say", () => {
       .find((item) => item.id === "remove-from-collection")!
       .onSelect();
     expect(spies.onRemoveFromCollection).toHaveBeenCalled();
+  });
+});
+
+describe("the marks a menu starts on (favorites fix A)", () => {
+  it("reads the rating and favorite from the rows when every target is in hand", () => {
+    expect(targetMarks([{ effective_rating: 4, favorite: true }, { effective_rating: 4, favorite: true }], 2)).toEqual({ rating: 4, favorite: true });
+    expect(targetMarks([{ effective_rating: 4, favorite: false }, { effective_rating: 2, favorite: false }], 2)).toEqual({ rating: null, favorite: false });
+    expect(targetMarks([{ effective_rating: 3, favorite: true }, { effective_rating: 3, favorite: false }], 2)).toEqual({ rating: 3, favorite: null });
+  });
+
+  // An everything-matching selection of 50,000 brings only the loaded page: favorited rows there say
+  // nothing about the rest, so both Add and Remove must stay on offer.
+  it("knows nothing when the rows are only part of the target", () => {
+    const loaded = [{ effective_rating: 5, favorite: true }, { effective_rating: 5, favorite: true }];
+    expect(targetMarks(loaded, 50_000)).toEqual({ rating: null, favorite: null });
+    expect(targetMarks([], 3)).toEqual({ rating: null, favorite: null });
   });
 });

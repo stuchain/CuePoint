@@ -117,7 +117,7 @@ import {
   type TrackActionGroup,
   type TrackActionGroupId,
 } from "./trackActions";
-import { targetTagCount } from "./trackMenu";
+import { targetMarks, targetTagCount } from "./trackMenu";
 import { BatchConfirmDialog } from "./BatchConfirmDialog";
 import { useLibraryBatch } from "./useLibraryBatch";
 import { useLibraryClean } from "./useLibraryClean";
@@ -1174,6 +1174,7 @@ export function LibraryScreen({
       const path = kind === "row" ? (rows.length === 1 ? rows[0].file_path : null) : revealPath;
       const revealId =
         kind === "row" ? rows[0]?.id : onlySelectedId(selection.selection, window_.total);
+      const marks = kind === "row" ? targetMarks(rows, target.count) : { rating: null, favorite: null };
       return trackActionGroups(
         {
           count: target.count,
@@ -1183,11 +1184,9 @@ export function LibraryScreen({
               : null,
           credits,
           revealable: target.count === 1 && Boolean(path),
-          // The stars row starts on the rating the rows share (M299); a selection's are not in hand.
-          rating:
-            kind === "row" && rows.length > 0 && rows.every((row) => row.effective_rating === rows[0]!.effective_rating)
-              ? rows[0]!.effective_rating
-              : null,
+          // The stars row starts on the rating the rows share (M299), and the favorite entry on their
+          // state (M411), only when every target is in hand (targetMarks).
+          rating: marks.rating,
           // Remove tag… is offered only when one of these tracks has a tag (M411): the rows' own
           // counts when every track is in hand, else the library's tags in use.
           tagCount: targetTagCount(
@@ -1195,15 +1194,7 @@ export function LibraryScreen({
             target.count,
             tagsRead.value ? tags.filter((tag) => tag.track_count > 0).length : null,
           ),
-          // Known from the rows a row's menu is about; a selection's rows are not all in hand (M411).
-          favorite:
-            kind === "row" && rows.length > 0
-              ? rows.every((row) => row.favorite)
-                ? true
-                : rows.some((row) => row.favorite)
-                  ? null
-                  : false
-              : null,
+          favorite: marks.favorite,
         },
         {
           play: {

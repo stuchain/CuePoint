@@ -68,6 +68,23 @@ export function targetTagCount(
   return libraryTagsInUse;
 }
 
+/**
+ * The rating and favorite a menu starts on, read from the rows in hand. Only when every track the menu
+ * acts on is in hand: a row inside an everything-matching selection brings only the loaded page, so
+ * its rows say nothing about the rest (favorites fix A, 30 Oct 2026). Otherwise both are null: the
+ * stars start blank and both Add and Remove to favorites are offered.
+ */
+export function targetMarks(
+  rows: ReadonlyArray<{ effective_rating?: number | null; favorite?: boolean | null }>,
+  count: number,
+): { rating: number | null; favorite: boolean | null } {
+  if (rows.length === 0 || rows.length !== count) return { rating: null, favorite: null };
+  const first = rows[0]!.effective_rating ?? null;
+  const rating = rows.every((row) => (row.effective_rating ?? null) === first) ? first : null;
+  const favorite = rows.every((row) => row.favorite) ? true : rows.some((row) => row.favorite) ? null : false;
+  return { rating, favorite };
+}
+
 export interface OrganizationMenuHandlers {
   onAddToCollection: () => void;
   /**
