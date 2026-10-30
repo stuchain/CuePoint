@@ -74,7 +74,7 @@ Search every track, filter by key, BPM or genre, and see the cover, waveform, cu
 track in Track details. Keep your own **Collections** and **Smart Collections** beside Rekordbox's playlists.
 The **Camelot wheel** shows the selected track's key and the keys that mix with it.
 
-<img src=".github/readme/library.gif" alt="Searching the Library, opening a track in Track details, and opening the Camelot wheel on its key." width="100%">
+<img src=".github/readme/library.gif" alt="Searching the Library, playing a track with a double-click, and opening the Camelot wheel on its key from the player bar." width="100%">
 
 ### Keys: harmonic mixing on the Camelot wheel
 

@@ -8,6 +8,7 @@
 # Needs ffmpeg; gifsicle and pngquant shrink the files further when they are installed.
 # RAW (default .github/readme/raw) holds what the capture wrote; it is not committed.
 set -euo pipefail
+shopt -s nullglob
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RAW="${RAW:-$ROOT/.github/readme/raw}"

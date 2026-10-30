@@ -465,6 +465,10 @@ test.describe("the README's pictures", () => {
       const grid = window.getByRole("grid", { name: "Library tracks" });
       const rows = grid.locator(".track-table__row");
       const details = window.getByRole("complementary", { name: "Track details" });
+      const closeDetails = async () => {
+        if (await details.isVisible()) await window.getByRole("button", { name: "Hide track details" }).first().click();
+        await expect(details).toBeHidden();
+      };
 
       await picture(window, "clip: a tour of the pages", async () => {
         await sidebar("expanded");
@@ -483,7 +487,8 @@ test.describe("the README's pictures", () => {
 
       let selected = "";
       await picture(window, "clip + still: the library, a search, a track and the wheel", async () => {
-        await sidebar("rail");
+        await sidebar("expanded");
+        await nav(window, "Library").click();
         await expect(rows.nth(5)).toBeVisible({ timeout: 30_000 });
         for (let i = 2; i < 12 && !selected; i += 1) {
           const key = (await rows.nth(i).locator('[data-column="key"]').innerText()).trim();
@@ -495,21 +500,26 @@ test.describe("the README's pictures", () => {
         await press(window, search);
         await search.pressSequentially(word, { delay: 110 });
         await window.waitForTimeout(900);
-        await press(window, titleCell(window, selected));
-        if (!(await details.isVisible())) await press(window, window.getByRole("button", { name: /^Details/ }).first());
-        await expect(details.locator("[data-testid=inspector-waveform] canvas")).toBeVisible({ timeout: 30_000 });
-        await window.waitForTimeout(1200);
-        const wheelButton = details.getByRole("button", { name: /^(Camelot wheel|Show .+ on the Camelot wheel)$/ }).first();
-        await press(window, wheelButton);
-        await expect(window.getByRole("dialog", { name: "Camelot wheel" })).toContainText(`Selected: ${selected}`, { timeout: 15_000 });
+        // a double-click plays the track; the key in the player bar opens the Camelot wheel on it.
+        // Track details stays closed in these pictures: beside it, at this window's width, the selection
+        // bar's four menu buttons are squeezed into each other (the owner's pick, 2026-10-30)
+        await glide(window, titleCell(window, selected));
+        await window.mouse.dblclick(at.x, at.y);
+        await closeDetails();
+        await expect(window.getByText(selected, { exact: true }).last()).toBeVisible();
+        await window.waitForTimeout(1800);
+        await press(window, window.getByRole("button", { name: /^Show .+ on the Camelot wheel$/ }).last());
+        const wheel = window.getByRole("dialog", { name: "Camelot wheel" });
+        await expect(wheel.locator("[data-lit]").first()).toBeVisible({ timeout: 15_000 });
         await window.waitForTimeout(2600);
         await stop();
-        await still(window, "wheel");
         await window.keyboard.press("Escape");
-        await expect(window.getByRole("dialog", { name: "Camelot wheel" })).toBeHidden();
+        await expect(wheel).toBeHidden();
+        await window.evaluate(() => (window as never as Bridge).cuepoint.player.pause()).catch(() => undefined);
         await titleCell(window, selected).click();
-        await expect(details.locator("[data-testid=inspector-waveform] canvas")).toBeVisible({ timeout: 30_000 });
+        await closeDetails();
         await still(window, "library");
+        await sidebar("rail");
       });
 
       await picture(window, "clip + still: Clean matches a playlist on Beatport and a match is checked", async () => {
@@ -606,6 +616,7 @@ test.describe("the README's pictures", () => {
 
       await picture(window, "still: Export to Rekordbox", async () => {
         await nav(window, "Library").click();
+        await closeDetails();
         await window.locator('[data-slot="library-header"]').getByRole("button", { name: "Export to Rekordbox…" }).click();
         const dialog = window.getByRole("dialog", { name: "Export to Rekordbox" });
         await expect(dialog.getByText(/\d+ tracks/).first()).toBeVisible({ timeout: 30_000 });
