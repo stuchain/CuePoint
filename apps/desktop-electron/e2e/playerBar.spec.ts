@@ -136,11 +136,16 @@ test("the player bar fits the shell at every scale", async () => {
         const chip = bar.querySelector<HTMLElement>("[data-wheel-opener]");
         const r = chip?.getBoundingClientRect();
         const b = bar.getBoundingClientRect();
-        return (
-          r !== undefined && r.width > 0 && r.right <= b.right + 1 && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === chip
-        );
+        // A toast (a container with no audio output says the track could not play) floats over the bar's
+        // end; it is not what this checks, so it steps aside while the chip is probed.
+        const toasts = document.querySelector<HTMLElement>(".cp-toast-stack");
+        if (toasts) toasts.style.visibility = "hidden";
+        const hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+        if (toasts) toasts.style.visibility = "";
+        const ok = r !== undefined && r.width > 0 && r.right <= b.right + 1 && (hit === chip || chip!.contains(hit));
+        return ok ? "shown" : `covered by ${hit ? `${hit.tagName.toLowerCase()}.${String(hit.className)}` : "nothing"}`;
       }, scale);
-      expect(shown, `the key chip stays visible beside a very long artist at ${scale}x`).toBe(true);
+      expect(shown, `the key chip stays visible beside a very long artist at ${scale}x`).toBe("shown");
     }
     // The transport buttons are ~36 px (D27, M304) and, since P4, have a hairline border: the border is
     // --hairline, nothing casts a shadow, and the box is at least 36 px x the scale tall.
