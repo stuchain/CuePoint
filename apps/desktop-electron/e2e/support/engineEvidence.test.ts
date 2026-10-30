@@ -1,7 +1,7 @@
 import net from "node:net";
 import { describe, expect, it } from "vitest";
 
-import { formatEvidence, looksUnreachable, portListening, tailLines } from "./engineEvidence";
+import { formatEvidence, looksUnreachable, portListening, probePort, tailLines } from "./engineEvidence";
 
 describe("engine evidence", () => {
   it("takes the last non-empty lines", () => {
@@ -71,5 +71,42 @@ describe("engine evidence", () => {
     expect(await portListening(port)).toBe(true);
     await new Promise<void>((resolve) => server.close(() => resolve()));
     expect(await portListening(port)).toBe(false);
+    expect(await probePort(port)).toEqual({ listening: false, reason: "ECONNREFUSED" });
+  });
+
+  it("reports the timings, why the port refused, what holds it and the engine's threads", () => {
+    const text = formatEvidence({
+      what: "startLibraryImport",
+      error: "fetch failed",
+      view: {
+        pid: 42,
+        port: 5555,
+        healthy: true,
+        status: { connected: true },
+        restartAttempts: 0,
+        reconnecting: false,
+        spawned: 1,
+        exits: 0,
+        lastExit: null,
+        heartbeatActive: true,
+        heartbeatMisses: 0,
+        sinceSpawnMs: 9000,
+        sinceHealthyMs: 7000,
+        sinceHeartbeatMs: null,
+        stopRequested: false,
+        maintenance: false,
+        stdout: [],
+        stderr: [],
+      },
+      listening: false,
+      probe: "ECONNREFUSED",
+      netstat: ["TCP 127.0.0.1:5555 0.0.0.0:0 LISTENING 42"],
+      stacks: ["pid 42; listening socket fileno -1"],
+      logs: [],
+    });
+    expect(text).toContain("ms since spawn=9000 healthy=7000 heartbeat answered=never");
+    expect(text).toContain("port 5555 listening: false (ECONNREFUSED)");
+    expect(text).toContain("LISTENING 42");
+    expect(text).toContain("listening socket fileno -1");
   });
 });

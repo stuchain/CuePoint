@@ -357,6 +357,10 @@ export interface EngineDiagnostics {
   lastExit: { code: number | null; signal: string | null; uptimeMs: number } | null;
   heartbeatActive: boolean;
   heartbeatMisses: number;
+  /** Milliseconds since the engine was spawned, since `/health` first answered it, and since the heartbeat was last answered (null when never). */
+  sinceSpawnMs: number | null;
+  sinceHealthyMs: number | null;
+  sinceHeartbeatMs: number | null;
   stopRequested: boolean;
   maintenance: boolean;
   stdout: string[];
@@ -389,6 +393,8 @@ export class EngineSupervisor {
   private stderrTail: string[] = [];
   /** When the current child was spawned, for the uptime an incident reports. */
   private spawnedAt = 0;
+  /** When `/health` first answered the engine now running; for `diagnosticsForTest`. */
+  private healthyAt = 0;
 
   private child: ChildProcess | null = null;
   private port: number | null = null;
@@ -483,6 +489,9 @@ export class EngineSupervisor {
       lastExit: this.lastExit,
       heartbeatActive: this.heartbeat?.active ?? false,
       heartbeatMisses: this.heartbeat?.missed ?? 0,
+      sinceSpawnMs: this.spawnedAt ? Date.now() - this.spawnedAt : null,
+      sinceHealthyMs: this.healthyAt ? Date.now() - this.healthyAt : null,
+      sinceHeartbeatMs: this.heartbeat?.lastAnsweredAt ? Date.now() - this.heartbeat.lastAnsweredAt : null,
       stopRequested: this.stopRequested,
       maintenance: this.maintenance,
       stdout: [...this.stdoutTail],
@@ -747,6 +756,7 @@ export class EngineSupervisor {
     });
 
     this.spawnedAt = Date.now();
+    this.healthyAt = 0;
     this.spawnCount += 1;
     this.drain(this.child, "stdout");
     this.drain(this.child, "stderr");
@@ -2028,6 +2038,7 @@ export class EngineSupervisor {
           const body = (await res.json()) as { version?: string };
           this.version = body.version;
           this.healthy = true;
+          this.healthyAt = Date.now();
           return true;
         }
       } catch {

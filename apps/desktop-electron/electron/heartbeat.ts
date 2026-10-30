@@ -28,6 +28,7 @@ export class Heartbeat {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
   private misses = 0;
+  private answeredAt = 0;
   /** Counts starts and stops, so a probe that finishes after a stop does nothing. */
   private epoch = 0;
 
@@ -35,6 +36,11 @@ export class Heartbeat {
 
   get active(): boolean {
     return this.running;
+  }
+
+  /** When a probe was last answered (epoch ms), 0 before the first; for tests. */
+  get lastAnsweredAt(): number {
+    return this.answeredAt;
   }
 
   /** Misses in a row so far; for tests. */
@@ -73,6 +79,7 @@ export class Heartbeat {
     if (epoch !== this.epoch) return;
     if (answered) {
       this.misses = 0;
+      this.answeredAt = Date.now();
     } else {
       this.misses += 1;
       if (this.misses >= (this.options.maxMisses ?? HEARTBEAT_MAX_MISSES)) {

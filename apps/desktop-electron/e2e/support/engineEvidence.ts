@@ -10,13 +10,17 @@
  *   `__cuepointTest.engineDiagnostics` (only in a `CUEPOINT_E2E` run);
  * - the last lines the engine wrote to stdout and stderr, as the supervisor holds them, and the
  *   tail of `cuepoint.log` under the spec's `CUEPOINT_HOME`;
- * - whether anything is listening on the engine's port.
+ * - whether anything is listening on the engine's port, and why not (refused, timed out); on
+ *   Windows, what `netstat` says holds that port;
+ * - the engine's own thread stacks and whether its listening socket is open, which it writes when
+ *   asked through a file under `CUEPOINT_HOME` (`watch_stack_dump_requests` in server.py).
  *
  * The report is put in the thrown error (the original message first, so a poll that matches on it
  * still does), attached to the test (`test-results/` is uploaded on a CI failure) and printed.
  */
 import { test, type ElectronApplication, type Page } from "@playwright/test";
-import { existsSync, readFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 
@@ -39,6 +43,9 @@ export interface SupervisorView {
   lastExit: { code: number | null; signal: string | null; uptimeMs: number } | null;
   heartbeatActive: boolean;
   heartbeatMisses: number;
+  sinceSpawnMs?: number | null;
+  sinceHealthyMs?: number | null;
+  sinceHeartbeatMs?: number | null;
   stopRequested: boolean;
   maintenance: boolean;
   stdout: string[];
@@ -70,6 +77,10 @@ export function formatEvidence(input: {
   error: string;
   view: SupervisorView | { unavailable: string };
   listening: boolean | null;
+  /** Why the port did or did not accept: "accepted", "ECONNREFUSED", "timed out", ... */
+  probe?: string;
+  netstat?: string[];
+  stacks?: string[];
   logs: Array<{ file: string; lines: string[] }>;
 }): string {
   const out: string[] = [`Engine unreachable during ${input.what}: ${input.error.split("\n")[0]}`];
@@ -83,9 +94,16 @@ export function formatEvidence(input: {
       `supervisor: spawned=${view.spawned} exits=${view.exits} restartAttempts=${view.restartAttempts} ` +
         `reconnecting=${view.reconnecting} stopRequested=${view.stopRequested} maintenance=${view.maintenance}`,
       `supervisor: heartbeat active=${view.heartbeatActive} misses=${view.heartbeatMisses}`,
+      `supervisor: ms since spawn=${view.sinceSpawnMs ?? "?"} healthy=${view.sinceHealthyMs ?? "?"} ` +
+        `heartbeat answered=${view.sinceHeartbeatMs ?? "never"}`,
       `supervisor: last exit ${view.lastExit ? `code=${view.lastExit.code} signal=${view.lastExit.signal} after ${view.lastExit.uptimeMs} ms` : "none"}`,
     );
-    out.push(`port ${view.port ?? "?"} listening: ${input.listening === null ? "unknown" : input.listening}`);
+    out.push(
+      `port ${view.port ?? "?"} listening: ${input.listening === null ? "unknown" : input.listening}` +
+        (input.probe ? ` (${input.probe})` : ""),
+    );
+    if (input.netstat) out.push(`--- netstat for port ${view.port} ---`, ...input.netstat);
+    if (input.stacks) out.push("--- engine threads (its own dump) ---", ...input.stacks);
     out.push(`--- engine stderr (last ${EVIDENCE_LOG_LINES}) ---`, ...tailLines(view.stderr.join("\n")));
     out.push(`--- engine stdout (last ${EVIDENCE_LOG_LINES}) ---`, ...tailLines(view.stdout.join("\n")));
   }
@@ -96,18 +114,66 @@ export function formatEvidence(input: {
   return out.join("\n");
 }
 
-/** Whether something accepts a connection on the loopback `port`. */
-export function portListening(port: number, timeoutMs = 1000): Promise<boolean> {
+/** Whether something accepts a connection on the loopback `port`, and the error code when not. */
+export function probePort(port: number, timeoutMs = 1000): Promise<{ listening: boolean; reason: string }> {
   return new Promise((resolve) => {
     const socket = net.connect({ host: "127.0.0.1", port });
-    const done = (answer: boolean): void => {
+    const done = (listening: boolean, reason: string): void => {
       socket.destroy();
-      resolve(answer);
+      resolve({ listening, reason });
     };
-    socket.setTimeout(timeoutMs, () => done(false));
-    socket.once("connect", () => done(true));
-    socket.once("error", () => done(false));
+    socket.setTimeout(timeoutMs, () => done(false, "timed out"));
+    socket.once("connect", () => done(true, "accepted"));
+    socket.once("error", (error: NodeJS.ErrnoException) => done(false, error.code ?? error.message));
   });
+}
+
+/** Whether something accepts a connection on the loopback `port`. */
+export async function portListening(port: number, timeoutMs = 1000): Promise<boolean> {
+  return (await probePort(port, timeoutMs)).listening;
+}
+
+/** What Windows says holds `port` (every state, with the owning process id). Elsewhere, nothing. */
+function netstatFor(port: number): Promise<string[] | undefined> {
+  if (process.platform !== "win32") return Promise.resolve(undefined);
+  return new Promise((resolve) => {
+    execFile("netstat", ["-ano", "-p", "TCP"], { timeout: 10_000, windowsHide: true }, (error, stdout) => {
+      if (error) {
+        resolve([`netstat failed: ${error.message.split("\n")[0]}`]);
+        return;
+      }
+      const lines = stdout.split(/\r?\n/).filter((line) => line.includes(`:${port} `));
+      resolve(lines.length > 0 ? lines.map((line) => line.trim()) : ["(nothing)"]);
+    });
+  });
+}
+
+/** Ask the engine for its thread stacks (test hooks only) and wait up to `waitMs` for them. */
+async function engineStacks(home: string | undefined, waitMs = 4000): Promise<string[] | undefined> {
+  if (!home) return undefined;
+  const request = path.join(home, "engine-stacks.request");
+  const dump = path.join(home, "engine-stacks.txt");
+  try {
+    rmSync(dump, { force: true });
+    writeFileSync(request, "");
+  } catch (error) {
+    return [`could not ask: ${(error as Error).message}`];
+  }
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    try {
+      const text = existsSync(dump) ? readFileSync(dump, "utf-8") : "";
+      // faulthandler ends with the thread it ran on; wait for it so a half-written dump is not read.
+      if (/Current thread|Thread 0x/.test(text) && !existsSync(request)) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return tailLines(readFileSync(dump, "utf-8"), 300);
+      }
+    } catch {
+      /* still being written */
+    }
+  }
+  return [`no answer in ${waitMs} ms (request ${existsSync(request) ? "not taken: the engine's watcher is not running" : "taken, nothing written"})`];
 }
 
 function readLogs(home: string | undefined): Array<{ file: string; lines: string[] }> {
@@ -146,12 +212,19 @@ async function superviseView(app: ElectronApplication): Promise<SupervisorView |
 export async function collectEngineEvidence(source: EngineSource, what: string, error: unknown): Promise<string> {
   const view = await superviseView(source.app);
   const port = "unavailable" in view ? null : view.port;
-  const listening = port === null ? null : await portListening(port);
+  const probe = port === null ? null : await probePort(port);
+  const [netstat, stacks] = await Promise.all([
+    port === null ? Promise.resolve(undefined) : netstatFor(port),
+    engineStacks(source.home),
+  ]);
   return formatEvidence({
     what,
     error: error instanceof Error ? error.message : String(error),
     view,
-    listening,
+    listening: probe?.listening ?? null,
+    probe: probe?.reason,
+    netstat,
+    stacks,
     logs: readLogs(source.home),
   });
 }

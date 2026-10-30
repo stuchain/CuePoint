@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import faulthandler
 import json
 import logging
 import os
@@ -37,6 +38,7 @@ from cuepoint.engine.support_bundle_api import (
 )
 from cuepoint.engine.logs_api import get_cuepoint_log_text, get_cuepoint_logs_dir
 from cuepoint.engine import backups_api, library_state
+from cuepoint.utils.paths import cuepoint_home
 from cuepoint.services.backup_service import reason_of
 from cuepoint.engine.privacy_api import clear_cache_now, clear_logs_now
 from cuepoint.engine.reporting_api import (
@@ -407,6 +409,57 @@ def stall_server(server: Any, seconds: Optional[float] = None) -> None:
         return False
 
     server.verify_request = verify_request
+
+
+#: A spec asks for the engine's thread stacks by creating this file under ``CUEPOINT_HOME`` (test
+#: hooks only); the engine writes them to :data:`STACK_DUMP_FILE` beside it. Windows has no signal
+#: to ask with, and an engine that has stopped answering cannot be asked over HTTP.
+STACK_DUMP_REQUEST = "engine-stacks.request"
+STACK_DUMP_FILE = "engine-stacks.txt"
+
+
+def write_stack_dump(server: Any, out: Any) -> None:
+    """Write the listening socket's state, the threads by name and every thread's stack to ``out``.
+
+    ``out`` must be a real file: ``faulthandler`` writes to its descriptor.
+    """
+    out.write(f"pid {os.getpid()}; listening socket fileno {server.socket.fileno()}\n")
+    for thread in threading.enumerate():
+        out.write(
+            f"thread {thread.ident:#x} {thread.name} daemon={thread.daemon} "
+            f"alive={thread.is_alive()}\n"
+        )
+    out.flush()
+    faulthandler.dump_traceback(file=out, all_threads=True)
+
+
+def watch_stack_dump_requests(
+    server: Any,
+    home: Path,
+    poll_seconds: float = 0.5,
+    stop: Optional[threading.Event] = None,
+) -> threading.Thread:
+    """Answer :data:`STACK_DUMP_REQUEST` under ``home`` from a daemon thread until ``stop`` is set.
+
+    The engine never sets it: the watch lasts as long as the process.
+    """
+    request = home / STACK_DUMP_REQUEST
+    stopped = stop or threading.Event()
+
+    def run() -> None:
+        while not stopped.wait(poll_seconds):
+            try:
+                if not request.exists():
+                    continue
+                request.unlink()
+                with open(home / STACK_DUMP_FILE, "w", encoding="utf-8") as out:
+                    write_stack_dump(server, out)
+            except OSError:
+                continue
+
+    thread = threading.Thread(target=run, name="test-stack-dump", daemon=True)
+    thread.start()
+    return thread
 
 
 def make_handler(
@@ -1879,6 +1932,8 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     # Does nothing without a DSN (see resolve_engine_dsn). The socket is bound, so the app's health
     # checks are answered while the SDK loads; what fails meanwhile is held, then replayed.
     start_engine_reporting_in_background()
+    if hooks_enabled():
+        watch_stack_dump_requests(server, cuepoint_home())
     launched: Dict[str, Any] = {}
 
     def on_library_ready() -> None:
