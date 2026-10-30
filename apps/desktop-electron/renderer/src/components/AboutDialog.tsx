@@ -8,7 +8,7 @@ import "./AboutDialog.css";
 /** The one sentence that says what CuePoint is: About and Getting started both use it (M445). */
 export const TAGLINE = "Tidy your Rekordbox library, find new music and plan sets.";
 
-export const DESKTOP_ENGINE_VERSION = "1.0.0-test.4";
+export const DESKTOP_ENGINE_VERSION = "1.0.0-test.5";
 
 /** The version shown for this app: the build's own, else the desktop version. */
 export function appVersion(build: AppBuildInfo | null): string {
