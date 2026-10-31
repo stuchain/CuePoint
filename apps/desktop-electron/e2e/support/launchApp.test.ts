@@ -1,6 +1,7 @@
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { launchPlan, packagedExecutable } from "./launchApp";
+import { STALE_ENGINE_COPY_MS, launchPlan, packagedExecutable, staleEngineCopies } from "./launchApp";
 
 const dev = { cwd: "/repo/apps/desktop-electron", args: [".", "--user-data-dir=/tmp/ud"], env: { A: "1" } };
 
@@ -36,5 +37,18 @@ describe("packagedExecutable", () => {
 
   it("is the variable's value otherwise", () => {
     expect(packagedExecutable({ CUEPOINT_E2E_EXECUTABLE: "/pkg/cuepoint" })).toBe("/pkg/cuepoint");
+  });
+});
+
+describe("staleEngineCopies", () => {
+  const now = 1_000_000;
+  const list = () => [
+    { name: "_MEI12345", mtimeMs: now - STALE_ENGINE_COPY_MS - 1 },
+    { name: "_MEI67890", mtimeMs: now - 5_000 },
+    { name: "cuepoint-e2e-abc", mtimeMs: 0 },
+  ];
+
+  it("names the engine copies an earlier launch left, not one still ending, nor anything else", () => {
+    expect(staleEngineCopies("/tmp", now, list)).toEqual([path.join("/tmp", "_MEI12345")]);
   });
 });

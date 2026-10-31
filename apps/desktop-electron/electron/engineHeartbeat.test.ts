@@ -104,9 +104,6 @@ function make(extra: ConstructorParameters<typeof EngineSupervisor>[0] = {}): En
     restartBackoffMs: [1000, 2000, 4000],
     healthTimeoutMs: 5000,
     reporter,
-    // Not Windows: there a stop first asks the engine to quit over `fetch`, which this file's
-    // stub answers as `/health`. The quit request is `engineQuit.test.ts`'s.
-    platform: "linux",
     ...extra,
   });
   supervisors.push(supervisor);
