@@ -84,6 +84,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Past matches has no Delete.** Digs can be deleted from Discover, but the engine has no endpoint to delete a Clean match run, so Past matches only opens, resumes, matches again and saves the review list.
 - **UI consistency foundation.** Buttons have six button looks (primary, secondary, write, danger, confirm-delete and quiet; a bare button is secondary), status text uses the text colours, font weights have names, and chips, notices, toasts, menus and dialogs are shared. Writing to files is **Sync** ("Up to date" when nothing is waiting), match states read Confirmed, To check, No match, Not looked up yet and Rejected, tables share one look, and column widths are remembered in 1x units so a text-size change keeps them. Waveform colours follow Rekordbox in every theme.
 
+## [1.0.0-test.6] - 2026-11-01
+
+A test build to try updating from 1.0.0-test.5 (Settings > About & updates). It carries the same features as test.5; the only changes are behind the scenes in how the Windows release is tested.
+
 ## [1.0.0-test.5] - 2026-10-30
 
 A test build of the coming 1.0.0. It carries everything in the changelog's **Unreleased** section; what to try first:
