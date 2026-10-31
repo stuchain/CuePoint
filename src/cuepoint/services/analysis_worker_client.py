@@ -703,6 +703,14 @@ def shared_computer() -> WorkerComputer:
         return _SHARED[0]
 
 
+def close_shared_worker() -> None:
+    """End this process's worker, if one was ever made, as the engine quits; never makes one."""
+    with _SHARED_LOCK:
+        made = list(_SHARED)
+    for computer in made:
+        computer.close()
+
+
 def default_computer() -> Optional[WaveformComputer]:
     """What the waveform service computes with: the worker, or ``None`` for in-process."""
     return shared_computer() if worker_enabled() else None
@@ -713,6 +721,7 @@ __all__: Sequence[str] = (
     "IDLE_SECONDS",
     "WORKER_ENV",
     "WorkerComputer",
+    "close_shared_worker",
     "default_computer",
     "enable_worker",
     "shared_computer",

@@ -201,6 +201,39 @@ const HEARTBEAT_KILL_GRACE_MS = 5_000;
 const HEARTBEAT_RESTARTS_BEFORE_GIVING_UP = 3;
 const HEARTBEAT_GIVE_UP_WINDOW_MS = 10 * 60_000;
 const RESTART_BACKOFF_MS = [1000, 2000, 4000];
+/** How long the quit request may take to be answered. */
+const ENGINE_QUIT_REQUEST_MS = 500;
+/**
+ * How long an engine that said it is quitting gets to end. Its worker gets two seconds of that
+ * (`STOP_SECONDS` in the engine), and the bootloader deletes its unpacked copy before it exits.
+ */
+const ENGINE_QUIT_WAIT_MS = 3000;
+
+/** Ask the engine to end itself (`POST /api/v1/engine/quit`); true when it said it would. */
+async function askEngineToQuit(port: number, token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/v1/engine/quit`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(ENGINE_QUIT_REQUEST_MS),
+    });
+    return res.status === 202;
+  } catch {
+    // Not answering (hung, or already gone): the tree is stopped instead.
+    return false;
+  }
+}
+
+/** Whether `promise` settles within `ms`. */
+function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), ms);
+    void promise.then(() => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+}
 
 interface EngineSupervisorOptions {
   /**
@@ -256,6 +289,8 @@ interface EngineSupervisorOptions {
   restartBackoffMs?: readonly number[];
   /** Replaces `HEALTH_TIMEOUT_MS`; for tests. */
   healthTimeoutMs?: number;
+  /** Replaces `process.platform`, which decides whether a stop asks the engine to quit first; for tests. */
+  platform?: NodeJS.Platform;
   /**
    * Replaces what is spawned, for tests with a stand-in engine. It is given nothing of the
    * environment: `engineEnvironment()` is still what the child runs with.
@@ -1025,17 +1060,31 @@ export class EngineSupervisor {
     this.stopHeartbeat();
     if (!this.child) return;
     const proc = this.child;
+    const { port, token } = this;
     this.child = null;
+    const exited = new Promise<void>((resolve) => {
+      if (proc.exitCode !== null || proc.signalCode !== null) resolve();
+      else proc.once("exit", () => resolve());
+    });
+    // Windows only: the packaged engine unpacks itself into the temp folder at every start, and
+    // only its bootloader, once the engine has ended by itself, deletes that copy. `taskkill /F`
+    // ends the bootloader too, so every stop left a whole engine behind (it filled the release
+    // runner's disk, test.5, 10-30). Asked first, the engine ends itself; the tree is the fallback.
+    if ((this.options.platform ?? process.platform) === "win32" && port !== null && token !== null) {
+      if ((await askEngineToQuit(port, token)) && (await settlesWithin(exited, ENGINE_QUIT_WAIT_MS))) return;
+    }
     // The tree, not the process: a packaged engine on Windows is a bootloader
     // whose child outlived it, holding the port and the database (CLEAN-14).
     stopProcessTree(proc);
-    await new Promise<void>((resolve) => {
-      proc.once("exit", () => resolve());
-      setTimeout(() => {
-        stopProcessTree(proc, { force: true });
-        resolve();
-      }, 2000);
-    });
+    await Promise.race([
+      exited,
+      new Promise<void>((resolve) => {
+        setTimeout(() => {
+          stopProcessTree(proc, { force: true });
+          resolve();
+        }, 2000);
+      }),
+    ]);
   }
 
   /** What an incident's attachment is made from. */

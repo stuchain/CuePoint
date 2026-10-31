@@ -383,6 +383,9 @@ TEST_HOOKS_ENV = "CUEPOINT_TEST_HOOKS"
 #: The stall route's path, served only with ``TEST_HOOKS_ENV`` set to ``1``.
 TEST_STALL_PATH = "/api/v1/test/stall"
 
+#: Where the app asks the engine to end itself (Windows, see ``_quit``).
+QUIT_PATH = "/api/v1/engine/quit"
+
 
 def hooks_enabled() -> bool:
     """Whether the test-only routes exist for this process."""
@@ -1470,6 +1473,12 @@ def make_handler(
                     401, error_payload("UNAUTHORIZED", "Missing or invalid token")
                 )
                 return
+            if path == QUIT_PATH:
+                self._read_body()
+                self._send_json(202, {"quitting": True})
+                # After the answer has gone, so the app knows to wait for the exit.
+                _quit(self.server)
+                return
             if path == TEST_STALL_PATH and hooks_enabled():
                 raw = self._read_body()
                 seconds: Optional[float] = None
@@ -1974,6 +1983,8 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     )
     _LIBRARY_START.start()
     _stop_with_parent(server)
+    # Only the real engine ends its process when asked to quit; a test's engine thread stops.
+    server.end_process = _exit_now  # type: ignore[attr-defined]
     try:
         server.serve_forever()
     finally:
@@ -2007,6 +2018,32 @@ def _stop_with_parent(server: ThreadingHTTPServer) -> None:
         timer.start()
 
     watch_parent(pid, gone)
+
+
+def _quit(server: ThreadingHTTPServer) -> None:
+    """End the engine because the app asked (``QUIT_PATH``), on a thread of its own.
+
+    On Windows the app used to end the engine with ``taskkill /F``, which ends the
+    one-file bootloader as well, and only the bootloader, after the engine has
+    ended by itself, deletes the copy it unpacked into the temp folder: every
+    stop left a whole engine there (test.5, 10-30). So the engine ends itself:
+    the server stops accepting, the analysis worker is told to finish (its stdin
+    closes, so it ends its decoders and its own bootloader cleans up too), and
+    then the process exits as it does when the app has gone.
+    """
+
+    def run() -> None:
+        from cuepoint.services.analysis_worker_client import close_shared_worker
+
+        server.shutdown()
+        try:
+            close_shared_worker()
+        finally:
+            end = getattr(server, "end_process", None)
+            if callable(end):
+                end()
+
+    threading.Thread(target=run, name="engine-quit", daemon=True).start()
 
 
 def _exit_now() -> None:
