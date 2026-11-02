@@ -6,7 +6,7 @@
  *
  *   --format=portrait|wide|tall   one cut only (default all: 1080 x 1350 for LinkedIn and the Instagram feed, 1920 x 1080 for YouTube, 1080 x 1920 for Reels)
  *   --opening=a,b,c          which openings (default c, the problem first; a pull back from the live app, b logo build)
- *   --edit=story             the 30 s story edit (STORY in demo/shots.js) instead of the full tour
+ *   --edit=story|short       the 30 s story edit or the 60 s short edit (STORY, SHORT in demo/shots.js)
  *   --stills=5,12.5          no video: PNGs at those seconds, out/demo/still-<format>-<opening>-<t>.png
  *   --track=<audio> --start=<s>  your own music under it; the file is named -PRIVATE and never committed
  *
@@ -30,7 +30,7 @@ const start = Number(arg("start") ?? 0);
 const stills = arg("stills")?.split(",").map(Number);
 const formats = arg("format") ? [arg("format")] : Object.keys(FORMATS);
 const openings = (arg("opening") ?? "c").split(",");
-const edit = arg("edit") === "story" ? "story" : "full";
+const edit = ["story", "short"].includes(arg("edit")) ? arg("edit") : "full";
 const NAMES = { portrait: "cuepoint-demo-4x5", wide: "cuepoint-demo-16x9", tall: "cuepoint-demo-9x16" };
 const BT709 = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2" };
@@ -97,7 +97,7 @@ async function main() {
         console.log(`${format} ${opening}: ${stills.length} stills`);
         continue;
       }
-      const base = join(OUT, `${NAMES[format]}-${opening}${edit === "story" ? "-story" : ""}`);
+      const base = join(OUT, `${NAMES[format]}-${opening}${edit === "full" ? "" : `-${edit}`}`);
       const master = `${base}.master.mkv`;
       const enc = encoder(["-f", "image2pipe", "-framerate", String(FPS), "-c:v", "png", "-i", "-", "-vf", "scale=out_color_matrix=bt709:out_range=tv", ...BT709, "-c:v", "libx264", "-preset", "medium", "-crf", "10", "-pix_fmt", "yuv444p", master]);
       const frames = Math.round(total * FPS);

@@ -30,7 +30,7 @@ function camera(cam, s) {
 }
 
 let failed = false;
-for (const [opening, edit] of [["a", "full"], ["b", "full"], ["c", "story"]]) {
+for (const [opening, edit] of [["a", "full"], ["b", "full"], ["c", "story"], ["c", "short"]]) {
   console.log(`opening ${opening}, ${edit} edit`);
   for (const s of layout(opening, edit).shots) {
     const cam = opening === "a" && s.camA ? s.camA : s.cam;
