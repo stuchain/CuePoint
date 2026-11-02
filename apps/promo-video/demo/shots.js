@@ -21,6 +21,27 @@ export const OPENINGS = { a: { bars: 3 }, b: { bars: 3 }, c: { bars: 4 } };
 export const END = { seconds: 3 * BAR };
 
 /**
+ * The 30 s story edit (?edit=story, --edit=story): a 2-bar problem opening with the lines on half beats, five
+ * shots cut from the same clips (Clean, Discover, Prepare, Keys, Export) and a 2-bar end card: 16 bars, 29.7 s.
+ */
+export const STORY = {
+  openBars: 2,
+  endBars: 2,
+  shots: [
+    { id: "clean", bars: 4, span: [3.0, 16.1], keep: [[3.4, 4.9], [10.8, 11.4], [12.6, 13.4], [15.3, 16.1]],
+      cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 642, 380, 1.06], [4.8, 642, 380, 1.06], [6.5, 900, 450, 1.3]] },
+    { id: "discover", bars: 2, span: [3.3, 8.0], keep: [[3.4, 4.2], [4.9, 5.4], [7.3, 8.0]],
+      cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 660, 410, 1.03]] },
+    { id: "prepare", bars: 2, span: [3.0, 8.3], keep: [[3.3, 3.9], [5.4, 6.0], [7.5, 8.1]],
+      cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 600, 300, 1.2]] },
+    { id: "keys", bars: 2, span: [0.8, 5.3], keep: [[1.2, 1.9], [3.6, 4.6]],
+      cam: [[0, 640, 400, 1], [0.2, 640, 400, 1], [1.8, 760, 400, 1.3]] },
+    { id: "export", bars: 2, span: [0.8, 7.4], keep: [[0.9, 1.4], [5.9, 7.4]],
+      cam: [[0, 640, 400, 1], [1.0, 640, 400, 1], [2.7, 640, 260, 1.4]] },
+  ],
+};
+
+/**
  * Each shot: the raw clip (`<id>.mkv` from e2e/capture/demo.spec.ts), the stretch of it used (`span`, clip
  * seconds) and the moments that must play at normal speed (`keep`, clip seconds: the clicks, the typing, the
  * things appearing). Everything between the kept moments (the pointer travelling, the app loading) runs faster,
@@ -156,11 +177,15 @@ export function speedMap(shot, need, lead = 0) {
 }
 
 /** Lay the timeline out for one opening: slot lengths, each shot's speed map, the camera in output seconds. */
-export function layout(opening = "a") {
-  const open = OPENINGS[opening] ?? OPENINGS.a;
-  const OPEN = { seconds: 0.2 + open.bars * BAR };
-  const shots = SHOTS.map((s) => ({ ...s }));
-  if (opening === "a") {
+export function layout(opening = "a", edit = "full") {
+  const story = edit === "story";
+  const open = story ? { bars: STORY.openBars } : (OPENINGS[opening] ?? OPENINGS.a);
+  const OPEN = { seconds: 0.2 + open.bars * BAR, bars: open.bars };
+  const END_ = { seconds: (story ? STORY.endBars : 3) * BAR };
+  const shots = story
+    ? STORY.shots.map((o) => ({ ...SHOTS.find((s) => s.id === o.id), ...o }))
+    : SHOTS.map((s) => ({ ...s }));
+  if (opening === "a" && !story) {
     // the opening is the Library itself, live, full-frame: its clip starts under the title and runs on
     shots[0].span = [0, shots[0].span[1]];
     shots[0].bars = 3;
@@ -181,5 +206,5 @@ export function layout(opening = "a") {
     f0 = f1;
   }
   const endStart = f0 / FPS;
-  return { OPEN, END, shots, endStart, duration: endStart + END.seconds };
+  return { OPEN, END: END_, shots, endStart, duration: endStart + END_.seconds };
 }
