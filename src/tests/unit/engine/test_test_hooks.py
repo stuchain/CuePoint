@@ -79,6 +79,8 @@ def test_the_stall_route_is_absent_unless_the_variable_is_one(
     assert _post(engine_port(), TEST_STALL_PATH) == 404
 
 
+# Timing: under the parallel run the stall can begin after /health is asked (CI, 11-03).
+@pytest.mark.serial
 def test_the_stall_route_stops_health_answering_when_the_hooks_are_on(
     monkeypatch, engine_port
 ):
@@ -93,6 +95,8 @@ def test_the_stall_route_stops_health_answering_when_the_hooks_are_on(
     assert time.monotonic() - began < 5
 
 
+# Timing: under the parallel run the stall can begin after /health is asked (CI, 11-03).
+@pytest.mark.serial
 def test_a_stall_with_a_length_ends_and_the_server_answers_again(
     monkeypatch, engine_port
 ):
