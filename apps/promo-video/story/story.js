@@ -10,6 +10,7 @@ const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const smooth = (x) => { const k = clamp(x, 0, 1); return k * k * k * (k * (k * 6 - 15) + 10); };
 const easeOut = (x) => 1 - (1 - clamp(x, 0, 1)) ** 3;
+const mixc = (c1, c2, x) => `rgb(${c1.map((v, i) => Math.round(v + (c2[i] - v) * clamp(x, 0, 1))).join(",")})`;
 const back = (x) => { const k = clamp(x, 0, 1); const c = 1.7; return 1 + (c + 1) * (k - 1) ** 3 + c * (k - 1) ** 2; };
 /** 0..1 over [start, start + dur] */
 const k = (t, start, dur = 0.4) => (t - start) / dur;
@@ -45,6 +46,46 @@ const CAPTIONS = [
   [bar(12), "Your whole library, <b>ready</b> for the booth."],
 ];
 const XFADE = 0.35;
+
+/* ---------- pixel confetti: a burst of squares from a point, each on its own arc ---------- */
+let seed = 7;
+const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+const BURSTS = {};
+function burst(id, parent, cx, cy, n, colors) {
+  const bits = [];
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("div");
+    el.className = "confetti";
+    el.style.background = colors[i % colors.length];
+    parent.append(el);
+    const a = rnd() * Math.PI * 2, v = 380 + rnd() * 520;
+    bits.push({ el, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 260, spin: (rnd() - 0.5) * 900, size: 10 + rnd() * 10 });
+  }
+  BURSTS[id] = { bits, cx, cy };
+}
+function playBurst(id, t, at, life = 1.1) {
+  const b = BURSTS[id];
+  const u = t - at;
+  for (const p of b.bits) {
+    if (u < 0 || u > life) { p.el.style.opacity = "0"; continue; }
+    const x = b.cx + p.vx * u * (1 - u * 0.35), y = b.cy + p.vy * u + 1400 * u * u;
+    p.el.style.opacity = String(1 - smooth((u - life * 0.6) / (life * 0.4)));
+    p.el.style.transform = `translate(${x}px, ${y}px) rotate(${p.spin * u}deg)`;
+    p.el.style.width = p.el.style.height = `${p.size}px`;
+  }
+}
+const CONFETTI = ["#9164f6", "#4ade80", "#f0abfc", "#fbbf24", "#fafafa", "#60a5fa"];
+
+/** Drawn cover art, four pixel styles on a hue, crisp 12 x 12 cells. */
+function cover(style, hue) {
+  const c = (l, a = 1) => `hsl(${hue} 70% ${l}% / ${a})`;
+  let body = `<rect width="12" height="12" fill="${c(18)}"/>`;
+  if (style === 0) for (let r = 5; r > 0; r--) body += `<circle cx="6" cy="6" r="${r + 0.5}" fill="${c(25 + r * 11)}"/>`;
+  if (style === 1) for (let i = -12; i < 12; i += 2) body += `<polygon points="${i},0 ${i + 1},0 ${i + 13},12 ${i + 12},12" fill="${c(30 + ((i / 2) % 3) * 18)}"/>`;
+  if (style === 2) { let k = hue; for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) { k = (k * 9301 + 49297) % 233280; body += `<rect x="${x}" y="${y}" width="1" height="1" fill="${c(20 + (k / 233280) * 55)}"/>`; } }
+  if (style === 3) { body += `<rect y="7" width="12" height="5" fill="${c(28)}"/><circle cx="6" cy="7" r="3.5" fill="${c(72)}"/>`; for (let y = 7; y < 12; y++) body += `<rect y="${y}" width="12" height="0.4" fill="${c(12)}"/>`; }
+  return `<svg viewBox="0 0 12 12">${body}</svg>`;
+}
 
 /* ---------- build the parts that are lists ---------- */
 const KEYS = ["1A", "2A", "3A", "4A", "5A", "6A", "7A", "8A", "9A", "10A", "11A", "12A"];
@@ -91,13 +132,17 @@ function buildSet() {
 }
 const CHARTS = [["Madsen & Ro", "Artist chart · 10 tracks", "2 new"], ["Paper Moon Trax", "Label chart · 10 tracks", "1 new"], ["Ayla Voss", "Artist chart · 10 tracks", "2 new"], ["Faux Aurora", "Artist chart · 10 tracks", "1 new"]];
 function buildDeck() {
-  $("deck").innerHTML = CHARTS.map(([n, s, c]) => `<div class="ccard"><div class="eyebrow">Beatport</div><div class="name">${n}</div><div class="sub">${s}</div><div class="new">${c}</div></div>`).join("");
+  $("deck").innerHTML = CHARTS.map(([n, s, c], i) => `<div class="ccard"><div class="art">${cover(i, [285, 160, 25, 200][i])}</div><div class="eyebrow">Beatport</div><div class="name">${n}</div><div class="sub">${s}</div><div class="new">${c}</div></div>`).join("");
 }
 const LIB = [["Cold Pulse", "Amsel", "4A", 128], ["Northern Season", "Amsel", "6A", 129], ["Violet Harbor", "Amsel", "11A", 136], ["Marble Daylight", "Madsen & Ro", "9A", 129], ["Slow Mirror (Original Mix)", "Anouk Dreyer", "2A", 134], ["Winter Return", "Anouk Dreyer", "12A", 132], ["First Reverie", "Astrid Mallory", "2A", 116], ["Hollow Voltage", "Astrid Mallory", "5A", 117], ["Low Lagoon", "Ayla Voss", "9A", 125], ["Paper Mirror", "Faux Aurora", "10A", 127], ["Hidden Halo", "Elias Marchetti", "9B", 124], ["Blue Shelter", "Nadir Okafor", "10A", 122], ["Static Orbit", "Tamsin Vale", "8A", 120], ["Deep Garden", "Calla Rune", "6B", 125], ["Silver Return", "Calla Rune", "10A", 122], ["Golden Delta", "Calla Rune", "3A", 128]];
 function buildTable() {
   $("table").innerHTML = LIB.map(([t, a, key, b]) => `<div class="tr"><span class="t">${t}</span><span class="a">${a}</span><span class="b">${b}</span><span class="k">${key}</span></div>`).join("");
 }
 buildWheel(); buildSet(); buildDeck(); buildTable();
+burst("drop", $("track"), 540, 420, 46, CONFETTI);
+burst("tick", $("export"), 760, 290, 30, CONFETTI);
+burst("end", $("end"), 540, 760, 50, CONFETTI);
+for (let i = 0; i < 7; i++) { const g = document.createElement("div"); g.className = "ghost"; $("export").querySelector(".exportrow").append(g); }
 
 /* ---------- each scene's motion, in scene-local seconds ---------- */
 function track(t) {
@@ -127,11 +172,14 @@ function track(t) {
   $("cover").querySelector(".cover__art").style.opacity = w > 0 && line > 120 ? "1" : "0";
   $("cover").querySelector(".cover__q").style.opacity = w > 0 && line > 120 ? "0" : "1";
   pop($("matched"), t, bar(2) + 2 * BEAT, 0.35);
+  playBurst("drop", t, bar(2) + 0.1, 1.2);
 }
 function wheel(t) {
   const segs = [...document.querySelectorAll(".seg")];
   const texts = [...document.querySelectorAll(".seg__t")];
   const t0 = bar(4);
+  const spin = easeOut(k(t, t0, BAR * 1.1));
+  $("wheelbox").querySelector("svg").style.transform = `rotate(${(1 - spin) * -70}deg) scale(${0.7 + 0.3 * spin})`;
   segs.forEach((el, i) => {
     const x = k(t, t0 + (i / 24) * BAR * 0.9, 0.25);
     el.style.opacity = String(smooth(x));
@@ -142,7 +190,8 @@ function wheel(t) {
     const el = document.querySelector(`.seg[data-key="${key}"]`);
     if (!el) return;
     const x = smooth(k(t, at, 0.3));
-    el.style.filter = `brightness(${1 + 0.9 * x}) saturate(${1 + x})`;
+    const breathe = x >= 1 ? 0.5 + 0.5 * Math.sin((t - at) * 5) : x;
+    el.style.filter = `brightness(${1 + 0.9 * x}) saturate(${1 + x}) drop-shadow(0 0 ${18 * breathe}px ${el.getAttribute("fill")})`;
   };
   light("9A", t0 + 4 * BEAT);
   [["8A", 5], ["10A", 6], ["9B", 7]].forEach(([key, b]) => {
@@ -172,7 +221,7 @@ function dig(t) {
     const [dx, dy, rot] = spots[i];
     el.style.opacity = String(smooth(x));
     const bob = Math.sin((t - t0) * 2.2 + i) * 6;
-    el.style.transform = `translate(${easeOut(x) * dx}px, ${easeOut(x) * dy + (1 - easeOut(x)) * 120 + bob}px) rotate(${easeOut(x) * rot + Math.sin((t - t0) * 1.7 + i) * 0.8}deg) scale(${0.9 + 0.1 * easeOut(x)})`;
+    el.style.transform = `translate(${easeOut(x) * dx}px, ${easeOut(x) * dy + (1 - easeOut(x)) * 120 + bob}px) rotateY(${(1 - easeOut(x)) * 90}deg) rotate(${easeOut(x) * rot + Math.sin((t - t0) * 1.7 + i) * 0.8}deg) scale(${0.9 + 0.1 * easeOut(x)})`;
   });
   pop($("found"), t, t0 + 5 * BEAT, 0.35);
 }
@@ -183,7 +232,14 @@ function exportScene(t) {
   file.style.opacity = "1";
   file.style.transform = `translateX(${smooth(x) * 330}px) scale(${1 - 0.2 * smooth(x)})`;
   file.style.opacity = String(1 - smooth((x - 0.85) / 0.15));
+  [...document.querySelectorAll(".ghost")].forEach((g, i) => {
+    const xg = k(t, t0 + BEAT + 0.045 * (i + 1), 1.0);
+    g.style.opacity = String(xg > 0 && xg < 1 && x > 0 && x < 1.1 ? 0.5 * (7 - i) / 7 : 0);
+    g.style.transform = `translateX(${smooth(xg) * 330}px) scale(${1 - 0.2 * smooth(xg)})`;
+  });
   $("slot").style.borderColor = x >= 1 ? "var(--good)" : "#52525b";
+  $("slot").style.transform = `scale(${1 + 0.06 * Math.max(0, 1 - Math.abs(x - 1) * 6)})`;
+  playBurst("tick", t, t0 + BEAT + 1.0, 1.0);
   pop($("slot").querySelector(".slot__tick"), t, t0 + BEAT + 1.0, 0.3);
   [...document.querySelectorAll(".stamp")].forEach((el, i) => pop(el, t, t0 + 4.5 * BEAT + i * BEAT * 0.5, 0.3));
 }
@@ -202,6 +258,7 @@ function library(t) {
 function endCard(t) {
   const t0 = bar(14);
   [...document.querySelectorAll(".end__body > *")].forEach((el, i) => rise(el, t, t0 + i * BEAT * 0.5, 0.5));
+  playBurst("end", t, t0 + 0.1, 1.3);
 }
 const MOTION = { track, wheel, set, dig, export: exportScene, library, end: endCard };
 
@@ -213,13 +270,28 @@ function captions(t) {
   for (const [el, i] of [[a, cur], [b, cur - 1]]) {
     if (i < 0 || (el === a && t >= bar(14))) { el.style.opacity = "0"; continue; }
     el.innerHTML = CAPTIONS[i][1];
-    if (el === a) rise(el, t, CAPTIONS[i][0], 0.45, 24);
+    if (el === a) {
+      rise(el, t, CAPTIONS[i][0], 0.45, 24);
+      // the accent word lands white and settles into the accent colour
+      const bb = el.querySelector("b");
+      if (bb) bb.style.color = mixc([250, 250, 250], [145, 100, 246], smooth(k(t, CAPTIONS[i][0] + 0.25, 0.5)));
+    }
     else { el.style.transform = "none"; el.style.opacity = String(1 - smooth((t - CAPTIONS[cur][0]) / 0.3)); }
   }
   if (cur >= 0 && t >= bar(14)) { a.style.opacity = "0"; b.style.opacity = "0"; }
 }
 
 export function seek(t) {
+  // the music shows: after the drop the background breathes on every beat and the grid drifts
+  const sinceBeat = ((t - 0.2) % BEAT + BEAT) % BEAT;
+  const pulse = t >= bar(2) && t < bar(14) ? Math.exp(-sinceBeat * 9) : 0;
+  $("bg").style.filter = `brightness(${1 + 0.18 * pulse})`;
+  $("grid").style.transform = `translate(${(t * 14) % 48}px, ${(t * 9) % 48}px)`;
+  // the drop: a flash and a shake that dies out
+  const d = t - bar(2);
+  $("flash").style.opacity = String(d >= 0 ? 0.7 * (1 - smooth(d / 0.22)) : 0);
+  const shake = d >= 0 && d < 0.5 ? (1 - d / 0.5) * 14 : 0;
+  $("world").style.transform = shake ? `translate(${Math.sin(d * 90) * shake}px, ${Math.cos(d * 70) * shake}px)` : "none";
   const chromeOn = t >= bar(0) && t < bar(14);
   $("brand").style.opacity = String(chromeOn ? smooth(k(t, 0, 0.4)) : 0);
   $("url").style.opacity = $("brand").style.opacity;
@@ -231,7 +303,10 @@ export function seek(t) {
     if (!on) continue;
     const inK = smooth((t - from) / XFADE), outK = s.id === "end" ? 1 : 1 - smooth((t - to) / XFADE);
     el.style.opacity = String(Math.min(inK, outK));
-    el.style.transform = s.id === "end" ? "none" : `scale(${1 + 0.03 * (1 - inK)})`;
+    // every scene pushes in slowly, so nothing ever sits still
+    const push = clamp((t - from) / (to - from), 0, 1);
+    el.style.transform = s.id === "end" ? "none" : `scale(${1 + 0.03 * (1 - inK) + 0.05 * push})`;
+    el.style.transformOrigin = "50% 45%";
     MOTION[s.id](t);
   }
   captions(t);
