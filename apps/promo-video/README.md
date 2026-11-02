@@ -65,7 +65,7 @@ library), set `APP_PREVIEW` to `false` in `src/content.ts`, and render again.
 
 ## The LinkedIn demo (`demo/`)
 
-A 75 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350, LinkedIn's feed) and 16:9.
+An 80 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350, LinkedIn's feed) and 16:9.
 
 1. Record the clips from the running app, on the README's made-up library (Linux, under X):
    `cd ../desktop-electron && CUEPOINT_CAPTURE_DEMO=1 CUEPOINT_DEMO_OUT=<raw dir> xvfb-run -a -s "-screen 0 2700x1800x24" npx playwright test --config e2e/capture/playwright.capture.config.ts demo`
@@ -74,6 +74,8 @@ A 75 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350,
    (`--stills=5,20` for a quick look, `--format=portrait|wide` for one cut).
    The opening and end card are taken from the 26 s promo's renders.
 
-`demo/shots.js` holds each shot: its caption, its length in bars (130 BPM), which parts of its clip are used,
-and the camera's push-in keyframes. Music: `--track=<your own file> --start=<s>` names the output -PRIVATE;
+`demo/shots.js` holds each shot: its caption, its length in bars (130 BPM), which parts of its clip are used
+(dead moments left out, parts joined by short dissolves, always at normal speed), and the camera keyframes, timed
+in clip seconds. Shots dissolve into each other; keep zooms framed so the dialog or list a shot is about stays
+wholly in view. Music: `--track=<your own file> --start=<s>` names the output -PRIVATE;
 the track never goes in the repository.

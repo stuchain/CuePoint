@@ -16,7 +16,7 @@ import { createServer } from "node:http";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
-import { END, FORMATS, FPS, OPEN, SHOTS } from "../demo/shots.js";
+import { END, FORMATS, FPS, OPEN, PART_FADE, SHOTS, TAIL, timeline } from "../demo/shots.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "out", "demo");
@@ -40,21 +40,28 @@ const duration = (file) =>
   Number(spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]).stdout.toString());
 const count = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".jpg")).length : 0);
 
-/** One shot's frames: its clip's in..out stretched to exactly the slot's frame count. */
+/** One shot's frames: its clip's parts at normal speed, joined by short dissolves, plus a tail for the dissolve out. */
 function extractShot(shot) {
   const dir = join(FRAMES, shot.id);
-  if (count(dir) === shot.frames) return;
+  const frames = shot.frames + TAIL;
+  if (count(dir) === frames) return;
   const file = join(raw, `${shot.id}.mkv`);
   if (!existsSync(file)) throw new Error(`No clip ${file}`);
-  const parts = shot.parts ?? [[0, duration(file)]];
-  const length = parts.reduce((sum, [a, b]) => sum + (b - a), 0);
-  const k = shot.frames / FPS / length;
+  const { parts, starts } = timeline(shot);
   mkdirSync(dir, { recursive: true });
   for (const f of readdirSync(dir)) spawnSync("rm", [join(dir, f)]);
-  const trims = parts.map(([a, b], i) => `[0:v]trim=${a}:${b},setpts=PTS-STARTPTS[p${i}]`).join(";");
-  const joined = parts.map((_, i) => `[p${i}]`).join("") + `concat=n=${parts.length}:v=1[c]`;
-  const graph = `${trims};${joined};[c]setpts=PTS*${k.toFixed(5)},fps=${FPS},scale=2048:-1:flags=lanczos,tpad=stop_mode=clone:stop_duration=2[v]`;
-  run(["-i", file, "-filter_complex", graph, "-map", "[v]", "-frames:v", String(shot.frames), "-q:v", "3", join(dir, "%05d.jpg")]);
+  const trims = parts
+    .map(([a, b], i) => `[0:v]trim=${a}:${b.toFixed(3)},setpts=PTS-STARTPTS,fps=${FPS},scale=2048:-1:flags=lanczos,format=yuv444p,settb=1/${FPS}[p${i}]`)
+    .join(";");
+  let chain = "[p0]";
+  const fades = [];
+  for (let i = 1; i < parts.length; i++) {
+    const out = `[x${i}]`;
+    fades.push(`${chain}[p${i}]xfade=transition=fade:duration=${PART_FADE}:offset=${starts[i].toFixed(3)}${out}`);
+    chain = out;
+  }
+  const graph = [trims, ...fades, `${chain}tpad=stop_mode=clone:stop_duration=2[v]`].join(";");
+  run(["-i", file, "-filter_complex", graph, "-map", "[v]", "-frames:v", String(frames), "-q:v", "3", join(dir, "%05d.jpg")]);
 }
 
 /** Opening and end card frames, from the promo's tall and wide renders. */
