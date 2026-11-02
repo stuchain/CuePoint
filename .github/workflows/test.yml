@@ -1,23 +1,28 @@
 # The main Python test workflow: ruff lint and format, the mypy gate, the Qt-removal
 # check, and the unit, integration and system tests with coverage, plus a large-file
-# check. Runs on pushes and on pull requests.
+# check. Runs on pull requests only: a push is covered by release-gates.yml, which runs the
+# same suite on 3 systems (with the system and regression tests and the dead-code guard), so
+# running it here too ran the whole Python suite twice per push.
 name: Test
 
 on:
-  push:
-    branches: ['main', 'main_deprecated', 'phase_*', 'feature']
   # Without this, a pull request ran no Python tests at all: every gate lived on
   # push-to-branch workflows, so a PR could be reviewed and merged green having
   # never had the suite run against it.
   pull_request:
     branches: ['main', 'feature']
+    # Docs still start it: tests read docs. A workflow skipped by `paths-ignore` reports no check at
+    # all, so if any of these ever becomes a required check, a website-only pull request would wait
+    # for it forever.
+    paths-ignore: ['apps/website/**', 'apps/promo-video/**']
 
-# One run at a time per branch, and only the newest push waits behind it: a push
-# replaces the run still queued for an older one, so a busy branch does not queue
-# hours of runs for commits already superseded. A run in progress is not cancelled.
+# One run at a time per ref. Everything except `main` and tags cancels (`feature`, `phase_*`,
+# pull requests, manual runs): the newest push wins, and a push cancels the run still going for
+# an older commit, so a busy branch does not queue hours of runs for commits already superseded.
+# `main` and tags never cancel: every commit there keeps its own full result.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   test:

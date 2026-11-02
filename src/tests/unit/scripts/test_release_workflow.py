@@ -478,3 +478,234 @@ class TestAcceptanceGate:
                 continue
             text = path.read_text(encoding="utf-8")
             assert "check_acceptance.py --release" not in text, path.name
+
+
+# The CI-speed rules (one Python run per push, one e2e run per release, no repeated or superseded work).
+_CANCEL = (
+    "${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}"
+)
+
+
+@pytest.fixture(scope="module")
+def release_gates() -> dict:
+    return _load("release-gates.yml")
+
+
+@pytest.fixture(scope="module")
+def test_workflow() -> dict:
+    return _load("test.yml")
+
+
+def _step_named(job: dict, name: str) -> dict:
+    return next(s for s in job["steps"] if s.get("name") == name)
+
+
+class TestDesktopEndToEndRunsOncePerRelease:
+    def test_the_dev_build_suite_is_skipped_on_a_release(self, build_workflow):
+        job = build_workflow["jobs"]["desktop-electron"]
+        step = _step_named(job, "Playwright Electron smoke")
+        assert "!inputs.release" in step["if"]
+
+    def test_the_packaged_run_is_unfiltered_on_a_release(self, build_workflow):
+        job = build_workflow["jobs"]["desktop-electron"]
+        step = _step_named(job, "Packaged app end-to-end")
+        assert step["if"] == "${{ !cancelled() && steps.app.outcome == 'success' }}"
+        assert (
+            step["env"]["RELEASE_RUN"] == "${{ inputs.release && 'true' || 'false' }}"
+        )
+        run = step["run"]
+        release_branch = run.split("else", 1)[0]
+        assert 'filter=""' in release_branch
+        assert "--grep" not in release_branch
+        assert "@dom-only" not in run
+
+    def test_a_release_still_builds_and_keeps_its_files_without_the_dev_run(
+        self, build_workflow
+    ):
+        job = build_workflow["jobs"]["desktop-electron"]
+        assert (
+            "!cancelled()"
+            in _step_named(job, "Build Electron installers + artifacts")["if"]
+        )
+        assert _step_named(job, "Upload release files")["if"] == "inputs.release"
+        names = [s.get("name") for s in job["steps"]]
+        assert (
+            names.index("Playwright Electron smoke")
+            < names.index("Build Electron installers + artifacts")
+            < names.index("Packaged app end-to-end")
+        )
+
+    def test_the_dev_run_leaves_the_dom_only_specs_to_linux(self, build_workflow):
+        job = build_workflow["jobs"]["desktop-electron"]
+        run = _step_named(job, "Playwright Electron smoke")["run"]
+        assert "--grep-invert @dom-only" in run
+        # Linux (under Xvfb) runs everything; the filter belongs to the other branch.
+        linux, other = run.split("else", 1)
+        assert "xvfb-run" in linux and "@dom-only" not in linux
+        assert "@dom-only" in other
+
+    def test_the_a11y_spec_is_tagged_dom_only(self):
+        spec = (
+            _REPO_ROOT / "apps" / "desktop-electron" / "e2e" / "a11y.spec.ts"
+        ).read_text(encoding="utf-8")
+        assert "@dom-only" in spec
+
+
+class TestDesktopTriggersAndRepeatedTests:
+    def test_a_push_to_main_does_not_build_the_desktop_app(self, build_workflow):
+        branches = build_workflow["on"]["push"]["branches"]
+        assert "main" not in branches
+        assert "feature" in branches
+        # A pull request into main still builds.
+        assert "main" in build_workflow["on"]["pull_request"]["branches"]
+
+    def test_engine_unit_tests_are_left_to_release_gates(self, build_workflow):
+        job = build_workflow["jobs"]["desktop-electron"]
+        names = [s.get("name") for s in job["steps"]]
+        assert "Engine unit tests (HTTP API)" not in names
+        assert "Engine health smoke" in names
+
+    def test_renderer_unit_tests_run_on_linux_only(self, build_workflow):
+        job = build_workflow["jobs"]["desktop-electron"]
+        step = _step_named(job, "Unit test renderer")
+        assert step["if"] == "matrix.leg == 'linux-x64'"
+
+    def test_downloads_are_cached_before_npm_ci(self, build_workflow):
+        steps = build_workflow["jobs"]["desktop-electron"]["steps"]
+        cache = next(
+            i for i, s in enumerate(steps) if "actions/cache@v4" in s.get("uses", "")
+        )
+        install = next(i for i, s in enumerate(steps) if "npm ci" in s.get("run", ""))
+        assert cache < install
+        paths = steps[cache]["with"]["path"]
+        for needed in (
+            "~/.cache/ms-playwright",
+            "~/.cache/electron-builder",
+            "~/AppData/Local/ms-playwright",
+        ):
+            assert needed in paths
+        assert "package-lock.json" in steps[cache]["with"]["key"]
+
+
+class TestSupersededRunsAreCancelledExceptOnMainAndTags:
+    @pytest.mark.parametrize(
+        "name", ["desktop-electron.yml", "release-gates.yml", "test.yml"]
+    )
+    def test_concurrency(self, name):
+        concurrency = _load(name)["concurrency"]
+        assert concurrency["cancel-in-progress"] == _CANCEL
+        assert "github.ref" in concurrency["group"]
+
+    @pytest.mark.parametrize(
+        "name", ["desktop-electron.yml", "release-gates.yml", "test.yml"]
+    )
+    def test_website_and_promo_video_pushes_start_nothing(self, name):
+        on = _load(name)["on"]
+        triggers = [t for t in ("push", "pull_request") if t in on]
+        assert triggers, name
+        for trigger in triggers:
+            assert on[trigger]["paths-ignore"] == [
+                "apps/website/**",
+                "apps/promo-video/**",
+            ]
+
+
+class TestPythonSuiteRunsOncePerPush:
+    def test_test_yml_runs_on_pull_requests_only(self, test_workflow):
+        assert "push" not in test_workflow["on"]
+        assert "pull_request" in test_workflow["on"]
+
+    def _gates(self, release_gates):
+        return release_gates["jobs"]["test-gates"]
+
+    def test_release_gates_runs_the_system_and_regression_tests_after_integration(
+        self, release_gates
+    ):
+        job = self._gates(release_gates)
+        runs = [s.get("run", "") for s in job["steps"]]
+        integration = next(
+            i for i, r in enumerate(runs) if "src/tests/integration/" in r
+        )
+        for layer in ("system", "regression"):
+            idx = next(i for i, r in enumerate(runs) if f"src/tests/{layer}/" in r)
+            assert integration < idx, layer
+            assert (
+                'pytest src/tests/%s/ -q --timeout=300 -m "not slow"' % layer
+                in runs[idx]
+            )
+            # No `if`: they run on every leg, the same legs as the integration tests.
+            assert (
+                "if" not in job["steps"][idx] and "if" not in job["steps"][integration]
+            )
+
+    def test_release_gates_runs_on_phase_branches_as_test_yml_did(self, release_gates):
+        branches = release_gates["on"]["push"]["branches"]
+        assert {"main", "feature", "phase_*"} <= set(branches)
+
+    def test_release_gates_runs_the_dead_code_guard_and_the_qt_check(
+        self, release_gates
+    ):
+        text = _runs(release_gates["jobs"]["code-quality-gates"])
+        assert "python scripts/audit_dead_code.py --check" in text
+        assert "python scripts/check_no_qt.py" in text
+
+
+class TestParallelUnitTests:
+    def _job(self, release_gates):
+        return release_gates["jobs"]["test-gates"]
+
+    def test_the_matrix_has_no_halves_and_python_311_is_linux_only(self, release_gates):
+        matrix = self._job(release_gates)["strategy"]["matrix"]
+        assert "part" not in matrix
+        pairs = {(i["os"], i["python-version"]) for i in matrix["include"]}
+        assert pairs == {
+            ("ubuntu-latest", "3.11"),
+            ("ubuntu-latest", "3.12"),
+            ("macos-latest", "3.12"),
+            ("windows-latest", "3.12"),
+        }
+        assert "windows-coverage" not in release_gates["jobs"]
+
+    def test_unit_tests_run_in_parallel_then_the_serial_ones_alone(self, release_gates):
+        step = _step_named(self._job(release_gates), "Run unit tests")
+        run = step["run"]
+        parallel, serial = (
+            line
+            for line in run.splitlines()
+            if "pytest" in line and "src/tests/unit/" in line
+        )
+        assert "-n auto" in parallel and '-m "not serial"' in parallel
+        assert "-n" not in serial.split() and "-m serial" in serial
+        for line in (parallel, serial):
+            assert "--timeout=300" in line and "--timeout-method=thread" in line
+            assert "--durations=30" in line
+        # Coverage: the first pass collects, the second appends and writes the xml.
+        cov1 = next(ln for ln in run.splitlines() if ln.strip().startswith('cov1="--'))
+        cov2 = next(ln for ln in run.splitlines() if ln.strip().startswith('cov2="--'))
+        assert "--cov=src/cuepoint" in cov1 and "--cov-append" not in cov1
+        assert "--cov-report=xml" not in cov1
+        assert "--cov-append" in cov2 and "--cov-report=xml" in cov2
+        assert "$cov1" in parallel and "$cov2" in serial
+
+    def test_a_serial_pass_that_collects_nothing_is_not_a_failure(self, release_gates):
+        run = _step_named(self._job(release_gates), "Run unit tests")["run"]
+        tail = run[run.index("-m serial") :]
+        assert "-ne 5" in tail
+        # Only that pass tolerates exit code 5; the parallel one fails on it.
+        assert "-ne 5" not in run[: run.index("-m serial")]
+
+    def test_the_marker_is_registered_and_xdist_is_pinned(self):
+        ini = (_REPO_ROOT / "pytest.ini").read_text(encoding="utf-8")
+        assert "serial:" in ini
+        dev = (_REPO_ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
+        assert "pytest-xdist==3." in dev
+
+    def test_coverage_is_still_gated_on_python_312(self, release_gates):
+        job = self._job(release_gates)
+        check = _step_named(job, "Check test coverage")
+        assert "coverage report --fail-under=35" in check["run"]
+        assert check["if"] == "matrix.python-version != '3.11'"
+        assert (
+            _step_named(job, "Upload coverage")["if"]
+            == "matrix.python-version != '3.11'"
+        )

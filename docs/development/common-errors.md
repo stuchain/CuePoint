@@ -65,7 +65,7 @@ from project root.
 
 **Cause**: Different Python version, OS, or env.
 
-**Fix**: Check `.github/workflows/test.yml` and `release-gates.yml` for the Python and OS matrix (Python 3.11 and 3.12 on Linux, macOS and Windows). Run the same Python version locally.
+**Fix**: Check `.github/workflows/test.yml` and `release-gates.yml` for the Python and OS matrix (`test.yml`, pull requests only: Python 3.11 on macOS and Windows; `release-gates.yml`, pushes: Python 3.11 on Linux plus 3.12 on Linux, macOS and Windows). The unit layer runs in parallel in `release-gates.yml` (`pytest -n auto -m "not serial"`, then `pytest -m serial`); if a test passes alone but fails in the parallel pass, it is timing-sensitive: mark it `@pytest.mark.serial`. Run the same Python version locally.
 
 ### "Missing DLL" or PyInstaller errors when building the engine sidecar
 

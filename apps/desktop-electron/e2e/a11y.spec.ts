@@ -72,7 +72,9 @@ test.describe("axe, WCAG 2.2 A and AA, in each theme", () => {
   });
 
   for (const theme of THEMES) {
-    test(`${theme}: every destination, at 1x and 1.5x, with motion on and reduced`, async () => {
+    // `@dom-only`: axe reads the window's DOM, the same on every system, so the development run
+    // skips it off Linux (desktop-electron.yml); the packaged release run still runs it everywhere.
+    test(`${theme}: every destination, at 1x and 1.5x, with motion on and reduced`, { tag: "@dom-only" }, async () => {
       test.setTimeout(900_000);
       const app = await launch(ws);
       const failures: string[] = [];

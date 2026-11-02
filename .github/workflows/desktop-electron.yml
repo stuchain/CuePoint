@@ -4,10 +4,18 @@
 name: Desktop Electron
 
 on:
+  # No `main`: main only gets merges for a release, and the tag's release build (`release.yml`
+  # calls this workflow) builds main's commit again, so a push there ran the same four legs twice
+  # and held two Mac runners the release needed. A pull request into main still builds.
   push:
-    branches: [main, feature, 'phase_*']
+    branches: [feature, 'phase_*']
+    # Docs still start it: tests read docs. A workflow skipped by `paths-ignore` reports no check at
+    # all, so if any of these ever becomes a required check, a website-only pull request would wait
+    # for it forever.
+    paths-ignore: ['apps/website/**', 'apps/promo-video/**']
   pull_request:
     branches: [main, feature]
+    paths-ignore: ['apps/website/**', 'apps/promo-video/**']
   # DIST-04: `release.yml` calls this for a tag. With `release: true` the Sentry upload is
   # required and each leg also uploads `release-<leg>`, the files the release is made of.
   # A push or pull request does not set it, so `inputs.release` is empty there and false here.
@@ -18,12 +26,14 @@ on:
         type: boolean
         default: false
 
-# One run at a time per branch, and only the newest push waits behind it: a push
-# replaces the run still queued for an older one, so a busy branch does not queue
-# hours of runs for commits already superseded. A run in progress is not cancelled.
+# One run at a time per ref. Everything except `main` and tags cancels (`feature`, `phase_*`,
+# pull requests, manual runs): the newest push wins, and a push cancels the run still going for
+# an older commit, so a busy branch does not queue hours of runs for commits already superseded.
+# `main` and tags never cancel: every commit there keeps its own full result. `release.yml` calls this workflow too; inside a call the group is the
+# caller's workflow and the tag's ref, so a release build never cancels either.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   desktop-electron:
@@ -89,6 +99,27 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
+      # Electron's own download, electron-builder's tool downloads and Playwright's Chromium come
+      # from other hosts than npm, so `cache: npm` above does not hold them. Keyed on the lockfile
+      # (it pins the versions); an older entry still saves most of the download. Read-only safe on
+      # a release too, so it is not switched off there.
+      - name: Cache Electron, electron-builder and Playwright downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/.cache/ms-playwright
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/Library/Caches/ms-playwright
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+            ~/AppData/Local/ms-playwright
+          key: desktop-dl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/desktop-electron/package-lock.json') }}
+          restore-keys: |
+            desktop-dl-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Install desktop dependencies
         working-directory: apps/desktop-electron
         run: |
@@ -99,11 +130,11 @@ jobs:
         working-directory: apps/desktop-electron/renderer
         run: npm run lint
 
-      # The renderer's unit tests are arch-independent JavaScript and run on three legs. The Intel
-      # runner is the slowest, and there the suite timed out and missed findBy queries that pass on
-      # the other three, so it is not run a fourth time. Its packaged run stays (see below).
+      # The renderer's unit tests are plain JavaScript in jsdom: the same on every system and chip,
+      # so one leg runs them. Linux is the fastest runner (6 minutes against 7 to 11 elsewhere), and
+      # the slow Intel Mac once timed out and missed findBy queries that pass elsewhere.
       - name: Unit test renderer
-        if: matrix.leg != 'macos-x64'
+        if: matrix.leg == 'linux-x64'
         working-directory: apps/desktop-electron/renderer
         run: npm test
 
@@ -199,12 +230,9 @@ jobs:
         run: |
           python -m pytest src/tests/unit/scripts/test_fetch_player_sidecar.py src/tests/unit/scripts/test_check_bundled_licenses.py src/tests/integration/test_player_sidecar_binary.py src/tests/unit/data/test_audio_decode.py src/tests/integration/test_audio_decode_binary.py src/tests/integration/test_waveform_service_binary.py src/tests/integration/test_waveform_analysis_binary.py -q --tb=short
 
-      - name: Engine unit tests (HTTP API)
-        env:
-          PYTHONPATH: src
-        run: |
-          python -m pytest src/tests/unit/engine/ -q --tb=short
-
+      # The engine's unit tests are not run here: release-gates.yml runs all of src/tests/unit/ on
+      # Linux, macOS and Windows for the same commit, so a third run in every leg added 4 to 8
+      # minutes and found nothing new. The smoke below starts the engine this leg built.
       - name: Engine health smoke
         env:
           PYTHONPATH: src
@@ -245,18 +273,26 @@ jobs:
 
       # The Linux runner has no display. Without one Electron exits at once, but Playwright waits out
       # its whole launch timeout for each test, so the step ran for hours; Xvfb gives it a screen.
-      # The whole suite against the development build on every leg. The packaged app is run below.
+      # The whole suite against the development build on every leg of a push or pull request. A release
+      # skips it: the packaged run below then runs the same specs, all of them, against the real app,
+      # so running the development build first only added 22 to 42 minutes to each leg. One gap: the
+      # specs in beatportSignIn.spec.ts that need the sign-in stand-in skip themselves against a packaged
+      # app (it is honoured only by an unpackaged one), so only push and pull request runs cover them.
+      # `@dom-only` specs (axe over the window's DOM, the same on every system) run on Linux only here;
+      # the packaged release run still runs them on all four legs.
       - name: Playwright Electron smoke
+        if: ${{ !inputs.release }}
         working-directory: apps/desktop-electron
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             xvfb-run -a npm run test:e2e
           else
-            npm run test:e2e
+            npm run test:e2e -- --grep-invert @dom-only
           fi
 
-      # Each failure's error-context.md holds what the page showed, which the log does not.
+      # Each failure's error-context.md holds what the page showed, which the log does not. (A release
+      # skips the run above, so only the packaged run's own steps further down have anything to show.)
       - name: Upload Playwright failures
         if: failure()
         uses: actions/upload-artifact@v4
@@ -349,9 +385,10 @@ jobs:
           echo "source maps in app.asar: $inside, beside it: $beside"
           test "$inside" = "0" && test "$beside" = "0" || { echo "::error::A source map ships in the package"; exit 1; }
 
-      # The source run above leaves its profiles and engine homes in the temp folder (`cuepoint-*`, `cp-*`),
-      # and the Windows runner ran out of disk in the packaged release run that follows (test.5,
-      # 10-30). Nothing reads them again, so they go, and the free space is printed before and after.
+      # The source run above (not on a release, which skips it: then there is little to free) leaves its
+      # profiles and engine homes in the temp folder (`cuepoint-*`, `cp-*`), and the Windows runner ran
+      # out of disk in the packaged release run that follows (test.5, 10-30). Nothing reads them again,
+      # so they go, and the free space is printed before and after.
       - name: Free the source run's temp folders
         if: ${{ !cancelled() && steps.app.outcome == 'success' }}
         shell: bash

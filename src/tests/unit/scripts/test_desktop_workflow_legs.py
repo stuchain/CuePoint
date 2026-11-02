@@ -213,14 +213,14 @@ class TestPackagedRun:
         names = [s.get("name") for s in _job()["steps"]]
         assert names.index(package["name"]) > names.index("Playwright Electron smoke")
 
-    def test_the_renderer_unit_tests_skip_the_slow_intel_leg_but_its_packaged_run_stays(
+    def test_the_renderer_unit_tests_run_on_linux_but_every_leg_keeps_its_packaged_run(
         self,
     ):
-        # They are arch-independent and run on the other three legs; on the Intel runner they
-        # timed out. Lint still runs everywhere, and the Intel leg still runs the packaged app.
+        # They are plain JavaScript in jsdom, the same on every system, so one leg runs them.
+        # Lint still runs everywhere, and the Intel leg still runs the packaged app.
         unit = _step("Unit test renderer")
         assert unit["run"] == "npm test"
-        assert unit["if"] == "matrix.leg != 'macos-x64'"
+        assert unit["if"] == "matrix.leg == 'linux-x64'"
         assert "if" not in _step("Lint renderer")
         assert _step("Lint renderer")["run"] == "npm run lint"
         assert "macos-x64" in _legs()
@@ -251,9 +251,11 @@ class TestPackagedRun:
             == "npx playwright install chromium"
         )
 
-    def test_a_run_in_progress_is_not_cancelled(self):
+    def test_a_run_in_progress_is_cancelled_except_on_main_and_tags(self):
         workflow = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))
-        assert workflow["concurrency"]["cancel-in-progress"] is False
+        assert workflow["concurrency"]["cancel-in-progress"] == (
+            "${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}"
+        )
 
     def test_every_spec_starts_the_app_through_the_helper(self):
         e2e = _REPO_ROOT / "apps" / "desktop-electron" / "e2e"

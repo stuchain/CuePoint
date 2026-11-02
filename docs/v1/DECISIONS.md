@@ -8749,3 +8749,21 @@ targets are under 24 px at Extra small, and the queue's remove button sat inside
 **Reason**: The owner's pick (option C) on the release-day card. CI covers the packaged app on all four systems; the by-hand rows would cost about half a day.
 
 **Decided with**: User (2 Nov 2026, 09:50 Athens: option C) · **Date**: 2026-11-02
+
+
+## DEC-310 — CI Runs Each Check Once per Push (Amends DEC-220 and DEC-236)
+
+**Status**: Accepted · **Related**: DEC-220, DEC-236, DEC-184, DEC-308, `.github/workflows/release-gates.yml`, `desktop-electron.yml`, `test.yml`, `/mnt/project-files/ci-speed/PROPOSAL.md`
+
+**Decision**: The Python suite runs once per push, in Release Gates. `test.yml` runs on pull requests only, and its system tests, regression tests and dead-code guard move into Release Gates. Release Gates runs the unit layer with pytest-xdist (`-n auto`), and the tests marked `serial` (timing tests that fail under parallel load) in a second pass. It runs Python 3.11 on Linux only and 3.12 on all three systems; Windows no longer runs as two halves. Desktop Electron:
+- drops the engine unit tests, which Release Gates runs;
+- runs the renderer unit tests on Linux only;
+- does not run on a push to `main`, because the tag's release build covers that commit;
+- skips the dev-build end-to-end suite on a release, where the full packaged suite runs;
+- runs `@dom-only` specs (a11y) on Linux only on pushes.
+
+A newer push cancels the run in progress everywhere except on `main` and tags. Pushes that touch only `apps/website/**` or `apps/promo-video/**` skip all three workflows. pip, Electron, electron-builder and Playwright downloads are cached. Splitting the Intel Mac's end-to-end suite (D7) waits until these are measured.
+
+**Reason**: A push asked for all 5 of the free plan's macOS slots and waited behind the previous run, so the newest commit took up to about 2 hours to get a full result. The Python suite ran twice per push, and the engine tests ran three times. Run one at a time, the unit layer took 14 min on Linux; with xdist it took 7.4 min on 4 cores.
+
+**Decided with**: User (2 Nov 2026, 15:32 Athens: all recommended, D1 to D12) · **Date**: 2026-11-02

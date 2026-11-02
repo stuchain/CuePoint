@@ -1,6 +1,7 @@
 # Release gates: version sync, changelog, SBOM, hashed-install check, licence
-# bundle, ruff, mypy gate and file sizes on every PR and push; the unit and
-# integration tests across 3 OSes and 2 Pythons on push only.
+# bundle, ruff, mypy gate, the Qt and dead-code guards and file sizes on every PR and push;
+# the unit, integration and system tests on Linux (Python 3.11 and 3.12), macOS and
+# Windows (3.12) on push only. This is the one place the Python suite runs per push.
 name: Release Gates
 
 on:
@@ -8,23 +9,30 @@ on:
     branches:
       - main
       - feature
+      - 'phase_*'
+    # Docs still start it: tests read docs. A workflow skipped by `paths-ignore` reports no check at
+    # all, so if any of these ever becomes a required check, a website-only pull request would wait
+    # for it forever.
+    paths-ignore: ['apps/website/**', 'apps/promo-video/**']
   # The release gates proper (version sync, changelog, SBOM, licences, lint,
   # types, formatting) are cheap and belong on every PR; before this they only
-  # ran after merge. The heavy matrix below stays on push — `test.yml` already
-  # runs the suite on PRs, and repeating it across 3 OSes x 2 Pythons would be
-  # six duplicate jobs per PR.
+  # ran after merge. The heavy matrix below stays on push: `test.yml` already
+  # runs the suite on PRs, and repeating it across 3 OSes would be
+  # four duplicate jobs per PR.
   pull_request:
     branches:
       - main
       - feature
+    paths-ignore: ['apps/website/**', 'apps/promo-video/**']
   workflow_dispatch:
 
-# One run at a time per branch, and only the newest push waits behind it: a push
-# replaces the run still queued for an older one, so a busy branch does not queue
-# hours of runs for commits already superseded. A run in progress is not cancelled.
+# One run at a time per ref. Everything except `main` and tags cancels (`feature`, `phase_*`,
+# pull requests, manual runs): the newest push wins, and a push cancels the run still going for
+# an older commit, so a busy branch does not queue hours of runs for commits already superseded.
+# `main` and tags never cancel: every commit there keeps its own full result.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   test-gates:
@@ -34,21 +42,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      # Python 3.12 is what the app ships and runs on all three systems; 3.11 is still supported
+      # and is tested on Linux only (it is the same code on every system, and each extra Mac or
+      # Windows job is minutes of queueing on a free account).
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.11', '3.12']
-        # Windows runs the unit tests in two halves side by side. Its runners take three to
-        # four times Linux's 7 minutes, and the whole suite there grew from 24 to over 30
-        # minutes from one run to the next on one commit. Halves keep each run well inside
-        # the step's 30 minutes without raising it. `engine` holds the engine and
-        # persistence tests (about 46% of the time), `rest` everything else.
-        part: [all, engine, rest]
-        exclude:
-          - { os: windows-latest, part: all }
-          - { os: ubuntu-latest, part: engine }
-          - { os: ubuntu-latest, part: rest }
-          - { os: macos-latest, part: engine }
-          - { os: macos-latest, part: rest }
+        include:
+          - { os: ubuntu-latest, python-version: '3.11' }
+          - { os: ubuntu-latest, python-version: '3.12' }
+          - { os: macos-latest, python-version: '3.12' }
+          - { os: windows-latest, python-version: '3.12' }
 
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +59,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install dependencies
         run: |
@@ -64,49 +70,59 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run unit tests
+        # Two passes in one step. The first runs in parallel (pytest-xdist, one worker per core): the
+        # unit layer took 14 minutes one test at a time on Linux and 8.4 minutes with `-n 4` on a
+        # 4-core box, and it is what let Windows go back to one leg instead of two halves. The second
+        # runs the tests marked `serial` alone, after the pass: they are timing-sensitive and fail under
+        # the load of the parallel run (pytest.ini). `-q` for the first, as xdist's `-v` prints a line
+        # per test per worker.
         # Coverage is measured on Python 3.12 only (DEC-220). 3.11 has no sys.monitoring,
         # and its line tracer doubles the suite: Ubuntu ran it in 14 minutes on 3.11
-        # against 7.5 on 3.12, and Windows in 29 of its 30 minutes. The 3.11 legs still
-        # run every unit test; the 3.12 legs on all three systems hold the coverage gate.
+        # against 7.5 on 3.12. The 3.11 legs still run every unit test; the 3.12 legs on all
+        # three systems hold the coverage gate. The second pass appends to the first's data.
         # A test that hangs stops the run at 300 s with every thread's stack, where the step's
         # own 30 minutes stopped it with none: one hung on Windows 3.12 with nothing to say why.
-        # A Windows half writes its coverage data for the windows-coverage job to combine.
         shell: bash
         run: |
-          case "${{ matrix.part }}" in
-            engine) paths="src/tests/unit/engine src/tests/unit/persistence" ;;
-            rest) paths="src/tests/unit/ --ignore=src/tests/unit/engine --ignore=src/tests/unit/persistence" ;;
-            *) paths="src/tests/unit/" ;;
-          esac
-          cov=""
+          cov1=""
+          cov2=""
           if [ "${{ matrix.python-version }}" != "3.11" ]; then
-            if [ "${{ matrix.part }}" = "all" ]; then cov="--cov=src/cuepoint --cov-report=xml"; else cov="--cov=src/cuepoint --cov-report="; fi
+            cov1="--cov=src/cuepoint --cov-report="
+            cov2="--cov=src/cuepoint --cov-append --cov-report=xml"
           fi
           # shellcheck disable=SC2086
-          pytest $paths -v --durations=30 --timeout=300 --timeout-method=thread $cov
+          pytest src/tests/unit/ -n auto -m "not serial" -q --durations=30 --timeout=300 --timeout-method=thread $cov1
+          # shellcheck disable=SC2086
+          # Exit code 5 (no test collected) is fine for this pass only: it holds just the tests marked
+          # `serial`, and a pass with none has nothing to run. Any other failure stops the step.
+          rc=0
+          pytest src/tests/unit/ -m serial -v --durations=30 --timeout=300 --timeout-method=thread $cov2 || rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 5 ]; then exit "$rc"; fi
         env:
           COVERAGE_CORE: sysmon
-          COVERAGE_FILE: ${{ matrix.part == 'all' && '.coverage' || format('coverage-data-{0}', matrix.part) }}
         timeout-minutes: 30
         continue-on-error: false
 
-      - name: Keep this half's coverage data
-        if: matrix.part != 'all' && matrix.python-version != '3.11'
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-data-windows-${{ matrix.part }}
-          path: coverage-data-${{ matrix.part }}
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Run integration tests
-        if: matrix.part != 'rest'
         run: |
           pytest src/tests/integration/ -v --timeout=120
         continue-on-error: false
 
+      # Moved here from test.yml, which now runs on pull requests only. `-m "not slow"` is how
+      # test.yml ran every layer (`run_tests.py --all --no-slow`).
+      - name: Run system tests
+        run: |
+          pytest src/tests/system/ -q --timeout=300 -m "not slow"
+        continue-on-error: false
+
+      # test.yml ran this layer too (`run_tests.py --all`), the same way: not slow, 300 s.
+      - name: Run regression tests
+        run: |
+          pytest src/tests/regression/ -q --timeout=300 -m "not slow"
+        continue-on-error: false
+
       - name: Upload coverage
-        if: matrix.part == 'all' && matrix.python-version != '3.11'
+        if: matrix.python-version != '3.11'
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.xml
@@ -114,48 +130,10 @@ jobs:
           minimum_coverage: 35
 
       - name: Check test coverage
-        if: matrix.part == 'all' && matrix.python-version != '3.11'
+        if: matrix.python-version != '3.11'
         run: |
           coverage report --fail-under=35
         continue-on-error: false
-
-  windows-coverage:
-    name: Windows coverage
-    # The Windows 3.12 halves' coverage, combined and held to the same gate as the other systems.
-    needs: test-gates
-    if: github.event_name != 'pull_request'
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install coverage
-        run: pip install coverage==7.13.1
-
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-data-windows-*
-          merge-multiple: true
-
-      - name: Combine the two halves
-        run: |
-          coverage combine coverage-data-engine coverage-data-rest
-          coverage xml
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage.xml
-          fail_ci_if_error: false
-          minimum_coverage: 35
-
-      - name: Check test coverage
-        run: |
-          coverage report --fail-under=35
 
   code-quality-gates:
     name: Code Quality Gates
@@ -168,6 +146,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install dependencies
         run: |
@@ -227,6 +209,16 @@ jobs:
         run: |
           python scripts/check_file_sizes.py
         continue-on-error: false
+
+      # Moved here from test.yml, which now runs on pull requests only.
+      - name: Verify Qt has not come back
+        run: python scripts/check_no_qt.py
+
+      # Fails on a Python module, script or renderer file nothing shipped or
+      # run reaches (a file only a test reaches counts as dead).
+      # See docs/v1/archive/PHASE12_CLEANUP.md, PRUNE-08.
+      - name: Dead-code guard
+        run: python scripts/audit_dead_code.py --check
 
   # The "Build Gates" job was removed here. It ran `python build.py`, a script
   # that does not exist in this repository, behind `|| echo "Build script not
