@@ -58,6 +58,8 @@ def _answer(sock: socket.socket) -> bytes:
     return head
 
 
+# Socket-timing test: fails under `pytest -n 4` load, passes alone (serial pass).
+@pytest.mark.serial
 def test_the_engine_does_not_close_an_answered_connection_before_the_client(port):
     with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
         sock.sendall(b"GET /health HTTP/1.0\r\n\r\n")

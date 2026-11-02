@@ -597,6 +597,8 @@ class TestStopping:
 
 
 class TestCrashingBetweenRequests:
+    # Fails under `pytest -n 4` load and passes alone: it runs in the serial pass.
+    @pytest.mark.serial
     def test_a_worker_that_dies_after_every_answer_is_given_up_on(self, fake, caplog):
         """Regression: it was never counted, so it respawned for ever."""
         made = fake.make("crash-after-answer")

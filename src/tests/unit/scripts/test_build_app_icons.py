@@ -284,29 +284,53 @@ def test_linux_icons_have_the_right_pixels() -> None:
         assert_pixels(png, n, _expected(n))
 
 
-def test_output_is_deterministic() -> None:
-    assert icons.build_outputs(_SOURCE) == icons.build_outputs(_SOURCE)
+@pytest.fixture(scope="module")
+def generated() -> dict[str, bytes]:
+    """The outputs built once from the committed sources (about 13 s): the tests below that only
+    read them share this one, instead of each building the whole set again."""
+    return icons.build_outputs(_SOURCE)
 
 
-def test_check_passes_on_committed_files() -> None:
+@pytest.fixture()
+def shared_build(generated: dict[str, bytes], monkeypatch: pytest.MonkeyPatch):
+    """Make ``main`` use the shared outputs while it is run on the unchanged sources.
+
+    The patched function hands out a copy, so a test cannot change what the others read.
+    ``monkeypatch.undo()`` brings the real builder back for a test that changes a source.
+    """
+    monkeypatch.setattr(icons, "build_outputs", lambda *_a, **_k: dict(generated))
+    return monkeypatch
+
+
+def test_output_is_deterministic(generated: dict[str, bytes]) -> None:
+    # Two independent builds: the shared one and a fresh one.
+    assert icons.build_outputs(_SOURCE) == generated
+
+
+def test_check_passes_on_committed_files(shared_build) -> None:
     assert icons.main(["--check"]) == 0
 
 
-def _copy_tree(tmp_path: Path):
+def _copy_tree(tmp_path: Path, generated: dict[str, bytes]):
     src, out = tmp_path / "icon-source", tmp_path / "build"
     shutil.copytree(_SOURCE, src)
-    for rel in icons.build_outputs(_SOURCE):
+    for rel in generated:
         (out / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(_BUILD / rel, out / rel)
     return src, out
 
 
 def test_check_fails_after_a_source_changes(
-    tmp_path: Path, capsys: pytest.CaptureFixture
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture,
+    generated: dict[str, bytes],
+    shared_build,
 ) -> None:
-    src, out = _copy_tree(tmp_path)
+    src, out = _copy_tree(tmp_path, generated)
     args = ["--check", "--source-dir", str(src), "--out-dir", str(out)]
     assert icons.main(args) == 0
+    # From here the sources differ from the shared outputs, so the real builder runs.
+    shared_build.undo()
     svg = src / "mark-16.svg"
     text = svg.read_text(encoding="utf-8")
     svg.write_text(
@@ -319,15 +343,18 @@ def test_check_fails_after_a_source_changes(
 
 
 def test_check_fails_when_a_file_is_missing(
-    tmp_path: Path, capsys: pytest.CaptureFixture
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture,
+    generated: dict[str, bytes],
+    shared_build,
 ) -> None:
-    src, out = _copy_tree(tmp_path)
+    src, out = _copy_tree(tmp_path, generated)
     (out / "icons" / "16x16.png").unlink()
     assert icons.main(["--check", "--source-dir", str(src), "--out-dir", str(out)]) != 0
     assert "missing: icons/16x16.png" in capsys.readouterr().err
 
 
-def test_default_run_writes_the_files(tmp_path: Path) -> None:
+def test_default_run_writes_the_files(tmp_path: Path, shared_build) -> None:
     out = tmp_path / "out"
     assert icons.main(["--source-dir", str(_SOURCE), "--out-dir", str(out)]) == 0
     assert (out / "icon.ico").read_bytes() == (_BUILD / "icon.ico").read_bytes()
