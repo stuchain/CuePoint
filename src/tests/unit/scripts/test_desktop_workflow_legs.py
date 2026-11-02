@@ -229,7 +229,11 @@ class TestPackagedRun:
 
     def test_the_job_and_the_packaged_run_have_a_timeout(self):
         job = _job()
-        assert 60 <= job["timeout-minutes"] <= 360
+        # A release gets longer (the v1.0.0 Intel leg ran out of 150 minutes); both stay
+        # far under the 6 hours GitHub allows.
+        limits = re.findall(r"\d+", str(job["timeout-minutes"]))
+        assert "inputs.release" in job["timeout-minutes"]
+        assert limits and all(60 <= int(n) <= 360 for n in limits)
         step_timeout = _step("Packaged app end-to-end")["timeout-minutes"]
         assert "inputs.release" in step_timeout
 

@@ -62,8 +62,9 @@ jobs:
             mac_dir: mac
     runs-on: ${{ matrix.runner }}
     # HARDEN-09: a hung app must not hold a runner for the 6 hours GitHub allows. Release runs the whole
-    # suite packaged (about 25 to 35 minutes more on Intel), so this leaves generous room.
-    timeout-minutes: 150
+    # suite packaged (up to 75 minutes); the v1.0.0 Intel leg ran out of 150 minutes there, so a
+    # release gets 210.
+    timeout-minutes: ${{ inputs.release && 210 || 150 }}
 
     env:
       # The commit this build is made from: main and the engine sidecar record it, and it is
