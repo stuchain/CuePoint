@@ -75,7 +75,11 @@ An 85 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350
    from the live app, or a logo build). The openings and the end card are title cards `demo/demo.js` draws.
 3. When the camera plan changes: `python3 scripts/track-pointer.py` once per set of clips (needs
    opencv-python-headless) and `node scripts/verify-demo.mjs`, which fails if the mouse leaves the frame during
-   an action or a camera move is under 1.6 s.
+   an action or a camera move is under 1.6 s (1.0 s in the short edit, whose moves start on the click).
+4. The shorter cuts: `--edit=short` is the 60 s LinkedIn cut (3-bar opening, all ten features, faster waits: a
+   click is kept 0.4 s, no wait between two moments rests over a second, 0.6 s dissolves, each shot opens on
+   its lean-in view); `--edit=story` is the 30 s Instagram story cut. Both are `STORY` and `SHORT` in
+   `demo/shots.js`.
 
 `demo/shots.js` holds each shot: its caption, its length in bars (130 BPM), the stretch of its clip used and the
 moments in it that play at normal speed (`keep`: the clicks, the typing, things appearing). Nothing is cut: the

@@ -794,6 +794,17 @@ export function beatportFixture(showcase: Showcase): BeatportFixture {
   const house = GENRES[0]!;
   const chartArtist = pick(r, ARTISTS);
   const chartId = 880_201;
+  const chartArtistId = 301_201;
+  // The chart's and its curator's pictures, so Discover's cards carry art.
+  const cardImage = (name: string, seed: number) => {
+    const file = `covers/showcase-${name}.png`;
+    covers[file] = coverPng(seed);
+    const url = (size: string) => `https://geo-media.beatport.com/image_size/${size}/showcase-${name}.jpg`;
+    for (const size of [500, 1400]) json.images[url(`${size}x${size}`)] = file;
+    return { id: seed % 100_000, uri: url("500x500"), dynamic_uri: url("{w}x{h}") };
+  };
+  const chartImage = cardImage("chart", SHOWCASE_SEED + 201);
+  const artistImage = cardImage("artist", SHOWCASE_SEED + 202);
   json.api.push({
     path: "catalog/genres",
     body: { count: GENRES.length, next: null, page: "1/1", per_page: 100, results: GENRES.map((g) => ({ id: g.beatportId, name: g.name, slug: slug(g.name) })) },
@@ -811,13 +822,18 @@ export function beatportFixture(showcase: Showcase): BeatportFixture {
           id: chartId,
           name: `${chartArtist} Selects`,
           slug: slug(`${chartArtist} Selects`),
-          artist: { id: 301_201, name: chartArtist, slug: slug(chartArtist) },
+          artist: { id: chartArtistId, name: chartArtist, slug: slug(chartArtist), image: artistImage },
           person: { id: 77_201, owner_name: chartArtist, owner_type: "artist" },
           genres: [{ id: house.beatportId, name: house.name, slug: slug(house.name) }],
           track_count: 6,
+          image: chartImage,
         },
       ],
     },
+  });
+  json.api.push({
+    path: `catalog/artists/${chartArtistId}`,
+    body: { id: chartArtistId, name: chartArtist, slug: slug(chartArtist), image: artistImage },
   });
   const chartTracks = Array.from({ length: 6 }, (_, i) => {
     const title = `${pick(r, TITLE_FIRST)} ${pick(r, TITLE_SECOND)}`;
@@ -832,13 +848,19 @@ export function beatportFixture(showcase: Showcase): BeatportFixture {
       slug: slug(title),
       key: { id: KEYS.indexOf(key) + 1, name: key.beatport },
       bpm: between(r, 120, 126),
-      artists: [{ id: 301_300 + i, name: artist, slug: slug(artist) }],
+      artists: [i === 0 ? { id: chartArtistId, name: artist, slug: slug(artist), image: artistImage } : { id: 301_300 + i, name: artist, slug: slug(artist) }],
       remixers: [],
       genre: { id: house.beatportId, name: house.name, slug: slug(house.name) },
       release: { id: 4_500_201 + i, name: `${title} EP`, slug: slug(`${title} EP`), label: { id: 40_300 + LABELS.indexOf(label), name: label.name, slug: slug(label.name) } },
       new_release_date: date,
       publish_date: date,
     };
+  });
+  // The chart artist's own recent tracks (the chart's), so their card carries their picture.
+  json.api.push({
+    path: "catalog/tracks",
+    params: { artist_id: chartArtistId },
+    body: { count: chartTracks.length, next: null, page: "1/1", per_page: 100, results: chartTracks },
   });
   json.api.push({
     path: `catalog/charts/${chartId}/tracks`,

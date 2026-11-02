@@ -1,5 +1,5 @@
 // The demo's timeline: seek(t) draws the frame at t seconds. Driven frame by frame by scripts/render-demo.mjs.
-import { BAR, FPS, FORMATS, SHOT_FADE, layout } from "./shots.js";
+import { BAR, FPS, FORMATS, fadeOf, layout } from "./shots.js";
 
 const BEAT = BAR / 4;
 
@@ -14,8 +14,11 @@ Object.assign(stage.style, { width: `${width}px`, height: `${height}px` });
 // the timeline: opening, one slot per shot (whole bars of the music), the end card
 const edit = ["story", "short"].includes(params.get("edit")) ? params.get("edit") : "full";
 const { OPEN, END, shots: slots, endStart, duration: DURATION } = layout(opening, edit);
-// the title lines land on beats; the 2-bar openings (story, short) and their end cards use half beats
-const STEP = edit === "full" ? BEAT : BEAT / 2;
+// the title lines land on beats; the 2-bar story opening and the short edits' end cards use half beats
+const STEP = edit === "story" ? BEAT / 2 : BEAT;
+const END_STEP = edit === "full" ? BEAT : BEAT / 2;
+/** Seconds two shots dissolve over in this edit. */
+const SHOT_FADE = fadeOf(edit);
 
 const $ = (id) => document.getElementById(id);
 const rail = $("rail");
@@ -203,6 +206,7 @@ function openB(t) {
 function openC(t) {
   const body = $("openC").querySelector(".card__body");
   const beats = edit === "full" ? [1, 3, 5, 7, 12] : [1, 2, 3, 4, 8];
+  // full: 4 bars, a line every two beats; short: 3 bars, a line a beat; story: 2 bars, a line a half beat
   reveal(body, beats.map((b) => 0.2 + b * STEP), t);
   const dim = smooth((t - (0.2 + (beats[4] - 1) * STEP)) / 0.45);
   [...body.querySelectorAll(".card__problem")].forEach((el) => (el.style.color = mix([250, 250, 250], [91, 91, 102], dim)));
@@ -224,7 +228,7 @@ async function openingAt(t, opacity) {
 function endCard(t, opacity) {
   end.style.display = opacity > 0 ? "block" : "none";
   end.style.opacity = String(opacity);
-  if (opacity > 0) reveal(end, [0, 1, 2, 3, 4, 5].map((b) => b * STEP), t);
+  if (opacity > 0) reveal(end, [0, 1, 2, 3, 4, 5].map((b) => b * END_STEP), t);
 }
 
 async function seek(t) {

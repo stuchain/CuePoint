@@ -32,11 +32,16 @@ const view = (s, x0, y0, x1, y1) => [s, (x0 + x1) / 2, (y0 + y1) / 2, 800 / (y1 
 const FULL = (s) => [s, 640, 400, 1];
 /** A lean-in: the page without the icon rail and the status bar (5 %). */
 const RAIL = (s) => view(s, 62, 0, 1280, 762);
-/** Library: the table from the header divider to a row boundary; then, with Track details open, both. */
+/** The page with the status bar off (5 %), the icon rail kept: for a page whose first click sits by the rail. */
+const PAGE = (s) => view(s, 0, 0, 1280, 762);
+/** Library: the search row and the table down to a row boundary; the table alone; then, with Track details open, both. */
+const LIB_SEARCH = (s) => view(s, 488, 91, 1280, 607);
 const LIB_TABLE = (s) => view(s, 488, 112, 1280, 607);
 const LIB_DETAILS = (s) => view(s, 415, 91, 1280, 632);
 /** Clean: the review table from the breadcrumb down to the player bar, Check the match whole. */
 const CLEAN_MATCH = (s) => view(s, 451, 185, 1280, 703);
+/** Discover: the New dig panel, header divider to player bar, the genre list and Start dig whole. */
+const DIG = (s) => view(s, 205, 112, 1140, 703);
 /** Keys: the wheel and the tracks it lists, down to the player bar. */
 const WHEEL = (s) => view(s, 328, 108, 1280, 703);
 /** Settings: the section (the section list left of it stays out) down to the player bar. */
@@ -47,6 +52,7 @@ const SYNC_DIALOG_IN = (s) => view(s, 152, 0, 1128, 610);
 /** Export to Rekordbox: the dialog, both bottoms on a (dimmed) row boundary. */
 const EXPORT_DIALOG = (s) => view(s, 181, 0, 1098, 573);
 const EXPORT_DIALOG_IN = (s) => view(s, 209, 0, 1071, 539);
+
 
 /**
  * The 30 s story edit (?edit=story, --edit=story): a 2-bar problem opening with the lines on half beats, five
@@ -70,33 +76,44 @@ export const STORY = {
 };
 
 /**
- * The 60 s LinkedIn edit (?edit=short, --edit=short): the 2-bar problem opening with the lines on half beats,
- * all ten features in 28 bars (Clean starts at the review step) and a 2-bar end card: 32 bars, 59.3 s.
+ * The 60 s LinkedIn cut (?edit=short, --edit=short): a 3-bar problem opening with the lines on beats, all ten
+ * features and a 2-bar end card: 31 bars, 57.4 s. Its pace rule: a click is kept 0.4 s ([click - 0.1, click + 0.3]),
+ * typing and a result a little longer; every wait between two kept moments runs at least `pace` times faster and
+ * never rests more than `hold` seconds on screen (a long wait runs faster still, up to `maxFast`); the rest after
+ * a shot's last moment runs at the shot's solved pace. Shots dissolve over `fade` seconds. The camera opens on
+ * each shot's lean-in view and moves (`move` seconds) on the click that opens what it moves to: `cam` is
+ * [{ view }, { at: clip seconds of that click, view }, ...]; layout() turns it into keyframes.
  */
 export const SHORT = {
-  openBars: 2,
+  openBars: 3,
   endBars: 2,
+  fade: 0.6,
+  pace: 2.2,
+  hold: 0.55,
+  maxFast: 4,
+  ramp: 0.35,
+  move: 1.0,
   shots: [
-    { id: "library", bars: 3, span: [3.6, 10.87], keep: [[4.8, 5.4], [7.6, 8.6]],
-      cam: [FULL(0), FULL(0.3), LIB_TABLE(1.9), LIB_TABLE(3.2), LIB_DETAILS(4.8)] },
-    { id: "player", bars: 2, span: [0.8, 5.5], keep: [[1.3, 2.4], [4.0, 4.8]],
-      cam: [FULL(0), FULL(0.6), RAIL(2.6)] },
-    { id: "clean", bars: 5, span: [8.3, 21.9], keep: [[8.5, 10.1], [12.5, 13.1], [14.3, 15.0], [17.3, 18.3], [21.0, 21.6]],
-      cam: [FULL(0), FULL(5.6), CLEAN_MATCH(7.2)] },
-    { id: "discover", bars: 3, span: [0.5, 9.6], keep: [[0.8, 1.4], [1.9, 2.3], [2.9, 3.3], [4.0, 4.7], [6.6, 7.3]],
-      cam: [FULL(0), FULL(1.0), RAIL(3.0)] },
-    { id: "prepare", bars: 3, span: [0.8, 8.3], keep: [[1.2, 1.6], [3.3, 3.7], [5.4, 5.8], [7.5, 7.9]],
-      cam: [FULL(0), FULL(0.6), RAIL(2.6)] },
-    { id: "keys", bars: 2, span: [0.3, 5.6], keep: [[0.9, 1.7], [4.4, 5.0]],
-      cam: [FULL(0), FULL(0.3), WHEEL(1.9)] },
-    { id: "statistics", bars: 2, span: [3.6, 8.17], keep: [[4.6, 5.4]],
-      cam: [FULL(0), FULL(0.4), RAIL(2.4)] },
-    { id: "save", bars: 3, span: [1.5, 9.0], keep: [[1.7, 2.0], [4.1, 4.3], [5.8, 6.0], [7.2, 8.4]],
-      cam: [FULL(0), FULL(0.9), SYNC_DIALOG(2.5), SYNC_DIALOG_IN(4.1)] },
-    { id: "export", bars: 3, span: [0.9, 8.5], keep: [[1.0, 1.4], [3.3, 3.5], [5.2, 5.5], [6.5, 7.6]],
-      cam: [FULL(0), FULL(1.2), EXPORT_DIALOG(2.8), EXPORT_DIALOG_IN(4.4)] },
-    { id: "settings", bars: 2, span: [0.9, 7.0], keep: [[1.3, 1.9], [3.8, 4.4], [6.2, 6.8]],
-      cam: [FULL(0), FULL(1.0), SECTION(2.6)] },
+    { id: "library", bars: 3, span: [0.3, 10.87], keep: [[4.4, 5.5], [7.5, 7.9]],
+      cam: [{ view: LIB_SEARCH }, { at: 7.6, view: LIB_DETAILS }] },
+    { id: "player", bars: 2, span: [0.8, 8.6], keep: [[1.2, 1.7], [4.7, 5.1], [7.2, 7.6]],
+      cam: [{ view: RAIL }] },
+    { id: "clean", bars: 6, span: [1.0, 22.5], keep: [[1.4, 1.8], [3.0, 3.4], [4.3, 4.7], [5.3, 5.7], [8.65, 9.05], [9.95, 10.35], [12.1, 12.5], [14.05, 14.45], [17.85, 18.25], [21.05, 21.45]],
+      cam: [{ view: PAGE }, { at: 14.15, view: CLEAN_MATCH }] },
+    { id: "discover", bars: 3, span: [1.4, 10.4], keep: [[2.6, 3.0], [3.8, 4.2], [4.85, 5.25], [5.5, 6.2], [8.0, 8.7]],
+      cam: [{ view: DIG }, { at: 4.95, view: RAIL }] },
+    { id: "prepare", bars: 3, span: [0.8, 10.6], keep: [[1.4, 1.95], [3.4, 3.95], [5.6, 6.15], [7.6, 8.15], [9.8, 10.35]],
+      cam: [{ view: RAIL }] },
+    { id: "keys", bars: 1, span: [0.7, 7.0], keep: [[1.2, 1.6], [4.5, 4.9]],
+      cam: [{ view: RAIL }, { at: 1.3, view: WHEEL }] },
+    { id: "statistics", bars: 2, span: [2.2, 7.6], keep: [[2.4, 3.4], [4.7, 5.1]],
+      cam: [{ view: RAIL }] },
+    { id: "save", bars: 2, span: [1.5, 9.0], keep: [[1.9, 2.3], [3.9, 4.3], [5.9, 6.3], [7.0, 7.4]],
+      cam: [{ view: RAIL }, { at: 2.0, view: SYNC_DIALOG }, { at: 6.0, view: SYNC_DIALOG_IN }] },
+    { id: "export", bars: 2, span: [1.2, 8.0], keep: [[1.5, 1.9], [3.3, 3.7], [4.9, 5.75]],
+      cam: [{ view: RAIL }, { at: 1.6, view: EXPORT_DIALOG }, { at: 5.45, view: EXPORT_DIALOG_IN }] },
+    { id: "settings", bars: 2, span: [0.3, 7.0], keep: [[1.5, 2.0], [3.9, 4.4], [6.3, 6.8]],
+      cam: [{ view: RAIL }, { at: 1.6, view: SECTION }] },
   ],
 };
 /** The edits that replace the full tour, by their ?edit= name. */
@@ -109,7 +126,8 @@ export const EDITS = { story: STORY, short: SHORT };
  * up to MAX_FAST, easing there and back over RAMP seconds, by exactly the factor that makes the span fill the
  * slot plus the dissolve tail. Nothing is cut, so nothing ever jumps. `cam` is camera keyframes
  * [shot seconds, x, y, zoom] (see the views above) with x/y the point of the 1280 x 800 window kept centred;
- * moves take at least 1.6 s and are framed so whatever the shot is about stays wholly in view.
+ * moves take at least 1.6 s (the short edit: 1.0 s, on the click) and are framed so whatever the shot is about
+ * stays wholly in view.
  */
 export const SHOTS = [
   {
@@ -179,26 +197,44 @@ const smooth = (x) => {
  */
 export function speedMap(shot, need, lead = 0) {
   const [from, to] = shot.span;
-  const keep = [...shot.keep, ...(lead ? [[from, from + lead]] : [])];
+  const keep = [...shot.keep, ...(lead ? [[from, from + lead]] : [])].sort((a, b) => a[0] - b[0]);
+  const ramp = shot.ramp ?? RAMP;
+  const maxFast = shot.maxFast ?? MAX_FAST;
   const STEP = 1 / 600;
-  // w(u): 0 inside a kept moment, 1 well outside, easing over RAMP seconds at each edge
+  // w(u): 0 inside a kept moment, 1 well outside, easing over the ramp at each edge
   const w = (u) => {
     let v = 1;
     for (const [a, b] of keep) {
       const d = u < a ? a - u : u > b ? u - b : 0;
-      v = Math.min(v, smooth(d / RAMP));
+      v = Math.min(v, smooth(d / ramp));
     }
     return v;
   };
+  // the waits: each stretch between two kept moments, and the rest after the last one
+  const gaps = [];
+  let prev = from;
+  for (const [a, b] of keep) {
+    if (a > prev) gaps.push({ from: prev, to: a, inner: true });
+    prev = Math.max(prev, b);
+  }
+  gaps.push({ from: prev, to: to, inner: false });
+  // the pace of the wait u is in: the solved pace F, or faster when a wait between moments would rest longer
+  // than the shot's hold (the rest after the last moment is what the shot leaves on screen, it keeps F)
+  const rate = (u, F) => {
+    const g = gaps.find((g) => u >= g.from && u < g.to);
+    if (!g || !g.inner || !shot.hold) return F;
+    return Math.min(maxFast, Math.max(F, (g.to - g.from) / shot.hold));
+  };
+  const speed = (u, F) => 1 + (rate(u, F) - 1) * w(u);
   const integrate = (F) => {
     let o = 0;
-    for (let u = from; u < to; u += STEP) o += STEP / (1 + (F - 1) * w(u));
+    for (let u = from; u < to; u += STEP) o += STEP / speed(u, F);
     return o;
   };
   let F = 1;
   if (integrate(1) > need) {
     let lo = 1;
-    let hi = MAX_FAST;
+    let hi = maxFast;
     for (let i = 0; i < 30; i++) {
       F = (lo + hi) / 2;
       if (integrate(F) > need) lo = F;
@@ -211,7 +247,7 @@ export function speedMap(shot, need, lead = 0) {
   const out = [0];
   let o = 0;
   for (let u = from; u < to; u += STEP) {
-    o += STEP / (1 + (F - 1) * w(u));
+    o += STEP / speed(u, F);
     src.push(Math.min(to, u + STEP));
     out.push(o);
   }
@@ -228,18 +264,25 @@ export function speedMap(shot, need, lead = 0) {
     const k = (x - xs[lo]) / (xs[hi] - xs[lo]);
     return ys[lo] + (ys[hi] - ys[lo]) * k;
   };
+  const toOut = (clipSec) => lookup(src, out, clipSec) - lead;
   return {
     F,
     length: o,
     short: Math.max(0, need - o),
     toClip: (outSec) => lookup(out, src, outSec + lead),
-    toOut: (clipSec) => lookup(src, out, clipSec) - lead,
+    toOut,
+    /** Each wait as it plays: its clip seconds, its output seconds, and whether it is between two kept moments. */
+    waits: gaps.map((g) => ({ ...g, clip: g.to - g.from, out: toOut(g.to) - toOut(g.from) })),
   };
 }
+
+/** The seconds two shots dissolve over in an edit (the short cut dissolves longer). */
+export const fadeOf = (edit) => EDITS[edit]?.fade ?? SHOT_FADE;
 
 /** Lay the timeline out for one opening: slot lengths, each shot's speed map, the camera in output seconds. */
 export function layout(opening = "a", edit = "full") {
   const cut = EDITS[edit];
+  const fade = fadeOf(edit);
   const open = cut ? { bars: cut.openBars } : (OPENINGS[opening] ?? OPENINGS.a);
   const OPEN = { seconds: 0.2 + open.bars * BAR, bars: open.bars };
   const END_ = { seconds: (cut ? cut.endBars : 3) * BAR };
@@ -263,7 +306,18 @@ export function layout(opening = "a", edit = "full") {
     s.lead = s.lead ?? 0;
     s.start = f0 / FPS;
     s.dur = s.frames / FPS;
-    s.map = speedMap(s, s.lead + s.dur + SHOT_FADE, s.lead);
+    if (cut) Object.assign(s, { hold: cut.hold, maxFast: cut.maxFast, ramp: cut.ramp });
+    s.map = speedMap(s, s.lead + s.dur + fade, s.lead);
+    if (s.cam[0] && !Array.isArray(s.cam[0])) {
+      // camera on the click: open on the first view, then each move starts where its click plays and takes `move`
+      const move = cut?.move ?? 1.0;
+      const cam = [s.cam[0].view(0)];
+      for (let i = 1; i < s.cam.length; i++) {
+        const t = Math.round(s.map.toOut(s.cam[i].at) * FPS) / FPS;
+        cam.push(s.cam[i - 1].view(t), s.cam[i].view(t + move));
+      }
+      s.cam = cam;
+    }
     f0 = f1;
   }
   const endStart = f0 / FPS;
