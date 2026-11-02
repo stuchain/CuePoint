@@ -82,12 +82,15 @@ test.describe("above the fold", () => {
   }
 
   test("before 1.0.0 the primary button is the header's 'Get notified of 1.0', to the same place", async ({ page }) => {
-    await page.goto("");
+    // the "before" build: dist/ follows GitHub, which has had a normal release since 1.0.0
+    const served = await serve("dist-none");
+    await page.goto(served.url);
     const primary = page.locator("main [data-primary-action]");
     await expect(primary).toHaveText("Get notified of 1.0");
     const header = page.locator("header").getByRole("link", { name: "Get notified of 1.0" });
     expect(await primary.getAttribute("href")).toBe(await header.getAttribute("href"));
     await expect(page.locator("a.js-download")).toHaveCount(0);
+    served.server.close();
   });
 
   test("the opening scene's still is in the first screen, a fixed-size pixel picture", async ({ page }) => {
