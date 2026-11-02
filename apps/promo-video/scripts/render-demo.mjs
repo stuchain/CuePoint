@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * `node scripts/render-demo.mjs --raw=<dir>`: the LinkedIn demo (demo/), from the clips that
- * apps/desktop-electron/e2e/capture/demo.spec.ts recorded into <dir>, plus the 26 s promo's own renders
- * for the opening and end card (--promo=<dir> holding cuepoint-promo-9x16*.mp4 and -16x9*.mp4).
+ * apps/desktop-electron/e2e/capture/demo.spec.ts recorded into <dir>. The opening and end card are title cards
+ * the page draws itself.
  *
  *   --format=portrait|wide   one cut only (default both: 1080 x 1350 for LinkedIn, 1920 x 1080)
  *   --stills=5,12.5          no video: PNGs at those seconds, out/demo/still-<format>-<t>.png
@@ -16,14 +16,13 @@ import { createServer } from "node:http";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
-import { END, FORMATS, FPS, OPEN, PART_FADE, SHOTS, TAIL, timeline } from "../demo/shots.js";
+import { FORMATS, FPS, OPEN, PART_FADE, SHOTS, TAIL, timeline } from "../demo/shots.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "out", "demo");
 const FRAMES = join(ROOT, "demo", "frames");
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const raw = arg("raw");
-const promo = arg("promo");
 const track = arg("track");
 const start = Number(arg("start") ?? 0);
 const stills = arg("stills")?.split(",").map(Number);
@@ -64,17 +63,6 @@ function extractShot(shot) {
   run(["-i", file, "-filter_complex", graph, "-map", "[v]", "-frames:v", String(frames), "-q:v", "3", join(dir, "%05d.jpg")]);
 }
 
-/** Opening and end card frames, from the promo's tall and wide renders. */
-function extractPromo(part, format) {
-  const dir = join(FRAMES, `${part.id}-${format}`);
-  if (count(dir) === part.frames) return;
-  const name = format === "wide" ? "cuepoint-promo-16x9" : "cuepoint-promo-9x16";
-  const file = [`${name}.mp4`, `${name}-water-PRIVATE.mp4`].map((f) => join(promo ?? "", f)).find(existsSync);
-  if (!file) throw new Error(`No ${name} render in --promo`);
-  mkdirSync(dir, { recursive: true });
-  run(["-ss", String(part.from), "-i", file, "-an", "-vf", `fps=${FPS},tpad=stop_mode=clone:stop_duration=10`, "-frames:v", String(part.frames), "-q:v", "2", join(dir, "%05d.jpg")]);
-}
-
 function serve() {
   const server = createServer((req, res) => {
     const path = normalize(decodeURIComponent(new URL(req.url, "http://x").pathname)).replace(/^([/\\])+/, "");
@@ -97,7 +85,6 @@ async function main() {
   if (!raw) throw new Error("--raw=<dir of recorded clips> is required");
   mkdirSync(OUT, { recursive: true });
   for (const shot of SHOTS) extractShot(shot);
-  for (const format of formats) for (const part of [OPEN, END]) extractPromo(part, format);
   const server = await serve();
   const origin = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });

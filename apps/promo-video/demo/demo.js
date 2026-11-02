@@ -28,8 +28,8 @@ for (const shot of SHOTS) {
 const $ = (id) => document.getElementById(id);
 const clip = $("clip");
 const prev = $("prev");
-const full = $("full");
-const fullImg = $("fullImg");
+const open = $("open");
+const end = $("end");
 const fade = $("fade");
 const win = $("window");
 const capNow = $("capNow");
@@ -95,16 +95,42 @@ function setRail(i) {
   lastRail = i;
 }
 
-async function fullFrame(part, n, opacity) {
-  full.style.display = opacity > 0 ? "block" : "none";
-  full.style.opacity = String(opacity);
-  if (opacity > 0) await show(fullImg, `frames/${part.id}-${format}/${pad(clamp(n, 0, part.frames - 1) + 1)}.jpg`);
+/** A title card's lines come in one after another: each rises into place over 0.5 s from its own start. */
+function reveal(card, starts, t) {
+  [...card.querySelectorAll(".card__body > *")].forEach((el, i) => {
+    const k = (t - starts[i]) / 0.5;
+    el.style.opacity = String(smooth(k));
+    el.style.transform = `translateY(${(1 - easeOut(k)) * 28}px)`;
+  });
+}
+
+/** The opening: the app itself, dimmed and drifting, under the name and what it does; it fades out into shot 1. */
+async function openCard(t, opacity) {
+  open.style.display = opacity > 0 ? "block" : "none";
+  open.style.opacity = String(opacity);
+  if (opacity <= 0) return;
+  await show($("openApp"), `frames/${slots[0].id}/${pad(1)}.jpg`);
+  const drift = t / OPEN.seconds;
+  $("openApp").style.transform = `translate(-50%, -50%) scale(${(1.16 - 0.1 * drift).toFixed(4)}) translate(${(-1.5 + 3 * drift).toFixed(2)}%, 0)`;
+  reveal(open, [0.25, 0.65, 1.2, 1.85], t);
+  // the words leave before the picture does, so the first shot arrives on a clean app
+  const leave = smooth((t - (OPEN.seconds - 1.1)) / 0.6);
+  open.querySelector(".card__body").style.opacity = String(1 - leave);
+  open.querySelector(".card__dim").style.opacity = String(1 - 0.5 * leave);
+}
+
+/** The end card: the last shot dissolves out under it, its lines come in, then it fades to black. */
+function endCard(t, opacity) {
+  end.style.display = opacity > 0 ? "block" : "none";
+  end.style.opacity = String(opacity);
+  if (opacity > 0) reveal(end, [0.15, 0.5, 0.95, 1.45, 1.85, 2.2], t);
 }
 
 async function seek(t) {
   if (t < OPEN.seconds) {
-    fade.style.opacity = "0";
-    await fullFrame(OPEN, Math.floor(t * FPS), 1);
+    fade.style.opacity = String(1 - smooth(t / 0.6));
+    endCard(0, 0);
+    await openCard(t, 1);
     return;
   }
   if (t >= endStart) {
@@ -118,7 +144,7 @@ async function seek(t) {
     capPrev.style.display = "none";
     if (local < SHOT_FADE) await frame(clip, last, last.frames + n, last.dur + local);
     prev.style.opacity = "0";
-    await fullFrame(END, n, smooth(local / SHOT_FADE));
+    endCard(local, smooth(local / SHOT_FADE));
     fade.style.opacity = String(clamp((local - (END.seconds - 0.9)) / 0.9, 0, 1));
     return;
   }
@@ -140,7 +166,8 @@ async function seek(t) {
   } else {
     prev.style.display = "none";
   }
-  await fullFrame(OPEN, OPEN.frames - 1, i === 0 && k < 1 ? 1 - smooth(k) : 0);
+  endCard(0, 0);
+  await openCard(OPEN.seconds + local, i === 0 && k < 1 ? 1 - smooth(k) : 0);
 
   // captions: the old one fades away as the new one glides up into place
   caption(capNow, slot);

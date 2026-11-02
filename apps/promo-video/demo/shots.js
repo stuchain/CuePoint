@@ -11,13 +11,11 @@ export const SHOT_FADE = 0.45;
 export const TAIL = Math.round(SHOT_FADE * FPS);
 
 /**
- * Opening and end card come from the 26 s promo's own renders (its opening, its end card). The opening runs
- * 0.2 s plus 3 bars so that, with the music starting at 1:58, every cut after it lands on a bar of the track.
+ * Opening and end card are title cards drawn by the page itself (demo.js). The opening runs 0.2 s plus 3 bars so
+ * that, with the music starting at 1:58, every cut after it lands on a bar of the track.
  */
-export const OPEN = { id: "open", seconds: 0.2 + 3 * BAR, from: 0 };
-export const END = { id: "end", seconds: 3 * BAR, from: 23.4 };
-OPEN.frames = Math.round(OPEN.seconds * FPS);
-END.frames = Math.round(END.seconds * FPS);
+export const OPEN = { seconds: 0.2 + 3 * BAR };
+export const END = { seconds: 3 * BAR };
 
 /**
  * Each shot: the raw clip (`<id>.mkv` from e2e/capture/demo.spec.ts) and the parts of it used (`parts`,
