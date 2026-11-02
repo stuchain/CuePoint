@@ -2,7 +2,7 @@
 // Lengths are whole bars of the music (130 BPM, a bar is 1.846 s) so every cut lands on a bar.
 export const FPS = 30;
 export const BAR = (60 / 130) * 4;
-export const FORMATS = { portrait: { width: 1080, height: 1350 }, wide: { width: 1920, height: 1080 } };
+export const FORMATS = { portrait: { width: 1080, height: 1350 }, wide: { width: 1920, height: 1080 }, tall: { width: 1080, height: 1920 } };
 
 /** Seconds two shots dissolve into each other, and the frames each shot plays on under that dissolve. */
 export const SHOT_FADE = 0.45;

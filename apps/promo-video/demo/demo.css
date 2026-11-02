@@ -80,6 +80,14 @@ html, body { margin: 0; background: #000; overflow: hidden; }
 .f-portrait .rail { left: 60px; right: 60px; top: 1085px; }
 .f-portrait .url { left: 60px; bottom: 48px; }
 
+/* 9:16, Instagram Reels: everything inside the safe area (clear of the top 250 px and bottom 340 px the Reels UI covers) */
+.f-tall .brand { left: 60px; top: 300px; }
+.f-tall .count { right: 60px; top: 308px; }
+.f-tall .captionBox { left: 60px; right: 60px; top: 390px; }
+.f-tall .window { left: 40px; top: 660px; width: 1000px; height: 625px; }
+.f-tall .rail { left: 60px; right: 60px; top: 1335px; }
+.f-tall .url { left: 60px; top: 1470px; }
+
 /* 16:9, YouTube and the website */
 .f-wide .brand { left: 64px; top: 56px; }
 .f-wide .count { left: 64px; bottom: 56px; }
