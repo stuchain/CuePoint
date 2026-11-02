@@ -111,7 +111,7 @@ def test_every_track_carries_eight_marks():
     assert len(set(starts)) == len(starts)
 
 
-def test_a_missed_budget_is_named_with_its_run():
+def test_a_budget_is_missed_only_when_every_run_misses_it():
     def row(label, value, budget):
         return bench._row(label, value, "ms p95", budget, "")
 
@@ -121,9 +121,16 @@ def test_a_missed_budget_is_named_with_its_run():
             {"run": 2, "rows": [row("200 states", 51.0, 50.0)]},
         ]
     }
-    assert bench.over_budget(result) == ["run 2: 200 states"]
+    # One run over is a runner's stall, listed in the report but not a miss.
+    assert bench.over_budget(result) == []
+    result["runs"][0]["rows"][0] = row("200 states", 52.0, 50.0)
+    assert bench.over_budget(result) == ["runs 1 and 2: 200 states"]
     result["runs"][1]["rows"][0] = row("200 states", 50.0, 50.0)
     assert bench.over_budget(result) == []
+    assert bench.over_budget(
+        {"runs": [{"run": 1, "rows": [row("a", 51.0, 50.0)]}]}
+    ) == ["run 1: a"]
+    assert bench.over_budget({"runs": []}) == []
 
 
 def test_the_report_prints_every_run_side_by_side(capsys):

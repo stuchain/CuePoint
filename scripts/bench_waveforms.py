@@ -35,7 +35,9 @@ folder; nothing touches ``~/.cuepoint`` and nothing decodes audio.
   typical, 1.40× prepared).
 
 The whole measurement runs ``--runs`` times (two by default), each over a
-store and library built afresh, and every run is reported. Timings are the
+store and library built afresh, and every run is reported. A budget is missed
+only when every run misses it: a slower app misses in each, a runner's stall in
+one. Timings are the
 median and p95 of ``--repeats`` runs after a warm-up.
 
 Usage::
@@ -445,12 +447,21 @@ def run(
 
 
 def over_budget(result: Dict[str, Any]) -> List[str]:
-    """Each missed budget as "run N: label"; empty when every run held."""
+    """Each budget missed in every run, as "runs 1 and 2: label"; empty when any run held each.
+
+    The runs are there to tell a noisy runner from a slower app: a regression misses in every
+    run, a stall misses in one (the Intel Mac's six-minute detail read 303.6 ms p95 in one run
+    and 137.9 ms in the other in the v1.0.0 pre-release scale run). Every run is still reported.
+    """
+    runs = result["runs"]
+    if not runs:
+        return []
+    names = " and ".join(str(run["run"]) for run in runs)
+    prefix = f"run {names}" if len(runs) == 1 else f"runs {names}"
     return [
-        f"run {run['run']}: {row['label']}"
-        for run in result["runs"]
-        for row in run["rows"]
-        if row["over_budget"]
+        f"{prefix}: {row['label']}"
+        for index, row in enumerate(runs[0]["rows"])
+        if all(run["rows"][index]["over_budget"] for run in runs)
     ]
 
 
