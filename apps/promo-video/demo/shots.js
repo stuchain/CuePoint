@@ -21,6 +21,34 @@ export const OPENINGS = { a: { bars: 3 }, b: { bars: 3 }, c: { bars: 4 } };
 export const END = { seconds: 3 * BAR };
 
 /**
+ * Camera views. Every zoom is a rectangle of the 1280 x 800 window whose top and bottom land on a seam of the
+ * interface (the header divider at 112, the player bar at 703, the status bar at 762, a row boundary, or the
+ * empty space under a dialog) so no waveform, strip, tab row or table row is ever sliced by the frame's edge;
+ * the sides land on column gaps or the window edge. `view(s, x0, y0, x1, y1)` turns such a rectangle into a
+ * keyframe [s, x, y, zoom]: the zoom comes from the height, the rectangle's centre is kept centred.
+ */
+const view = (s, x0, y0, x1, y1) => [s, (x0 + x1) / 2, (y0 + y1) / 2, 800 / (y1 - y0)];
+/** The whole window. */
+const FULL = (s) => [s, 640, 400, 1];
+/** A lean-in: the page without the icon rail and the status bar (5 %). */
+const RAIL = (s) => view(s, 62, 0, 1280, 762);
+/** Library: the table from the header divider to a row boundary; then, with Track details open, both. */
+const LIB_TABLE = (s) => view(s, 488, 112, 1280, 607);
+const LIB_DETAILS = (s) => view(s, 415, 91, 1280, 632);
+/** Clean: the review table from the breadcrumb down to the player bar, Check the match whole. */
+const CLEAN_MATCH = (s) => view(s, 451, 185, 1280, 703);
+/** Keys: the wheel and the tracks it lists, down to the player bar. */
+const WHEEL = (s) => view(s, 328, 108, 1280, 703);
+/** Settings: the section (the section list left of it stays out) down to the player bar. */
+const SECTION = (s) => view(s, 335, 112, 1280, 703);
+/** Sync to files: the dialog with air around it; the second view is the slow push-in. */
+const SYNC_DIALOG = (s) => view(s, 140, 0, 1140, 625);
+const SYNC_DIALOG_IN = (s) => view(s, 152, 0, 1128, 610);
+/** Export to Rekordbox: the dialog, both bottoms on a (dimmed) row boundary. */
+const EXPORT_DIALOG = (s) => view(s, 181, 0, 1098, 573);
+const EXPORT_DIALOG_IN = (s) => view(s, 209, 0, 1071, 539);
+
+/**
  * The 30 s story edit (?edit=story, --edit=story): a 2-bar problem opening with the lines on half beats, five
  * shots cut from the same clips (Clean, Discover, Prepare, Keys, Export) and a 2-bar end card: 16 bars, 29.7 s.
  */
@@ -29,15 +57,15 @@ export const STORY = {
   endBars: 2,
   shots: [
     { id: "clean", bars: 4, span: [3.0, 16.1], keep: [[3.4, 4.9], [10.8, 11.4], [12.6, 13.4], [15.3, 16.1]],
-      cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 642, 380, 1.06], [4.8, 642, 380, 1.06], [6.5, 900, 450, 1.3]] },
+      cam: [FULL(0), FULL(6.3), CLEAN_MATCH(7.9)] },
     { id: "discover", bars: 2, span: [3.3, 8.0], keep: [[3.4, 4.2], [4.9, 5.4], [7.3, 8.0]],
-      cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 660, 410, 1.03]] },
+      cam: [FULL(0), FULL(0.6), RAIL(3.2)] },
     { id: "prepare", bars: 2, span: [3.0, 8.3], keep: [[3.3, 3.9], [5.4, 6.0], [7.5, 8.1]],
-      cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 600, 300, 1.2]] },
+      cam: [FULL(0), FULL(0.6), RAIL(3.2)] },
     { id: "keys", bars: 2, span: [0.8, 5.3], keep: [[1.2, 1.9], [3.6, 4.6]],
-      cam: [[0, 640, 400, 1], [0.2, 640, 400, 1], [1.8, 760, 400, 1.3]] },
+      cam: [FULL(0), FULL(0.3), WHEEL(2.1)] },
     { id: "export", bars: 2, span: [0.8, 7.4], keep: [[0.9, 1.4], [5.9, 7.4]],
-      cam: [[0, 640, 400, 1], [1.0, 640, 400, 1], [2.7, 640, 260, 1.4]] },
+      cam: [FULL(0), FULL(1.0), EXPORT_DIALOG(2.6), EXPORT_DIALOG_IN(4.2)] },
   ],
 };
 
@@ -47,61 +75,61 @@ export const STORY = {
  * things appearing). Everything between the kept moments (the pointer travelling, the app loading) runs faster,
  * up to MAX_FAST, easing there and back over RAMP seconds, by exactly the factor that makes the span fill the
  * slot plus the dissolve tail. Nothing is cut, so nothing ever jumps. `cam` is camera keyframes
- * [shot seconds, x, y, zoom] with x/y the point of the 1280 x 800 window kept centred; moves take at least
- * 1.6 s and are framed so whatever the shot is about stays wholly in view.
+ * [shot seconds, x, y, zoom] (see the views above) with x/y the point of the 1280 x 800 window kept centred;
+ * moves take at least 1.6 s and are framed so whatever the shot is about stays wholly in view.
  */
 export const SHOTS = [
   {
     id: "library", chip: "Library", caption: "Your whole Rekordbox library", bars: 4,
     span: [0.3, 10.87], keep: [[1.2, 3.4], [4.8, 5.4], [7.6, 8.6]],
-    cam: [[0, 640, 400, 1], [0.6, 640, 400, 1], [2.2, 760, 400, 1.2], [2.8, 760, 400, 1.2], [4.4, 760, 330, 1.2], [5.0, 760, 330, 1.2], [6.8, 840, 380, 1.2]],
+    cam: [FULL(0), FULL(0.6), LIB_TABLE(2.2), LIB_TABLE(4.4), LIB_DETAILS(6.0)],
     // with opening A the title sits on the scroll and the search; the slot opens on the result and the details
-    camA: [[0, 760, 330, 1.2], [1.6, 760, 330, 1.2], [3.4, 840, 380, 1.2]],
+    camA: [LIB_TABLE(0), LIB_TABLE(1.6), LIB_DETAILS(3.4)],
   },
   {
     id: "player", chip: "Player", caption: "Listen without leaving", bars: 4,
     span: [0.8, 10.77], keep: [[1.3, 2.4], [4.0, 4.8], [7.0, 8.0]],
-    cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.1, 640, 540, 1.2], [4.4, 640, 540, 1.2], [6.2, 960, 500, 1.2]],
+    cam: [FULL(0), FULL(1.4), RAIL(4.0)],
   },
   {
     id: "clean", chip: "Clean", caption: "Fix keys, BPM and tags from Beatport", bars: 7,
     span: [0.7, 18.6], keep: [[1.3, 4.6], [7.7, 9.2], [10.8, 11.4], [12.6, 13.4], [15.3, 16.6], [17.1, 17.9]],
-    cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 642, 380, 1.06], [7.9, 642, 380, 1.06], [9.6, 900, 450, 1.3]],
+    cam: [FULL(0), FULL(9.4), CLEAN_MATCH(11.0)],
   },
   {
     id: "discover", chip: "Discover", caption: "Dig the charts for new music", bars: 4,
     span: [0.5, 10.0], keep: [[0.8, 5.2], [6.5, 7.4]],
-    cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 660, 410, 1.03], [4.9, 660, 410, 1.03], [7.85, 700, 440, 1.2]],
+    cam: [FULL(0), FULL(1.2), RAIL(3.8)],
   },
   {
     id: "prepare", chip: "Prepare", caption: "Plan your set, see every transition", bars: 4,
     span: [0.8, 11.0], keep: [[1.2, 1.8], [3.3, 3.9], [5.4, 6.0], [7.5, 8.1], [9.6, 10.3]],
-    cam: [[0, 640, 400, 1], [0.8, 640, 400, 1], [2.6, 600, 300, 1.2], [7.85, 600, 300, 1.22]],
+    cam: [FULL(0), FULL(0.8), RAIL(3.4)],
   },
   {
     id: "keys", chip: "Keys", caption: "Find tracks that mix", bars: 3,
     span: [0.3, 7.77], keep: [[0.4, 1.9], [4.4, 5.2]],
-    cam: [[0, 640, 400, 1], [0.2, 640, 400, 1], [2.0, 760, 400, 1.3], [5.9, 760, 400, 1.36]],
+    cam: [FULL(0), FULL(0.4), WHEEL(2.2)],
   },
   {
     id: "statistics", chip: "Statistics", caption: "Know your library", bars: 3,
     span: [0.3, 8.17], keep: [[2.2, 3.2], [4.6, 5.4]],
-    cam: [[0, 640, 400, 1], [5.9, 640, 380, 1.08]],
+    cam: [FULL(0), FULL(1.4), RAIL(4.4)],
   },
   {
     id: "save", chip: "Save to files", caption: "Write the fixes into your music files", bars: 3,
     span: [1.0, 9.0], keep: [[1.6, 2.4], [4.0, 4.6], [5.3, 6.8]],
-    cam: [[0, 640, 400, 1], [1.0, 640, 400, 1], [2.8, 640, 300, 1.25], [5.9, 640, 300, 1.25]],
+    cam: [FULL(0), FULL(1.3), SYNC_DIALOG(2.9), SYNC_DIALOG_IN(5.5)],
   },
   {
     id: "export", chip: "Export", caption: "Straight back to Rekordbox", bars: 3,
     span: [0.5, 9.0], keep: [[1.0, 1.8], [3.3, 3.8], [5.0, 6.0]],
-    cam: [[0, 640, 400, 1], [1.0, 640, 400, 1], [2.8, 640, 260, 1.4], [5.9, 640, 260, 1.45]],
+    cam: [FULL(0), FULL(1.3), EXPORT_DIALOG(2.9), EXPORT_DIALOG_IN(5.5)],
   },
   {
     id: "settings", chip: "Themes", caption: "Make it yours", bars: 4,
     span: [0.9, 13.0], keep: [[1.3, 1.9], [3.8, 4.4], [6.2, 6.8], [8.6, 9.2], [11.1, 11.7]],
-    cam: [[0, 640, 400, 1], [7.85, 640, 390, 1.08]],
+    cam: [FULL(0), FULL(2.2), SECTION(3.8)],
   },
 ];
 
