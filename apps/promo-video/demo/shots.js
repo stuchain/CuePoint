@@ -16,15 +16,15 @@ END.frames = Math.round(END.seconds * FPS);
  * with x/y a point in the 1280 x 800 window to keep centred.
  */
 export const SHOTS = [
-  { id: "library", chip: "Library", caption: "Your whole Rekordbox library", bars: 4, parts: [[0.5, 4.5], [4.6, 11.8]], cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [0.45, 760, 300, 1.4], [0.75, 760, 300, 1.4], [0.88, 980, 360, 1.35], [1, 980, 360, 1.35]] },
-  { id: "player", chip: "Player", caption: "Listen without leaving", bars: 3, parts: [[1, 6.5], [7, 10]], cam: [[0, 640, 400, 1], [0.15, 640, 400, 1], [0.4, 640, 620, 1.7], [0.62, 640, 620, 1.7], [0.8, 1090, 300, 1.6], [1, 1090, 300, 1.6]] },
-  { id: "clean", chip: "Clean", caption: "Fix keys, BPM and tags from Beatport", bars: 5, parts: [[0.8, 8.5], [12.5, 20.5]], cam: [[0, 640, 400, 1], [0.1, 640, 360, 1.25], [0.45, 640, 360, 1.25], [0.56, 1010, 480, 1.7], [1, 1010, 480, 1.7]] },
-  { id: "discover", chip: "Discover", caption: "Dig the charts for new music", bars: 4, parts: [[0.5, 5.2], [5.6, 10.6]], cam: [[0, 640, 400, 1], [0.12, 640, 330, 1.3], [0.48, 640, 330, 1.3], [0.6, 860, 400, 1.25], [1, 860, 400, 1.25]] },
-  { id: "prepare", chip: "Prepare", caption: "Plan your set, see every transition", bars: 3, parts: [[1, 9.5]], cam: [[0, 640, 400, 1], [0.3, 640, 300, 1.45], [1, 640, 300, 1.45]] },
-  { id: "keys", chip: "Keys", caption: "Find tracks that mix", bars: 3, parts: [[0.8, 7.7]], cam: [[0, 640, 400, 1], [0.25, 760, 440, 1.55], [1, 760, 440, 1.55]] },
-  { id: "statistics", chip: "Statistics", caption: "Know your library", bars: 3, parts: [[0, 8]], cam: [[0, 640, 400, 1], [0.45, 640, 400, 1.15], [0.62, 660, 330, 1.3], [1, 660, 330, 1.3]] },
-  { id: "save", chip: "Save to files", caption: "Write the fixes into your music files", bars: 3, parts: [[0.8, 7.5]], cam: [[0, 640, 400, 1], [0.15, 640, 400, 1], [0.3, 430, 300, 1.6], [1, 430, 300, 1.6]] },
-  { id: "export", chip: "Export", caption: "Straight back to Rekordbox", bars: 4, parts: [[0.8, 9.5]], cam: [[0, 640, 400, 1], [0.2, 640, 280, 1.45], [1, 640, 280, 1.45]] },
-  { id: "settings", chip: "Themes", caption: "Make it yours", bars: 3, parts: [[1, 12.6]], cam: [[0, 640, 400, 1], [0.12, 720, 330, 1.3], [1, 720, 330, 1.3]] },
+  { id: "library", chip: "Library", caption: "Your whole Rekordbox library", bars: 4, parts: [[0.5, 10.8]], cam: [[0, 640, 400, 1], [0.29, 640, 400, 1], [0.38, 560, 260, 1.35], [0.62, 560, 280, 1.35], [0.74, 880, 330, 1.3], [1, 880, 330, 1.3]] },
+  { id: "player", chip: "Player", caption: "Listen without leaving", bars: 3, parts: [[0.8, 10.6]], cam: [[0, 640, 400, 1], [0.1, 640, 400, 1], [0.2, 520, 620, 1.35], [0.61, 520, 620, 1.35], [0.72, 1000, 420, 1.3], [1, 1000, 420, 1.3]] },
+  { id: "clean", chip: "Clean", caption: "Fix keys, BPM and tags from Beatport", bars: 5, parts: [[0.8, 7.5], [11.5, 20.8]], cam: [[0, 640, 400, 1], [0.05, 640, 360, 1.12], [0.42, 640, 360, 1.12], [0.5, 900, 450, 1.4], [1, 900, 450, 1.4]] },
+  { id: "discover", chip: "Discover", caption: "Dig the charts for new music", bars: 4, parts: [[0.6, 4.6], [4.9, 8.3]], cam: [[0, 640, 400, 1], [0.08, 670, 410, 1.3], [0.52, 670, 410, 1.3], [0.58, 640, 330, 1.08], [0.8, 640, 330, 1.08], [0.88, 820, 420, 1.3], [1, 820, 420, 1.3]] },
+  { id: "prepare", chip: "Prepare", caption: "Plan your set, see every transition", bars: 3, parts: [[1.5, 9.5]], cam: [[0, 640, 400, 1], [0.15, 600, 320, 1.2], [1, 600, 320, 1.2]] },
+  { id: "keys", chip: "Keys", caption: "Find tracks that mix", bars: 3, parts: [[0.8, 7.7]], cam: [[0, 640, 400, 1], [0.2, 790, 380, 1.25], [1, 790, 380, 1.25]] },
+  { id: "statistics", chip: "Statistics", caption: "Know your library", bars: 3, parts: [[0, 7.6]], cam: [[0, 640, 400, 1], [0.1, 640, 360, 1.12], [0.5, 640, 360, 1.12], [0.62, 640, 410, 1.1], [1, 640, 410, 1.1]] },
+  { id: "save", chip: "Save to files", caption: "Write the fixes into your music files", bars: 3, parts: [[0.8, 8.5]], cam: [[0, 640, 400, 1], [0.12, 640, 400, 1], [0.2, 640, 270, 1.3], [1, 640, 270, 1.3]] },
+  { id: "export", chip: "Export", caption: "Straight back to Rekordbox", bars: 4, parts: [[0.8, 9]], cam: [[0, 640, 400, 1], [0.1, 640, 400, 1], [0.2, 640, 250, 1.4], [1, 640, 250, 1.4]] },
+  { id: "settings", chip: "Themes", caption: "Make it yours", bars: 3, parts: [[1, 12.6]], cam: [[0, 640, 400, 1], [0.2, 560, 380, 1.12], [1, 560, 380, 1.12]] },
 ];
 for (const s of SHOTS) s.frames = Math.round(s.bars * BAR * FPS);

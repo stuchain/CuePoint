@@ -9,7 +9,7 @@
  */
 import { test, expect, type ElectronApplication, type Locator, type Page } from "@playwright/test";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, rmdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -146,6 +146,21 @@ function cleanupLibrary(library: LibraryRoot, written: Written | undefined): voi
   }
 }
 
+/**
+ * The made-up library as MP3s, not WAVs: Save to files skips WAV (Rekordbox does not read its tags),
+ * and the demo shows it writing. Each WAV becomes an MP3 beside it and the XML points at the MP3s.
+ */
+function asMp3(written: Written): void {
+  for (const wav of written.files.filter((file) => file.endsWith(".wav"))) {
+    const mp3 = wav.replace(/\.wav$/, ".mp3");
+    execFileSync("ffmpeg", ["-loglevel", "error", "-y", "-i", wav, "-c:a", "libmp3lame", "-b:a", "192k", mp3]);
+    rmSync(wav);
+    written.files[written.files.indexOf(wav)] = mp3;
+  }
+  const xml = readFileSync(written.xml, "utf8").replace(/\.wav"/g, '.mp3"').replace(/Kind="WAV File"/g, 'Kind="MP3 File"');
+  writeFileSync(written.xml, xml);
+}
+
 function launch(userDataDir: string, cuepointHome: string, fixture: string): Promise<ElectronApplication> {
   const env = {
     ...process.env,
@@ -163,7 +178,9 @@ function launch(userDataDir: string, cuepointHome: string, fixture: string): Pro
 async function ready(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
   await window.evaluate(() => {
-    (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale"));
+    localStorage.setItem("cuepoint-onboarding-complete", "1");
+    // the app at its Small size (1.25), so more of each page shows in the video's frame
+    localStorage.setItem("cuepoint-ui-lab-scale", "1.25");
     localStorage.setItem("cuepoint-phase14-note-seen", "1");
   });
   await window.reload();
@@ -363,6 +380,7 @@ test.describe("the demo video's clips", () => {
   test("records the demo clips", async () => {
     const showcase: Showcase = buildShowcase();
     written = writeShowcase(library.root, showcase);
+    asMp3(written);
     const played = showcase.tracks[showcase.playedTrackId - 1]!;
 
     const app = await launch(userDataDir, cuepointHome, written.beatportFixture);
@@ -668,10 +686,11 @@ test.describe("the demo video's clips", () => {
         await expect(dialog).toBeVisible({ timeout: 15_000 });
         await window.waitForTimeout(900);
         await press(window, dialog.getByRole("checkbox", { name: /^Key/ }).first());
-        await window.waitForTimeout(400);
-        await press(window, dialog.getByRole("checkbox", { name: /^Keep values already/ }).first());
         const go = dialog.getByRole("button", { name: /^Sync \d+ files?$/ });
-        const canSync = await go.isEnabled({ timeout: 8_000 }).catch(() => false);
+        const canSync = await expect(go)
+          .toBeEnabled({ timeout: 15_000 })
+          .then(() => true)
+          .catch(() => false);
         await window.waitForTimeout(1200);
         if (canSync) {
           await press(window, go);
