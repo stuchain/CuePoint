@@ -56,7 +56,7 @@ export const STORY = {
   openBars: 2,
   endBars: 2,
   shots: [
-    { id: "clean", bars: 4, span: [3.0, 16.1], keep: [[3.4, 4.9], [10.8, 11.4], [12.6, 13.4], [15.3, 16.1]],
+    { id: "clean", bars: 4, span: [4.0, 18.4], keep: [[4.0, 4.9], [12.5, 13.1], [14.3, 15.0], [17.3, 18.3]],
       cam: [FULL(0), FULL(6.3), CLEAN_MATCH(7.9)] },
     { id: "discover", bars: 2, span: [3.3, 8.0], keep: [[3.4, 4.2], [4.9, 5.4], [7.3, 8.0]],
       cam: [FULL(0), FULL(0.6), RAIL(3.2)] },
@@ -93,8 +93,8 @@ export const SHOTS = [
   },
   {
     id: "clean", chip: "Clean", caption: "Fix keys, BPM and tags from Beatport", bars: 7,
-    span: [0.7, 18.6], keep: [[1.3, 4.6], [7.7, 9.2], [10.8, 11.4], [12.6, 13.4], [15.3, 16.6], [17.1, 17.9]],
-    cam: [FULL(0), FULL(9.4), CLEAN_MATCH(11.0)],
+    span: [1.0, 21.9], keep: [[1.1, 4.2], [8.5, 10.1], [12.5, 13.1], [14.3, 15.0], [17.3, 18.3], [21.0, 21.6]],
+    cam: [FULL(0), FULL(9.7), CLEAN_MATCH(11.3)],
   },
   {
     id: "discover", chip: "Discover", caption: "Dig the charts for new music", bars: 4,

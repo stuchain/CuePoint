@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { untilAnalysed } from "../analysisProgress";
 import { waitForEngine } from "../engineReady";
 import { hasPlayer } from "../playerAvailable";
-import { SEED_MATCHES_PY, buildShowcase, removeWritten, writeShowcase, type Showcase, type Written } from "../fixtures/showcase/showcase";
+import { SEED_MATCHES_PY, SHOWCASE_SEED, buildShowcase, coverPng, removeWritten, writeShowcase, type Showcase, type Written } from "../fixtures/showcase/showcase";
 import { launchElectron } from "../support/launchApp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -148,15 +148,25 @@ function cleanupLibrary(library: LibraryRoot, written: Written | undefined): voi
 
 /**
  * The made-up library as MP3s, not WAVs: Save to files skips WAV (Rekordbox does not read its tags),
- * and the demo shows it writing. Each WAV becomes an MP3 beside it and the XML points at the MP3s.
+ * and the demo shows it writing. Each WAV becomes an MP3 beside it, with a cover of its own embedded (so
+ * "Your track" in Check the match and the track details show art, as a real library would), and the XML
+ * points at the MP3s.
  */
 function asMp3(written: Written): void {
-  for (const wav of written.files.filter((file) => file.endsWith(".wav"))) {
+  const wavs = written.files.filter((file) => file.endsWith(".wav"));
+  wavs.forEach((wav, i) => {
     const mp3 = wav.replace(/\.wav$/, ".mp3");
-    execFileSync("ffmpeg", ["-loglevel", "error", "-y", "-i", wav, "-c:a", "libmp3lame", "-b:a", "192k", mp3]);
+    const cover = wav.replace(/\.wav$/, ".cover.png");
+    writeFileSync(cover, coverPng(SHOWCASE_SEED + 1000 + i));
+    execFileSync("ffmpeg", [
+      "-loglevel", "error", "-y", "-i", wav, "-i", cover, "-map", "0:a", "-map", "1:v",
+      "-c:a", "libmp3lame", "-b:a", "192k", "-c:v", "copy", "-id3v2_version", "3",
+      "-metadata:s:v", "title=Album cover", "-metadata:s:v", "comment=Cover (front)", mp3,
+    ]);
     rmSync(wav);
+    rmSync(cover);
     written.files[written.files.indexOf(wav)] = mp3;
-  }
+  });
   const xml = readFileSync(written.xml, "utf8").replace(/\.wav"/g, '.mp3"').replace(/Kind="WAV File"/g, 'Kind="MP3 File"');
   writeFileSync(written.xml, xml);
 }
