@@ -8,10 +8,12 @@ import Section from "../components/Section.astro";
 import { GITHUB_URL, PRIMARY_ACTION, UPDATES_IN_APP } from "../data/site";
 import Page from "../layouts/Page.astro";
 import { formatDate } from "../lib/dates";
-import { loadReleases, type ReleaseFile } from "../lib/releases";
+import { downloadsText, loadReleases, type ReleaseFile } from "../lib/releases";
 import { canonicalFor, hrefFor } from "../lib/url";
 
-const { release, files } = loadReleases();
+const releaseData = loadReleases();
+const { release, files } = releaseData;
+const downloads = downloadsText(releaseData);
 const RELEASES_URL = `${GITHUB_URL}/releases`;
 
 const megabytes = (bytes: number) => `${Math.max(1, Math.round(bytes / 1048576))} MB`;
@@ -72,6 +74,7 @@ const schema = release
               </>
             )}{" "}
             · <a href={release.notesUrl} rel="noopener noreferrer">Release notes<span class="sr-only"> for {release.version}</span></a>
+            {downloads && <> · <span data-downloads>{downloads}</span></>}
           </Fragment>
         </PageHead>
 

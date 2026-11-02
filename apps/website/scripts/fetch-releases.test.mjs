@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   NONE_YET,
   buildReleaseData,
+  countDownloads,
   compareVersions,
   fileInfo,
   isOfferable,
@@ -138,6 +139,62 @@ describe("pickRelease", () => {
   });
 });
 
+describe("countDownloads", () => {
+  const asset = (name, download_count) => ({ name, download_count });
+  const release = (tag_name, assets, extra = {}) => ({ tag_name, draft: false, prerelease: false, assets, ...extra });
+
+  it("sums the installers of every normal release, the retired 0.0.x builds included", () => {
+    const list = [
+      release("v1.0.0", [
+        asset("CuePoint-1.0.0-win-x64-setup.exe", 10),
+        asset("CuePoint-1.0.0-mac-arm64.dmg", 5),
+        asset("CuePoint-1.0.0-linux-x86_64.AppImage", 2),
+      ]),
+      release("v0.0.3", [asset("CuePoint-Setup-v0.0.3.exe", 15), asset("CuePoint-v0.0.3-macos-universal.dmg", 10)]),
+    ];
+    expect(countDownloads(list)).toBe(42);
+  });
+
+  it("leaves out updates, checksums, blockmaps and manifests", () => {
+    const list = [
+      release("v1.0.0", [
+        asset("CuePoint-1.0.0-win-x64-setup.exe", 3),
+        asset("CuePoint-1.0.0-win-x64-setup.exe.blockmap", 50),
+        asset("CuePoint-1.0.0-mac-arm64.zip", 50),
+        asset("latest-mac.yml", 50),
+        asset("SHA256SUMS-windows-x64.txt", 50),
+      ]),
+    ];
+    expect(countDownloads(list)).toBe(3);
+  });
+
+  it("leaves out test builds, drafts, pre-releases and tags outside the scheme (the player mirror)", () => {
+    const exe = [asset("CuePoint-x-win-x64-setup.exe", 7)];
+    const list = [
+      release("v1.0.0-test.6", exe),
+      release("v1.2.0", exe, { draft: true }),
+      release("v1.3.0", exe, { prerelease: true }),
+      release("sidecar-mpv-v0.41.0-dev-gfd9265a90", [asset("mpv.exe", 191)]),
+      release("v1.0.0", exe),
+    ];
+    expect(countDownloads(list)).toBe(7);
+  });
+
+  it("treats a missing or odd count as nothing", () => {
+    const list = [release("v1.0.0", [asset("a.exe", undefined), asset("b.dmg", -1), asset("c.AppImage", 1.5), { name: "d.exe" }])];
+    expect(countDownloads(list)).toBe(0);
+    expect(countDownloads([release("v1.0.0", undefined)])).toBe(0);
+  });
+
+  it("is carried in both states of the data", async () => {
+    const withCount = LIST.map((r) => ({ ...r, assets: r.assets.map((a) => ({ ...a, download_count: 1 })) }));
+    const data = await buildReleaseData(withCount, { fetchText, now: NOW });
+    expect(data.downloads).toBeGreaterThan(0);
+    const none = await buildReleaseData(withCount.filter((r) => r.prerelease || r.draft), { fetchText, now: NOW });
+    expect(none.downloads).toBe(0);
+  });
+});
+
 describe("buildReleaseData", () => {
   it("keeps only DIST-03's installers, with size, checksum and url", async () => {
     const data = await buildReleaseData(LIST, { fetchText, now: NOW });
@@ -171,7 +228,7 @@ describe("buildReleaseData", () => {
   it("gives the none-yet state for a list with only test releases", async () => {
     const onlyTests = LIST.filter((r) => r.tag_name.includes("-test.") || r.draft || r.prerelease);
     const data = await buildReleaseData(onlyTests, { fetchText, now: NOW });
-    expect(data).toEqual({ release: null, files: [], fetchedAt: "2026-12-16T00:00:00.000Z" });
+    expect(data).toEqual({ release: null, files: [], downloads: 0, fetchedAt: "2026-12-16T00:00:00.000Z" });
   });
 
   it("refuses a release with no installer, so a half-uploaded release never publishes", async () => {
@@ -291,7 +348,7 @@ describe("run", () => {
       log: vi.fn(),
     });
     expect(result.status).toBe("kept");
-    expect(JSON.parse(readFileSync(fresh, "utf8"))).toEqual({ release: null, files: [], fetchedAt: "2026-12-16T00:00:00.000Z" });
+    expect(JSON.parse(readFileSync(fresh, "utf8"))).toEqual({ release: null, files: [], downloads: null, fetchedAt: "2026-12-16T00:00:00.000Z" });
   });
 
   it("does not read at all when RELEASES_JSON points at a fixture", async () => {

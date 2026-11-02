@@ -4,6 +4,7 @@
  *
  *   { release: { version, tag, publishedAt, notesUrl } | null,
  *     files: [{ name, system, chip, size, sha256, url }],
+ *     downloads,
  *     fetchedAt }
  *
  * The page shows the newest NORMAL release (DEC-194): never a draft, never GitHub's pre-release,
@@ -13,6 +14,11 @@
  * Files are kept only when they match DIST-03's names, and only the ones a person installs from
  * (the Windows setup, the two Mac disk images, the AppImage); the Mac zips are the updater's.
  * SHA-256 comes from the release's `SHA256SUMS-*.txt` files.
+ *
+ * `downloads` is how many times an installer was downloaded, over every normal release, the retired
+ * app's 0.0.x builds included (his picks, 2026-11-02): GitHub's own count for each .exe, .dmg and
+ * .AppImage. Test builds, drafts, pre-releases, the updater's zips and manifests and the player
+ * mirror are not counted. The home page and the download page say it as "Downloaded N times".
  *
  * It never breaks the build and never writes a partial file: if the read fails, or the newest
  * release is incomplete (no installer, an installer with no checksum), the last committed data is
@@ -29,7 +35,7 @@ export const OUTPUT = join(dirname(fileURLToPath(import.meta.url)), "..", "src",
 const TIMEOUT_MS = 15_000;
 const MAX_PAGES = 5;
 
-export const NONE_YET = (fetchedAt) => ({ release: null, files: [], fetchedAt });
+export const NONE_YET = (fetchedAt, downloads = 0) => ({ release: null, files: [], downloads, fetchedAt });
 
 // ---- DIST-05's version rule (a small copy of apps/desktop-electron/electron/updateRule.ts) --------
 // `X.Y.Z` or `X.Y.Z-test.N`, with an optional leading v for tags; anything else is outside the scheme.
@@ -65,6 +71,31 @@ function compareTest(a, b) {
   if (a === null) return 1;
   if (b === null) return -1;
   return a - b;
+}
+
+// ---- How many downloads ---------------------------------------------------------------------------
+
+const INSTALLER = /\.(exe|dmg|AppImage)$/;
+
+/** A normal release in the scheme, at any version: published, not a test build or a pre-release. */
+export function isCounted(release) {
+  if (release.draft || release.prerelease) return false;
+  const version = parseVersion(release.tag_name);
+  return version !== null && version.test === null;
+}
+
+/** GitHub's download count summed over every counted release's installers. */
+export function countDownloads(list) {
+  let total = 0;
+  for (const release of list) {
+    if (!isCounted(release)) continue;
+    for (const asset of Array.isArray(release.assets) ? release.assets : []) {
+      if (!INSTALLER.test(asset.name)) continue;
+      const n = asset.download_count;
+      if (Number.isSafeInteger(n) && n > 0) total += n;
+    }
+  }
+  return total;
 }
 
 // ---- Which release, which files -------------------------------------------------------------------
@@ -122,8 +153,9 @@ export function parseChecksums(text) {
  */
 export async function buildReleaseData(list, { fetchText, now = () => new Date() }) {
   const fetchedAt = now().toISOString();
+  const downloads = countDownloads(list);
   const release = pickRelease(list);
-  if (!release) return NONE_YET(fetchedAt);
+  if (!release) return NONE_YET(fetchedAt, downloads);
 
   const version = release.tag_name.replace(/^v/, "");
   const assets = Array.isArray(release.assets) ? release.assets : [];
@@ -159,6 +191,7 @@ export async function buildReleaseData(list, { fetchText, now = () => new Date()
       notesUrl: release.html_url,
     },
     files,
+    downloads,
     fetchedAt,
   };
 }
@@ -283,7 +316,8 @@ export async function run({
       log(`::warning::fetch-releases: could not read the releases (${reason}); keeping the last data (${existing.release ? `release ${existing.release.version}` : "none yet"}).`);
       return { status: "kept", data: existing };
     }
-    const none = NONE_YET(now().toISOString());
+    // the count is unknown too: null keeps "Downloaded 0 times" off the pages
+    const none = NONE_YET(now().toISOString(), null);
     writeAtomic(output, none);
     log(`::warning::fetch-releases: could not read the releases (${reason}) and there is no earlier data; wrote the none-yet state.`);
     return { status: "kept", data: none };

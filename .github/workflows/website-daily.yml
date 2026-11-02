@@ -1,0 +1,23 @@
+# Rebuilds and redeploys the live website once a day, so the "Downloaded N times" line (read from
+# GitHub's release download counts at build, scripts/fetch-releases.mjs) is at most a day old.
+# It only dispatches website.yml on the `website` branch (DEC-235): what is live stays what was
+# published, and the deploy runs every check the publish does. Scheduled runs come from the default
+# branch, so this starts once the workflow is on main.
+name: Website daily rebuild
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Redeploy the website
+        run: gh workflow run website.yml --ref website --repo "$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ github.token }}

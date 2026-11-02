@@ -45,10 +45,12 @@ import SoundButton from "../components/SoundButton.astro";
 import { FEATURES, HERO, OPENING_STEPS, TRUST } from "../data/home";
 import { GITHUB_URL, SITE_NAME } from "../data/site";
 import Page from "../layouts/Page.astro";
-import { loadReleases } from "../lib/releases";
+import { downloadsText, loadReleases } from "../lib/releases";
 import { canonicalFor, hrefFor } from "../lib/url";
 
-const hasRelease = loadReleases().release !== null;
+const releaseData = loadReleases();
+const hasRelease = releaseData.release !== null;
+const downloads = downloadsText(releaseData);
 const screenshot = shotImages("window")[0]?.image;
 
 const schema = [
@@ -146,6 +148,7 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
             </svg>
           </a>
         </div>
+        {downloads && <p class="downloads" data-downloads>{downloads}</p>}
         </div>
       </div>
     </div>
@@ -427,6 +430,12 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
   .actions :global([data-primary-action]) {
     font-size: var(--font-size-lg);
     padding: var(--space-md) calc(var(--space-xl) * 1.2);
+  }
+  /* GitHub's installer download count, read at build: a quiet line under the actions */
+  .downloads {
+    margin: var(--r1) 0 0;
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
   }
   /* the secondary: a quiet link with a pixel arrow down, not a second button competing with the first */
   .how {

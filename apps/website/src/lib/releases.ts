@@ -31,6 +31,8 @@ export interface ReleaseInfo {
 export interface ReleaseData {
   release: ReleaseInfo | null;
   files: ReleaseFile[];
+  /** Installer downloads over every normal release (scripts/fetch-releases.mjs); null in older data. */
+  downloads: number | null;
   fetchedAt: string;
 }
 
@@ -47,10 +49,15 @@ export function parseReleaseData(raw: unknown): ReleaseData {
   if (typeof data["fetchedAt"] !== "string") fail("fetchedAt is missing");
   const files = data["files"];
   if (!Array.isArray(files)) return fail("files is not a list");
+  const rawDownloads = data["downloads"];
+  if (rawDownloads !== undefined && rawDownloads !== null && !(Number.isSafeInteger(rawDownloads) && (rawDownloads as number) >= 0)) {
+    fail("downloads is not a whole number");
+  }
+  const downloads = typeof rawDownloads === "number" ? rawDownloads : null;
   const release = data["release"];
   if (release === null) {
     if (files.length > 0) fail("files without a release");
-    return { release: null, files: [], fetchedAt: data["fetchedAt"] as string };
+    return { release: null, files: [], downloads, fetchedAt: data["fetchedAt"] as string };
   }
   if (typeof release !== "object") return fail("release is not an object");
   const info = release as Record<string, unknown>;
@@ -72,6 +79,7 @@ export function parseReleaseData(raw: unknown): ReleaseData {
       notesUrl: info["notesUrl"] as string,
     },
     files: files as ReleaseFile[],
+    downloads,
     fetchedAt: data["fetchedAt"] as string,
   };
 }
@@ -84,4 +92,11 @@ export function loadReleases(): ReleaseData {
 /** True once the data holds a normal release: the download buttons and the file list turn on. */
 export function hasRelease(data: ReleaseData = loadReleases()): boolean {
   return data.release !== null;
+}
+
+/** "Downloaded 1,240 times" (his pick, 2026-11-02), or null when the data has no count. */
+export function downloadsText(data: ReleaseData = loadReleases()): string | null {
+  if (data.downloads === null) return null;
+  const n = data.downloads;
+  return `Downloaded ${n.toLocaleString("en-US")} ${n === 1 ? "time" : "times"}`;
 }
