@@ -4,12 +4,12 @@
  * apps/desktop-electron/e2e/capture/demo.spec.ts recorded into <dir>. The opening and end card are title cards
  * the page draws itself.
  *
- *   --format=portrait|wide   one cut only (default both: 1080 x 1350 for LinkedIn, 1920 x 1080)
+ *   --format=portrait|wide|tall   one cut only (default all: 1080 x 1350 for LinkedIn and the Instagram feed, 1920 x 1080 for YouTube, 1080 x 1920 for Reels)
  *   --opening=a,b,c          which openings (default c, the problem first; a pull back from the live app, b logo build)
  *   --stills=5,12.5          no video: PNGs at those seconds, out/demo/still-<format>-<opening>-<t>.png
  *   --track=<audio> --start=<s>  your own music under it; the file is named -PRIVATE and never committed
  *
- * Writes out/demo/cuepoint-demo-4x5-<opening>[-PRIVATE].mp4, the 16x9 ones, and posters.
+ * Writes out/demo/cuepoint-demo-4x5-<opening>[-PRIVATE].mp4, the 16x9 and 9x16 ones, and posters.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
@@ -29,7 +29,7 @@ const start = Number(arg("start") ?? 0);
 const stills = arg("stills")?.split(",").map(Number);
 const formats = arg("format") ? [arg("format")] : Object.keys(FORMATS);
 const openings = (arg("opening") ?? "c").split(",");
-const NAMES = { portrait: "cuepoint-demo-4x5", wide: "cuepoint-demo-16x9" };
+const NAMES = { portrait: "cuepoint-demo-4x5", wide: "cuepoint-demo-16x9", tall: "cuepoint-demo-9x16" };
 const BT709 = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2" };
 

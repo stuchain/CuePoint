@@ -4,7 +4,7 @@ import { BAR, FPS, FORMATS, SHOT_FADE, layout } from "./shots.js";
 const BEAT = BAR / 4;
 
 const params = new URLSearchParams(location.search);
-const format = params.get("format") === "wide" ? "wide" : "portrait";
+const format = FORMATS[params.get("format")] ? params.get("format") : "portrait";
 const opening = ["a", "b", "c"].includes(params.get("opening")) ? params.get("opening") : "c";
 const { width, height } = FORMATS[format];
 const stage = document.getElementById("stage");

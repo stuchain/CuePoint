@@ -65,13 +65,13 @@ library), set `APP_PREVIEW` to `false` in `src/content.ts`, and render again.
 
 ## The LinkedIn demo (`demo/`)
 
-An 80 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350, LinkedIn's feed) and 16:9.
+An 85 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350, LinkedIn and the Instagram feed), 16:9 (YouTube) and 9:16 (Instagram Reels, laid out inside the safe area).
 
 1. Record the clips from the running app, on the README's made-up library (Linux, under X):
    `cd ../desktop-electron && CUEPOINT_CAPTURE_DEMO=1 CUEPOINT_DEMO_OUT=<raw dir> xvfb-run -a -s "-screen 0 2700x1800x24" npx playwright test --config e2e/capture/playwright.capture.config.ts demo`
    (`CUEPOINT_DEMO_ONLY=keys,save` retakes some; a cloud container also needs mpv and a pulseaudio null sink).
 2. Render: `node scripts/render-demo.mjs --raw=<raw dir>` (`--stills=5,20` for a quick look,
-   `--format=portrait|wide` for one cut, `--opening=a|b|c` for another opening than c, the problem first: a pull back
+   `--format=portrait|wide|tall` for one cut, `--opening=a|b|c` for another opening than c, the problem first: a pull back
    from the live app, or a logo build). The openings and the end card are title cards `demo/demo.js` draws.
 3. When the camera plan changes: `python3 scripts/track-pointer.py` once per set of clips (needs
    opencv-python-headless) and `node scripts/verify-demo.mjs`, which fails if the mouse leaves the frame during
