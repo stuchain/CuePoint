@@ -117,9 +117,14 @@ class TestAppPaths:
         assert temp_file.suffix == ".tmp"
         assert temp_file.parent == AppPaths.temp_dir()
 
-    def test_safe_filename(self):
+    def test_safe_filename(self, monkeypatch):
         """Test safe filename generation."""
-        # Test Windows invalid characters
+        # Windows' invalid characters, on every system: the rule is Windows'. It used to pass
+        # off Windows only when an earlier test in the same process left the platform patched,
+        # so it failed once the suite ran in parallel and that test ran on another worker.
+        import cuepoint.utils.paths as paths_module
+
+        monkeypatch.setattr(paths_module, "is_windows", lambda: True)
         unsafe = "test<>:|?*\\file.txt"
         safe = AppPaths.safe_filename(unsafe)
         assert "<" not in safe
