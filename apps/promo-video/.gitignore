@@ -6,3 +6,6 @@ out/
 *.wav
 *.flac
 *.m4a
+
+# the demo's extracted clip frames (scripts/render-demo.mjs)
+demo/frames/

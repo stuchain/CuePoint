@@ -62,3 +62,18 @@ Needs Node 22.18+ (the scripts import the TypeScript timing directly) and ffmpeg
 
 Replace the stand-in shots with captures of the real app (SITE-04's capture script and made-up
 library), set `APP_PREVIEW` to `false` in `src/content.ts`, and render again.
+
+## The LinkedIn demo (`demo/`)
+
+A 75 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350, LinkedIn's feed) and 16:9.
+
+1. Record the clips from the running app, on the README's made-up library (Linux, under X):
+   `cd ../desktop-electron && CUEPOINT_CAPTURE_DEMO=1 CUEPOINT_DEMO_OUT=<raw dir> xvfb-run -a -s "-screen 0 2700x1800x24" npx playwright test --config e2e/capture/playwright.capture.config.ts demo`
+   (`CUEPOINT_DEMO_ONLY=keys,save` retakes some; a cloud container also needs mpv and a pulseaudio null sink).
+2. Render: `node scripts/render-demo.mjs --raw=<raw dir> --promo=<dir with the 26 s promo's renders>`
+   (`--stills=5,20` for a quick look, `--format=portrait|wide` for one cut).
+   The opening and end card are taken from the 26 s promo's renders.
+
+`demo/shots.js` holds each shot: its caption, its length in bars (130 BPM), which parts of its clip are used,
+and the camera's push-in keyframes. Music: `--track=<your own file> --start=<s>` names the output -PRIVATE;
+the track never goes in the repository.
