@@ -8,8 +8,8 @@
   <body>
     <div id="stage" class="stage">
       <div class="bg"></div>
-      <div class="brand"><img src="assets/icon.png" alt="" /><span>CuePoint</span></div>
-      <div class="count" id="count"></div>
+      <div class="brand chrome" id="brand"><img id="brandIcon" src="assets/icon.png" alt="" /><span id="brandName">CuePoint</span></div>
+      <div class="count chrome" id="count"></div>
       <div class="captionBox" id="capPrev">
         <div class="chip"></div>
         <div class="caption"></div>
@@ -18,17 +18,36 @@
         <div class="chip"></div>
         <div class="caption"></div>
       </div>
-      <div class="window" id="window"><img id="clip" alt="" /><img id="prev" alt="" /></div>
-      <ol class="rail" id="rail"></ol>
-      <div class="url">usecuepoint.com</div>
-      <div class="card open" id="open">
-        <img class="card__app" id="openApp" alt="" />
-        <div class="card__dim"></div>
-        <div class="card__body">
+      <div class="window chrome" id="window"><img id="clip" alt="" /><img id="prev" alt="" /></div>
+      <ol class="rail chrome" id="rail"></ol>
+      <div class="url chrome">usecuepoint.com</div>
+
+      <!-- opening A: the live app full-frame, the name on it, then one pull back into the window -->
+      <div class="card open-a" id="openA">
+        <img class="app" id="openApp" alt="" />
+        <div class="card__dim" id="openDim"></div>
+        <div class="card__body" id="openABody">
           <img class="card__icon" src="assets/icon.png" alt="" />
           <div class="card__name">CuePoint</div>
           <div class="card__line">Your Rekordbox library, cleaned up and ready for the booth.</div>
-          <div class="card__chip">Free and open source</div>
+        </div>
+      </div>
+      <!-- opening B: the logo builds, then glides to its corner -->
+      <div class="card open-b" id="openB">
+        <div class="card__body">
+          <img class="card__icon" id="buildIcon" src="assets/icon.png" alt="" />
+          <div class="card__name" id="buildName">CuePoint</div>
+          <div class="card__line" id="buildLine">Your Rekordbox library, cleaned up and ready for the booth.</div>
+        </div>
+      </div>
+      <!-- opening C: the problem first -->
+      <div class="card open-c" id="openC">
+        <div class="card__body card__lines">
+          <div class="card__problem">Wrong keys.</div>
+          <div class="card__problem">Missing BPM.</div>
+          <div class="card__problem">Tags half filled.</div>
+          <div class="card__problem">No time to dig for new music.</div>
+          <div class="card__answer"><span>CuePoint</span> does all of it.</div>
         </div>
       </div>
       <div class="card end" id="end">

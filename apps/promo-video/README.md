@@ -70,12 +70,16 @@ An 80 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350
 1. Record the clips from the running app, on the README's made-up library (Linux, under X):
    `cd ../desktop-electron && CUEPOINT_CAPTURE_DEMO=1 CUEPOINT_DEMO_OUT=<raw dir> xvfb-run -a -s "-screen 0 2700x1800x24" npx playwright test --config e2e/capture/playwright.capture.config.ts demo`
    (`CUEPOINT_DEMO_ONLY=keys,save` retakes some; a cloud container also needs mpv and a pulseaudio null sink).
-2. Render: `node scripts/render-demo.mjs --raw=<raw dir>`
-   (`--stills=5,20` for a quick look, `--format=portrait|wide` for one cut).
-   The opening (the name over the app itself) and the end card are title cards `demo/demo.js` draws.
+2. Render: `node scripts/render-demo.mjs --raw=<raw dir>` (`--stills=5,20` for a quick look,
+   `--format=portrait|wide` for one cut, `--opening=a|b|c` for one opening: a pull back from the live app, a logo
+   build, or the problem first). The openings and the end card are title cards `demo/demo.js` draws.
+3. When the camera plan changes: `python3 scripts/track-pointer.py` once per set of clips (needs
+   opencv-python-headless) and `node scripts/verify-demo.mjs`, which fails if the mouse leaves the frame during
+   an action or a camera move is under 1.6 s.
 
-`demo/shots.js` holds each shot: its caption, its length in bars (130 BPM), which parts of its clip are used
-(dead moments left out, parts joined by short dissolves, always at normal speed), and the camera keyframes, timed
-in clip seconds. Shots dissolve into each other; keep zooms framed so the dialog or list a shot is about stays
-wholly in view. Music: `--track=<your own file> --start=<s>` names the output -PRIVATE;
+`demo/shots.js` holds each shot: its caption, its length in bars (130 BPM), the stretch of its clip used and the
+moments in it that play at normal speed (`keep`: the clicks, the typing, things appearing). Nothing is cut: the
+waits between those moments run faster, easing there and back, by exactly the factor that fills the slot. Camera
+keyframes are in shot seconds; frame each so the dialog or list a shot is about and the mouse stay wholly in view.
+Shots dissolve into each other, and the rail chip and counter hand over under the same dissolve. Music: `--track=<your own file> --start=<s>` names the output -PRIVATE;
 the track never goes in the repository.

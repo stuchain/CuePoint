@@ -9,3 +9,6 @@ out/
 
 # the demo's extracted clip frames (scripts/render-demo.mjs)
 demo/frames/
+
+# the tracked mouse pointer per frame (scripts/track-pointer.py), small and checked by verify-demo.mjs
+!demo/pointer.json
