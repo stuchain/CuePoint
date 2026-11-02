@@ -8738,3 +8738,14 @@ targets are under 24 px at Extra small, and the queue's remove button sat inside
 **Reason**: Option A of the owner's choice for Intel. He has no Intel Mac to run the checks on, and the Intel runner runs the same packaged app.
 
 **Decided with**: User (29 Oct 2026, 19:36 Athens: option A) · **Date**: 2026-10-29
+
+
+## DEC-309 — 1.0.0 Ships Without the by-Hand Acceptance Checks (Amends DEC-188)
+
+**Status**: Accepted · **Related**: DEC-188, DEC-308, HARDEN-09, `docs/release/v1-acceptance.md`, `docs/release/known-issues.md`
+
+**Decision**: `v1.0.0` is tagged without running the by-hand and Remote Control rows of the acceptance checklist. Each such row still `owed` on 2026-11-02 is recorded as `not applicable (by-hand check deferred to 1.0.1 by the owner)` and is run before 1.0.1. Rows whose How is `CI` still need a green run, and the release workflow's acceptance job is unchanged. The known-issues page says which kinds of checks were not run by a person.
+
+**Reason**: The owner's pick (option C) on the release-day card. CI covers the packaged app on all four systems; the by-hand rows would cost about half a day.
+
+**Decided with**: User (2 Nov 2026, 09:50 Athens: option C) · **Date**: 2026-11-02

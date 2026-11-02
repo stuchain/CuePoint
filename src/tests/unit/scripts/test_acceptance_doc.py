@@ -169,9 +169,13 @@ class TestWhatTheChecklistMustHold:
             "macOS Apple Silicon",
             "macOS Intel",
         }
-        # The by-hand pass is on Apple Silicon; the Intel runner covers Intel (DEC-308).
+        # The by-hand pass is on Apple Silicon; the Intel runner covers Intel (DEC-308). For 1.0.0
+        # the owner deferred the by-hand pass to 1.0.1 (DEC-309).
         outcome = first_install[0].per_system()
-        assert outcome["macOS Apple Silicon"][0] == "owed"
+        assert outcome["macOS Apple Silicon"][0] in (
+            "owed",
+            "not applicable (by-hand check deferred to 1.0.1 by the owner)",
+        )
         assert outcome["macOS Intel"][0].startswith("covered by CI (")
 
     def test_the_hardware_only_checks_are_run_by_hand(self, rows):

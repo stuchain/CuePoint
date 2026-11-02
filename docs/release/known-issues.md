@@ -48,6 +48,10 @@ Both are listed under `above_spec` in `scripts/budgets.json`. Neither is somethi
 
 ## About how this release was checked
 
+### Some checks were not run by hand on this release
+
+Everything the automated builds test passed on Windows, both Macs and Linux. The checks that need a person at the machine (a screen reader walk-through, unplugging a sound interface, opening an export in Rekordbox, installing over an older copy) were not run by hand before 1.0.0 and are done before 1.0.1 (DEC-309). If something in those areas does not work for you, please tell us.
+
 ### The Intel Mac is covered by CI, not by hand
 
 The Intel Mac build is built and tested on every change and has its own scale run, but a person did not check it on a real Intel Mac before release (DEC-308). The Intel Mac runner is 3 to 4 times slower than the other three, so its numbers in [Performance](../user-guide/performance.md) are a worst case. If you use an Intel Mac and something is wrong, please tell us.
