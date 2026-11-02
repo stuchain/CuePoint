@@ -14,6 +14,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const P = JSON.parse(readFileSync(join(ROOT, "demo", "pointer.json"), "utf8"));
 const MARGIN = 30;
 const MIN_MOVE = 1.59;
+/** The short edit moves its camera on the click, over exactly its `move` second (see SHORT in shots.js). */
+const MIN_MOVE_SHORT = 0.99;
 const smooth = (x) => {
   const k = Math.max(0, Math.min(1, x));
   return k * k * k * (k * (k * 6 - 15) + 10);
@@ -55,7 +57,7 @@ for (const [opening, edit] of [["a", "full"], ["b", "full"], ["c", "story"], ["c
     for (let i = 1; i < cam.length; i++) {
       const d = cam[i][0] - cam[i - 1][0];
       const moved = Math.abs(cam[i][3] - cam[i - 1][3]) > 0.02 || Math.hypot(cam[i][1] - cam[i - 1][1], cam[i][2] - cam[i - 1][2]) > 20;
-      if (moved && d < MIN_MOVE) bad.push(`camera move ${i} only ${d.toFixed(2)} s`);
+      if (moved && d < (edit === "short" ? MIN_MOVE_SHORT : MIN_MOVE)) bad.push(`camera move ${i} only ${d.toFixed(2)} s`);
     }
     const unique = [...new Set(bad)];
     if (unique.length) failed = true;
