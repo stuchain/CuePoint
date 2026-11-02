@@ -43,9 +43,9 @@ export const SHOTS = [
     cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.1, 640, 540, 1.2], [4.4, 640, 540, 1.2], [6.2, 960, 500, 1.2]],
   },
   {
-    id: "clean", chip: "Clean", caption: "Fix keys, BPM and tags from Beatport", bars: 6,
-    span: [0.7, 18.3], keep: [[1.3, 4.6], [10.8, 11.4], [12.7, 13.4], [15.3, 15.9], [17.1, 17.7]],
-    cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 640, 380, 1.08], [5.0, 640, 380, 1.08], [6.6, 560, 380, 1.12], [7.0, 560, 380, 1.12], [8.8, 900, 450, 1.3]],
+    id: "clean", chip: "Clean", caption: "Fix keys, BPM and tags from Beatport", bars: 7,
+    span: [0.7, 18.6], keep: [[1.3, 4.6], [7.7, 9.2], [10.8, 11.4], [12.6, 13.4], [15.3, 16.6], [17.1, 17.9]],
+    cam: [[0, 640, 400, 1], [0.3, 640, 400, 1], [2.0, 642, 380, 1.06], [7.9, 642, 380, 1.06], [9.6, 900, 450, 1.3]],
   },
   {
     id: "discover", chip: "Discover", caption: "Dig the charts for new music", bars: 4,
@@ -54,7 +54,7 @@ export const SHOTS = [
   },
   {
     id: "prepare", chip: "Prepare", caption: "Plan your set, see every transition", bars: 4,
-    span: [0.8, 11.0], keep: [[1.2, 1.7], [2.2, 2.6], [3.5, 3.9], [5.6, 6.0], [7.0, 7.4], [8.8, 9.2], [9.8, 10.3]],
+    span: [0.8, 11.0], keep: [[1.2, 1.8], [3.3, 3.9], [5.4, 6.0], [7.5, 8.1], [9.6, 10.3]],
     cam: [[0, 640, 400, 1], [0.8, 640, 400, 1], [2.6, 600, 300, 1.2], [7.85, 600, 300, 1.22]],
   },
   {
@@ -166,14 +166,20 @@ export function layout(opening = "a") {
     shots[0].bars = 3;
     shots[0].lead = OPEN.seconds;
   }
-  let t0 = OPEN.seconds;
+  // every slot starts on the frame nearest its bar line, counted from the opening so rounding never accumulates
+  OPEN.seconds = Math.round(OPEN.seconds * FPS) / FPS;
+  let bars = 0;
+  let f0 = Math.round(OPEN.seconds * FPS);
   for (const s of shots) {
-    s.frames = Math.round(s.bars * BAR * FPS);
+    bars += s.bars;
+    const f1 = Math.round((0.2 + (open.bars + bars) * BAR) * FPS);
+    s.frames = f1 - f0;
     s.lead = s.lead ?? 0;
-    s.start = t0;
+    s.start = f0 / FPS;
     s.dur = s.frames / FPS;
     s.map = speedMap(s, s.lead + s.dur + SHOT_FADE, s.lead);
-    t0 += s.dur;
+    f0 = f1;
   }
-  return { OPEN, END, shots, endStart: t0, duration: t0 + END.seconds };
+  const endStart = f0 / FPS;
+  return { OPEN, END, shots, endStart, duration: endStart + END.seconds };
 }

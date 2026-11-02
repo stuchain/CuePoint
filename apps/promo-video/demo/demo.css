@@ -66,7 +66,7 @@ html, body { margin: 0; background: #000; overflow: hidden; }
   display: inline-block; margin-top: 26px; font: 700 44px var(--pixel); color: var(--outline); background: var(--accent);
   border: 4px solid var(--outline); box-shadow: 8px 8px 0 var(--shadow); padding: 8px 30px 12px;
 }
-.card__os { font: 600 26px var(--data); color: var(--muted); margin-top: 26px; }
+.card__os { font: 700 30px var(--pixel); color: var(--muted); margin-top: 26px; }
 .f-wide .card__icon { width: 140px; height: 140px; }
 .f-wide .card__name { font-size: 104px; }
 .f-wide .card__line { font-size: 36px; max-width: 900px; }
@@ -89,3 +89,6 @@ html, body { margin: 0; background: #000; overflow: hidden; }
 .f-wide .rail { left: 64px; width: 420px; top: 560px; gap: 10px; }
 .f-wide .rail li { font-size: 22px; }
 .f-wide .url { left: 516px; top: 972px; }
+
+/* no ligatures anywhere: the pixel face turns "fi" into a stray glyph ("files" would read "Ales"); the `font` shorthands above reset the longhand, so this comes last and wins */
+.stage, .stage * { font-variant-ligatures: none !important; }
