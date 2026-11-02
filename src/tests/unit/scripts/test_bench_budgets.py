@@ -402,7 +402,7 @@ class TestTheBenchesWithTheirOwnBudgets:
         import bench_waveforms
 
         monkeypatch.setenv(budget_check.LEG_ENV, "macos-x64")
-        assert bench_waveforms._row("a", 1, "ms p95", 50.0, "")["budget"] == 125.0
+        assert bench_waveforms._row("a", 1, "ms p95", 50.0, "")["budget"] == 162.5
         assert bench_waveforms._row("b", 1, "MB", 26.0, "")["budget"] == 26.0
         assert bench_waveforms._row("c", 1, "×", 1.3, "")["budget"] == 1.3
 
