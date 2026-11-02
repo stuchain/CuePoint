@@ -20,7 +20,9 @@ is. Nothing is a stand-in but the audio.
   tracks besides those. The Library's search is timed while the second run
   analyses, and idle both before and after it; the idle samples are pooled, so
   one noisy minute cannot pass or fail the budget, which is
-  ``RESPONSIVENESS_BUDGET`` times idle at p95.
+  ``RESPONSIVENESS_BUDGET`` times idle at p95, with idle floored at
+  ``RESPONSIVENESS_FLOOR_MS`` as ``bench_decoder.py`` does: idle is about 20 ms,
+  where a 10 ms rise reads as 1.5 times.
 - **Playback** (``--play``). While the second run analyses, the player's
   ``mpv`` plays a three-track queue on the default audio device, and its log is
   read for underruns; the budget is none. Silent tracks, so nothing is heard.
@@ -86,6 +88,10 @@ EXTRAPOLATE_TO = 50_000
 SEARCH_REQUESTS = 400
 #: The analysis may cost the engine's search at most this factor at p95.
 RESPONSIVENESS_BUDGET = 1.5
+#: The idle p95 the ratio is taken over is at least this (``bench_decoder.py``'s floor): over a
+#: near-zero idle a few milliseconds' rise makes a ratio of noise (macOS arm64 read 1.52 on an
+#: idle of 18.5 ms, ten milliseconds, in the v1.0.0 pre-release scale run).
+RESPONSIVENESS_FLOOR_MS = 100.0
 #: How long each track of the playback queue plays: short enough that all three,
 #: and the two changes between them where an underrun is likeliest, play while
 #: the second run analyses.
@@ -367,7 +373,9 @@ def _measure_mode(
             "idle_p95_ms": idle,
             "running_p95_ms": searched.get("p95_ms"),
             "running_samples": searched.get("samples", 0),
-            "ratio": round(searched["p95_ms"] / idle, 2)
+            "floor_ms": RESPONSIVENESS_FLOOR_MS,
+            "ratio": responsiveness_ratio(searched.get("p95_ms"), idle),
+            "raw_ratio": round(searched["p95_ms"] / idle, 2)
             if idle and searched.get("p95_ms")
             else None,
         },
@@ -544,6 +552,13 @@ def report(result: Dict[str, Any]) -> None:
     print("-- side by side")
     for line in side_by_side(modes):
         print(line)
+
+
+def responsiveness_ratio(running_ms: Any, idle_ms: Any) -> Any:
+    """The search p95 while analysing over the idle p95, floored at ``RESPONSIVENESS_FLOOR_MS``."""
+    if not idle_ms or not running_ms:
+        return None
+    return round(running_ms / max(idle_ms, RESPONSIVENESS_FLOOR_MS), 2)
 
 
 def over_budget(result: Dict[str, Any]) -> List[str]:

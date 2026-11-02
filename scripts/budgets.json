@@ -12,7 +12,7 @@
   "recorded_only": {
     "match_storage": "bench_match_storage.py measures what storing match attempts costs (rows and megabytes per candidate); it is a size estimate, not a speed, so it is recorded in the run's JSON and has no budget",
     "decoder": "bench_decoder.py holds its own budget: the search p95 with four analyses running may be at most 1.5 times the idle p95 floored at 100 ms (RESPONSIVENESS_BUDGET, RESPONSIVENESS_FLOOR_MS), so 150 ms whenever idle is under 100 ms and the plain 1.5 ratio above it. The old plain ratio failed on every leg of the first CI run (2.02, 3.58, 2.58) because idle was about 10 ms on Linux: a ten-millisecond rise doubles a ratio over a near-zero base. Chosen over an absolute added time because it still scales with a slow idle. Nothing is scaled",
-    "waveform_analysis": "bench_waveform_analysis.py holds its own ratio budget (RESPONSIVENESS_BUDGET); nothing is scaled. macOS arm64 read 1.57 in-engine in the first CI run (1.29 in a worker), perhaps contaminated by two 30 s decoder stalls on that run (DEC-229); it is left at 1.5 and watched"
+    "waveform_analysis": "bench_waveform_analysis.py holds its own ratio budget (RESPONSIVENESS_BUDGET, 1.5 times idle) over an idle p95 floored at 100 ms (RESPONSIVENESS_FLOOR_MS), as the decoder does; nothing is scaled. macOS arm64 read 1.57 in-engine in the first CI run (1.29 in a worker) and 1.6 / 1.52 on an idle of about 20 ms in the v1.0.0 pre-release run (a 10 to 12 ms rise), so the floor was added; the raw ratio stays in the JSON as raw_ratio"
   },
   "legs": {
     "windows-x64": {

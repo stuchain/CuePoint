@@ -45,8 +45,25 @@ def _result(**overrides):
 
 def test_the_budgets_are_the_specifications():
     assert bench.RESPONSIVENESS_BUDGET == 1.5
+    assert bench.RESPONSIVENESS_FLOOR_MS == 100.0
     assert bench.DEFAULT_TRACKS == 5_000
     assert bench.EXTRAPOLATE_TO == 50_000
+
+
+@pytest.mark.parametrize(
+    "running, idle, ratio",
+    [
+        # macOS arm64 in the v1.0.0 pre-release scale run: a 10 ms rise on an 18.5 ms idle.
+        (28.2, 18.5, 0.28),
+        (150.0, 20.0, 1.5),
+        (151.0, 20.0, 1.51),
+        (300.0, 200.0, 1.5),
+        (None, 20.0, None),
+        (30.0, None, None),
+    ],
+)
+def test_the_ratio_is_over_an_idle_floored_at_100_ms(running, idle, ratio):
+    assert bench.responsiveness_ratio(running, idle) == ratio
 
 
 @pytest.mark.parametrize(
