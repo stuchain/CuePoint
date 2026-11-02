@@ -70,6 +70,39 @@ export const STORY = {
 };
 
 /**
+ * The 60 s LinkedIn edit (?edit=short, --edit=short): the 2-bar problem opening with the lines on half beats,
+ * all ten features in 28 bars (Clean starts at the review step) and a 2-bar end card: 32 bars, 59.3 s.
+ */
+export const SHORT = {
+  openBars: 2,
+  endBars: 2,
+  shots: [
+    { id: "library", bars: 3, span: [3.6, 10.87], keep: [[4.8, 5.4], [7.6, 8.6]],
+      cam: [FULL(0), FULL(0.3), LIB_TABLE(1.9), LIB_TABLE(3.2), LIB_DETAILS(4.8)] },
+    { id: "player", bars: 2, span: [0.8, 5.5], keep: [[1.3, 2.4], [4.0, 4.8]],
+      cam: [FULL(0), FULL(0.6), RAIL(2.6)] },
+    { id: "clean", bars: 5, span: [8.3, 21.9], keep: [[8.5, 10.1], [12.5, 13.1], [14.3, 15.0], [17.3, 18.3], [21.0, 21.6]],
+      cam: [FULL(0), FULL(5.6), CLEAN_MATCH(7.2)] },
+    { id: "discover", bars: 3, span: [0.5, 9.6], keep: [[0.8, 1.4], [1.9, 2.3], [2.9, 3.3], [4.0, 4.7], [6.6, 7.3]],
+      cam: [FULL(0), FULL(1.0), RAIL(3.0)] },
+    { id: "prepare", bars: 3, span: [0.8, 8.3], keep: [[1.2, 1.6], [3.3, 3.7], [5.4, 5.8], [7.5, 7.9]],
+      cam: [FULL(0), FULL(0.6), RAIL(2.6)] },
+    { id: "keys", bars: 2, span: [0.3, 5.6], keep: [[0.9, 1.7], [4.4, 5.0]],
+      cam: [FULL(0), FULL(0.3), WHEEL(1.9)] },
+    { id: "statistics", bars: 2, span: [3.6, 8.17], keep: [[4.6, 5.4]],
+      cam: [FULL(0), FULL(0.4), RAIL(2.4)] },
+    { id: "save", bars: 3, span: [1.5, 9.0], keep: [[1.7, 2.0], [4.1, 4.3], [5.8, 6.0], [7.2, 8.4]],
+      cam: [FULL(0), FULL(0.9), SYNC_DIALOG(2.5), SYNC_DIALOG_IN(4.1)] },
+    { id: "export", bars: 3, span: [0.9, 8.5], keep: [[1.0, 1.4], [3.3, 3.5], [5.2, 5.5], [6.5, 7.6]],
+      cam: [FULL(0), FULL(1.2), EXPORT_DIALOG(2.8), EXPORT_DIALOG_IN(4.4)] },
+    { id: "settings", bars: 2, span: [0.9, 7.0], keep: [[1.3, 1.9], [3.8, 4.4], [6.2, 6.8]],
+      cam: [FULL(0), FULL(1.0), SECTION(2.6)] },
+  ],
+};
+/** The edits that replace the full tour, by their ?edit= name. */
+export const EDITS = { story: STORY, short: SHORT };
+
+/**
  * Each shot: the raw clip (`<id>.mkv` from e2e/capture/demo.spec.ts), the stretch of it used (`span`, clip
  * seconds) and the moments that must play at normal speed (`keep`, clip seconds: the clicks, the typing, the
  * things appearing). Everything between the kept moments (the pointer travelling, the app loading) runs faster,
@@ -206,14 +239,14 @@ export function speedMap(shot, need, lead = 0) {
 
 /** Lay the timeline out for one opening: slot lengths, each shot's speed map, the camera in output seconds. */
 export function layout(opening = "a", edit = "full") {
-  const story = edit === "story";
-  const open = story ? { bars: STORY.openBars } : (OPENINGS[opening] ?? OPENINGS.a);
+  const cut = EDITS[edit];
+  const open = cut ? { bars: cut.openBars } : (OPENINGS[opening] ?? OPENINGS.a);
   const OPEN = { seconds: 0.2 + open.bars * BAR, bars: open.bars };
-  const END_ = { seconds: (story ? STORY.endBars : 3) * BAR };
-  const shots = story
-    ? STORY.shots.map((o) => ({ ...SHOTS.find((s) => s.id === o.id), ...o }))
+  const END_ = { seconds: (cut ? cut.endBars : 3) * BAR };
+  const shots = cut
+    ? cut.shots.map((o) => ({ ...SHOTS.find((s) => s.id === o.id), ...o }))
     : SHOTS.map((s) => ({ ...s }));
-  if (opening === "a" && !story) {
+  if (opening === "a" && !cut) {
     // the opening is the Library itself, live, full-frame: its clip starts under the title and runs on
     shots[0].span = [0, shots[0].span[1]];
     shots[0].bars = 3;
