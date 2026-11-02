@@ -1,9 +1,11 @@
 // The demo's timeline: seek(t) draws the frame at t seconds. Driven frame by frame by scripts/render-demo.mjs.
-import { FPS, FORMATS, SHOT_FADE, layout } from "./shots.js";
+import { BAR, FPS, FORMATS, SHOT_FADE, layout } from "./shots.js";
+
+const BEAT = BAR / 4;
 
 const params = new URLSearchParams(location.search);
 const format = params.get("format") === "wide" ? "wide" : "portrait";
-const opening = ["a", "b", "c"].includes(params.get("opening")) ? params.get("opening") : "a";
+const opening = ["a", "b", "c"].includes(params.get("opening")) ? params.get("opening") : "c";
 const { width, height } = FORMATS[format];
 const stage = document.getElementById("stage");
 stage.classList.add(`f-${format}`);
@@ -194,11 +196,11 @@ function openB(t) {
   $("brand").style.opacity = String(glide > 0.98 ? 1 : 0);
 }
 
-/** Opening C: the problem, one line per bar, then the answer. */
+/** Opening C: the problem, a line every two beats, then the answer on the bar line three bars in. */
 function openC(t) {
   const body = $("openC").querySelector(".card__body");
-  reveal(body, [0.4, 1.55, 2.7, 3.85, 5.3], t);
-  const dim = smooth((t - 5.1) / 0.5);
+  reveal(body, [0.2 + BEAT, 0.2 + 3 * BEAT, 0.2 + 5 * BEAT, 0.2 + 7 * BEAT, 0.2 + 12 * BEAT], t);
+  const dim = smooth((t - (0.2 + 11 * BEAT)) / 0.45);
   [...body.querySelectorAll(".card__problem")].forEach((el) => (el.style.color = mix([250, 250, 250], [91, 91, 102], dim)));
   setChrome(1);
 }
@@ -216,7 +218,7 @@ async function openingAt(t, opacity) {
 function endCard(t, opacity) {
   end.style.display = opacity > 0 ? "block" : "none";
   end.style.opacity = String(opacity);
-  if (opacity > 0) reveal(end, [0.15, 0.5, 0.95, 1.45, 1.85, 2.2], t);
+  if (opacity > 0) reveal(end, [0, 1, 2, 3, 4, 5].map((b) => b * BEAT), t);
 }
 
 async function seek(t) {

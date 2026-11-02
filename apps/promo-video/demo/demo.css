@@ -47,7 +47,7 @@ html, body { margin: 0; background: #000; overflow: hidden; }
 .card.open-a { background: transparent; }
 .card .app { position: absolute; display: block; border: 4px solid var(--outline); box-shadow: 12px 12px 0 var(--shadow); background: var(--bg-panel); }
 .card__dim { position: absolute; inset: 0; background: radial-gradient(80% 60% at 50% 48%, rgba(10, 8, 14, 0.55) 0%, rgba(10, 8, 14, 0.85) 100%); }
-.card__lines { align-items: flex-start; text-align: left; padding: 0 90px; }
+.card__body.card__lines { align-items: flex-start; text-align: left; padding: 0 90px; }
 .card__problem { font: 700 54px/1.2 var(--pixel); margin-top: 14px; white-space: nowrap; }
 .card__answer { font: 700 54px/1.2 var(--pixel); margin-top: 54px; white-space: nowrap; }
 .card__answer span { color: var(--accent); }

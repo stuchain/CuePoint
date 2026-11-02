@@ -5,7 +5,7 @@
  * the page draws itself.
  *
  *   --format=portrait|wide   one cut only (default both: 1080 x 1350 for LinkedIn, 1920 x 1080)
- *   --opening=a,b,c          which openings (default all three: pull back, logo build, the problem first)
+ *   --opening=a,b,c          which openings (default c, the problem first; a pull back from the live app, b logo build)
  *   --stills=5,12.5          no video: PNGs at those seconds, out/demo/still-<format>-<opening>-<t>.png
  *   --track=<audio> --start=<s>  your own music under it; the file is named -PRIVATE and never committed
  *
@@ -28,7 +28,7 @@ const track = arg("track");
 const start = Number(arg("start") ?? 0);
 const stills = arg("stills")?.split(",").map(Number);
 const formats = arg("format") ? [arg("format")] : Object.keys(FORMATS);
-const openings = (arg("opening") ?? "a,b,c").split(",");
+const openings = (arg("opening") ?? "c").split(",");
 const NAMES = { portrait: "cuepoint-demo-4x5", wide: "cuepoint-demo-16x9" };
 const BT709 = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2" };
