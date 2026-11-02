@@ -12,7 +12,10 @@ stage.classList.add(`f-${format}`);
 Object.assign(stage.style, { width: `${width}px`, height: `${height}px` });
 
 // the timeline: opening, one slot per shot (whole bars of the music), the end card
-const { OPEN, END, shots: slots, endStart, duration: DURATION } = layout(opening);
+const edit = params.get("edit") === "story" ? "story" : "full";
+const { OPEN, END, shots: slots, endStart, duration: DURATION } = layout(opening, edit);
+// the title lines land on beats; the short story opening and end card use half beats
+const STEP = edit === "story" ? BEAT / 2 : BEAT;
 
 const $ = (id) => document.getElementById(id);
 const rail = $("rail");
@@ -199,8 +202,9 @@ function openB(t) {
 /** Opening C: the problem, a line every two beats, then the answer on the bar line three bars in. */
 function openC(t) {
   const body = $("openC").querySelector(".card__body");
-  reveal(body, [0.2 + BEAT, 0.2 + 3 * BEAT, 0.2 + 5 * BEAT, 0.2 + 7 * BEAT, 0.2 + 12 * BEAT], t);
-  const dim = smooth((t - (0.2 + 11 * BEAT)) / 0.45);
+  const beats = edit === "story" ? [1, 2, 3, 4, 8] : [1, 3, 5, 7, 12];
+  reveal(body, beats.map((b) => 0.2 + b * STEP), t);
+  const dim = smooth((t - (0.2 + (beats[4] - 1) * STEP)) / 0.45);
   [...body.querySelectorAll(".card__problem")].forEach((el) => (el.style.color = mix([250, 250, 250], [91, 91, 102], dim)));
   // the lines leave before the app arrives, so the dissolve is dark to app and never text over a table
   body.style.opacity = String(1 - smooth((t - (OPEN.seconds - 0.5)) / 0.5));
@@ -220,7 +224,7 @@ async function openingAt(t, opacity) {
 function endCard(t, opacity) {
   end.style.display = opacity > 0 ? "block" : "none";
   end.style.opacity = String(opacity);
-  if (opacity > 0) reveal(end, [0, 1, 2, 3, 4, 5].map((b) => b * BEAT), t);
+  if (opacity > 0) reveal(end, [0, 1, 2, 3, 4, 5].map((b) => b * STEP), t);
 }
 
 async function seek(t) {
