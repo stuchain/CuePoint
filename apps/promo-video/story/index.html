@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CuePoint story</title>
+    <link rel="stylesheet" href="story.css" />
+  </head>
+  <body>
+    <div id="stage" class="stage">
+      <div class="bg"></div>
+      <div class="brand" id="brand"><img src="../demo/assets/icon.png" alt="" /><span>CuePoint</span></div>
+      <div class="url" id="url">usecuepoint.com</div>
+      <div class="caption" id="capA"></div>
+      <div class="caption" id="capB"></div>
+
+      <!-- 1+2: one track, before and after -->
+      <section class="scene" id="track">
+        <div class="trackcard" id="card">
+          <div class="cover" id="cover"><span class="cover__q">?</span><img class="cover__art" src="../demo/assets/icon.png" alt="" /></div>
+          <div class="title">Marble Daylight</div>
+          <div class="artist">Madsen &amp; Ro</div>
+          <div class="fields" id="fields">
+            <div class="field" data-k="key"><span class="label">Key</span><span class="tick">✓</span><span class="chip bad">—</span><span class="chip good key">9A</span></div>
+            <div class="field" data-k="bpm"><span class="label">BPM</span><span class="tick">✓</span><span class="chip bad">—</span><span class="chip good">129</span></div>
+            <div class="field" data-k="genre"><span class="label">Genre</span><span class="tick">✓</span><span class="chip bad">—</span><span class="chip good">Melodic House &amp; Techno</span></div>
+            <div class="field" data-k="label"><span class="label">Label</span><span class="tick">✓</span><span class="chip bad">—</span><span class="chip good">Paper Moon Trax · 2025</span></div>
+          </div>
+          <div class="matched" id="matched">Matched on Beatport</div>
+          <div class="wipe" id="wipe"></div>
+        </div>
+      </section>
+
+      <!-- 3: the wheel -->
+      <section class="scene" id="wheel"><div class="wheelbox" id="wheelbox"></div></section>
+
+      <!-- 4: the set list -->
+      <section class="scene" id="set"><div class="setlist" id="setlist"></div></section>
+
+      <!-- 5: the charts -->
+      <section class="scene" id="dig"><div class="deck" id="deck"></div><div class="found" id="found">6 new tracks from artists you play</div></section>
+
+      <!-- 6: export -->
+      <section class="scene" id="export">
+        <div class="exportrow">
+          <div class="file" id="file"><div class="file__icon">XML</div><div class="file__name">CuePoint export.xml</div></div>
+          <div class="slot" id="slot"><div class="slot__name">Rekordbox</div><div class="slot__tick">✓</div></div>
+        </div>
+        <div class="stamps" id="stamps"><span class="stamp">300 tracks</span><span class="stamp">47 fixed</span><span class="stamp">30 files tagged</span></div>
+      </section>
+
+      <!-- 7: the library -->
+      <section class="scene" id="library"><div class="counter" id="counter">0 tracks ready</div><div class="table" id="table"></div></section>
+
+      <!-- 8: end card -->
+      <section class="scene end" id="end">
+        <div class="end__body">
+          <img class="end__icon" src="../demo/assets/icon.png" alt="" />
+          <div class="end__name">CuePoint</div>
+          <div class="end__line">Your Rekordbox library, cleaned up and ready for the booth.</div>
+          <div class="end__chip">Free and open source</div>
+          <div class="end__url">usecuepoint.com</div>
+          <div class="end__os">Windows and Mac</div>
+        </div>
+      </section>
+      <div class="fade" id="fade"></div>
+    </div>
+    <script type="module" src="story.js"></script>
+  </body>
+</html>
