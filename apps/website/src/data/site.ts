@@ -9,7 +9,7 @@ export const GITHUB_URL = "https://github.com/stuchain/CuePoint";
  * The branch that repository links (the guide's links to files, "Edit on GitHub") point at. v1 is on
  * `feature` until it is merged to `main`; change this one line then.
  */
-export const GITHUB_BRANCH = "feature";
+export const GITHUB_BRANCH = "main";
 
 /**
  * The one primary action on every page (DEC-141). Until 1.0.0 the site offers no download (DEC-194):

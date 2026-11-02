@@ -106,15 +106,15 @@ describe("the real guide's links", () => {
     );
   });
 
-  it("sends links to repository files to GitHub on the feature branch", async () => {
+  it("sends links to repository files to GitHub on the main branch", async () => {
     const from = join(GUIDE, "the-window.md");
     expect(await rewriteLink("../policy/privacy-notice.md", from, REAL)).toBe(
-      `https://github.com/stuchain/CuePoint/blob/feature/docs/policy/privacy-notice.md`,
+      `https://github.com/stuchain/CuePoint/blob/main/docs/policy/privacy-notice.md`,
     );
     expect(await rewriteLink("../development/beatport-v4-api.md#getting-a-token", from, REAL)).toBe(
-      "https://github.com/stuchain/CuePoint/blob/feature/docs/development/beatport-v4-api.md#getting-a-token",
+      "https://github.com/stuchain/CuePoint/blob/main/docs/development/beatport-v4-api.md#getting-a-token",
     );
-    expect(GITHUB_BRANCH).toBe("feature");
+    expect(GITHUB_BRANCH).toBe("main");
   });
 
   it("leaves outside addresses alone", async () => {
@@ -158,7 +158,7 @@ describe("fixtures", () => {
     expect(html).toContain('href="/guide/two/"');
     expect(html).toContain('href="/guide/two/#some-part"');
     expect(html).toContain('href="#a-part"');
-    expect(html).toContain(`href="${GITHUB_URL}/blob/feature/docs/policy/notice.md#notice"`);
+    expect(html).toContain(`href="${GITHUB_URL}/blob/main/docs/policy/notice.md#notice"`);
     expect(await validateGuideLinks(cfg)).toBeUndefined();
   });
 

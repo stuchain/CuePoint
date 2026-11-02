@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-02
+
 **CuePoint 1.0.0 is the first full release of the CuePoint desktop app**, for Windows, Macs with Apple Silicon and Intel Macs. It reads your Rekordbox collection and never writes to your Rekordbox file or moves your music. It matches your tracks on Beatport (**Clean**), shows the keys across your playlists (**Keys**), finds new music from the artists and labels you already own (**Discover**), plans sets with timed chapters and transition checks (**Prepare**), plays your tracks with waveforms, loudness and your cue points (**Player**), reports on your library (**Statistics**), and carries your changes back to Rekordbox as a new XML file. It updates itself on Windows and Mac. The Mac and Windows builds are not signed, so the first install needs a click through the system's warning: see [Getting started](https://github.com/stuchain/CuePoint/blob/main/docs/user-guide/getting-started.md).
 
 **Systems.** Windows 10 or newer (x64); macOS 14 or newer on Apple Silicon and macOS 15 or newer on Intel; Linux is experimental and has no built-in player. Libraries of up to 50,000 tracks are supported and measured on all four systems ([Performance](https://github.com/stuchain/CuePoint/blob/main/docs/user-guide/performance.md)).

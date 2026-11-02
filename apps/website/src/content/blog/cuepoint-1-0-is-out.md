@@ -5,7 +5,6 @@ date: 2026-11-02
 image: "../../assets/og/default.png"
 imageAlt: "The CuePoint card: the pixel mark and the name CuePoint on a violet background."
 tags: ["announcement", "release"]
-draft: true
 ---
 
 CuePoint 1.0 is here. It is the first full release of the app, and you can [download it](../../download/) now for Windows, Macs with Apple Silicon, Intel Macs and, as an experiment, Linux. It is free.
