@@ -116,7 +116,7 @@ async function main() {
         ? ["-ss", String(start), "-t", String(total), "-i", track, "-map", "0:v", "-map", "1:a", "-af", `afade=t=in:d=0.05,afade=t=out:st=${(total - fade).toFixed(3)}:d=${fade},loudnorm=I=-14:TP=-1.5:LRA=11`, "-ar", "48000", "-c:a", "aac", "-b:a", "192k"]
         : [];
       const out = `${base}${track ? "-PRIVATE" : ""}.mp4`;
-      run(["-i", master, ...audio, "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", ...BT709, "-t", String(total), "-movflags", "+faststart", out]);
+      run(["-i", master, ...audio, "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p", ...BT709, "-t", String(total), "-movflags", "+faststart", out]);
       console.log(out);
     }
   } finally {

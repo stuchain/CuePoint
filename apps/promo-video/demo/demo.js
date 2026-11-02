@@ -202,6 +202,8 @@ function openC(t) {
   reveal(body, [0.2 + BEAT, 0.2 + 3 * BEAT, 0.2 + 5 * BEAT, 0.2 + 7 * BEAT, 0.2 + 12 * BEAT], t);
   const dim = smooth((t - (0.2 + 11 * BEAT)) / 0.45);
   [...body.querySelectorAll(".card__problem")].forEach((el) => (el.style.color = mix([250, 250, 250], [91, 91, 102], dim)));
+  // the lines leave before the app arrives, so the dissolve is dark to app and never text over a table
+  body.style.opacity = String(1 - smooth((t - (OPEN.seconds - 0.5)) / 0.5));
   setChrome(1);
 }
 
