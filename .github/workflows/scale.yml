@@ -9,7 +9,7 @@
 #
 # When it runs: every Monday, by hand, and from `release.yml` before a normal tag is published.
 # It is not part of a push: a full run is long (Intel Mac the slowest), and the budgets were set
-# from the first run (see `set_from` in `scripts/budgets.json`; Intel is kept at ×2.5 until it reports). A leg more than twice as
+# from the first run (see `set_from` in `scripts/budgets.json`; Intel's code budgets, at ×2.5 until it reported, are at its ×3.25 since the v1.0.0 pre-release run). A leg more than twice as
 # slow as the others is investigated, never loosened. A red run blocks a normal tag only, never
 # a `v*-test.*` tag (`release.yml`).
 #

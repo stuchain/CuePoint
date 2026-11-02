@@ -5,7 +5,7 @@
     "Base: the Windows number in docs/user-guide/performance.md times 1.5, or the Phase 15/16 budget where one exists; then the first CI scale run (set_from): a metric within 10% of its budget on any leg was raised to about 1.25 times its worst value, and one with room to spare was left alone.",
     "A time under 10 ms is floored at 10 ms: below that a shared runner measures noise.",
     "Where nothing was recorded (or the guide's number is out of date) the base is a first estimate from a Linux container run, said so in _basis.",
-    "A leg's scale multiplies every time budget (the Intel Mac's runner is 2.5 times slower than Linux; Windows is 1.5, for its disk: fsync and Defender); its overrides replace single budgets after the scale. Windows overrides a metric where 1.5 would be far looser than its measured value (about 1.25 to 1.3 times that value) or too tight (a migration is 5 to 17 times slower there: about 1.5 times). A leg's code_scale is the factor for budgets written in a bench's own code (scaled_ms); Windows has 1.0.",
+    "A leg's scale multiplies every time budget (the Intel Mac's runner is 2.5 times slower than Linux; Windows is 1.5, for its disk: fsync and Defender); its overrides replace single budgets after the scale. Windows overrides a metric where 1.5 would be far looser than its measured value (about 1.25 to 1.3 times that value) or too tight (a migration is 5 to 17 times slower there: about 1.5 times). A leg's code_scale is the factor for budgets written in a bench's own code (scaled_ms); Windows has 1.0. The Intel Mac's was 2.5 until it reported; it is 3.25, its scale, since the v1.0.0 pre-release run read the six-minute detail at 145.6 and 303.6 ms p95 against 2.5 times 60 (150 ms), with the other legs far inside their budgets.",
     "A leg that is more than twice as slow as the others is investigated, never loosened.",
     "Ratio budgets (the waveform-analysis and decoder responsiveness limits, 1.5 times idle) are in those benches and are the same on every leg: a ratio compares a leg with itself, so no scale applies. The decoder's idle is floored at 100 ms, so a near-zero idle cannot make a ratio of noise (see recorded_only)."
   ],
@@ -70,7 +70,7 @@
           "relaunch_s": 150
         }
       },
-      "code_scale": 2.5
+      "code_scale": 3.25
     }
   },
   "benches": {

@@ -104,7 +104,7 @@ class TestTheRules:
         monkeypatch.setenv(budget_check.LEG_ENV, "windows-x64")
         assert budget_check.scaled_ms(500.0) == 500.0
         monkeypatch.setenv(budget_check.LEG_ENV, "macos-x64")
-        assert budget_check.scaled_ms(500.0) == 1250.0
+        assert budget_check.scaled_ms(500.0) == 1625.0
 
     def test_a_leg_the_file_does_not_know_is_not_scaled(self):
         assert budget_check.budgets_for("demo", "plan9-x64", FILE)["load_s"] == 10
@@ -278,10 +278,12 @@ class TestTheBudgetsFile:
     def test_windows_does_not_loosen_the_budgets_written_in_the_benches(self, data):
         assert data["legs"]["windows-x64"]["code_scale"] == 1.0
 
-    def test_the_intel_mac_keeps_two_and_a_half_for_the_budgets_in_the_benches(
-        self, data
-    ):
-        assert data["legs"]["macos-x64"]["code_scale"] == 2.5
+    def test_the_intel_mac_takes_its_scale_for_the_budgets_in_the_benches(self, data):
+        assert (
+            data["legs"]["macos-x64"]["code_scale"]
+            == 3.25
+            == data["legs"]["macos-x64"]["scale"]
+        )
 
     def test_windows_migrations_get_their_own_numbers_not_a_factor(self, data):
         """m0032 is 17 times slower on Windows, so one factor cannot cover it: ~1.5x measured."""
@@ -392,7 +394,7 @@ class TestTheBenchesWithTheirOwnBudgets:
         assert dict(store._timing_budgets())["states_200"] == store.BATCH_BUDGET_MS
         monkeypatch.setenv(budget_check.LEG_ENV, "macos-x64")
         assert (
-            dict(store._timing_budgets())["states_200"] == store.BATCH_BUDGET_MS * 2.5
+            dict(store._timing_budgets())["states_200"] == store.BATCH_BUDGET_MS * 3.25
         )
         assert store.SIZE_BUDGET_MB == 260.0
 
