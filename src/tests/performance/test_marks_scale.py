@@ -40,6 +40,12 @@ TRACKS = int(os.environ.get("CUEPOINT_SCALE", "5000"))
 #: Far above the 1.21 and 1.28 measured at 50,000 tracks; see the docstring.
 RATIO_CEILING = 2.0
 
+#: Reading the marks adds little on a fast machine, so the two medians can land
+#: either way: the v1.0.0 release run read them 3% faster (0.974) on Apple
+#: Silicon. The marks counts above prove they were read; this floor only
+#: catches a timing that makes no sense.
+RATIO_FLOOR = 0.8
+
 
 @pytest.fixture(scope="module")
 def result(tmp_path_factory):
@@ -51,7 +57,10 @@ def test_both_shapes_are_read_with_their_marks(result):
     assert reads["prepared"]["marks"] == TRACKS * 8
     assert TRACKS * 3 < reads["typical"]["marks"] < TRACKS * 4
     for shape in bench_marks.SHAPES:
-        assert 1.0 <= reads[shape]["ratio"] < RATIO_CEILING, (shape, reads[shape])
+        assert RATIO_FLOOR <= reads[shape]["ratio"] < RATIO_CEILING, (
+            shape,
+            reads[shape],
+        )
 
 
 def test_the_import_writes_every_mark(result):
