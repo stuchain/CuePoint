@@ -188,9 +188,15 @@ class TestLogTiming:
         """Test timing successful operation."""
         CuePointLogger.configure()
         logger = logging.getLogger("test")
-
-        with log_timing("test_operation", logger):
-            pass
+        # The first configure() in a process clears the root handlers, caplog's among them, so the
+        # capture is attached to this logger itself: the result no longer depends on test order.
+        logger.addHandler(caplog.handler)
+        try:
+            with caplog.at_level(logging.INFO, logger="test"):
+                with log_timing("test_operation", logger):
+                    pass
+        finally:
+            logger.removeHandler(caplog.handler)
 
         assert "Starting test_operation" in caplog.text
         assert "Completed test_operation" in caplog.text
@@ -199,10 +205,14 @@ class TestLogTiming:
         """Test timing failed operation."""
         CuePointLogger.configure()
         logger = logging.getLogger("test")
-
-        with pytest.raises(ValueError):
-            with log_timing("test_operation", logger):
-                raise ValueError("Test error")
+        logger.addHandler(caplog.handler)
+        try:
+            with caplog.at_level(logging.INFO, logger="test"):
+                with pytest.raises(ValueError):
+                    with log_timing("test_operation", logger):
+                        raise ValueError("Test error")
+        finally:
+            logger.removeHandler(caplog.handler)
 
         assert "Starting test_operation" in caplog.text
         assert "Failed test_operation" in caplog.text

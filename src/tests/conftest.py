@@ -43,6 +43,22 @@ settings.load_profile("cuepoint")
 
 
 @pytest.fixture(autouse=True)
+def _fresh_platform_info():
+    """Start every test with the platform read from this machine, not cached by another test.
+
+    ``get_platform_info()`` caches its answer for the process. A test that read it while
+    ``sys.platform`` was patched left that answer behind, and every later test in the same
+    process saw the patched system: off Windows a Windows-only test passed by luck, and on
+    Windows the parallel run (DEC-310) failed `is_restricted_location` for Program Files.
+    """
+    import cuepoint.utils.platform as platform_module
+
+    platform_module._platform_info = None
+    yield
+    platform_module._platform_info = None
+
+
+@pytest.fixture(autouse=True)
 def _restore_global_settings():
     """Undo any change a test makes to the shared SETTINGS dict.
 

@@ -65,7 +65,12 @@ class TestTriggers:
 class TestLegs:
     def test_the_four_legs_are_the_desktop_workflows(self, job):
         build = _load("desktop-electron.yml")["jobs"]["desktop-electron"]
-        assert job["strategy"]["matrix"] == build["strategy"]["matrix"]
+        # `e2e_shard` only splits the build's development-build suite (DEC-310); scale has none.
+        legs = [
+            {k: v for k, v in leg.items() if k != "e2e_shard"}
+            for leg in build["strategy"]["matrix"]["include"]
+        ]
+        assert job["strategy"]["matrix"] == {"include": legs}
         assert job["strategy"]["fail-fast"] is False
         assert job["runs-on"] == "${{ matrix.runner }}"
 
