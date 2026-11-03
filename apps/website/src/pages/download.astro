@@ -118,17 +118,15 @@ const schema = release
                 <p data-note="mobile">
                   CuePoint runs on Windows, macOS and Linux. Open this page on your computer to download it.
                 </p>
-                <p class="share">
-                  <button class="btn" data-variant="secondary" type="button" data-share>Send me the link</button>
-                </p>
-                <p class="share-status" role="status" data-share-status />
               </div>
             </div>
           </Panel>
         </Section>
 
         <Section id="all-downloads" heading="Every download" layout="split">
-          <p slot="aside">Every file of version {release.version}, if you want another system's or the button picked the wrong one.</p>
+          <p slot="aside">
+            Every file of version {release.version}<span class="aside-wide">, if you want another system's or the button picked the wrong one.</span><span class="aside-phone">. Pick your system.</span>
+          </p>
           <ul class="files">
             {
               files.map((f) => (
@@ -282,10 +280,31 @@ const schema = release
   .hero-stack {
     display: grid;
   }
+  /* a phone cannot run CuePoint, so it gets no detected-system box: the page goes straight to
+     every download, where the visitor picks a system */
+  .aside-phone {
+    display: none;
+  }
+  @media (max-width: 39.99rem) {
+    :global(#get) {
+      display: none;
+    }
+    .aside-wide {
+      display: none;
+    }
+    .aside-phone {
+      display: inline;
+    }
+  }
   .layer {
     grid-area: 1 / 1;
   }
   .layer[data-off] {
+    visibility: hidden;
+  }
+  /* a Download label sets its own visibility, so the hidden desktop layer hides its labels too
+     (without this a phone saw a faint "Download" through the note) */
+  .layer[data-off] :global(.js-download .dl-labels > span) {
     visibility: hidden;
   }
   [data-layer="mobile"] {
@@ -305,13 +324,6 @@ const schema = release
   }
   .notes > [data-note][data-on] {
     visibility: visible;
-  }
-  .share {
-    margin: var(--space-md) 0 0;
-  }
-  .share-status {
-    margin: var(--space-sm) 0 0;
-    min-height: 1.6em;
   }
   /* every file: one row of a panel, what it is on the left and its button on the right */
   .files {

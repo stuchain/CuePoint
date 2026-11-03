@@ -112,7 +112,7 @@ async function open(browser: Browser, base: string, env: Env, width = 1280): Pro
 }
 
 const ready = (page: Page, env: Env) =>
-  env.mobile ? page.locator("[data-layer=mobile][data-on]").waitFor() : page.locator("a.js-download[data-system]").first().waitFor({ state: "attached" });
+  env.mobile ? page.locator("[data-layer=mobile][data-on]").waitFor({ state: "attached" }) : page.locator("a.js-download[data-system]").first().waitFor({ state: "attached" });
 
 test.describe("before 1.0.0 (no normal release)", () => {
   let served: { server: Server; url: string };
@@ -242,17 +242,21 @@ test.describe("with a normal release", () => {
     await context.close();
   });
 
-  test("a phone gets 'runs on Windows, macOS and Linux' and a share button, no download", async ({ browser }) => {
+  test("a phone gets no download box and no share button, only the list to pick from", async ({ browser }) => {
     const { context, page } = await open(browser, served.url, ENVS.iphone, 390);
     await ready(page, ENVS.iphone);
     const hero = page.locator("[data-hero]");
-    await expect(hero.getByText("CuePoint runs on Windows, macOS and Linux")).toBeVisible();
-    await expect(hero.getByRole("button", { name: "Send me the link" })).toBeVisible();
+    // a phone goes straight to every download: no detected-system box, and the line says to pick
+    await expect(page.locator("#get")).toBeHidden();
+    await expect(page.locator("#all-downloads").getByText("Pick your system.")).toBeVisible();
+    await expect(page.locator("#all-downloads").getByText("the button picked")).toBeHidden();
+    await expect(hero.getByRole("button")).toHaveCount(0);
     await expect(hero.locator("a.js-download")).toBeHidden();
+    // no label of the hidden desktop button shows through the note
+    for (const label of await hero.locator("a.js-download .dl-labels > span").all()) {
+      expect(await label.evaluate((el) => getComputedStyle(el).visibility)).toBe("hidden");
+    }
     await expect(page.locator("header a.js-download")).toHaveAccessibleName("Download");
-    await hero.getByRole("button", { name: "Send me the link" }).click();
-    await expect(hero.getByRole("status")).toContainText("Link copied");
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`${served.url}download/`);
     await context.close();
   });
 

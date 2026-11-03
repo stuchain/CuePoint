@@ -32,30 +32,6 @@ function readFiles(): ReleaseFile[] {
   }
 }
 
-function setShareStatus(text: string) {
-  const status = document.querySelector<HTMLElement>("[data-share-status]");
-  if (status) status.textContent = text;
-}
-
-async function share() {
-  const url = location.href.split("#")[0] ?? location.href;
-  const data = { title: "CuePoint", text: "CuePoint is a free desktop app for DJs that cleans up a Rekordbox library. It runs on Windows, macOS and Linux.", url };
-  try {
-    if (typeof navigator.share === "function") {
-      await navigator.share(data);
-      return;
-    }
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") return;
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    setShareStatus("Link copied. Open it on your computer.");
-  } catch {
-    setShareStatus(`Copy this address: ${url}`);
-  }
-}
-
 function apply(d: Detection, files: readonly ReleaseFile[]) {
   const file = fileFor(files, d);
   if (file) {
@@ -78,7 +54,7 @@ function apply(d: Detection, files: readonly ReleaseFile[]) {
     // the mobile layer shares the desktop layer's grid cell, so swapping them moves nothing
     hero.querySelector("[data-layer=desktop]")?.setAttribute("data-off", "");
     hero.querySelector("[data-layer=mobile]")?.setAttribute("data-on", "");
-    return void hero.querySelector<HTMLButtonElement>("[data-share]")?.addEventListener("click", () => void share());
+    return;
   }
   const note = hero.querySelector<HTMLElement>(`[data-note="${noteFor(d, file !== undefined)}"]`);
   note?.setAttribute("data-on", "");
