@@ -319,3 +319,49 @@ class TestChecksums:
     def test_each_leg_writes_its_own_sums_file(self):
         run = _step("Generate SHA256SUMS")["run"]
         assert "generate_sha256_sums.py release --leg ${{ matrix.leg }}" in run
+
+
+@pytest.mark.unit
+class TestIntelSuiteInTwoHalves:
+    """DEC-310 (D7): the Intel leg's development-build suite runs in two halves side by side."""
+
+    def _half(self) -> dict:
+        return yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"][
+            "desktop-e2e-intel-half"
+        ]
+
+    def test_only_the_intel_leg_runs_a_shard_and_it_is_the_first_half(self):
+        legs = _legs()
+        assert legs["macos-x64"]["e2e_shard"] == "--shard=1/2"
+        assert all("e2e_shard" not in v for k, v in legs.items() if k != "macos-x64")
+        run = _step("Playwright Electron smoke")["run"]
+        assert "${{ matrix.e2e_shard }}" in run
+
+    def test_the_second_half_runs_on_its_own_intel_runner_except_on_a_release(self):
+        half = self._half()
+        assert half["runs-on"] == "macos-15-intel"
+        assert half["if"] == "${{ !inputs.release }}"
+        run = next(
+            s for s in half["steps"] if s.get("name", "").startswith("Playwright")
+        )["run"]
+        assert "--shard=2/2" in run and "--grep-invert @dom-only" in run
+
+    def test_the_second_half_builds_the_shell_and_has_the_player_before_it_runs(self):
+        names = [s.get("name") for s in self._half()["steps"]]
+        suite = next(n for n in names if n and n.startswith("Playwright"))
+        for needed in (
+            "Install desktop dependencies",
+            "Build desktop shell",
+            "Fetch player sidecar (mpv)",
+            "Install Playwright Chromium",
+        ):
+            assert names.index(needed) < names.index(suite)
+
+    def test_the_second_half_keeps_its_failures_under_its_own_name(self):
+        upload = next(
+            s
+            for s in self._half()["steps"]
+            if s.get("name") == "Upload Playwright failures"
+        )
+        assert upload["if"] == "failure()"
+        assert upload["with"]["name"] == "playwright-failures-macos-x64-half-2"

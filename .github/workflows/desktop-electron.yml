@@ -60,6 +60,9 @@ jobs:
             builder_arch: "--x64"
             chip: x64
             mac_dir: mac
+            # The slowest leg's development-build suite (38 of its 51 minutes) is split in two: this
+            # leg runs the first half and `desktop-e2e-intel-half` below the second, side by side (DEC-310).
+            e2e_shard: "--shard=1/2"
     runs-on: ${{ matrix.runner }}
     # HARDEN-09: a hung app must not hold a runner for the 6 hours GitHub allows. Release runs the whole
     # suite packaged (up to 75 minutes); the v1.0.0 Intel leg ran out of 150 minutes there, so a
@@ -289,7 +292,7 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then
             xvfb-run -a npm run test:e2e
           else
-            npm run test:e2e -- --grep-invert @dom-only
+            npm run test:e2e -- --grep-invert @dom-only ${{ matrix.e2e_shard }}
           fi
 
       # Each failure's error-context.md holds what the page showed, which the log does not. (A release
@@ -476,3 +479,94 @@ jobs:
             apps/desktop-electron/release/SHA256SUMS-${{ matrix.leg }}.txt
           if-no-files-found: error
           retention-days: 7
+
+  # DEC-310 (D7): the second half of the Intel leg's development-build suite, on its own Intel runner
+  # beside the leg, which runs the first half (`--shard=1/2`). Playwright splits by spec file. Only the
+  # setup the development suite needs: no packaging, no packaged run, no artifacts. A release skips it,
+  # as it skips the development suite on every leg (the packaged run covers the specs there).
+  desktop-e2e-intel-half:
+    if: ${{ !inputs.release }}
+    runs-on: macos-15-intel
+    timeout-minutes: 90
+    env:
+      CUEPOINT_BUILD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            apps/desktop-electron/package-lock.json
+            apps/desktop-electron/renderer/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Cache Electron, electron-builder and Playwright downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/ms-playwright
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/Library/Caches/ms-playwright
+          key: desktop-dl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/desktop-electron/package-lock.json') }}
+          restore-keys: |
+            desktop-dl-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install desktop dependencies
+        working-directory: apps/desktop-electron
+        run: |
+          npm ci
+          npm ci --prefix renderer
+
+      - name: Build desktop shell
+        working-directory: apps/desktop-electron
+        run: npm run build
+
+      # The player specs drive the pinned mpv, as on the leg.
+      - name: Fetch player sidecar (mpv)
+        run: python scripts/fetch_player_sidecar.py
+
+      - name: Install Playwright Chromium
+        working-directory: apps/desktop-electron
+        run: npx playwright install chromium
+
+      - name: Playwright Electron smoke (second half)
+        working-directory: apps/desktop-electron
+        shell: bash
+        run: npm run test:e2e -- --grep-invert @dom-only --shard=2/2
+
+      - name: Upload Playwright failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failures-macos-x64-half-2
+          path: apps/desktop-electron/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Print Playwright failure snapshots
+        if: failure()
+        shell: bash
+        working-directory: apps/desktop-electron
+        run: |
+          find test-results -name error-context.md 2>/dev/null | sort | while read -r f; do
+            echo "::group::$f"
+            head -c 20000 "$f"
+            echo "::endgroup::"
+          done

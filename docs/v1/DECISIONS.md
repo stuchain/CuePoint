@@ -8762,7 +8762,7 @@ targets are under 24 px at Extra small, and the queue's remove button sat inside
 - skips the dev-build end-to-end suite on a release, where the full packaged suite runs;
 - runs `@dom-only` specs (a11y) on Linux only on pushes.
 
-A newer push cancels the run in progress everywhere except on `main` and tags. Pushes that touch only `apps/website/**` or `apps/promo-video/**` skip all three workflows. pip, Electron, electron-builder and Playwright downloads are cached. Splitting the Intel Mac's end-to-end suite (D7) waits until these are measured.
+A newer push cancels the run in progress everywhere except on `main` and tags. Pushes that touch only `apps/website/**` or `apps/promo-video/**` skip all three workflows. pip, Electron, electron-builder and Playwright downloads are cached. After the first runs (Intel leg 51 min, 38 of them its development-build suite), the Intel leg's development-build suite runs in two halves side by side (D7, owner's pick 3 Nov 2026, 07:44 Athens): the leg runs `--shard=1/2` and the `desktop-e2e-intel-half` job runs `--shard=2/2` on its own Intel runner, skipped on a release. A push then asks for 4 macOS jobs.
 
 **Reason**: A push asked for all 5 of the free plan's macOS slots and waited behind the previous run, so the newest commit took up to about 2 hours to get a full result. The Python suite ran twice per push, and the engine tests ran three times. Run one at a time, the unit layer took 14 min on Linux; with xdist it took 7.4 min on 4 cores.
 
