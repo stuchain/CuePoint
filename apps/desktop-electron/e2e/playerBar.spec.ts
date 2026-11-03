@@ -121,13 +121,17 @@ test("the player bar fits the shell at every scale", async () => {
       expect(report.clipped, `nothing clipped at ${scale}x`).toBe(false);
     }
     // A very long artist and label shrink to an ellipsis; the key chip, BPM and year stay whole.
-    await win.evaluate(async (file) => {
+    // Two entries with the same words, as above: where a distribution mpv refuses the first file (Linux CI,
+    // about 1 run in 8), the bar moves to the next entry and still shows the long line. With one entry it
+    // ended on "Nothing playing", with no chip to probe.
+    await win.evaluate(async (files) => {
       const w = window as never as Record<string, any>;
       await w.cuepoint.player.playQueue(
-        [{ filePath: file, title: "T", artist: "An Extremely Long Artist Name ".repeat(12), label: "A Label ".repeat(10),
-           key: "8A", bpm: 128, durationSeconds: 600 }], 0);
+        files.map((file) => ({ filePath: file, title: "T", artist: "An Extremely Long Artist Name ".repeat(12),
+           label: "A Label ".repeat(10), key: "8A", bpm: 128, durationSeconds: 600 })), 0);
       await w.cuepoint.player.pause();
-    }, path.join(AUDIO, "tone.flac"));
+    }, [path.join(AUDIO, "tone.flac"), path.join(AUDIO, "tone.wav")]);
+    await expect(win.locator(".cp-player-bar [data-wheel-opener]")).toBeVisible({ timeout: 10_000 });
     for (const scale of [1, 3]) {
       const shown = await win.evaluate((s) => {
         document.documentElement.dataset.scale = String(s);
