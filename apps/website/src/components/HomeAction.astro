@@ -12,6 +12,8 @@
  */
 import { PRIMARY_ACTION } from "../data/site";
 import { loadReleases } from "../lib/releases";
+import { localeFromUrl, localePath } from "../i18n/paths";
+import { ui } from "../i18n/ui";
 import { hrefFor } from "../lib/url";
 import DownloadLabel from "./DownloadLabel.astro";
 
@@ -21,17 +23,18 @@ interface Props {
 }
 const { repeat = false } = Astro.props;
 const hasRelease = loadReleases().release !== null;
+const locale = localeFromUrl(Astro.url);
 const mark = repeat ? { "data-closing-action": "" } : { "data-primary-action": "" };
 ---
 
 {
   hasRelease ? (
-    <a class="btn js-download" data-variant="primary" href={hrefFor("download/")} {...mark}>
+    <a class="btn js-download" data-variant="primary" href={hrefFor(localePath(locale, "download/"))} {...mark}>
       <DownloadLabel />
     </a>
   ) : (
     <a class="btn" data-variant="primary" href={PRIMARY_ACTION.href} rel="noopener noreferrer" {...mark}>
-      {PRIMARY_ACTION.label}
+      {locale === "en" ? PRIMARY_ACTION.label : ui(locale).primaryAction}
     </a>
   )
 }

@@ -8,6 +8,9 @@ import Breadcrumbs from "../components/Breadcrumbs.astro";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import { SITE_NAME } from "../data/site";
+import { DEFAULT_LOCALE, LOCALES, localeInfo } from "../i18n/locales";
+import { alternatesFor, isTranslated, localeFromUrl, localePath } from "../i18n/paths";
+import { ui } from "../i18n/ui";
 import { CSP } from "../lib/csp";
 import { DEFAULT_THEME } from "../lib/themes";
 import { canonicalFor, hrefFor } from "../lib/url";
@@ -19,13 +22,26 @@ type Props = PageProps;
 
 const { title, description, path, ogImage, ogPicture, schema = [], breadcrumbs, noindex, ogType = "website", publishedTime, tags = [] } = Astro.props as PageProps;
 
-const canonical = canonicalFor(path);
+// the page's language (DEC-311): given by a translated page's view, else read from the address
+const locale = Astro.props.locale ?? localeFromUrl(Astro.url);
+const info = localeInfo(locale);
+const t = ui(locale);
+if (locale !== DEFAULT_LOCALE && !isTranslated(path)) {
+  throw new Error(`Page: "${path}" has no ${locale} version; only the translated pages (src/i18n/locales.ts) can be shown in it`);
+}
+// `path` is the English path; this page's own address is in its language's folder
+const ownPath = localePath(locale, path);
+// every version of a translated page, and x-default (English); an English-only page names none
+const alternates = alternatesFor(path).map((a) => ({ hreflang: a.hreflang, href: canonicalFor(a.path) }));
+const otherOgLocales = alternates.length > 0 ? LOCALES.filter((l) => l.code !== locale).map((l) => l.ogLocale) : [];
+
+const canonical = canonicalFor(ownPath);
 // the browser's own chrome takes the header's color in the default theme (Neo Dark's toolbar token)
 const THEME_COLOR = neoDarkTokens()["--bg-toolbar"];
 // the 404 is served at any address, so it names no canonical address (check-site allows that)
 const has404 = noindex === "404";
 // Every page has its own sharing picture, drawn at build (scripts/og.mjs, SITE-11); `ogImage` overrides it.
-const image = ogImage ?? { src: ogImagePath(path), width: 1200, height: 630 };
+const image = ogImage ?? { src: ogImagePath(ownPath), width: 1200, height: 630 };
 const imageUrl = new URL(image.src, SITE_URL).href;
 const robots = !PUBLIC || noindex !== undefined ? "noindex, nofollow" : undefined;
 
@@ -38,17 +54,23 @@ const breadcrumbSchema =
           "@type": "ListItem",
           position: i + 1,
           name: crumb.label,
-          item: canonicalFor(crumb.path),
+          item: canonicalFor(localePath(locale, crumb.path)),
         })),
       }
     : undefined;
-const jsonLd = [...schema, ...(breadcrumbSchema ? [breadcrumbSchema] : [])];
+// the types that are works with a language (schema.org's inLanguage); the trail and the organization have none
+const LANGUAGE_TYPES = new Set(["SoftwareApplication", "WebSite", "FAQPage", "WebPage", "TechArticle", "BlogPosting"]);
+const withLanguage = (item: Record<string, unknown>) =>
+  alternates.length > 0 && typeof item["@type"] === "string" && LANGUAGE_TYPES.has(item["@type"])
+    ? { ...item, inLanguage: info.hreflang }
+    : item;
+const jsonLd = [...schema.map(withLanguage), ...(breadcrumbSchema ? [breadcrumbSchema] : [])];
 // "<" is escaped so a string in the data can never close the script tag
 const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c");
 ---
 
 <!doctype html>
-<html lang="en" data-theme={DEFAULT_THEME}>
+<html lang={info.hreflang} data-theme={DEFAULT_THEME}>
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content={CSP} />
@@ -56,6 +78,7 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     <title>{title}</title>
     <meta name="description" content={description} />
     {!has404 && <link rel="canonical" href={canonical} />}
+    {alternates.map((a) => <link rel="alternate" hreflang={a.hreflang} href={a.href} />)}
     {robots && <meta name="robots" content={robots} />}
     <link rel="icon" type="image/svg+xml" href={hrefFor("icon.svg")} />
     <link rel="icon" sizes="any" href={hrefFor("favicon.ico")} />
@@ -66,6 +89,8 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
 
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:type" content={ogType} />
+    <meta property="og:locale" content={info.ogLocale} />
+    {otherOgLocales.map((l) => <meta property="og:locale:alternate" content={l} />)}
     {ogType === "article" && publishedTime && <meta property="article:published_time" content={publishedTime} />}
     {ogType === "article" && tags.map((tag) => <meta property="article:tag" content={tag} />)}
     <meta property="og:title" content={title} />
@@ -86,8 +111,8 @@ const toScript = (item: unknown) => JSON.stringify(item).replace(/</g, "\\u003c"
     {jsonLd.map((item) => <script type="application/ld+json" set:html={toScript(item)} />)}
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to main content</a>
-    <Header currentPath={path} />
+    <a class="skip-link" href="#main">{t.skipLink}</a>
+    <Header currentPath={path} locale={locale} />
     <main id="main" tabindex="-1">
       {breadcrumbs && breadcrumbs.length > 0 && (
         <div class="crumbs-wrap"><Breadcrumbs items={breadcrumbs} /></div>

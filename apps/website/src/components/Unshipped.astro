@@ -10,19 +10,23 @@ interface Props {
   /** A short note beside a card or a heading, instead of the full callout. */
   compact?: boolean;
 }
+import { fmt } from "../i18n/format";
+import { localeFromUrl } from "../i18n/paths";
+import { ui } from "../i18n/ui";
+
 const { step, compact = false } = Astro.props;
+const t = ui(localeFromUrl(Astro.url)).unshipped;
 ---
 
 {
   compact ? (
     <p class="compact" data-unshipped={step}>
-      Preview note: not in the app yet (ships with {step}).
+      {fmt(t.compact, { step })}
     </p>
   ) : (
     <aside class="note" data-unshipped={step}>
       <p>
-        <strong>Preview note: not in the app yet.</strong> This describes something that ships with {step}. A public
-        build fails until this note is removed.
+        <strong>{t.title}</strong> {fmt(t.body, { step })}
       </p>
     </aside>
   )

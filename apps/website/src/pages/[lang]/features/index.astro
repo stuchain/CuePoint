@@ -1,0 +1,12 @@
+---
+import { OTHER_LOCALES, type LocaleCode } from "../../../i18n/locales";
+import FeaturesPage from "../../../views/FeaturesPage.astro";
+
+/** /<code>/features/ (DEC-311). */
+export function getStaticPaths() {
+  return OTHER_LOCALES.map((l) => ({ params: { lang: l.code }, props: { locale: l.code as LocaleCode } }));
+}
+const { locale } = Astro.props;
+---
+
+<FeaturesPage locale={locale} />

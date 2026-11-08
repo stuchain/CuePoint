@@ -8767,3 +8767,14 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 **Reason**: A push asked for all 5 of the free plan's macOS slots and waited behind the previous run, so the newest commit took up to about 2 hours to get a full result. The Python suite ran twice per push, and the engine tests ran three times. Run one at a time, the unit layer took 14 min on Linux; with xdist it took 7.4 min on 4 cores.
 
 **Decided with**: User (2 Nov 2026, 15:32 Athens: all recommended, D1 to D12) · **Date**: 2026-11-02
+
+
+## DEC-311 — The Website Is Translated into German, Spanish and Brazilian Portuguese
+
+**Status**: Accepted · **Related**: DEC-230, `apps/website/docs/translation.md`, `apps/website/src/i18n/`, `/mnt/project-files/website-i18n/SCOPE.md`
+
+**Decision**: The website is translated into German (`de`), Spanish (`es`) and Brazilian Portuguese (`pt-br`). English stays at the site root and is the source and the `x-default`; each other language lives under its own folder at the same page name (`/de/features/`, `/es/features/`, `/pt-br/features/`). The pages that are translated are the home page, Features (the index and each feature), Compare (the index and each comparison), Download and the FAQ. The guide, the blog, the legal pages and the contact form stay English, and a link from a translated page to one of them says it leaves the language. The app itself is in English, and each translated page says so once, in a note. Each translated page lists every version as `hreflang` alternates (with `x-default`), names its own language in `<html lang>`, and has its own canonical, Open Graph card and sitemap entry. `llms.txt` lists the English pages only. A header switch (a button after the seam on a wide screen, a "Language" row in the phone menu) goes to the same page in the other language, and to that language's home page when the page is English only. The tone is informal (du, tú, você). Product words (the area names Clean, Library, Keys, Discover, Prepare, Statistics and Waveforms, the button names, Camelot, BPM, Rekordbox and Beatport) stay English in every language. A language is added with translation files, a `sources.json` entry and one line in `src/i18n/locales.ts`; no template changes. `npm run i18n:stale` lists the translations whose English source has changed since they were made; it never fails the build. German ships first; Spanish and Brazilian Portuguese follow, each as its own piece of work. The weekly blog routine keeps the translated pages in step with the English ones.
+
+**Reason**: DJs who prefer German, Spanish or Portuguese find the product in their own language and search results in their own market, while the English pages stay the one source. Keeping product words English matches what the app shows, so a reader can find a button by the word on the page.
+
+**Decided with**: User (8 Nov 2026, 16:58 Athens: all recommended) · **Date**: 2026-11-08

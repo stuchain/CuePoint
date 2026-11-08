@@ -5,16 +5,30 @@
  */
 import { EXTERNAL_NAV, FOOTER_GROUPS, NAV } from "../data/nav";
 import { PUBLISHER, SITE_NAME } from "../data/site";
+import { fmt } from "../i18n/format";
+import { leavesLanguage, localeFromUrl, localePath } from "../i18n/paths";
+import { localeInfo } from "../i18n/locales";
+import { navLabel, ui } from "../i18n/ui";
 import { hrefFor } from "../lib/url";
 import mark from "../assets/mark/mark-32.svg";
 
 const year = new Date().getFullYear();
+const locale = localeFromUrl(Astro.url);
+const t = ui(locale);
+// a link to a page that has no translation says so with hreflang="en" (DEC-311)
+const toHreflang = (path: string) => (leavesLanguage(locale, path) ? localeInfo("en").hreflang : undefined);
 // TODO(DEC-144): the publisher is the user, as an individual; PUBLISHER is a placeholder name.
 const groups = FOOTER_GROUPS.map((g) => ({
   ...g,
+  label: t.footer[g.id],
   links: [
-    ...NAV.filter((n) => n.group === g.id).map((n) => ({ label: n.label, href: hrefFor(n.path), external: false })),
-    ...EXTERNAL_NAV.filter((n) => n.group === g.id).map((n) => ({ label: n.label, href: n.href, external: true })),
+    ...NAV.filter((n) => n.group === g.id).map((n) => ({
+      label: navLabel(locale, n.path, n.label),
+      href: hrefFor(localePath(locale, n.path)),
+      external: false,
+      hreflang: toHreflang(n.path),
+    })),
+    ...EXTERNAL_NAV.filter((n) => n.group === g.id).map((n) => ({ label: n.label, href: n.href, external: true, hreflang: undefined })),
   ],
 }));
 ---
@@ -22,13 +36,13 @@ const groups = FOOTER_GROUPS.map((g) => ({
 <footer class="footer">
   <div class="inner">
     <div class="about">
-      <a class="brand" href={hrefFor("")}>
+      <a class="brand" href={hrefFor(localePath(locale, ""))}>
         <img src={mark.src} width="32" height="32" alt="" />
         <span>{SITE_NAME}</span>
       </a>
-      <p>A free desktop app that cleans up your Rekordbox library.</p>
+      <p>{t.footer.tagline}</p>
     </div>
-    <nav class="groups" aria-label="Footer">
+    <nav class="groups" aria-label={t.footerNav}>
       {
         groups.map((g) => (
           <div class="group" data-footer-group={g.id}>
@@ -36,7 +50,7 @@ const groups = FOOTER_GROUPS.map((g) => ({
             <ul aria-labelledby={`footer-${g.id}`}>
               {g.links.map((l) => (
                 <li>
-                  <a href={l.href} rel={l.external ? "noopener noreferrer" : undefined}>
+                  <a href={l.href} rel={l.external ? "noopener noreferrer" : undefined} hreflang={l.hreflang}>
                     {l.label}
                   </a>
                 </li>
@@ -46,7 +60,7 @@ const groups = FOOTER_GROUPS.map((g) => ({
         ))
       }
     </nav>
-    <p class="legal">© {year} {PUBLISHER}. {SITE_NAME} is free software for DJs.</p>
+    <p class="legal">{fmt(t.footer.legalLine, { year, publisher: PUBLISHER, site: SITE_NAME })}</p>
   </div>
 </footer>
 

@@ -770,3 +770,94 @@ describe("lighthouserc.json", () => {
     else expect(skipped).toContain("is-crawlable");
   });
 });
+
+describe("languages (DEC-311)", () => {
+  const LOCALES = [
+    { code: "en", hreflang: "en", ogLocale: "en_US" },
+    { code: "de", hreflang: "de", ogLocale: "de_DE" },
+  ];
+  const alternates = (path) =>
+    [
+      ["en", `${SITE_URL}${path}`],
+      ["de", `${SITE_URL}de/${path}`],
+      ["x-default", `${SITE_URL}${path}`],
+    ]
+      .map(([tag, href]) => `<link rel="alternate" hreflang="${tag}" href="${href}">`)
+      .join("");
+  const deVersion = (path, canonical = `de/${path}`) =>
+    page({
+      title: `Deutsche Seite ${path || "start"}`,
+      description: `Deutsch ${path || "start"}. ${LONG_DESC}`,
+      canonicalPath: canonical,
+      head: alternates(path),
+      body: "<h1>Deutsch</h1>",
+    }).replace('<html lang="en">', '<html lang="de">');
+  /** The clean fixture where the home page and the FAQ are translated, as the build would have them. */
+  const translated = (f) => {
+    for (const path of ["", "faq/"]) {
+      const file = path === "" ? "index.html" : `${path}index.html`;
+      f[file] = f[file].replace("</head>", `${alternates(path)}</head>`);
+      f[`de/${file}`] = deVersion(path);
+      f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}de/${path}</loc></url></urlset>`);
+    }
+  };
+  const rules = (edit) => run((f) => (translated(f), edit?.(f)), { locales: LOCALES }).map((r) => `${r.rule} ${r.page}`);
+
+  it("accepts a site whose translated pages have every version and the full alternate set", () => {
+    expect(rules()).toEqual([]);
+  });
+
+  it("checks nothing about languages when it is given none", () => {
+    expect(run((f) => f["index.html"] = f["index.html"].replace('<html lang="en">', '<html lang="xx">'))).toEqual([]);
+  });
+
+  it("fails a page whose <html lang> is not its language", () => {
+    expect(rules((f) => (f["de/faq/index.html"] = f["de/faq/index.html"].replace('lang="de"', 'lang="en"')))).toEqual([
+      "lang-attr de/faq/index.html",
+    ]);
+    expect(rules((f) => (f["about/index.html"] = f["about/index.html"].replace('lang="en"', 'lang="de"')))).toEqual([
+      "lang-attr about/index.html",
+    ]);
+  });
+
+  it("fails a translated page with a language missing", () => {
+    expect(rules((f) => (f["de/faq/index.html"] = null))).toContain("translation-missing faq/index.html");
+  });
+
+  it("fails a page in a language folder whose English page is not translated", () => {
+    expect(rules((f) => (f["de/about/index.html"] = deVersion("about/")))).toContain(
+      "translation-missing de/about/index.html",
+    );
+  });
+
+  it("fails an alternate that is missing, wrong, or not one of the site's languages", () => {
+    const drop = (f) => (f["index.html"] = f["index.html"].replace(/<link rel="alternate" hreflang="de"[^>]*>/, ""));
+    expect(rules(drop)).toEqual(["hreflang index.html"]);
+    const wrong = (f) => (f["de/index.html"] = f["de/index.html"].replace('hreflang="x-default" href="https://example.test/Base/"', 'hreflang="x-default" href="https://example.test/Base/de/"'));
+    expect(rules(wrong)).toEqual(["hreflang de/index.html"]);
+    const extra = (f) => (f["faq/index.html"] = f["faq/index.html"].replace("</head>", `<link rel="alternate" hreflang="fr" href="${SITE_URL}fr/faq/"></head>`));
+    expect(rules(extra)).toContain("hreflang faq/index.html");
+  });
+
+  it("fails a page that is not translated but lists alternates", () => {
+    expect(rules((f) => (f["about/index.html"] = f["about/index.html"].replace("</head>", `${alternates("about/")}</head>`)))).toContain(
+      "hreflang about/index.html",
+    );
+  });
+
+  it("leaves the language pages out of llms.txt and out of the sitemap's required set", () => {
+    expect(rules()).not.toContain("llms-txt de/index.html");
+  });
+
+  it("holds a comparison page in a language folder to the source rule", () => {
+    const body = '<h1>Vergleich</h1><div data-compare-fact>Ein Fakt.</div>';
+    const edit = (f) => {
+      f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}compare/tool/</loc></url></urlset>`);
+      f["llms.txt"] += `- [Compare](${SITE_URL}compare/tool/): compared.\n`;
+      f["compare/tool/index.html"] = page({ title: "CuePoint and a tool", description: `Compare. ${LONG_DESC}`, canonicalPath: "compare/tool/", head: alternates("compare/tool/"), body: `<h1>Compare</h1><h2>Rows</h2><div data-compare-fact>A fact. <p data-compare-source>Source: <a href="https://tool.test/p" rel="noopener noreferrer">P</a>, read on <time datetime="2026-10-08">2026-10-08</time>.</p></div>` });
+      f["de/compare/tool/index.html"] = deVersion("compare/tool/").replace("<h1>Deutsch</h1>", body);
+    };
+    expect(rules(edit)).toContain("compare-source de/compare/tool/index.html");
+    expect(rules(edit)).not.toContain("compare-source compare/tool/index.html");
+  });
+});

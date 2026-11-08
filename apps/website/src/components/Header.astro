@@ -1,6 +1,9 @@
 ---
 import { NAV } from "../data/nav";
 import { PRIMARY_ACTION, SITE_NAME } from "../data/site";
+import { LOCALES, localeInfo, type LocaleCode } from "../i18n/locales";
+import { leavesLanguage, localeFromUrl, localePath, switchTargets } from "../i18n/paths";
+import { navLabel, ui } from "../i18n/ui";
 import { loadReleases } from "../lib/releases";
 import { hrefFor } from "../lib/url";
 import mark from "../assets/mark/mark-32.svg";
@@ -8,10 +11,25 @@ import Button from "./Button.astro";
 import DownloadLabel from "./DownloadLabel.astro";
 
 interface Props {
-  /** The current page's path, relative to the base, to mark its link. */
+  /** The current page's path, relative to the base, to mark its link. It is the English path, whatever language the page is in. */
   currentPath?: string;
+  /** The page's language; read from the address when left out. */
+  locale?: LocaleCode;
 }
 const { currentPath } = Astro.props;
+const locale = Astro.props.locale ?? localeFromUrl(Astro.url);
+const t = ui(locale);
+const info = localeInfo(locale);
+// the language switch: the same page in each language, or that language's home page when the page is English only
+const targets = switchTargets(currentPath ?? "").map((target) => ({ ...target, info: localeInfo(target.code) }));
+// a link to a page with no translation says it leaves the language (DEC-311)
+const toHreflang = (path: string) => (leavesLanguage(locale, path) ? localeInfo("en").hreflang : undefined);
+// The language switch (DEC-311): on a phone it is the last row of the menu (below 62.5rem), from there on a button
+// after the seam. The button is a <details>, so it opens on a click with no script; lib/lang-switch.ts closes it
+// on an outside click or Escape.
+// a pixel globe, 8 by 7
+const GLOBE = ["..XXXX..", ".X.XX.X.", "X..XX..X", "XXXXXXXX", "X..XX..X", ".X.XX.X.", "..XXXX.."];
+const globe = GLOBE.flatMap((row, y) => [...row.matchAll(/X+/g)].map((m) => `M${m.index} ${y}h${m[0].length}v1h-${m[0].length}z`)).join("");
 
 /** "page" for the page itself, "true" for any page inside its section (/guide/ for /guide/library/). */
 function current(path: string): "page" | "true" | undefined {
@@ -32,40 +50,84 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
 <header class="header" data-sticky={currentPath === "" ? undefined : "true"}>
   <div class="chrome">
   <div class="bar" data-home={currentPath === "" ? "true" : undefined}>
-    <a class="brand" href={hrefFor("")}>
+    <a class="brand" href={hrefFor(localePath(locale, ""))}>
       <img class="mark" src={mark.src} width="32" height="32" alt="" />
       <span class="name">{SITE_NAME}</span>
     </a>
 
     <!-- The site wears one theme, the app's default Neo Dark (the owner's choice, 2026-10-09): there is no theme switch. On a phone the nav sits in a menu (a <details>: it works without JavaScript). From 62.5rem up they are in the bar as before. -->
     <details class="menu">
-      <summary class="menu-toggle">Menu</summary>
+      <summary class="menu-toggle">{t.menu}</summary>
       <div class="menu-body">
-        <nav class="nav" aria-label="Main">
+        <nav class="nav" aria-label={t.mainNav}>
           <ul>
             {
               NAV.filter((n) => n.header).map((n) => (
                 <li>
-                  <a href={hrefFor(n.path)} aria-current={current(n.path)}>
-                    {n.label}
+                  <a href={hrefFor(localePath(locale, n.path))} aria-current={current(n.path)} hreflang={toHreflang(n.path)}>
+                    {navLabel(locale, n.path, n.label)}
                   </a>
                 </li>
               ))
             }
           </ul>
         </nav>
+        <div class="lang-row" role="group" aria-labelledby="lang-row-label">
+          <p class="lang-row-label" id="lang-row-label">{t.language.label}</p>
+          <ul>
+            {
+              targets.map((target) => (
+                <li>
+                  <a
+                    href={hrefFor(target.path)}
+                    lang={target.info.hreflang}
+                    hreflang={target.info.hreflang}
+                    aria-current={target.code === locale ? "true" : undefined}
+                  >
+                    {target.info.name}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
       </div>
     </details>
 
     <span class="seam" aria-hidden="true"></span>
 
+    <details class="lang" data-lang-switch>
+      <summary class="lang-toggle">
+        <svg class="globe" viewBox="0 0 8 7" width="16" height="14" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d={globe} /></svg>
+        <span class="lang-code" aria-hidden="true">{info.short}</span>
+        <span class="sr-only">{t.language.label}: {info.name}</span>
+      </summary>
+      <ul class="lang-list" aria-label={t.language.switchLabel}>
+        {
+          targets.map((target) => (
+            <li>
+              <a
+                href={hrefFor(target.path)}
+                lang={target.info.hreflang}
+                hreflang={target.info.hreflang}
+                aria-current={target.code === locale ? "true" : undefined}
+              >
+                <span class="lang-name">{target.info.name}</span>
+                <span class="lang-short" aria-hidden="true">{target.info.short}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </details>
+
     {
       hasRelease ? (
-        <Button href={hrefFor("download/")} class="action js-download">
+        <Button href={hrefFor(localePath(locale, "download/"))} class="action js-download">
           <DownloadLabel />
         </Button>
       ) : (
-        <Button href={PRIMARY_ACTION.href} external class="action">{PRIMARY_ACTION.label}</Button>
+        <Button href={PRIMARY_ACTION.href} external class="action">{locale === "en" ? PRIMARY_ACTION.label : t.primaryAction}</Button>
       )
     }
   </div>
@@ -74,6 +136,7 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
 
 {hasRelease && <script type="application/json" id="cp-releases" set:html={scriptData} />}
 {hasRelease && <script>import "../lib/download-client";</script>}
+{LOCALES.length > 1 && <script>import "../lib/lang-switch";</script>}
 
 <style>
   /*
@@ -257,6 +320,115 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     width: 2rem;
     bottom: var(--space-xs);
   }
+  /*
+   * The language switch (DEC-311). On a phone it is the last row of the menu: a label, then each language as a
+   * link, the current one muted. From 62.5rem it is a button after the seam ("EN" and a globe, like the
+   * Menu button) that opens a list on a click; nothing here is hover only.
+   */
+  .lang {
+    display: none;
+    position: relative;
+  }
+  .lang-row {
+    align-self: stretch;
+    margin-top: var(--space-xs);
+    padding-top: var(--space-md);
+    border-top: var(--border-width) solid var(--border-muted);
+  }
+  .lang-row-label {
+    margin: 0 0 var(--space-xs);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-variant-ligatures: none;
+  }
+  .lang-row ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--r1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .lang-row a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+  .lang-row a[aria-current] {
+    color: var(--fg-muted);
+    text-decoration: none;
+  }
+  .lang-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 2.5rem;
+    padding: var(--space-xs) var(--space-md);
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--focus-halo), var(--shadow-bevel);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-variant-ligatures: none;
+    cursor: pointer;
+    list-style: none;
+  }
+  .lang-toggle::-webkit-details-marker {
+    display: none;
+  }
+  .lang-toggle::after {
+    content: "\25BE";
+    margin-left: var(--space-xs);
+  }
+  .lang[open] .lang-toggle::after {
+    content: "\25B4";
+  }
+  .lang-toggle:active {
+    box-shadow: var(--focus-halo), var(--shadow-bevel-pressed);
+  }
+  .lang[open] .lang-toggle {
+    border-color: var(--accent-primary);
+  }
+  .globe {
+    display: block;
+    flex: none;
+  }
+  .lang-list {
+    position: absolute;
+    z-index: 60;
+    top: calc(100% + var(--space-xs));
+    right: 0;
+    min-width: 15rem;
+    margin: 0;
+    padding: var(--space-xs);
+    list-style: none;
+    background: var(--bg-panel);
+    border: var(--border-width-heavy) solid var(--border-outline);
+    box-shadow: var(--shadow-panel);
+  }
+  .lang-list li {
+    margin: 0;
+  }
+  .lang-list a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    min-height: 2.75rem;
+    padding-inline: var(--space-md);
+    text-decoration: none;
+  }
+  .lang-list a:hover {
+    background: var(--bg-panel-alt);
+  }
+  .lang-list a[aria-current] {
+    background: var(--bg-selected);
+  }
+  .lang-short {
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
+  }
   /* a phone: the lockup, the Menu and the action still fit one row; on the narrowest screens the action wraps */
   @media (max-width: 39.99rem) {
     .bar {
@@ -322,6 +494,12 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
       right: var(--space-sm);
       width: auto;
       bottom: calc(-1 * var(--border-width));
+    }
+    .lang {
+      display: block;
+    }
+    .lang-row {
+      display: none;
     }
     .seam {
       display: block;

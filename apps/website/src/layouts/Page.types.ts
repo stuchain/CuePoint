@@ -1,5 +1,6 @@
 import type { ImageMetadata } from "astro";
 import type { Crumb } from "../components/Breadcrumbs.types";
+import type { LocaleCode } from "../i18n/locales";
 
 /**
  * The only pages allowed to be `noindex` on purpose, and why. A string, not a boolean, so a
@@ -11,11 +12,17 @@ export type NoindexReason = "404" | "thank-you";
 export type JsonLd = Readonly<Record<string, unknown>>;
 
 export interface PageProps {
+  /**
+   * The page's language (DEC-311): `<html lang>`, the canonical address, og:locale. Left out, it is read from the
+   * address (English at the root). A language other than English is only for a translated page, and `path` is
+   * then still the ENGLISH path: the layout adds the language's folder.
+   */
+  locale?: LocaleCode;
   /** The page's `<title>` and its Open Graph title. */
   title: string;
   /** The meta description and its Open Graph description. */
   description: string;
-  /** The page's path relative to the base, no leading slash: "" is home, "download/" is /download/. */
+  /** The page's path relative to the base, no leading slash: "" is home, "download/" is /download/ (in English, whatever its language). */
   path: string;
   /** A ready-made social card; leave it out and the page's card is drawn at build from its title. */
   ogImage?: ImageMetadata;

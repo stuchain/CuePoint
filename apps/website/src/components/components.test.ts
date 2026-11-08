@@ -17,6 +17,44 @@ async function render(component: Parameters<AstroContainer["renderToString"]>[0]
   return container.renderToString(component, { props, slots: { default: slot } });
 }
 
+async function renderAt(url: string, component: Parameters<AstroContainer["renderToString"]>[0], props: Record<string, unknown> = {}) {
+  const container = await AstroContainer.create();
+  return container.renderToString(component, { props, request: new Request(url) });
+}
+
+describe("components in a language (DEC-311)", () => {
+  it("Header: the switch lists English and Deutsch, each marked with its own language, and Deutsch is current on a German page", async () => {
+    const html = await renderAt("https://example.test/de/features/", Header, { currentPath: "features/" });
+    expect(html).toContain("data-lang-switch");
+    expect(html).toMatch(/<a[^>]*hreflang="en"[^>]*href="[^"]*\/features\/"|<a[^>]*href="[^"]*\/features\/"[^>]*hreflang="en"/);
+    expect(html).toContain("Deutsch");
+    expect(html).toContain("English");
+    expect(html).toMatch(/aria-current="true"[^>]*>|aria-current="page"[^>]*lang="de"/);
+  });
+
+  it("Header: an English page offers the German version of the same page", async () => {
+    const html = await renderAt("https://example.test/features/", Header, { currentPath: "features/" });
+    expect(html).toContain("/de/features/");
+  });
+
+  it("Header: the German nav is in German and links to German pages", async () => {
+    const html = await renderAt("https://example.test/de/", Header, { currentPath: "" });
+    expect(html).toContain('href="/de/features/"');
+    expect(html).toContain('href="/de/download/"');
+  });
+
+  it("Footer: in German the group names are German and the footer says so", async () => {
+    const html = await renderAt("https://example.test/de/", Footer);
+    expect(html).toContain("Rechtliches");
+    expect(html).not.toContain(">Legal<");
+  });
+
+  it("Footer: English stays as it was", async () => {
+    const html = await renderAt("https://example.test/", Footer);
+    expect(html).toContain(">Legal<");
+  });
+});
+
 describe("components", () => {
   it("Header: the primary action and the nav, and no theme switch (the site wears one theme)", async () => {
     const html = await render(Header, { currentPath: "" });

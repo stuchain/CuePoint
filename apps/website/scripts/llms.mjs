@@ -4,6 +4,7 @@
  * page's own <title>, meta description and canonical address say, and lists exactly the pages a search
  * engine may index: every page but the 404, the thank-you pages and the style guide (the sitemap's rule).
  * It is a file in dist/, not a page, so the sitemap never lists it. check-site's `llms-txt` rule checks it.
+ * It lists the English pages only (DEC-311): the pages in a language's folder (`localeCodes`) are left out.
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
@@ -21,7 +22,8 @@ export const LLMS_SECTIONS = [
 ];
 
 /** Pages whose role is to be found in search; the sitemap lists the same. `file` is relative to dist. */
-export function isIndexableFile(file) {
+export function isIndexableFile(file, localeCodes = []) {
+  if (localeCodes.some((code) => file.startsWith(`${code}/`))) return false;
   if (file === "404.html" || file === "404/index.html") return false;
   if (/(^|\/)thank-?you(\/|\.html$)/.test(file)) return false;
   if (file === "styleguide/index.html" || file.startsWith("styleguide/")) return false;
@@ -41,10 +43,10 @@ function htmlFiles(dir) {
  * Every indexable page of a build: { path, url, title, description, links }. `links` are the page's
  * own links, in order, used to put a section's pages in the order the site shows them.
  */
-export function readPages(dist) {
+export function readPages(dist, localeCodes = []) {
   return htmlFiles(dist)
     .map((full) => relative(dist, full).split(sep).join("/"))
-    .filter(isIndexableFile)
+    .filter((file) => isIndexableFile(file, localeCodes))
     .sort()
     .map((file) => {
       const root = parse(readFileSync(join(dist, file), "utf8"));
@@ -113,13 +115,13 @@ export function buildLlmsTxt(pages, { siteName, siteUrl, base = "/" }) {
 
 /** Writes dist/llms.txt; returns the number of pages listed. */
 export function writeLlmsTxt(dist, options) {
-  const pages = readPages(dist);
+  const pages = readPages(dist, options.localeCodes ?? []);
   writeFileSync(join(dist, "llms.txt"), buildLlmsTxt(pages, options));
   return pages.length;
 }
 
 /** @returns {import("astro").AstroIntegration} */
-export default function llmsTxt({ siteName }) {
+export default function llmsTxt({ siteName, localeCodes = [] }) {
   let base = "/";
   let site = "";
   return {
@@ -131,7 +133,7 @@ export default function llmsTxt({ siteName }) {
       },
       "astro:build:done": ({ dir, logger }) => {
         const siteUrl = new URL(base, site).href;
-        const count = writeLlmsTxt(fileURLToPath(dir), { siteName, siteUrl, base });
+        const count = writeLlmsTxt(fileURLToPath(dir), { siteName, siteUrl, base, localeCodes });
         logger.info(`wrote llms.txt with ${count} pages`);
       },
     },

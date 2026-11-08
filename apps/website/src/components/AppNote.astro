@@ -1,0 +1,23 @@
+---
+/**
+ * The line that says the app itself is in English and that its areas keep the names the app gives them
+ * (DEC-311). Shown on translated pages only: under the lead of the features pages, next to the download
+ * button, and in the home page's closing band. The language comes from the page's address.
+ */
+import { DEFAULT_LOCALE } from "../i18n/locales";
+import { localeFromUrl } from "../i18n/paths";
+import { ui } from "../i18n/ui";
+
+const locale = localeFromUrl(Astro.url);
+---
+
+{locale !== DEFAULT_LOCALE && <p class="app-note" data-app-note>{ui(locale).appNote}</p>}
+
+<style>
+  .app-note {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+  }
+</style>

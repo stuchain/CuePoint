@@ -84,6 +84,15 @@ h4 {
   text-wrap: balance;
   margin: var(--space-xl) 0 var(--space-md);
 }
+/* German, Spanish and Portuguese words run long (DEC-311): a heading breaks inside a word at its syllables, or at the edge if it must, before it runs off a phone's screen. `lang` is on <html>. */
+html:not(:lang(en)) :is(h1, h2, h3, h4) {
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+/* the page title breaks at the hyphens a compound already has ("Rekordbox-Bibliothek"), so a product name is never cut in two */
+html:not(:lang(en)) h1 {
+  hyphens: manual;
+}
 h1 {
   font-size: var(--t-title);
   line-height: 1.04;

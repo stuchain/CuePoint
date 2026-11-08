@@ -21,6 +21,7 @@
     "precheck": "npm run sync-tokens && npm run sync-assets",
     "pretest": "npm run sync-tokens && npm run sync-assets",
     "check:site": "node scripts/check-site.mjs",
+    "i18n:stale": "node scripts/i18n-stale.mjs",
     "pretest:e2e": "node scripts/build-fixture.mjs",
     "test:e2e": "playwright test",
     "check:lighthouse": "lhci autorun --config=./lighthouserc.cjs"

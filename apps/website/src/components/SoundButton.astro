@@ -5,6 +5,8 @@
  * script for it. Off by default; pressed, it plays the loop and the voxels move to it
  * (src/lib/sound-client.ts: Web Audio's analyser). No sound ever plays unasked.
  */
+import { localeFromUrl } from "../i18n/paths";
+import { ui } from "../i18n/ui";
 import { pickLoop } from "../lib/loop";
 
 // the literal glob must equal LOOP_FILE_PATTERN in src/lib/loop.ts
@@ -14,6 +16,7 @@ const files = import.meta.glob<string>("../assets/audio/home-loop.{mp3,m4a,ogg,w
   import: "default",
 });
 const loop = pickLoop(files);
+const label = ui(localeFromUrl(Astro.url)).sound;
 ---
 
 {
@@ -25,7 +28,7 @@ const loop = pickLoop(files);
           <path class="wave" fill="currentColor" d="M5 3h1v2H5zM6 2h1v4H6z" />
           <path class="mute" fill="currentColor" d="M5 2h1v1h1V2h1v1H7v1h1v1H7V4H6v1H5V4h1V3H5z" />
         </svg>
-        <span class="label">Sound</span>
+        <span class="label">{label}</span>
       </button>
     </>
   )
