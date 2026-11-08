@@ -162,6 +162,7 @@ src/output/
 !apps/**/package-lock.json
 !apps/**/tsconfig*.json
 !apps/**/.oxlintrc.json
+!apps/website/src/i18n/sources.json
 
 # Build manifests (exception to user-output *.json above). The player sidecar
 # pin is source, not output: without it a fresh clone cannot fetch mpv.
