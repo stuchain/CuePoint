@@ -42,6 +42,10 @@ export const en = {
     privacy: "Privacy",
     terms: "Terms",
   },
+  /** The footer's links that leave the site, by their id in src/data/nav.ts (EXTERNAL_NAV): names, so the same in every language. */
+  external: {
+    github: "GitHub",
+  },
   footer: {
     product: "Product",
     help: "Help",

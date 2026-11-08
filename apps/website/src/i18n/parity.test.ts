@@ -10,8 +10,9 @@ import { DESCRIPTION_MAX, DESCRIPTION_MIN } from "../content/guide";
 import { compareFor, featuresFor, homeFor } from "./content";
 import { placeholdersOf } from "./format";
 import { OTHER_LOCALES } from "./locales";
-import { NAV } from "../data/nav";
+import { EXTERNAL_NAV, NAV } from "../data/nav";
 import { PRIMARY_ACTION } from "../data/site";
+import { LOCKED_WORDS, NOT_TEXT_KEYS, hasLocked, lostWords, sameOnPurpose } from "./locked";
 import { en, NAV_KEYS, ui } from "./ui";
 
 /**
@@ -43,73 +44,6 @@ const markup = (text: string) => ({
   bold: (text.match(/\*\*/g) ?? []).length,
 });
 
-/**
- * Words that stay English in every language (docs/translation.md). A translation of a string that contains one
- * must contain it too.
- */
-export const LOCKED_WORDS = [
-  "CuePoint",
-  "Rekordbox",
-  "Beatport",
-  "Camelot",
-  "Clean",
-  "Library",
-  "Keys",
-  "Discover",
-  "Prepare",
-  "Statistics",
-  "Waveforms",
-  "Save to files",
-  "Rekordbox file",
-  "Mark OK",
-  "Correct",
-  "Undo",
-  "BPM",
-  "Hot Cue",
-  "Beatgrid",
-  "Playlist",
-  "AppImage",
-  "XML",
-  "M3U8",
-  "CSV",
-  "SHA-256",
-  "GitHub",
-];
-
-/**
- * Strings that are the same in English and in a translation on purpose: names, product words and codes
- * a DJ reads the same in every language. Anything else that equals its English source is untranslated.
- */
-export const SAME_ON_PURPOSE = new Set([
-  "Clean",
-  "The Library",
-  "Keys",
-  "Discover",
-  "Prepare",
-  "Statistics",
-  "Export to Rekordbox",
-  "Waveforms and the player",
-  "Download",
-  "FAQ",
-  "Blog",
-  "Windows",
-  "Mac",
-  "Linux",
-  "Mac, Intel",
-  "Open Source",
-  "Lexicon",
-  "Mixed In Key",
-  "OpenKeyScan",
-  "Version {version}",
-  "Energy",
-  "Offline",
-  "Menu",
-  "Legal",
-]);
-
-/** The keys that hold an id, an address or a reference and not words: they are the same in every language. */
-const NOT_TEXT_KEYS = new Set(["id", "slug", "shot", "page", "path", "url", "file", "phrase", "step", "checked", "maker", "name", "related", "fromDecisions", "hosts"]);
-
 const englishFaq = yaml.load(readFileSync(resolve(SITE, "src/content/faq.yaml"), "utf8")) as { id: string; order: number; question: string; answer: string; links: { page: string; heading?: string; label: string }[] }[];
 
 for (const locale of OTHER_LOCALES) {
@@ -119,16 +53,25 @@ for (const locale of OTHER_LOCALES) {
   describe(`${code}: the UI strings`, () => {
     const t = ui(code);
 
-    it("have exactly the English keys, in the same shape", () => {
-      expect(shape(t)).toEqual(shape(en));
+    // a language's plural words: `other` always, `one` as English has it, and any of the CLDR forms its rule needs
+    const EXTRA_PLURALS = /^downloadedTimes\.(zero|two|few|many): string$/;
+    const english = new Map(leaves(en));
+    const englishFor = (path: string) => english.get(path) ?? english.get(path.replace(/\.(zero|two|few|many)$/, ".other"));
+
+    it("have exactly the English keys, in the same shape (a plural may add the CLDR forms its language needs)", () => {
+      expect(shape(t).filter((line) => !EXTRA_PLURALS.test(line))).toEqual(shape(en));
     });
 
     it("keep every placeholder and every link and bold marker of the English string", () => {
-      const english = new Map(leaves(en));
       for (const [path, text] of leaves(t)) {
-        expect(placeholdersOf(text), `${path} placeholders`).toEqual(placeholdersOf(english.get(path)!));
-        expect(markup(text), `${path} markup`).toEqual(markup(english.get(path)!));
+        const source = englishFor(path)!;
+        expect(placeholdersOf(text), `${path} placeholders`).toEqual(placeholdersOf(source));
+        expect(markup(text), `${path} markup`).toEqual(markup(source));
       }
+    });
+
+    it("say the count in every plural form", () => {
+      for (const [path, text] of leaves(t.downloadedTimes)) expect(text, path).toContain("{count}");
     });
   });
 
@@ -225,11 +168,12 @@ for (const locale of OTHER_LOCALES) {
     /** Every [path, English, translation] where the two are the same string. */
     function same(english: unknown, translated: unknown): [string, string][] {
       const en = new Map(leaves(english));
+      const allowed = sameOnPurpose(code);
       return leaves(translated).filter(
         ([path, text]) =>
           en.get(path) === text &&
           /\p{L}{2}/u.test(text) &&
-          !SAME_ON_PURPOSE.has(text) &&
+          !allowed.has(text) &&
           !NOT_TEXT_KEYS.has(path.replace(/\[\d+\]$/, "").split(".").pop()!),
       );
     }
@@ -274,18 +218,18 @@ for (const locale of OTHER_LOCALES) {
       const en = new Map(leaves(english));
       return leaves(translated).map(([path, text]) => [path, en.get(path) ?? "", text]);
     }
-    const wordIn = (word: string, text: string) => new RegExp(`(?<![\\p{L}\\p{N}])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "u").test(text);
 
     function expectLocked(label: string, list: [string, string, string][]) {
       const lost: string[] = [];
       for (const [path, english, translated] of list) {
-        for (const word of LOCKED_WORDS) {
-          // an area name starts a sentence or follows "the": only a capitalized whole word counts
-          if (wordIn(word, english) && !wordIn(word, translated)) lost.push(`${path}: "${word}"`);
-        }
+        for (const word of lostWords(english, translated)) lost.push(`${path}: "${word}" in "${translated}"`);
       }
       expect(lost, label).toEqual([]);
     }
+
+    const trust = (list: readonly { id: string; title: string; text: string }[]) => list.map(({ id, title, text }) => ({ id, title, text }));
+    const toolText = (tools: readonly (typeof EN_COMPARE)[number][]) =>
+      tools.map((t) => ({ ...t, hosts: [], rows: t.rows.map((r) => ({ topic: r.topic, other: r.other.text, label: r.other.source.label, cuepoint: r.cuepoint })) }));
 
     it("in the UI strings", () => expectLocked("ui", pairs(en, ui(code))));
     it("in the page content", () => {
@@ -293,12 +237,18 @@ for (const locale of OTHER_LOCALES) {
       const c = compareFor(code);
       const h = homeFor(code);
       expectLocked("features", pairs({ p: EN_FEATURES, o: EN_OVERVIEW }, { p: f.FEATURE_PAGES, o: f.OVERVIEW }));
-      expectLocked("compare", pairs(EN_COMPARE.map((t) => ({ ...t, rows: t.rows.map((r) => ({ topic: r.topic, other: r.other.text, cuepoint: r.cuepoint })) })), c.COMPARE_TOOLS.map((t) => ({ ...t, rows: t.rows.map((r) => ({ topic: r.topic, other: r.other.text, cuepoint: r.cuepoint })) }))));
-      expectLocked("home", pairs({ s: EN_STEPS, f: EN_HOME_FEATURES, h: EN_HERO }, { s: h.OPENING_STEPS, f: h.FEATURES, h: h.HERO }));
+      expectLocked("compare", pairs(toolText(EN_COMPARE), toolText(c.COMPARE_TOOLS)));
+      expectLocked(
+        "home",
+        pairs(
+          { s: EN_STEPS, f: EN_HOME_FEATURES, h: EN_HERO, t: trust(EN_TRUST), a: EN_SHOTS },
+          { s: h.OPENING_STEPS, f: h.FEATURES, h: h.HERO, t: trust(h.TRUST), a: h.APP_SHOTS },
+        ),
+      );
     });
-    it("in the FAQ", () => {
+    it("in the FAQ, its link labels included", () => {
       const translated = yaml.load(readFileSync(faqFile, "utf8")) as typeof englishFaq;
-      const text = (q: typeof englishFaq) => q.map((e) => ({ question: e.question, answer: e.answer }));
+      const text = (q: typeof englishFaq) => q.map((e) => ({ question: e.question, answer: e.answer, labels: e.links.map((l) => l.label) }));
       expectLocked("faq", pairs(text(englishFaq), text(translated)));
     });
   });
@@ -325,7 +275,47 @@ describe("the English UI strings", () => {
   });
 });
 
+describe("the lists the tests are held to (src/i18n/locked.ts)", () => {
+  /** Every English string a translation is made from. */
+  const english = () => [
+    ...leaves(en),
+    ...leaves({ o: EN_OVERVIEW, p: EN_FEATURES }),
+    ...leaves({ s: EN_STEPS, f: EN_HOME_FEATURES, h: EN_HERO, t: EN_TRUST, a: EN_SHOTS }),
+    ...leaves(EN_COMPARE.map((t) => ({ ...t, rows: t.rows.map((r) => ({ topic: r.topic, other: r.other.text, label: r.other.source.label, cuepoint: r.cuepoint })) }))),
+    ...leaves(englishFaq.map((e) => ({ question: e.question, answer: e.answer, labels: e.links.map((l) => l.label) }))),
+  ];
+
+  it("hold only words the English sources use: a dead entry is dropped, and a new name is added first", () => {
+    const text = english();
+    const unused = LOCKED_WORDS.filter((l) => !text.some(([, t]) => hasLocked(l, t))).map((l) => l.word);
+    expect(unused).toEqual([]);
+  });
+
+  it("match the forms the English really has, in any case where the word is a DJ word", () => {
+    const find = (w: string) => LOCKED_WORDS.find((l) => l.word === w)!;
+    expect(hasLocked(find("hot cue"), "Set Hot Cues and memory cues")).toBe(true);
+    expect(hasLocked(find("hot cue"), "hotcues")).toBe(true);
+    expect(hasLocked(find("beat grid"), "the Beatgrid is off")).toBe(true);
+    expect(hasLocked(find("playlist"), "Your Playlists")).toBe(true);
+    expect(hasLocked(find("playlist"), "Spielliste")).toBe(false);
+    // an area name is the capitalized word only: the general noun is translated
+    expect(hasLocked(find("Library"), "your library")).toBe(false);
+    expect(hasLocked(find("Library"), "the Library tab")).toBe(true);
+    expect(lostWords("Open Track details and a Smart Collection", "Öffne die Titeldetails")).toEqual(["Smart Collection", "Track details"]);
+  });
+
+  it("keep a real English phrase out of every language's allow-list", () => {
+    for (const code of ["de", "es", "pt-br", "xx"]) {
+      for (const phrase of ["The Library", "Waveforms and the player", "Export to Rekordbox", "Legal"]) expect(sameOnPurpose(code).has(phrase), `${code}: ${phrase}`).toBe(false);
+    }
+  });
+});
+
 describe("the English strings the site data also holds", () => {
+  it("every link that leaves the site has its name in the UI strings", () => {
+    for (const link of EXTERNAL_NAV) expect(en.external[link.id], link.id).toBe(link.label);
+  });
+
   it("the English primary action is the one in data/site.ts", () => {
     expect(en.primaryAction).toBe(PRIMARY_ACTION.label);
   });

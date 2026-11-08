@@ -36,6 +36,9 @@ const es: UiStrings = {
     privacy: "Privacidad",
     terms: "Términos",
   },
+  external: {
+    github: "GitHub",
+  },
   footer: {
     product: "Producto",
     help: "Ayuda",

@@ -37,6 +37,9 @@ const ptBr: UiStrings = {
     privacy: "Privacidade",
     terms: "Termos",
   },
+  external: {
+    github: "GitHub",
+  },
   footer: {
     product: "Produto",
     help: "Ajuda",

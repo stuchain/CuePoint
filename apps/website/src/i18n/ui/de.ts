@@ -36,6 +36,9 @@ const de: UiStrings = {
     privacy: "Datenschutz",
     terms: "Nutzungsbedingungen",
   },
+  external: {
+    github: "GitHub",
+  },
   footer: {
     product: "Produkt",
     help: "Hilfe",

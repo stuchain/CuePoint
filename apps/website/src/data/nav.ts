@@ -36,6 +36,6 @@ export const NAV: readonly NavItem[] = [
 ];
 
 /** Links that leave the site. */
-export const EXTERNAL_NAV: readonly { readonly label: string; readonly href: string; readonly group: FooterGroupId }[] = [
-  { label: "GitHub", href: "https://github.com/stuchain/CuePoint", group: "help" },
+export const EXTERNAL_NAV: readonly { readonly id: "github"; readonly label: string; readonly href: string; readonly group: FooterGroupId }[] = [
+  { id: "github", label: "GitHub", href: "https://github.com/stuchain/CuePoint", group: "help" },
 ];
