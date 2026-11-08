@@ -1,7 +1,9 @@
 // The LinkedIn demo: what each shot shows, how long it lasts and where the camera looks.
-// Lengths are whole bars of the music (130 BPM, a bar is 1.846 s) so every cut lands on a bar.
+// Lengths are whole bars of the music (130 BPM, a bar is 1.846 s, unless the edit names another tempo) so every
+// cut lands on a bar.
 export const FPS = 30;
-export const BAR = (60 / 130) * 4;
+export const BPM = 130;
+export const BAR = (60 / BPM) * 4;
 export const FORMATS = { portrait: { width: 1080, height: 1350 }, wide: { width: 1920, height: 1080 }, tall: { width: 1080, height: 1920 } };
 
 /** Seconds two shots dissolve into each other, and the frames each shot plays on under that dissolve. */
@@ -116,8 +118,24 @@ export const SHORT = {
       cam: [{ view: RAIL }, { at: 1.6, view: SECTION }] },
   ],
 };
+/**
+ * The LinkedIn cut on Musinova's "Minimal Techno Electronic Underscore" (Pixabay, 100 BPM, a bar is 2.4 s): the
+ * short edit's clicks and pace rule with the bars re-budgeted to 25 (60.2 s). Rendered with --start=33.42 the
+ * track's breakdown sits under Library and Player, its return lands on the cut into Clean, and its own fade-out
+ * plays under the end card.
+ */
+const UNDERSCORE_BARS = { library: 2, player: 2, clean: 4.5, discover: 2.5, prepare: 2.5, keys: 1, statistics: 1, save: 2, export: 1.5, settings: 1 };
+// Half bars are two beats, so a cut on one still lands on a beat. Spans that differ from the short edit's.
+const UNDERSCORE_SPANS = { player: [0.8, 10.4], export: [1.2, 7.5], prepare: [0.8, 11.0] };
+export const UNDERSCORE = {
+  ...SHORT,
+  bpm: 100,
+  shots: SHORT.shots.map((s) => ({ ...s, bars: UNDERSCORE_BARS[s.id], ...(UNDERSCORE_SPANS[s.id] ? { span: UNDERSCORE_SPANS[s.id] } : {}) })),
+};
 /** The edits that replace the full tour, by their ?edit= name. */
-export const EDITS = { story: STORY, short: SHORT };
+export const EDITS = { story: STORY, short: SHORT, underscore: UNDERSCORE };
+/** Seconds of one bar of an edit's music. */
+export const barOf = (edit) => (60 / (EDITS[edit]?.bpm ?? BPM)) * 4;
 
 /**
  * Each shot: the raw clip (`<id>.mkv` from e2e/capture/demo.spec.ts), the stretch of it used (`span`, clip
@@ -283,6 +301,7 @@ export const fadeOf = (edit) => EDITS[edit]?.fade ?? SHOT_FADE;
 export function layout(opening = "a", edit = "full") {
   const cut = EDITS[edit];
   const fade = fadeOf(edit);
+  const BAR = barOf(edit);
   const open = cut ? { bars: cut.openBars } : (OPENINGS[opening] ?? OPENINGS.a);
   const OPEN = { seconds: 0.2 + open.bars * BAR, bars: open.bars };
   const END_ = { seconds: (cut ? cut.endBars : 3) * BAR };

@@ -1,7 +1,5 @@
 // The demo's timeline: seek(t) draws the frame at t seconds. Driven frame by frame by scripts/render-demo.mjs.
-import { BAR, FPS, FORMATS, fadeOf, layout } from "./shots.js";
-
-const BEAT = BAR / 4;
+import { EDITS, FPS, FORMATS, barOf, fadeOf, layout } from "./shots.js";
 
 const params = new URLSearchParams(location.search);
 const format = FORMATS[params.get("format")] ? params.get("format") : "portrait";
@@ -12,8 +10,9 @@ stage.classList.add(`f-${format}`);
 Object.assign(stage.style, { width: `${width}px`, height: `${height}px` });
 
 // the timeline: opening, one slot per shot (whole bars of the music), the end card
-const edit = ["story", "short"].includes(params.get("edit")) ? params.get("edit") : "full";
+const edit = params.get("edit") in EDITS ? params.get("edit") : "full";
 const { OPEN, END, shots: slots, endStart, duration: DURATION } = layout(opening, edit);
+const BEAT = barOf(edit) / 4;
 // the title lines land on beats; the 2-bar story opening and the short edits' end cards use half beats
 const STEP = edit === "story" ? BEAT / 2 : BEAT;
 const END_STEP = edit === "full" ? BEAT : BEAT / 2;

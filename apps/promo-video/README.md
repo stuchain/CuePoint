@@ -79,11 +79,15 @@ An 85 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350
 4. The shorter cuts: `--edit=short` is the 60 s LinkedIn cut (3-bar opening, all ten features, faster waits: a
    click is kept 0.4 s, no wait between two moments rests over a second, 0.6 s dissolves, each shot opens on
    its lean-in view); `--edit=story` is the 30 s Instagram story cut. Both are `STORY` and `SHORT` in
-   `demo/shots.js`.
+   `demo/shots.js`. `--edit=underscore` is the short edit re-budgeted to 25 bars for Musinova's "Minimal
+   Techno Electronic Underscore" (Pixabay, 100 BPM; an edit may name its own `bpm`, and half bars are allowed
+   since two beats still land on a beat): `--track=<that mp3> --start=33.42` puts the track's return on the
+   cut into Clean and its own fade-out under the end card.
 
 `demo/shots.js` holds each shot: its caption, its length in bars (130 BPM), the stretch of its clip used and the
 moments in it that play at normal speed (`keep`: the clicks, the typing, things appearing). Nothing is cut: the
 waits between those moments run faster, easing there and back, by exactly the factor that fills the slot. Camera
 keyframes are in shot seconds; frame each so the dialog or list a shot is about and the mouse stay wholly in view.
 Shots dissolve into each other, and the rail chip and counter hand over under the same dissolve. Music: `--track=<your own file> --start=<s>` names the output -PRIVATE;
-the track never goes in the repository.
+the track never goes in the repository. Its loudness is measured over the stretch used and applied as one static
+gain, so a breakdown or a fade-out in the music stays as the track has it.
