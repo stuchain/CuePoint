@@ -771,7 +771,7 @@ describe("lighthouserc.json", () => {
   });
 });
 
-describe("languages (DEC-311)", () => {
+describe("languages (DEC-312)", () => {
   const LOCALES = [
     { code: "en", hreflang: "en", ogLocale: "en_US" },
     { code: "de", hreflang: "de", ogLocale: "de_DE" },

@@ -1,7 +1,7 @@
 import type { UiStrings } from "./en";
 
 /**
- * Los textos de la interfaz en español (DEC-311): todo lo que dicen por sí mismas las páginas traducidas y el
+ * Los textos de la interfaz en español (DEC-312): todo lo que dicen por sí mismas las páginas traducidas y el
  * marco común. Trato de tú. Las mismas claves que en.ts (el tipo lo exige), los mismos marcadores {name} y las
  * mismas marcas (**negrita**, [texto](clave)). Las palabras de docs/translation.md se quedan en inglés.
  */

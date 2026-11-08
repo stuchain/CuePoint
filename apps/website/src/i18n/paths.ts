@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, LOCALES, OTHER_LOCALES, TRANSLATED_PATHS, type LocaleCode } from "./locales";
 
 /**
- * Paths and languages (DEC-311). A "path" is relative to the base, no leading slash, "" for the home page,
+ * Paths and languages (DEC-312). A "path" is relative to the base, no leading slash, "" for the home page,
  * the way the rest of the site writes them. Every function here takes and returns the ENGLISH path unless it
  * says otherwise, so a page has one name whatever language it is shown in.
  */

@@ -4,7 +4,7 @@
  * page's own <title>, meta description and canonical address say, and lists exactly the pages a search
  * engine may index: every page but the 404, the thank-you pages and the style guide (the sitemap's rule).
  * It is a file in dist/, not a page, so the sitemap never lists it. check-site's `llms-txt` rule checks it.
- * It lists the English pages only (DEC-311): the pages in a language's folder (`localeCodes`) are left out.
+ * It lists the English pages only (DEC-312): the pages in a language's folder (`localeCodes`) are left out.
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";

@@ -1,4 +1,4 @@
-# O FAQ em português do Brasil (DEC-311). Estrutura igual à de src/content/faq.yaml: mesmos ids, mesma ordem, os
+# O FAQ em português do Brasil (DEC-312). Estrutura igual à de src/content/faq.yaml: mesmos ids, mesma ordem, os
 # mesmos links para o guia (page e heading). Só se traduzem question, answer e os nomes dos links.
 # O guia em si está em inglês; os links levam até ele.
 

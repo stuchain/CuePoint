@@ -1,4 +1,4 @@
-# La FAQ en español (DEC-311). Estructura como src/content/faq.yaml: los mismos ids, el mismo orden, los mismos
+# La FAQ en español (DEC-312). Estructura como src/content/faq.yaml: los mismos ids, el mismo orden, los mismos
 # enlaces a la guía (page y heading). Solo se traducen question, answer y los nombres de los enlaces.
 # La guía está en inglés; los enlaces llevan allí.
 

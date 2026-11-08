@@ -22,7 +22,7 @@ type Props = PageProps;
 
 const { title, description, path, ogImage, ogPicture, schema = [], breadcrumbs, noindex, ogType = "website", publishedTime, tags = [] } = Astro.props as PageProps;
 
-// the page's language (DEC-311): given by a translated page's view, else read from the address
+// the page's language (DEC-312): given by a translated page's view, else read from the address
 const locale = Astro.props.locale ?? localeFromUrl(Astro.url);
 const info = localeInfo(locale);
 const t = ui(locale);

@@ -1,7 +1,7 @@
 import { COMPARE_CHECKED, type CompareTool, type OtherFact, type Source } from "../../compare";
 
 /**
- * Las páginas de comparación en español (DEC-311). Las direcciones, las fechas y el orden de las fuentes son los
+ * Las páginas de comparación en español (DEC-312). Las direcciones, las fechas y el orden de las fuentes son los
  * del inglés (src/i18n/parity.test.ts lo comprueba); se traducen los textos y los nombres de los enlaces.
  * Las citas de las páginas de las otras herramientas se quedan en inglés, porque son citas literales.
  */

@@ -13,7 +13,7 @@ import { escapeHtml } from "../i18n/rich";
 import { localeFromUrl } from "../i18n/paths";
 import { ui } from "../i18n/ui";
 
-// the notice is in the page's language (DEC-311); the cookie names go where {names} is, in their own element
+// the notice is in the page's language (DEC-312); the cookie names go where {names} is, in their own element
 const t = ui(localeFromUrl(Astro.url)).consent;
 const [bodyBefore = "", bodyAfter = ""] = escapeHtml(fmt(t.body, { names: "\u0000" })).split("\u0000");
 ---

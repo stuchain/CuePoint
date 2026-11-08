@@ -1,5 +1,5 @@
 /**
- * The site's languages, read as text from src/i18n/locales.ts (DEC-311). Node 22.12 cannot import .ts, and
+ * The site's languages, read as text from src/i18n/locales.ts (DEC-312). Node 22.12 cannot import .ts, and
  * the scripts (check-site, i18n-stale) must not need a build to know the languages, so they read the
  * registry the way check-site reads site.config.ts. `src/i18n/locales.test.ts` holds this reader and the
  * real registry to the same answer.

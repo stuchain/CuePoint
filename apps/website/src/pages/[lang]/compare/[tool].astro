@@ -3,7 +3,7 @@ import { COMPARE_TOOLS } from "../../../data/compare";
 import { OTHER_LOCALES, type LocaleCode } from "../../../i18n/locales";
 import ComparePage from "../../../views/ComparePage.astro";
 
-/** /<code>/compare/<tool>/ (DEC-311). */
+/** /<code>/compare/<tool>/ (DEC-312). */
 export function getStaticPaths() {
   return OTHER_LOCALES.flatMap((l) =>
     COMPARE_TOOLS.map((tool) => ({ params: { lang: l.code, tool: tool.slug }, props: { locale: l.code as LocaleCode, slug: tool.slug } })),

@@ -4,7 +4,7 @@ import { faqEntrySchema } from "./faq-schema";
 import { DEFAULT_LOCALE, type LocaleCode } from "./locales";
 
 /**
- * The FAQ entries of a language (DEC-311): English is the `faq` collection (src/content/faq.yaml); another
+ * The FAQ entries of a language (DEC-312): English is the `faq` collection (src/content/faq.yaml); another
  * language is `src/content/faq.<code>.yaml`, found by name and checked with the same schema.
  */
 export interface FaqEntry {

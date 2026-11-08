@@ -1,4 +1,4 @@
-# Translating the website (DEC-311)
+# Translating the website (DEC-312)
 
 The site is in English, German (`de`), Spanish (`es`) and Brazilian Portuguese (`pt-br`). English is the
 source: it lives at the site root and every translated page says `x-default` is the English one. This page is

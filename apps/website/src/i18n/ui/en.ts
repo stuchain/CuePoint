@@ -1,6 +1,6 @@
 /**
  * Every inline string the translated pages and the shared page chrome use, in English: the source the
- * other languages are translated from (DEC-311). The words are the ones the pages always had; only their
+ * other languages are translated from (DEC-312). The words are the ones the pages always had; only their
  * place changed. A language's file (`de.ts`, ...) is typed `typeof en`, so it must have every key.
  *
  * Placeholders are written `{name}` and filled by `fmt()` (src/i18n/format.ts). Inline emphasis and links are

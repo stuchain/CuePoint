@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Which translations have gone stale (DEC-311): `npm run i18n:stale`.
+ * Which translations have gone stale (DEC-312): `npm run i18n:stale`.
  *
  * src/i18n/sources.json holds, for each language and each English source file it was translated from, the sha256
  * of the file, the git commit the English was at, and the day it was recorded. This script hashes the English files

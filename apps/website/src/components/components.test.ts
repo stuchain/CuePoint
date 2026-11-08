@@ -22,7 +22,7 @@ async function renderAt(url: string, component: Parameters<AstroContainer["rende
   return container.renderToString(component, { props, request: new Request(url) });
 }
 
-describe("components in a language (DEC-311)", () => {
+describe("components in a language (DEC-312)", () => {
   it("Header: the switch lists English and Deutsch, each marked with its own language, and Deutsch is current on a German page", async () => {
     const html = await renderAt("https://example.test/de/features/", Header, { currentPath: "features/" });
     expect(html).toContain("data-lang-switch");

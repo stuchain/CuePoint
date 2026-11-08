@@ -1,7 +1,7 @@
 import type { FeaturePage, Overview } from "../../features";
 
 /**
- * Las páginas de funciones en español (DEC-311). Los mismos hechos que el inglés, trato de tú. Los nombres de la
+ * Las páginas de funciones en español (DEC-312). Los mismos hechos que el inglés, trato de tú. Los nombres de la
  * app (Clean, Library, Keys, Discover, Prepare, Statistics, Waveforms, Match, Health, Collection, Track details,
  * "Write tags to files", "No Beatport key") y las palabras de DJ (key, BPM, cue, Hot Cue, Beatgrid, Playlist, Set,
  * track, remix) se quedan en inglés. La estructura y los campos que no son texto los comprueba src/i18n/parity.test.ts.

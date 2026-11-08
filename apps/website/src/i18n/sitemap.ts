@@ -7,7 +7,7 @@ interface Item {
 }
 
 /**
- * Adds the `x-default` alternate to a translated page's sitemap entry (DEC-311): the integration lists one
+ * Adds the `x-default` alternate to a translated page's sitemap entry (DEC-312): the integration lists one
  * alternate per language, and the pages themselves also name the English version as `x-default`. The sitemap and
  * the pages must give the same set, so the same address is added here. A page with no alternates is left alone.
  */

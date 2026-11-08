@@ -2,7 +2,7 @@
 import { OTHER_LOCALES, type LocaleCode } from "../../../i18n/locales";
 import CompareIndexPage from "../../../views/CompareIndexPage.astro";
 
-/** /<code>/compare/ (DEC-311). */
+/** /<code>/compare/ (DEC-312). */
 export function getStaticPaths() {
   return OTHER_LOCALES.map((l) => ({ params: { lang: l.code }, props: { locale: l.code as LocaleCode } }));
 }

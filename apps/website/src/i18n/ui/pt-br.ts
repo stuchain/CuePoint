@@ -1,7 +1,7 @@
 import type { UiStrings } from "./en";
 
 /**
- * Os textos da interface em português do Brasil (DEC-311): tudo o que as páginas traduzidas e a moldura
+ * Os textos da interface em português do Brasil (DEC-312): tudo o que as páginas traduzidas e a moldura
  * comum dizem por conta própria. Tratamento por "você". As mesmas chaves de en.ts (o tipo garante isso), os
  * mesmos marcadores {nome} e as mesmas marcações (**negrito**, [texto](chave)). As palavras de
  * docs/translation.md ficam em inglês.

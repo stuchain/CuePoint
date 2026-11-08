@@ -2,7 +2,7 @@ import { APP_SHOTS as EN_APP_SHOTS, TRUST as EN_TRUST, type Hero, type AppShotDe
 import { featureHref } from "../../features";
 
 /**
- * A página inicial em português do Brasil (DEC-311). Os mesmos fatos do inglês, tratamento por "você", as
+ * A página inicial em português do Brasil (DEC-312). Os mesmos fatos do inglês, tratamento por "você", as
  * palavras de docs/translation.md ficam em inglês. A estrutura e os campos que não são texto são conferidos
  * por src/i18n/parity.test.ts.
  */

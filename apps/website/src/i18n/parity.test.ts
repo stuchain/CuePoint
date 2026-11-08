@@ -16,7 +16,7 @@ import { LOCKED_WORDS, NOT_TEXT_KEYS, hasLocked, lostWords, sameOnPurpose } from
 import { en, NAV_KEYS, ui } from "./ui";
 
 /**
- * Every translation has exactly the English structure (DEC-311), and nothing is left untranslated. The tests run
+ * Every translation has exactly the English structure (DEC-312), and nothing is left untranslated. The tests run
  * for every language in src/i18n/locales.ts, so a language added there is held to the same rules with no edit here.
  */
 

@@ -2,7 +2,7 @@ import { COMPARE_TOOLS, compareHref } from "../data/compare";
 import { FEATURE_PAGES, featureHref } from "../data/features";
 
 /**
- * The site's languages (DEC-311). English lives at the root of the site; every other language lives under
+ * The site's languages (DEC-312). English lives at the root of the site; every other language lives under
  * `/<code>/`, at the same path as the English page (the slugs stay English).
  *
  * ADDING A LANGUAGE is exactly this: one entry below, plus the translation files (docs/translation.md):

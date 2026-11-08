@@ -66,7 +66,7 @@ describe("llms.txt", () => {
   });
 });
 
-describe("llms.txt and the languages (DEC-311)", () => {
+describe("llms.txt and the languages (DEC-312)", () => {
   it("leaves out the pages in a language's folder, and only when told the language", () => {
     expect(isIndexableFile("de/features/index.html")).toBe(true);
     expect(isIndexableFile("de/features/index.html", ["de"])).toBe(false);

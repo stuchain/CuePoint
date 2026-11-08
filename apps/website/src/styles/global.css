@@ -84,7 +84,7 @@ h4 {
   text-wrap: balance;
   margin: var(--space-xl) 0 var(--space-md);
 }
-/* German, Spanish and Portuguese words run long (DEC-311): a heading breaks at the hyphens a compound already has ("Rekordbox-Bibliothek"), or at the edge only when one word is wider than the screen, so a name like CuePoint is never hyphenated. `lang` is on <html>. */
+/* German, Spanish and Portuguese words run long (DEC-312): a heading breaks at the hyphens a compound already has ("Rekordbox-Bibliothek"), or at the edge only when one word is wider than the screen, so a name like CuePoint is never hyphenated. `lang` is on <html>. */
 html:not(:lang(en)) :is(h1, h2, h3, h4) {
   hyphens: manual;
   overflow-wrap: anywhere;

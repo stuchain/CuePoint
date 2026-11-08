@@ -205,7 +205,7 @@ until its page lands) stays a labelled placeholder (`src/lib/app-shots.ts`).
   the publisher through the contact form, whose deliveries go to the Web3Forms account's mailbox, or GitHub issues.
 - **The header** folds into the Menu below 62.5rem, so it never wraps to two rows (`e2e/features.spec.ts`).
 
-## Languages (DEC-311)
+## Languages (DEC-312)
 
 English is at the root; German is under `/de/`, and Spanish and Brazilian Portuguese follow the same way.
 `src/i18n/locales.ts` is the list of languages. The pages are in `src/views/`, shared by the English routes

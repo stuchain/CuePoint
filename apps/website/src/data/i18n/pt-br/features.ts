@@ -1,7 +1,7 @@
 import type { FeaturePage, Overview } from "../../features";
 
 /**
- * As páginas de recursos em português do Brasil (DEC-311). Os mesmos fatos do inglês, tratamento por "você".
+ * As páginas de recursos em português do Brasil (DEC-312). Os mesmos fatos do inglês, tratamento por "você".
  * Os nomes do app (Clean, Library, Keys, Discover, Prepare, Statistics, Waveforms, Match, Health, Track details,
  * "Write tags to files", "No Beatport key", Relocate) e as palavras de DJ (key, BPM, Hot Cue, Beatgrid,
  * Playlist, Set, Track, Label, Remix) ficam em inglês. A estrutura e os campos que não são texto são

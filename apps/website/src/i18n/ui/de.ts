@@ -1,7 +1,7 @@
 import type { UiStrings } from "./en";
 
 /**
- * Die Oberflächentexte auf Deutsch (DEC-311): alles, was die übersetzten Seiten und der gemeinsame Rahmen
+ * Die Oberflächentexte auf Deutsch (DEC-312): alles, was die übersetzten Seiten und der gemeinsame Rahmen
  * selbst sagen. Du-Form. Gleiche Schlüssel wie en.ts (der Typ erzwingt das), gleiche Platzhalter {name} und
  * gleiche Markierungen (**fett**, [Linktext](schlüssel)). Die Wörter aus docs/translation.md bleiben englisch.
  */

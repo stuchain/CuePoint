@@ -1,7 +1,7 @@
 import { COMPARE_CHECKED, type CompareTool, type OtherFact, type Source } from "../../compare";
 
 /**
- * Die Vergleichsseiten auf Deutsch (DEC-311). Die Adressen, die Daten und die Reihenfolge der Quellen sind
+ * Die Vergleichsseiten auf Deutsch (DEC-312). Die Adressen, die Daten und die Reihenfolge der Quellen sind
  * die des Englischen (src/i18n/parity.test.ts prüft das); übersetzt sind die Texte und die Namen der Links.
  * Zitate aus den Seiten der anderen Tools bleiben im englischen Wortlaut, denn sie sind wörtlich zitiert.
  */

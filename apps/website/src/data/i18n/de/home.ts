@@ -2,7 +2,7 @@ import { APP_SHOTS as EN_APP_SHOTS, TRUST as EN_TRUST, type Hero, type AppShotDe
 import { featureHref } from "../../features";
 
 /**
- * Die Startseite auf Deutsch (DEC-311). Gleiche Fakten wie das Englische, du-Form, die Wörter aus
+ * Die Startseite auf Deutsch (DEC-312). Gleiche Fakten wie das Englische, du-Form, die Wörter aus
  * docs/translation.md bleiben englisch. Struktur und Nicht-Text-Felder prüft src/i18n/parity.test.ts.
  */
 

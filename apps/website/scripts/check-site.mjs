@@ -210,7 +210,7 @@ function* urlRefs(root) {
  */
 export function checkSite(distDir, { base, siteUrl, preview, today = new Date().toISOString().slice(0, 10), locales }) {
   const dist = resolve(distDir);
-  /** The languages other than English, when the caller gives them (DEC-311): { code, hreflang }. */
+  /** The languages other than English, when the caller gives them (DEC-312): { code, hreflang }. */
   const otherLocales = (locales ?? []).filter((l) => l.code !== DEFAULT_LOCALE);
   /** A page's file without its language's folder: "de/features/index.html" -> "features/index.html". */
   const stripLocale = (file) => {
@@ -498,7 +498,7 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
   if (locales) checkLanguages();
 
   /**
-   * The languages (DEC-311). Every page's <html lang> is its language's tag (the folder's hreflang, English
+   * The languages (DEC-312). Every page's <html lang> is its language's tag (the folder's hreflang, English
    * elsewhere). A translated page (an English page that is translated, and its version in each language) lists
    * every version as <link rel="alternate" hreflang> and x-default (English), the same set on each of them and
    * itself included, and every one points at a page of the build. Every English translated page has its version
@@ -672,7 +672,7 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
     const text = readFileSync(join(dist, file), "utf8");
     if (!/^# \S/.test(text)) report("llms-txt", file, "llms.txt does not start with a # title line");
     const listed = new Set([...text.matchAll(/^- \[[^\]]+\]\(([^)\s]+)\)/gm)].map((m) => m[1]));
-    // llms.txt lists the English pages only (DEC-311): a language's folder is not in it
+    // llms.txt lists the English pages only (DEC-312): a language's folder is not in it
     const wanted = new Set([...pages.keys()].filter((f) => isIndexableRole(f) && stripLocale(f) === f).map(pageAddress));
     for (const url of wanted) if (!listed.has(url)) report("llms-txt", file, `llms.txt does not list the page ${url}`);
     for (const url of listed) if (!wanted.has(url)) report("llms-txt", file, `llms.txt lists ${url}, which is not an indexable page of the build`);

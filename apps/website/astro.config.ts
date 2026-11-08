@@ -66,7 +66,7 @@ export default defineConfig({
       // The style guide exists only in preview builds; keep it out of the sitemap whatever happens.
       // The thank-you pages (SITE-12) carry noindex and stay out of the sitemap too.
       filter: (page) => !isStyleguide(new URL(page).pathname) && !/\/thank-you\/?$/.test(new URL(page).pathname),
-      // a translated page lists its other versions as xhtml:link alternates (DEC-311); the locales are the registry's
+      // a translated page lists its other versions as xhtml:link alternates (DEC-312); the locales are the registry's
       i18n: {
         defaultLocale: DEFAULT_LOCALE,
         locales: Object.fromEntries(LOCALES.map((l) => [l.code, l.hreflang])),

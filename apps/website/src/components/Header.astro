@@ -22,9 +22,9 @@ const t = ui(locale);
 const info = localeInfo(locale);
 // the language switch: the same page in each language, or that language's home page when the page is English only
 const targets = switchTargets(currentPath ?? "").map((target) => ({ ...target, info: localeInfo(target.code) }));
-// a link to a page with no translation says it leaves the language (DEC-311)
+// a link to a page with no translation says it leaves the language (DEC-312)
 const toHreflang = (path: string) => (leavesLanguage(locale, path) ? DEFAULT_HREFLANG : undefined);
-// The language switch (DEC-311): on a phone it is the last row of the menu (below 62.5rem), from there on a button
+// The language switch (DEC-312): on a phone it is the last row of the menu (below 62.5rem), from there on a button
 // after the seam. The button is a <details>, so it opens on a click with no script; lib/lang-switch.ts closes it
 // on an outside click or Escape.
 // a pixel globe, 8 by 7
@@ -330,7 +330,7 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     bottom: var(--space-xs);
   }
   /*
-   * The language switch (DEC-311). On a phone it is the last row of the menu: a label, then each language as a
+   * The language switch (DEC-312). On a phone it is the last row of the menu: a label, then each language as a
    * link, the current one muted. From 62.5rem it is a button after the seam ("EN" and a globe, like the
    * Menu button) that opens a list on a click; nothing here is hover only.
    */

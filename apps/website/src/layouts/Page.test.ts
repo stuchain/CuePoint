@@ -168,7 +168,7 @@ describe("Page head (SITE-11)", () => {
     expect(meta(html, "name", "og-picture")).toBe("/_astro/pic.png");
   });
 
-  describe("in a language (DEC-311)", () => {
+  describe("in a language (DEC-312)", () => {
     const hrefs = (html: string) =>
       Object.fromEntries(
         [...html.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)"/g)].map((m) => [m[1], m[2]]),

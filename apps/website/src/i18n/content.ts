@@ -4,7 +4,7 @@ import * as enHome from "../data/home";
 import { DEFAULT_LOCALE, type LocaleCode } from "./locales";
 
 /**
- * The page content of every language (DEC-311). English is where it always was (src/data/home.ts, features.ts,
+ * The page content of every language (DEC-312). English is where it always was (src/data/home.ts, features.ts,
  * compare.ts); another language's is `src/data/i18n/<code>/{home,features,compare}.ts`, found by name, so adding a
  * language needs no edit here. A language with a missing file fails the build.
  */

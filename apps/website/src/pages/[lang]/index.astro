@@ -2,7 +2,7 @@
 import { OTHER_LOCALES, type LocaleCode } from "../../i18n/locales";
 import HomePage from "../../views/HomePage.astro";
 
-/** The home page in every language but English (DEC-311): /<code>/. */
+/** The home page in every language but English (DEC-312): /<code>/. */
 export function getStaticPaths() {
   return OTHER_LOCALES.map((l) => ({ params: { lang: l.code }, props: { locale: l.code as LocaleCode } }));
 }

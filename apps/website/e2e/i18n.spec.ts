@@ -6,7 +6,7 @@ import { extname, join, normalize } from "node:path";
 import { LOCALES, OTHER_LOCALES, TRANSLATED_PATHS } from "../src/i18n/locales";
 
 /**
- * The languages (DEC-311): the header switch on a wide screen and in the phone menu, the hreflang set, the
+ * The languages (DEC-312): the header switch on a wide screen and in the phone menu, the hreflang set, the
  * language of every translated page, and no sideways scroll on a phone in any of them.
  */
 
@@ -174,7 +174,7 @@ for (const build of ["dist-none", "dist-fixture"]) {
   });
 }
 
-/** The note that the app is in English (DEC-311) is on a phone too, and sits clear of the closing band's wheel art. */
+/** The note that the app is in English (DEC-312) is on a phone too, and sits clear of the closing band's wheel art. */
 test.describe("the app note on a phone", () => {
   for (const locale of OTHER_LOCALES) {
     test(`${locale.code}: the home page's closing band keeps the note clear of the wheel`, async ({ page }) => {

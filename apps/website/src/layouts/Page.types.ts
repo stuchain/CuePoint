@@ -13,7 +13,7 @@ export type JsonLd = Readonly<Record<string, unknown>>;
 
 export interface PageProps {
   /**
-   * The page's language (DEC-311): `<html lang>`, the canonical address, og:locale. Left out, it is read from the
+   * The page's language (DEC-312): `<html lang>`, the canonical address, og:locale. Left out, it is read from the
    * address (English at the root). A language other than English is only for a translated page, and `path` is
    * then still the ENGLISH path: the layout adds the language's folder.
    */

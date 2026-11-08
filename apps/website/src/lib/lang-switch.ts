@@ -1,5 +1,5 @@
 /**
- * The header's language switch (DEC-311). The list is a <details>, so it opens and closes on a click without
+ * The header's language switch (DEC-312). The list is a <details>, so it opens and closes on a click without
  * this script; the script adds what a <details> does not do: close on a click anywhere else, close on Escape
  * (and give the focus back to the button), and close when the focus leaves the list by keyboard.
  */
