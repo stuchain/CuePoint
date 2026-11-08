@@ -1101,8 +1101,10 @@ class TrackRepository(ITrackRepository):
         """Map each of these Rekordbox TrackIDs that is stored to its library id.
 
         Read through the open transaction when there is one, so an import sees
-        the rows it has just inserted. One scan of the unique index rather than
-        a lookup per id: an import asks about every track it wrote.
+        the rows it has just inserted. A few ids (up to ``_LOOKUP_BELOW``) are
+        looked up through the unique index in batches of ``CHUNK_SIZE``; more
+        than that read the table once and keep the wanted ones. Duplicates in
+        the input count once, and an id that is not stored is left out.
         """
         wanted = set(rekordbox_track_ids)
         if not wanted:
