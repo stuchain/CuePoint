@@ -49,8 +49,8 @@ Before each major release, the full suite runs on every supported OS, and the ch
 
 ## File Size Guidance
 
-- Recommended Rekordbox file size is **<= 100MB**.
-- CuePoint rejects a Rekordbox file larger than 100 MiB (104,857,600 bytes); it does not parse it. Files close to the limit take longer to parse and process.
+- The desktop app reads a Rekordbox file of up to **4 GiB** (4,294,967,296 bytes) for an import, a refresh and an export. A bigger file is refused with a message that says its size. An import takes about 2 minutes per GB, and the library it makes is about as large as the file.
+- The command-line run rejects a Rekordbox file larger than 100 MiB (104,857,600 bytes); it does not parse it. Files close to the limit take longer to parse and process.
 
 ## Update Cadence
 

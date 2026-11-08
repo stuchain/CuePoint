@@ -41,7 +41,7 @@ Desktop: Library tracks → Query Generation → Search → Match/Score → matc
 | `core/mix_parser.py` | Original, extended, radio, remix, dub, VIP and other mix types; remixer names; the mix bonus and the early-exit test |
 | `data/beatport_search.py`, `data/beatport.py` | Beatport search and track parsing |
 | `data/providers.py`, `services/beatport_service.py` | The provider the matcher calls, with retries and the circuit breaker |
-| `data/rekordbox.py` | Rekordbox XML parsing (`parse_rekordbox`, 100 MiB limit), the artist read from a title when empty, `inspect_rekordbox_xml` for preflight |
+| `data/rekordbox.py` | Rekordbox XML parsing (`parse_rekordbox`, 100 MiB limit; the streaming readers 4 GiB, DEC-311), the artist read from a title when empty, `inspect_rekordbox_xml` for preflight |
 | `models/result.py`, `models/beatport_candidate.py` | `TrackResult` and a candidate |
 
 The command-line tool's run, arguments and output are in [The command-line tool](cli.md); the

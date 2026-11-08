@@ -153,7 +153,7 @@ Before you tag, confirm:
 - **Dependencies are clean.** The `security-scan.yml` run on the release commit passes.
 - **Logs are redacted.** `LogSanitizer` (`cuepoint.utils.logger`) redacts user paths and secrets. `src/tests/unit/utils/test_step6_logging.py` covers path redaction.
 - **Secure defaults hold.** `ProductConfig.redact_paths_in_logs` defaults to true (`src/tests/unit/test_secure_defaults.py`).
-- **XML size is capped.** The Rekordbox parser rejects a file over `MAX_XML_SIZE_BYTES` (100 MiB); `test_parse_rekordbox_rejects_oversized_xml` covers it.
+- **XML size is capped.** The readers that build the whole tree (the command line's) reject a file over `MAX_XML_SIZE_BYTES` (100 MiB); the streaming readers the desktop app uses (import, refresh, export) reject one over `MAX_LIBRARY_XML_BYTES` (4 GiB), with the error code `LIBRARY_XML_TOO_LARGE` (DEC-311). `test_parse_rekordbox_rejects_oversized_xml` and `test_rekordbox_size_limits.py` cover them.
 - **Privacy controls work.** **Help > Privacy...** offers clear cache and clear logs, now or on exit.
 
 For vulnerability reports, see the [Security Response Process](../security/security.md).

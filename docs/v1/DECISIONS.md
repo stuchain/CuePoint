@@ -8767,3 +8767,16 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 **Reason**: A push asked for all 5 of the free plan's macOS slots and waited behind the previous run, so the newest commit took up to about 2 hours to get a full result. The Python suite ran twice per push, and the engine tests ran three times. Run one at a time, the unit layer took 14 min on Linux; with xdist it took 7.4 min on 4 cores.
 
 **Decided with**: User (2 Nov 2026, 15:32 Athens: all recommended, D1 to D12) · **Date**: 2026-11-02
+
+
+## DEC-311 — Two XML Size Limits, and Marks Written from a Spill File
+
+**Status**: Accepted · **Related**: DEC-077, DEC-118, DEC-153, PYTHON-1H, `src/cuepoint/data/rekordbox.py`, `src/cuepoint/services/marks_spill.py`, `src/tests/regression/PYTHON-1H/README.md`
+
+**Decision**: A Rekordbox XML has one size limit per kind of reader, named in `data/rekordbox.py`. `MAX_LIBRARY_XML_BYTES` is 4 GiB, for the readers that stream: `collection_entry_count`, `has_collection_element`, `iter_collection_entries`, `iter_playlist_nodes` and the export's plan and write. `MAX_XML_SIZE_BYTES` stays 100 MiB for the readers that build the whole tree (`parse_rekordbox`, `parse_playlist_tree`, `get_track_locations`, and now `read_playlist_index` and `inspect_rekordbox_xml`, which had no check), which only the command line uses. A file over its reader's limit raises `XmlTooLargeError`, a `ValidationError` and a `ValueError` with the code `LIBRARY_XML_TOO_LARGE` and a message that gives the size in MB or GB, says what to check, and carries neither the path nor a byte count. The code is expected (DEC-153), so it is not reported as a bug. To make the higher limit safe, an import and a refresh write each track's cue points and beat grid to an anonymous temporary file as they are read (`MarksSpill`) and back from it a thousand tracks at a time, and the export maps its source and streams its output into the temp file, so memory no longer grows with the file. Measured on synthetic exports (4 cores, 15 GB): a 2.6 GB file with a 750-marker grid a track (about 52,000 tracks) took 7.7 GB to import before; the export of a file held about three times its size.
+
+**Known limits**: 4 GiB bounds the import's time (about 12 minutes) and the library's size (about 1 GB of database per GB of XML). The Library, Statistics and waveform jobs are proven at the scale suite's sizes only (50,000 tracks); a 2.6 GB export with a dynamic grid is about that many tracks, but a file with millions of tracks is not covered. The spill file needs disk about the size of the marks; a full disk fails the job with the existing disk-full handling and the transaction rolls back. A source file that another program shortens while an export maps it can end the engine, which is restarted; nothing is written to the destination.
+
+**Reason**: The 100 MiB limit was set for the tree readers (five to seven times the file in memory) and applied to readers that use 21 MB for any size. A user's 2.6 GB export was refused under a code that reported it as a bug.
+
+**Decided with**: User (scope for Sentry issue PYTHON-1H, thread "Phase 13 · Check Sentry for new errors", 8 Nov 2026) · **Date**: 2026-11-08

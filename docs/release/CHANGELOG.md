@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **The player could quit on its own on a Mac.** A Stop from Control Center, headphones or a remote could make the player quit. It now ignores them; CuePoint keeps handling media keys itself.
+- **A Rekordbox export of several gigabytes can be imported.** A 2.6 GB collection was refused with "XML file too large: 2616715592 bytes (max 104857600)". The desktop app now reads a collection of up to 4 GB for an import, a refresh and an export. A bigger file says "This file is 5.2 GB, larger than the 4 GB CuePoint can read. Check that it is your Rekordbox collection export (File > Export Collection in xml format).", and that is no longer reported to the developers as a bug. The command line keeps its 100 MiB limit.
+- **A large import no longer needs a large amount of memory.** Importing or refreshing kept every track's cue points and beat grid in memory until the tracks were written: 7.7 GB for a 2.6 GB collection with a beat-by-beat grid. They now go to a temporary file as they are read and are written back a thousand tracks at a time, so memory no longer grows with the file. What is stored is the same.
+- **Exporting to Rekordbox needs about the size of the source file, not three times it.** The export read the whole source, built the new file in memory and copied it once more before writing. It now maps the source and writes the new file as it goes. The file written is byte for byte the same.
 
 ## [1.0.0] - 2026-11-02
 

@@ -11,7 +11,7 @@ Common issues and solutions.
 **Solutions**:
 - Verify XML file is valid Rekordbox format
 - Check file isn't corrupted
-- Check the file is no larger than 100 MiB. CuePoint refuses bigger XML files
+- Check the file is no larger than 4 GiB (100 MiB for a command-line run). CuePoint refuses bigger XML files, and says how big yours is
 - Try exporting XML from Rekordbox again
 
 ### Preflight Errors
