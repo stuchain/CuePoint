@@ -776,32 +776,41 @@ describe("languages (DEC-311)", () => {
     { code: "en", hreflang: "en", ogLocale: "en_US" },
     { code: "de", hreflang: "de", ogLocale: "de_DE" },
   ];
-  const alternates = (path) =>
-    [
-      ["en", `${SITE_URL}${path}`],
-      ["de", `${SITE_URL}de/${path}`],
-      ["x-default", `${SITE_URL}${path}`],
-    ]
-      .map(([tag, href]) => `<link rel="alternate" hreflang="${tag}" href="${href}">`)
-      .join("");
+  const TAGS = [
+    ["en", (path) => `${SITE_URL}${path}`],
+    ["de", (path) => `${SITE_URL}de/${path}`],
+    ["x-default", (path) => `${SITE_URL}${path}`],
+  ];
+  const alternates = (path) => TAGS.map(([tag, href]) => `<link rel="alternate" hreflang="${tag}" href="${href(path)}">`).join("");
+  const og = (own, other) => `<meta property="og:locale" content="${own}"><meta property="og:locale:alternate" content="${other}">`;
+  /** A translated page's sitemap entry, with the alternates the integration writes. */
+  const entry = (loc, path) =>
+    `<url><loc>${loc}</loc>${TAGS.map(([tag, href]) => `<xhtml:link rel="alternate" hreflang="${tag}" href="${href(path)}"/>`).join("")}</url>`;
   const deVersion = (path, canonical = `de/${path}`) =>
     page({
       title: `Deutsche Seite ${path || "start"}`,
       description: `Deutsch ${path || "start"}. ${LONG_DESC}`,
       canonicalPath: canonical,
-      head: alternates(path),
+      head: alternates(path) + og("de_DE", "en_US"),
       body: "<h1>Deutsch</h1>",
     }).replace('<html lang="en">', '<html lang="de">');
   /** The clean fixture where the home page and the FAQ are translated, as the build would have them. */
   const translated = (f) => {
     for (const path of ["", "faq/"]) {
       const file = path === "" ? "index.html" : `${path}index.html`;
-      f[file] = f[file].replace("</head>", `${alternates(path)}</head>`);
+      f[file] = f[file]
+        .replace("</head>", `${alternates(path)}${og("en_US", "de_DE")}</head>`)
+        .replace('"@type":"SoftwareApplication",', '"@type":"SoftwareApplication","inLanguage":"en",')
+        .replace('"@type":"FAQPage",', '"@type":"FAQPage","inLanguage":"en",');
       f[`de/${file}`] = deVersion(path);
-      f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}de/${path}</loc></url></urlset>`);
+      f["sitemap-0.xml"] = f["sitemap-0.xml"]
+        .replace(`<url><loc>${SITE_URL}${path}</loc></url>`, entry(`${SITE_URL}${path}`, path))
+        .replace("</urlset>", `${entry(`${SITE_URL}de/${path}`, path)}</urlset>`);
     }
+    f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("<urlset ", '<urlset xmlns:xhtml="http://www.w3.org/1999/xhtml" ');
   };
   const rules = (edit) => run((f) => (translated(f), edit?.(f)), { locales: LOCALES }).map((r) => `${r.rule} ${r.page}`);
+  const found = (edit) => run((f) => (translated(f), edit?.(f)), { locales: LOCALES });
 
   it("accepts a site whose translated pages have every version and the full alternate set", () => {
     expect(rules()).toEqual([]);
@@ -830,19 +839,91 @@ describe("languages (DEC-311)", () => {
     );
   });
 
+  it("fails a page in a language folder that has no English page at all", () => {
+    // the scripts' reader cannot know the slugs, so a features/<x>/ page without an English twin is caught here
+    const edit = (f) => (f["de/features/ghost/index.html"] = deVersion("features/ghost/"));
+    expect(found(edit).filter((r) => r.rule === "translation-missing").map((r) => r.message)).toEqual([
+      expect.stringContaining("no English page at /features/ghost/"),
+    ]);
+  });
+
   it("fails an alternate that is missing, wrong, or not one of the site's languages", () => {
     const drop = (f) => (f["index.html"] = f["index.html"].replace(/<link rel="alternate" hreflang="de"[^>]*>/, ""));
-    expect(rules(drop)).toEqual(["hreflang index.html"]);
+    expect(rules(drop)).toContain("hreflang index.html");
     const wrong = (f) => (f["de/index.html"] = f["de/index.html"].replace('hreflang="x-default" href="https://example.test/Base/"', 'hreflang="x-default" href="https://example.test/Base/de/"'));
-    expect(rules(wrong)).toEqual(["hreflang de/index.html"]);
+    expect(rules(wrong)).toContain("hreflang de/index.html");
     const extra = (f) => (f["faq/index.html"] = f["faq/index.html"].replace("</head>", `<link rel="alternate" hreflang="fr" href="${SITE_URL}fr/faq/"></head>`));
     expect(rules(extra)).toContain("hreflang faq/index.html");
+  });
+
+  it("fails an alternate listed twice, even when both say the right address", () => {
+    const twice = (f) => (f["faq/index.html"] = f["faq/index.html"].replace("</head>", `<link rel="alternate" hreflang="de" href="${SITE_URL}de/faq/"></head>`));
+    expect(found(twice).filter((r) => r.rule === "hreflang").map((r) => r.message)).toEqual(['hreflang="de" is listed twice']);
+    // and when the second one is wrong, the first would have hidden it
+    const wrongSecond = (f) => (f["faq/index.html"] = f["faq/index.html"].replace("</head>", `<link rel="alternate" hreflang="de" href="${SITE_URL}de/"></head>`));
+    expect(found(wrongSecond).map((r) => r.message)).toContain('hreflang="de" is listed twice');
   });
 
   it("fails a page that is not translated but lists alternates", () => {
     expect(rules((f) => (f["about/index.html"] = f["about/index.html"].replace("</head>", `${alternates("about/")}</head>`)))).toContain(
       "hreflang about/index.html",
     );
+  });
+
+  it("fails a sitemap entry whose alternates are not the page's", () => {
+    const drop = (f) => (f["sitemap-0.xml"] = f["sitemap-0.xml"].replace(/<xhtml:link rel="alternate" hreflang="x-default" href="[^"]*"\/>/, ""));
+    expect(found(drop).filter((r) => r.rule === "sitemap-alternates").map((r) => r.message)).toEqual([
+      expect.stringContaining("has no x-default alternate"),
+    ]);
+    const wrong = (f) => (f["sitemap-0.xml"] = f["sitemap-0.xml"].replace(`hreflang="de" href="${SITE_URL}de/faq/"`, `hreflang="de" href="${SITE_URL}de/"`));
+    expect(rules(wrong)).toContain("sitemap-alternates faq/index.html");
+    const extra = (f) => (f["sitemap-0.xml"] = f["sitemap-0.xml"].replace(`<url><loc>${SITE_URL}de/faq/</loc>`, `<url><loc>${SITE_URL}de/faq/</loc><xhtml:link rel="alternate" hreflang="fr" href="${SITE_URL}fr/faq/"/>`));
+    expect(found(extra).map((r) => r.message)).toContain("the sitemap's entry for the page has a fr alternate the page does not have");
+  });
+
+  it("fails a translated page whose og:locale or og:locale:alternate is wrong", () => {
+    const own = (f) => (f["de/faq/index.html"] = f["de/faq/index.html"].replace('property="og:locale" content="de_DE"', 'property="og:locale" content="en_US"'));
+    expect(rules(own)).toEqual(["og-locale de/faq/index.html"]);
+    const missing = (f) => (f["faq/index.html"] = f["faq/index.html"].replace(/<meta property="og:locale:alternate"[^>]*>/, ""));
+    expect(rules(missing)).toEqual(["og-locale faq/index.html"]);
+    const none = (f) => (f["de/index.html"] = f["de/index.html"].replace(/<meta property="og:locale"[^>]*>/, ""));
+    expect(found(none).map((r) => r.message)).toContain("og:locale is missing but the page is in de_DE");
+  });
+
+  it("fails a link on a translated page to the English version of a page that has a translation", () => {
+    const edit = (f) => (f["de/index.html"] = f["de/index.html"].replace("<h1>Deutsch</h1>", `<h1>Deutsch</h1><a href="${BASE}faq/">FAQ</a>`));
+    expect(found(edit).filter((r) => r.rule === "link-language").map((r) => r.page)).toEqual(["de/index.html"]);
+    // the language switch says where it goes with hreflang, a link to a page without a translation is fine
+    const switchLink = (f) => (f["de/index.html"] = f["de/index.html"].replace("<h1>Deutsch</h1>", `<h1>Deutsch</h1><a href="${BASE}faq/" hreflang="en">English</a><a href="${BASE}about/">About</a>`));
+    expect(rules(switchLink)).toEqual([]);
+    // and the German page's own link is right
+    const own = (f) => (f["de/index.html"] = f["de/index.html"].replace("<h1>Deutsch</h1>", `<h1>Deutsch</h1><a href="${BASE}de/faq/">FAQ</a>`));
+    expect(rules(own)).toEqual([]);
+  });
+
+  it("fails JSON-LD that names the wrong language, a WebSite on a translated page and a breadcrumb in another language", () => {
+    const lang = (f) => (f["faq/index.html"] = f["faq/index.html"].replace('"inLanguage":"en"', '"inLanguage":"de"'));
+    expect(found(lang).filter((r) => r.rule === "jsonld-locale").map((r) => r.message)).toEqual(['FAQPage has inLanguage "de" but the page is in en']);
+    const noLang = (f) => (f["faq/index.html"] = f["faq/index.html"].replace('"inLanguage":"en",', ""));
+    expect(found(noLang).filter((r) => r.rule === "jsonld-locale").map((r) => r.message)).toEqual(['FAQPage has inLanguage null but the page is in en']);
+    const site = (f) => (f["de/index.html"] = f["de/index.html"].replace("</head>", `${jsonLd(website)}</head>`));
+    expect(found(site).map((r) => r.message)).toContain("the page carries a WebSite: only the English home page does");
+    const siteLang = (f) => (f["index.html"] = f["index.html"].replace('"@type":"WebSite"', '"@type":"WebSite","inLanguage":"en"'));
+    expect(found(siteLang).map((r) => r.message)).toContain("the WebSite carries inLanguage, but it stands for every language");
+    const trail = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Start", item: SITE_URL },
+        { "@type": "ListItem", position: 2, name: "FAQ", item: `${SITE_URL}de/faq/` },
+      ],
+    };
+    const crumbs = (f) => (f["de/faq/index.html"] = f["de/faq/index.html"].replace("</head>", `${jsonLd(trail)}</head>`));
+    expect(found(crumbs).filter((r) => r.rule === "jsonld-locale").map((r) => r.message)).toEqual([
+      `the breadcrumb "Start" points at ${SITE_URL}, expected ${SITE_URL}de/`,
+    ]);
+    const good = { ...trail, itemListElement: [{ ...trail.itemListElement[0], item: `${SITE_URL}de/` }, trail.itemListElement[1]] };
+    expect(rules((f) => (f["de/faq/index.html"] = f["de/faq/index.html"].replace("</head>", `${jsonLd(good)}</head>`)))).toEqual([]);
   });
 
   it("leaves the language pages out of llms.txt and out of the sitemap's required set", () => {
@@ -852,9 +933,9 @@ describe("languages (DEC-311)", () => {
   it("holds a comparison page in a language folder to the source rule", () => {
     const body = '<h1>Vergleich</h1><div data-compare-fact>Ein Fakt.</div>';
     const edit = (f) => {
-      f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `<url><loc>${SITE_URL}compare/tool/</loc></url></urlset>`);
+      f["sitemap-0.xml"] = f["sitemap-0.xml"].replace("</urlset>", `${entry(`${SITE_URL}compare/tool/`, "compare/tool/")}</urlset>`);
       f["llms.txt"] += `- [Compare](${SITE_URL}compare/tool/): compared.\n`;
-      f["compare/tool/index.html"] = page({ title: "CuePoint and a tool", description: `Compare. ${LONG_DESC}`, canonicalPath: "compare/tool/", head: alternates("compare/tool/"), body: `<h1>Compare</h1><h2>Rows</h2><div data-compare-fact>A fact. <p data-compare-source>Source: <a href="https://tool.test/p" rel="noopener noreferrer">P</a>, read on <time datetime="2026-10-08">2026-10-08</time>.</p></div>` });
+      f["compare/tool/index.html"] = page({ title: "CuePoint and a tool", description: `Compare. ${LONG_DESC}`, canonicalPath: "compare/tool/", head: alternates("compare/tool/") + og("en_US", "de_DE"), body: `<h1>Compare</h1><h2>Rows</h2><div data-compare-fact>A fact. <p data-compare-source>Source: <a href="https://tool.test/p" rel="noopener noreferrer">P</a>, read on <time datetime="2026-10-08">2026-10-08</time>.</p></div>` });
       f["de/compare/tool/index.html"] = deVersion("compare/tool/").replace("<h1>Deutsch</h1>", body);
     };
     expect(rules(edit)).toContain("compare-source de/compare/tool/index.html");
