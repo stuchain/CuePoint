@@ -6,7 +6,8 @@
  *
  *   --format=portrait|wide|tall   one cut only (default all: 1080 x 1350 for LinkedIn and the Instagram feed, 1920 x 1080 for YouTube, 1080 x 1920 for Reels)
  *   --opening=a,b,c          which openings (default c, the problem first; a pull back from the live app, b logo build)
- *   --edit=story|short       the 30 s story edit or the 60 s short edit (STORY, SHORT in demo/shots.js)
+ *   --edit=story|short|underscore  the 30 s story edit, the 60 s short edit, or the 60 s cut on the 100 BPM
+ *                            Underscore track (STORY, SHORT, UNDERSCORE in demo/shots.js)
  *   --stills=5,12.5          no video: PNGs at those seconds, out/demo/still-<format>-<opening>-<t>.png
  *   --track=<audio> --start=<s>  your own music under it; the file is named -PRIVATE and never committed
  *
@@ -18,7 +19,7 @@ import { createServer } from "node:http";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
-import { FORMATS, FPS, SHOTS, layout } from "../demo/shots.js";
+import { EDITS, FORMATS, FPS, SHOTS, layout } from "../demo/shots.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "out", "demo");
@@ -30,7 +31,7 @@ const start = Number(arg("start") ?? 0);
 const stills = arg("stills")?.split(",").map(Number);
 const formats = arg("format") ? [arg("format")] : Object.keys(FORMATS);
 const openings = (arg("opening") ?? "c").split(",");
-const edit = ["story", "short"].includes(arg("edit")) ? arg("edit") : "full";
+const edit = arg("edit") in EDITS ? arg("edit") : "full";
 const NAMES = { portrait: "cuepoint-demo-4x5", wide: "cuepoint-demo-16x9", tall: "cuepoint-demo-9x16" };
 const BT709 = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2" };
@@ -53,6 +54,19 @@ function extractRaw(shot) {
   mkdirSync(dir, { recursive: true });
   for (const f of readdirSync(dir)) spawnSync("rm", [join(dir, f)]);
   run(["-i", file, "-vf", `fps=${FPS},scale=2048:-1:flags=lanczos`, "-q:v", "3", join(dir, "%05d.jpg")]);
+}
+
+/**
+ * The loudness filter for the music under the cut: measured first over the stretch used, then applied as one
+ * static gain (linear), so a quiet breakdown or the track's own fade-out is not pumped back up.
+ */
+function loudness(track, start, total) {
+  // a true-peak ceiling the static gain can meet (a tighter one makes loudnorm fall back to dynamic gain)
+  const target = "I=-14:TP=-1.0:LRA=11";
+  const r = spawnSync("ffmpeg", ["-hide_banner", "-nostats", "-ss", String(start), "-t", String(total), "-i", track, "-af", `loudnorm=${target}:print_format=json`, "-f", "null", "-"]);
+  const text = r.stderr.toString();
+  const m = JSON.parse(text.slice(text.lastIndexOf("{")));
+  return `loudnorm=${target}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true`;
 }
 
 function serve() {
@@ -115,7 +129,7 @@ async function main() {
       await page.close();
       const fade = 1.5;
       const audio = track
-        ? ["-ss", String(start), "-t", String(total), "-i", track, "-map", "0:v", "-map", "1:a", "-af", `afade=t=in:d=0.05,afade=t=out:st=${(total - fade).toFixed(3)}:d=${fade},loudnorm=I=-14:TP=-1.5:LRA=11`, "-ar", "48000", "-c:a", "aac", "-b:a", "192k"]
+        ? ["-ss", String(start), "-t", String(total), "-i", track, "-map", "0:v", "-map", "1:a", "-af", `afade=t=in:d=0.05,afade=t=out:st=${(total - fade).toFixed(3)}:d=${fade},${loudness(track, start, total)}`, "-ar", "48000", "-c:a", "aac", "-b:a", "192k"]
         : [];
       const out = `${base}${track ? "-PRIVATE" : ""}.mp4`;
       run(["-i", master, ...audio, "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p", ...BT709, "-t", String(total), "-movflags", "+faststart", out]);

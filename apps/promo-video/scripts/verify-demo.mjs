@@ -32,7 +32,7 @@ function camera(cam, s) {
 }
 
 let failed = false;
-for (const [opening, edit] of [["a", "full"], ["b", "full"], ["c", "story"], ["c", "short"]]) {
+for (const [opening, edit] of [["a", "full"], ["b", "full"], ["c", "story"], ["c", "short"], ["c", "underscore"]]) {
   console.log(`opening ${opening}, ${edit} edit`);
   for (const s of layout(opening, edit).shots) {
     const cam = opening === "a" && s.camA ? s.camA : s.cam;
@@ -57,7 +57,7 @@ for (const [opening, edit] of [["a", "full"], ["b", "full"], ["c", "story"], ["c
     for (let i = 1; i < cam.length; i++) {
       const d = cam[i][0] - cam[i - 1][0];
       const moved = Math.abs(cam[i][3] - cam[i - 1][3]) > 0.02 || Math.hypot(cam[i][1] - cam[i - 1][1], cam[i][2] - cam[i - 1][2]) > 20;
-      if (moved && d < (edit === "short" ? MIN_MOVE_SHORT : MIN_MOVE)) bad.push(`camera move ${i} only ${d.toFixed(2)} s`);
+      if (moved && d < (edit === "short" || edit === "underscore" ? MIN_MOVE_SHORT : MIN_MOVE)) bad.push(`camera move ${i} only ${d.toFixed(2)} s`);
     }
     const unique = [...new Set(bad)];
     if (unique.length) failed = true;
