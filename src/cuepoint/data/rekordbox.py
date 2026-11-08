@@ -117,20 +117,18 @@ def _refuse_if_too_large(xml_path: str, limit: int) -> None:
     size = os.path.getsize(xml_path)
     if size > limit:
         if limit == MAX_XML_SIZE_BYTES:
-            message = (
+            raise XmlTooLargeError(
                 f"This file is {_size_phrase(size)}, larger than the "
                 f"{limit // (1024 * 1024)} MB the command line reads. "
-                "Import it in the CuePoint app instead."
-            )
-        else:
-            message = (
-                f"This file is {_size_phrase(size)}, larger than the "
-                f"{_size_phrase(limit, limit=True)} CuePoint can read. "
-                "Check that it is your Rekordbox collection export "
-                "(File > Export Collection in xml format)."
+                "Import it in the CuePoint app instead.",
+                size_bytes=size,
+                limit_bytes=limit,
             )
         raise XmlTooLargeError(
-            message,
+            f"This file is {_size_phrase(size)}, larger than the "
+            f"{_size_phrase(limit, limit=True)} CuePoint can read. "
+            "Check that it is your Rekordbox collection export "
+            "(File > Export Collection in xml format).",
             size_bytes=size,
             limit_bytes=limit,
         )

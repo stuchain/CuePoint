@@ -343,6 +343,11 @@
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
   },
+  "cuepoint/data/rekordbox.py::_refuse_if_too_large::This file is {_size_phrase(size)}, larger than the {limit // (1024 * 1024)} MB the command line reads. Import it in the CuePoint app instead.": {
+    "holds": "a number or count, our own constant",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
+  },
   "cuepoint/data/rekordbox.py::_refuse_if_too_large::This file is {_size_phrase(size)}, larger than the {_size_phrase(limit, limit=True)} CuePoint can read. Check that it is your Rekordbox collection export (File > Export Collection in xml format).": {
     "holds": "a number or count, our own constant",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
