@@ -245,3 +245,6 @@ export const HERO = {
   description:
     "CuePoint is a free desktop app for DJs. Match your Rekordbox library to Beatport, fix keys and tempos, see your keys on the Camelot wheel and plan sets.",
 } as const;
+
+/** The shape a language's HERO must have: the same fields, any words. */
+export type Hero = Readonly<Record<keyof typeof HERO, string>>;

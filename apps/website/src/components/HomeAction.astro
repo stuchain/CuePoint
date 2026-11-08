@@ -12,6 +12,7 @@
  */
 import { PRIMARY_ACTION } from "../data/site";
 import { loadReleases } from "../lib/releases";
+import { DEFAULT_LOCALE } from "../i18n/locales";
 import { localeFromUrl, localePath } from "../i18n/paths";
 import { ui } from "../i18n/ui";
 import { hrefFor } from "../lib/url";
@@ -34,7 +35,7 @@ const mark = repeat ? { "data-closing-action": "" } : { "data-primary-action": "
     </a>
   ) : (
     <a class="btn" data-variant="primary" href={PRIMARY_ACTION.href} rel="noopener noreferrer" {...mark}>
-      {locale === "en" ? PRIMARY_ACTION.label : ui(locale).primaryAction}
+      {locale === DEFAULT_LOCALE ? PRIMARY_ACTION.label : ui(locale).primaryAction}
     </a>
   )
 }

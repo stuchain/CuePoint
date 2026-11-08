@@ -28,6 +28,12 @@ export function splitWords(text: string): string[] {
   return text.split(/(\s+)/).filter((part) => part.length > 0);
 }
 
+/** A word's letters as a reader counts them: a letter with its accent or a joined emoji stays one (not split by code point). */
+export function graphemes(word: string): string[] {
+  if (typeof Intl.Segmenter !== "function") return Array.from(word);
+  return Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(word), (s) => s.segment);
+}
+
 /** The flat shadow a pressed letter has: the same shadows as its depth, with no offset, so they interpolate. */
 export function flatShadow(depth: string): string {
   return depth
@@ -57,7 +63,7 @@ export function buildHeadline(h1: HTMLElement, win: Window = window): Animation[
     }
     const word = document.createElement("span");
     word.style.whiteSpace = "nowrap";
-    for (const ch of part) {
+    for (const ch of graphemes(part)) {
       const letter = document.createElement("span");
       letter.textContent = ch;
       word.append(letter);

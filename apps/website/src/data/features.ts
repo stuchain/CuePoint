@@ -71,6 +71,9 @@ export const OVERVIEW = {
     "Everything CuePoint does with your Rekordbox library: match to Beatport, fix keys and tags, find new music, plan sets, see waveforms and export.",
 } as const;
 
+/** The shape a language's OVERVIEW must have: the same fields, any words. */
+export type Overview = Readonly<Record<keyof typeof OVERVIEW, string>>;
+
 /** Every unshipped page and section, for the tests and the README. */
 export function unshippedMarkers(): { where: string; step: string }[] {
   return FEATURE_PAGES.flatMap((p) => [

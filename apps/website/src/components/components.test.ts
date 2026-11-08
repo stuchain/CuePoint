@@ -29,7 +29,8 @@ describe("components in a language (DEC-311)", () => {
     expect(html).toMatch(/<a[^>]*hreflang="en"[^>]*href="[^"]*\/features\/"|<a[^>]*href="[^"]*\/features\/"[^>]*hreflang="en"/);
     expect(html).toContain("Deutsch");
     expect(html).toContain("English");
-    expect(html).toMatch(/aria-current="true"[^>]*>|aria-current="page"[^>]*lang="de"/);
+    expect(html).toMatch(/<a[^>]*lang="de"[^>]*aria-current="page"/);
+    expect(html).not.toMatch(/<a[^>]*lang="en"[^>]*aria-current/);
   });
 
   it("Header: an English page offers the German version of the same page", async () => {

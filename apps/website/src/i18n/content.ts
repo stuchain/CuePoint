@@ -8,8 +8,8 @@ import { DEFAULT_LOCALE, type LocaleCode } from "./locales";
  * compare.ts); another language's is `src/data/i18n/<code>/{home,features,compare}.ts`, found by name, so adding a
  * language needs no edit here. A language with a missing file fails the build.
  */
-type Home = Pick<typeof enHome, "OPENING_STEPS" | "APP_SHOTS" | "FEATURES" | "TRUST" | "HERO">;
-type Features = Pick<typeof enFeatures, "OVERVIEW" | "FEATURE_PAGES">;
+type Home = Pick<typeof enHome, "OPENING_STEPS" | "APP_SHOTS" | "FEATURES" | "TRUST"> & { HERO: enHome.Hero };
+type Features = Pick<typeof enFeatures, "FEATURE_PAGES"> & { OVERVIEW: enFeatures.Overview };
 type Compare = Pick<typeof enCompare, "COMPARE_TOOLS">;
 
 const homeModules = import.meta.glob<Home>("../data/i18n/*/home.ts", { eager: true });

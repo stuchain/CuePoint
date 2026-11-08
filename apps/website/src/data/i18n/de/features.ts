@@ -1,4 +1,4 @@
-import type { FeaturePage } from "../../features";
+import type { FeaturePage, Overview } from "../../features";
 
 /**
  * Die Funktionsseiten auf Deutsch (DEC-311). Gleiche Fakten wie das Englische, du-Form. Namen der App
@@ -11,7 +11,7 @@ export const OVERVIEW = {
   title: "CuePoint-Funktionen für Rekordbox-DJs",
   description:
     "Alles, was CuePoint mit deiner Rekordbox-Bibliothek macht: Beatport-Abgleich, Keys korrigieren, neue Musik finden, Sets planen, Waveforms und Export.",
-} as const;
+} as const satisfies Overview;
 
 export const FEATURE_PAGES: readonly FeaturePage[] = [
   {

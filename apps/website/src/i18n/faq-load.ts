@@ -1,6 +1,6 @@
 import { getCollection } from "astro:content";
-import { z } from "astro/zod";
 import yaml from "js-yaml";
+import { faqEntrySchema } from "./faq-schema";
 import { DEFAULT_LOCALE, type LocaleCode } from "./locales";
 
 /**
@@ -15,15 +15,7 @@ export interface FaqEntry {
   links: { page: string; heading?: string | undefined; label: string }[];
 }
 
-const schema = z.array(
-  z.object({
-    id: z.string(),
-    order: z.number().int(),
-    question: z.string().min(8),
-    answer: z.string().min(20),
-    links: z.array(z.object({ page: z.string(), heading: z.string().optional(), label: z.string() })).min(1),
-  }),
-);
+const schema = faqEntrySchema.array();
 
 const files = import.meta.glob<string>("../content/faq.*.yaml", { query: "?raw", import: "default", eager: true });
 

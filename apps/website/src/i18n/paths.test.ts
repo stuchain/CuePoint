@@ -115,4 +115,19 @@ describe("switchTargets", () => {
     );
     expect(switchTargets("blog/")).toContainEqual({ code: "en", path: "blog/" });
   });
+
+  it("points English at the home page from the 404 page, which is not an address of its own", () => {
+    expect(switchTargets("404.html")).toContainEqual({ code: "en", path: "" });
+    expect(switchTargets("404.html")).toContainEqual({ code: "de", path: "de/" });
+  });
+});
+
+describe("a path with a query or a fragment", () => {
+  it("keeps it, and still finds the page", () => {
+    expect(localePath("de", "features/#top")).toBe("de/features/#top");
+    expect(localePath("de", "/download?x=1")).toBe("de/download/?x=1");
+    expect(localePath("de", "guide/clean/#steps")).toBe("guide/clean/#steps");
+    expect(localePath("en", "faq#q-free")).toBe("faq/#q-free");
+    expect(isTranslated("faq/#q-free")).toBe(true);
+  });
 });

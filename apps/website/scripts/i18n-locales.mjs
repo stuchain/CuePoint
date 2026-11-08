@@ -22,7 +22,7 @@ export function isTranslatedPath(path) {
 
 /** { code, hreflang, ogLocale }[] from the text of locales.ts; throws when it finds none. */
 export function readLocales(source) {
-  const entries = [...source.matchAll(/\{\s*code:\s*"([a-z][a-z-]*)",\s*hreflang:\s*"([^"]+)",\s*ogLocale:\s*"([^"]+)"/g)].map((m) => ({
+  const entries = [...source.matchAll(/\{\s*code:\s*"([a-z]{2,3}(?:-[a-z0-9]{2,8})*)",\s*hreflang:\s*"([^"]+)",\s*ogLocale:\s*"([^"]+)"/g)].map((m) => ({
     code: m[1],
     hreflang: m[2],
     ogLocale: m[3],

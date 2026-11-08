@@ -2,6 +2,7 @@ import { defineCollection } from "astro:content";
 import { file, glob, type Loader } from "astro/loaders";
 import { z } from "astro/zod";
 import { PUBLISHER } from "./data/site";
+import { faqFields } from "./i18n/faq-schema";
 import { assertGuideTable } from "./content/guide";
 import { guideLinkConfig } from "./lib/guide-config";
 import { guideFiles, validateGuideLinks } from "./lib/guide-links";
@@ -61,23 +62,7 @@ export const guide = defineCollection({ loader: guideLoader() });
 /** The FAQ: src/content/faq.yaml. Each answer links the guide by page and heading, checked at build. */
 export const faq = defineCollection({
   loader: file("src/content/faq.yaml"),
-  schema: z.object({
-    /** The order on the page. */
-    order: z.number().int(),
-    question: z.string().min(8),
-    answer: z.string().min(20),
-    links: z
-      .array(
-        z.object({
-          /** The guide page: its file name without .md. */
-          page: z.string(),
-          /** A heading on that page, as its id. */
-          heading: z.string().optional(),
-          label: z.string(),
-        }),
-      )
-      .min(1),
-  }),
+  schema: z.object(faqFields),
 });
 
 export const collections = { blog, guide, faq };

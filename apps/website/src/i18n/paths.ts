@@ -8,14 +8,26 @@ import { DEFAULT_LOCALE, LOCALES, OTHER_LOCALES, TRANSLATED_PATHS, type LocaleCo
 
 const TRANSLATED = new Set(TRANSLATED_PATHS);
 
-const normalize = (path: string): string => {
-  const clean = path.replace(/^\/+/, "");
-  return clean === "" || clean.endsWith("/") || /\.[a-z0-9]+$/i.test(clean.slice(clean.lastIndexOf("/") + 1)) ? clean : `${clean}/`;
+/** The path with its query and fragment split off: "features/#top" -> ["features/", "#top"]. */
+const splitSuffix = (path: string): [string, string] => {
+  const at = path.search(/[?#]/);
+  return at === -1 ? [path, ""] : [path.slice(0, at), path.slice(at)];
 };
+
+/** A directory path gets its trailing slash; a file ("404.html") does not; a query or fragment is kept as it is. */
+const normalize = (path: string): string => {
+  const [pure, suffix] = splitSuffix(path);
+  const clean = pure.replace(/^\/+/, "");
+  const done = clean === "" || clean.endsWith("/") || /\.[a-z0-9]+$/i.test(clean.slice(clean.lastIndexOf("/") + 1)) ? clean : `${clean}/`;
+  return `${done}${suffix}`;
+};
+
+/** normalize() without the query and fragment: the page the path names. */
+const pageOf = (path: string): string => splitSuffix(normalize(path))[0];
 
 /** Whether the page exists in every language. */
 export function isTranslated(path: string): boolean {
-  return TRANSLATED.has(normalize(path));
+  return TRANSLATED.has(pageOf(path));
 }
 
 /**
@@ -45,7 +57,7 @@ export interface Alternate {
  * is English. A page that is not translated has none.
  */
 export function alternatesFor(path: string): Alternate[] {
-  const clean = normalize(path);
+  const clean = pageOf(path);
   if (!isTranslated(clean)) return [];
   return [
     ...LOCALES.map((l) => ({ hreflang: l.hreflang, path: localePath(l.code, clean) })),
@@ -76,7 +88,8 @@ export function localeFromUrl(url: URL | string, base: string = import.meta.env.
  * language, or that language's home page when the page has no translation.
  */
 export function switchTargets(path: string): { code: LocaleCode; path: string }[] {
-  const clean = normalize(path);
+  // the 404 page is whatever address was missing, so it is not a place to link to: English points at the home page
+  const clean = pageOf(path) === "404.html" ? "" : pageOf(path);
   const translated = isTranslated(clean);
   return LOCALES.map((l) => ({ code: l.code, path: l.code === DEFAULT_LOCALE ? clean : translated ? localePath(l.code, clean) : localePath(l.code, "") }));
 }

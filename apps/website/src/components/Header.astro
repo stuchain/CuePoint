@@ -1,7 +1,7 @@
 ---
 import { NAV } from "../data/nav";
 import { PRIMARY_ACTION, SITE_NAME } from "../data/site";
-import { LOCALES, localeInfo, type LocaleCode } from "../i18n/locales";
+import { DEFAULT_HREFLANG, DEFAULT_LOCALE, LOCALES, localeInfo, type LocaleCode } from "../i18n/locales";
 import { leavesLanguage, localeFromUrl, localePath, switchTargets } from "../i18n/paths";
 import { navLabel, ui } from "../i18n/ui";
 import { loadReleases } from "../lib/releases";
@@ -23,7 +23,7 @@ const info = localeInfo(locale);
 // the language switch: the same page in each language, or that language's home page when the page is English only
 const targets = switchTargets(currentPath ?? "").map((target) => ({ ...target, info: localeInfo(target.code) }));
 // a link to a page with no translation says it leaves the language (DEC-311)
-const toHreflang = (path: string) => (leavesLanguage(locale, path) ? localeInfo("en").hreflang : undefined);
+const toHreflang = (path: string) => (leavesLanguage(locale, path) ? DEFAULT_HREFLANG : undefined);
 // The language switch (DEC-311): on a phone it is the last row of the menu (below 62.5rem), from there on a button
 // after the seam. The button is a <details>, so it opens on a click with no script; lib/lang-switch.ts closes it
 // on an outside click or Escape.
@@ -82,7 +82,7 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
                     href={hrefFor(target.path)}
                     lang={target.info.hreflang}
                     hreflang={target.info.hreflang}
-                    aria-current={target.code === locale ? "true" : undefined}
+                    aria-current={target.code === locale ? "page" : undefined}
                   >
                     {target.info.name}
                   </a>
@@ -110,7 +110,7 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
                 href={hrefFor(target.path)}
                 lang={target.info.hreflang}
                 hreflang={target.info.hreflang}
-                aria-current={target.code === locale ? "true" : undefined}
+                aria-current={target.code === locale ? "page" : undefined}
               >
                 <span class="lang-name">{target.info.name}</span>
                 <span class="lang-short" aria-hidden="true">{target.info.short}</span>
@@ -127,7 +127,7 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
           <DownloadLabel />
         </Button>
       ) : (
-        <Button href={PRIMARY_ACTION.href} external class="action">{locale === "en" ? PRIMARY_ACTION.label : t.primaryAction}</Button>
+        <Button href={PRIMARY_ACTION.href} external class="action">{locale === DEFAULT_LOCALE ? PRIMARY_ACTION.label : t.primaryAction}</Button>
       )
     }
   </div>
@@ -286,11 +286,11 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     display: none;
   }
   .menu-toggle::after {
-    content: "\25BE";
+    content: "\25BE" / "";
     margin-left: var(--space-sm);
   }
   .menu[open] .menu-toggle::after {
-    content: "\25B4";
+    content: "\25B4" / "";
   }
   .menu-body {
     position: absolute;
@@ -378,11 +378,11 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
     display: none;
   }
   .lang-toggle::after {
-    content: "\25BE";
+    content: "\25BE" / "";
     margin-left: var(--space-xs);
   }
   .lang[open] .lang-toggle::after {
-    content: "\25B4";
+    content: "\25B4" / "";
   }
   .lang-toggle:active {
     box-shadow: var(--focus-halo), var(--shadow-bevel-pressed);

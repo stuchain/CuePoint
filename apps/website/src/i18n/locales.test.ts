@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { COMPARE_TOOLS } from "../data/compare";
 import { FEATURE_PAGES } from "../data/features";
 import { isTranslatedPath, readLocales, TRANSLATED_FIXED_PATHS as SCRIPT_FIXED } from "../../scripts/i18n-locales.mjs";
+import { isTranslated } from "./paths";
 import { DEFAULT_LOCALE, LOCALES, OTHER_LOCALES, TRANSLATED_FIXED_PATHS, TRANSLATED_PATHS, localeInfo } from "./locales";
 
 const SOURCE = readFileSync(resolve(fileURLToPath(new URL(".", import.meta.url)), "locales.ts"), "utf8");
@@ -18,11 +19,11 @@ describe("the registry", () => {
 
   it("gives every language the fields the pages and the switch need", () => {
     for (const l of LOCALES) {
-      expect(l.code, "code").toMatch(/^[a-z]{2}(-[a-z]{2})?$/);
-      expect(l.hreflang, "hreflang").toMatch(/^[a-z]{2}(-[A-Z]{2})?$/);
-      expect(l.ogLocale, "og:locale").toMatch(/^[a-z]{2}_[A-Z]{2}$/);
+      expect(l.code, "code").toMatch(/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/);
+      expect(l.hreflang, "hreflang").toMatch(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/);
+      expect(l.ogLocale, "og:locale").toMatch(/^[a-z]{2,3}_[A-Z]{2}$/);
       expect(l.name.length, "name").toBeGreaterThan(1);
-      expect(l.short, "short").toMatch(/^[A-Z]{2}$/);
+      expect(l.short, "short").toMatch(/^[A-Z]{2,3}$/);
     }
     expect(new Set(LOCALES.map((l) => l.code)).size).toBe(LOCALES.length);
     expect(new Set(LOCALES.map((l) => l.short)).size).toBe(LOCALES.length);
@@ -53,6 +54,15 @@ describe("the translated pages", () => {
     for (const path of TRANSLATED_PATHS) expect(isTranslatedPath(path), path).toBe(true);
     for (const path of ["guide/", "blog/", "changelog/", "contact/", "features/a/b/", "de/"]) expect(isTranslatedPath(path), path).toBe(false);
   });
+
+  it("agrees with isTranslated on every page the site has, both ways", () => {
+    // The script cannot read the slugs (it reads no .ts), so it accepts any features/<x>/ and compare/<x>/; check-site's
+    // "language page with no English page" rule covers the gap. Over the pages that exist the two must say the same.
+    const known = [...TRANSLATED_PATHS, "guide/", "guide/clean/", "blog/", "blog/introducing-cuepoint/", "changelog/", "contact/", "report-a-bug/", "privacy/", "terms/", "404.html"];
+    for (const path of known) expect(isTranslatedPath(path), path).toBe(isTranslated(path));
+    // and every path the script calls translated, among those, the registry calls translated too
+    expect(known.filter((p) => isTranslatedPath(p)).sort()).toEqual([...TRANSLATED_PATHS].sort());
+  });
 });
 
 describe("the scripts' reader of locales.ts", () => {
@@ -63,6 +73,11 @@ describe("the scripts' reader of locales.ts", () => {
   it("throws when it finds none, or English is not first", () => {
     expect(() => readLocales("export const LOCALES = [];")).toThrow();
     expect(() => readLocales('{ code: "de", hreflang: "de", ogLocale: "de_DE" }')).toThrow();
+  });
+
+  it("reads the BCP 47 shapes the registry may use: a three-letter language, a script, a long region", () => {
+    const text = '{ code: "fil", hreflang: "fil", ogLocale: "fil_PH" },\n{ code: "zh-hant-tw", hreflang: "zh-Hant-TW", ogLocale: "zh_TW" }';
+    expect(readLocales(`{ code: "en", hreflang: "en", ogLocale: "en_US" },\n${text}`).map((l) => l.code)).toEqual(["en", "fil", "zh-hant-tw"]);
   });
 
   it("reads a language with a region, so pt-br and pt-BR agree", () => {

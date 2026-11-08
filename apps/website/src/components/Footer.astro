@@ -7,7 +7,7 @@ import { EXTERNAL_NAV, FOOTER_GROUPS, NAV } from "../data/nav";
 import { PUBLISHER, SITE_NAME } from "../data/site";
 import { fmt } from "../i18n/format";
 import { leavesLanguage, localeFromUrl, localePath } from "../i18n/paths";
-import { localeInfo } from "../i18n/locales";
+import { DEFAULT_HREFLANG } from "../i18n/locales";
 import { navLabel, ui } from "../i18n/ui";
 import { hrefFor } from "../lib/url";
 import mark from "../assets/mark/mark-32.svg";
@@ -16,7 +16,7 @@ const year = new Date().getFullYear();
 const locale = localeFromUrl(Astro.url);
 const t = ui(locale);
 // a link to a page that has no translation says so with hreflang="en" (DEC-311)
-const toHreflang = (path: string) => (leavesLanguage(locale, path) ? localeInfo("en").hreflang : undefined);
+const toHreflang = (path: string) => (leavesLanguage(locale, path) ? DEFAULT_HREFLANG : undefined);
 // TODO(DEC-144): the publisher is the user, as an individual; PUBLISHER is a placeholder name.
 const groups = FOOTER_GROUPS.map((g) => ({
   ...g,
