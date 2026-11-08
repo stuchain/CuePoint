@@ -28,7 +28,7 @@ const groups = FOOTER_GROUPS.map((g) => ({
       external: false,
       hreflang: toHreflang(n.path),
     })),
-    ...EXTERNAL_NAV.filter((n) => n.group === g.id).map((n) => ({ label: n.label, href: n.href, external: true, hreflang: undefined })),
+    ...EXTERNAL_NAV.filter((n) => n.group === g.id).map((n) => ({ label: t.external[n.id], href: n.href, external: true, hreflang: undefined })),
   ],
 }));
 ---
