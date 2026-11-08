@@ -648,9 +648,11 @@ class LibraryImportService(ILibraryImportService):
         # 5/5 tracks, then 2/2 playlists.
         observed: Dict[str, Any] = {"total": declared}
 
-        # Closed whichever way this ends, which deletes the spill file: a cancel
+        # Made in the library's own folder, so a full disk is the library's disk,
+        # and closed whichever way this ends, which deletes the file: a cancel
         # and a failure leave nothing behind but the rolled-back transaction.
-        with MarksSpill() as spill, self._db.transaction():
+        # An unwritable folder fails here as any other write does.
+        with MarksSpill(self._db.db_path.parent) as spill, self._db.transaction():
             # The read is recorded first so the counts it stores have a row to
             # point at, and in this transaction so a failure removes it (STATS-01).
             # A library with no read yet is on its baseline (DEC-168): the one
@@ -720,23 +722,18 @@ class LibraryImportService(ILibraryImportService):
         :class:`~cuepoint.services.marks_backfill_service.MarksBackfillService`
         writes a chunk. A TrackID read twice keeps the last occurrence's marks,
         as the dict this replaces did: within a step by the dict, across steps
-        because a later replacement deletes what an earlier one wrote. (The
-        summary's counts then include the rows the earlier one wrote. A repeated
-        TrackID cannot reach here today: the unique TrackID refuses the tracks
-        first.)
+        because a later replacement deletes what an earlier one wrote. (A
+        repeated TrackID cannot reach here today: the unique TrackID refuses the
+        track upsert first, so every record is a different track and the skipped
+        counts can simply be added.)
         """
         cues = markers = 0
-        # Only the tracks whose last occurrence had marks refused: a count, not
-        # a list of every track, so nothing here grows with the file.
-        skipped_by_id: Dict[str, int] = {}
+        skipped = 0
         for chunk in spill.chunks(MARKS_CHUNK_SIZE):
             latest: Dict[str, ReadMarks] = {}
             for rekordbox_id, read in chunk:
                 latest[rekordbox_id] = read
-                if read.skipped:
-                    skipped_by_id[rekordbox_id] = read.skipped
-                else:
-                    skipped_by_id.pop(rekordbox_id, None)
+                skipped += read.skipped
             ids = self._tracks.ids_by_rekordbox_id(latest)
             written = self._marks.replace_many(
                 (ids[rekordbox_id], read.cues, read.grid)
@@ -745,7 +742,6 @@ class LibraryImportService(ILibraryImportService):
             )
             cues += written[0]
             markers += written[1]
-        skipped = sum(skipped_by_id.values())
         self._marks.mark_read(utc_now_iso())
         if skipped:
             _logger.info(

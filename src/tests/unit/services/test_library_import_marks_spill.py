@@ -219,12 +219,14 @@ class TestTheSameRowsAsBefore:
         assert TrackMarksRepository(db).is_read() is True
 
     @pytest.mark.parametrize("chunk", [1, 2, 100])
-    def test_a_track_id_seen_twice_keeps_the_last_marks_and_counts_them_once(
+    def test_a_track_id_seen_twice_keeps_the_last_marks_and_adds_the_skipped(
         self, service, db, tmp_path, monkeypatch, chunk
     ):
         """The dict this replaces kept the last occurrence of a TrackID, and so did
-        the skipped count. A file cannot carry the same id twice into the tracks
-        (the unique TrackID refuses it first), so this feeds the write directly."""
+        the marks. A file cannot carry the same id twice into the tracks (the
+        unique TrackID refuses it first), so this feeds the write directly; the
+        skipped counts are then added as they are read, as there is no repeat to
+        take the last of."""
         monkeypatch.setattr(module, "MARKS_CHUNK_SIZE", chunk)
         path = tmp_path / "first.xml"
         path.write_text(BASE, encoding="utf-8")
@@ -252,7 +254,7 @@ class TestTheSameRowsAsBefore:
             # In one step the earlier occurrence is never written. Across steps it
             # is written and then replaced, and the summary counts both writes.
             assert (written.cues, written.markers) == (1, 1)
-        assert written.skipped == 1 + 2
+        assert written.skipped == 5 + 1 + 2
 
 
 # ------------------------------------------------------------ not held
@@ -286,8 +288,9 @@ class RecordingSpill(MarksSpill):
 
     made: List["RecordingSpill"] = []
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.directories = args
         self.added = 0
         RecordingSpill.made.append(self)
 
@@ -301,6 +304,13 @@ def spills(monkeypatch):
     RecordingSpill.made = []
     monkeypatch.setattr(module, "MarksSpill", RecordingSpill)
     return RecordingSpill.made
+
+
+#: 3,000 tracks of 12 grid markers and 2 cues each. 24 markers a track takes
+#: nearly 5 s under tracemalloc, which is most of what the test costs, so this
+#: holds half the marks and keeps the test under 3 s.
+TRACKS = 3_000
+MARKERS = 12
 
 
 class TestMarksAreNotHeld:
@@ -332,10 +342,11 @@ class TestMarksAreNotHeld:
     def test_the_peak_memory_of_an_import_does_not_grow_with_the_marks(
         self, service, tmp_path
     ):
-        """20,000 tracks with 6 grid markers and 2 cues each. The dict this
-        replaces peaked at 44 MB here, and grows with every mark; the import now
-        peaks at 14 MB, which is the tracks' own bookkeeping, not the marks."""
-        path = write_heavy_export(tmp_path / "heavy.xml", 20_000, 6)
+        """3,000 tracks with 12 grid markers and 2 cues each. The dict this
+        replaces peaked at 10.5 MB here, and grows with every mark; the import
+        now peaks at 6 MB, which is the tracks' own bookkeeping, not the
+        marks. The bound sits between the two."""
+        path = write_heavy_export(tmp_path / "heavy.xml", TRACKS, MARKERS)
         gc.collect()
         tracemalloc.start()
         try:
@@ -344,9 +355,55 @@ class TestMarksAreNotHeld:
         finally:
             tracemalloc.stop()
 
-        assert summary.marks.markers == 20_000 * 6
-        assert summary.marks.cues == 20_000 * 2
-        assert peak < 28 * 1024 * 1024, f"peak {peak / 1e6:.1f} MB"
+        assert summary.marks.markers == TRACKS * MARKERS
+        assert summary.marks.cues == TRACKS * 2
+        assert peak < 8 * 1024 * 1024, f"peak {peak / 1e6:.1f} MB"
+
+
+class TestWhereTheSpillLives:
+    def test_an_import_makes_it_in_the_library_s_folder(
+        self, service, db, spills, tmp_path
+    ):
+        path = tmp_path / "c.xml"
+        path.write_text(BASE, encoding="utf-8")
+
+        service.import_rekordbox_xml(str(path))
+
+        (spill,) = spills
+        assert spill.directories == (db.db_path.parent,)
+
+    def test_the_file_is_made_in_the_folder_it_is_given(self, tmp_path, monkeypatch):
+        import tempfile
+
+        made = []
+        real = tempfile.TemporaryFile
+
+        def recording(*args, **kwargs):
+            made.append(kwargs.get("dir"))
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(tempfile, "TemporaryFile", recording)
+        with MarksSpill(tmp_path):
+            pass
+        assert made == [str(tmp_path)]
+
+    def test_a_folder_that_cannot_be_written_fails_the_import_and_stores_nothing(
+        self, service, db, tmp_path, monkeypatch
+    ):
+        import tempfile
+
+        def refuse(*args, **kwargs):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(tempfile, "TemporaryFile", refuse)
+        path = tmp_path / "c.xml"
+        path.write_text(BASE, encoding="utf-8")
+
+        with pytest.raises(OSError):
+            service.import_rekordbox_xml(str(path))
+
+        assert stored(db) == {}
+        assert TrackRepository(db).count() == 0
 
 
 # ------------------------------------------------- rollback and the spill

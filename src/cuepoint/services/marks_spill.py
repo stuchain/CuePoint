@@ -11,21 +11,29 @@ where reading the same file and keeping nothing took 21 MB.
 
 This is the dict's replacement: an anonymous temporary file with one
 length-prefixed pickle record per track. It is read back once, a chunk at a
-time, so memory is the size of a chunk however large the file was. The file has
-no name that outlives the process and is deleted when it is closed, on success,
-error or cancel alike.
+time, so memory is the size of a chunk however large the file was. The file is
+deleted when it is closed, on success, error or cancel alike. On macOS and Linux
+it has no name at all; on Windows ``TemporaryFile`` is a named file in the
+folder it was made in while it is open, and is deleted on close.
+
+It is made in the folder the caller names (the library's own, so that a full
+disk is the disk the library is on and the advice for it is right), not in the
+system temporary folder.
 
 Pickle is safe here for the reason it is not elsewhere: the file is created by
-this process, is never given a name, and is read only by the same import.
+this process, is read only by the same import, and holds only what that import
+wrote, so nothing in it comes from outside. (A named file on Windows is still
+this process's own, open and not shared.)
 """
 
 from __future__ import annotations
 
+import os
 import pickle
 import struct
 import tempfile
 from types import TracebackType
-from typing import IO, Iterator, List, Optional, Tuple, Type
+from typing import IO, Iterator, List, Optional, Tuple, Type, Union
 
 from cuepoint.models.track_marks import ReadMarks
 
@@ -39,9 +47,11 @@ class MarksSpill:
     Use it as a context manager; :meth:`close` is also safe to call twice.
     """
 
-    def __init__(self) -> None:
-        self._file: Optional[IO[bytes]] = tempfile.TemporaryFile()
-        self.count = 0
+    def __init__(self, directory: Union[str, "os.PathLike[str]", None] = None) -> None:
+        """Create the file in ``directory`` (the system temporary folder if None)."""
+        self._file: Optional[IO[bytes]] = tempfile.TemporaryFile(
+            dir=None if directory is None else os.fspath(directory)
+        )
 
     @property
     def closed(self) -> bool:
@@ -57,7 +67,6 @@ class MarksSpill:
         )
         handle.write(_LENGTH.pack(len(record)))
         handle.write(record)
-        self.count += 1
 
     def chunks(self, size: int) -> Iterator[List[Tuple[str, ReadMarks]]]:
         """Yield the records in the order added, ``size`` at a time.
