@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmt, placeholdersOf } from "./format";
+import { dayFor, fmt, placeholdersOf } from "./format";
 import { plain, rich } from "./rich";
 
 describe("fmt", () => {
@@ -38,5 +38,14 @@ describe("rich", () => {
 
   it("plain takes the markup off", () => {
     expect(plain("**Run** [here](x) {n}", { n: 2 })).toBe("Run here 2");
+  });
+});
+
+describe("dayFor", () => {
+  it("keeps the ISO day on English and writes it in the language elsewhere", () => {
+    expect(dayFor("2026-10-08", "en")).toBe("2026-10-08");
+    expect(dayFor("2026-10-08", "de")).toBe("8. Oktober 2026");
+    expect(dayFor("2026-10-08", "es")).toBe("8 de octubre de 2026");
+    expect(dayFor("2026-10-08", "pt-br")).toBe("8 de outubro de 2026");
   });
 });

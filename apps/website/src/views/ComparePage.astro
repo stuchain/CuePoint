@@ -12,7 +12,7 @@ import HomeAction from "../components/HomeAction.astro";
 import { compareHref } from "../data/compare";
 import { featureHref } from "../data/features";
 import { compareFor } from "../i18n/content";
-import { fmt } from "../i18n/format";
+import { dayFor, fmt } from "../i18n/format";
 import type { LocaleCode } from "../i18n/locales";
 import { localePath } from "../i18n/paths";
 import { escapeHtml, rich } from "../i18n/rich";
@@ -38,7 +38,7 @@ const note = rich(
 const sourceLine = (row: (typeof tool)["rows"][number]): string =>
   escapeHtml(fmt(t.compare.source, { link: "\u0001", date: "\u0002" }))
     .replace("\u0001", `<a href="${escapeHtml(row.other.source.url)}" rel="noopener noreferrer">${escapeHtml(row.other.source.label)}</a>`)
-    .replace("\u0002", `<time datetime="${row.other.checked}">${row.other.checked}</time>`);
+    .replace("\u0002", `<time datetime="${row.other.checked}">${dayFor(row.other.checked, locale)}</time>`);
 ---
 
 <Page
