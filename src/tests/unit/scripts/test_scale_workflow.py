@@ -137,10 +137,17 @@ class TestScaleTests:
             assert (_REPO_ROOT / path).is_file()
 
 
+#: Benches that are not in the scale run: they need a file of gigabytes, so they
+#: are run by hand on the Mac and the Windows PC (PYTHON-1H).
+_RUN_BY_HAND = {"bench_rekordbox_xml.py"}
+
+
 class TestBenches:
     def test_every_bench_script_runs_with_json(self, job):
         text = _runs(job)
         for script in sorted(_SCRIPTS.glob("bench_*.py")):
+            if script.name in _RUN_BY_HAND:
+                continue
             needle = f"scripts/{script.name}"
             assert needle in text, f"{script.name} is not run by scale.yml"
             line = next(row for row in text.splitlines() if needle in row)

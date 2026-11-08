@@ -567,6 +567,8 @@ class TestEveryBenchIsAccountedFor:
             budgeted
             | recorded
             | {"tag_write", "waveform_store", "waveforms", "sets", "marks"}
+            # Run by hand on a file of gigabytes (PYTHON-1H); not in CI, no budget.
+            | {"rekordbox_xml"}
         )
         assert stems <= accounted, stems - accounted
         assert {"match_storage", "decoder", "waveform_analysis"} <= recorded
