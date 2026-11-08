@@ -33,13 +33,33 @@ jobs:
         with:
           python-version: "3.12"
 
+      # The manifest also changes for reasons that are not a re-pin (its required option list).
+      # mpv replaces its rolling assets daily, so re-downloading a pin that is already mirrored
+      # fails with a 404 for nothing: when the mirror holds every pinned archive, stop here.
+      - name: Check whether the mirror already holds the pinned archives
+        id: mirrored
+        run: |
+          version="$(python -c "import json; print(json.load(open('scripts/player_sidecar_manifest.json'))['version'])")"
+          wanted="$(python -c "import json; m = json.load(open('scripts/player_sidecar_manifest.json')); print('\n'.join(sorted(t['asset'] for t in m['targets'].values() if t.get('supported', True))))" | sort)"
+          have="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/sidecar-mpv-${version}" --jq '.assets[].name' 2>/dev/null | sort || true)"
+          missing="$(comm -23 <(printf '%s\n' "${wanted}") <(printf '%s\n' "${have}"))"
+          if [ -z "${missing}" ]; then
+            echo "sidecar-mpv-${version} already holds every pinned archive; nothing to mirror."
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            printf 'Not mirrored yet:\n%s\n' "${missing}"
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # Every supported target, each checked against its pinned SHA-256 before it is kept.
       - name: Download the pinned archives from upstream
+        if: steps.mirrored.outputs.done != 'true'
         run: python scripts/fetch_player_sidecar.py --download-archives mpv-archives
 
       # The tag is outside the version scheme (`sidecar-mpv-<mpv version>`), so the updater never
       # offers it. `--clobber` makes a second run harmless.
       - name: Create the mirror release and upload the archives
+        if: steps.mirrored.outputs.done != 'true'
         run: |
           version="$(python -c "import json; print(json.load(open('scripts/player_sidecar_manifest.json'))['version'])")"
           tag="sidecar-mpv-${version}"
