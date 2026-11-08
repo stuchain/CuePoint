@@ -13,6 +13,23 @@ Object.assign(stage.style, { width: `${width}px`, height: `${height}px` });
 const edit = params.get("edit") in EDITS ? params.get("edit") : "full";
 const { OPEN, END, shots: slots, endStart, duration: DURATION } = layout(opening, edit);
 const BEAT = barOf(edit) / 4;
+// a spot brings its own opening lines and end line
+if (EDITS[edit]?.open) {
+  const body = document.querySelector("#openC .card__body");
+  body.innerHTML = "";
+  for (const line of EDITS[edit].open.problems) {
+    const el = document.createElement("div");
+    el.className = "card__problem";
+    el.textContent = line;
+    body.appendChild(el);
+  }
+  const answer = document.createElement("div");
+  answer.className = "card__answer";
+  answer.innerHTML = "<span>CuePoint</span> ";
+  answer.appendChild(document.createTextNode(EDITS[edit].open.answer));
+  body.appendChild(answer);
+}
+if (EDITS[edit]?.end) document.querySelector("#end .card__line").textContent = EDITS[edit].end;
 // the title lines land on beats; the 2-bar story opening and the short edits' end cards use half beats
 const STEP = edit === "story" ? BEAT / 2 : BEAT;
 const END_STEP = edit === "full" ? BEAT : BEAT / 2;
@@ -112,6 +129,7 @@ function chrome(i, k) {
     else paint(li, j < i ? DONE : GREY, j < i ? DONE : GREY, 1, 0);
   });
   const count = $("count");
+  count.style.display = slots.length > 1 ? "" : "none";
   const text = `${String(i + 1).padStart(2, "0")} / ${String(slots.length).padStart(2, "0")}`;
   const dip = i > 0 ? Math.abs(h - 0.5) * 2 : 1;
   count.textContent = i > 0 && h < 0.5 ? `${String(i).padStart(2, "0")} / ${String(slots.length).padStart(2, "0")}` : text;
@@ -204,10 +222,14 @@ function openB(t) {
 /** Opening C: the problem, a line every two beats, then the answer on the bar line three bars in. */
 function openC(t) {
   const body = $("openC").querySelector(".card__body");
-  const beats = edit === "full" ? [1, 3, 5, 7, 12] : [1, 2, 3, 4, 8];
-  // full: 4 bars, a line every two beats; short: 3 bars, a line a beat; story: 2 bars, a line a half beat
+  // full: 4 bars, a line every two beats; short: 3 bars, a line a beat; story: 2 bars, a line a half beat;
+  // a spot: its lines a beat apart, the answer a bar before the end
+  const lines = body.children.length;
+  const beats = EDITS[edit]?.open
+    ? [...Array(lines - 1).keys()].map((i) => i + 1).concat(OPEN.bars * 4 - 4)
+    : edit === "full" ? [1, 3, 5, 7, 12] : [1, 2, 3, 4, 8];
   reveal(body, beats.map((b) => 0.2 + b * STEP), t);
-  const dim = smooth((t - (0.2 + (beats[4] - 1) * STEP)) / 0.45);
+  const dim = smooth((t - (0.2 + (beats.at(-1) - 1) * STEP)) / 0.45);
   [...body.querySelectorAll(".card__problem")].forEach((el) => (el.style.color = mix([250, 250, 250], [91, 91, 102], dim)));
   // the lines leave before the app arrives, so the dissolve is dark to app and never text over a table
   body.style.opacity = String(1 - smooth((t - (OPEN.seconds - 0.5)) / 0.5));

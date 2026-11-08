@@ -8,7 +8,8 @@
  *   --opening=a,b,c          which openings (default c, the problem first; a pull back from the live app, b logo build)
  *   --edit=story|short|underscore|technology  the 30 s story edit, the 60 s short edit, or that cut on the
  *                            Underscore (100 BPM) or Technology (125 BPM) track (STORY, SHORT, UNDERSCORE,
- *                            TECHNOLOGY in demo/shots.js)
+ *                            TECHNOLOGY in demo/shots.js); fix|free|dig|prep|roundtrip are the five LinkedIn spots
+ *                            (SPOTS), on the Technology track with --start=32.03
  *   --stills=5,12.5          no video: PNGs at those seconds, out/demo/still-<format>-<opening>-<t>.png
  *   --track=<audio> --start=<s>  your own music under it; the file is named -PRIVATE and never committed
  *
