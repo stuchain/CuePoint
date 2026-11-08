@@ -64,6 +64,22 @@ test.describe("the language row in the phone menu", () => {
     await row.getByRole("link", { name: /Deutsch/ }).click();
     await expect(page).toHaveURL(/\/de\/features\/$/);
   });
+
+  for (const home of ["", "de/"]) {
+    test(`on the home page ${home || "(English)"} the open menu draws above the hero and its links take the tap`, async ({ page }) => {
+      await page.setViewportSize(PHONE);
+      await page.goto(home);
+      await page.locator("details.menu > summary").click();
+      const link = page.locator(".lang-row a").last();
+      await expect(link).toBeVisible();
+      const box = (await link.boundingBox())!;
+      const hit = await page.evaluate(
+        ([x, y]) => document.elementFromPoint(x, y)?.closest(".lang-row") !== null,
+        [box.x + box.width / 2, box.y + box.height / 2],
+      );
+      expect(hit).toBe(true);
+    });
+  }
 });
 
 test.describe("every translated page", () => {

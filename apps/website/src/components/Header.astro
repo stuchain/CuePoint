@@ -148,6 +148,12 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
   .header {
     view-transition-name: site-header;
   }
+  /* view-transition-name makes the header its own stacking layer; on the home page (not sticky) give that
+     layer a place above the hero, or the open phone Menu draws behind the hero's text (owner's pick, 8 Nov 2026) */
+  .header:not([data-sticky]) {
+    position: relative;
+    z-index: 40;
+  }
   .header[data-sticky] {
     position: sticky;
     top: 0;
