@@ -536,6 +536,15 @@ const scriptData = JSON.stringify({ files: releases.files.map(({ system, chip, u
       display: none;
     }
   }
+  /*
+   * German is the longest: up to 85rem (1360px) its action keeps the short label ("Herunterladen"), since
+   * "Für Linux herunterladen" next to the German links leaves the bar only a few pixels to spare at 1280px.
+   */
+  @media (min-width: 72rem) and (max-width: 84.99rem) {
+    :global(html:lang(de)) .bar > :global(.action .dl-labels > span:not([data-l="neutral"])) {
+      display: none;
+    }
+  }
   /* the longer words of the other languages ("Funktionen", "Anleitung") get a closer set of links here; English fits as it is */
   @media (min-width: 62.5rem) and (max-width: 71.99rem) {
     :global(html:not(:lang(en))) .menu-body .nav ul {
