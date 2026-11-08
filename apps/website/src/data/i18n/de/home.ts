@@ -136,5 +136,5 @@ export const HERO = {
   lead: "CuePoint ist eine kostenlose Desktop-App für DJs. Sie gleicht deine Tracks mit Beatport ab, ergänzt fehlende und korrigiert falsche Keys und BPM-Werte und schickt das Ergebnis zurück zu Rekordbox.",
   title: "CuePoint: Rekordbox-Bibliothek aufräumen",
   description:
-    "CuePoint, kostenlose Desktop-App für DJs: Gleiche deine Rekordbox-Bibliothek mit Beatport ab, korrigiere Keys und BPM, plane Sets, sieh Keys auf dem Camelot-Rad.",
+    "CuePoint, kostenlose Desktop-App für DJs: gleiche Rekordbox mit Beatport ab, korrigiere Keys und BPM, plane Sets, sieh Keys auf dem Camelot-Rad.",
 } as const satisfies Hero;
