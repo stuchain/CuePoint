@@ -3,13 +3,13 @@
     "de": {
       "files": {
         "src/data/home.ts": {
-          "hash": "6c2cdba702b5c0a4f39bc1b959f9f7fd8d70237e2a4ae9650fe0489f1f1b74d7",
-          "commit": "6c6b980871dca4cdf1e848f890f3bc2d4b97ef5a",
+          "hash": "ee59d6751a50ba2851c8f5f63ef5ab64a74a470406dfd9b6fa76c400c60d5b8b",
+          "commit": "47d97e2b21e955cbe49086b0ab36ea06c1f143ac",
           "recordedAt": "2026-11-08"
         },
         "src/data/features.ts": {
-          "hash": "b312207c5653186ab31893788fc78b8bc7ca37faf697e60809f8bf55b70b6bf1",
-          "commit": "0c10c9758fbebb652e7a76b800f6800896742c65",
+          "hash": "54a5af1925b8e2f8b9011f95cc25aafd19add3a9b3059628976d3048ea0d386a",
+          "commit": "47d97e2b21e955cbe49086b0ab36ea06c1f143ac",
           "recordedAt": "2026-11-08"
         },
         "src/data/compare.ts": {
@@ -32,13 +32,13 @@
     "es": {
       "files": {
         "src/data/home.ts": {
-          "hash": "6c2cdba702b5c0a4f39bc1b959f9f7fd8d70237e2a4ae9650fe0489f1f1b74d7",
-          "commit": "6c6b980871dca4cdf1e848f890f3bc2d4b97ef5a",
+          "hash": "ee59d6751a50ba2851c8f5f63ef5ab64a74a470406dfd9b6fa76c400c60d5b8b",
+          "commit": "47d97e2b21e955cbe49086b0ab36ea06c1f143ac",
           "recordedAt": "2026-11-08"
         },
         "src/data/features.ts": {
-          "hash": "b312207c5653186ab31893788fc78b8bc7ca37faf697e60809f8bf55b70b6bf1",
-          "commit": "0c10c9758fbebb652e7a76b800f6800896742c65",
+          "hash": "54a5af1925b8e2f8b9011f95cc25aafd19add3a9b3059628976d3048ea0d386a",
+          "commit": "47d97e2b21e955cbe49086b0ab36ea06c1f143ac",
           "recordedAt": "2026-11-08"
         },
         "src/data/compare.ts": {
@@ -61,13 +61,13 @@
     "pt-br": {
       "files": {
         "src/data/home.ts": {
-          "hash": "6c2cdba702b5c0a4f39bc1b959f9f7fd8d70237e2a4ae9650fe0489f1f1b74d7",
-          "commit": "6c6b980871dca4cdf1e848f890f3bc2d4b97ef5a",
+          "hash": "ee59d6751a50ba2851c8f5f63ef5ab64a74a470406dfd9b6fa76c400c60d5b8b",
+          "commit": "47d97e2b21e955cbe49086b0ab36ea06c1f143ac",
           "recordedAt": "2026-11-08"
         },
         "src/data/features.ts": {
-          "hash": "b312207c5653186ab31893788fc78b8bc7ca37faf697e60809f8bf55b70b6bf1",
-          "commit": "0c10c9758fbebb652e7a76b800f6800896742c65",
+          "hash": "54a5af1925b8e2f8b9011f95cc25aafd19add3a9b3059628976d3048ea0d386a",
+          "commit": "47d97e2b21e955cbe49086b0ab36ea06c1f143ac",
           "recordedAt": "2026-11-08"
         },
         "src/data/compare.ts": {
