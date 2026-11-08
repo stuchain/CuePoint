@@ -143,8 +143,36 @@ export const TECHNOLOGY = {
   bpm: 125,
   shots: SHORT.shots.map((s) => ({ ...s, ...(TECHNOLOGY_SPANS[s.id] ? { span: TECHNOLOGY_SPANS[s.id] } : {}) })),
 };
+/**
+ * Five single-angle LinkedIn spots on the Technology track (125 BPM, --start=32.03 puts its full section under
+ * them): each is the short edit's pace rule and clips, a 3-bar problem opening with its own lines (`open`:
+ * problem lines, then the answer after "CuePoint"), one to three features with their own captions, and a 2-bar
+ * end card whose line an edit may replace (`end`). Angles: the fix itself, the price, digging, set prep, safety.
+ */
+const spot = (id, open, shots, end) => ({
+  ...TECHNOLOGY,
+  open,
+  end,
+  shots: shots.map(([sid, caption]) => ({ ...TECHNOLOGY.shots.find((s) => s.id === sid), ...(caption ? { caption } : {}) })),
+});
+export const SPOTS = {
+  fix: spot("fix", { problems: ["300 tracks.", "24 wrong keys.", "BPMs missing.", "Half the tags empty."], answer: "fixes them from Beatport." },
+    [["clean", "Fix keys, BPM and tags from Beatport"]]),
+  free: spot("free", { problems: ["Most tag tools cost monthly.", "Lock your library in.", "Want an account."], answer: "is free. Open source." },
+    [["library", "Your Rekordbox library, as it is"], ["clean", "Fixed from Beatport"], ["export", "Straight back to Rekordbox"]],
+    "Free and open source. No account, no subscription."),
+  dig: spot("dig", { problems: ["New music is everywhere.", "The good stuff is in charts", "by DJs you already trust."], answer: "digs them for you." },
+    [["discover", "Dig the charts for new music"]],
+    "New music from the charts of DJs you trust."),
+  prep: spot("prep", { problems: ["Saturday's set.", "Forty transitions.", "Which ones work?"], answer: "checks every one." },
+    [["prepare", "Plan your set, see every transition"], ["keys", "Find tracks that mix"]],
+    "Plan the set, check every transition, before you leave home."),
+  roundtrip: spot("roundtrip", { problems: ["Your files stay yours.", "Nothing is overwritten blind.", "Every change is listed first."], answer: "writes, you approve." },
+    [["library", "Your whole Rekordbox library"], ["save", "Write the fixes into your music files"], ["export", "Straight back to Rekordbox"]],
+    "Fix the files, export, re-import. Nothing lost."),
+};
 /** The edits that replace the full tour, by their ?edit= name. */
-export const EDITS = { story: STORY, short: SHORT, underscore: UNDERSCORE, technology: TECHNOLOGY };
+export const EDITS = { story: STORY, short: SHORT, underscore: UNDERSCORE, technology: TECHNOLOGY, ...SPOTS };
 /** Seconds of one bar of an edit's music. */
 export const barOf = (edit) => (60 / (EDITS[edit]?.bpm ?? BPM)) * 4;
 
