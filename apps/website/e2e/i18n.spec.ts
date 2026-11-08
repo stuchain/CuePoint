@@ -75,7 +75,7 @@ test.describe("the language row in the phone menu", () => {
       const box = (await link.boundingBox())!;
       const hit = await page.evaluate(
         ([x, y]) => document.elementFromPoint(x, y)?.closest(".lang-row") !== null,
-        [box.x + box.width / 2, box.y + box.height / 2],
+        [box.x + box.width / 2, box.y + box.height / 2] as const,
       );
       expect(hit).toBe(true);
     });
