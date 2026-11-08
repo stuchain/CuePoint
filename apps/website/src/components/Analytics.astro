@@ -8,17 +8,25 @@
  */
 import { PUBLIC, SITE_URL } from "../../site.config";
 import { UMAMI_SCRIPT_URL, UMAMI_WEBSITE_ID } from "../data/site";
+import { fmt } from "../i18n/format";
+import { escapeHtml } from "../i18n/rich";
+import { localeFromUrl } from "../i18n/paths";
+import { ui } from "../i18n/ui";
+
+// the notice is in the page's language (DEC-311); the cookie names go where {names} is, in their own element
+const t = ui(localeFromUrl(Astro.url)).consent;
+const [bodyBefore = "", bodyAfter = ""] = escapeHtml(fmt(t.body, { names: "\u0000" })).split("\u0000");
 ---
 
 <div data-analytics data-public={String(PUBLIC)} data-script={UMAMI_SCRIPT_URL} data-website-id={UMAMI_WEBSITE_ID} data-domains={new URL(SITE_URL).hostname}>
   <section class="consent" data-consent-banner role="region" aria-labelledby="consent-title" hidden>
-    <h2 id="consent-title" class="consent-title">Counting visits</h2>
+    <h2 id="consent-title" class="consent-title">{t.title}</h2>
     <p>
-      This site found a cookie it did not set itself: <span data-consent-names></span>. Counting visits waits until you choose.
+      <Fragment set:html={bodyBefore} /><span data-consent-names></span><Fragment set:html={bodyAfter} />
     </p>
     <div class="actions">
-      <button type="button" class="btn" data-variant="primary" data-consent-yes>Allow counting</button>
-      <button type="button" class="btn" data-variant="secondary" data-consent-no>No thanks</button>
+      <button type="button" class="btn" data-variant="primary" data-consent-yes>{t.yes}</button>
+      <button type="button" class="btn" data-variant="secondary" data-consent-no>{t.no}</button>
     </div>
   </section>
 </div>

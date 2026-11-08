@@ -12,8 +12,17 @@ export const en = {
   language: {
     label: "Language",
     switchLabel: "Choose a language",
-    current: "current language",
   },
+  /** The cookie notice (src/components/Analytics.astro): it shows only when a page has a cookie the site did not set. */
+  consent: {
+    title: "Counting visits",
+    /** `{names}` is where the cookie names go, in their own element. */
+    body: "This site found a cookie it did not set itself: {names}. Counting visits waits until you choose.",
+    yes: "Allow counting",
+    no: "No thanks",
+  },
+  /** Said after a link to the guide, which is English only, on a translated page: "Read the steps (in English)". */
+  inEnglish: "in English",
   skipLink: "Skip to main content",
   menu: "Menu",
   mainNav: "Main",
@@ -173,7 +182,8 @@ export const en = {
     },
     checksum: "SHA-256 checksum",
     downloadButton: "Download",
-    downloadFor: "CuePoint for {title}",
+    /** The whole spoken name of one file's button: the visible word is "Download". */
+    downloadFor: "Download CuePoint for {title}",
     verifyTitle: "How to check a download",
     verifyIntro: "Run one of these on the file you downloaded and compare the result with its SHA-256 checksum above.",
     codeWindows: "Windows command",
@@ -229,4 +239,7 @@ export const en = {
   },
 };
 
-export type UiStrings = typeof en;
+/** A plural word list: `other` always, and the CLDR forms the language needs (`zero`, `one`, `two`, `few`, `many`). */
+export type PluralWords = { other: string } & Partial<Record<"zero" | "one" | "two" | "few" | "many", string>>;
+
+export type UiStrings = Omit<typeof en, "downloadedTimes"> & { downloadedTimes: PluralWords };
