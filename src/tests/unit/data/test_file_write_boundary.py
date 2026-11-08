@@ -111,6 +111,9 @@ ALLOWED_IMPORTERS: Dict[str, Set[str]] = {
         # destination a person chose, validated to end in .xml and never to be
         # the source (DEC-083, DEC-085). Nothing else should join it.
         "src/cuepoint/services/rekordbox_export_service.py",
+        # PYTHON-1H's bench writes an export of a file it generated itself, in
+        # its own temporary folder, and removes it; it never opens a user's file.
+        "scripts/bench_rekordbox_xml.py",
     },
     "cuepoint.data.set_list_file": {
         # PREP-06's save, the one caller: a .txt, .csv or .m3u8 at a
