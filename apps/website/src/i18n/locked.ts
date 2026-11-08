@@ -73,5 +73,5 @@ export const sameOnPurpose = (code: string): ReadonlySet<string> => SAME_ON_PURP
 
 /** The keys that hold an id, an address or a reference and not words: they are the same in every language. */
 export const NOT_TEXT_KEYS: ReadonlySet<string> = new Set([
-  "id", "slug", "shot", "page", "path", "url", "file", "phrase", "step", "checked", "maker", "name", "related", "fromDecisions", "hosts",
+  "id", "slug", "shot", "page", "path", "url", "file", "phrase", "step", "checked", "maker", "related", "fromDecisions", "hosts",
 ]);
