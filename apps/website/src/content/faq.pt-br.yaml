@@ -1,0 +1,160 @@
+# O FAQ em português do Brasil (DEC-311). Estrutura igual à de src/content/faq.yaml: mesmos ids, mesma ordem, os
+# mesmos links para o guia (page e heading). Só se traduzem question, answer e os nomes dos links.
+# O guia em si está em inglês; os links levam até ele.
+
+- id: free
+  order: 1
+  question: O CuePoint é gratuito?
+  answer: >-
+    Sim. O CuePoint é open source sob a Apache License 2.0, então você pode baixá-lo, usá-lo e ler o código dele
+    sem pagar nada.
+  links:
+    - page: getting-started
+      heading: install
+      label: Como instalar o CuePoint
+
+- id: rekordbox-library
+  order: 2
+  question: O CuePoint altera a minha biblioteca do Rekordbox?
+  answer: >-
+    Não. O CuePoint trabalha em uma cópia própria da sua coleção, que você traz de uma exportação XML do
+    Rekordbox. Ele nunca grava nesse arquivo nem no banco de dados do Rekordbox. Quando você quiser as suas
+    mudanças no Rekordbox, exporte um arquivo novo e abra-o lá. Os seus cue points e Beatgrids chegam
+    intocados.
+
+
+    A única vez em que o CuePoint grava nos seus arquivos de música é quando você escolhe “Write tags to files”, e
+    antes disso ele mostra uma prévia.
+  links:
+    - page: features
+      heading: what-cuepoint-never-does
+      label: O que o CuePoint nunca faz
+    - page: rekordbox-export
+      label: Exportando para o Rekordbox
+
+- id: delete-files
+  order: 3
+  question: O CuePoint apaga ou move os meus tracks?
+  answer: >-
+    Nunca. O Clean mostra os tracks cujos arquivos sumiram e os que parecem duplicatas, e deixa cada um deles onde
+    está. Para apontar um track para o novo lugar dele, use o Relocate do Rekordbox.
+  links:
+    - page: clean
+      label: Clean
+
+- id: needs
+  order: 4
+  question: O que eu preciso para rodar o CuePoint?
+  answer: >-
+    Uma coleção exportada do Rekordbox como XML e um computador com Windows 10 ou mais novo (64 bits), ou um Mac
+    com macOS 14 ou mais novo (Apple silicon) ou macOS 15 ou mais novo (Intel). O Linux é experimental e não tem
+    player embutido. O Discover, que acha música nova no Beatport, também precisa que você entre no Beatport em
+    Settings.
+  links:
+    - page: support-policy
+      heading: supported-platforms
+      label: Plataformas com suporte
+    - page: discover
+      heading: signing-in-to-beatport
+      label: Entrando no Beatport
+
+- id: mac-chips
+  order: 5
+  question: O CuePoint roda em Macs com Apple silicon e com Intel?
+  answer: >-
+    Sim, nos dois. O CuePoint para Mac vem em dois downloads, um para Apple silicon e outro para Intel, então
+    escolha o que corresponde ao seu Mac. O menu Apple, depois About This Mac, mostra qual chip você tem.
+  links:
+    - page: getting-started
+      heading: install
+      label: Instalando em um Mac
+    - page: support-policy
+      heading: supported-platforms
+      label: Plataformas com suporte
+
+- id: what-it-sends
+  order: 6
+  question: O que o CuePoint envia, e como eu desligo isso?
+  answer: >-
+    O CuePoint não tem analytics e não rastreia o que você faz. A única coisa que ele envia sozinho é um relatório
+    de erro, quando encontra um erro inesperado. Os relatórios são limpos no seu computador antes, então não levam
+    nomes de arquivos, pastas, tracks, artistas, labels ou playlists, nem notas ou tags, nem o token do Beatport.
+    Eles vão para o Sentry, na região da UE.
+
+
+    Os relatórios vêm ligados por padrão. Para parar, desligue Settings, depois Privacy, depois Send error
+    reports. Isso vale na hora, e nada é guardado para enviar depois. O CuePoint só fala com o Beatport quando
+    você pede.
+  links:
+    - page: the-window
+      heading: privacy-and-error-reports
+      label: Privacidade e relatórios de erro
+    - page: troubleshooting
+      heading: the-app-reports-errors-on-its-own
+      label: O que um relatório de erro contém
+
+- id: updates
+  order: 7
+  question: Como o CuePoint se atualiza?
+  answer: >-
+    No Windows e no Mac, o CuePoint encontra as versões novas sozinho. Ele consulta o GitHub pouco depois de abrir
+    e a cada 4 horas, baixa uma versão nova em segundo plano e avisa na barra de status quando ela está pronta. Você
+    escolhe Restart now, ou Later para instalá-la na próxima vez que fechar o app. A sua biblioteca e as suas
+    configurações continuam onde estão.
+
+
+    No Linux, o CuePoint avisa que saiu uma versão nova e mostra um link Download; você mesmo instala o novo
+    AppImage. Em Settings, depois About & updates, você vê a sua versão e pode pedir uma verificação na hora.
+  links:
+    - page: updates
+      heading: what-happens
+      label: Como as atualizações funcionam
+    - page: updates
+      heading: when-you-download-it-yourself
+      label: Quando você baixa por conta própria
+
+- id: where-data
+  order: 8
+  question: Onde os meus dados ficam guardados?
+  answer: >-
+    No seu computador, e em mais nenhum lugar. A sua biblioteca é um único arquivo na sua pasta pessoal do
+    CuePoint (.cuepoint/cuepoint.db), e as suas configurações, o cache e os logs também ficam no seu computador.
+    Nada é enviado, e o CuePoint faz uma cópia de segurança da biblioteca toda vez que inicia. Help, depois
+    Privacy, limpa o cache e os logs sem mexer na sua biblioteca.
+  links:
+    - page: library
+      heading: where-the-data-lives
+      label: Onde os dados ficam
+    - page: the-window
+      heading: privacy-and-error-reports
+      label: Privacidade e relatórios de erro
+
+- id: size
+  order: 9
+  question: Que tamanho de coleção o CuePoint aguenta?
+  answer: >-
+    Ele foi medido em uma coleção de 50.000 tracks. Importá-la levou cerca de onze segundos em um desktop com
+    Windows 11 e SSD, e checar se uma coleção sem mudanças mudou é instantâneo.
+  links:
+    - page: performance
+      heading: the-library
+      label: Os números medidos
+
+- id: report-problem
+  order: 10
+  question: Como eu relato um problema?
+  answer: >-
+    No CuePoint, escolha Help, depois Report a problem, escreva o que você estava fazendo e aperte Send. Ele envia
+    a sua nota exatamente como você escreveu, com a versão e o id do último relatório de erro, então deixe de fora
+    o que você não quer que seja lido. Ele fica desligado enquanto os relatórios de erro estão desligados.
+
+
+    Você também pode abrir uma issue no GitHub. Anexe um pacote de suporte de Help, depois Export support bundle:
+    ele contém diagnósticos, logs e as suas configurações sem segredos, e nunca a sua biblioteca.
+  links:
+    - page: troubleshooting
+      heading: diagnostics-and-support
+      label: Diagnósticos e suporte
+    - page: support-policy
+      heading: support-diagnostics
+      label: O que enviar com um relatório
