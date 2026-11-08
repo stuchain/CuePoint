@@ -26,6 +26,7 @@ from cuepoint.core.text_processing import sanitize_title_for_search
 from cuepoint.data import search_health
 from cuepoint.data.playlist_file import parse_m3u, read_title_artist_from_file
 from cuepoint.data.rekordbox import (
+    XmlTooLargeError,
     extract_artists_from_title,
     get_track_locations,
     inspect_rekordbox_xml,
@@ -824,13 +825,6 @@ class ProcessorService(IProcessorService):
                     errors.append(
                         PreflightIssue(code="P004", message="XML file is empty.")
                     )
-                elif xml_path_obj.stat().st_size > 100 * 1024 * 1024:
-                    warnings.append(
-                        PreflightIssue(
-                            code="P004",
-                            message="XML file is large (> 100MB). Processing may be slower.",
-                        )
-                    )
                 checks["xml_size_bytes"] = xml_path_obj.stat().st_size
             except OSError:
                 errors.append(
@@ -1063,6 +1057,10 @@ class ProcessorService(IProcessorService):
                             code="P010", message="Playlist name is required."
                         )
                     )
+            except XmlTooLargeError as exc:
+                # Over the command line's limit: say so, in the reader's words,
+                # rather than calling a big file a broken one.
+                errors.append(PreflightIssue(code="P004", message=exc.message))
             except Exception:
                 errors.append(
                     PreflightIssue(code="P005", message="XML file could not be parsed.")
@@ -1295,6 +1293,17 @@ class ProcessorService(IProcessorService):
                     "Check that the file path is correct",
                     "Verify the file exists and is readable",
                     "Ensure the file path uses forward slashes (/) or escaped backslashes (\\)",
+                ],
+                recoverable=False,
+            )
+        except XmlTooLargeError as e:
+            raise ProcessingError(
+                error_type=ErrorType.VALIDATION_ERROR,
+                message=e.message,
+                details="The file is larger than the command line reads.",
+                suggestions=[
+                    "Import the file in the CuePoint app instead",
+                    "Check that it is your Rekordbox collection export",
                 ],
                 recoverable=False,
             )

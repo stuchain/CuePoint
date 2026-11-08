@@ -12,7 +12,9 @@ report as a bug.
 
 from __future__ import annotations
 
+import copy
 import os
+import pickle
 from pathlib import Path
 
 import pytest
@@ -177,8 +179,9 @@ class TestTheRefusal:
         reports(monkeypatch, 250 * 1000 * 1000)
         with pytest.raises(XmlTooLargeError) as raised:
             parse_rekordbox(xml_path)
-        assert raised.value.message.startswith(
-            "This file is 250 MB, larger than the 104 MB CuePoint can read."
+        assert raised.value.message == (
+            "This file is 250 MB, larger than the 100 MB the command line reads. "
+            "Import it in the CuePoint app instead."
         )
 
     def test_it_never_names_the_file(
@@ -196,3 +199,23 @@ class TestTheRefusal:
         monkeypatch.setattr(rekordbox, "MAX_LIBRARY_XML_BYTES", 10)
         with pytest.raises(XmlTooLargeError):
             collection_entry_count(xml_path)
+
+
+class TestTheRefusalTravels:
+    @pytest.mark.parametrize(
+        "copy_it",
+        [lambda e: pickle.loads(pickle.dumps(e)), copy.deepcopy, copy.copy],
+        ids=["pickle", "deepcopy", "copy"],
+    )
+    def test_it_survives_a_copy_and_a_pickle(self, copy_it) -> None:
+        error = XmlTooLargeError("Too big.", size_bytes=5, limit_bytes=3)
+        again = copy_it(error)
+        assert type(again) is XmlTooLargeError
+        assert again.message == "Too big."
+        assert again.error_code == "LIBRARY_XML_TOO_LARGE"
+        assert again.context == {"size_bytes": 5, "limit_bytes": 3}
+        assert (again.size_bytes, again.limit_bytes) == (5, 3)
+
+    def test_the_sizes_may_be_left_out(self) -> None:
+        again = pickle.loads(pickle.dumps(XmlTooLargeError("Too big.")))
+        assert again.message == "Too big."

@@ -35,7 +35,7 @@ The desktop app does not run preflight. The CLI runs it when `product.preflight_
 | P001 | XML file not found | Reselect the XML file |
 | P002 | XML path is a directory | Select the XML file, not a folder |
 | P003 | XML unreadable | Check permissions and file lock |
-| P004 | XML empty, extension is not `.xml`, or over 100 MiB (a warning) | Re-export from Rekordbox |
+| P004 | XML empty, or over 100 MiB (a command-line run refuses it; the message gives its size) | Re-export from Rekordbox, or import a big file in the desktop app (up to 4 GiB) |
 | P005 | XML parse error / invalid root | Re-export from Rekordbox |
 | P006 | Path too long | Move file to a shorter path |
 | P010 | Playlist not found | Select a valid playlist |

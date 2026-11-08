@@ -76,12 +76,19 @@ class XmlTooLargeError(ValidationError, ValueError):
     which says what to check and carries neither the path nor a byte count.
     """
 
-    def __init__(self, message: str, size_bytes: int, limit_bytes: int) -> None:
+    def __init__(self, message: str, size_bytes: int = 0, limit_bytes: int = 0) -> None:
         super().__init__(
             message,
             error_code=XML_TOO_LARGE_CODE,
             context={"size_bytes": size_bytes, "limit_bytes": limit_bytes},
         )
+        self.size_bytes = size_bytes
+        self.limit_bytes = limit_bytes
+
+    def __reduce__(self):
+        # The base class's own state is not what this constructor takes, so a
+        # pickle or deepcopy would call it with the wrong arguments.
+        return (type(self), (self.message, self.size_bytes, self.limit_bytes))
 
 
 def _size_phrase(size: int, *, limit: bool = False) -> str:
@@ -109,11 +116,21 @@ def _refuse_if_too_large(xml_path: str, limit: int) -> None:
     """
     size = os.path.getsize(xml_path)
     if size > limit:
+        if limit == MAX_XML_SIZE_BYTES:
+            message = (
+                f"This file is {_size_phrase(size)}, larger than the "
+                f"{limit // (1024 * 1024)} MB the command line reads. "
+                "Import it in the CuePoint app instead."
+            )
+        else:
+            message = (
+                f"This file is {_size_phrase(size)}, larger than the "
+                f"{_size_phrase(limit, limit=True)} CuePoint can read. "
+                "Check that it is your Rekordbox collection export "
+                "(File > Export Collection in xml format)."
+            )
         raise XmlTooLargeError(
-            f"This file is {_size_phrase(size)}, larger than the "
-            f"{_size_phrase(limit, limit=True)} CuePoint can read. "
-            "Check that it is your Rekordbox collection export "
-            "(File > Export Collection in xml format).",
+            message,
             size_bytes=size,
             limit_bytes=limit,
         )

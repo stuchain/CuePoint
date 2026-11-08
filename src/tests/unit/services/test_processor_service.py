@@ -639,6 +639,74 @@ class TestProcessorService:
         finally:
             Path(xml_path).unlink(missing_ok=True)
 
+    def test_run_preflight_xml_over_the_command_line_limit(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+        tmp_path,
+    ):
+        """A file over 100 MiB is an error that says so, not a warning or a parse error."""
+        import os
+
+        def config_get(key, default=None):
+            if key == "product.preflight_enabled":
+                return True
+            return default
+
+        mock_config_service.get.side_effect = config_get
+        xml_path = tmp_path / "big.xml"
+        xml_path.write_text(
+            '<?xml version="1.0"?><DJ_PLAYLISTS><COLLECTION/></DJ_PLAYLISTS>',
+            encoding="utf-8",
+        )
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=Mock(),
+            logging_service=mock_logging_service,
+            config_service=mock_config_service,
+        )
+        with patch.object(os.path, "getsize", return_value=150 * 1000 * 1000):
+            result = service.run_preflight(str(xml_path), "Any")
+
+        assert result.can_proceed is False
+        too_large = [issue for issue in result.errors if issue.code == "P004"]
+        assert len(too_large) == 1
+        assert too_large[0].message == (
+            "This file is 150 MB, larger than the 100 MB the command line reads. "
+            "Import it in the CuePoint app instead."
+        )
+        assert not any("slower" in issue.message for issue in result.warnings)
+        assert not any(issue.code == "P005" for issue in result.errors)
+
+    def test_parse_over_the_limit_reports_the_message_itself(
+        self,
+        mock_beatport_service,
+        mock_logging_service,
+        mock_config_service,
+        tmp_path,
+    ):
+        """No code prefix, and no 'corrupt file' advice, for a file that is too big."""
+        import os
+
+        xml_path = tmp_path / "big.xml"
+        xml_path.write_text("<DJ_PLAYLISTS/>", encoding="utf-8")
+        service = ProcessorService(
+            beatport_service=mock_beatport_service,
+            matcher_service=Mock(),
+            logging_service=mock_logging_service,
+            config_service=mock_config_service,
+        )
+        with patch.object(os.path, "getsize", return_value=150 * 1000 * 1000):
+            with pytest.raises(ProcessingError) as exc_info:
+                service.process_playlist_from_xml(str(xml_path), "Any")
+
+        error = exc_info.value
+        shown = " ".join([error.message, error.details or "", *error.suggestions])
+        assert "LIBRARY_XML_TOO_LARGE" not in shown
+        assert "corrupted" not in shown
+        assert "150 MB" in shown
+
     def test_run_preflight_output_not_dir(
         self,
         mock_beatport_service,
