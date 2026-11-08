@@ -103,6 +103,8 @@ export const SAME_ON_PURPOSE = new Set([
   "Version {version}",
   "Energy",
   "Offline",
+  "Menu",
+  "Legal",
 ]);
 
 /** The keys that hold an id, an address or a reference and not words: they are the same in every language. */

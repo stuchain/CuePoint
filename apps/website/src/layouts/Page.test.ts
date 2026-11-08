@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { PUBLIC, SITE_URL } from "../../site.config";
 import { CSP } from "../lib/csp";
 import { canonicalFor } from "../lib/url";
+import { LOCALES } from "../i18n/locales";
 import Page from "./Page.astro";
 
 async function render(props: Record<string, unknown>) {
@@ -176,13 +177,13 @@ describe("Page head (SITE-11)", () => {
     it("an English page lists every version and x-default, and is its own canonical", async () => {
       const html = await render({});
       expect(hrefs(html)).toEqual({
-        en: `${SITE_URL}download/`,
-        de: `${SITE_URL}de/download/`,
+        ...Object.fromEntries(LOCALES.map((l) => [l.hreflang, `${SITE_URL}${l.code === "en" ? "" : `${l.code}/`}download/`])),
         "x-default": `${SITE_URL}download/`,
       });
       expect(/<link rel="canonical" href="([^"]*)"/.exec(html)?.[1]).toBe(`${SITE_URL}download/`);
       expect(meta(html, "property", "og:locale")).toBe("en_US");
-      expect(meta(html, "property", "og:locale:alternate")).toBe("de_DE");
+      const alternates = [...html.matchAll(/<meta property="og:locale:alternate" content="([^"]+)"/g)].map((m) => m[1]);
+      expect(alternates).toEqual(LOCALES.filter((l) => l.code !== "en").map((l) => l.ogLocale));
     });
 
     it("a German page says de, points its canonical at itself and keeps x-default on the English page", async () => {

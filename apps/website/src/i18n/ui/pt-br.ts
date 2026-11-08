@@ -13,7 +13,7 @@ const ptBr: UiStrings = {
     current: "idioma atual",
   },
   skipLink: "Pular para o conteúdo principal",
-  menu: "Menu principal",
+  menu: "Menu",
   mainNav: "Principal",
   footerNav: "Rodapé",
   breadcrumb: "Caminho de navegação",
@@ -34,7 +34,7 @@ const ptBr: UiStrings = {
   footer: {
     product: "Produto",
     help: "Ajuda",
-    legal: "Jurídico",
+    legal: "Legal",
     tagline: "Um app gratuito para desktop que arruma a sua biblioteca do Rekordbox.",
     legalLine: "© {year} {publisher}. {site} é um software gratuito para DJs.",
   },

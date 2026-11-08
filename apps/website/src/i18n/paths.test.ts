@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OTHER_LOCALES } from "./locales";
+import { LOCALES, OTHER_LOCALES } from "./locales";
 import { alternatesFor, isTranslated, leavesLanguage, localeFromUrl, localePath, splitLocalePath, switchTargets } from "./paths";
 
 describe("localePath", () => {
@@ -52,8 +52,7 @@ describe("isTranslated and leavesLanguage", () => {
 describe("alternatesFor", () => {
   it("lists every language and x-default (English) for a translated page", () => {
     expect(alternatesFor("features/")).toEqual([
-      { hreflang: "en", path: "features/" },
-      { hreflang: "de", path: "de/features/" },
+      ...LOCALES.map((l) => ({ hreflang: l.hreflang, path: l.code === "en" ? "features/" : `${l.code}/features/` })),
       { hreflang: "x-default", path: "features/" },
     ]);
     expect(alternatesFor("")).toContainEqual({ hreflang: "de", path: "de/" });
@@ -105,17 +104,15 @@ describe("localeFromUrl", () => {
 
 describe("switchTargets", () => {
   it("links the same page in each language when the page is translated", () => {
-    expect(switchTargets("features/keys/")).toEqual([
-      { code: "en", path: "features/keys/" },
-      { code: "de", path: "de/features/keys/" },
-    ]);
+    expect(switchTargets("features/keys/")).toEqual(
+      LOCALES.map((l) => ({ code: l.code, path: l.code === "en" ? "features/keys/" : `${l.code}/features/keys/` })),
+    );
   });
 
   it("links each language's home when the page is English only, and the page itself in English", () => {
-    expect(switchTargets("guide/clean/")).toEqual([
-      { code: "en", path: "guide/clean/" },
-      { code: "de", path: "de/" },
-    ]);
+    expect(switchTargets("guide/clean/")).toEqual(
+      LOCALES.map((l) => ({ code: l.code, path: l.code === "en" ? "guide/clean/" : `${l.code}/` })),
+    );
     expect(switchTargets("blog/")).toContainEqual({ code: "en", path: "blog/" });
   });
 });

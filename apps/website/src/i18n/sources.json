@@ -1,0 +1,34 @@
+{
+  "locales": {
+    "de": {
+      "recordedAt": "2026-11-08",
+      "hashes": {
+        "src/data/home.ts": "6c2cdba702b5c0a4f39bc1b959f9f7fd8d70237e2a4ae9650fe0489f1f1b74d7",
+        "src/data/features.ts": "b312207c5653186ab31893788fc78b8bc7ca37faf697e60809f8bf55b70b6bf1",
+        "src/data/compare.ts": "9b5f51831027640a5cd289c6609f65dd0892fba93eb4fd14b5c181bbffbbc02b",
+        "src/content/faq.yaml": "24bbed0cdc965ee4689bcc483cbe390d4838e3d34e7d7e99a5ab57fa6d49a7fe",
+        "src/i18n/ui/en.ts": "d076eb94f90c45b640d911e964261be5393b5baaa5b6dc5d2f4bb6de192790c6"
+      }
+    },
+    "es": {
+      "recordedAt": "2026-11-08",
+      "hashes": {
+        "src/data/home.ts": "6c2cdba702b5c0a4f39bc1b959f9f7fd8d70237e2a4ae9650fe0489f1f1b74d7",
+        "src/data/features.ts": "b312207c5653186ab31893788fc78b8bc7ca37faf697e60809f8bf55b70b6bf1",
+        "src/data/compare.ts": "9b5f51831027640a5cd289c6609f65dd0892fba93eb4fd14b5c181bbffbbc02b",
+        "src/content/faq.yaml": "24bbed0cdc965ee4689bcc483cbe390d4838e3d34e7d7e99a5ab57fa6d49a7fe",
+        "src/i18n/ui/en.ts": "d076eb94f90c45b640d911e964261be5393b5baaa5b6dc5d2f4bb6de192790c6"
+      }
+    },
+    "pt-br": {
+      "recordedAt": "2026-11-08",
+      "hashes": {
+        "src/data/home.ts": "6c2cdba702b5c0a4f39bc1b959f9f7fd8d70237e2a4ae9650fe0489f1f1b74d7",
+        "src/data/features.ts": "b312207c5653186ab31893788fc78b8bc7ca37faf697e60809f8bf55b70b6bf1",
+        "src/data/compare.ts": "9b5f51831027640a5cd289c6609f65dd0892fba93eb4fd14b5c181bbffbbc02b",
+        "src/content/faq.yaml": "24bbed0cdc965ee4689bcc483cbe390d4838e3d34e7d7e99a5ab57fa6d49a7fe",
+        "src/i18n/ui/en.ts": "d076eb94f90c45b640d911e964261be5393b5baaa5b6dc5d2f4bb6de192790c6"
+      }
+    }
+  }
+}
