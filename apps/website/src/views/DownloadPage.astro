@@ -50,6 +50,15 @@ const links: Record<string, RichLink> = {
 const r = (text: string) => rich(text, links, { version: release?.version ?? "" });
 // "Intel Mac?" is the one link the script re-points at the other chip's file
 const note = (text: string, alt = false) => rich(text, alt ? { ...links, all: { href: "#all-downloads", alt: true } } : links);
+/**
+ * The spoken name of a file's button is one string of the language (`downloadFor`: "Download CuePoint for Windows",
+ * "CuePoint für Windows herunterladen"). When it begins with the visible word the rest is read after it, as the page
+ * always did; otherwise the visible word is hidden from a screen reader and the whole string is read instead.
+ */
+const spoken = (f: ReleaseFile) => {
+  const full = fmt(d.downloadFor, { title: kind(f).title });
+  return { full, tail: full.startsWith(d.downloadButton) ? full.slice(d.downloadButton.length) : null };
+};
 const linuxFile = files.find((f) => f.system === "linux");
 
 const description = release ? fmt(d.descriptionRelease, { version: release.version }) : d.descriptionNone;
@@ -129,6 +138,7 @@ const schema = release
           <p slot="aside">
             {fmt(d.allAsideBefore, { version: release.version })}<span class="aside-wide">{d.allAsideWide}</span><span class="aside-phone">{d.allAsidePhone}</span>
           </p>
+          <AppNote phone />
           <ul class="files">
             {
               files.map((f) => (
@@ -145,7 +155,19 @@ const schema = release
                     </details>
                   </div>
                   <Button href={f.url} variant="secondary" external>
-                    <span aria-hidden="true">{d.downloadButton}</span><span class="sr-only">{fmt(d.downloadFor, { title: kind(f).title })}</span>
+                    {
+                      spoken(f).tail !== null ? (
+                        <>
+                          {d.downloadButton}
+                          <span class="sr-only">{spoken(f).tail}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span aria-hidden="true">{d.downloadButton}</span>
+                          <span class="sr-only">{spoken(f).full}</span>
+                        </>
+                      )
+                    }
                   </Button>
                 </li>
               ))

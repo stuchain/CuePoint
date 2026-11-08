@@ -957,5 +957,9 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
       width: 34rem;
       opacity: 0.6;
     }
+    /* a translated page's note is the band's last line, and the wheel rises behind it: leave the note clear of the art */
+    .get:has(:global(.app-note)) {
+      padding-bottom: calc(var(--r4) * 1.3 + 5rem);
+    }
   }
 </style>
