@@ -13,6 +13,7 @@ npm run build    # static site into dist/
 npm run preview  # serve dist/ locally
 npm run check    # astro check and tsc --noEmit
 npm test         # vitest
+npm run i18n:stale   # which translations are behind the English (docs/translation.md)
 npm run sync-tokens  # regenerate src/styles/tokens.generated.css from the app (build and dev do this first)
 ```
 
@@ -203,3 +204,10 @@ until its page lands) stays a labelled placeholder (`src/lib/app-shots.ts`).
   email-looking string, scripts and attributes included. The site prints no contact address (DEC-230): people reach
   the publisher through the contact form, whose deliveries go to the Web3Forms account's mailbox, or GitHub issues.
 - **The header** folds into the Menu below 62.5rem, so it never wraps to two rows (`e2e/features.spec.ts`).
+
+## Languages (DEC-311)
+
+English is at the root; German is under `/de/`, and Spanish and Brazilian Portuguese follow the same way.
+`src/i18n/locales.ts` is the list of languages. The pages are in `src/views/`, shared by the English routes
+and `src/pages/[lang]/`. How to translate, the words that stay English, the tone, the files a language needs
+and the stale check are in [docs/translation.md](docs/translation.md).

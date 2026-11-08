@@ -5,6 +5,7 @@ import { satteri } from "@astrojs/markdown-satteri";
 import llmsTxt from "./scripts/llms.mjs";
 import ogCards from "./scripts/og-integration.mjs";
 import { SITE_URL, addressParts, isStyleguide } from "./site.config";
+import { DEFAULT_LOCALE, LOCALES, OTHER_LOCALES } from "./src/i18n/locales";
 import { guideLinkConfig } from "./src/lib/guide-config";
 import { guideLinksPlugin } from "./src/lib/guide-links";
 import { kbdKeys } from "./src/lib/kbd-keys";
@@ -64,11 +65,16 @@ export default defineConfig({
       // The style guide exists only in preview builds; keep it out of the sitemap whatever happens.
       // The thank-you pages (SITE-12) carry noindex and stay out of the sitemap too.
       filter: (page) => !isStyleguide(new URL(page).pathname) && !/\/thank-you\/?$/.test(new URL(page).pathname),
+      // a translated page lists its other versions as xhtml:link alternates (DEC-311); the locales are the registry's
+      i18n: {
+        defaultLocale: DEFAULT_LOCALE,
+        locales: Object.fromEntries(LOCALES.map((l) => [l.code, l.hreflang])),
+      },
     }),
     // draws every page's sharing picture into dist/ once the pages are built (SITE-11)
     ogCards(),
     // the plain-text index of the pages for AI search (llms.txt), from the built pages
-    llmsTxt({ siteName: "CuePoint" }),
+    llmsTxt({ siteName: "CuePoint", localeCodes: OTHER_LOCALES.map((l) => l.code) }),
   ],
   fonts: [
     {

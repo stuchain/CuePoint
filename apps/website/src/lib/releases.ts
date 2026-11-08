@@ -95,8 +95,12 @@ export function hasRelease(data: ReleaseData = loadReleases()): boolean {
 }
 
 /** "Downloaded 1,240 times" (his pick, 2026-11-02), or null when the data has no count. */
-export function downloadsText(data: ReleaseData = loadReleases()): string | null {
+export function downloadsText(
+  data: ReleaseData = loadReleases(),
+  words: { one: string; other: string } = { one: "Downloaded {count} time", other: "Downloaded {count} times" },
+  numberLocale = "en-US",
+): string | null {
   if (data.downloads === null) return null;
   const n = data.downloads;
-  return `Downloaded ${n.toLocaleString("en-US")} ${n === 1 ? "time" : "times"}`;
+  return (n === 1 ? words.one : words.other).replace("{count}", n.toLocaleString(numberLocale));
 }

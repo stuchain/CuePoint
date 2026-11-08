@@ -1,0 +1,75 @@
+---
+/*
+ * /compare/ (SITE-08, DEC-197): the index of the comparison pages, and how they are written.
+ */
+import PageHead from "../components/PageHead.astro";
+import Section from "../components/Section.astro";
+import { COMPARE_CHECKED, compareHref } from "../data/compare";
+import { compareFor } from "../i18n/content";
+import { fmt } from "../i18n/format";
+import type { LocaleCode } from "../i18n/locales";
+import { leavesLanguage, localePath } from "../i18n/paths";
+import { rich } from "../i18n/rich";
+import { ui } from "../i18n/ui";
+import Page from "../layouts/Page.astro";
+import { hrefFor } from "../lib/url";
+
+interface Props {
+  locale: LocaleCode;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const { COMPARE_TOOLS } = compareFor(locale);
+const contact = { href: hrefFor("contact/"), hreflang: leavesLanguage(locale, "contact/") ? "en" : undefined };
+// the date is written in the markup as a <time>; the sentence around it is the language's
+const [howBefore = "", howAfter = ""] = rich(t.compare.how3, { contact }, { date: "\u0000" }).split("\u0000");
+---
+
+<Page
+  title={t.compare.pageTitle}
+  description={t.compare.pageDescription}
+  path="compare/"
+  locale={locale}
+  breadcrumbs={[
+    { label: t.nav.home, path: "" },
+    { label: t.nav.compare, path: "compare/" },
+  ]}
+>
+  <PageHead title={t.compare.headTitle}>
+    <p>{t.compare.lead}</p>
+  </PageHead>
+
+  <Section id="compare" heading={t.compare.listTitle} layout="split">
+    <ul class="rows">
+      {
+        COMPARE_TOOLS.map((tool) => (
+          <li>
+            <a class="row-name" href={hrefFor(localePath(locale, compareHref(tool.slug)))}>{fmt(t.compare.rowName, { name: tool.name })}</a>
+            <p>{tool.summary}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <Section id="how" heading={t.compare.howTitle} layout="split">
+    <ul class="how">
+      <li>{t.compare.how1}</li>
+      <li>{t.compare.how2}</li>
+      <li>
+        <Fragment set:html={howBefore} /><time datetime={COMPARE_CHECKED}>{COMPARE_CHECKED}</time><Fragment set:html={howAfter} />
+      </li>
+    </ul>
+  </Section>
+</Page>
+
+<style>
+  .how {
+    max-width: 34rem;
+    margin: 0;
+    padding-left: var(--space-xl);
+  }
+  .how li {
+    margin-bottom: var(--space-sm);
+  }
+</style>

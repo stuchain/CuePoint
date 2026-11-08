@@ -1,0 +1,161 @@
+# Die FAQ auf Deutsch (DEC-311). Struktur wie src/content/faq.yaml: gleiche ids, gleiche Reihenfolge, dieselben
+# Guide-Links (page und heading). Übersetzt sind nur question, answer und die Namen der Links.
+# Die Anleitung selbst ist englisch; die Links führen dorthin.
+
+- id: free
+  order: 1
+  question: Ist CuePoint kostenlos?
+  answer: >-
+    Ja. CuePoint ist Open Source unter der Apache License 2.0, du kannst es also kostenlos herunterladen,
+    benutzen und seinen Code lesen.
+  links:
+    - page: getting-started
+      heading: install
+      label: So installierst du CuePoint
+
+- id: rekordbox-library
+  order: 2
+  question: Verändert CuePoint meine Rekordbox-Bibliothek?
+  answer: >-
+    Nein. CuePoint arbeitet mit einer eigenen Kopie deiner Sammlung, die du aus einem Rekordbox-XML-Export
+    importierst. Es schreibt nie in diese Datei oder in die Datenbank von Rekordbox. Wenn du deine Änderungen in
+    Rekordbox haben willst, exportierst du eine neue Datei und öffnest sie dort. Deine Cue-Punkte und Beatgrids
+    kommen unberührt mit.
+
+
+    Das einzige Mal, dass CuePoint in deine Musikdateien schreibt, ist, wenn du „Write tags to files“ wählst, und
+    vorher zeigt es dir eine Vorschau.
+  links:
+    - page: features
+      heading: what-cuepoint-never-does
+      label: Was CuePoint nie tut
+    - page: rekordbox-export
+      label: Export nach Rekordbox
+
+- id: delete-files
+  order: 3
+  question: Löscht oder verschiebt CuePoint meine Tracks?
+  answer: >-
+    Nie. Clean zeigt dir Tracks, deren Dateien verschwunden sind, und Tracks, die wie Duplikate aussehen, und lässt
+    jeden davon, wo er ist. Um einen Track auf seinen neuen Ort zu verweisen, nimmst du Relocate in Rekordbox.
+  links:
+    - page: clean
+      label: Clean
+
+- id: needs
+  order: 4
+  question: Was brauche ich, um CuePoint zu nutzen?
+  answer: >-
+    Eine aus Rekordbox als XML exportierte Sammlung und einen Computer mit Windows 10 oder neuer (64 Bit) oder einen
+    Mac mit macOS 14 oder neuer (Apple Silicon) oder macOS 15 oder neuer (Intel). Linux ist experimentell und hat
+    keinen eingebauten Player. Für Discover, das neue Musik auf Beatport findet, musst du dich außerdem in den
+    Einstellungen bei Beatport anmelden.
+  links:
+    - page: support-policy
+      heading: supported-platforms
+      label: Unterstützte Plattformen
+    - page: discover
+      heading: signing-in-to-beatport
+      label: Bei Beatport anmelden
+
+- id: mac-chips
+  order: 5
+  question: Läuft CuePoint auf Macs mit Apple Silicon und mit Intel?
+  answer: >-
+    Ja, auf beiden. CuePoint für Mac gibt es als zwei Downloads, einen für Apple Silicon und einen für Intel. Nimm
+    also den, der zu deinem Mac passt. Das Apple-Menü und dort „Über diesen Mac“ zeigt, welchen Chip du hast.
+  links:
+    - page: getting-started
+      heading: install
+      label: Installation auf einem Mac
+    - page: support-policy
+      heading: supported-platforms
+      label: Unterstützte Plattformen
+
+- id: what-it-sends
+  order: 6
+  question: Was sendet CuePoint, und wie schalte ich das ab?
+  answer: >-
+    CuePoint hat kein Analytics und verfolgt nicht, was du tust. Das Einzige, was es von selbst sendet, ist ein
+    Fehlerbericht, wenn es auf einen unerwarteten Fehler trifft. Berichte werden zuerst auf deinem Computer bereinigt,
+    sie enthalten also keine Datei-, Ordner-, Track-, Artist-, Label- oder Playlist-Namen, keine Notizen oder Tags
+    und keinen Beatport-Token. Sie gehen an Sentry, in dessen EU-Region.
+
+
+    Berichte sind standardmäßig an. Um sie zu stoppen, schaltest du Settings, dann Privacy, dann Send error reports
+    aus. Das gilt sofort, und nichts wird zum späteren Senden gespeichert. CuePoint spricht nur mit Beatport, wenn
+    du es darum bittest.
+  links:
+    - page: the-window
+      heading: privacy-and-error-reports
+      label: Datenschutz und Fehlerberichte
+    - page: troubleshooting
+      heading: the-app-reports-errors-on-its-own
+      label: Was ein Fehlerbericht enthält
+
+- id: updates
+  order: 7
+  question: Wie aktualisiert sich CuePoint?
+  answer: >-
+    Unter Windows und Mac findet CuePoint neue Versionen selbst. Es fragt kurz nach dem Start und danach alle 4
+    Stunden bei GitHub nach, lädt eine neue Version im Hintergrund herunter und sagt dir in der Statusleiste, wenn
+    sie bereit ist. Du wählst Restart now oder Later, um sie beim nächsten Beenden zu installieren. Deine Bibliothek
+    und deine Einstellungen bleiben, wo sie sind.
+
+
+    Unter Linux sagt dir CuePoint, dass eine neue Version erschienen ist, und zeigt einen Download-Link. Du
+    installierst das neue AppImage selbst. Unter Settings, dann About & updates, siehst du deine Version und kannst
+    auf Wunsch nachsehen lassen.
+  links:
+    - page: updates
+      heading: what-happens
+      label: So funktionieren Updates
+    - page: updates
+      heading: when-you-download-it-yourself
+      label: Wenn du selbst herunterlädst
+
+- id: where-data
+  order: 8
+  question: Wo werden meine Daten gespeichert?
+  answer: >-
+    Auf deinem Computer und nirgendwo sonst. Deine Bibliothek ist eine einzelne Datei in deinem CuePoint-Ordner
+    (.cuepoint/cuepoint.db), und auch deine Einstellungen, der Cache und die Logs liegen auf deinem Computer. Nichts
+    wird hochgeladen, und CuePoint sichert die Bibliothek bei jedem Start. Help, dann Privacy, leert den Cache und die
+    Logs, ohne deine Bibliothek anzufassen.
+  links:
+    - page: library
+      heading: where-the-data-lives
+      label: Wo die Daten liegen
+    - page: the-window
+      heading: privacy-and-error-reports
+      label: Datenschutz und Fehlerberichte
+
+- id: size
+  order: 9
+  question: Wie große Sammlungen verkraftet CuePoint?
+  answer: >-
+    Es wurde mit einer Sammlung von 50.000 Tracks gemessen. Der Import dauerte auf einem Windows-11-Desktop mit SSD
+    etwa elf Sekunden, und eine unveränderte Sammlung auf Änderungen zu prüfen geht sofort.
+  links:
+    - page: performance
+      heading: the-library
+      label: Die gemessenen Zahlen
+
+- id: report-problem
+  order: 10
+  question: Wie melde ich ein Problem?
+  answer: >-
+    Wähle in CuePoint Help, dann Report a problem, schreibe, was du gerade getan hast, und drücke Send. Es sendet deine
+    Notiz genau so, wie du sie geschrieben hast, mit der Version und der ID des letzten Fehlerberichts. Lass also alles
+    weg, was niemand lesen soll. Es ist abgeschaltet, solange Fehlerberichte aus sind.
+
+
+    Du kannst auch ein Issue auf GitHub öffnen. Hänge ein Support-Paket an, das du unter Help, dann Export support
+    bundle bekommst: Es enthält Diagnosedaten, Logs und deine Einstellungen ohne Geheimnisse, und nie deine Bibliothek.
+  links:
+    - page: troubleshooting
+      heading: diagnostics-and-support
+      label: Diagnose und Support
+    - page: support-policy
+      heading: support-diagnostics
+      label: Was du mit einer Meldung mitschicken solltest

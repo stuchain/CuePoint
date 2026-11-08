@@ -1,0 +1,251 @@
+---
+/*
+ * One comparison page (SITE-08, DEC-197), at /compare/<tool>/. Everything it says is in
+ * src/data/compare.ts. The comparison is a table: each row is a topic (a row header), the other tool's
+ * fact and CuePoint's answer. Each fact (`data-compare-fact`) holds exactly one source link with the date
+ * it was read (`data-compare-source`); scripts/check-site.mjs fails the build otherwise.
+ * The user reviews each page before launch.
+ */
+import PageHead from "../components/PageHead.astro";
+import Section from "../components/Section.astro";
+import HomeAction from "../components/HomeAction.astro";
+import { compareHref } from "../data/compare";
+import { featureHref } from "../data/features";
+import { compareFor } from "../i18n/content";
+import { fmt } from "../i18n/format";
+import type { LocaleCode } from "../i18n/locales";
+import { localePath } from "../i18n/paths";
+import { escapeHtml, rich } from "../i18n/rich";
+import { ui } from "../i18n/ui";
+import Page from "../layouts/Page.astro";
+import { hrefFor } from "../lib/url";
+
+/** One comparison page, in a language. The route files give each language its tools (getStaticPaths there). */
+interface Props {
+  locale: LocaleCode;
+  slug: string;
+}
+const { locale, slug } = Astro.props;
+const t = ui(locale);
+const tool = compareFor(locale).COMPARE_TOOLS.find((x) => x.slug === slug);
+if (!tool) throw new Error(`No comparison "${slug}" in ${locale}`);
+const note = rich(
+  t.compare.note,
+  { clean: hrefFor(localePath(locale, featureHref("clean"))), compare: hrefFor(localePath(locale, "compare/")) },
+  { name: tool.name },
+);
+// the source line: the language's sentence around a link and a date, drawn here so the markup stays one <a> and one <time>
+const sourceLine = (row: (typeof tool)["rows"][number]): string =>
+  escapeHtml(fmt(t.compare.source, { link: "\u0001", date: "\u0002" }))
+    .replace("\u0001", `<a href="${escapeHtml(row.other.source.url)}" rel="noopener noreferrer">${escapeHtml(row.other.source.label)}</a>`)
+    .replace("\u0002", `<time datetime="${row.other.checked}">${row.other.checked}</time>`);
+---
+
+<Page
+  title={tool.title}
+  description={tool.description}
+  path={compareHref(tool.slug)}
+  locale={locale}
+  breadcrumbs={[
+    { label: t.nav.home, path: "" },
+    { label: t.nav.compare, path: "compare/" },
+    { label: tool.name, path: compareHref(tool.slug) },
+  ]}
+>
+  <PageHead title={tool.heading}>
+    <p>{tool.intro}</p>
+  </PageHead>
+
+  <Section id="side" heading={t.compare.sideTitle}>
+    <table class="compare">
+      <caption class="sr-only">{fmt(t.compare.caption, { name: tool.name })}</caption>
+      <colgroup>
+        <col class="col-topic" />
+        <col />
+        <col />
+      </colgroup>
+      <thead>
+        <tr>
+          <th scope="col">{t.compare.topic}</th>
+          <th scope="col">{tool.name}</th>
+          <th scope="col">CuePoint</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          tool.rows.map((row) => (
+            <tr>
+              <th scope="row">{row.topic}</th>
+              <td data-label={tool.name} data-compare-fact>
+                <p>{row.other.text}</p>
+                <p class="src" data-compare-source set:html={sourceLine(row)} />
+              </td>
+              <td data-label="CuePoint">
+                <p>{row.cuepoint}</p>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </Section>
+
+  <Section id="choose" heading={t.compare.chooseTitle} layout="split">
+    <div class="choose">
+      <div class="pick" data-reveal>
+        <h3>{fmt(t.compare.chooseOther, { name: tool.name })}</h3>
+        <p>{tool.chooseOther}</p>
+      </div>
+      <div class="pick" data-reveal>
+        <h3>{t.compare.chooseCuePoint}</h3>
+        <p>{tool.chooseCuePoint}</p>
+      </div>
+    </div>
+    <p class="action"><HomeAction /></p>
+  </Section>
+
+  <!-- secondary on purpose: smaller, quieter, after the comparison -->
+  <Section id="not" heading={t.compare.notTitle} layout="split">
+    <ul class="not">
+      {tool.cuepointDoesNot.map((line) => <li>{line}</li>)}
+    </ul>
+    <p class="note" set:html={note} />
+  </Section>
+</Page>
+
+<style>
+  .compare {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    background: var(--bg-panel);
+    border: var(--border-width-heavy) solid var(--border-outline);
+    box-shadow: var(--shadow-panel);
+  }
+  .col-topic {
+    width: 18%;
+  }
+  .compare th,
+  .compare td {
+    padding: var(--space-md) var(--space-lg);
+    border: var(--border-width) solid var(--border-outline);
+    text-align: left;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  .compare thead th {
+    background: var(--bg-toolbar);
+    font-family: var(--font-pixel);
+    font-variant-ligatures: none;
+  }
+  .compare tbody th {
+    background: var(--bg-panel-alt);
+    font-family: var(--font-pixel);
+    font-weight: 600;
+    font-variant-ligatures: none;
+  }
+  .compare td p {
+    margin: 0;
+  }
+  .compare td p + p {
+    margin-top: var(--space-sm);
+  }
+  /* the source line: small, in the primary color (muted text is for the page's own ground, not a panel) */
+  .src {
+    font-size: var(--font-size-sm);
+  }
+  .src time {
+    white-space: nowrap;
+  }
+  .choose {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--r1);
+  }
+  .pick {
+    padding: var(--r1);
+    background: var(--bg-panel);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel), var(--shadow-badge);
+  }
+  .pick h3 {
+    margin: 0 0 var(--space-sm);
+  }
+  .pick p {
+    margin: 0;
+  }
+  .action {
+    margin-top: var(--r2);
+  }
+  /* what CuePoint does not do: the page's quiet part, in a smaller size and the muted color */
+  .not {
+    max-width: 34rem;
+    margin: 0 0 var(--r1);
+    padding-left: var(--space-xl);
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
+  }
+  .not li {
+    margin-bottom: var(--space-sm);
+  }
+  .not li::marker {
+    color: var(--border-highlight);
+  }
+  #not :global(h2) {
+    font-size: var(--t-lead);
+    color: var(--fg-muted);
+  }
+  .note {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: var(--font-size-sm);
+  }
+  /* on a phone each row is a card: the topic as its title, then the two answers, each labelled */
+  @media (max-width: 47.99rem) {
+    .compare,
+    .compare tbody,
+    .compare tr,
+    .compare th,
+    .compare td {
+      display: block;
+      width: auto;
+    }
+    .compare {
+      background: none;
+      border: 0;
+      box-shadow: none;
+    }
+    .compare thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    .compare tr {
+      margin-bottom: var(--r1);
+      background: var(--bg-panel);
+      border: var(--border-width) solid var(--border-outline);
+      box-shadow: var(--shadow-bevel-panel), var(--shadow-badge);
+    }
+    .compare th,
+    .compare td {
+      border: 0;
+    }
+    .compare tbody th {
+      font-size: var(--t-lead);
+      border-bottom: var(--border-width) solid var(--border-outline);
+    }
+    .compare td + td {
+      border-top: var(--hairline) solid var(--border-muted);
+    }
+    .compare td::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: var(--space-xs);
+      font-family: var(--font-pixel);
+      font-weight: 700;
+    }
+  }
+</style>

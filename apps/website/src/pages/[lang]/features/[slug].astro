@@ -1,0 +1,15 @@
+---
+import { FEATURE_PAGES } from "../../../data/features";
+import { OTHER_LOCALES, type LocaleCode } from "../../../i18n/locales";
+import FeaturePage from "../../../views/FeaturePage.astro";
+
+/** /<code>/features/<slug>/ (DEC-311): every feature page in every language but English; the slugs stay English. */
+export function getStaticPaths() {
+  return OTHER_LOCALES.flatMap((l) =>
+    FEATURE_PAGES.map((page) => ({ params: { lang: l.code, slug: page.slug }, props: { locale: l.code as LocaleCode, slug: page.slug } })),
+  );
+}
+const { locale, slug } = Astro.props;
+---
+
+<FeaturePage locale={locale} slug={slug} />

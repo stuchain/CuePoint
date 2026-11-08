@@ -11,7 +11,11 @@
  * and hidden from assistive technology, because the slot below the scene is the one that is read.
  */
 import type { ImageMetadata } from "astro";
-import { APP_SHOTS, type AppShotId } from "../data/home";
+import type { AppShotId } from "../data/home";
+import { homeFor } from "../i18n/content";
+import { fmt } from "../i18n/format";
+import { localeFromUrl } from "../i18n/paths";
+import { ui } from "../i18n/ui";
 import { shotImages, type ShotImage } from "../lib/app-shots";
 import Img from "./Img.astro";
 
@@ -23,7 +27,9 @@ interface Props {
   images?: ShotImage[];
 }
 const { id, class: className, bare = false, images } = Astro.props;
-const shot = APP_SHOTS[id];
+const locale = localeFromUrl(Astro.url);
+const t = ui(locale).appShot;
+const shot = homeFor(locale).APP_SHOTS[id];
 const found = images ?? shotImages(id);
 const ratio = `aspect-ratio: ${shot.width} / ${shot.height}`;
 const placeholder = found.length === 0;
@@ -47,9 +53,9 @@ for (const { theme, image } of found) {
     placeholder ? (
       <div class="frame slot" data-slot-frame style={ratio}>
         <div class="plate">
-          <p class="tag">Screenshot placeholder</p>
+          <p class="tag">{t.placeholderTag}</p>
           <p class="name">{shot.label}</p>
-          <p class="size">{shot.width} by {shot.height}, the app's own size</p>
+          <p class="size">{fmt(t.placeholderSize, { width: shot.width, height: shot.height })}</p>
         </div>
       </div>
     ) : (
@@ -73,7 +79,9 @@ for (const { theme, image } of found) {
     !bare && (
       <figcaption>
         {placeholder
-          ? `Screenshot placeholder: the real picture is coming. It will show ${shot.alt.charAt(0).toLowerCase()}${shot.alt.slice(1)}`
+          ? fmt(t.placeholderCaption, {
+              alt: t.placeholderLowerFirst ? `${shot.alt.charAt(0).toLowerCase()}${shot.alt.slice(1)}` : shot.alt,
+            })
           : shot.alt}
       </figcaption>
     )

@@ -90,7 +90,8 @@ describe("Page", () => {
     const found = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) =>
       JSON.parse(m[1] ?? ""),
     );
-    expect(found).toEqual(schema);
+    // a page that exists in more than one language names its own
+    expect(found).toEqual(schema.map((item) => ({ ...item, inLanguage: "en" })));
   });
 
   it("never lets a string in the JSON-LD close the script tag", async () => {
@@ -100,7 +101,7 @@ describe("Page", () => {
     expect(m?.[1]).toBeDefined();
     expect(m?.[1]).not.toContain("</script>");
     expect(m?.[1]).not.toContain("<");
-    expect(JSON.parse(m?.[1] ?? "")).toEqual(schema[0]);
+    expect(JSON.parse(m?.[1] ?? "")).toEqual({ ...schema[0], inLanguage: "en" });
     expect(html).not.toContain("<script>alert(1)");
   });
 
@@ -164,5 +165,51 @@ describe("Page head (SITE-11)", () => {
     const html = await render({ path: "blog/a/", ogPicture: { src: "/_astro/pic.png", width: 10, height: 10, format: "png" } });
     expect(meta(html, "property", "og:image")).toBe(`${SITE_URL}og/blog/a.png`);
     expect(meta(html, "name", "og-picture")).toBe("/_astro/pic.png");
+  });
+
+  describe("in a language (DEC-311)", () => {
+    const hrefs = (html: string) =>
+      Object.fromEntries(
+        [...html.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)"/g)].map((m) => [m[1], m[2]]),
+      );
+
+    it("an English page lists every version and x-default, and is its own canonical", async () => {
+      const html = await render({});
+      expect(hrefs(html)).toEqual({
+        en: `${SITE_URL}download/`,
+        de: `${SITE_URL}de/download/`,
+        "x-default": `${SITE_URL}download/`,
+      });
+      expect(/<link rel="canonical" href="([^"]*)"/.exec(html)?.[1]).toBe(`${SITE_URL}download/`);
+      expect(meta(html, "property", "og:locale")).toBe("en_US");
+      expect(meta(html, "property", "og:locale:alternate")).toBe("de_DE");
+    });
+
+    it("a German page says de, points its canonical at itself and keeps x-default on the English page", async () => {
+      const html = await render({ locale: "de" });
+      expect(html).toContain('<html lang="de"');
+      expect(/<link rel="canonical" href="([^"]*)"/.exec(html)?.[1]).toBe(`${SITE_URL}de/download/`);
+      expect(hrefs(html)["x-default"]).toBe(`${SITE_URL}download/`);
+      expect(hrefs(html).de).toBe(`${SITE_URL}de/download/`);
+      expect(meta(html, "property", "og:url")).toBe(`${SITE_URL}de/download/`);
+      expect(meta(html, "property", "og:locale")).toBe("de_DE");
+      expect(meta(html, "property", "og:locale:alternate")).toBe("en_US");
+      expect(meta(html, "property", "og:image")).toBe(`${SITE_URL}og/de/download.png`);
+    });
+
+    it("a page that is not translated lists no alternates", async () => {
+      const html = await render({ path: "privacy/" });
+      expect(hrefs(html)).toEqual({});
+      expect(html).not.toContain("og:locale:alternate");
+    });
+
+    it("refuses to render a page that is not translated in another language", async () => {
+      await expect(render({ locale: "de", path: "privacy/" })).rejects.toThrow();
+    });
+
+    it("names the language in the JSON-LD of a translated page", async () => {
+      const html = await render({ locale: "de", schema: [{ "@context": "https://schema.org", "@type": "WebPage", name: "x" }] });
+      expect(html).toContain('"inLanguage":"de"');
+    });
   });
 });

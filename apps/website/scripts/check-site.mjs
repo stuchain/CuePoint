@@ -13,7 +13,11 @@
  *   jsonld-parse, jsonld-properties, og-image (exists, a 1200x630 PNG), placeholder (public builds only), favicon, manifest, robots-sitemap, orphan-js (warning),
  *   canonical-invalid, sitemap-excluded, noindex-missing, feed-invalid, feed-link-missing, compare-source, unshipped,
  *   llms-txt (llms.txt lists every indexable page, and only those),
- *   no-email (no page carries a mailto: link or an email-looking string, DEC-230)
+ *   no-email (no page carries a mailto: link or an email-looking string, DEC-230),
+ *   lang-attr (<html lang> is the page's language: its folder's hreflang, English elsewhere), hreflang (a translated page
+ *   lists every version and x-default, the same on each version, itself included, each pointing at a page that exists),
+ *   translation-missing (every English translated page has its version in every language, and no other page is in a
+ *   language's folder). The three run only when `locales` is given (the CLI reads them from src/i18n/locales.ts).
  *
  * Every result has a `severity`: "error" (the CLI exits 1) or "warning" (printed, never fails).
  *
@@ -27,6 +31,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "node-html-parser";
 import { validateRss } from "./check-feed.mjs";
+import { DEFAULT_LOCALE, isTranslatedPath, localizedPath, readLocalesFile } from "./i18n-locales.mjs";
 
 export const TITLE_MAX = 60;
 /** An email-looking string, for the no-email rule (DEC-230). */
@@ -196,8 +201,15 @@ function* urlRefs(root) {
  * @param {{ base: string, siteUrl: string, preview: boolean }} options
  * @returns {{ rule: string, page: string, message: string, severity: "error" | "warning" }[]}
  */
-export function checkSite(distDir, { base, siteUrl, preview, today = new Date().toISOString().slice(0, 10) }) {
+export function checkSite(distDir, { base, siteUrl, preview, today = new Date().toISOString().slice(0, 10), locales }) {
   const dist = resolve(distDir);
+  /** The languages other than English, when the caller gives them (DEC-311): { code, hreflang }. */
+  const otherLocales = (locales ?? []).filter((l) => l.code !== DEFAULT_LOCALE);
+  /** A page's file without its language's folder: "de/features/index.html" -> "features/index.html". */
+  const stripLocale = (file) => {
+    const found = otherLocales.find((l) => file.startsWith(`${l.code}/`));
+    return found ? file.slice(found.code.length + 1) : file;
+  };
   const origin = new URL(siteUrl).origin;
   const results = [];
   const seen = new Set();
@@ -469,6 +481,67 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
   checkOrphanScripts();
   checkLlms();
   checkNoEmail();
+  if (locales) checkLanguages();
+
+  /**
+   * The languages (DEC-311). Every page's <html lang> is its language's tag (the folder's hreflang, English
+   * elsewhere). A translated page (an English page that is translated, and its version in each language) lists
+   * every version as <link rel="alternate" hreflang> and x-default (English), the same set on each of them and
+   * itself included, and every one points at a page of the build. Every English translated page has its version
+   * in every language, and no page that is not translated sits in a language's folder.
+   */
+  function checkLanguages() {
+    const tagOf = (code) => locales.find((l) => l.code === code).hreflang;
+    for (const [file, root] of pages) {
+      const folder = otherLocales.find((l) => file.startsWith(`${l.code}/`));
+      const expected = folder ? folder.hreflang : tagOf(DEFAULT_LOCALE);
+      const lang = root.querySelector("html")?.getAttribute("lang");
+      if (lang !== expected) report("lang-attr", file, `<html lang="${lang ?? ""}"> but the page is in ${expected}`);
+    }
+    const english = [...pages.keys()].map(pagePath).filter((p) => isTranslatedPath(p));
+    for (const path of english) {
+      for (const l of otherLocales) {
+        const wanted = `${localizedPath(l.code, path)}index.html`;
+        if (!pages.has(wanted) && !pages.has(wanted.replace(/\/index\.html$/, ".html"))) {
+          const file = path === "" ? "index.html" : `${path}index.html`;
+          report("translation-missing", file, `the page has no ${l.code} version at /${localizedPath(l.code, path)}`);
+        }
+      }
+    }
+    for (const file of pages.keys()) {
+      const folder = otherLocales.find((l) => file.startsWith(`${l.code}/`));
+      if (folder && !isTranslatedPath(pagePath(stripLocale(file)))) {
+        report("translation-missing", file, `a page in the ${folder.code} folder whose English page is not one of the translated pages`);
+      }
+    }
+    // the set each version must list
+    const hrefOf = (path) => `${siteUrl}${path}`;
+    for (const [file, root] of pages) {
+      const english = pagePath(stripLocale(file));
+      const alternates = new Map();
+      for (const el of elements(root)) {
+        if (el.rawTagName.toLowerCase() !== "link" || !relTokens(el).includes("alternate")) continue;
+        const tag = attr(el, "hreflang");
+        if (tag !== undefined) alternates.set(tag, (attr(el, "href") ?? "").trim());
+      }
+      if (!isTranslatedPath(english)) {
+        if (alternates.size > 0) report("hreflang", file, "the page is not translated but lists hreflang alternates");
+        continue;
+      }
+      const want = new Map([
+        ...locales.map((l) => [l.hreflang, hrefOf(localizedPath(l.code, english))]),
+        ["x-default", hrefOf(english)],
+      ]);
+      for (const [tag, href] of want) {
+        if (alternates.get(tag) !== href) {
+          report("hreflang", file, `hreflang="${tag}" should be ${href}${alternates.has(tag) ? ` but is ${alternates.get(tag)}` : " but is missing"}`);
+        }
+      }
+      for (const tag of alternates.keys()) {
+        if (!want.has(tag)) report("hreflang", file, `hreflang="${tag}" is not one of the site's languages`);
+      }
+    }
+  }
 
   /**
    * The site prints no contact address (DEC-230): people reach the publisher through the contact form or
@@ -502,7 +575,8 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
     const text = readFileSync(join(dist, file), "utf8");
     if (!/^# \S/.test(text)) report("llms-txt", file, "llms.txt does not start with a # title line");
     const listed = new Set([...text.matchAll(/^- \[[^\]]+\]\(([^)\s]+)\)/gm)].map((m) => m[1]));
-    const wanted = new Set([...pages.keys()].filter(isIndexableRole).map(pageAddress));
+    // llms.txt lists the English pages only (DEC-311): a language's folder is not in it
+    const wanted = new Set([...pages.keys()].filter((f) => isIndexableRole(f) && stripLocale(f) === f).map(pageAddress));
     for (const url of wanted) if (!listed.has(url)) report("llms-txt", file, `llms.txt does not list the page ${url}`);
     for (const url of listed) if (!wanted.has(url)) report("llms-txt", file, `llms.txt lists ${url}, which is not an indexable page of the build`);
   }
@@ -518,7 +592,7 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
    */
   function checkCompare() {
     for (const [file, root] of pages) {
-      if (!/^compare\/[^/]+\/index\.html$/.test(file)) continue;
+      if (!/^compare\/[^/]+\/index\.html$/.test(stripLocale(file))) continue;
       const facts = [...elements(root)].filter((el) => attr(el, "data-compare-fact") !== undefined);
       if (facts.length === 0) {
         report("compare-source", file, "the comparison page has no [data-compare-fact]: a fact about another tool needs its source and date");
@@ -812,7 +886,7 @@ function main() {
     process.exit(2);
   }
   const config = readSiteConfig();
-  const results = checkSite(distDir, config);
+  const results = checkSite(distDir, { ...config, locales: readLocalesFile() });
   if (!config.preview) results.push(...checkPublisherPlaceholders(readFileSync(join(HERE, "..", "src", "data", "site.ts"), "utf8")));
   const pageCount = walk(distDir).filter((f) => f.endsWith(".html")).length;
   if (results.length === 0) {

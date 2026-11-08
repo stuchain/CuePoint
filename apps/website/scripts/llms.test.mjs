@@ -65,3 +65,21 @@ describe("llms.txt", () => {
     expect(readFileSync(join(dist, "llms.txt"), "utf8")).toBe(text);
   });
 });
+
+describe("llms.txt and the languages (DEC-311)", () => {
+  it("leaves out the pages in a language's folder, and only when told the language", () => {
+    expect(isIndexableFile("de/features/index.html")).toBe(true);
+    expect(isIndexableFile("de/features/index.html", ["de"])).toBe(false);
+    expect(isIndexableFile("design/index.html", ["de"])).toBe(true);
+  });
+
+  it("lists the English pages only", () => {
+    const dir = build({
+      "index.html": page("", "Home", "The home page."),
+      "de/index.html": page("de/", "Start", "Die Startseite."),
+    });
+    expect(writeLlmsTxt(dir, { siteName: "Thing", siteUrl: SITE, base: "/", localeCodes: ["de"] })).toBe(1);
+    expect(readPages(dir, ["de"])).toHaveLength(1);
+    expect(readFileSync(join(dir, "llms.txt"), "utf8")).not.toContain("/de/");
+  });
+});

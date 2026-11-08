@@ -1,0 +1,414 @@
+---
+import Button from "../components/Button.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import DownloadLabel from "../components/DownloadLabel.astro";
+import PageHead from "../components/PageHead.astro";
+import Panel from "../components/Panel.astro";
+import Section from "../components/Section.astro";
+import AppNote from "../components/AppNote.astro";
+import { GITHUB_URL, PRIMARY_ACTION, UPDATES_IN_APP } from "../data/site";
+import { fmt } from "../i18n/format";
+import { localeInfo, type LocaleCode } from "../i18n/locales";
+import { localePath } from "../i18n/paths";
+import { rich, type RichLink } from "../i18n/rich";
+import { ui } from "../i18n/ui";
+import Page from "../layouts/Page.astro";
+import { formatDate } from "../lib/dates";
+import { downloadsText, loadReleases, type ReleaseFile } from "../lib/releases";
+import { canonicalFor, hrefFor } from "../lib/url";
+
+interface Props {
+  locale: LocaleCode;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const d = t.download;
+const info = localeInfo(locale);
+
+const releaseData = loadReleases();
+const { release, files } = releaseData;
+const downloads = downloadsText(releaseData, t.downloadedTimes, info.hreflang);
+
+const megabytes = (bytes: number) => `${Math.max(1, Math.round(bytes / 1048576))} MB`;
+const released = release?.publishedAt ? release.publishedAt.slice(0, 10) : null;
+
+/** What each file is, in words a DJ uses. The chip is said here, not in the button. */
+const KIND: Record<string, { title: string; detail: string }> = d.kinds;
+const kind = (f: ReleaseFile) => KIND[`${f.system}-${f.chip}`] ?? { title: f.system, detail: f.chip };
+// The guide's old sentence, kept for the day UPDATES_IN_APP (src/data/site.ts) goes back to false.
+const UPDATE_BY_HAND = d.updateByHand;
+// the links a string names (src/i18n/rich.ts): anchors on this page, and the pages around it
+const links: Record<string, RichLink> = {
+  windows: { href: "#windows" },
+  macos: { href: "#macos" },
+  linux: { href: "#linux" },
+  all: { href: "#all-downloads" },
+  changelog: { href: hrefFor("changelog/"), ...(locale === "en" ? {} : { hreflang: "en" }) },
+  releases: { href: `${GITHUB_URL}/releases`, external: true },
+  notes: { href: release?.notesUrl ?? "", external: true },
+};
+const r = (text: string) => rich(text, links, { version: release?.version ?? "" });
+// "Intel Mac?" is the one link the script re-points at the other chip's file
+const note = (text: string, alt = false) => rich(text, alt ? { ...links, all: { href: "#all-downloads", alt: true } } : links);
+const linuxFile = files.find((f) => f.system === "linux");
+
+const description = release ? fmt(d.descriptionRelease, { version: release.version }) : d.descriptionNone;
+
+const schema = release
+  ? [
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "CuePoint",
+        applicationCategory: "MultimediaApplication",
+        operatingSystem: "Windows, macOS, Linux",
+        softwareVersion: release.version,
+        url: canonicalFor(localePath(locale, "download/")),
+        downloadUrl: canonicalFor(localePath(locale, "download/")),
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      },
+    ]
+  : [];
+---
+
+<Page
+  title={release ? fmt(d.titleWithVersion, { version: release.version }) : d.title}
+  description={description}
+  path="download/"
+  locale={locale}
+  schema={schema}
+  breadcrumbs={[{ label: t.nav.home, path: "" }, { label: t.nav.download, path: "download/" }]}
+>
+  {
+    release ? (
+      <>
+        <PageHead title={d.title}>
+          <p>{d.lead}</p>
+          <Fragment slot="meta">
+            {fmt(d.version, { version: release.version })}
+            {released && (
+              <>
+                {" "}
+                · <time datetime={released}>{formatDate(released, info.hreflang)}</time>
+              </>
+            )}{" "}
+            · <a href={release.notesUrl} rel="noopener noreferrer">{d.releaseNotes}<span class="sr-only"> {fmt(d.releaseNotesFor, { version: release.version })}</span></a>
+            {downloads && <> · <span data-downloads>{downloads}</span></>}
+          </Fragment>
+        </PageHead>
+
+        <Section id="get" width="prose">
+          <Panel class="hero" as="div">
+            <div data-hero class="hero-stack">
+              <div class="layer" data-layer="desktop">
+                <div data-hero-action>
+                  <Button href="#all-downloads" class="js-download">
+                    <DownloadLabel />
+                  </Button>
+                </div>
+                <div class="notes">
+                  <p data-note="windows" set:html={note(d.notes.windows)} />
+                  <p data-note="windows-arm" set:html={note(d.notes.windowsArm)} />
+                  <p data-note="mac-arm" set:html={note(d.notes.macArm, true)} />
+                  <p data-note="mac-arm-guess" set:html={note(d.notes.macArmGuess, true)} />
+                  <p data-note="mac-intel" set:html={note(d.notes.macIntel, true)} />
+                  <p data-note="linux" set:html={note(d.notes.linux)} />
+                  <p data-note="linux-arm" set:html={note(d.notes.linuxArm)} />
+                  <p data-note="unknown" set:html={note(d.notes.unknown)} />
+                </div>
+                <AppNote />
+              </div>
+              <div class="layer" data-layer="mobile">
+                <p data-note="mobile">{d.notes.mobile}</p>
+              </div>
+            </div>
+          </Panel>
+        </Section>
+
+        <Section id="all-downloads" heading={d.allTitle} layout="split">
+          <p slot="aside">
+            {fmt(d.allAsideBefore, { version: release.version })}<span class="aside-wide">{d.allAsideWide}</span><span class="aside-phone">{d.allAsidePhone}</span>
+          </p>
+          <ul class="files">
+            {
+              files.map((f) => (
+                <li data-reveal>
+                  <div class="file-about">
+                    <h3>{kind(f).title}</h3>
+                    <p class="detail">{kind(f).detail}</p>
+                    <p class="file">
+                      <code>{f.name}</code> · {megabytes(f.size)}
+                    </p>
+                    <details class="sum">
+                      <summary>{d.checksum}</summary>
+                      <code>{f.sha256}</code>
+                    </details>
+                  </div>
+                  <Button href={f.url} variant="secondary" external>
+                    {d.downloadButton}<span class="sr-only"> {fmt(d.downloadFor, { title: kind(f).title })}</span>
+                  </Button>
+                </li>
+              ))
+            }
+          </ul>
+          <details class="verify">
+            <summary>{d.verifyTitle}</summary>
+            <p>{d.verifyIntro}</p>
+            <CodeBlock label={d.codeWindows} code={"certutil -hashfile CuePoint-" + release.version + "-win-x64-setup.exe SHA256"} />
+            <CodeBlock label={d.codeMac} code={"shasum -a 256 CuePoint-" + release.version + "-mac-arm64.dmg  " + d.codeMacComment} />
+            <CodeBlock label={d.codeLinux} code={"sha256sum CuePoint-" + release.version + "-linux-x86_64.AppImage"} />
+          </details>
+          <p class="notes-links" set:html={r(d.notesLinks)} />
+        </Section>
+
+        <Section id="next" heading={d.nextTitle} layout="split">
+          <p slot="aside">
+            {d.nextAside}
+          </p>
+
+          <div class="system">
+          <h3 id="windows">{d.windowsTitle}</h3>
+          <ol class="steps">
+            <li>{d.windows.s1}</li>
+            <li set:html={r(d.windows.s2)} />
+            <li set:html={r(d.windows.s3)} />
+            {UPDATES_IN_APP ? <li set:html={r(d.windows.updates)} /> : <li>{UPDATE_BY_HAND}</li>}
+          </ol>
+          </div>
+
+          <div class="system">
+          <h3 id="macos">{d.macTitle}</h3>
+          <ol class="steps">
+            <li set:html={r(d.mac.s1)} />
+            <li>
+              <Fragment set:html={r(d.mac.s2)} />
+              <CodeBlock label={d.mac.terminalLabel} code="xattr -cr /Applications/CuePoint.app" />
+            </li>
+            <li set:html={r(d.mac.s3)} />
+            {UPDATES_IN_APP ? <li set:html={r(d.mac.updates)} /> : <li>{UPDATE_BY_HAND}</li>}
+          </ol>
+          </div>
+
+          <div class="system">
+          <h3 id="linux">{d.linuxTitle}</h3>
+          <ol class="steps">
+            <li>
+              {d.linux.s1}
+              <CodeBlock label={d.linux.terminalLabel} code={`chmod +x ${linuxFile?.name ?? "CuePoint-" + release.version + "-linux-x86_64.AppImage"}`} />
+            </li>
+            <li>{d.linux.s2}</li>
+            {UPDATES_IN_APP ? <li set:html={r(d.linux.updates)} /> : <li>{UPDATE_BY_HAND}</li>}
+          </ol>
+          </div>
+        </Section>
+      </>
+    ) : (
+      <>
+      <PageHead title={d.comingTitle}>
+        <p>{d.comingLead}</p>
+        <Fragment slot="actions">
+          <Button href={PRIMARY_ACTION.href} external>{locale === "en" ? PRIMARY_ACTION.label : t.primaryAction}</Button>
+          <AppNote />
+        </Fragment>
+      </PageHead>
+      <Section id="coming" width="prose">
+        <p set:html={r(d.comingBody)} />
+      </Section>
+      </>
+    )
+  }
+
+  <Section id="requirements" heading={d.requirementsTitle} layout="split">
+    <ul>
+      <li set:html={r(d.reqWindows)} />
+      <li set:html={r(d.reqMac)} />
+      <li set:html={r(d.reqLinux)} />
+    </ul>
+    <p>{d.reqRekordbox}</p>
+  </Section>
+
+  {
+    !release && (
+      <Section id="test-builds" heading={d.testBuildsTitle} layout="split">
+        <p set:html={r(d.testBuilds)} />
+      </Section>
+    )
+  }
+</Page>
+
+<style>
+  /* the main action: one big button, the note for the visitor's system under it */
+  :global(.hero) {
+    padding: var(--r1) var(--r2) var(--r1);
+  }
+  .hero-stack :global(.btn) {
+    font-size: var(--font-size-lg);
+    padding: var(--space-md) calc(var(--space-xl) * 1.2);
+  }
+  /* Every note and both layers share one cell, so the box is as tall as the tallest and detection
+     only changes what is visible, never the layout. */
+  .hero-stack {
+    display: grid;
+  }
+  /* a phone cannot run CuePoint, so it gets no detected-system box: the page goes straight to
+     every download, where the visitor picks a system */
+  .aside-phone {
+    display: none;
+  }
+  @media (max-width: 39.99rem) {
+    :global(#get) {
+      display: none;
+    }
+    .aside-wide {
+      display: none;
+    }
+    .aside-phone {
+      display: inline;
+    }
+  }
+  .layer {
+    grid-area: 1 / 1;
+  }
+  .layer[data-off] {
+    visibility: hidden;
+  }
+  /* a Download label sets its own visibility, so the hidden desktop layer hides its labels too
+     (without this a phone saw a faint "Download" through the note) */
+  .layer[data-off] :global(.js-download .dl-labels > span) {
+    visibility: hidden;
+  }
+  [data-layer="mobile"] {
+    visibility: hidden;
+  }
+  [data-layer="mobile"][data-on] {
+    visibility: visible;
+  }
+  .notes {
+    display: grid;
+    margin-top: var(--r1);
+  }
+  .notes > [data-note] {
+    grid-area: 1 / 1;
+    visibility: hidden;
+    margin: 0;
+  }
+  .notes > [data-note][data-on] {
+    visibility: visible;
+  }
+  /* every file: one row of a panel, what it is on the left and its button on the right */
+  .files {
+    margin: 0 0 var(--r1);
+    padding: 0;
+    list-style: none;
+    background: var(--bg-panel);
+    border: var(--border-width-heavy) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel-panel), var(--shadow-panel);
+  }
+  .files li {
+    display: grid;
+    gap: var(--space-md) var(--r1);
+    align-items: start;
+    padding: var(--r1);
+    border-top: var(--border-width) solid var(--border-outline);
+    box-shadow: inset 0 var(--border-width) 0 var(--border-muted);
+  }
+  .files li:first-child {
+    border-top: 0;
+    box-shadow: none;
+  }
+  .files h3 {
+    margin: 0 0 var(--space-xs);
+  }
+  .files p {
+    margin: 0 0 var(--space-xs);
+  }
+  .file-about {
+    min-width: 0;
+  }
+  .sum summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+  }
+  .sum code {
+    display: block;
+    margin-top: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--bg-input);
+    border: var(--hairline) solid var(--border-muted);
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
+  }
+  @media (min-width: 40rem) {
+    .files li {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+  .verify {
+    margin: 0 0 var(--r1);
+  }
+  .verify summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    cursor: pointer;
+    font-family: var(--font-pixel);
+    font-weight: 600;
+  }
+  .verify :global(.code) {
+    margin-top: var(--space-sm);
+  }
+  .notes-links {
+    margin: 0;
+  }
+  /* what happens next: one block per system, its steps numbered on the accent's tiles */
+  .system + .system {
+    margin-top: var(--r2);
+  }
+  .system h3 {
+    margin: 0 0 var(--r1);
+  }
+  .steps {
+    max-width: 36rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+  .steps > li {
+    position: relative;
+    min-height: 2rem;
+    margin-bottom: var(--space-lg);
+    padding-left: 3rem;
+    counter-increment: step;
+  }
+  .steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: -0.1rem;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    background: var(--accent-primary);
+    color: var(--border-outline);
+    border: var(--border-width) solid var(--border-outline);
+    box-shadow: var(--shadow-bevel), var(--shadow-badge);
+    font-family: var(--font-pixel);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .steps :global(.code) {
+    margin-top: var(--space-sm);
+  }
+  #requirements ul {
+    max-width: 36rem;
+    padding-left: var(--space-xl);
+  }
+  #requirements li {
+    margin-bottom: var(--space-sm);
+  }
+</style>

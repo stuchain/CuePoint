@@ -1,0 +1,115 @@
+---
+/*
+ * /features/ (SITE-08): the overview. One card for each feature page, the comparison pages below, and
+ * a SoftwareApplication whose featureList names only what the app ships today (a feature marked
+ * unshipped in src/data/features.ts is left out until its step ships it).
+ */
+import { SITE_URL } from "../../site.config";
+import HomeAction from "../components/HomeAction.astro";
+import PageHead from "../components/PageHead.astro";
+import Section from "../components/Section.astro";
+import Unshipped from "../components/Unshipped.astro";
+import AppNote from "../components/AppNote.astro";
+import { compareHref } from "../data/compare";
+import { featureHref } from "../data/features";
+import { SITE_NAME } from "../data/site";
+import { compareFor, featuresFor, homeFor } from "../i18n/content";
+import { fmt } from "../i18n/format";
+import type { LocaleCode } from "../i18n/locales";
+import { localePath } from "../i18n/paths";
+import { ui } from "../i18n/ui";
+import Page from "../layouts/Page.astro";
+import { canonicalFor, hrefFor } from "../lib/url";
+
+interface Props {
+  locale: LocaleCode;
+}
+const { locale } = Astro.props;
+const t = ui(locale);
+const { FEATURE_PAGES, OVERVIEW } = featuresFor(locale);
+const { COMPARE_TOOLS } = compareFor(locale);
+const { HERO } = homeFor(locale);
+const shippedPages = () => FEATURE_PAGES.filter((p) => !p.unshipped);
+
+const schema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: SITE_NAME,
+    description: HERO.description,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Windows, macOS, Linux",
+    url: SITE_URL,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    featureList: shippedPages().map((p) => `${p.name}: ${p.summary}`),
+    mainEntityOfPage: canonicalFor(localePath(locale, "features/")),
+  },
+];
+---
+
+<Page
+  title={OVERVIEW.title}
+  description={OVERVIEW.description}
+  path="features/"
+  locale={locale}
+  schema={schema}
+  breadcrumbs={[
+    { label: t.nav.home, path: "" },
+    { label: t.nav.features, path: "features/" },
+  ]}
+>
+  <PageHead title={t.features.pageTitle}>
+    <p>{t.features.lead}</p>
+    <AppNote />
+  </PageHead>
+
+  <Section id="list" heading={t.features.listTitle} layout="split">
+    <ul class="rows">
+      {
+        FEATURE_PAGES.map((p) => (
+          <li data-reveal>
+            <h3 class="row-name">
+              <a href={hrefFor(localePath(locale, featureHref(p.slug)))}>{p.name}</a>
+            </h3>
+            <div>
+              <p>{p.summary}</p>
+              {p.unshipped && <Unshipped step={p.unshipped.step} compact />}
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <Section id="compare" heading={t.features.compareTitle} layout="split">
+    <p class="intro">{t.features.compareIntro}</p>
+    <ul class="rows">
+      {
+        COMPARE_TOOLS.map((tool) => (
+          <li data-reveal>
+            <a class="row-name" href={hrefFor(localePath(locale, compareHref(tool.slug)))}>{fmt(t.features.compareRow, { name: tool.name })}</a>
+            <p>{tool.summary}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <Section id="get" heading={t.features.getTitle} layout="split">
+    <p class="get"><HomeAction /></p>
+  </Section>
+</Page>
+
+<style>
+  .intro {
+    max-width: 34rem;
+    margin: 0 0 var(--r2);
+  }
+  .rows :global([data-unshipped]) {
+    margin-top: var(--space-xs);
+  }
+  .get :global([data-primary-action]) {
+    font-size: var(--font-size-lg);
+    padding: var(--space-md) calc(var(--space-xl) * 1.2);
+  }
+</style>

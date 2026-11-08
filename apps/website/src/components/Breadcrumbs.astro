@@ -1,5 +1,7 @@
 ---
 import type { Crumb } from "./Breadcrumbs.types";
+import { localeFromUrl, localePath } from "../i18n/paths";
+import { ui } from "../i18n/ui";
 import { hrefFor } from "../lib/url";
 
 interface Props {
@@ -7,19 +9,21 @@ interface Props {
 }
 const { items } = Astro.props;
 const last = items.length - 1;
+const locale = localeFromUrl(Astro.url);
+const label = ui(locale).breadcrumb;
 ---
 
-<nav class="crumbs" aria-label="Breadcrumb">
+<nav class="crumbs" aria-label={label}>
   <ol>
     {
       items.map((item, i) => (
         <li>
           {i === last ? (
-            <a href={hrefFor(item.path)} aria-current="page">
+            <a href={hrefFor(localePath(locale, item.path))} aria-current="page">
               {item.label}
             </a>
           ) : (
-            <a href={hrefFor(item.path)}>{item.label}</a>
+            <a href={hrefFor(localePath(locale, item.path))}>{item.label}</a>
           )}
         </li>
       ))
