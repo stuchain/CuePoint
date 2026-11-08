@@ -83,7 +83,7 @@ export const STORY = {
  * typing and a result a little longer; every wait between two kept moments runs at least `pace` times faster and
  * never rests more than `hold` seconds on screen (a long wait runs faster still, up to `maxFast`); the rest after
  * a shot's last moment runs at the shot's solved pace. Shots dissolve over `fade` seconds. The camera opens on
- * each shot's lean-in view and moves (`move` seconds) on the click that opens what it moves to: `cam` is
+ * the whole window (or a 5 % lean-in) and moves (`move` seconds) on the click that opens what it moves to: `cam` is
  * [{ view }, { at: clip seconds of that click, view }, ...]; layout() turns it into keyframes.
  */
 export const SHORT = {
@@ -97,13 +97,13 @@ export const SHORT = {
   move: 1.0,
   shots: [
     { id: "library", bars: 3, span: [0.3, 10.87], keep: [[4.4, 5.5], [7.5, 7.9]],
-      cam: [{ view: LIB_SEARCH }, { at: 7.6, view: LIB_DETAILS }] },
+      cam: [{ view: RAIL }, { at: 4.5, view: LIB_SEARCH }, { at: 7.6, view: LIB_DETAILS }] },
     { id: "player", bars: 2, span: [0.8, 8.6], keep: [[1.2, 1.7], [4.7, 5.1], [7.2, 7.6]],
       cam: [{ view: RAIL }] },
     { id: "clean", bars: 6, span: [1.0, 22.5], keep: [[1.4, 1.8], [3.0, 3.4], [4.3, 4.7], [5.3, 5.7], [8.65, 9.05], [9.95, 10.35], [12.1, 12.5], [14.05, 14.45], [17.85, 18.25], [21.05, 21.45]],
       cam: [{ view: PAGE }, { at: 14.15, view: CLEAN_MATCH }] },
     { id: "discover", bars: 3, span: [1.4, 10.4], keep: [[2.6, 3.0], [3.8, 4.2], [4.85, 5.25], [5.5, 6.2], [8.0, 8.7]],
-      cam: [{ view: DIG }, { at: 4.95, view: RAIL }] },
+      cam: [{ view: RAIL }, { at: 2.7, view: DIG }, { at: 4.95, view: RAIL }] },
     { id: "prepare", bars: 3, span: [0.8, 10.6], keep: [[1.4, 1.95], [3.4, 3.95], [5.6, 6.15], [7.6, 8.15], [9.8, 10.35]],
       cam: [{ view: RAIL }] },
     { id: "keys", bars: 1, span: [0.7, 7.0], keep: [[1.2, 1.6], [4.5, 4.9]],

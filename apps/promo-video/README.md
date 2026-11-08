@@ -78,7 +78,7 @@ An 85 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350
    an action or a camera move is under 1.6 s (1.0 s in the short edit, whose moves start on the click).
 4. The shorter cuts: `--edit=short` is the 60 s LinkedIn cut (3-bar opening, all ten features, faster waits: a
    click is kept 0.4 s, no wait between two moments rests over a second, 0.6 s dissolves, each shot opens on
-   its lean-in view); `--edit=story` is the 30 s Instagram story cut. Both are `STORY` and `SHORT` in
+   the whole window and zooms on the click); `--edit=story` is the 30 s Instagram story cut. Both are `STORY` and `SHORT` in
    `demo/shots.js`. `--edit=underscore` is the short edit re-budgeted to 25 bars for Musinova's "Minimal
    Techno Electronic Underscore" (Pixabay, 100 BPM; an edit may name its own `bpm`, and half bars are allowed
    since two beats still land on a beat): `--track=<that mp3> --start=33.42` puts the track's return on the
