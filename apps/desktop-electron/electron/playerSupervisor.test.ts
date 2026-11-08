@@ -34,8 +34,14 @@ class FakeChild extends EventEmitter {
    * this is back-pressure, and only a real stream has any.
    */
   readonly stderr = new PassThrough();
+  /** mpv logs to stdout with the terminal on, so the real spawn pipes that too. */
+  readonly stdout = new PassThrough();
 
   /** Write a line the way mpv writes one. */
+  sayOnStdout(text: string): void {
+    setImmediate(() => this.stdout.write(text));
+  }
+
   say(text: string): void {
     // Arrives a moment later, as a pipe's contents do: output written just before an exit is
     // read after the `exit` event, not before it.
@@ -61,9 +67,18 @@ class FakeChild extends EventEmitter {
     this.exitCode = code;
     this.signalCode = signal;
     this.emit("exit", code, signal);
-    this.stderr.once("end", () => this.emit("close", code, signal));
+    let ended = 0;
+    const onEnd = () => {
+      ended += 1;
+      if (ended === 2) this.emit("close", code, signal);
+    };
+    this.stderr.once("end", onEnd);
+    this.stdout.once("end", onEnd);
     // After what `say` queued before it, as a pipe closes after its contents are read.
-    setImmediate(() => this.stderr.end());
+    setImmediate(() => {
+      this.stderr.end();
+      this.stdout.end();
+    });
   }
 }
 
@@ -1316,6 +1331,28 @@ describe("what mpv says about itself (PLAYER-10)", () => {
     expect(supervisor.recentOutput()).toEqual(["real line"]);
   });
 
+  it("reads stdout too, where mpv logs once the terminal is on", async () => {
+    const { supervisor, children } = track(harness());
+    await supervisor.play("/music/a.flac");
+    children[0]!.sayOnStdout("[ffmpeg] warning from stdout\n");
+    await settle();
+    expect(supervisor.recentOutput()).toEqual(["[ffmpeg] warning from stdout"]);
+    expect(children[0]!.stdout.readableLength).toBe(0);
+  });
+
+  it("keeps a partial line on each stream apart", async () => {
+    const { supervisor, children } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const child = children[0]!;
+    child.say("err-start ");
+    child.sayOnStdout("out-start ");
+    child.say("err-end\n");
+    child.sayOnStdout("out-end\n");
+    await settle();
+    await settle();
+    expect([...supervisor.recentOutput()].sort()).toEqual(["err-start err-end", "out-start out-end"]);
+  });
+
   it("survives the stream erroring", async () => {
     // A broken pipe at shutdown must not take the main process down with it.
     const { supervisor, children } = track(harness());
@@ -1323,6 +1360,26 @@ describe("what mpv says about itself (PLAYER-10)", () => {
 
     expect(() => children[0]!.stderr.emit("error", new Error("EPIPE"))).not.toThrow();
     expect(supervisor.getSnapshot().status.running).toBe(true);
+  });
+
+  it("survives the stdout stream erroring", async () => {
+    const { supervisor, children } = track(harness());
+    await supervisor.play("/music/a.flac");
+
+    expect(() => children[0]!.stdout.emit("error", new Error("EPIPE"))).not.toThrow();
+    expect(supervisor.getSnapshot().status.running).toBe(true);
+  });
+
+  it("does not glue an old child's unfinished line to the new child's first line", async () => {
+    const { supervisor, children } = track(harness({ maxRestartAttempts: 1 }));
+    await supervisor.play("/music/a.flac");
+    children[0]!.sayOnStdout("old child died mid-");
+    await settle();
+    children[0]!.exit(1);
+    await until(() => children.length > 1);
+    children[1]!.sayOnStdout("new child line\n");
+    await settle();
+    expect(supervisor.recentOutput().some((l) => l.includes("mid-new child line"))).toBe(false);
   });
 });
 
@@ -1550,6 +1607,8 @@ describe("what the player reports", () => {
     expect(incident!.message).toBe("player exited unexpectedly");
     expect(incident!.data).toMatchObject({ exit_code: 3, signal: null, restarts: 1, exits: 1 });
     expect(incident!.attachment?.filename).toBe("player-output.txt");
+    expect(incident!.attachment?.text).toContain("== output (last 1 lines) ==");
+    expect(incident!.attachment?.text).not.toContain("== stderr");
     expect(incident!.attachment?.text).toContain("cannot open device");
     expect(named("player exited unexpectedly")).toHaveLength(1);
     expect(named("player restarting")).toHaveLength(1);
@@ -1636,6 +1695,19 @@ describe("what the player reports", () => {
 
     expect(incidents[0]!.outcome).toBe("gave-up");
     expect(incidents[0]!.attachment?.text).toContain("last words before dying");
+  });
+
+  it("keeps what mpv wrote on stdout just before it exited", async () => {
+    const { incidents, reporter } = recorder();
+    const { supervisor, children } = track(harness({ reporter, maxRestartAttempts: 0 }));
+    await supervisor.play("/music/a.flac");
+
+    children[0].sayOnStdout("stdout last words before dying\n");
+    children[0].exit(1);
+    await until(() => incidents.length > 0);
+
+    expect(incidents[0]!.outcome).toBe("gave-up");
+    expect(incidents[0]!.attachment?.text).toContain("stdout last words before dying");
   });
 
   it("keeps a runaway line to a cap, with a marker", async () => {

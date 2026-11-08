@@ -417,7 +417,7 @@ export function reportProcessIncident(incident: ProcessIncident): string | null 
     return on.sdk.captureEvent(
       {
         message: incident.message,
-        level: "error",
+        level: incident.level ?? "error",
         tags: {
           "process.type": incident.process,
           "process.outcome": incident.outcome,

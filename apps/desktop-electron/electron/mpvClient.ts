@@ -98,22 +98,6 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
 
 /**
- * Base arguments for the mpv process (consumed by PLAYER-03's supervisor).
- *
- * Declared here, beside the protocol they enable, so the flags the client
- * depends on cannot drift away from it:
- *
- * - `--idle=yes` keeps mpv alive with an empty playlist, which is the whole
- *   premise of driving it over IPC rather than per-file.
- * - `--no-video` / `--no-terminal`: this is an audio sidecar with no console.
- * - `--no-config` makes playback deterministic. A user's `~/.config/mpv` could
- *   otherwise change decoding, output or key bindings underneath CuePoint, and
- *   the resulting bug reports would be unreproducible.
- * - `--gapless-audio=yes` is DEC-056: gapless is the promise, crossfade is
- *   explicitly not. No crossfade filter is configured, here or anywhere.
- * - `--audio-client-name` is what the OS mixer shows the user.
- */
-/**
  * The resampler, configured rather than assumed (PLAYER-11, DEC-055, DEC-005).
  *
  * These matter only in shared mode, and that is exactly when they matter: the
@@ -141,10 +125,44 @@ export const MPV_RESAMPLER_ARGS: readonly string[] = [
   "--audio-resample-phase-shift=12",
 ];
 
+/**
+ * What every CuePoint mpv is started with (consumed by PLAYER-03's supervisor).
+ *
+ * Declared here, beside the protocol they enable, so the flags the client depends on cannot drift
+ * away from it:
+ *
+ * - `--idle=yes` keeps mpv alive with an empty playlist, which is the whole premise of driving it
+ *   over IPC rather than per-file.
+ * - `--no-video`: this is an audio sidecar.
+ * - `--no-config` makes playback deterministic. A user's `~/.config/mpv` could otherwise change
+ *   decoding, output or key bindings underneath CuePoint, and the resulting bug reports would be
+ *   unreproducible.
+ * - `--gapless-audio=yes` is DEC-056: gapless is the promise, crossfade is explicitly not. No
+ *   crossfade filter is configured, here or anywhere.
+ * - `--audio-client-name` is what the OS mixer shows the user.
+ * - `--terminal=yes --input-terminal=no`: the sidecar has no console input, but its warnings and
+ *   errors are kept. `--no-terminal` silenced all output, so `player-output.txt` was always empty.
+ *   With the terminal on, mpv logs to stdout (not stderr); the supervisor drains both. Console
+ *   controls stay off, so SIGTERM/SIGINT keep their default action.
+ * - `--msg-level=all=warn --msg-color=no`: only warnings and worse, as plain text, so the status
+ *   line and "Playing: <path>" never reach the report.
+ * - `--input-default-bindings=no --input-media-keys=no`: CuePoint owns media keys (`mediaKeys.ts`).
+ *   mpv's built-in bindings map STOP and POWER to `quit`, and on macOS it registers with Now
+ *   Playing, so Stop from Control Center, headphones or a remote could quit the player from
+ *   outside with exit code 0 (Sentry ELECTRON-7).
+ * - `--media-controls=no`: mpv's Windows SMTC integration drives mpv directly with stop, pause and
+ *   next, and the flags above do not block it.
+ */
 export const MPV_BASE_ARGS: readonly string[] = [
   "--idle=yes",
   "--no-video",
-  "--no-terminal",
+  "--terminal=yes",
+  "--input-terminal=no",
+  "--msg-level=all=warn",
+  "--msg-color=no",
+  "--input-default-bindings=no",
+  "--input-media-keys=no",
+  "--media-controls=no",
   "--no-config",
   "--gapless-audio=yes",
   "--audio-client-name=CuePoint",

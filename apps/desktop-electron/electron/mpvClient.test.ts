@@ -197,7 +197,21 @@ describe("mpv arguments", () => {
     const args = buildMpvArgs("/tmp/x.sock");
     expect(args).toContain("--idle=yes");
     expect(args).toContain("--no-video");
-    expect(args).toContain("--no-terminal");
+    // No console, so nothing reads stdin; warnings stay on stdout for incident reports.
+    expect(args).not.toContain("--no-terminal");
+    expect(args).toContain("--terminal=yes");
+    expect(args).toContain("--input-terminal=no");
+    expect(args).toContain("--msg-level=all=warn");
+    expect(args).toContain("--msg-color=no");
+  });
+
+  it("cannot be quit from outside (ELECTRON-7)", () => {
+    // mpv's default STOP/POWER bindings quit, and on macOS Now Playing delivers them.
+    const args = buildMpvArgs("/tmp/x.sock");
+    expect(args).toContain("--input-default-bindings=no");
+    expect(args).toContain("--input-media-keys=no");
+    // Windows SMTC drives mpv directly with stop/pause/next; the flags above do not block it.
+    expect(args).toContain("--media-controls=no");
   });
 
   it("ignores the user's mpv config", () => {

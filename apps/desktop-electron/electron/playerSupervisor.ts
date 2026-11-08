@@ -298,7 +298,6 @@ export class PlayerSupervisor {
   private activeAudio: AudioSettings = { ...DEFAULT_AUDIO_SETTINGS };
   /** The tail of mpv's own diagnostics; see `drainOutput`. */
   private output: string[] = [];
-  private outputTail = "";
 
   /** What the player's exits and restarts add up to (`processWatch.ts`). */
   private readonly incidents: IncidentTracker;
@@ -543,7 +542,7 @@ export class PlayerSupervisor {
     try {
       child = this.spawnFn(binary.path, args, {
         cwd: path.dirname(binary.path),
-        stdio: ["ignore", "ignore", "pipe"],
+        stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
       });
     } catch (error) {
@@ -600,7 +599,7 @@ export class PlayerSupervisor {
       // A restart already running (`scheduleRestart`) sees this exit as a failed start and goes on
       // by itself; a second loop beside it is how one incident became several reports.
       if (this.reconnecting) return;
-      // Not before stderr has been read to its end: the last words are what the report is for.
+      // Not before stdout and stderr have been read to their end: the last words are what the report is for.
       void this.drained(child).then(() => {
         if (this.stopping || this.disposed || this.child !== null || this.reconnecting) return;
         void this.scheduleRestart();
@@ -816,37 +815,44 @@ export class PlayerSupervisor {
   }
 
   /**
-   * Read mpv's stderr and keep the tail of it.
+   * Read mpv's stdout and stderr and keep the tail of both.
    *
-   * The reading is not optional. The process is spawned with a stderr *pipe*,
-   * and a pipe nobody reads fills up — at which point mpv blocks on its next
-   * write and the player stops responding, taking playback with it. mpv is
-   * quiet while things work and writes a line per file when they do not, so
-   * the case that fills 64 KB of pipe buffer is precisely the one this step is
-   * about: a queue pointed at a drive that is not there.
+   * The reading is not optional. The process is spawned with *pipes*, and a pipe nobody reads
+   * fills up — at which point mpv blocks on its next write and the player stops responding,
+   * taking playback with it. mpv logs to stdout with the terminal on and to stderr for some
+   * things, and writes a line per file when they fail, so the case that fills 64 KB of pipe
+   * buffer is precisely the one this step is about: a queue pointed at a drive that is not there.
    *
-   * What is kept is bounded for the same reason: a tail, not a transcript.
+   * What is kept is bounded for the same reason: a tail, not a transcript. Both streams feed one
+   * tail; each stream of each child has its own partial-line buffer.
    */
   private drainOutput(child: ChildProcess): void {
-    const stream = child.stderr;
+    this.drainStream(child.stdout);
+    this.drainStream(child.stderr);
+  }
+
+  private drainStream(stream: ChildProcess["stdout"]): void {
     if (!stream) return;
+    // Local to this stream of this child: an old child's unfinished line can never be glued to a
+    // new child's first line, and the two streams never merge into one line.
+    let partial = "";
     stream.setEncoding("utf-8");
     stream.on("data", (chunk: string) => {
-      const text = this.outputTail + chunk;
+      const text = partial + chunk;
       const lines = text.split(/\r?\n/);
       // A chunk can end mid-line; hold the remainder for the next one.
-      this.outputTail = lines.pop() ?? "";
+      partial = lines.pop() ?? "";
       for (const line of lines) this.note(line);
       // A line with no end is as long as a runaway write: keep it capped and start over.
-      if (this.outputTail.length > 8192) {
-        this.note(this.outputTail);
-        this.outputTail = "";
+      if (partial.length > 8192) {
+        this.note(partial);
+        partial = "";
       }
     });
     // What mpv wrote without a newline as it died is the last thing it said.
     stream.on("end", () => {
-      this.note(this.outputTail);
-      this.outputTail = "";
+      this.note(partial);
+      partial = "";
     });
     // A broken pipe on shutdown is not an error worth surfacing, but an
     // unhandled one on a stream would take the process down.
@@ -1015,7 +1021,7 @@ export class PlayerSupervisor {
       this.reconnecting = false;
       this.gaveUpReason = "The audio player stopped responding. Play a track to try again.";
       // The incident's one event (REPORT-05), with the words the user was told.
-      this.incidents.gaveUp(this.gaveUpReason, { stderr: this.output });
+      this.incidents.gaveUp(this.gaveUpReason, { output: this.output });
       this.push(true);
       return;
     }
@@ -1064,7 +1070,7 @@ export class PlayerSupervisor {
     this.clearStableTimer();
     this.stableTimer = setTimeout(() => {
       this.stableTimer = null;
-      if (this.child === child) this.incidents.recovered({ stderr: this.output });
+      if (this.child === child) this.incidents.recovered({ output: this.output });
     }, this.options.stableUptimeMs ?? PLAYER_STABLE_UPTIME_MS);
     this.stableTimer.unref?.();
   }

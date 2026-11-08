@@ -16,6 +16,54 @@ function recorded() {
 
 const exit = (code: number | null, uptimeMs: number | null = 100) => ({ code, signal: null, uptimeMs });
 
+describe("a clean player exit (ELECTRON-7)", () => {
+  const player = () => {
+    const incidents: ProcessIncident[] = [];
+    const reporter: ProcessReporter = { breadcrumb: () => undefined, incident: (i) => incidents.push(i) };
+    return { incidents, tracker: new IncidentTracker("player", reporter) };
+  };
+
+  it("is a warning when every exit was code 0 with no signal", () => {
+    const { incidents, tracker } = player();
+    tracker.exited(exit(0));
+    tracker.restarting(1, 10);
+    tracker.exited(exit(0));
+    tracker.recovered({});
+    expect(incidents[0]!.message).toBe("player was asked to quit");
+    expect(incidents[0]!.level).toBe("warning");
+  });
+
+  it("stays an error when any exit in the incident was not clean", () => {
+    const { incidents, tracker } = player();
+    tracker.exited(exit(1));
+    tracker.restarting(1, 10);
+    tracker.exited(exit(0));
+    tracker.recovered({});
+    expect(incidents[0]!.message).toBe("player exited unexpectedly");
+    expect(incidents[0]!.level).toBe("error");
+  });
+
+  it("stays an error when a signal ended it, or the engine exited cleanly", () => {
+    const { incidents, tracker } = player();
+    tracker.exited({ code: null, signal: "SIGKILL", uptimeMs: 1 });
+    tracker.recovered({});
+    expect(incidents[0]!.level).toBe("error");
+
+    const e = recorded();
+    e.tracker.exited(exit(0));
+    e.tracker.recovered({});
+    expect(e.incidents[0]!.message).toBe("engine exited unexpectedly");
+    expect(e.incidents[0]!.level).toBe("error");
+  });
+
+  it("a give-up is an error even after clean exits", () => {
+    const { incidents, tracker } = player();
+    tracker.exited(exit(0));
+    tracker.gaveUp("no more", {});
+    expect(incidents[0]!.level).toBe("error");
+  });
+});
+
 describe("an incident", () => {
   it("opens on an exit, collects exits and restarts, and ends with one event when recovered", () => {
     const { incidents, crumbs, tracker } = recorded();
@@ -131,6 +179,10 @@ describe("the tail as text", () => {
     expect(text).not.toContain("line 0\n");
     expect(text).toContain(`line ${OUTPUT_TAIL_LINES + 4}`);
     expect(text).toContain("== stderr (last 0 lines) ==\n(nothing)");
+  });
+
+  it("heads the player's merged output as one stream, not as stderr", () => {
+    expect(outputText({ output: ["a", "b"] })).toBe("== output (last 2 lines) ==\na\nb");
   });
 
   it("leaves out a stream the process does not have", () => {

@@ -852,8 +852,51 @@ export function scrubEvent(event: Record<string, unknown>, ctx: ScrubContext): R
   return out;
 }
 
-/** Scrub a process-output tail line by line. Any other attachment is dropped (null). */
+// The player's output: mpv prints a path unquoted, spaces and all ("Failed to open <path>."), and
+// the plain-text rules stop at the first space. From where a path starts to the end of the line is
+// taken as that path.
+const PLAYER_PATH_START = new RegExp(
+  [
+    String.raw`(?<![A-Za-z0-9_/\\.~%-])\/[^\s/]+\/`,
+    String.raw`(?<![A-Za-z0-9_/\\.~%-])~[\\/]`,
+    String.raw`(?<![A-Za-z0-9\\])\\\\[^\s\\/]+\\`,
+    String.raw`(?<![A-Za-z0-9])[A-Za-z]:[\\/]`,
+    String.raw`(?<![A-Za-z0-9])<home>[\\/]`,
+    String.raw`(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9+.-]*:\/\/`,
+  ].join("|"),
+  "u",
+);
+const SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):\/\//u;
+
+function scrubPlayerLine(line: string, ctx: ScrubContext): string {
+  const text = replaceHome(scrubTokens(line, ctx), ctx);
+  const start = PLAYER_PATH_START.exec(text);
+  // A quoted path has its closing quote; leave it to the quote rule.
+  if (start === null || (start.index > 0 && "'\"\u2018\u201c".includes(text[start.index - 1]))) {
+    return scrubQuotes(text, ctx);
+  }
+  const ending = /\r$/u.test(text) ? "\r" : "";
+  let rest = text.slice(start.index, text.length - ending.length);
+  let dot = "";
+  if (rest.endsWith(".")) {
+    rest = rest.slice(0, -1);
+    dot = ".";
+  }
+  const scheme = SCHEME.exec(rest);
+  let shaped: string;
+  if (scheme === null) shaped = shapePath(rest, ctx);
+  else if (scheme[1].toLowerCase() === "file") shaped = shapePath(rest, ctx);
+  else if (/^https?$/iu.test(scheme[1])) shaped = scrubUrl(rest);
+  else shaped = `${scheme[0]}${VALUE}`;
+  return scrubQuotes(text.slice(0, start.index), ctx) + shaped + dot + ending;
+}
+
+/**
+ * Scrub a process-output tail line by line. Any other attachment is dropped (null). The player's
+ * output takes whole paths with spaces (`scrubPlayerLine`); the engine's goes by the text rules.
+ */
 export function scrubAttachment(name: string, text: string, ctx: ScrubContext): string | null {
   if (!(OUTPUT_TAIL_ATTACHMENTS as readonly string[]).includes(name)) return null;
-  return text.split("\n").map((line) => scrubText(line, ctx)).join("\n");
+  const scrub = name === "player-output.txt" ? scrubPlayerLine : scrubText;
+  return text.split("\n").map((line) => scrub(line, ctx)).join("\n");
 }

@@ -33,6 +33,10 @@
     "save-position-on-quit",
     "input-default-bindings",
     "input-terminal",
+    "msg-level",
+    "msg-color",
+    "input-media-keys",
+    "media-controls",
     "vid",
     "sid",
     "audio-display"

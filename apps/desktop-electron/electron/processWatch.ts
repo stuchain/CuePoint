@@ -36,10 +36,14 @@ export type ProcessName = "engine" | "player";
 /** How an incident ended. */
 export type IncidentOutcome = "recovered" | "gave-up" | "start-failed";
 
-/** The last lines of a process's output, by stream. Either may be absent (the player has no stdout). */
+/**
+ * The last lines of a process's output, by stream; any may be absent. The engine reports `stdout`
+ * and `stderr` apart. The player's two streams are kept as one tail, `output`.
+ */
 export interface OutputTail {
   stdout?: readonly string[];
   stderr?: readonly string[];
+  output?: readonly string[];
 }
 
 /** The attachment an event carries: a name `reportScrub.ts` allows, and its text, not yet scrubbed. */
@@ -52,6 +56,8 @@ export interface IncidentAttachment {
 export interface ProcessIncident {
   process: ProcessName;
   outcome: IncidentOutcome;
+  /** How loud the event is: a player that was merely asked to quit is a warning. Absent means "error". */
+  level?: "error" | "warning";
   /** The event's message, e.g. "engine exited unexpectedly". */
   message: string;
   data: {
@@ -88,7 +94,7 @@ export interface ProcessExit {
 /** The text of an output tail: each stream under a heading, last lines only. */
 export function outputText(tail: OutputTail): string {
   const parts: string[] = [];
-  for (const stream of ["stdout", "stderr"] as const) {
+  for (const stream of ["stdout", "stderr", "output"] as const) {
     const lines = tail[stream];
     if (lines === undefined) continue;
     const kept = lines.slice(-OUTPUT_TAIL_LINES);
@@ -102,7 +108,7 @@ export function outputText(tail: OutputTail): string {
  * speaks to the reporter. Never throws: a reporter that fails is no reason to stop a supervisor.
  */
 export class IncidentTracker {
-  private open: { last: ProcessExit; exits: number; restarts: number } | null = null;
+  private open: { last: ProcessExit; exits: number; restarts: number; allClean: boolean } | null = null;
   private readonly startFailures = new Set<string>();
 
   constructor(
@@ -117,10 +123,12 @@ export class IncidentTracker {
 
   /** The process exited and nobody asked it to. Opens an incident, or adds an exit to the open one. */
   exited(exit: ProcessExit): void {
-    if (this.open === null) this.open = { last: exit, exits: 1, restarts: 0 };
+    const clean = exit.code === 0 && exit.signal === null;
+    if (this.open === null) this.open = { last: exit, exits: 1, restarts: 0, allClean: clean };
     else {
       this.open.last = exit;
       this.open.exits += 1;
+      this.open.allClean = this.open.allClean && clean;
     }
     this.crumb(`${this.process} exited unexpectedly`, {
       exit_code: exit.code,
@@ -169,10 +177,13 @@ export class IncidentTracker {
   private send(outcome: IncidentOutcome, message: string, reason: string | undefined, output: OutputTail): void {
     const open = this.open;
     this.open = null;
+    // mpv exiting 0 with no signal means something told it to quit (ELECTRON-7), not that it crashed.
+    const asked = this.process === "player" && outcome === "recovered" && open?.allClean === true;
     const incident: ProcessIncident = {
       process: this.process,
       outcome,
-      message,
+      level: asked ? "warning" : "error",
+      message: asked ? "player was asked to quit" : message,
       data: {
         exit_code: open?.last.code ?? null,
         signal: open?.last.signal ?? null,

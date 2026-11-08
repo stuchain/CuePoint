@@ -92,6 +92,13 @@ PLAYBACK_OPTIONS: Tuple[str, ...] = (
     "audio-exclusive",
     "audio-device",
     "idle",
+    "terminal",
+    "input-terminal",
+    "msg-level",
+    "msg-color",
+    "input-default-bindings",
+    "input-media-keys",
+    "media-controls",
 )
 #: Options waveform analysis drives mpv with (WAVE-01). A test holds this to the
 #: arguments ``cuepoint.data.audio_decode`` actually passes.
@@ -1704,7 +1711,10 @@ def update_manifest(
         "required_decoders",
         ["flac", "alac", "mp3", "pcm_s16be", "wavpack", "ape", "aac"],
     )
-    updated.setdefault("required_options", [*PLAYBACK_OPTIONS, *ANALYSIS_OPTIONS])
+    updated.setdefault(
+        "required_options",
+        list(dict.fromkeys([*PLAYBACK_OPTIONS, *ANALYSIS_OPTIONS])),
+    )
     license_block = dict(existing.get("license", {}))
     license_block.setdefault("spdx", "GPL-2.0-or-later")
     license_block["files"] = sorted(LICENSE_SOURCES)

@@ -939,6 +939,15 @@ describe("a process incident (REPORT-05)", () => {
     expect(attachments[0]!.text).toContain("== stderr (last 2 lines) ==");
   });
 
+  it("sends the level the incident carries, an error by default", async () => {
+    setup();
+    reportProcessIncident(incident({ level: "warning" }));
+    reportProcessIncident(incident({ level: "error" }));
+    reportProcessIncident(incident());
+    await flush();
+    expect(sent.map((s) => s.event.level)).toEqual(["warning", "error", "error"]);
+  });
+
   it("is subject to the choice: off at the time of the event, nothing is made", async () => {
     setup();
     enabled = false;
@@ -963,6 +972,29 @@ describe("a process incident (REPORT-05)", () => {
     reportProcessIncident(incident({ data: { exit_code: 1, signal: null, restarts: 0, uptime_ms: 5, exits: 1, reason: "/Users/anna/Music/x.flac" } }));
     await flush();
     expect(JSON.stringify(sent[0]!.event)).not.toContain("/Users/anna");
+  });
+
+  it("scrubs a spaced path in the player's output down to the last fragment", async () => {
+    setup();
+    reportProcessIncident(
+      incident({
+        process: "player",
+        attachment: {
+          filename: "player-output.txt",
+          text: [
+            "== output (last 2 lines) ==",
+            "Failed to open /Volumes/DJ USB/Daft Punk - One More Time.flac.",
+            "Failed to open D:\\DJ Sets\\Night Mix.mp3.",
+          ].join("\n"),
+        },
+      }),
+    );
+    await flush();
+    const text = sent[0]!.attachments[0]!.text;
+    for (const fragment of ["DJ", "USB", "Daft", "Punk", "One More", "Night", "Mix"]) {
+      expect(text).not.toContain(fragment);
+    }
+    expect(text).toContain("== output (last 2 lines) ==");
   });
 
   it("sends no attachment but the two output tails: any other name is dropped", async () => {

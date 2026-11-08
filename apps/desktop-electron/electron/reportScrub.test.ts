@@ -77,6 +77,59 @@ describe("scrub helpers", () => {
     expect(scrubAttachment("engine-output.txt.bak", text, ctx)).toBeNull();
   });
 
+  describe("the player's output, where mpv prints paths unquoted and with spaces", () => {
+    const player = (line: string): string => scrubAttachment("player-output.txt", line, ctx) as string;
+    const fragments = ["DJ", "USB", "Daft", "Punk", "One", "More", "Time", "Bob", "Smith", "Night", "Mix", "Share", "Crate"];
+    const leaks = (text: string): string[] => fragments.filter((f) => text.includes(f));
+
+    it("treats a spaced POSIX path as one path up to the end of the line", () => {
+      const out = player("Failed to open /Volumes/DJ USB/Daft Punk - One More Time.flac.");
+      expect(leaks(out)).toEqual([]);
+      expect(out).toBe("Failed to open /<dir>/<dir>/<file>.flac.");
+    });
+
+    it("treats a spaced Windows or UNC path the same way", () => {
+      const drive = player("Failed to open C:\\Users\\Bob Smith\\DJ Sets\\Night Mix.mp3.");
+      expect(leaks(drive)).toEqual([]);
+      expect(drive).toBe("Failed to open C:\\<dir>\\<dir>\\<dir>\\<file>.mp3.");
+      const unc = player("Failed to open \\\\NAS\\DJ Share\\Crate 1\\Daft Punk.flac");
+      expect(leaks(unc)).toEqual([]);
+      expect(unc).toContain("<host>");
+    });
+
+    it("covers ~, the home folder and a home with spaces", () => {
+      expect(leaks(player("Failed to open ~/Music/DJ USB/Daft Punk.flac."))).toEqual([]);
+      expect(player("Failed to open /Users/anna/Music/DJ USB/Daft Punk.flac.")).toBe(
+        "Failed to open <home>/<dir>/<dir>/<file>.flac.",
+      );
+    });
+
+    it("covers URLs: file:// and other schemes, spaces included", () => {
+      const file = player("No protocol handler found to open URL file:///Volumes/DJ USB/Daft Punk.flac");
+      expect(leaks(file)).toEqual([]);
+      expect(file).toMatch(/^No protocol handler found to open URL file:\/\/\/<dir>\/<dir>\/<file>\.flac$/u);
+      const other = player("No protocol handler found to open URL smb://NAS/DJ Share/Daft Punk.flac");
+      expect(leaks(other)).toEqual([]);
+      expect(other).toBe("No protocol handler found to open URL smb://<value>");
+    });
+
+    it("works line by line and keeps the line ending", () => {
+      const out = player("[ffmpeg] note\r\nFailed to open /Volumes/DJ USB/a b.flac.\r\nplain line");
+      expect(out).toBe("[ffmpeg] note\r\nFailed to open /<dir>/<dir>/<file>.flac.\r\nplain line");
+    });
+
+    it("leaves a line with no path alone, and a quoted path to the quote rule", () => {
+      expect(player("[ao/alsa] cannot open device")).toBe("[ao/alsa] cannot open device");
+      expect(leaks(player("Failed to open '/Volumes/DJ USB/Daft Punk.flac' (broken)"))).toEqual([]);
+    });
+
+    it("does not change the engine's output", () => {
+      const line = "Failed to open /Volumes/DJ USB/Daft Punk.flac.";
+      expect(scrubAttachment("engine-output.txt", line, ctx)).toBe(scrubText(line, ctx));
+      expect(scrubAttachment("engine-output.txt", line, ctx)).toContain("USB");
+    });
+  });
+
   it("scrubs tokens and quotes with an empty context", () => {
     const empty: ScrubContext = { home: null, userName: null, appRoots: [], tokens: [] };
     expect(scrubText("a 'b' token=zzz", empty)).toBe("a '<value>' token=<token>");
