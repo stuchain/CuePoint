@@ -58,8 +58,9 @@ const breadcrumbSchema =
         })),
       }
     : undefined;
-// the types that are works with a language (schema.org's inLanguage); the trail and the organization have none
-const LANGUAGE_TYPES = new Set(["SoftwareApplication", "WebSite", "FAQPage", "WebPage", "TechArticle", "BlogPosting"]);
+// the types that are works with a language (schema.org's inLanguage); the trail, the organization and the WebSite
+// (the whole site, in every language, on the English root only) have none
+const LANGUAGE_TYPES = new Set(["SoftwareApplication", "FAQPage", "WebPage", "TechArticle", "BlogPosting"]);
 const withLanguage = (item: Record<string, unknown>) =>
   alternates.length > 0 && typeof item["@type"] === "string" && LANGUAGE_TYPES.has(item["@type"])
     ? { ...item, inLanguage: info.hreflang }

@@ -45,7 +45,7 @@ import StoryFrame from "../components/StoryFrame.astro";
 import SoundButton from "../components/SoundButton.astro";
 import AppNote from "../components/AppNote.astro";
 import { homeFor } from "../i18n/content";
-import { localeInfo, type LocaleCode } from "../i18n/locales";
+import { DEFAULT_LOCALE, localeInfo, type LocaleCode } from "../i18n/locales";
 import { localePath } from "../i18n/paths";
 import { ui } from "../i18n/ui";
 import { GITHUB_URL, SITE_NAME } from "../data/site";
@@ -87,12 +87,17 @@ const schema = [
     logo: new URL("apple-touch-icon.png", SITE_URL).href,
     sameAs: [GITHUB_URL],
   },
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: SITE_NAME,
-    url: SITE_URL,
-  },
+  // the WebSite is the whole site, so only the English root says it (a translated home would repeat it with another language)
+  ...(locale === DEFAULT_LOCALE
+    ? [
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: SITE_NAME,
+          url: SITE_URL,
+        },
+      ]
+    : []),
 ];
 
 /**

@@ -85,7 +85,7 @@ describe("Page", () => {
   it("emits JSON-LD as given", async () => {
     const schema = [
       { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "CuePoint <b>" },
-      { "@context": "https://schema.org", "@type": "WebSite", url: SITE_URL },
+      { "@context": "https://schema.org", "@type": "FAQPage", url: SITE_URL },
     ];
     const html = await render({ schema });
     const found = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) =>
@@ -96,7 +96,7 @@ describe("Page", () => {
   });
 
   it("never lets a string in the JSON-LD close the script tag", async () => {
-    const schema = [{ "@context": "https://schema.org", "@type": "WebSite", name: "x</script><script>alert(1)</script>" }];
+    const schema = [{ "@context": "https://schema.org", "@type": "FAQPage", name: "x</script><script>alert(1)</script>" }];
     const html = await render({ schema });
     const m = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html);
     expect(m?.[1]).toBeDefined();
@@ -206,6 +206,12 @@ describe("Page head (SITE-11)", () => {
 
     it("refuses to render a page that is not translated in another language", async () => {
       await expect(render({ locale: "de", path: "privacy/" })).rejects.toThrow();
+    });
+
+    it("gives the WebSite no language: it stands for the whole site, in every language", async () => {
+      const html = await render({ path: "", schema: [{ "@context": "https://schema.org", "@type": "WebSite", name: "x", url: SITE_URL }] });
+      expect(html).toContain('"@type":"WebSite"');
+      expect(html).not.toContain('"inLanguage"');
     });
 
     it("names the language in the JSON-LD of a translated page", async () => {
