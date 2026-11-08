@@ -72,6 +72,10 @@ from cuepoint.services.interfaces import IDatabaseService, ITrackRepository
 # few megabytes rather than a few hundred at fifty thousand tracks.
 _UPSERT_BATCH_SIZE = 1000
 
+#: Ids at or below which ``ids_by_rekordbox_id`` looks each one up by the unique
+#: index; above it one scan of the table is cheaper.
+_LOOKUP_BELOW = 5000
+
 
 def _folded_or_none(text: Optional[str]) -> Optional[str]:
     """The search key of an optional field: NULL stays NULL (HARDEN-06)."""
@@ -1103,7 +1107,24 @@ class TrackRepository(ITrackRepository):
         wanted = set(rekordbox_track_ids)
         if not wanted:
             return {}
-        rows = self._db.connect().execute("SELECT id, rekordbox_track_id FROM tracks")
+        conn = self._db.connect()
+        if len(wanted) <= _LOOKUP_BELOW:
+            # A chunk of an import's marks asks about a thousand ids of a library
+            # that can hold millions: the unique index answers it, where a scan
+            # per chunk would read the whole table once per thousand tracks.
+            found: Dict[str, int] = {}
+            ordered = sorted(wanted)
+            for start in range(0, len(ordered), CHUNK_SIZE):
+                chunk = ordered[start : start + CHUNK_SIZE]
+                marks = ", ".join("?" for _ in chunk)
+                rows = conn.execute(
+                    "SELECT id, rekordbox_track_id FROM tracks"
+                    f" WHERE rekordbox_track_id IN ({marks})",
+                    chunk,
+                )
+                found.update({str(row[1]): int(row[0]) for row in rows})
+            return found
+        rows = conn.execute("SELECT id, rekordbox_track_id FROM tracks")
         return {str(row[1]): int(row[0]) for row in rows if str(row[1]) in wanted}
 
     def identity_snapshot(self) -> tuple:

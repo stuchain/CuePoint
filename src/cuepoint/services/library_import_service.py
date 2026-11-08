@@ -81,9 +81,14 @@ from cuepoint.services.interfaces import (
     ITrackMarksRepository,
     ITrackRepository,
 )
+from cuepoint.services.marks_spill import MarksSpill
 from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
+
+#: Tracks whose marks are written per step. Each step looks up the rows its
+#: tracks were given and replaces their marks, so memory is a step, not the file.
+MARKS_CHUNK_SIZE = 1000
 
 #: Activity event recorded when an import finishes (DEC-029's pattern).
 EVENT_LIBRARY_IMPORTED = "library.imported"
@@ -458,6 +463,7 @@ class LibraryImportService(ILibraryImportService):
     def _observed_tracks(
         xml_path: str,
         observed: dict,
+        spill: MarksSpill,
         on_progress: Optional[ProgressCallback],
         should_cancel: Optional[CancelCheck],
     ) -> Iterator:
@@ -473,18 +479,18 @@ class LibraryImportService(ILibraryImportService):
         reads 104% is a worse bug than one that finishes early. It is written
         back so the caller's phase-transition tick reports the same total.
 
-        Each track's cue points and grid are read in the same pass and kept in
-        ``observed["marks"]`` by Rekordbox TrackID, every track's, so a track
-        whose marks Rekordbox removed has them removed here too. A track with
-        none shares one empty value.
+        Each track's cue points and grid are read in the same pass and written to
+        ``spill`` by Rekordbox TrackID, every track's, so a track whose marks
+        Rekordbox removed has them removed here too. They are written after the
+        tracks (:meth:`_write_marks`); holding them until then made the import's
+        memory grow with the file.
         """
         total = observed["total"]
-        marks: Dict[str, ReadMarks] = observed["marks"]
         entries = iter_collection_entries(xml_path)
         for completed, (track, track_marks) in enumerate(entries, start=1):
             if should_cancel is not None and should_cancel():
                 raise ImportCancelled(f"Cancelled after reading {completed - 1} tracks")
-            marks[track.rekordbox_track_id] = track_marks
+            spill.add(track.rekordbox_track_id, track_marks)
             yield track
             if completed > total:
                 total = completed
@@ -640,9 +646,11 @@ class LibraryImportService(ILibraryImportService):
         # the total the track pass actually reached. Reporting `declared` here
         # made a file that under-declares its Entries count jump backwards —
         # 5/5 tracks, then 2/2 playlists.
-        observed: Dict[str, Any] = {"total": declared, "marks": {}}
+        observed: Dict[str, Any] = {"total": declared}
 
-        with self._db.transaction():
+        # Closed whichever way this ends, which deletes the spill file: a cancel
+        # and a failure leave nothing behind but the rolled-back transaction.
+        with MarksSpill() as spill, self._db.transaction():
             # The read is recorded first so the counts it stores have a row to
             # point at, and in this transaction so a failure removes it (STATS-01).
             # A library with no read yet is on its baseline (DEC-168): the one
@@ -652,7 +660,9 @@ class LibraryImportService(ILibraryImportService):
                 "refresh" if delete_unclaimed else "import", utc_now_iso()
             )
             tracks = self._tracks.upsert_many_from_rekordbox(
-                self._observed_tracks(xml_path, observed, on_progress, should_cancel),
+                self._observed_tracks(
+                    xml_path, observed, spill, on_progress, should_cancel
+                ),
                 read_id=read_id,
                 baseline=baseline,
             )
@@ -672,7 +682,7 @@ class LibraryImportService(ILibraryImportService):
                 changed=tracks.play_counts_stored,
             )
 
-            marks = self._write_marks(observed["marks"])
+            marks = self._write_marks(spill)
 
             if on_progress is not None:
                 on_progress(observed["total"], observed["total"], PHASE_PLAYLISTS)
@@ -696,7 +706,7 @@ class LibraryImportService(ILibraryImportService):
             marks=marks,
         )
 
-    def _write_marks(self, marks: Dict[str, ReadMarks]) -> MarksWritten:
+    def _write_marks(self, spill: MarksSpill) -> MarksWritten:
         """Replace every imported track's marks, and record them read.
 
         Inside the export's transaction, after the tracks: every track the
@@ -704,14 +714,38 @@ class LibraryImportService(ILibraryImportService):
         included, because the upsert wrote that id. A track the file does not
         hold keeps its marks on an import and has lost them by cascade on a
         refresh, which deleted it.
+
+        Read back from the spill file :data:`MARKS_CHUNK_SIZE` tracks at a time,
+        each step finding its tracks' rows and replacing their marks, the way
+        :class:`~cuepoint.services.marks_backfill_service.MarksBackfillService`
+        writes a chunk. A TrackID read twice keeps the last occurrence's marks,
+        as the dict this replaces did: within a step by the dict, across steps
+        because a later replacement deletes what an earlier one wrote. (The
+        summary's counts then include the rows the earlier one wrote. A repeated
+        TrackID cannot reach here today: the unique TrackID refuses the tracks
+        first.)
         """
-        ids = self._tracks.ids_by_rekordbox_id(marks)
-        skipped = sum(read.skipped for read in marks.values())
-        cues, markers = self._marks.replace_many(
-            (ids[rekordbox_id], read.cues, read.grid)
-            for rekordbox_id, read in marks.items()
-            if rekordbox_id in ids
-        )
+        cues = markers = 0
+        # Only the tracks whose last occurrence had marks refused: a count, not
+        # a list of every track, so nothing here grows with the file.
+        skipped_by_id: Dict[str, int] = {}
+        for chunk in spill.chunks(MARKS_CHUNK_SIZE):
+            latest: Dict[str, ReadMarks] = {}
+            for rekordbox_id, read in chunk:
+                latest[rekordbox_id] = read
+                if read.skipped:
+                    skipped_by_id[rekordbox_id] = read.skipped
+                else:
+                    skipped_by_id.pop(rekordbox_id, None)
+            ids = self._tracks.ids_by_rekordbox_id(latest)
+            written = self._marks.replace_many(
+                (ids[rekordbox_id], read.cues, read.grid)
+                for rekordbox_id, read in latest.items()
+                if rekordbox_id in ids
+            )
+            cues += written[0]
+            markers += written[1]
+        skipped = sum(skipped_by_id.values())
         self._marks.mark_read(utc_now_iso())
         if skipped:
             _logger.info(
