@@ -28,7 +28,7 @@ const ptBr: UiStrings = {
     features: "Recursos",
     guide: "Guia",
     faq: "FAQ",
-    download: "Download",
+    download: "Baixar",
     blog: "Blog",
     compare: "Comparar",
     changelog: "Histórico de mudanças",
@@ -43,15 +43,15 @@ const ptBr: UiStrings = {
   footer: {
     product: "Produto",
     help: "Ajuda",
-    legal: "Legal",
+    legal: "Jurídico",
     tagline: "Um app gratuito para desktop que arruma a sua biblioteca do Rekordbox.",
     legalLine: "© {year} {publisher}. {site} é um software gratuito para DJs.",
   },
   appNote: "O app em si está em inglês. Áreas como Clean, Library e Keys aparecem aqui exatamente com os nomes que o app usa.",
-  primaryAction: "Ser avisado do 1.0",
+  primaryAction: "Quero ser avisado do 1.0",
   primaryActionShort: "Ser avisado",
   downloadLabel: {
-    neutral: "Download",
+    neutral: "Baixar",
     windows: "Baixar para Windows",
     macos: "Baixar para Mac",
     linux: "Baixar para Linux",
@@ -80,7 +80,7 @@ const ptBr: UiStrings = {
     allFeatures: "Todos os recursos do CuePoint",
     trustTitle: "Com o que você pode contar",
     seeCode: "Ver o código no GitHub",
-    getTitle: "Pegue o CuePoint",
+    getTitle: "Baixe o CuePoint",
     getTextRelease: "O CuePoint é gratuito para Windows, Mac e Linux.",
     getTextNone:
       "O CuePoint 1.0 ainda não saiu. Peça para ser avisado no GitHub quando sair, e ele será gratuito para Windows, Mac e Linux.",
@@ -96,9 +96,9 @@ const ptBr: UiStrings = {
     listTitle: "Os recursos",
     compareTitle: "Comparado com outras ferramentas",
     compareIntro:
-      "Não tem certeza se o CuePoint é a ferramenta certa? Estas páginas colocam ele ao lado de outras, com cada fato sobre a outra ferramenta ligado à página dela e com data.",
+      "Não tem certeza se o CuePoint é a ferramenta certa? Estas páginas colocam ele ao lado de outras, com cada fato sobre a outra ferramenta com link para a página dela e com data.",
     compareRow: "CuePoint e {name}",
-    getTitle: "Pegue o CuePoint",
+    getTitle: "Baixe o CuePoint",
     howTitle: "Como o CuePoint ajuda: {name}",
     notTitle: "O que ele não faz",
     nextTitle: "Continue por aqui",
@@ -114,13 +114,13 @@ const ptBr: UiStrings = {
   compare: {
     pageTitle: "CuePoint comparado com outras ferramentas de DJ",
     pageDescription:
-      "O CuePoint ao lado de Lexicon, Mixed In Key e OpenKeyScan: fatos sobre cada ferramenta, ligados à página dela e com data, e o que o CuePoint não faz.",
+      "O CuePoint ao lado de Lexicon, Mixed In Key e OpenKeyScan: fatos sobre cada ferramenta, com link para a página dela e com data, e o que o CuePoint não faz.",
     headTitle: "CuePoint comparado com outras ferramentas",
     lead: "Os DJs já usam boas ferramentas para cuidar de uma biblioteca. Estas páginas colocam o CuePoint ao lado de três delas, para você ver o que cada uma faz e escolher a que combina com você.",
     listTitle: "As comparações",
     rowName: "CuePoint e {name}",
     howTitle: "Como estas páginas são escritas",
-    how1: "Cada fato sobre outra ferramenta liga à página dela em que foi lido e diz a data em que lemos.",
+    how1: "Cada fato sobre outra ferramenta tem link para a página dela onde foi lido e a data em que lemos.",
     how2: "Cada página diz o que o CuePoint não faz.",
     how3: "As ferramentas mudam. Estas páginas foram conferidas pela última vez em {date}. Se algo estiver desatualizado, [avise a gente](contact) e nós corrigimos.",
     sideTitle: "Lado a lado",
@@ -143,7 +143,7 @@ const ptBr: UiStrings = {
     moreAbout: "Mais sobre: {question}",
   },
   download: {
-    title: "Baixar o CuePoint",
+    title: "Baixar o CuePoint grátis para Windows, Mac e Linux",
     titleWithVersion: "Baixar o CuePoint {version}",
     descriptionRelease:
       "Baixe o CuePoint {version}, gratuito para Windows, macOS e Linux. Cada arquivo com tamanho e checksum, e o que esperar na primeira vez que você o abrir.",
@@ -151,7 +151,7 @@ const ptBr: UiStrings = {
       "O CuePoint 1.0 ainda não saiu. Veja onde ele vai rodar e peça para ser avisado quando o download gratuito para Windows, Mac e Linux estiver pronto.",
     lead: "Gratuito, para Windows, macOS e Linux.",
     version: "Versão {version}",
-    releaseNotes: "Notas da versão",
+    releaseNotes: "Novidades",
     releaseNotesFor: "da {version}",
     notes: {
       windows: "O instalador para Windows de 64 bits. O Windows pode avisar você na primeira vez: [veja o que fazer](windows).",
@@ -173,7 +173,7 @@ const ptBr: UiStrings = {
     kinds: {
       "windows-x64": { title: "Windows", detail: "Instalador para Windows 10 ou mais novo, de 64 bits" },
       "macos-arm64": { title: "Mac com Apple silicon", detail: "Imagem de disco para M1 e posteriores" },
-      "macos-x64": { title: "Mac, Intel", detail: "Imagem de disco para Macs com chip Intel" },
+      "macos-x64": { title: "Mac com Intel", detail: "Imagem de disco para Macs com chip Intel" },
       "linux-x64": { title: "Linux", detail: "AppImage para computadores Intel e AMD de 64 bits" },
     },
     checksum: "Checksum SHA-256",
@@ -192,17 +192,17 @@ const ptBr: UiStrings = {
     windowsTitle: "Windows",
     windows: {
       s1: "Execute o instalador que você baixou.",
-      s2: "O seu navegador pode perguntar se deve manter o arquivo. Escolha manter (no Edge, **Keep** e depois **Keep anyway**).",
-      s3: "O Windows SmartScreen pode mostrar **Windows protected your PC**. Escolha **More info** e depois **Run anyway**.",
+      s2: "O seu navegador pode perguntar se deve manter o arquivo. Escolha manter (no Edge, **Manter** e depois **Manter mesmo assim**).",
+      s3: "O Windows SmartScreen pode mostrar **O Windows protegeu seu computador**. Escolha **Mais informações** e depois **Executar assim mesmo**.",
       updates:
         "Você só faz isso uma vez. Depois disso, o CuePoint encontra as versões novas sozinho e as baixa em segundo plano. Quando uma estiver pronta, a barra de status avisa: escolha **Restart now** para instalá-la e voltar, ou **Later** para instalá-la na próxima vez que você fechar o app.",
     },
     macTitle: "Mac",
     mac: {
-      s1: "Abra a imagem de disco, arraste o CuePoint para **Applications** e abra-o de lá.",
-      s2: "Se o seu Mac disser que o CuePoint está danificado, ou mostrar **\"CuePoint\" Not Opened** porque a Apple não conseguiu verificá-lo, é porque o app não é assinado. Rode isto no Terminal e abra o CuePoint de novo:",
+      s1: "Abra a imagem de disco, arraste o CuePoint para **Aplicativos** e abra-o de lá.",
+      s2: "Se o seu Mac disser que o CuePoint está danificado, ou mostrar **“CuePoint” não foi aberto** porque a Apple não conseguiu verificá-lo, é porque o app não é assinado. Rode isto no Terminal e abra o CuePoint de novo:",
       terminalLabel: "Comando do Terminal",
-      s3: "Ainda bloqueado depois de uma tentativa? Abra **System Settings**, depois **Privacy & Security**, role para baixo e escolha **Open Anyway** ao lado do CuePoint.",
+      s3: "Ainda bloqueado depois de uma tentativa? Abra **Ajustes do Sistema**, depois **Privacidade e Segurança**, role para baixo e escolha **Abrir Mesmo Assim** ao lado do CuePoint.",
       updates:
         "Você só faz isso uma vez. Depois disso, o CuePoint encontra as versões novas sozinho e as baixa em segundo plano. Quando uma estiver pronta, a barra de status avisa: escolha **Restart now** para instalá-la e voltar, ou **Later** para instalá-la na próxima vez que você fechar o app. Se o CuePoint não conseguir se substituir onde está, por exemplo quando roda a partir da imagem de disco, ele mostra um link **Download** no lugar.",
     },
@@ -228,9 +228,9 @@ const ptBr: UiStrings = {
     reqLinux:
       "**Linux:** Intel ou AMD de 64 bits, como AppImage. Esta build é experimental e vem sem o player de música embutido.",
     reqRekordbox: "O CuePoint também precisa da sua coleção do Rekordbox, exportada do Rekordbox como um arquivo XML.",
-    testBuildsTitle: "Quer testar uma build de teste?",
+    testBuildsTitle: "Quer experimentar uma build de teste?",
     testBuilds:
-      "As builds de teste são versões iniciais do 1.0 e podem ser meio brutas. Elas estão no [GitHub Releases](releases) para quem quiser testar uma.",
+      "As builds de teste são versões iniciais do 1.0 e ainda podem estar meio cruas. Elas estão no [GitHub Releases](releases) para quem quiser testar uma.",
   },
 };
 

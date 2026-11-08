@@ -47,8 +47,8 @@
   question: O que eu preciso para rodar o CuePoint?
   answer: >-
     Uma coleção exportada do Rekordbox como XML e um computador com Windows 10 ou mais novo (64 bits), ou um Mac
-    com macOS 14 ou mais novo (Apple silicon) ou macOS 15 ou mais novo (Intel). O Linux é experimental e não tem
-    player embutido. O Discover, que acha música nova no Beatport, também precisa que você entre no Beatport em
+    com macOS 14 ou mais novo (Apple silicon) ou macOS 15 ou mais novo (Intel). A versão para Linux é experimental e não tem
+    player embutido. O Discover, que acha música nova no Beatport, também precisa que você faça login no Beatport em
     Settings.
   links:
     - page: support-policy
@@ -56,7 +56,7 @@
       label: Plataformas com suporte
     - page: discover
       heading: signing-in-to-beatport
-      label: Entrando no Beatport
+      label: Como fazer login no Beatport
 
 - id: mac-chips
   order: 5
@@ -134,7 +134,7 @@
   question: Que tamanho de coleção o CuePoint aguenta?
   answer: >-
     Ele foi medido em uma coleção de 50.000 tracks. Importá-la levou cerca de onze segundos em um desktop com
-    Windows 11 e SSD, e checar se uma coleção sem mudanças mudou é instantâneo.
+    Windows 11 e SSD, e checar mudanças numa coleção que não mudou é instantâneo.
   links:
     - page: performance
       heading: the-library
@@ -150,7 +150,7 @@
 
 
     Você também pode abrir uma issue no GitHub. Anexe um pacote de suporte de Help, depois Export support bundle:
-    ele contém diagnósticos, logs e as suas configurações sem segredos, e nunca a sua biblioteca.
+    ele contém diagnósticos, logs e as suas configurações com os dados sigilosos removidos, e nunca a sua biblioteca.
   links:
     - page: troubleshooting
       heading: diagnostics-and-support

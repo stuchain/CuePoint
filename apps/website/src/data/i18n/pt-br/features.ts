@@ -21,7 +21,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     query: "corrigir tags de key do Rekordbox",
     title: "Corrija as keys do Rekordbox com o Beatport | CuePoint",
     description:
-      "Cruze tracks do Rekordbox com o Beatport e preencha keys, BPM, gêneros e labels que faltam ou estão errados. Revise e ache duplicatas e arquivos ausentes.",
+      "Cruze tracks do Rekordbox com o Beatport e preencha keys, BPM, gêneros e labels que faltam ou estão errados. Revise, ache duplicatas e arquivos ausentes.",
     heading: "Corrija as keys e as tags da sua biblioteca do Rekordbox",
     summary: "Cruze tracks com o Beatport, corrija valores, ache duplicatas e arquivos ausentes.",
     problem: [
@@ -58,12 +58,12 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       "Ele não chuta. Um track que o Beatport não tem não recebe key do CuePoint, a menos que você digite uma.",
       "Ele não descobre a key a partir do áudio. Os valores vêm do Beatport.",
     ],
-    guide: { page: "clean", label: "Leia o guia do Clean" },
+    guide: { page: "clean", label: "Leia o guia da página Clean" },
     related: ["library", "export"],
   },
   {
     slug: "library",
-    name: "The Library",
+    name: "A Library",
     query: "filtrar tracks do Rekordbox por key e BPM",
     title: "Filtre e ordene sua biblioteca do Rekordbox | CuePoint",
     description:
@@ -78,13 +78,13 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: "Pesquise, filtre e ordene tudo",
         paragraphs: [
           "Importe a coleção que você exportou do Rekordbox e a página Library mostra tudo com as suas playlists à esquerda. Digite para pesquisar títulos, artistas, álbuns e labels, ou adicione filtros como BPM entre 124 e 130, gênero é Techno, ou um comentário que contenha uma palavra. Os filtros se somam, e a barra diz quantos tracks sobraram.",
-          "Escolha as suas colunas, clique em um título para ordenar e clique em um track para ver tudo o que o CuePoint sabe sobre ele no Track details, à direita.",
+          "Escolha as suas colunas, clique no cabeçalho de uma coluna para ordenar e clique em um track para ver tudo o que o CuePoint sabe sobre ele no Track details, à direita.",
         ],
       },
       {
         heading: "A roda Camelot",
         paragraphs: [
-          "Um botão ao lado da busca, em todas as páginas, abre uma roda com as 24 keys. Ela acende a key do track que você selecionou, ou do que está tocando, e as keys que combinam com ela: o mesmo número, um passo para cada lado, e a key relativa.",
+          "Um botão ao lado da busca, em todas as páginas, abre uma roda com as 24 keys. Ela acende a key do track que você selecionou, ou do que está tocando, e as keys que combinam com ela: o mesmo número um passo para cada lado, e a key relativa.",
           "Clique em uma key e a Library mostra todos os tracks nessa key.",
         ],
       },
@@ -101,7 +101,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       "Ele não descobre a key a partir do áudio. Um track sem resultado no Beatport e sem key sua não tem key.",
       "Ele não usa a key do Rekordbox, porque as keys do Rekordbox podem estar erradas.",
     ],
-    guide: { page: "library", label: "Leia o guia da Library" },
+    guide: { page: "library", label: "Leia o guia da página Library" },
     related: ["clean", "discover"],
     fromDecisions: ["DEC-133", "DEC-157", "DEC-160", "DEC-201"],
   },
@@ -144,7 +144,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       "Ele não conta as keys do Rekordbox. Um track sem key do Beatport e sem key sua aparece como sem key.",
       "Ele não descobre a key a partir do áudio.",
     ],
-    guide: { page: "keys", label: "Leia o guia de Keys" },
+    guide: { page: "keys", label: "Leia o guia da página Keys" },
     related: ["library", "statistics"],
     fromDecisions: ["DEC-200", "DEC-201", "DEC-206"],
   },
@@ -187,7 +187,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       "Ele precisa de um token do Beatport. O Beatport não entrega tokens na página da sua conta; você pede acesso à API ao Beatport primeiro, e o guia leva você por esse passo a passo.",
       "Ele não sabe que um track é seu até você cruzá-lo no Clean. Até lá, o Discover o mostra como novo.",
     ],
-    guide: { page: "discover", label: "Leia o guia do Discover" },
+    guide: { page: "discover", label: "Leia o guia da página Discover" },
     related: ["clean", "prepare"],
   },
   {
@@ -196,7 +196,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     query: "planejar um set de DJ antes do show",
     title: "Planeje um set de DJ antes do show | CuePoint",
     description:
-      "Monte um set como ordem de execução em capítulos, com horários planejados. O CuePoint confere cada transição, sugere tracks para um vão e gera uma set list.",
+      "Monte um set como sequência em capítulos, com horários planejados. O CuePoint confere cada transição, sugere tracks para um buraco e gera uma set list.",
     heading: "Planeje o seu set antes de chegar na cabine",
     summary: "Monte um Set em capítulos, com horários, verificações de transição e uma set list.",
     problem: [
@@ -204,10 +204,10 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     ],
     how: [
       {
-        heading: "Uma ordem de execução em capítulos",
+        heading: "Uma sequência em capítulos",
         paragraphs: [
-          "Um Set é uma ordem de execução. Comece um vazio, ou copie para ele uma Collection, uma playlist do Rekordbox ou a sua seleção. Divida em capítulos, como aquecimento, pico e encerramento, e dê a cada capítulo uma duração-alvo e uma faixa de BPM.",
-          "Cada entrada pode ter um horário planejado de entrada e de saída, e assim o Set soma quanto tempo vai durar. Ele conta só as entradas que você marcou com horário e diz quantas não contou.",
+          "Um Set é uma sequência. Comece um vazio, ou copie para ele uma Collection, uma playlist do Rekordbox ou a sua seleção. Divida em capítulos, como aquecimento, pico e encerramento, e dê a um capítulo uma duração-alvo e uma faixa de BPM.",
+          "Cada item pode ter um horário planejado de entrada e de saída, e assim o Set soma quanto tempo vai durar. Ele conta só os itens que você marcou com horário e diz quantos não contou.",
         ],
       },
       {
@@ -220,17 +220,17 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: "Sugestões e uma set list",
         paragraphs: [
-          "Escolha um vão e o CuePoint sugere tracks que encaixam entre os dois que o cercam. Toque o Set como fila, depois salve uma set list como texto, CSV ou M3U8, ou exporte o Set para o Rekordbox como uma playlist.",
+          "Escolha um buraco e o CuePoint sugere tracks que encaixam entre os dois que o cercam. Toque o Set como fila, depois salve uma set list como texto, CSV ou M3U8, ou exporte o Set para o Rekordbox como uma playlist.",
         ],
       },
     ],
     shot: "prepare",
     doesNot: [
       "Ele não faz mixagem. Tocar um Set toca os tracks inteiros, um depois do outro. Os horários planejados são o seu plano, e nada começa, para ou faz crossfade neles.",
-      "Ele não coloca capítulos, horários nem notas no Rekordbox. O Rekordbox não tem onde guardar isso, então uma exportação é uma playlist comum na sua ordem de execução.",
-      "Um Set comporta até 1.000 entradas.",
+      "Ele não coloca capítulos, horários nem notas no Rekordbox. O Rekordbox não tem onde guardar isso, então uma exportação é uma playlist comum na sua sequência.",
+      "Um Set comporta até 1.000 itens.",
     ],
-    guide: { page: "prepare", label: "Leia o guia do Prepare" },
+    guide: { page: "prepare", label: "Leia o guia da página Prepare" },
     related: ["library", "waveforms"],
   },
   {
@@ -243,13 +243,13 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     heading: "Veja o que a sua biblioteca do Rekordbox realmente tem",
     summary: "Os mais tocados, os nunca tocados e como a biblioteca se distribui.",
     problem: [
-      "Quais tracks você realmente toca? Quais estão na biblioteca há três anos sem uma única execução? O Rekordbox guarda os números e não faz a soma para você.",
+      "Quais tracks você realmente toca? Quais estão na biblioteca há três anos sem ser tocados uma única vez? O Rekordbox guarda os números e não faz a soma para você.",
     ],
     how: [
       {
         heading: "O que você toca",
         paragraphs: [
-          "O Statistics lista os seus tracks mais tocados como um top 10, 25, 50, 100 ou 200, os seus principais artistas e labels pelas execuções dos tracks deles, e os tracks que você nunca tocou. As contagens de execução são as que o Rekordbox guarda.",
+          "O Statistics lista os seus tracks mais tocados como um top 10, 25, 50, 100 ou 200, os seus artistas e labels do topo pelos plays dos tracks deles, e os tracks que você nunca tocou. As contagens de plays são as do Rekordbox.",
           "O CuePoint também lembra as contagens que lê em cada importação e atualização, e assim pode mostrar o que você tocou desde uma data. Esse histórico começa na última importação antes de o CuePoint começar a guardar contagens, e nada anterior pode ser recuperado.",
         ],
       },
@@ -263,11 +263,11 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     ],
     shot: "statistics",
     doesNot: [
-      "Ele não conta execuções no player do próprio CuePoint. As execuções são as do Rekordbox.",
+      "Ele não conta plays no player do próprio CuePoint. Os plays são os do Rekordbox.",
       "Ele não consulta nada. Todo número vem do que a sua biblioteca já tem.",
-      "Ele não consegue mostrar execuções de antes do início do histórico.",
+      "Ele não consegue mostrar plays de antes do início do histórico.",
     ],
-    guide: { page: "statistics", label: "Leia o guia do Statistics" },
+    guide: { page: "statistics", label: "Leia o guia da página Statistics" },
     related: ["keys", "clean"],
     fromDecisions: ["DEC-136", "DEC-137", "DEC-138", "DEC-168", "DEC-206"],
   },
@@ -277,7 +277,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     query: "waveform e loudness dos meus tracks de DJ",
     title: "Waveforms e loudness dos seus tracks de DJ | CuePoint",
     description:
-      "O CuePoint desenha uma waveform para cada track que encontra, com seus cues e beat grid do Rekordbox, mede o loudness e toca música sem pausas. Gratuito.",
+      "O CuePoint desenha uma waveform para cada track que encontra, com seus cues e Beatgrid do Rekordbox, mede o loudness e toca música sem pausas. Gratuito.",
     heading: "Veja o formato e o loudness de cada track antes de tocar",
     summary: "Uma waveform e um número de loudness para cada track, e um player para testar.",
     problem: [
@@ -287,43 +287,43 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: "Uma waveform para cada track",
         paragraphs: [
-          "O CuePoint calcula uma waveform para cada track cujo arquivo consegue encontrar, a partir do próprio áudio, em segundo plano e com baixa prioridade. Ele a desenha na barra do player (um clique move a reprodução), no Track details, como uma coluna da Library e na faixa de transição do Prepare. Escolha três bandas de cor para graves, médios e agudos, ou uma cor só.",
-          "Os seus Hot Cues, memory cues, loops e beat grid do Rekordbox são desenhados nela.",
+          "O CuePoint calcula uma waveform para cada track cujo arquivo consegue encontrar, a partir do próprio áudio, em segundo plano e com baixa prioridade. Ele a desenha na barra do player (um clique move a reprodução), no Track details, como uma coluna da Library e na barra de transição do Prepare. Escolha três bandas de cor para graves, médios e agudos, ou uma cor só.",
+          "Os seus Hot Cues, memory cues, loops e Beatgrid do Rekordbox são desenhados nela.",
         ],
       },
       {
         heading: "Loudness em LUFS",
         paragraphs: [
-          "A mesma análise mede o quão alto é cada track ao longo dele todo, e o pico mais alto. Na faixa de transição do Prepare, as palavras entre dois tracks dizem quanto mais alto ou mais baixo o próximo é.",
+          "A mesma análise mede o quão alto é cada track ao longo dele todo, e o pico mais alto. Na barra de transição do Prepare, as palavras entre dois tracks dizem quanto mais alto ou mais baixo o próximo é.",
         ],
       },
       {
         heading: "Um player que faz o que você pede",
         paragraphs: [
-          "Dê dois cliques em um track e a visão que você estava olhando vira a fila. A reprodução é sem pausas, pela saída de áudio que você escolher. Nada toca até você pedir.",
+          "Dê dois cliques em um track e a lista que você estava vendo vira a fila. A reprodução é sem pausas, pela saída de áudio que você escolher. Nada toca até você pedir.",
         ],
       },
     ],
     shot: "waveforms",
     doesNot: [
       "Ele não aumenta nem diminui o volume de um track pelo loudness, e não grava o número nos seus arquivos nem no Rekordbox.",
-      "Ele não edita cues nem beat grids. Eles são do Rekordbox: mova um no Rekordbox e atualize.",
+      "Ele não edita cues nem Beatgrids. Eles são do Rekordbox: mova um no Rekordbox e atualize.",
       "Ele não faz zoom nem rolagem. Uma waveform é o track inteiro de uma vez.",
       "A primeira análise de uma biblioteca grande leva horas: cerca de 6.000 tracks de seis minutos por hora em um desktop recente. Ela pode ser pausada e continua depois de reiniciar.",
       "A build para Linux vem sem o player.",
     ],
-    guide: { page: "waveforms", label: "Leia o guia de Waveforms" },
+    guide: { page: "waveforms", label: "Leia o guia da página Waveforms" },
     related: ["prepare", "library"],
   },
   {
     slug: "export",
-    name: "Export to Rekordbox",
+    name: "Exportar para o Rekordbox",
     query: "exportar keys editadas de volta para o XML do Rekordbox",
     title: "Exporte suas mudanças de volta ao Rekordbox | CuePoint",
     description:
-      "Grave suas keys, BPM, gêneros, labels e playlists em um novo arquivo XML do Rekordbox. Cue points e beat grids são mantidos, e o original fica intacto.",
+      "Grave suas keys, BPM, gêneros, labels e playlists em um novo arquivo XML do Rekordbox. Cue points e Beatgrids são mantidos, e o original fica intacto.",
     heading: "Mande as suas correções de volta ao Rekordbox, com segurança",
-    summary: "Um novo arquivo XML do Rekordbox com os seus valores, mantendo cues e beat grids.",
+    summary: "Um novo arquivo XML do Rekordbox com os seus valores, mantendo cues e Beatgrids.",
     problem: [
       "Você corrigiu centenas de keys e montou Collections. Elas só servem se voltarem para o Rekordbox, sem perder os cue points que você levou anos para marcar.",
     ],
