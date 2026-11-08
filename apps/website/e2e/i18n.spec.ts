@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { extname, join, normalize } from "node:path";
 import { LOCALES, OTHER_LOCALES, TRANSLATED_PATHS } from "../src/i18n/locales";
 
 /**
@@ -92,5 +96,107 @@ test.describe("every translated page", () => {
   test("a page that is not translated has no alternates and links to a German page's English twin only when asked", async ({ page }) => {
     await page.goto("privacy/");
     await expect(page.locator('link[rel="alternate"][hreflang]')).toHaveCount(0);
+  });
+});
+
+/** Serves a built folder (dist-none/ or dist-fixture/, scripts/build-fixture.mjs) on a port the system picks. */
+function serve(dir: string): Promise<{ server: Server; url: string }> {
+  const root = join(import.meta.dirname, "..", dir);
+  if (!existsSync(join(root, "features", "index.html"))) throw new Error(`${dir}/ is not built: run \`npm run build:fixture\``);
+  const types: Record<string, string> = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".json": "application/json" };
+  const server = createServer((req, res) => {
+    const path = normalize(decodeURIComponent((req.url ?? "/").split("?")[0] ?? "/")).replace(/^(\.\.[/\\])+/, "");
+    let file = join(root, path);
+    if (existsSync(file) && !extname(file)) file = join(file, "index.html");
+    if (!existsSync(file) || !file.startsWith(root)) {
+      res.writeHead(404).end("not found");
+      return;
+    }
+    res.writeHead(200, { "content-type": types[extname(file)] ?? "application/octet-stream" }).end(readFileSync(file));
+  });
+  return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve({ server, url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/` })));
+}
+
+/**
+ * The header bar stays one row, 58px tall, between 1000 and 1280px in every language, before the first release
+ * (the long "get notified" label) and with one (the Download label that names a system): the action does not wrap,
+ * nothing overlaps its neighbour and the page does not scroll sideways.
+ */
+for (const build of ["dist-none", "dist-fixture"]) {
+  test.describe(`the header bar in ${build}`, () => {
+    let served: { server: Server; url: string };
+    test.beforeAll(async () => {
+      served = await serve(build);
+    });
+    test.afterAll(() => {
+      served.server.close();
+    });
+    for (const locale of LOCALES) {
+      for (const width of [1000, 1100, 1280]) {
+        test(`${locale.code} at ${width}px is one row`, async ({ page }) => {
+          await page.setViewportSize({ width, height: 800 });
+          await page.goto(`${served.url}${locale.code === "en" ? "" : `${locale.code}/`}features/`);
+          const m = await page.evaluate(() => {
+            const rect = (q: string) => document.querySelector(q)!.getBoundingClientRect();
+            const row = [".brand", ".nav ul", ".lang", ".bar > .action"].map(rect);
+            return {
+              bar: rect(".bar").height,
+              action: rect(".bar > .action").height,
+              overlap: row.some((r, i) => i > 0 && r.left < row[i - 1]!.right - 0.5),
+              past: row[row.length - 1]!.right - rect(".bar").right,
+              scroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            };
+          });
+          expect(Math.round(m.bar), "bar height").toBe(58);
+          expect(m.action, "the action is one line").toBeLessThanOrEqual(45);
+          expect(m.overlap, "items overlap").toBe(false);
+          expect(m.past, "the action ends inside the bar").toBeLessThanOrEqual(0);
+          expect(m.scroll, "sideways scroll").toBeLessThanOrEqual(0);
+        });
+      }
+    }
+  });
+}
+
+/** The note that the app is in English (DEC-311) is on a phone too, and sits clear of the closing band's wheel art. */
+test.describe("the app note on a phone", () => {
+  for (const locale of OTHER_LOCALES) {
+    test(`${locale.code}: the home page's closing band keeps the note clear of the wheel`, async ({ page }) => {
+      for (const width of [320, 390, 700]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await page.goto(`${locale.code}/`);
+        const m = await page.evaluate(() => ({
+          note: document.querySelector(".get .app-note")!.getBoundingClientRect().bottom,
+          art: document.querySelector(".get .disc")!.getBoundingClientRect().top,
+        }));
+        expect(m.note, `${width}px: the note ends above the art`).toBeLessThanOrEqual(m.art);
+      }
+    });
+  }
+
+  test.describe("on the download page with a release", () => {
+    let served: { server: Server; url: string };
+    test.beforeAll(async () => {
+      served = await serve("dist-fixture");
+    });
+    test.afterAll(() => {
+      served.server.close();
+    });
+    for (const locale of OTHER_LOCALES) {
+      test(`${locale.code}: one note is visible on a phone, one on a wide screen, none on English`, async ({ page }) => {
+        const visible = async () => page.locator("[data-app-note]").evaluateAll((els) => els.filter((e) => (e as HTMLElement).getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden").length);
+        await page.setViewportSize(PHONE);
+        await page.goto(`${served.url}${locale.code}/download/`);
+        expect(await visible()).toBe(1);
+        await page.setViewportSize(WIDE);
+        expect(await visible()).toBe(1);
+      });
+    }
+    test("English has no note at all", async ({ page }) => {
+      await page.setViewportSize(PHONE);
+      await page.goto(`${served.url}download/`);
+      await expect(page.locator("[data-app-note]")).toHaveCount(0);
+    });
   });
 });
