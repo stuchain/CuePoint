@@ -48,8 +48,8 @@
   answer: >-
     Eine aus Rekordbox als XML exportierte Sammlung und einen Computer mit Windows 10 oder neuer (64 Bit) oder einen
     Mac mit macOS 14 oder neuer (Apple Silicon) oder macOS 15 oder neuer (Intel). Linux ist experimentell und hat
-    keinen eingebauten Player. Für Discover, das neue Musik auf Beatport findet, musst du dich außerdem in den
-    Einstellungen bei Beatport anmelden.
+    keinen eingebauten Player. Für Discover, das neue Musik auf Beatport findet, musst du dich außerdem unter
+    Settings bei Beatport anmelden.
   links:
     - page: support-policy
       heading: supported-platforms
@@ -76,10 +76,10 @@
   order: 6
   question: Was sendet CuePoint, und wie schalte ich das ab?
   answer: >-
-    CuePoint hat kein Analytics und verfolgt nicht, was du tust. Das Einzige, was es von selbst sendet, ist ein
+    CuePoint nutzt keine Analytics und verfolgt nicht, was du tust. Das Einzige, was es von selbst sendet, ist ein
     Fehlerbericht, wenn es auf einen unerwarteten Fehler trifft. Berichte werden zuerst auf deinem Computer bereinigt,
     sie enthalten also keine Datei-, Ordner-, Track-, Artist-, Label- oder Playlist-Namen, keine Notizen oder Tags
-    und keinen Beatport-Token. Sie gehen an Sentry, in dessen EU-Region.
+    und kein Beatport-Token. Sie gehen an Sentry, in dessen EU-Region.
 
 
     Berichte sind standardmäßig an. Um sie zu stoppen, schaltest du Settings, dann Privacy, dann Send error reports
@@ -99,13 +99,13 @@
   answer: >-
     Unter Windows und Mac findet CuePoint neue Versionen selbst. Es fragt kurz nach dem Start und danach alle 4
     Stunden bei GitHub nach, lädt eine neue Version im Hintergrund herunter und sagt dir in der Statusleiste, wenn
-    sie bereit ist. Du wählst Restart now oder Later, um sie beim nächsten Beenden zu installieren. Deine Bibliothek
+    sie bereit ist. Du wählst Restart now, oder Later, dann wird sie beim nächsten Beenden installiert. Deine Bibliothek
     und deine Einstellungen bleiben, wo sie sind.
 
 
     Unter Linux sagt dir CuePoint, dass eine neue Version erschienen ist, und zeigt einen Download-Link. Du
     installierst das neue AppImage selbst. Unter Settings, dann About & updates, siehst du deine Version und kannst
-    auf Wunsch nachsehen lassen.
+    jederzeit nach Updates suchen.
   links:
     - page: updates
       heading: what-happens
@@ -151,7 +151,7 @@
 
 
     Du kannst auch ein Issue auf GitHub öffnen. Hänge ein Support-Paket an, das du unter Help, dann Export support
-    bundle bekommst: Es enthält Diagnosedaten, Logs und deine Einstellungen ohne Geheimnisse, und nie deine Bibliothek.
+    bundle bekommst: Es enthält Diagnosedaten, Logs und deine Einstellungen ohne Zugangsdaten und Tokens, und nie deine Bibliothek.
   links:
     - page: troubleshooting
       heading: diagnostics-and-support
