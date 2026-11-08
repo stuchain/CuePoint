@@ -210,8 +210,14 @@ describe("mpv arguments", () => {
     const args = buildMpvArgs("/tmp/x.sock");
     expect(args).toContain("--input-default-bindings=no");
     expect(args).toContain("--input-media-keys=no");
+  });
+
+  it("switches off Windows media controls on Windows only", () => {
     // Windows SMTC drives mpv directly with stop/pause/next; the flags above do not block it.
-    expect(args).toContain("--media-controls=no");
+    expect(buildMpvArgs("/tmp/x.sock", [], "win32")).toContain("--media-controls=no");
+    // A distribution mpv older than 0.40 has no such option and exits at once on seeing it.
+    expect(buildMpvArgs("/tmp/x.sock", [], "linux")).not.toContain("--media-controls=no");
+    expect(buildMpvArgs("/tmp/x.sock", [], "darwin")).not.toContain("--media-controls=no");
   });
 
   it("ignores the user's mpv config", () => {

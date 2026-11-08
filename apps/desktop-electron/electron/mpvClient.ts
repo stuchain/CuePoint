@@ -150,8 +150,8 @@ export const MPV_RESAMPLER_ARGS: readonly string[] = [
  *   mpv's built-in bindings map STOP and POWER to `quit`, and on macOS it registers with Now
  *   Playing, so Stop from Control Center, headphones or a remote could quit the player from
  *   outside with exit code 0 (Sentry ELECTRON-7).
- * - `--media-controls=no`: mpv's Windows SMTC integration drives mpv directly with stop, pause and
- *   next, and the flags above do not block it.
+ * - `--media-controls=no` (Windows only, `WINDOWS_MPV_ARGS`): mpv's SMTC integration drives mpv
+ *   directly with stop, pause and next, and the flags above do not block it.
  */
 export const MPV_BASE_ARGS: readonly string[] = [
   "--idle=yes",
@@ -162,16 +162,26 @@ export const MPV_BASE_ARGS: readonly string[] = [
   "--msg-color=no",
   "--input-default-bindings=no",
   "--input-media-keys=no",
-  "--media-controls=no",
   "--no-config",
   "--gapless-audio=yes",
   "--audio-client-name=CuePoint",
   ...MPV_RESAMPLER_ARGS,
 ];
 
+/**
+ * Windows only: `--media-controls` arrived in mpv 0.40, and Linux runs a distribution mpv (Ubuntu
+ * 24.04 ships 0.37), which refuses an unknown option and exits before it opens its socket.
+ */
+export const WINDOWS_MPV_ARGS: readonly string[] = ["--media-controls=no"];
+
 /** The full argument list for an mpv listening on `socketPath`. */
-export function buildMpvArgs(socketPath: string, extra: readonly string[] = []): string[] {
-  return [...MPV_BASE_ARGS, `--input-ipc-server=${socketPath}`, ...extra];
+export function buildMpvArgs(
+  socketPath: string,
+  extra: readonly string[] = [],
+  platform: NodeJS.Platform = process.platform,
+): string[] {
+  const platformArgs = platform === "win32" ? WINDOWS_MPV_ARGS : [];
+  return [...MPV_BASE_ARGS, ...platformArgs, `--input-ipc-server=${socketPath}`, ...extra];
 }
 
 /**
