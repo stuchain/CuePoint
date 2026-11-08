@@ -19,8 +19,7 @@ choose:
 
 Each runs **in its own process**, so a peak is that operation's and not the
 largest of the ones before it. Time is wall time; peak RAM is the process's
-peak resident size, which counts file pages the OS can drop as well as memory
-the process holds (a mapped source shows here and is not a leak).
+peak resident size.
 
 Three shapes, the same tracks, differing in the beat grid, which is what makes
 a file large:

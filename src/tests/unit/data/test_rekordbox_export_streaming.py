@@ -5,7 +5,7 @@
 
 The writer used to read the whole source into memory, build the output in a
 ``bytearray`` and copy that into ``bytes`` before the temp file, about three
-times the source at its peak. Now the source is mapped, the parse feeds expat in
+times the source at its peak. Now the source is read once, the parse feeds expat in
 chunks, and the spliced chunks go straight to the temp file. What it must not
 change is the file: these tests hold it to bytes captured from the writer as it
 was, with the parse chunk made small enough to land inside tags and inside
@@ -309,4 +309,46 @@ class TestTheOutputIsNotHeld:
 
         assert result.tracks_changed == 300
         assert out.stat().st_size > size - 300 * 6
-        assert peak < 1.2 * size, f"peak {peak / size:.2f}x the source"
+        assert peak < 1.5 * size, f"peak {peak / size:.2f}x the source"
+
+
+class TestTheSourceIsRead:
+    def test_a_source_that_cannot_be_read_raises_oserror(
+        self, source: Path, tmp_path: Path, monkeypatch
+    ):
+        import builtins
+
+        real_open = builtins.open
+
+        class Failing:
+            def __init__(self, handle):
+                self._handle = handle
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                self._handle.close()
+
+            def read(self, *args):
+                raise OSError(5, "Input/output error")
+
+        def fake_open(path, mode="r", *args, **kwargs):
+            handle = real_open(path, mode, *args, **kwargs)
+            if str(path) == str(source) and mode == "rb":
+                return Failing(handle)
+            return handle
+
+        monkeypatch.setattr(builtins, "open", fake_open)
+        with pytest.raises(OSError):
+            plan_collection_xml(str(source), {})
+
+    def test_the_limit_is_read_when_the_export_runs(
+        self, source: Path, tmp_path: Path, monkeypatch
+    ):
+        from cuepoint.data import rekordbox
+        from cuepoint.data.rekordbox import XmlTooLargeError
+
+        monkeypatch.setattr(rekordbox, "MAX_LIBRARY_XML_BYTES", 10)
+        with pytest.raises(XmlTooLargeError):
+            patch_collection_xml(str(source), {}, str(tmp_path / "out.xml"))

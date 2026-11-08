@@ -84,7 +84,6 @@ about a second, which is the bound on how long a stop waits.
 """
 
 import logging
-import mmap
 import os
 import re
 import shutil
@@ -107,8 +106,8 @@ from typing import (
     Union,
 )
 
+from cuepoint.data import rekordbox
 from cuepoint.data.rekordbox import (
-    MAX_LIBRARY_XML_BYTES,
     _refuse_if_too_large,
     _measured_int,
     _optional_bpm,
@@ -143,7 +142,7 @@ _logger = logging.getLogger(__name__)
 _SIBLING_ROOM = 80
 
 #: The document as the splicing code reads it: indexed, sliced and searched.
-_Source = Union[bytes, mmap.mmap]
+_Source = bytes
 
 #: Bytes given to expat at a time, and bytes written to the temp file at a time.
 #: The memory the parse and the write need, however large the source is.
@@ -550,7 +549,7 @@ def plan_collection_xml(
             :data:`MAX_EXPORT_DEPTH`.
         ExportCancelled: ``should_cancel`` answered yes.
     """
-    with _mapped_source(source_path) as data:
+    with _source_bytes(source_path) as data:
         return _plan(data, updates, playlists, on_progress, should_cancel)[0]
 
 
@@ -597,9 +596,9 @@ def patch_collection_xml(
         OSError: Writing failed.
     """
     refuse_source_as_destination(source_path, destination_path)
-    # The mapping stays open until the write is done, and is closed before this
-    # returns whichever way it ends (a mapped file cannot be replaced on Windows).
-    with _mapped_source(source_path) as data:
+    # The source is read once and held for the plan and the write; the output is
+    # streamed, so the process holds about the source and not three times it.
+    with _source_bytes(source_path) as data:
         result, edits = _plan(data, updates, playlists, on_progress, should_cancel)
         result.backup_path = _write_atomically(
             data, edits, destination_path, should_cancel
@@ -608,29 +607,23 @@ def patch_collection_xml(
 
 
 @contextmanager
-def _mapped_source(source_path: str) -> Iterator["_Source"]:
-    """The source document as bytes the OS can drop, refusing one that is too large.
+def _source_bytes(source_path: str) -> Iterator["_Source"]:
+    """The source document as bytes, refusing one that is too large.
 
-    Mapped read-only rather than read: a library export is gigabytes, and a
-    mapping is page cache that is not charged to the process. Everything that
-    reads the document indexes, slices and searches it, which a mapping does as
-    ``bytes`` does. The mapping is closed on the way out, and an empty file
-    (which cannot be mapped) is the empty ``bytes``, refused later as not
-    well-formed, as it always was.
+    Read whole rather than mapped. A mapping would keep the source out of the
+    process's own memory, but a mapped file that shrinks or whose drive goes
+    away (a removable disk, a source truncated while an export runs) ends the
+    process with a bus error instead of raising ``OSError``, and the engine
+    would crash instead of reporting the source unreadable. ``read`` fails as
+    an ordinary ``OSError``. The cost is one copy of the source, which the
+    streamed write and the chunked parse keep to about that.
     """
     if not os.path.exists(source_path):
         raise FileNotFoundError(f"XML file not found: {quoted(source_path)}")
-    _refuse_if_too_large(source_path, MAX_LIBRARY_XML_BYTES)
+    _refuse_if_too_large(source_path, rekordbox.MAX_LIBRARY_XML_BYTES)
 
     with open(source_path, "rb") as handle:
-        if os.fstat(handle.fileno()).st_size == 0:
-            yield b""
-            return
-        mapped = mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ)
-        try:
-            yield mapped
-        finally:
-            mapped.close()
+        yield handle.read()
 
 
 def _plan(
