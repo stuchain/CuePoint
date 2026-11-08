@@ -1392,7 +1392,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox_export.py::_plan::XML file not found: {quoted(source_path)}",
+    "name": "cuepoint/data/rekordbox_export.py::_mapped_source::XML file not found: {quoted(source_path)}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",

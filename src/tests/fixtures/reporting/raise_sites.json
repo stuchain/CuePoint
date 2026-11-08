@@ -381,7 +381,7 @@
     "reason": "our own constants",
     "verdict": "exempt"
   },
-  "cuepoint/data/rekordbox_export.py::_plan::XML file not found: {quoted(source_path)}": {
+  "cuepoint/data/rekordbox_export.py::_mapped_source::XML file not found: {quoted(source_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
   },

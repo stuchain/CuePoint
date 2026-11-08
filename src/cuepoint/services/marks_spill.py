@@ -65,7 +65,7 @@ class MarksSpill:
         May be called again for a second pass; adding after a pass appends.
         """
         if size < 1:
-            raise ValueError(f"size must be at least 1, got {size!r}")
+            raise ValueError("a chunk holds at least one record")
         handle = self._open()
         handle.flush()
         handle.seek(0)
