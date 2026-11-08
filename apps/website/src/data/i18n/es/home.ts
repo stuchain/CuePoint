@@ -1,4 +1,4 @@
-import { APP_SHOTS as EN_APP_SHOTS, TRUST as EN_TRUST, type AppShotDef, type AppShotId, type Feature, type OpeningStep, type TrustClaim } from "../../home";
+import { APP_SHOTS as EN_APP_SHOTS, TRUST as EN_TRUST, type Hero, type AppShotDef, type AppShotId, type Feature, type OpeningStep, type TrustClaim } from "../../home";
 import { featureHref } from "../../features";
 
 /**
@@ -137,4 +137,4 @@ export const HERO = {
   title: "CuePoint: ordena tu biblioteca de Rekordbox",
   description:
     "CuePoint, app gratuita para DJs: cruza tu biblioteca de Rekordbox con Beatport, corrige keys y tempos, mira tus keys en la rueda Camelot y planifica sets.",
-} as const;
+} as const satisfies Hero;

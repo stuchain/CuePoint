@@ -36,6 +36,9 @@ export type LocaleCode = (typeof LOCALES)[number]["code"];
 
 export const DEFAULT_LOCALE: LocaleCode = "en";
 
+/** The default language's BCP 47 tag: what a link that leaves the page's language says in `hreflang`. */
+export const DEFAULT_HREFLANG: string = LOCALES[0].hreflang;
+
 /** The languages other than English: the ones that have a folder in the URL. */
 export const OTHER_LOCALES = LOCALES.filter((l) => l.code !== DEFAULT_LOCALE);
 

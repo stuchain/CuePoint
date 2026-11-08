@@ -1,4 +1,4 @@
-import type { FeaturePage } from "../../features";
+import type { FeaturePage, Overview } from "../../features";
 
 /**
  * As páginas de recursos em português do Brasil (DEC-311). Os mesmos fatos do inglês, tratamento por "você".
@@ -12,7 +12,7 @@ export const OVERVIEW = {
   title: "Recursos do CuePoint para DJs de Rekordbox",
   description:
     "Tudo o que o CuePoint faz com a sua biblioteca do Rekordbox: cruzar com o Beatport, corrigir keys, achar música nova, planejar sets, waveforms e exportar.",
-} as const;
+} as const satisfies Overview;
 
 export const FEATURE_PAGES: readonly FeaturePage[] = [
   {

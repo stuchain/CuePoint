@@ -8,7 +8,7 @@ import Section from "../components/Section.astro";
 import AppNote from "../components/AppNote.astro";
 import { GITHUB_URL, PRIMARY_ACTION, UPDATES_IN_APP } from "../data/site";
 import { fmt } from "../i18n/format";
-import { localeInfo, type LocaleCode } from "../i18n/locales";
+import { DEFAULT_HREFLANG, DEFAULT_LOCALE, localeInfo, type LocaleCode } from "../i18n/locales";
 import { localePath } from "../i18n/paths";
 import { rich, type RichLink } from "../i18n/rich";
 import { ui } from "../i18n/ui";
@@ -43,7 +43,7 @@ const links: Record<string, RichLink> = {
   macos: { href: "#macos" },
   linux: { href: "#linux" },
   all: { href: "#all-downloads" },
-  changelog: { href: hrefFor("changelog/"), ...(locale === "en" ? {} : { hreflang: "en" }) },
+  changelog: { href: hrefFor("changelog/"), ...(locale === DEFAULT_LOCALE ? {} : { hreflang: DEFAULT_HREFLANG }) },
   releases: { href: `${GITHUB_URL}/releases`, external: true },
   notes: { href: release?.notesUrl ?? "", external: true },
 };
@@ -145,7 +145,7 @@ const schema = release
                     </details>
                   </div>
                   <Button href={f.url} variant="secondary" external>
-                    {d.downloadButton}<span class="sr-only"> {fmt(d.downloadFor, { title: kind(f).title })}</span>
+                    <span aria-hidden="true">{d.downloadButton}</span><span class="sr-only">{fmt(d.downloadFor, { title: kind(f).title })}</span>
                   </Button>
                 </li>
               ))
@@ -207,7 +207,7 @@ const schema = release
       <PageHead title={d.comingTitle}>
         <p>{d.comingLead}</p>
         <Fragment slot="actions">
-          <Button href={PRIMARY_ACTION.href} external>{locale === "en" ? PRIMARY_ACTION.label : t.primaryAction}</Button>
+          <Button href={PRIMARY_ACTION.href} external>{locale === DEFAULT_LOCALE ? PRIMARY_ACTION.label : t.primaryAction}</Button>
           <AppNote />
         </Fragment>
       </PageHead>
