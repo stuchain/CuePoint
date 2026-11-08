@@ -6,6 +6,7 @@ import llmsTxt from "./scripts/llms.mjs";
 import ogCards from "./scripts/og-integration.mjs";
 import { SITE_URL, addressParts, isStyleguide } from "./site.config";
 import { DEFAULT_LOCALE, LOCALES, OTHER_LOCALES } from "./src/i18n/locales";
+import { withXDefault } from "./src/i18n/sitemap";
 import { guideLinkConfig } from "./src/lib/guide-config";
 import { guideLinksPlugin } from "./src/lib/guide-links";
 import { kbdKeys } from "./src/lib/kbd-keys";
@@ -70,6 +71,8 @@ export default defineConfig({
         defaultLocale: DEFAULT_LOCALE,
         locales: Object.fromEntries(LOCALES.map((l) => [l.code, l.hreflang])),
       },
+      // the pages name the English version as x-default, so the sitemap does too (src/i18n/sitemap.ts)
+      serialize: (item) => withXDefault(item),
     }),
     // draws every page's sharing picture into dist/ once the pages are built (SITE-11)
     ogCards(),
