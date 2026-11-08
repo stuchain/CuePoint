@@ -8,10 +8,15 @@ import { DEFAULT_LOCALE } from "../i18n/locales";
 import { localeFromUrl } from "../i18n/paths";
 import { ui } from "../i18n/ui";
 
+interface Props {
+  /** Shown on a phone only: the download page's detected-system box, where the note sits on a wide screen, is not shown there. */
+  phone?: boolean;
+}
+const { phone = false } = Astro.props;
 const locale = localeFromUrl(Astro.url);
 ---
 
-{locale !== DEFAULT_LOCALE && <p class="app-note" data-app-note>{ui(locale).appNote}</p>}
+{locale !== DEFAULT_LOCALE && <p class:list={["app-note", { phone }]} data-app-note>{ui(locale).appNote}</p>}
 
 <style>
   .app-note {
@@ -19,5 +24,13 @@ const locale = localeFromUrl(Astro.url);
     color: var(--fg-muted);
     font-size: var(--font-size-sm);
     line-height: 1.5;
+  }
+  .app-note.phone {
+    margin-bottom: var(--space-md);
+  }
+  @media (min-width: 40rem) {
+    .app-note.phone {
+      display: none;
+    }
   }
 </style>
