@@ -42,4 +42,3 @@ export function navLabel(locale: LocaleCode, path: string, fallback: string): st
   const key = NAV_KEYS[path];
   return key ? ui(locale).nav[key] : fallback;
 }
-
