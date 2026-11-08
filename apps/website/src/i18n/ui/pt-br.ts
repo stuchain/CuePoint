@@ -46,6 +46,7 @@ const ptBr: UiStrings = {
   },
   appNote: "O app em si está em inglês. Áreas como Clean, Library e Keys aparecem aqui exatamente com os nomes que o app usa.",
   primaryAction: "Ser avisado do 1.0",
+  primaryActionShort: "Ser avisado",
   downloadLabel: {
     neutral: "Download",
     windows: "Baixar para Windows",
