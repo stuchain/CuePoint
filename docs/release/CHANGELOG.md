@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-09
+
+**CuePoint 1.0.1 fixes two problems people hit in 1.0.0.** Rekordbox exports up to 4 GB can now be imported: a 2.6 GB collection was refused as too large, and a big import or export now needs far less memory. On a Mac, a Stop from Control Center, headphones or a remote no longer makes the player quit. Installed copies of 1.0.0 on Windows and Mac offer the update on their own.
+
+**Known issues.** What 1.0.1 ships with, and what to do about each, is in [Known issues](https://github.com/stuchain/CuePoint/blob/main/docs/release/known-issues.md).
+
 ### Fixed
 - **The player could quit on its own on a Mac.** A Stop from Control Center, headphones or a remote could make the player quit. It now ignores them; CuePoint keeps handling media keys itself.
 - **A Rekordbox export of several gigabytes can be imported.** A 2.6 GB collection was refused with "XML file too large: 2616715592 bytes (max 104857600)". The desktop app now reads a collection of up to 4 GB for an import, a refresh and an export. A bigger file says "This file is 5.2 GB, larger than the 4 GB CuePoint can read. Check that it is your Rekordbox collection export (File > Export Collection in xml format).", and that is no longer reported to the developers as a bug. The command line keeps its 100 MiB limit.

@@ -32,6 +32,13 @@ those rows that was still `owed` reads `not applicable (by-hand check deferred t
 dated 2026-11-02, and is run before 1.0.1. Rows whose How is `CI` are unchanged: they pass only on a
 green run. `docs/release/known-issues.md` tells users what was not checked by a person.
 
+## Owner's pick for 1.0.1: deferred again, to 1.0.2 (DEC-313)
+
+On 2026-11-09 the owner chose to ship 1.0.1, a fix release, without these rows too. The rows keep
+their 2026-11-02 result as written; read "deferred to 1.0.1" in them as deferred to 1.0.2, where they
+are run. The update from 1.0.0 to 1.0.1 is checked by hand on Windows and the Apple Silicon Mac right
+after 1.0.1 is published, since it needs a published release.
+
 ## How to read the table
 
 - **Check:** what to do or what has to be true, in plain words.

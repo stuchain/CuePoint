@@ -8781,6 +8781,7 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 
 **Decided with**: User (scope for Sentry issue PYTHON-1H, thread "Phase 13 · Check Sentry for new errors", 8 Nov 2026) · **Date**: 2026-11-08
 
+<<<<<<< HEAD
 ## DEC-312 — The Website Is Translated into German, Spanish and Brazilian Portuguese
 
 **Status**: Accepted · **Related**: DEC-230, `apps/website/docs/translation.md`, `apps/website/src/i18n/`, `/mnt/project-files/website-i18n/SCOPE.md`
@@ -8790,3 +8791,15 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 **Reason**: DJs who prefer German, Spanish or Portuguese find the product in their own language and search results in their own market, while the English pages stay the one source. Keeping product words English matches what the app shows, so a reader can find a button by the word on the page.
 
 **Decided with**: User (8 Nov 2026, 16:58 Athens: all recommended) · **Date**: 2026-11-08
+=======
+
+## DEC-313 — 1.0.1 Ships Without the by-Hand Acceptance Checks (Amends DEC-309)
+
+**Status**: Accepted · **Related**: DEC-309, DEC-311, `docs/release/v1-acceptance.md`, `docs/release/known-issues.md`
+
+**Decision**: `v1.0.1` is tagged without running the by-hand and Remote Control rows that DEC-309 deferred to 1.0.1. They are run before 1.0.2. The rows keep their recorded result; `v1-acceptance.md` says the deferral now runs to 1.0.2, and the known-issues page says the checks were not run by a person before 1.0.0 or 1.0.1. Rows whose How is `CI` still need a green run. The update from 1.0.0 to 1.0.1 is checked by hand on Windows and the Apple Silicon Mac right after publishing.
+
+**Reason**: 1.0.1 only fixes two problems users reported through Sentry (PYTHON-1H: a 2.6 GB export refused; ELECTRON-7: the player quitting on a Mac). CI covers the packaged app on all four systems.
+
+**Decided with**: User (9 Nov 2026, 01:19 Athens: "Ship now, defer them to 1.0.2") · **Date**: 2026-11-09
+>>>>>>> fa725d4a (build: release CuePoint 1.0.1)
