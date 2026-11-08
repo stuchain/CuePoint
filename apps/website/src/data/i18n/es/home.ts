@@ -10,7 +10,7 @@ export const OPENING_STEPS: readonly OpeningStep[] = [
   {
     id: "messy",
     title: "Una biblioteca desordenada",
-    text: "Años de tracks, y los keys, los tempos y los géneros no coinciden. Unos tienen datos que faltan, otros datos incorrectos.",
+    text: "Años de tracks, y los keys, los tempos y los géneros no coinciden. Algunos faltan y otros están mal.",
   },
   {
     id: "matched",
@@ -41,7 +41,7 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
     alt: "El panel “Check the match” de Clean: un track de la biblioteca junto a los candidatos que encontró Beatport, con “Use this match” y “None of these”.",
   }),
   library: shot("library", {
-    label: "The Library",
+    label: "Library",
     alt: "La página Library: la tabla de tracks con las colecciones y playlists al lado, y un track seleccionado con sus acciones sobre la tabla.",
   }),
   keys: shot("keys", {
@@ -65,7 +65,7 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
     alt: "La barra del reproductor con la forma de onda de un track en pausa, y Track details mostrando la forma de onda del track completo con sus cue points listados debajo.",
   }),
   export: shot("export", {
-    label: "Export to Rekordbox",
+    label: "Exportar a Rekordbox",
     alt: "La ventana Export to Rekordbox: cuántos tracks y playlists tendrá el nuevo archivo de Rekordbox y qué contiene, antes de que se escriba nada.",
   }),
 };
@@ -81,7 +81,7 @@ export const FEATURES: readonly Feature[] = [
   },
   {
     id: "library",
-    name: "The Library",
+    name: "Library",
     text: "Busca en toda tu colección y fíltrala por key, tempo o género, con el key de Beatport en cada track cruzado.",
     learnMore: more("library"),
   },
@@ -99,7 +99,7 @@ export const FEATURES: readonly Feature[] = [
   },
   {
     id: "export",
-    name: "Export to Rekordbox",
+    name: "Exportar a Rekordbox",
     text: "Escribe tus keys, tempos y géneros en un archivo XML nuevo de Rekordbox, y el archivo que importaste no se modifica nunca.",
     learnMore: more("export"),
   },
@@ -110,15 +110,15 @@ const TRUST_TEXT: readonly TrustText[] = [
   { id: "free", title: "Gratis", text: "Se descarga y se usa gratis." },
   {
     id: "local",
-    title: "Funciona en tu computadora",
-    text: "Tu biblioteca se queda en tu computadora; CuePoint se conecta a internet para buscar tracks en Beatport cuando se lo pides, para preguntar a GitHub si hay una versión nueva y para enviar informes de errores sin tus nombres, algo que puedes desactivar.",
+    title: "Funciona en tu equipo",
+    text: "Tu biblioteca se queda en tu equipo; CuePoint se conecta a internet para buscar tracks en Beatport cuando se lo pides, para preguntar a GitHub si hay una versión nueva y para enviar informes de errores sin los nombres de tu biblioteca, algo que puedes desactivar.",
   },
   {
     id: "yours",
     title: "Tu biblioteca sigue siendo tuya",
     text: "CuePoint nunca borra ni mueve tus archivos de música, y antes de escribir tags o exportar te muestra una vista previa: no pasa nada hasta que confirmes.",
   },
-  { id: "open", title: "Open Source", text: "El código es público en GitHub, con la licencia Apache 2.0." },
+  { id: "open", title: "Open Source", text: "El código es público en GitHub, bajo la licencia Apache 2.0." },
   {
     id: "rekordbox",
     title: "Hecho para Rekordbox",
