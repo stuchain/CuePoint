@@ -41,7 +41,7 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
     alt: "Das Panel „Check the match“ in Clean: ein Track aus der Bibliothek neben den Kandidaten, die Beatport gefunden hat, mit „Use this match“ und „None of these“.",
   }),
   library: shot("library", {
-    label: "The Library",
+    label: "Library",
     alt: "Die Seite Library: die Tabelle mit den Tracks, daneben die Collections und Playlists. Ein Track ist ausgewählt, die Aktionen dafür stehen über der Tabelle.",
   }),
   keys: shot("keys", {
@@ -61,11 +61,11 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
     alt: "Die Übersicht der Seite Statistics: wie sich die ganze Bibliothek auf Genre, Label und Artist verteilt, mit der Anzahl an jedem Balken.",
   }),
   waveforms: shot("waveforms", {
-    label: "Waveforms und der Player",
+    label: "Waveforms und Player",
     alt: "Die Player-Leiste mit der Waveform eines pausierten Tracks, und die Track details mit der Waveform des ganzen Tracks. Darunter stehen seine Cue-Punkte.",
   }),
   export: shot("export", {
-    label: "Export to Rekordbox",
+    label: "Export nach Rekordbox",
     alt: "Das Fenster „Export to Rekordbox“: wie viele Tracks und Playlists die neue Rekordbox-Datei enthalten wird und was hineinkommt, bevor irgendetwas geschrieben wird.",
   }),
 };
@@ -81,7 +81,7 @@ export const FEATURES: readonly Feature[] = [
   },
   {
     id: "library",
-    name: "The Library",
+    name: "Library",
     text: "Durchsuche deine ganze Sammlung und filtere sie nach Key, BPM oder Genre, mit dem Beatport-Key bei jedem abgeglichenen Track.",
     learnMore: more("library"),
   },
@@ -99,7 +99,7 @@ export const FEATURES: readonly Feature[] = [
   },
   {
     id: "export",
-    name: "Export to Rekordbox",
+    name: "Export nach Rekordbox",
     text: "Schreibe deine Keys, BPM-Werte und Genres in eine neue Rekordbox-XML-Datei. Die Datei, die du importiert hast, wird nie verändert.",
     learnMore: more("export"),
   },
@@ -111,7 +111,7 @@ const TRUST_TEXT: readonly TrustText[] = [
   {
     id: "local",
     title: "Läuft auf deinem Computer",
-    text: "Deine Bibliothek bleibt auf deinem Computer. CuePoint geht nur online, um Tracks bei Beatport nachzuschlagen, wenn du es willst, um bei GitHub nach einer neuen Version zu fragen und um Fehlerberichte ohne deine Namen zu senden, was du abschalten kannst.",
+    text: "Deine Bibliothek bleibt auf deinem Computer. CuePoint geht online, um Tracks bei Beatport nachzuschlagen, wenn du es willst, um bei GitHub nach neuen Versionen zu fragen und um Fehlerberichte ohne deine Namen zu senden. Die kannst du abschalten.",
   },
   {
     id: "yours",
@@ -133,8 +133,8 @@ export const TRUST: readonly TrustClaim[] = TRUST_TEXT.map((t) => ({
 
 export const HERO = {
   heading: "Deine Rekordbox-Bibliothek, aufgeräumt und bereit fürs DJ-Pult",
-  lead: "CuePoint ist eine kostenlose Desktop-App für DJs. Sie gleicht deine Tracks mit Beatport ab, ergänzt fehlende oder falsche Keys und BPM-Werte und schickt das Ergebnis zurück zu Rekordbox.",
+  lead: "CuePoint ist eine kostenlose Desktop-App für DJs. Sie gleicht deine Tracks mit Beatport ab, ergänzt fehlende und korrigiert falsche Keys und BPM-Werte und schickt das Ergebnis zurück zu Rekordbox.",
   title: "CuePoint: Rekordbox-Bibliothek aufräumen",
   description:
-    "CuePoint, kostenlose Desktop-App für DJs: Rekordbox-Bibliothek mit Beatport abgleichen, Keys und BPM korrigieren, Keys auf dem Camelot-Rad sehen, Sets planen.",
+    "CuePoint, kostenlose Desktop-App für DJs: Gleiche deine Rekordbox-Bibliothek mit Beatport ab, korrigiere Keys und BPM, plane Sets, sieh Keys auf dem Camelot-Rad.",
 } as const satisfies Hero;

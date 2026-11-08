@@ -29,14 +29,14 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     hosts: ["lexicondj.com", "rekord.cloud"],
     title: "CuePoint und Lexicon im Vergleich | CuePoint",
     description:
-      "CuePoint und Lexicon (von rekordcloud) im Vergleich: was beide mit deiner DJ-Bibliothek machen, mit welchen DJ-Apps sie arbeiten und was CuePoint nicht kann.",
+      "CuePoint und Lexicon (von rekordcloud) im Vergleich: was beide mit deiner DJ-Bibliothek machen, mit welchen DJ-Apps sie arbeiten und was CuePoint nicht macht.",
     heading: "CuePoint und Lexicon (rekordcloud)",
     intro:
       "Beide helfen dir, eine DJ-Bibliothek zu pflegen. Jede Aussage über Lexicon unten stammt von dessen eigenen öffentlichen Seiten, mit dem Datum, an dem wir sie gelesen haben. Was CuePoint tut, stammt aus seiner Anleitung.",
     summary: "Library-Verwaltung über mehrere DJ-Apps hinweg, neben dem Beatport-Abgleich von CuePoint für Rekordbox.",
     rows: [
       {
-        topic: "Wer es macht",
+        topic: "Hersteller",
         other: fact(
           "Die Startseite von rekordcloud nennt Lexicon, TrackHack, OpenKeyScan und SonoVault als seine Produkte. Wenn du nach rekordcloud gesucht hast: Lexicon ist dessen Suite zur Bibliotheksverwaltung für DJs.",
           REKORDCLOUD,
@@ -77,7 +77,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       },
       {
         topic: "Cue-Punkte",
-        other: fact("Lexicon hat ein Werkzeug namens Generate Cue Points, das Cues in großen Mengen erzeugt.", LEXICON_HOME),
+        other: fact("Lexicon hat ein Tool namens Generate Cue Points, das Cues in großen Mengen erzeugt.", LEXICON_HOME),
         cuepoint:
           "CuePoint erzeugt keine Cue-Punkte. Es behält die Cues und Beatgrids, die Rekordbox geschrieben hat, genau so, wie sie waren.",
       },
@@ -120,7 +120,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     hosts: ["mixedinkey.com"],
     title: "CuePoint und Mixed In Key im Vergleich | CuePoint",
     description:
-      "CuePoint und Mixed In Key im Vergleich: woher jedes den Key bekommt, was es in Rekordbox schreibt, Energy-Bewertungen, Cue-Punkte und was CuePoint fehlt.",
+      "CuePoint und Mixed In Key im Vergleich: woher beide den Key nehmen, was es in Rekordbox schreibt, Energy-Bewertungen, Cue-Punkte und was CuePoint fehlt.",
     heading: "CuePoint und Mixed In Key",
     intro:
       "Beide können deinen Tracks einen Key geben, nach dem du mixen kannst. Jede Aussage über Mixed In Key unten stammt von dessen eigenen öffentlichen Seiten, mit dem Datum, an dem wir sie gelesen haben. Was CuePoint tut, stammt aus seiner Anleitung.",
@@ -138,7 +138,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "Woher der Key kommt",
         other: fact(
-          "Mixed In Key 11 fordert: „Analyze your music collection“. Seine Key-Erkennung nennt es „the world's most precise key-detection technology.“",
+          "Mixed In Key 11 schreibt: „Analyze your music collection“. Seine Key-Erkennung nennt es „the world's most precise key-detection technology.“",
           MIK_MORE,
         ),
         cuepoint:
@@ -176,7 +176,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
           MIK_WORKFLOW,
         ),
         cuepoint:
-          "Der Export von CuePoint ist eine angepasste Kopie der XML, die du importiert hast, deshalb werden die Cues und Beatgrids, die Rekordbox geschrieben hat, genau so übernommen, wie sie waren.",
+          "Der Export von CuePoint ist eine angepasste Kopie des XML, das du importiert hast, deshalb werden die Cues und Beatgrids, die Rekordbox geschrieben hat, genau so übernommen, wie sie waren.",
       },
       {
         topic: "Wo die Ergebnisse in Rekordbox erscheinen",
@@ -206,7 +206,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       "Es berechnet keinen Key aus dem Audio. Einen Track, den Beatport nicht hat, kann es nicht mit einem Key versehen.",
       "Es bewertet nicht die Energy eines Tracks.",
       "Es erzeugt keine Cue-Punkte.",
-      "Es hat keine Werkzeuge zum Musikmachen oder für Mashups.",
+      "Es hat keine Tools zum Musikmachen oder für Mashups.",
     ],
     chooseOther:
       "Wenn deine Tracks nicht auf Beatport sind oder du einen Key aus dem Klang selbst berechnen lassen willst, dazu Energy-Bewertungen und automatische Cue-Punkte, kann Mixed In Key das und CuePoint nicht.",
@@ -220,14 +220,14 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     hosts: ["openkeyscan.com", "rekord.cloud"],
     title: "CuePoint und OpenKeyScan im Vergleich | CuePoint",
     description:
-      "CuePoint und OpenKeyScan von rekordcloud im Vergleich: wie jedes den Key eines Tracks bestimmt, was offline geht, was es schreibt und was CuePoint nicht kann.",
+      "CuePoint und OpenKeyScan von rekordcloud im Vergleich: wie beide den Key eines Tracks bestimmen, was offline geht, was es schreibt und was CuePoint nicht macht.",
     heading: "CuePoint und OpenKeyScan (rekordcloud)",
     intro:
       "Beide können einem Track einen Key geben. Jede Aussage über OpenKeyScan unten stammt von dessen eigenen öffentlichen Seiten oder denen seines Herstellers, mit dem Datum, an dem wir sie gelesen haben. Was CuePoint tut, stammt aus seiner Anleitung.",
     summary: "Ein kostenloser Key-Detektor, der auf das Audio hört, neben Keys von Beatport.",
     rows: [
       {
-        topic: "Wer es macht",
+        topic: "Hersteller",
         other: fact(
           "Die Startseite von rekordcloud nennt OpenKeyScan neben Lexicon, TrackHack und SonoVault unter seinen Produkten und bezeichnet OpenKeyScan als kostenlose Open-Source-Desktop-App.",
           REKORDCLOUD,

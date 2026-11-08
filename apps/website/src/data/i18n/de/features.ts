@@ -10,7 +10,7 @@ import type { FeaturePage, Overview } from "../../features";
 export const OVERVIEW = {
   title: "CuePoint-Funktionen für Rekordbox-DJs",
   description:
-    "Alles, was CuePoint mit deiner Rekordbox-Bibliothek macht: Beatport-Abgleich, Keys korrigieren, neue Musik finden, Sets planen, Waveforms und Export.",
+    "Alles, was CuePoint mit deiner Rekordbox-Bibliothek macht: Beatport-Abgleich, Keys und Tags korrigieren, neue Musik finden, Sets planen, Waveforms und Export.",
 } as const satisfies Overview;
 
 export const FEATURE_PAGES: readonly FeaturePage[] = [
@@ -20,11 +20,11 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     query: "Rekordbox Key-Tags korrigieren",
     title: "Rekordbox-Key-Tags mit Beatport korrigieren | CuePoint",
     description:
-      "Gleiche Rekordbox-Tracks mit Beatport ab und ergänze fehlende oder falsche Keys, BPM, Genres und Labels. Prüfe Treffer, finde Duplikate und fehlende Dateien.",
+      "Gleiche Rekordbox-Tracks mit Beatport ab, ergänze fehlende und korrigiere falsche Keys, BPM, Genres, Labels. Prüfe Treffer, finde Duplikate, fehlende Dateien.",
     heading: "Korrigiere Keys und Tags in deiner Rekordbox-Bibliothek",
     summary: "Tracks mit Beatport abgleichen, Werte korrigieren, Duplikate und fehlende Dateien finden.",
     problem: [
-      "Bei der Hälfte deiner Tracks fehlt der Key, oder er ist einer, dem du nicht traust. Bei manchen ist das Genre leer, bei anderen falsch. Derselbe Song steckt zweimal in der Sammlung, und ein paar Dateien liegen woanders, seit du ein Laufwerk umsortiert hast.",
+      "Die Hälfte deiner Tracks hat keinen Key oder einen, dem du nicht traust. Bei manchen ist das Genre leer, bei anderen falsch. Derselbe Song steckt zweimal in der Sammlung, und ein paar Dateien liegen woanders, seit du ein Laufwerk umsortiert hast.",
       "Das von Hand zu beheben, Track für Track, kostet ein Wochenende. Die meisten DJs tun es nicht und wühlen dann beim Gig in den falschen Tracks.",
     ],
     how: [
@@ -62,7 +62,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
   },
   {
     slug: "library",
-    name: "The Library",
+    name: "Library",
     query: "Rekordbox-Tracks nach Key und BPM filtern",
     title: "Deine Rekordbox-Bibliothek filtern und sortieren | CuePoint",
     description:
@@ -70,7 +70,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     heading: "Finde den passenden Track in deiner ganzen Rekordbox-Sammlung",
     summary: "Suche, Filter und Spalten über deine ganze Sammlung.",
     problem: [
-      "Du weißt, dass der nächste Track 124 bis 130 BPM haben soll, in einem Key, der zu dem passt, der gerade läuft. In einer langen Rekordbox-Liste heißt das scrollen und die Augen zusammenkneifen.",
+      "Du weißt, dass der nächste Track 124 bis 130 BPM haben soll, in einem Key, der zu dem passt, der gerade läuft. Ihn in einer langen Rekordbox-Liste zu finden, heißt scrollen und die Augen zusammenkneifen.",
     ],
     how: [
       {
@@ -272,7 +272,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
   },
   {
     slug: "waveforms",
-    name: "Waveforms and the player",
+    name: "Waveforms und Player",
     query: "Waveform und Lautheit meiner DJ-Tracks",
     title: "Waveforms und Lautheit für deine DJ-Tracks | CuePoint",
     description:
@@ -287,7 +287,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
         heading: "Eine Waveform für jeden Track",
         paragraphs: [
           "CuePoint berechnet für jeden Track, dessen Datei es findet, eine Waveform aus dem Audio selbst, im Hintergrund und mit niedriger Priorität. Es zeichnet sie in der Player-Leiste (ein Klick springt dorthin), in den Track details, als Spalte der Library und im Übergangsstreifen von Prepare. Wähle drei farbige Bänder für Tiefen, Mitten und Höhen oder eine Farbe.",
-          "Deine Rekordbox-Hot-Cues, Memory-Cues, Loops und das Beatgrid sind darauf eingezeichnet.",
+          "Deine Rekordbox-Hot Cues, Memory Cues, Loops und das Beatgrid sind darauf eingezeichnet.",
         ],
       },
       {
@@ -308,7 +308,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       "Es regelt einen Track nicht wegen seiner Lautheit hoch oder runter und schreibt den Wert weder in deine Dateien noch nach Rekordbox.",
       "Es bearbeitet keine Cues oder Beatgrids. Die gehören Rekordbox: Verschiebe sie dort und aktualisiere.",
       "Es zoomt und scrollt nicht. Eine Waveform ist der ganze Track auf einmal.",
-      "Eine erste Analyse einer großen Bibliothek dauert Stunden: etwa 6.000 Tracks von sechs Minuten pro Stunde auf einem aktuellen Desktop. Sie lässt sich pausieren und läuft nach einem Neustart weiter.",
+      "Eine erste Analyse einer großen Bibliothek dauert Stunden: etwa 6.000 sechsminütige Tracks pro Stunde auf einem aktuellen Desktop-Rechner. Sie lässt sich pausieren und läuft nach einem Neustart weiter.",
       "Der Linux-Build kommt ohne den Player.",
     ],
     guide: { page: "waveforms", label: "Die Anleitung zu Waveforms lesen" },
@@ -316,7 +316,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
   },
   {
     slug: "export",
-    name: "Export to Rekordbox",
+    name: "Export nach Rekordbox",
     query: "bearbeitete Keys zurück nach Rekordbox-XML exportieren",
     title: "Änderungen zurück nach Rekordbox exportieren | CuePoint",
     description:
@@ -330,7 +330,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
       {
         heading: "Eine angepasste Kopie, kein Neuaufbau",
         paragraphs: [
-          "Export nimmt die XML-Datei, die du importiert hast, kopiert sie und ändert nur die Werte, die du in CuePoint geändert hast. Hot Cues, Memory-Cues, Beatgrids und alles andere, was Rekordbox geschrieben hat, werden genau so übernommen, wie sie waren.",
+          "Export nimmt die XML-Datei, die du importiert hast, kopiert sie und ändert nur die Werte, die du in CuePoint geändert hast. Hot Cues, Memory Cues, Beatgrids und alles andere, was Rekordbox geschrieben hat, werden genau so übernommen, wie sie waren.",
         ],
       },
       {
@@ -351,7 +351,7 @@ export const FEATURE_PAGES: readonly FeaturePage[] = [
     doesNot: [
       "Es überschreibt nie die Datei, die du importiert hast, und lehnt sie als Ziel ab. Der Export ist immer eine neue Datei, die du wählst.",
       "Es schreibt nicht in die Datenbank von Rekordbox.",
-      "Es exportiert keine Tags, Notizen oder Favoriten. Die XML von Rekordbox hat keinen Platz dafür.",
+      "Es exportiert keine Tags, Notizen oder Favoriten. Das XML von Rekordbox hat keinen Platz dafür.",
       "Es packt deine Audiodateien nicht in den Export. Um Werte in die Dateien selbst zu schreiben, nimmst du nach einer Vorschau „Write tags to files“.",
     ],
     guide: { page: "rekordbox-export", label: "Die Anleitung zum Export lesen" },
