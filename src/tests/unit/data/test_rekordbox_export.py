@@ -1002,10 +1002,10 @@ class TestItRefusesTheWrongThings:
         def explode(_path: str) -> bytes:  # pragma: no cover - must not run
             raise AssertionError("parsed a file it should have refused")
 
-        monkeypatch.setattr(module.os.path, "getsize", lambda _p: 200 * 1024 * 1024)
+        monkeypatch.setattr(module.os.path, "getsize", lambda _p: 5 * 1024**3)
         monkeypatch.setattr(module, "_scan_document", explode)
 
-        with pytest.raises(ValidationError, match="XML file too large"):
+        with pytest.raises(ValidationError, match="CuePoint can read"):
             patch_collection_xml(str(source), {}, str(destination))
         assert not destination.exists()
 

@@ -33,6 +33,7 @@ from urllib.parse import unquote
 import os
 
 from cuepoint.data.rekordbox_marks import read_track_marks  # noqa: E402
+from cuepoint.exceptions.cuepoint_exceptions import ValidationError  # noqa: E402
 from cuepoint.models.compat import track_from_rbtrack  # noqa: E402
 from cuepoint.models.library_track import LibraryTrack  # noqa: E402
 from cuepoint.models.rekordbox_playlist import (  # noqa: E402
@@ -49,8 +50,74 @@ from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
 
-# Design 4.70: Cap XML file size to mitigate DoS (entity expansion, huge files)
+# Design 4.70: Cap XML file size to mitigate DoS (entity expansion, huge files).
+#
+# One limit per kind of reader (PYTHON-1H). A reader that builds the whole tree
+# (``parse_rekordbox`` and the other CLI readers) uses five to seven times the
+# file in memory, so it keeps the small limit. The readers the desktop app uses
+# stream: they keep nothing that grows with the file, so they take the library
+# limit, which is only a fast "this is the wrong file" guard that also bounds the
+# import's time (about twelve minutes) and the library's size (about 1 GB of
+# database per GB of XML).
 MAX_XML_SIZE_BYTES = 100 * 1024 * 1024  # 100 MiB
+MAX_LIBRARY_XML_BYTES = 4 * 1024 * 1024 * 1024  # 4 GiB
+
+#: The error code of a file over its reader's limit. It is in
+#: ``reporting.expected``: a file that is too big is the user's to fix, not a bug.
+XML_TOO_LARGE_CODE = "LIBRARY_XML_TOO_LARGE"
+
+
+class XmlTooLargeError(ValidationError, ValueError):
+    """A Rekordbox XML larger than the reader that was asked to read it will take.
+
+    Still a ``ValueError``, so a caller that caught the old refusal (the CLI)
+    behaves as before. A :class:`ValidationError` with its own code, so the
+    import, refresh and export keep that code and the user is shown the message,
+    which says what to check and carries neither the path nor a byte count.
+    """
+
+    def __init__(self, message: str, size_bytes: int, limit_bytes: int) -> None:
+        super().__init__(
+            message,
+            error_code=XML_TOO_LARGE_CODE,
+            context={"size_bytes": size_bytes, "limit_bytes": limit_bytes},
+        )
+
+
+def _size_phrase(size: int, *, limit: bool = False) -> str:
+    """A size a person reads: "2.6 GB", "250 MB". Decimal units, as the OS shows.
+
+    A limit is rounded down to a whole unit ("4 GB" for 4 GiB), so a file over
+    it never reads as the same size as the limit it is over.
+    """
+    if size >= 10**9:
+        if limit:
+            return f"{size // 10**9} GB"
+        tenths = round(size / 10**9 * 10)
+        whole, part = divmod(tenths, 10)
+        return f"{whole}.{part} GB" if part else f"{whole} GB"
+    megabytes = size // 10**6 if limit else round(size / 10**6)
+    return f"{megabytes} MB"
+
+
+def _refuse_if_too_large(xml_path: str, limit: int) -> None:
+    """Raise :class:`XmlTooLargeError` when the file is over ``limit`` bytes.
+
+    The one place every reader's size check goes through, so they cannot drift
+    on what they say. The limit is passed in, read from this module when the
+    check runs.
+    """
+    size = os.path.getsize(xml_path)
+    if size > limit:
+        raise XmlTooLargeError(
+            f"This file is {_size_phrase(size)}, larger than the "
+            f"{_size_phrase(limit, limit=True)} CuePoint can read. "
+            "Check that it is your Rekordbox collection export "
+            "(File > Export Collection in xml format).",
+            size_bytes=size,
+            limit_bytes=limit,
+        )
+
 
 # Report progress every N tracks during streaming parse (and on first track)
 _PARSE_PROGRESS_INTERVAL = 100
@@ -124,12 +191,7 @@ def parse_rekordbox(xml_path: str) -> Dict[str, Playlist]:
         raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
 
     # Design 4.70: Limit XML file size (safe parsing)
-    size = os.path.getsize(xml_path)
-    if size > MAX_XML_SIZE_BYTES:
-        raise ValueError(
-            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
-            "Refusing to parse to prevent resource exhaustion."
-        )
+    _refuse_if_too_large(xml_path, MAX_XML_SIZE_BYTES)
 
     try:
         tree = ET.parse(xml_path)
@@ -243,12 +305,7 @@ def parse_playlist_tree(
     """
     if not os.path.exists(xml_path):
         raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
-    size = os.path.getsize(xml_path)
-    if size > MAX_XML_SIZE_BYTES:
-        raise ValueError(
-            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
-            "Refusing to parse to prevent resource exhaustion."
-        )
+    _refuse_if_too_large(xml_path, MAX_XML_SIZE_BYTES)
     tree = ET.parse(xml_path)
     root = tree.getroot()
     tracks_by_id: Dict[str, RBTrack] = {}
@@ -403,7 +460,12 @@ def read_playlist_index(xml_path: str) -> Tuple[Dict[str, int], List[str]]:
 
     Returns:
         (playlist_counts, duplicate_names)
+
+    Raises:
+        XmlTooLargeError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`; this
+            builds the whole tree.
     """
+    _refuse_if_too_large(xml_path, MAX_XML_SIZE_BYTES)
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
@@ -452,17 +514,12 @@ def get_track_locations(xml_path: str) -> Dict[str, str]:
 
     Raises:
         FileNotFoundError: If xml_path does not exist.
-        ValueError: If xml_path exceeds MAX_XML_SIZE_BYTES.
+        XmlTooLargeError: If xml_path exceeds MAX_XML_SIZE_BYTES.
         ET.ParseError: If XML parsing fails.
     """
     if not os.path.exists(xml_path):
         raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
-    size = os.path.getsize(xml_path)
-    if size > MAX_XML_SIZE_BYTES:
-        raise ValueError(
-            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
-            "Refusing to parse to prevent resource exhaustion."
-        )
+    _refuse_if_too_large(xml_path, MAX_XML_SIZE_BYTES)
     tree = ET.parse(xml_path)
     root = tree.getroot()
     collection = root.find(".//COLLECTION")
@@ -489,7 +546,13 @@ def get_track_locations(xml_path: str) -> Dict[str, str]:
 
 
 def inspect_rekordbox_xml(xml_path: str) -> Dict[str, object]:
-    """Inspect XML structure for preflight integrity checks."""
+    """Inspect XML structure for preflight integrity checks.
+
+    Raises:
+        XmlTooLargeError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`; this
+            builds the whole tree.
+    """
+    _refuse_if_too_large(xml_path, MAX_XML_SIZE_BYTES)
     tree = ET.parse(xml_path)
     root = tree.getroot()
     root_tag = root.tag if root is not None else ""
@@ -942,7 +1005,7 @@ def iter_collection_tracks(xml_path: str) -> Iterator[LibraryTrack]:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        XmlTooLargeError: If the file exceeds :data:`MAX_LIBRARY_XML_BYTES`.
         ET.ParseError: If the XML is malformed.
     """
     yielded = 0
@@ -999,18 +1062,13 @@ def _iter_collection_elements(xml_path: str) -> Iterator[ET.Element]:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        XmlTooLargeError: If the file exceeds :data:`MAX_LIBRARY_XML_BYTES`.
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
         raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
 
-    size = os.path.getsize(xml_path)
-    if size > MAX_XML_SIZE_BYTES:
-        raise ValueError(
-            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
-            "Refusing to parse to prevent resource exhaustion."
-        )
+    _refuse_if_too_large(xml_path, MAX_LIBRARY_XML_BYTES)
 
     # Opened here rather than left to iterparse so the handle is closed even
     # though this generator stops early, at the end of COLLECTION.
@@ -1068,18 +1126,13 @@ def iter_playlist_nodes(xml_path: str) -> Iterator[RekordboxPlaylist]:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        XmlTooLargeError: If the file exceeds :data:`MAX_LIBRARY_XML_BYTES`.
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
         raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
 
-    size = os.path.getsize(xml_path)
-    if size > MAX_XML_SIZE_BYTES:
-        raise ValueError(
-            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
-            "Refusing to parse to prevent resource exhaustion."
-        )
+    _refuse_if_too_large(xml_path, MAX_LIBRARY_XML_BYTES)
 
     yielded = 0
     with open(xml_path, "rb") as handle:
@@ -1203,18 +1256,13 @@ def collection_entry_count(xml_path: str) -> Optional[int]:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        XmlTooLargeError: If the file exceeds :data:`MAX_LIBRARY_XML_BYTES`.
         ET.ParseError: If the XML is malformed.
     """
     if not os.path.exists(xml_path):
         raise FileNotFoundError(f"XML file not found: {quoted(xml_path)}")
 
-    size = os.path.getsize(xml_path)
-    if size > MAX_XML_SIZE_BYTES:
-        raise ValueError(
-            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
-            "Refusing to parse to prevent resource exhaustion."
-        )
+    _refuse_if_too_large(xml_path, MAX_LIBRARY_XML_BYTES)
 
     with open(xml_path, "rb") as handle:
         for _event, elem in ET.iterparse(handle, events=("start",)):
@@ -1246,7 +1294,7 @@ def has_collection_element(xml_path: str) -> bool:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file exceeds :data:`MAX_XML_SIZE_BYTES`.
+        XmlTooLargeError: If the file exceeds :data:`MAX_LIBRARY_XML_BYTES`.
         ET.ParseError: If the XML is malformed.
     """
     return collection_entry_count(xml_path) is not None

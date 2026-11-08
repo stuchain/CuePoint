@@ -56,7 +56,7 @@ describe("a job lost to an outage", () => {
 describe("a failed job the page throws as an error", () => {
   it("is not reported when its code is one the user owns (DEC-153)", async () => {
     const sdk = await started();
-    for (const code of ["BEATPORT_REJECTED", "LIBRARY_NOT_IMPORTED", "source_missing", "TAG_WRITE_PREVIEW_NOT_FOUND"]) {
+    for (const code of ["BEATPORT_REJECTED", "LIBRARY_NOT_IMPORTED", "LIBRARY_XML_TOO_LARGE", "source_missing", "TAG_WRITE_PREVIEW_NOT_FOUND"]) {
       expect(reportUnexpected(jobFailureError(`failed ${code}`, { code, message: "x" }))).toBeNull();
     }
     expect(sdk.exceptions).toEqual([]);

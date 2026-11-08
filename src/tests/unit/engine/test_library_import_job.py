@@ -274,6 +274,27 @@ class TestFailures:
         assert job.error["code"] == "LIBRARY_XML_NO_COLLECTION"
         assert "COLLECTION" in job.error["message"]
 
+    def test_a_file_over_the_library_limit_fails_the_job_with_its_own_code(
+        self, library_db, store, tmp_path, monkeypatch
+    ):
+        """The code is the one the reporter does not count as a bug, and the message
+        is a sentence: no byte counts, no path."""
+        import os
+
+        path = write_export(tmp_path, 3, name="my-private-collection.xml")
+        monkeypatch.setattr(os.path, "getsize", lambda _p: 5_200_000_000)
+
+        job = wait_for_terminal(start_library_import_job(store, path))
+
+        assert job.state is JobState.FAILED
+        assert job.error["code"] == "LIBRARY_XML_TOO_LARGE"
+        message = job.error["message"]
+        assert message.startswith("This file is 5.2 GB, larger than the 4 GB")
+        assert "bytes" not in message
+        assert "my-private-collection" not in message
+        assert str(tmp_path) not in message
+        assert counts()[0] == 0
+
     def test_a_missing_file_fails_the_job(self, library_db, store, tmp_path):
         job = wait_for_terminal(
             start_library_import_job(store, str(tmp_path / "gone.xml"))

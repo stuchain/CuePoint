@@ -105,7 +105,8 @@ from typing import (
 )
 
 from cuepoint.data.rekordbox import (
-    MAX_XML_SIZE_BYTES,
+    MAX_LIBRARY_XML_BYTES,
+    _refuse_if_too_large,
     _measured_int,
     _optional_bpm,
     _optional_text,
@@ -606,12 +607,7 @@ def _plan(
     """
     if not os.path.exists(source_path):
         raise FileNotFoundError(f"XML file not found: {quoted(source_path)}")
-    size = os.path.getsize(source_path)
-    if size > MAX_XML_SIZE_BYTES:
-        raise ValidationError(
-            f"XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). "
-            "Refusing to parse to prevent resource exhaustion."
-        )
+    _refuse_if_too_large(source_path, MAX_LIBRARY_XML_BYTES)
 
     with open(source_path, "rb") as handle:
         data = handle.read()

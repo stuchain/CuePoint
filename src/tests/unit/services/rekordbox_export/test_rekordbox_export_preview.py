@@ -213,10 +213,10 @@ class TestTheSourceMustBeThere:
         def explode(_data: bytes):  # pragma: no cover - must not run
             raise AssertionError("parsed a file it should have refused")
 
-        monkeypatch.setattr(writer.os.path, "getsize", lambda _p: 200 * 1024 * 1024)
+        monkeypatch.setattr(writer.os.path, "getsize", lambda _p: 5 * 1024**3)
         monkeypatch.setattr(writer, "_scan_document", explode)
 
-        with pytest.raises(ExportSourceError, match="too large") as raised:
+        with pytest.raises(ExportSourceError, match="CuePoint can read") as raised:
             service.preview()
 
         assert raised.value.reason == SOURCE_INVALID

@@ -16,6 +16,17 @@ def test_export_reasons_match_the_service_constants() -> None:
         assert reason in EXPECTED_JOB_ERROR_CODES, reason
 
 
+def test_a_file_too_large_to_read_is_the_users_to_fix_not_a_bug() -> None:
+    """PYTHON-1H: the refusal's code is the one the reporter leaves out."""
+    from cuepoint.data.rekordbox import XmlTooLargeError
+
+    error = XmlTooLargeError("This file is 5.2 GB.", 5_200_000_000, 4 * 1024**3)
+
+    assert error.error_code in EXPECTED_JOB_ERROR_CODES
+    assert is_expected_code(error.error_code)
+    assert is_expected_code("LIBRARY_XML_TOO_LARGE")
+
+
 def test_beatport_classes_match_the_client_constants() -> None:
     from cuepoint.services import beatport_api_client as client
 

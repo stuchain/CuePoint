@@ -122,7 +122,7 @@ class TestParseRekordbox:
             xml_path = f.name
         try:
             with patch("os.path.getsize", return_value=MAX_XML_SIZE_BYTES + 1):
-                with pytest.raises(ValueError, match="XML file too large"):
+                with pytest.raises(ValueError, match="CuePoint can read"):
                     parse_rekordbox(xml_path)
         finally:
             os.unlink(xml_path)

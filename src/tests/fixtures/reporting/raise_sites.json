@@ -343,7 +343,7 @@
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
   },
-  "cuepoint/data/rekordbox.py::_iter_collection_elements::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
+  "cuepoint/data/rekordbox.py::_refuse_if_too_large::This file is {_size_phrase(size)}, larger than the {_size_phrase(limit, limit=True)} CuePoint can read. Check that it is your Rekordbox collection export (File > Export Collection in xml format).": {
     "holds": "a number or count, our own constant",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
     "verdict": "exempt"
@@ -351,11 +351,6 @@
   "cuepoint/data/rekordbox.py::collection_entry_count::XML file not found: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
-  },
-  "cuepoint/data/rekordbox.py::collection_entry_count::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
-    "holds": "a number or count, our own constant",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
-    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox.py::get_playlist_track_ids::Playlist not found: {playlist_name!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -365,37 +360,17 @@
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
   },
-  "cuepoint/data/rekordbox.py::get_track_locations::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
-    "holds": "a number or count, our own constant",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
-    "verdict": "exempt"
-  },
   "cuepoint/data/rekordbox.py::iter_playlist_nodes::XML file not found: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
-  },
-  "cuepoint/data/rekordbox.py::iter_playlist_nodes::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
-    "holds": "a number or count, our own constant",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
-    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox.py::parse_playlist_tree::XML file not found: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
   },
-  "cuepoint/data/rekordbox.py::parse_playlist_tree::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
-    "holds": "a number or count, our own constant",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
-    "verdict": "exempt"
-  },
   "cuepoint/data/rekordbox.py::parse_rekordbox::XML file not found: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
-  },
-  "cuepoint/data/rekordbox.py::parse_rekordbox::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
-    "holds": "a number or count, our own constant",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
-    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox_export.py::_document_encoding::Unsupported XML encoding {declared!r}: CuePoint can export only UTF-8 or ASCII Rekordbox files. Save the file again from Rekordbox and import it again.": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -409,11 +384,6 @@
   "cuepoint/data/rekordbox_export.py::_plan::XML file not found: {quoted(source_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
-  },
-  "cuepoint/data/rekordbox_export.py::_plan::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
-    "holds": "a number or count, our own constant",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
-    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox_export.py::_scan_document::The collection XML is not well-formed: {exc}": {
     "holds": "exception text",

@@ -40,6 +40,8 @@ EXPECTED_JOB_ERROR_CODES: frozenset[str] = frozenset(
         # that needs their confirmation, or a diff the world has since moved past.
         "LIBRARY_NOT_IMPORTED",
         "LIBRARY_XML_NO_COLLECTION",
+        # A file over the size CuePoint reads: the wrong file, or one nobody can import.
+        "LIBRARY_XML_TOO_LARGE",
         "LIBRARY_REFRESH_NEEDS_CONFIRMATION",
         "LIBRARY_REFRESH_DIFF_NOT_FOUND",
         "LIBRARY_REFRESH_DIFF_STALE",

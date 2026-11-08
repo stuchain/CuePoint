@@ -546,8 +546,8 @@ class TestInputGuards:
 
     def test_oversized_file_is_refused(self, tmp_path, monkeypatch):
         path = write_collection(tmp_path, [FULL_TRACK])
-        monkeypatch.setattr(rekordbox, "MAX_XML_SIZE_BYTES", 10)
-        with pytest.raises(ValueError, match="too large"):
+        monkeypatch.setattr(rekordbox, "MAX_LIBRARY_XML_BYTES", 10)
+        with pytest.raises(ValueError, match="CuePoint can read"):
             list(iter_collection_tracks(path))
 
     def test_malformed_xml_raises_a_parse_error(self, tmp_path):
