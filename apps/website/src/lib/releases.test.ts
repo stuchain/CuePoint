@@ -30,4 +30,14 @@ describe("downloadsText", () => {
   it("says nothing without a count", () => {
     expect(downloadsText({ ...NONE, downloads: null })).toBeNull();
   });
+
+  it("picks the wording by the language's own plural rule, and falls back to other for a category it lacks", () => {
+    const words = { one: "{count} vez", other: "{count} vezes" };
+    // pt: 0 and 1 are "one" in CLDR; English would say 0 is "other"
+    expect(downloadsText({ ...NONE, downloads: 0 }, words, "pt-BR")).toBe("0 vez");
+    expect(downloadsText({ ...NONE, downloads: 0 }, words, "en-US")).toBe("0 vezes");
+    // Polish has few and many: with only one/other given, they fall back to other
+    expect(downloadsText({ ...NONE, downloads: 3 }, words, "pl")).toBe("3 vezes");
+    expect(downloadsText({ ...NONE, downloads: 3 }, { ...words, few: "{count} razy" }, "pl")).toBe("3 razy");
+  });
 });

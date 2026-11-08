@@ -6,8 +6,8 @@ import PageHead from "../components/PageHead.astro";
 import Section from "../components/Section.astro";
 import { COMPARE_CHECKED, compareHref } from "../data/compare";
 import { compareFor } from "../i18n/content";
-import { fmt } from "../i18n/format";
-import type { LocaleCode } from "../i18n/locales";
+import { dayFor, fmt } from "../i18n/format";
+import { DEFAULT_HREFLANG, type LocaleCode } from "../i18n/locales";
 import { leavesLanguage, localePath } from "../i18n/paths";
 import { rich } from "../i18n/rich";
 import { ui } from "../i18n/ui";
@@ -20,7 +20,7 @@ interface Props {
 const { locale } = Astro.props;
 const t = ui(locale);
 const { COMPARE_TOOLS } = compareFor(locale);
-const contact = { href: hrefFor("contact/"), hreflang: leavesLanguage(locale, "contact/") ? "en" : undefined };
+const contact = { href: hrefFor("contact/"), hreflang: leavesLanguage(locale, "contact/") ? DEFAULT_HREFLANG : undefined };
 // the date is written in the markup as a <time>; the sentence around it is the language's
 const [howBefore = "", howAfter = ""] = rich(t.compare.how3, { contact }, { date: "\u0000" }).split("\u0000");
 ---
@@ -57,7 +57,7 @@ const [howBefore = "", howAfter = ""] = rich(t.compare.how3, { contact }, { date
       <li>{t.compare.how1}</li>
       <li>{t.compare.how2}</li>
       <li>
-        <Fragment set:html={howBefore} /><time datetime={COMPARE_CHECKED}>{COMPARE_CHECKED}</time><Fragment set:html={howAfter} />
+        <Fragment set:html={howBefore} /><time datetime={COMPARE_CHECKED}>{dayFor(COMPARE_CHECKED, locale)}</time><Fragment set:html={howAfter} />
       </li>
     </ul>
   </Section>

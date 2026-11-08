@@ -7,7 +7,7 @@
 import PageHead from "../components/PageHead.astro";
 import { faqEntries } from "../i18n/faq-load";
 import { fmt } from "../i18n/format";
-import type { LocaleCode } from "../i18n/locales";
+import { DEFAULT_HREFLANG, type LocaleCode } from "../i18n/locales";
 import { leavesLanguage } from "../i18n/paths";
 import { rich } from "../i18n/rich";
 import { ui } from "../i18n/ui";
@@ -53,7 +53,7 @@ const faqs = await Promise.all(
   ]}
 >
   <PageHead title={t.faq.heading}>
-    <p set:html={rich(t.faq.lead, { guide: { href: hrefFor("guide/"), hreflang: leavesLanguage(locale, "guide/") ? "en" : undefined } })} />
+    <p set:html={rich(t.faq.lead, { guide: { href: hrefFor("guide/"), hreflang: leavesLanguage(locale, "guide/") ? DEFAULT_HREFLANG : undefined } })} />
   </PageHead>
 
   <!-- every question at a glance; each one jumps to its answer (the ids are the FAQ's own, q-<id>) -->
@@ -82,7 +82,7 @@ const faqs = await Promise.all(
             <ul class="more" aria-label={fmt(t.faq.moreAbout, { question: f.question })}>
               {f.links.map((l) => (
                 <li>
-                  <a href={l.href} hreflang={leavesLanguage(locale, "guide/") ? "en" : undefined}>{l.label}</a>
+                  <a href={l.href} hreflang={leavesLanguage(locale, "guide/") ? DEFAULT_HREFLANG : undefined}>{l.label}{leavesLanguage(locale, "guide/") && <span class="in-english"> ({t.inEnglish})</span>}</a>
                 </li>
               ))}
             </ul>
@@ -94,6 +94,13 @@ const faqs = await Promise.all(
 </Page>
 
 <style>
+  /* "(in English)" after a link into the guide, which has no translation */
+  .in-english {
+    color: var(--fg-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+  }
   .jump,
   .answers {
     width: min(100% - 2 * var(--gutter), var(--content-max));

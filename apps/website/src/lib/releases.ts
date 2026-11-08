@@ -94,13 +94,18 @@ export function hasRelease(data: ReleaseData = loadReleases()): boolean {
   return data.release !== null;
 }
 
-/** "Downloaded 1,240 times" (his pick, 2026-11-02), or null when the data has no count. */
+/**
+ * "Downloaded 1,240 times" (his pick, 2026-11-02), or null when the data has no count. The wording is picked by
+ * the language's own plural rule (`Intl.PluralRules`, CLDR): a language may give `zero`, `one`, `two`, `few` and
+ * `many` besides `other`, and a category it does not give falls back to `other`.
+ */
 export function downloadsText(
   data: ReleaseData = loadReleases(),
-  words: { one: string; other: string } = { one: "Downloaded {count} time", other: "Downloaded {count} times" },
+  words: { other: string } & Partial<Record<Intl.LDMLPluralRule, string>> = { one: "Downloaded {count} time", other: "Downloaded {count} times" },
   numberLocale = "en-US",
 ): string | null {
   if (data.downloads === null) return null;
   const n = data.downloads;
-  return (n === 1 ? words.one : words.other).replace("{count}", n.toLocaleString(numberLocale));
+  const template = words[new Intl.PluralRules(numberLocale).select(n)] ?? words.other;
+  return template.replace("{count}", n.toLocaleString(numberLocale));
 }

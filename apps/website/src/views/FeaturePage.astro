@@ -21,7 +21,7 @@ import { featureHref } from "../data/features";
 import Scene from "../components/Scene.astro";
 import { featureBySlugFor } from "../i18n/content";
 import { fmt } from "../i18n/format";
-import type { LocaleCode } from "../i18n/locales";
+import { DEFAULT_HREFLANG, type LocaleCode } from "../i18n/locales";
 import { leavesLanguage, localePath } from "../i18n/paths";
 import { ui } from "../i18n/ui";
 import Page from "../layouts/Page.astro";
@@ -99,7 +99,7 @@ const prop = PROPS[page.slug];
 
   <Section id="next" heading={t.features.nextTitle} layout="split">
     <ul class="rows">
-      {page.guide && <li><a class="row-name" href={hrefFor(guidePath(page.guide.page))} hreflang={leavesLanguage(locale, guidePath(page.guide.page)) ? "en" : undefined}>{page.guide.label}</a><p>{t.features.guideNote}</p></li>}
+      {page.guide && <li><a class="row-name" href={hrefFor(guidePath(page.guide.page))} hreflang={leavesLanguage(locale, guidePath(page.guide.page)) ? DEFAULT_HREFLANG : undefined}>{page.guide.label}{leavesLanguage(locale, guidePath(page.guide.page)) && <span class="in-english"> ({t.inEnglish})</span>}</a><p>{t.features.guideNote}</p></li>}
       {
         related.map((r) => (
           <li>
@@ -115,6 +115,13 @@ const prop = PROPS[page.slug];
 </Page>
 
 <style>
+  /* "(in English)" after a link into the guide, which has no translation */
+  .in-english {
+    color: var(--fg-muted);
+    font-family: var(--font-body);
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+  }
   .prop {
     min-width: 0;
   }
