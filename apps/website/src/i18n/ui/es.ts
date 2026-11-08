@@ -45,6 +45,7 @@ const es: UiStrings = {
   },
   appNote: "La app está en inglés. Las áreas como Clean, Library y Keys se nombran aquí exactamente como las nombra la app.",
   primaryAction: "Avísame del 1.0",
+  primaryActionShort: "Avísame",
   downloadLabel: {
     neutral: "Descargar",
     windows: "Descargar para Windows",

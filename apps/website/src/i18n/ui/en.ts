@@ -53,6 +53,8 @@ export const en = {
   appNote: "The app itself is in English. Areas such as Clean, Library and Keys are named here exactly as the app names them.",
   /** The one primary action while there is no release. Must equal PRIMARY_ACTION.label in src/data/site.ts. */
   primaryAction: "Get notified of 1.0",
+  /** A shorter primaryAction for the header, where a translated label can be wider than the bar has room for. English never shows it. */
+  primaryActionShort: "Get notified",
   downloadLabel: {
     neutral: "Download",
     windows: "Download for Windows",

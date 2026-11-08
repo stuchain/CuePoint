@@ -45,6 +45,7 @@ const de: UiStrings = {
   },
   appNote: "Die App selbst ist auf Englisch. Bereiche wie Clean, Library und Keys heißen hier genauso wie in der App.",
   primaryAction: "Bei 1.0 benachrichtigt werden",
+  primaryActionShort: "Benachrichtigt werden",
   downloadLabel: {
     neutral: "Download",
     windows: "Für Windows laden",
