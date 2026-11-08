@@ -42,7 +42,7 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
     alt: "O painel “Check the match” do Clean: um track da biblioteca ao lado dos candidatos que o Beatport encontrou, com “Use this match” e “None of these”.",
   }),
   library: shot("library", {
-    label: "The Library",
+    label: "A Library",
     alt: "A página Library: a tabela de tracks com as Collections e as playlists ao lado, e um track selecionado com as ações dele acima da tabela.",
   }),
   keys: shot("keys", {
@@ -55,7 +55,7 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   }),
   prepare: shot("prepare", {
     label: "Prepare",
-    alt: "A página Prepare: um Set como ordem de execução em capítulos, com as verificações entre os tracks e a faixa de transição aberta em uma delas.",
+    alt: "A página Prepare: um Set como sequência em capítulos, com as verificações entre os tracks e a barra de transição aberta em uma delas.",
   }),
   statistics: shot("statistics", {
     label: "Statistics",
@@ -66,7 +66,7 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
     alt: "A barra do player com a waveform de um track em pausa, e o Track details mostrando a waveform do track inteiro, com os cue points listados embaixo.",
   }),
   export: shot("export", {
-    label: "Export to Rekordbox",
+    label: "Exportar para o Rekordbox",
     alt: "A janela “Export to Rekordbox”: quantos tracks e playlists o novo arquivo do Rekordbox vai ter e o que entra nele, antes de qualquer coisa ser gravada.",
   }),
 };
@@ -82,7 +82,7 @@ export const FEATURES: readonly Feature[] = [
   },
   {
     id: "library",
-    name: "The Library",
+    name: "A Library",
     text: "Pesquise a sua coleção inteira e filtre por key, BPM ou gênero, com a key do Beatport em cada track cruzado.",
     learnMore: more("library"),
   },
@@ -95,12 +95,12 @@ export const FEATURES: readonly Feature[] = [
   {
     id: "prepare",
     name: "Prepare",
-    text: "Planeje um set como ordem de execução, e o CuePoint avisa quando há um choque de keys ou um BPM que não encaixa.",
+    text: "Planeje um set como sequência, e o CuePoint avisa quando há um choque de keys ou um BPM que não encaixa.",
     learnMore: more("prepare"),
   },
   {
     id: "export",
-    name: "Export to Rekordbox",
+    name: "Exportar para o Rekordbox",
     text: "Grave suas keys, BPM e gêneros em um novo arquivo XML do Rekordbox, e o arquivo que você importou nunca é alterado.",
     learnMore: more("export"),
   },
@@ -112,7 +112,7 @@ const TRUST_TEXT: readonly TrustText[] = [
   {
     id: "local",
     title: "Roda no seu computador",
-    text: "Sua biblioteca fica no seu computador. O CuePoint só vai à internet para procurar tracks no Beatport quando você pede, para perguntar ao GitHub se há uma versão nova e para enviar relatórios de erro sem os seus nomes, o que você pode desligar.",
+    text: "Sua biblioteca fica no seu computador. O CuePoint vai à internet para procurar tracks no Beatport quando você pede, para perguntar ao GitHub se há uma versão nova e para enviar relatórios de erro sem os nomes das suas coisas, o que você pode desligar.",
   },
   {
     id: "yours",
@@ -135,7 +135,7 @@ export const TRUST: readonly TrustClaim[] = TRUST_TEXT.map((t) => ({
 export const HERO = {
   heading: "Sua biblioteca do Rekordbox, arrumada e pronta para a cabine",
   lead: "O CuePoint é um app gratuito para desktop, feito para DJs. Ele cruza seus tracks com o Beatport, preenche as keys e os BPM que faltam ou estão errados e manda o resultado de volta para o Rekordbox.",
-  title: "CuePoint: arrume sua biblioteca do Rekordbox",
+  title: "CuePoint: organize e corrija sua biblioteca do Rekordbox",
   description:
     "CuePoint, app gratuito para DJs: cruze sua biblioteca do Rekordbox com o Beatport, corrija keys e BPM, veja suas keys na roda Camelot e planeje sets.",
 } as const satisfies Hero;

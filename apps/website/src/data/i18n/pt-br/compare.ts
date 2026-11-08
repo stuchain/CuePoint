@@ -27,7 +27,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     name: "Lexicon",
     maker: "rekordcloud",
     hosts: ["lexicondj.com", "rekord.cloud"],
-    title: "CuePoint e Lexicon comparados | CuePoint",
+    title: "CuePoint vs. Lexicon: comparação lado a lado | CuePoint",
     description:
       "CuePoint e Lexicon (da rekordcloud) lado a lado: o que cada um faz com a sua biblioteca de DJ, com quais apps de DJ cada um funciona e o que o CuePoint não faz.",
     heading: "CuePoint e Lexicon (rekordcloud)",
@@ -94,7 +94,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "Preço",
         other: fact(
-          "A página de preços do Lexicon mostra um plano Free com conversão de biblioteca, o Essential a partir de $10.49 por mês ou $249 vitalício, e o Ultimate a partir de $20.99 por mês ou $499 vitalício.",
+          "A página de preços do Lexicon mostra um plano Free com conversão de biblioteca, o Essential a partir de US$ 10,49 por mês ou US$ 249 no plano vitalício, e o Ultimate a partir de US$ 20,99 por mês ou US$ 499 no vitalício.",
           LEXICON_PRICING,
         ),
         cuepoint: "O CuePoint é gratuito.",
@@ -116,7 +116,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     name: "Mixed In Key",
     maker: "Mixed In Key",
     hosts: ["mixedinkey.com"],
-    title: "CuePoint e Mixed In Key comparados | CuePoint",
+    title: "CuePoint vs. Mixed In Key: comparação lado a lado | CuePoint",
     description:
       "CuePoint e Mixed In Key lado a lado: de onde cada um tira a key de um track, o que gravam no Rekordbox, notas de energy, cue points e o que falta ao CuePoint.",
     heading: "CuePoint e Mixed In Key",
@@ -136,7 +136,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "De onde vem a key",
         other: fact(
-          "O Mixed In Key 11 diz para “Analyze your music collection”. Ele chama a sua detecção de key de “the world's most precise key-detection technology.”",
+          "O Mixed In Key 11 diz para “Analyze your music collection”. Ele chama a própria detecção de key de “the world's most precise key-detection technology.”",
           MIK_MORE,
         ),
         cuepoint:
@@ -165,7 +165,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
           MIK_REKORDBOX,
         ),
         cuepoint:
-          "O CuePoint grava um novo arquivo XML do Rekordbox para você abrir no Rekordbox, mantendo seus cues e beat grids. Ele também pode gravar tags nos seus arquivos, depois de uma prévia. O Rekordbox as mostra depois que você escolhe Reload Tag.",
+          "O CuePoint grava um novo arquivo XML do Rekordbox para você abrir no Rekordbox, mantendo seus cues e Beatgrids. Ele também pode gravar tags nos seus arquivos, depois de uma prévia. O Rekordbox as mostra depois que você escolhe Reload Tag.",
       },
       {
         topic: "Pontos de cue no Rekordbox",
@@ -215,7 +215,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     name: "OpenKeyScan",
     maker: "rekordcloud",
     hosts: ["openkeyscan.com", "rekord.cloud"],
-    title: "CuePoint e OpenKeyScan comparados | CuePoint",
+    title: "CuePoint vs. OpenKeyScan: comparação lado a lado | CuePoint",
     description:
       "CuePoint e o OpenKeyScan, da rekordcloud, lado a lado: como cada um acha a key de um track, onde funciona offline, o que grava e o que o CuePoint não faz.",
     heading: "CuePoint e OpenKeyScan (rekordcloud)",
