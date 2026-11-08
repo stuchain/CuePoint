@@ -84,17 +84,20 @@ about a second, which is the bound on how long a stop waits.
 """
 
 import logging
+import mmap
 import os
 import re
 import shutil
 from datetime import datetime
 import xml.parsers.expat as expat
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import (
     Any,
     Callable,
     Dict,
+    Iterator,
     List,
     Mapping,
     Optional,
@@ -138,6 +141,14 @@ _logger = logging.getLogger(__name__)
 #: track id is looked for.
 #: Characters the temporary and dated backup names add to the destination's path.
 _SIBLING_ROOM = 80
+
+#: The document as the splicing code reads it: indexed, sliced and searched.
+_Source = Union[bytes, mmap.mmap]
+
+#: Bytes given to expat at a time, and bytes written to the temp file at a time.
+#: The memory the parse and the write need, however large the source is.
+_PARSE_CHUNK_BYTES = 1024 * 1024
+_WRITE_CHUNK_BYTES = 1024 * 1024
 
 ATTR_KEY = "Tonality"
 ATTR_BPM = "AverageBpm"
@@ -539,7 +550,8 @@ def plan_collection_xml(
             :data:`MAX_EXPORT_DEPTH`.
         ExportCancelled: ``should_cancel`` answered yes.
     """
-    return _plan(source_path, updates, playlists, on_progress, should_cancel)[0]
+    with _mapped_source(source_path) as data:
+        return _plan(data, updates, playlists, on_progress, should_cancel)[0]
 
 
 def patch_collection_xml(
@@ -585,33 +597,55 @@ def patch_collection_xml(
         OSError: Writing failed.
     """
     refuse_source_as_destination(source_path, destination_path)
-    result, data, edits = _plan(
-        source_path, updates, playlists, on_progress, should_cancel
-    )
-    result.backup_path = _write_atomically(data, edits, destination_path, should_cancel)
+    # The mapping stays open until the write is done, and is closed before this
+    # returns whichever way it ends (a mapped file cannot be replaced on Windows).
+    with _mapped_source(source_path) as data:
+        result, edits = _plan(data, updates, playlists, on_progress, should_cancel)
+        result.backup_path = _write_atomically(
+            data, edits, destination_path, should_cancel
+        )
     return result
 
 
-def _plan(
-    source_path: str,
-    updates: Mapping[str, TrackExportValues],
-    playlists: Optional[Sequence[ExportNode]],
-    on_progress: Optional[ProgressCallback] = None,
-    should_cancel: Optional[CancelCheck] = None,
-) -> Tuple[PatchResult, bytes, List[Tuple[int, int, bytes]]]:
-    """The whole of a patch except the write: what it would do, and the edits.
+@contextmanager
+def _mapped_source(source_path: str) -> Iterator["_Source"]:
+    """The source document as bytes the OS can drop, refusing one that is too large.
 
-    One implementation, two callers. The preview stops here; the export goes on
-    to :func:`_write_atomically`. That is what makes EXPORT-04's numbers and
-    EXPORT-05's numbers the same numbers rather than two that happen to agree.
+    Mapped read-only rather than read: a library export is gigabytes, and a
+    mapping is page cache that is not charged to the process. Everything that
+    reads the document indexes, slices and searches it, which a mapping does as
+    ``bytes`` does. The mapping is closed on the way out, and an empty file
+    (which cannot be mapped) is the empty ``bytes``, refused later as not
+    well-formed, as it always was.
     """
     if not os.path.exists(source_path):
         raise FileNotFoundError(f"XML file not found: {quoted(source_path)}")
     _refuse_if_too_large(source_path, MAX_LIBRARY_XML_BYTES)
 
     with open(source_path, "rb") as handle:
-        data = handle.read()
+        if os.fstat(handle.fileno()).st_size == 0:
+            yield b""
+            return
+        mapped = mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ)
+        try:
+            yield mapped
+        finally:
+            mapped.close()
 
+
+def _plan(
+    data: "_Source",
+    updates: Mapping[str, TrackExportValues],
+    playlists: Optional[Sequence[ExportNode]],
+    on_progress: Optional[ProgressCallback] = None,
+    should_cancel: Optional[CancelCheck] = None,
+) -> Tuple[PatchResult, List[Tuple[int, int, bytes]]]:
+    """The whole of a patch except the write: what it would do, and the edits.
+
+    One implementation, two callers. The preview stops here; the export goes on
+    to :func:`_write_atomically`. That is what makes EXPORT-04's numbers and
+    EXPORT-05's numbers the same numbers rather than two that happen to agree.
+    """
     encoding = _document_encoding(data)
     result = PatchResult()
     edits: List[Tuple[int, int, bytes]] = []
@@ -671,7 +705,7 @@ def _plan(
         result.playlist_folder_renamed = appended.renamed
     _report(on_progress, PHASE_PLAYLISTS, wanted, wanted)
 
-    return result, data, edits
+    return result, edits
 
 
 def _report(
@@ -698,7 +732,7 @@ def _count_playlists(nodes: Sequence[ExportNode]) -> int:
 # ------------------------------------------------------------------- internals
 
 
-def _document_encoding(data: bytes) -> str:
+def _document_encoding(data: _Source) -> str:
     """The encoding the document declares, or raise when it cannot be spliced.
 
     Splicing bytes into a document means encoding replacement text the way the
@@ -746,7 +780,7 @@ def _document_encoding(data: bytes) -> str:
     return "utf-8"
 
 
-def _scan_document(data: bytes) -> _Scan:
+def _scan_document(data: _Source) -> _Scan:
     """One parse, answering both halves of the export.
 
     Expat does the finding, so a ``<TRACK`` inside a comment, a CDATA section or
@@ -805,7 +839,11 @@ def _scan_document(data: bytes) -> _Scan:
     parser.StartElementHandler = start
     parser.EndElementHandler = end
     try:
-        parser.Parse(data, True)
+        # In chunks: expat's byte index stays absolute across calls, so the
+        # offsets the edits are spliced at are the same as from one call.
+        for at in range(0, len(data), _PARSE_CHUNK_BYTES):
+            parser.Parse(data[at : at + _PARSE_CHUNK_BYTES], False)
+        parser.Parse(b"", True)
     except expat.ExpatError as exc:
         raise ValidationError(f"The collection XML is not well-formed: {exc}") from exc
     return scan
@@ -827,7 +865,7 @@ def _identity(attrs: Mapping[str, str]) -> Optional[str]:
     return raw or None
 
 
-def _read_start_tag(data: bytes, offset: int) -> _StartTag:
+def _read_start_tag(data: _Source, offset: int) -> _StartTag:
     """Locate every attribute value span in one start tag, and where to append.
 
     Inside a start tag the only structure is ``name = "value"``, so a scan that
@@ -995,7 +1033,7 @@ def _escape(text: str, quote: int, encoding: str) -> str:
 
 
 def _append_playlists(
-    data: bytes,
+    data: _Source,
     scan: _Scan,
     nodes: Sequence[ExportNode],
     known_ids: Set[str],
@@ -1185,7 +1223,7 @@ def _xml_safe(text: str) -> str:
     return _ILLEGAL_IN_XML.sub("", collapsed).strip()
 
 
-def _layout_for(data: bytes, container: _Element) -> _Layout:
+def _layout_for(data: _Source, container: _Element) -> _Layout:
     """How the document indents, read off the container itself.
 
     Two places say it, and the better one is asked first. The whitespace before
@@ -1237,7 +1275,7 @@ def _render_lines(lines: Sequence[Tuple[int, str]], layout: _Layout) -> str:
 
 
 def _insert_children(
-    data: bytes,
+    data: _Source,
     container: _Element,
     tag: _StartTag,
     lines: Sequence[Tuple[int, str]],
@@ -1336,13 +1374,42 @@ def _keep_previous(destination: Path) -> Optional[str]:
     return str(backup)
 
 
+def _spliced(
+    data: _Source, ordered: Sequence[Tuple[int, int, bytes]]
+) -> Iterator[bytes]:
+    """The source with each edit in place of the span it replaces, in pieces.
+
+    ``ordered`` is sorted by start. The unchanged stretches between edits are
+    cut into :data:`_WRITE_CHUNK_BYTES` pieces, so no piece is the size of the
+    file.
+    """
+    cursor = 0
+    for start, end, replacement in ordered:
+        if start < cursor:  # pragma: no cover - impossible by construction
+            raise AssertionError("overlapping edits in one document")
+        yield from _pieces(data, cursor, start)
+        yield replacement
+        cursor = end
+    yield from _pieces(data, cursor, len(data))
+
+
+def _pieces(data: _Source, start: int, stop: int) -> Iterator[bytes]:
+    """``data[start:stop]`` in pieces of at most :data:`_WRITE_CHUNK_BYTES`."""
+    for at in range(start, stop, _WRITE_CHUNK_BYTES):
+        yield data[at : min(at + _WRITE_CHUNK_BYTES, stop)]
+
+
 def _write_atomically(
-    data: bytes,
+    data: _Source,
     edits: List[Tuple[int, int, bytes]],
     destination_path: str,
     should_cancel: Optional[CancelCheck] = None,
 ) -> Optional[str]:
     """Splice the edits into ``data`` and write via a temp file in the same dir.
+
+    The output is streamed into the temp file (:func:`_spliced`) rather than
+    built first: building it held the source, the output and a copy of the
+    output, about three times the file.
 
     A file already at the destination is copied to a dated backup first
     (:func:`_keep_previous`), after the new file is complete and the last stop
@@ -1365,17 +1432,10 @@ def _write_atomically(
     parent.mkdir(parents=True, exist_ok=True)
 
     ordered = sorted(edits, key=lambda edit: (edit[0], edit[1]))
-    out = bytearray()
-    cursor = 0
-    for start, end, replacement in ordered:
-        if start < cursor:  # pragma: no cover - impossible by construction
-            raise AssertionError("overlapping edits in one document")
-        out += data[cursor:start]
-        out += replacement
-        cursor = end
-    out += data[cursor:]
 
-    temp_path = stage_temp(destination, bytes(out))
+    # The spliced document is handed over a chunk at a time, so the output is
+    # never held: memory is a chunk however large the source is.
+    temp_path = stage_temp(destination, _spliced(data, ordered))
     try:
         if should_cancel is not None and should_cancel():
             raise ExportCancelled(PHASE_WRITE)
