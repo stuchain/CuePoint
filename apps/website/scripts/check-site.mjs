@@ -17,7 +17,11 @@
  *   lang-attr (<html lang> is the page's language: its folder's hreflang, English elsewhere), hreflang (a translated page
  *   lists every version and x-default, the same on each version, itself included, each pointing at a page that exists),
  *   translation-missing (every English translated page has its version in every language, and no other page is in a
- *   language's folder). The three run only when `locales` is given (the CLI reads them from src/i18n/locales.ts).
+ *   language's folder), sitemap-alternates (a translated page's sitemap entry lists the same alternates as the page),
+ *   og-locale (og:locale and og:locale:alternate on a translated page), link-language (a link on a translated page
+ *   that goes to the English version of a page that has a translation), jsonld-locale (inLanguage, no WebSite, and
+ *   the breadcrumb's addresses in the page's language). They run only when `locales` is given (the CLI reads them
+ *   from src/i18n/locales.ts).
  *
  * Every result has a `severity`: "error" (the CLI exits 1) or "warning" (printed, never fails).
  *
@@ -38,6 +42,9 @@ export const TITLE_MAX = 60;
 export const EMAIL_LIKE = /[\w.+-]+@[\w-]+\.[a-z]{2,}/g;
 export const DESCRIPTION_MIN = 70;
 export const DESCRIPTION_MAX = 160;
+
+/** The schema.org types that are works with a language: a translated page names its own (src/layouts/Page.astro). */
+export const LANGUAGE_TYPES = new Set(["SoftwareApplication", "FAQPage", "WebPage", "TechArticle", "BlogPosting"]);
 
 /**
  * Structured data requirements, per type.
@@ -210,6 +217,11 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
     const found = otherLocales.find((l) => file.startsWith(`${l.code}/`));
     return found ? file.slice(found.code.length + 1) : file;
   };
+  /** An address's path (after the base) without its language's folder: "de/faq/" -> "faq/". */
+  const splitFolder = (path) => {
+    const found = otherLocales.find((l) => path.startsWith(`${l.code}/`));
+    return found ? path.slice(found.code.length + 1) : path;
+  };
   const origin = new URL(siteUrl).origin;
   const results = [];
   const seen = new Set();
@@ -288,6 +300,8 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
 
   const titles = new Map();
   const descriptions = new Map();
+  /** For each address in the sitemap, its xhtml:link alternates: hreflang -> href (a repeat is kept as a list). */
+  const sitemapAlternates = new Map();
   const sitemapUrls = readSitemap();
 
   // Per page
@@ -512,6 +526,8 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
       const folder = otherLocales.find((l) => file.startsWith(`${l.code}/`));
       if (folder && !isTranslatedPath(pagePath(stripLocale(file)))) {
         report("translation-missing", file, `a page in the ${folder.code} folder whose English page is not one of the translated pages`);
+      } else if (folder && !pages.has(stripLocale(file))) {
+        report("translation-missing", file, `a page in the ${folder.code} folder with no English page at /${pagePath(stripLocale(file))}`);
       }
     }
     // the set each version must list
@@ -522,7 +538,9 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
       for (const el of elements(root)) {
         if (el.rawTagName.toLowerCase() !== "link" || !relTokens(el).includes("alternate")) continue;
         const tag = attr(el, "hreflang");
-        if (tag !== undefined) alternates.set(tag, (attr(el, "href") ?? "").trim());
+        if (tag === undefined) continue;
+        if (alternates.has(tag)) report("hreflang", file, `hreflang="${tag}" is listed twice`);
+        alternates.set(tag, (attr(el, "href") ?? "").trim());
       }
       if (!isTranslatedPath(english)) {
         if (alternates.size > 0) report("hreflang", file, "the page is not translated but lists hreflang alternates");
@@ -539,6 +557,85 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
       }
       for (const tag of alternates.keys()) {
         if (!want.has(tag)) report("hreflang", file, `hreflang="${tag}" is not one of the site's languages`);
+      }
+      checkTranslatedPage(file, root, english, alternates);
+    }
+  }
+
+  /** What a translated page says about its language besides hreflang: the sitemap, Open Graph, its links and its JSON-LD. */
+  function checkTranslatedPage(file, root, english, alternates) {
+    const self = locales.find((l) => l.code === (otherLocales.find((o) => file.startsWith(`${o.code}/`))?.code ?? DEFAULT_LOCALE));
+    const hrefOf = (path) => `${siteUrl}${path}`;
+
+    // the sitemap lists the same alternates as the page
+    if (sitemapUrls) {
+      const listed = sitemapAlternates.get(pageAddress(file));
+      if (listed === undefined) {
+        // not in the sitemap at all: sitemap-missing says so
+      } else {
+        const fromSitemap = new Map([...listed].map(([tag, hrefs]) => [tag, hrefs.join(" ")]));
+        for (const [tag, href] of alternates) {
+          if (fromSitemap.get(tag) !== href) {
+            report("sitemap-alternates", file, `the sitemap's entry for the page ${fromSitemap.has(tag) ? `says ${tag} is ${fromSitemap.get(tag)}, the page says ${href}` : `has no ${tag} alternate, the page has ${href}`}`);
+          }
+        }
+        for (const tag of fromSitemap.keys()) {
+          if (!alternates.has(tag)) report("sitemap-alternates", file, `the sitemap's entry for the page has a ${tag} alternate the page does not have`);
+        }
+      }
+    }
+
+    // Open Graph: the page's own locale, and every other language as an alternate
+    const metas = [...elements(root)].filter((el) => el.rawTagName.toLowerCase() === "meta");
+    const og = (key) => metas.filter((el) => (attr(el, "property") ?? "").toLowerCase() === key).map((el) => (attr(el, "content") ?? "").trim());
+    const own = og("og:locale");
+    if (own.length !== 1 || own[0] !== self.ogLocale) report("og-locale", file, `og:locale is ${own.length === 0 ? "missing" : `"${own.join('", "')}"`} but the page is in ${self.ogLocale}`);
+    const others = og("og:locale:alternate").sort();
+    const wantOthers = locales.filter((l) => l.code !== self.code).map((l) => l.ogLocale).sort();
+    if (others.join(" ") !== wantOthers.join(" ")) report("og-locale", file, `og:locale:alternate is [${others.join(", ")}], expected [${wantOthers.join(", ")}]`);
+
+    // a link on a translated page goes to the page in the page's language; leaving it is for a page with no translation
+    for (const [tag, name, value, el] of urlRefs(root)) {
+      if (tag !== "a" || name !== "href" || attr(el, "hreflang") !== undefined) continue;
+      const found = resolveInternal(value, file);
+      if (!found?.target || !found.target.endsWith(".html")) continue;
+      const targetPath = pagePath(found.target);
+      if (self.code !== DEFAULT_LOCALE && isTranslatedPath(targetPath) && !otherLocales.some((o) => found.target.startsWith(`${o.code}/`))) {
+        report("link-language", file, `links to the English page /${targetPath} which has a ${self.code} version at /${localizedPath(self.code, targetPath)}: "${value.trim()}"`);
+      }
+    }
+
+    // JSON-LD: the page's language on a work, no WebSite (the whole site, on the English root), the trail in the language
+    for (const el of elements(root)) {
+      if (el.rawTagName.toLowerCase() !== "script" || (attr(el, "type") ?? "").toLowerCase() !== "application/ld+json") continue;
+      let data;
+      try {
+        data = JSON.parse(el.rawText);
+      } catch {
+        continue; // jsonld-parse reports it
+      }
+      for (const item of asArray(data)) {
+        const type = item?.["@type"];
+        if (type === "WebSite" && (file !== "index.html" || item.inLanguage !== undefined)) {
+          report("jsonld-locale", file, file === "index.html" ? "the WebSite carries inLanguage, but it stands for every language" : "the page carries a WebSite: only the English home page does");
+        } else if (LANGUAGE_TYPES.has(type) && item.inLanguage !== self.hreflang) {
+          report("jsonld-locale", file, `${type} has inLanguage ${JSON.stringify(item.inLanguage ?? null)} but the page is in ${self.hreflang}`);
+        }
+        if (type === "BreadcrumbList") {
+          const crumbs = asArray(item.itemListElement);
+          for (const crumb of crumbs) {
+            const url = typeof crumb.item === "string" ? crumb.item : crumb.item?.["@id"];
+            if (typeof url !== "string" || !url.startsWith(siteUrl)) continue;
+            const path = url.slice(siteUrl.length);
+            const englishPath = splitFolder(path);
+            if (isTranslatedPath(englishPath) && path !== localizedPath(self.code, englishPath)) {
+              report("jsonld-locale", file, `the breadcrumb "${crumb.name}" points at ${url}, expected ${hrefOf(localizedPath(self.code, englishPath))}`);
+            }
+          }
+          const last = crumbs.at(-1);
+          const lastUrl = typeof last?.item === "string" ? last.item : last?.item?.["@id"];
+          if (typeof lastUrl === "string" && lastUrl !== pageAddress(file)) report("jsonld-locale", file, `the last breadcrumb is ${lastUrl}, not the page's own address`);
+        }
       }
     }
   }
@@ -676,6 +773,17 @@ export function checkSite(distDir, { base, siteUrl, preview, today = new Date().
       if (!path || !isFile(path)) {
         report("sitemap-missing", "sitemap-index.xml", `the index lists ${loc}, which is not in the build`);
         continue;
+      }
+      const sitemapDoc = parse(readFileSync(path, "utf8"));
+      for (const entry of [...elements(sitemapDoc)].filter((el) => el.rawTagName.toLowerCase() === "url")) {
+        const loc = [...elements(entry)].find((el) => el.rawTagName.toLowerCase() === "loc")?.text.trim();
+        if (!loc) continue;
+        const found = new Map();
+        for (const link of [...elements(entry)].filter((el) => el.rawTagName.toLowerCase() === "xhtml:link")) {
+          const tag = attr(link, "hreflang") ?? "";
+          found.set(tag, [...(found.get(tag) ?? []), (attr(link, "href") ?? "").trim()]);
+        }
+        sitemapAlternates.set(loc, found);
       }
       for (const url of locs(readFileSync(path, "utf8"))) {
         urls.add(url);
