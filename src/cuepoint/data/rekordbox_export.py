@@ -780,6 +780,23 @@ def _document_encoding(data: _Source) -> str:
     return "utf-8"
 
 
+#: The attributes of a ``COLLECTION`` track that :func:`_identity` and
+#: :func:`_changes_for` read; the scan keeps these and no others.
+_TRACK_ATTRS_READ = frozenset(
+    {
+        "TrackID",
+        "ID",
+        "Key",
+        ATTR_KEY,
+        ATTR_BPM,
+        ATTR_GENRE,
+        ATTR_LABEL,
+        ATTR_YEAR,
+        ATTR_RATING,
+    }
+)
+
+
 def _scan_document(data: _Source) -> _Scan:
     """One parse, answering both halves of the export.
 
@@ -798,7 +815,11 @@ def _scan_document(data: _Source) -> _Scan:
 
     def start(name: str, attrs: Dict[str, str]) -> None:
         if name == "TRACK" and stack and stack[-1]["name"] == "COLLECTION":
-            scan.tracks.append((parser.CurrentByteIndex, dict(attrs)))
+            # Only what the patch reads of a track: its identity and the fields it
+            # may change. Every attribute of every track held here was most of
+            # the export's memory on a library of hundreds of thousands.
+            wanted = {n: v for n, v in attrs.items() if n in _TRACK_ATTRS_READ}
+            scan.tracks.append((parser.CurrentByteIndex, wanted))
         stack.append(
             {
                 "name": name,
