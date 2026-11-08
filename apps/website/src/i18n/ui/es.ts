@@ -44,10 +44,10 @@ const es: UiStrings = {
     help: "Ayuda",
     legal: "Aviso legal",
     tagline: "Una app de escritorio gratuita que ordena tu biblioteca de Rekordbox.",
-    legalLine: "© {year} {publisher}. {site} es software libre para DJs.",
+    legalLine: "© {year} {publisher}. {site} es software gratuito para DJs.",
   },
   appNote: "La app está en inglés. Las áreas como Clean, Library y Keys se nombran aquí exactamente como las nombra la app.",
-  primaryAction: "Avísame del 1.0",
+  primaryAction: "Avísame de la 1.0",
   primaryActionShort: "Avísame",
   downloadLabel: {
     neutral: "Descargar",
@@ -95,7 +95,7 @@ const es: UiStrings = {
     listTitle: "Las funciones",
     compareTitle: "Comparado con otras herramientas",
     compareIntro:
-      "¿No estás seguro de que CuePoint sea la herramienta adecuada? Estas páginas lo ponen junto a otras, con cada dato de la otra herramienta enlazado a su propia página y con fecha.",
+      "¿Dudas si CuePoint es la herramienta adecuada? Estas páginas lo ponen junto a otras, con cada dato de la otra herramienta enlazado a su propia página y con fecha.",
     compareRow: "CuePoint y {name}",
     getTitle: "Consigue CuePoint",
     howTitle: "Cómo ayuda CuePoint: {name}",
@@ -119,10 +119,10 @@ const es: UiStrings = {
     listTitle: "Las comparaciones",
     rowName: "CuePoint y {name}",
     howTitle: "Cómo se escriben estas páginas",
-    how1: "Cada dato sobre otra herramienta enlaza la página de esa herramienta donde se leyó, e indica la fecha en que la leímos.",
+    how1: "Cada dato sobre otra herramienta enlaza a la página de esa herramienta donde se leyó, e indica la fecha en que la leímos.",
     how2: "Cada página dice lo que CuePoint no hace.",
     how3: "Las herramientas cambian. Estas páginas se revisaron por última vez el {date}. Si algo está desactualizado, [avísanos](contact) y lo corregimos.",
-    sideTitle: "Lado a lado",
+    sideTitle: "Frente a frente",
     caption: "CuePoint y {name}, tema por tema",
     topic: "Tema",
     source: "Fuente: {link}, leída el {date}.",
@@ -161,9 +161,9 @@ const es: UiStrings = {
         "Tu navegador no dice qué chip tiene tu Mac, así que esta es la versión para Apple silicon (M1 y posteriores). [¿Un Mac con Intel?](all) [Qué esperar](macos).",
       macIntel: "Para Macs con chip Intel. [¿Un Mac con Apple silicon?](all) [Qué esperar](macos).",
       linux: "El AppImage para Linux de 64 bits. [Primero hazlo ejecutable](linux).",
-      linuxArm: "La versión de CuePoint para Linux es para computadoras Intel y AMD de 64 bits. No hay versión para Arm.",
+      linuxArm: "La versión de CuePoint para Linux es para equipos Intel y AMD de 64 bits. No hay versión para Arm.",
       unknown: "No pudimos saber qué sistema usas. Elige el tuyo en [la lista de abajo](all).",
-      mobile: "CuePoint funciona en Windows, macOS y Linux. Abre esta página en tu computadora para descargarlo.",
+      mobile: "CuePoint funciona en Windows, macOS y Linux. Abre esta página en tu equipo para descargarlo.",
     },
     allTitle: "Todas las descargas",
     allAsideBefore: "Todos los archivos de la versión {version}",
@@ -173,7 +173,7 @@ const es: UiStrings = {
       "windows-x64": { title: "Windows", detail: "Instalador para Windows 10 o más reciente, de 64 bits" },
       "macos-arm64": { title: "Mac con Apple silicon", detail: "Imagen de disco para M1 y posteriores" },
       "macos-x64": { title: "Mac con Intel", detail: "Imagen de disco para Macs con chip Intel" },
-      "linux-x64": { title: "Linux", detail: "AppImage para computadoras Intel y AMD de 64 bits" },
+      "linux-x64": { title: "Linux", detail: "AppImage para equipos Intel y AMD de 64 bits" },
     },
     checksum: "Checksum SHA-256",
     downloadButton: "Descargar",
@@ -191,19 +191,19 @@ const es: UiStrings = {
     windowsTitle: "Windows",
     windows: {
       s1: "Ejecuta el instalador que descargaste.",
-      s2: "Tu navegador puede preguntar si quieres conservar el archivo. Elige conservarlo (en Edge, **Keep** y luego **Keep anyway**).",
-      s3: "Windows SmartScreen puede decir **Windows protected your PC**. Elige **More info** y luego **Run anyway**.",
+      s2: "Tu navegador puede preguntar si quieres conservar el archivo. Elige conservarlo (en Edge, **Conservar** y luego **Conservar de todos modos**).",
+      s3: "Windows SmartScreen puede decir **Windows protegió su PC**. Elige **Más información** y luego **Ejecutar de todas formas**.",
       updates:
-        "Eso lo haces una sola vez. Después CuePoint encuentra las versiones nuevas por sí mismo y las descarga en segundo plano. Cuando una está lista, la barra de estado te lo dice: elige **Restart now** para instalarla y volver, o **Later** para instalarla la próxima vez que cierres.",
+        "Eso lo haces una sola vez. Después CuePoint encuentra las versiones nuevas por sí mismo y las descarga en segundo plano. Cuando una está lista, la barra de estado te lo dice: elige **Restart now** para instalarla y volver, o **Later** para instalarla la próxima vez que cierres la app.",
     },
     macTitle: "Mac",
     mac: {
-      s1: "Abre la imagen de disco, arrastra CuePoint a **Applications** y ábrelo desde ahí.",
-      s2: "Si tu Mac dice que CuePoint está dañado, o **\"CuePoint\" Not Opened** porque Apple no pudo verificarlo, es porque la app no está firmada. Ejecuta esto en Terminal y vuelve a abrir CuePoint:",
+      s1: "Abre la imagen de disco, arrastra CuePoint a **Aplicaciones** y ábrelo desde ahí.",
+      s2: "Si tu Mac dice que CuePoint está dañado, o **No se ha abierto “CuePoint”** porque Apple no pudo verificarlo, es porque la app no está firmada. Ejecuta esto en Terminal y vuelve a abrir CuePoint:",
       terminalLabel: "Comando de Terminal",
-      s3: "¿Sigue bloqueado tras un intento? Abre **System Settings**, luego **Privacy & Security**, baja y elige **Open Anyway** junto a CuePoint.",
+      s3: "¿Sigue bloqueado tras un intento? Abre **Ajustes del Sistema**, luego **Privacidad y seguridad**, baja y elige **Abrir igualmente** junto a CuePoint.",
       updates:
-        "Eso lo haces una sola vez. Después CuePoint encuentra las versiones nuevas por sí mismo y las descarga en segundo plano. Cuando una está lista, la barra de estado te lo dice: elige **Restart now** para instalarla y volver, o **Later** para instalarla la próxima vez que cierres. Si CuePoint no puede reemplazarse donde está, por ejemplo cuando se ejecuta desde la imagen de disco, muestra un enlace **Download** en su lugar.",
+        "Eso lo haces una sola vez. Después CuePoint encuentra las versiones nuevas por sí mismo y las descarga en segundo plano. Cuando una está lista, la barra de estado te lo dice: elige **Restart now** para instalarla y volver, o **Later** para instalarla la próxima vez que cierres la app. Si CuePoint no puede reemplazarse donde está, por ejemplo cuando se ejecuta desde la imagen de disco, muestra un enlace **Download** en su lugar.",
     },
     linuxTitle: "Linux",
     linux: {
@@ -217,9 +217,9 @@ const es: UiStrings = {
       "CuePoint todavía no se actualiza solo. Para tener una versión nueva, descarga el instalador nuevo e instálalo encima del anterior. Tu biblioteca se queda donde está.",
     comingTitle: "CuePoint 1.0 está en camino",
     comingLead:
-      "CuePoint es gratis, y la primera versión completa todavía no ha salido. Cuando salga, la descarga para tu computadora estará aquí.",
+      "CuePoint es gratis, y la primera versión completa todavía no ha salido. Cuando salga, la descarga para tu equipo estará aquí.",
     comingBody:
-      "Eso abre la página de CuePoint en GitHub. Elige **Watch**, luego **Custom**, luego **Releases**, y GitHub te avisa cuando se publique 1.0.",
+      "Eso abre la página de CuePoint en GitHub. Elige **Watch**, luego **Custom**, luego **Releases**, y GitHub te avisa cuando se publique la 1.0.",
     requirementsTitle: "En qué funciona CuePoint",
     reqWindows: "**Windows:** Windows 10 o más reciente, de 64 bits (x64).",
     reqMac:
@@ -229,7 +229,7 @@ const es: UiStrings = {
     reqRekordbox: "CuePoint también necesita tu colección de Rekordbox, exportada desde Rekordbox como archivo XML.",
     testBuildsTitle: "¿Quieres probar una versión de prueba?",
     testBuilds:
-      "Las versiones de prueba son versiones tempranas de 1.0 y pueden estar poco pulidas. Están en [GitHub Releases](releases) para quien quiera probar una.",
+      "Las versiones de prueba son versiones tempranas de la 1.0 y pueden estar poco pulidas. Están en [GitHub Releases](releases) para quien quiera probar una.",
   },
 };
 

@@ -27,9 +27,9 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     name: "Lexicon",
     maker: "rekordcloud",
     hosts: ["lexicondj.com", "rekord.cloud"],
-    title: "CuePoint y Lexicon, comparados | CuePoint",
+    title: "CuePoint frente a Lexicon: comparativa | CuePoint",
     description:
-      "CuePoint y Lexicon (de rekordcloud) lado a lado: qué hace cada uno con tu biblioteca de DJ, con qué apps de DJ funcionan y qué no hace CuePoint.",
+      "CuePoint y Lexicon (de rekordcloud) frente a frente: qué hace cada uno con tu biblioteca de DJ, con qué apps de DJ funcionan y qué no hace CuePoint.",
     heading: "CuePoint y Lexicon (rekordcloud)",
     intro:
       "Los dos te ayudan a cuidar una biblioteca de DJ. Cada afirmación sobre Lexicon de abajo sale de sus propias páginas públicas, con la fecha en que las leímos. Lo que hace CuePoint sale de su guía de usuario.",
@@ -41,11 +41,11 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
           "La página de inicio de rekordcloud lista Lexicon, TrackHack, OpenKeyScan y SonoVault como sus productos. Si buscaste rekordcloud, Lexicon es su suite de gestión de bibliotecas para DJs.",
           REKORDCLOUD,
         ),
-        cuepoint: "CuePoint es gratis y de código abierto, con la licencia Apache 2.0.",
+        cuepoint: "CuePoint es gratis y de código abierto, bajo la licencia Apache 2.0.",
       },
       {
         topic: "Qué es",
-        other: fact("La página de inicio de Lexicon dice: “Organize, clean and upgrade your DJ library.”", LEXICON_HOME),
+        other: fact("La página de inicio de Lexicon dice: “Organize, clean and upgrade your DJ library.”.", LEXICON_HOME),
         cuepoint:
           "CuePoint cruza tus tracks de Rekordbox con Beatport, completa keys y otros valores, encuentra duplicados y archivos perdidos, y devuelve el resultado a Rekordbox.",
       },
@@ -85,16 +85,16 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
         cuepoint: "CuePoint es solo una app de escritorio.",
       },
       {
-        topic: "Computadoras",
+        topic: "Equipos",
         other: fact("Lexicon dice que funciona en Windows y macOS.", LEXICON_HOME),
         // support-policy.md: Windows 10+ (x64), macOS 14+ on Apple Silicon (15+ on Intel, DEC-296), Linux experimental
         cuepoint:
-          "CuePoint funciona en Windows y en Macs con Apple Silicon, y hay una versión experimental para Linux. La página Download dice qué hay disponible.",
+          "CuePoint funciona en Windows y en Macs con Apple Silicon, y hay una versión experimental para Linux. La página de descarga dice qué hay disponible.",
       },
       {
         topic: "Precio",
         other: fact(
-          "La página de precios de Lexicon muestra un plan Free con conversión de bibliotecas, Essential desde $10.49 al mes o $249 de por vida, y Ultimate desde $20.99 al mes o $499 de por vida.",
+          "La página de precios de Lexicon muestra un plan Free con conversión de bibliotecas, Essential desde 10,49 USD al mes o 249 USD de por vida, y Ultimate desde 20,99 USD al mes o 499 USD de por vida.",
           LEXICON_PRICING,
         ),
         cuepoint: "CuePoint es gratis.",
@@ -109,16 +109,16 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     chooseOther:
       "Si usas más de una app de DJ, o quieres pasar una biblioteca de una a otra, Lexicon está hecho para eso y CuePoint no.",
     chooseCuePoint:
-      "Si pinchas con Rekordbox y quieres comprobar sus keys y otros valores con Beatport, con cada coincidencia revisable y sin borrar nada, CuePoint está hecho para eso. También puedes usar los dos.",
+      "Si tocas con Rekordbox y quieres comprobar sus keys y otros valores con Beatport, con cada coincidencia revisable y sin borrar nada, CuePoint está hecho para eso. También puedes usar los dos.",
   },
   {
     slug: "mixed-in-key",
     name: "Mixed In Key",
     maker: "Mixed In Key",
     hosts: ["mixedinkey.com"],
-    title: "CuePoint y Mixed In Key, comparados | CuePoint",
+    title: "CuePoint frente a Mixed In Key: comparativa | CuePoint",
     description:
-      "CuePoint y Mixed In Key lado a lado: de dónde saca cada uno el key de un track, qué escriben en Rekordbox, la energy, los cue points y lo que CuePoint no tiene.",
+      "CuePoint y Mixed In Key frente a frente: de dónde sale el key, qué escriben en Rekordbox, la energy, los cue points y lo que CuePoint no tiene.",
     heading: "CuePoint y Mixed In Key",
     intro:
       "Los dos pueden darle a tus tracks un key con el que mezclar. Cada afirmación sobre Mixed In Key de abajo sale de sus propias páginas públicas, con la fecha en que las leímos. Lo que hace CuePoint sale de su guía de usuario.",
@@ -127,7 +127,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "Qué es",
         other: fact(
-          "La página de inicio de Mixed In Key describe Mixed In Key así: “Discover the key and BPM of any track to create harmonically perfect DJ sets.”",
+          "La página de inicio de Mixed In Key describe Mixed In Key así: “Discover the key and BPM of any track to create harmonically perfect DJ sets.”.",
           MIK_HOME,
         ),
         cuepoint:
@@ -136,7 +136,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "De dónde sale el key",
         other: fact(
-          "Mixed In Key 11 dice “Analyze your music collection”. Llama a su detección de keys “the world's most precise key-detection technology.”",
+          "Mixed In Key 11 dice “Analyze your music collection”. Llama a su detección de keys “the world's most precise key-detection technology.”.",
           MIK_MORE,
         ),
         cuepoint:
@@ -145,7 +145,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "Energy",
         other: fact(
-          "La página de inicio de Mixed In Key dice que sus valoraciones Energy Level “show you how danceable each track is.”",
+          "La página de inicio de Mixed In Key dice que sus valoraciones Energy Level “show you how danceable each track is.”.",
           MIK_HOME,
         ),
         cuepoint: "CuePoint no tiene valoración de energy.",
@@ -153,7 +153,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "Puntos de cue",
         other: fact(
-          "Mixed In Key 11 dice que “will give you up to 8 automatic Cue Points per track.”",
+          "Mixed In Key 11 dice que “will give you up to 8 automatic Cue Points per track.”.",
           MIK_MORE,
         ),
         cuepoint: "CuePoint no crea cue points. Conserva los que tiene Rekordbox.",
@@ -170,11 +170,11 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "Puntos de cue en Rekordbox",
         other: fact(
-          "La guía de Mixed In Key dice que los cue points no forman parte de recargar tags: “Cue Points require the Rekordbox XML import workflow.”",
+          "La guía de Mixed In Key dice que los cue points no forman parte de recargar tags: “Cue Points require the Rekordbox XML import workflow.”.",
           MIK_WORKFLOW,
         ),
         cuepoint:
-          "La exportación de CuePoint es una copia parcheada del XML que importaste, así que los cues y beat grids que escribió Rekordbox pasan exactamente como estaban.",
+          "La exportación de CuePoint es una copia retocada del XML que importaste, así que los cues y beat grids que escribió Rekordbox pasan exactamente como estaban.",
       },
       {
         topic: "Dónde se ven los resultados en Rekordbox",
@@ -208,16 +208,16 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
     chooseOther:
       "Si tus tracks no están en Beatport, o quieres un key calculado a partir del sonido mismo, además de valoraciones de energy y cue points automáticos, Mixed In Key hace eso y CuePoint no.",
     chooseCuePoint:
-      "Si tus tracks están en Beatport y quieres comprobar con Rekordbox el key, tempo, género, sello y año de Beatport, con cada coincidencia revisable, CuePoint lo hace gratis. Los dos no se estorban, así que puedes usar ambos.",
+      "Si tus tracks están en Beatport y quieres comprobar con Rekordbox el key, tempo, género, sello y año de Beatport, con cada coincidencia revisable, CuePoint lo hace gratis. No son incompatibles, así que puedes usar ambos.",
   },
   {
     slug: "openkeyscan",
     name: "OpenKeyScan",
     maker: "rekordcloud",
     hosts: ["openkeyscan.com", "rekord.cloud"],
-    title: "CuePoint y OpenKeyScan, comparados | CuePoint",
+    title: "CuePoint frente a OpenKeyScan: comparativa | CuePoint",
     description:
-      "CuePoint y OpenKeyScan de rekordcloud lado a lado: cómo saca cada uno el key de un track, dónde funciona sin conexión, qué escribe y qué no hace CuePoint.",
+      "CuePoint y OpenKeyScan de rekordcloud frente a frente: cómo saca cada uno el key, dónde funciona sin conexión, qué escribe y qué no hace CuePoint.",
     heading: "CuePoint y OpenKeyScan (rekordcloud)",
     intro:
       "Los dos pueden darle un key a un track. Cada afirmación sobre OpenKeyScan de abajo sale de sus propias páginas públicas o de las de su creador, con la fecha en que las leímos. Lo que hace CuePoint sale de su guía de usuario.",
@@ -229,11 +229,11 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
           "La página de inicio de rekordcloud lista OpenKeyScan, junto con Lexicon, TrackHack y SonoVault, entre sus productos, y llama a OpenKeyScan una app de escritorio gratuita y de código abierto.",
           REKORDCLOUD,
         ),
-        cuepoint: "CuePoint es gratis y de código abierto, con la licencia Apache 2.0.",
+        cuepoint: "CuePoint es gratis y de código abierto, bajo la licencia Apache 2.0.",
       },
       {
         topic: "Qué es",
-        other: fact("La página de OpenKeyScan lo describe como “a free, open-source key detector.”", OKS_HOME),
+        other: fact("La página de OpenKeyScan lo describe como “a free, open-source key detector.”.", OKS_HOME),
         cuepoint:
           "CuePoint es una app de escritorio gratuita y de código abierto que hace más que keys: cruza tracks con Beatport, encuentra duplicados y archivos perdidos, descubre música nueva y planifica sets.",
       },
@@ -248,14 +248,14 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       },
       {
         topic: "Sin conexión",
-        other: fact("OpenKeyScan dice que funciona “completely offline on your machine.”", OKS_HOME),
+        other: fact("OpenKeyScan dice que funciona “completely offline on your machine.”.", OKS_HOME),
         cuepoint:
-          "Tu biblioteca se queda en tu computadora. CuePoint se conecta a internet para leer Beatport (cruce, portadas, Discover) y, a menos que lo desactives, para enviar informes de errores.",
+          "Tu biblioteca se queda en tu equipo. CuePoint se conecta a internet para leer Beatport (cruce, portadas, Discover) y, a menos que lo desactives, para enviar informes de errores.",
       },
       {
         topic: "Qué escribe",
         other: fact(
-          "rekordcloud dice que OpenKeyScan “writes results directly into your files for Rekordbox, Serato and Traktor.”",
+          "rekordcloud dice que OpenKeyScan “writes results directly into your files for Rekordbox, Serato and Traktor.”.",
           REKORDCLOUD,
         ),
         cuepoint:
@@ -263,7 +263,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       },
       {
         topic: "Precio",
-        other: fact("OpenKeyScan dice que es “100% free, forever.”", OKS_HOME),
+        other: fact("OpenKeyScan dice que es “100% free, forever.”.", OKS_HOME),
         cuepoint: "CuePoint es gratis.",
       },
     ],
