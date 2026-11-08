@@ -28,6 +28,7 @@ export interface LocaleInfo {
 export const LOCALES = [
   { code: "en", hreflang: "en", ogLocale: "en_US", name: "English", short: "EN" },
   { code: "de", hreflang: "de", ogLocale: "de_DE", name: "Deutsch", short: "DE" },
+  { code: "es", hreflang: "es", ogLocale: "es_ES", name: "Español", short: "ES" },
 ] as const satisfies readonly LocaleInfo[];
 
 export type LocaleCode = (typeof LOCALES)[number]["code"];
