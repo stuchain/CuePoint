@@ -132,8 +132,19 @@ export const UNDERSCORE = {
   bpm: 100,
   shots: SHORT.shots.map((s) => ({ ...s, bars: UNDERSCORE_BARS[s.id], ...(UNDERSCORE_SPANS[s.id] ? { span: UNDERSCORE_SPANS[s.id] } : {}) })),
 };
+/**
+ * The LinkedIn cut on sub_clair's "Technology" (Pixabay, 125 BPM, a bar is 1.92 s): the short edit bar for bar (the bars
+ * are within 4 % of Water's), three spans a little longer. Rendered with --start=62.72 the track's breakdown sits under the
+ * opening, Library and Player and its return lands on the cut into Clean.
+ */
+const TECHNOLOGY_SPANS = { library: [0.0, 10.87], player: [0.8, 8.7], settings: [0.3, 7.7] };
+export const TECHNOLOGY = {
+  ...SHORT,
+  bpm: 125,
+  shots: SHORT.shots.map((s) => ({ ...s, ...(TECHNOLOGY_SPANS[s.id] ? { span: TECHNOLOGY_SPANS[s.id] } : {}) })),
+};
 /** The edits that replace the full tour, by their ?edit= name. */
-export const EDITS = { story: STORY, short: SHORT, underscore: UNDERSCORE };
+export const EDITS = { story: STORY, short: SHORT, underscore: UNDERSCORE, technology: TECHNOLOGY };
 /** Seconds of one bar of an edit's music. */
 export const barOf = (edit) => (60 / (EDITS[edit]?.bpm ?? BPM)) * 4;
 

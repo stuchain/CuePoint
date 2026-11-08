@@ -82,7 +82,8 @@ An 85 s tour of every page, from real recordings of the app, in 4:5 (1080 x 1350
    `demo/shots.js`. `--edit=underscore` is the short edit re-budgeted to 25 bars for Musinova's "Minimal
    Techno Electronic Underscore" (Pixabay, 100 BPM; an edit may name its own `bpm`, and half bars are allowed
    since two beats still land on a beat): `--track=<that mp3> --start=33.42` puts the track's return on the
-   cut into Clean and its own fade-out under the end card.
+   cut into Clean and its own fade-out under the end card. `--edit=technology` is the short edit bar for bar on
+   sub_clair's "Technology" (Pixabay, 125 BPM): `--track=<that mp3> --start=62.72` lands its return on Clean.
 
 `demo/shots.js` holds each shot: its caption, its length in bars (130 BPM), the stretch of its clip used and the
 moments in it that play at normal speed (`keep`: the clicks, the typing, things appearing). Nothing is cut: the

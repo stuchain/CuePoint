@@ -6,8 +6,9 @@
  *
  *   --format=portrait|wide|tall   one cut only (default all: 1080 x 1350 for LinkedIn and the Instagram feed, 1920 x 1080 for YouTube, 1080 x 1920 for Reels)
  *   --opening=a,b,c          which openings (default c, the problem first; a pull back from the live app, b logo build)
- *   --edit=story|short|underscore  the 30 s story edit, the 60 s short edit, or the 60 s cut on the 100 BPM
- *                            Underscore track (STORY, SHORT, UNDERSCORE in demo/shots.js)
+ *   --edit=story|short|underscore|technology  the 30 s story edit, the 60 s short edit, or that cut on the
+ *                            Underscore (100 BPM) or Technology (125 BPM) track (STORY, SHORT, UNDERSCORE,
+ *                            TECHNOLOGY in demo/shots.js)
  *   --stills=5,12.5          no video: PNGs at those seconds, out/demo/still-<format>-<opening>-<t>.png
  *   --track=<audio> --start=<s>  your own music under it; the file is named -PRIVATE and never committed
  *
