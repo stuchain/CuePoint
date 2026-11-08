@@ -76,6 +76,7 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
 - `bench_match_storage.py`: What storing 50,000 tracks' match attempts costs.
 - `bench_sets.py`: Phase 10 (Prepare/Sets) at 50,000 tracks.
 - `bench_marks.py`: Reading cue points and beat grids at 50,000 tracks.
+- `bench_rekordbox_xml.py`: Reading, importing and exporting a Rekordbox XML of several gigabytes (count, import, refresh preview, export), each operation in its own process, with time and peak RAM. By hand, not in CI (PYTHON-1H).
 - `bench_decoder.py`: The waveform decoder per format.
 - `bench_waveform_store.py`: The waveform store at a large library's size.
 - `bench_waveform_analysis.py`: The waveform analysis job.
