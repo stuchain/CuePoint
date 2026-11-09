@@ -1,0 +1,52 @@
+/* The five showcase films (pro-*.html): graphite, Inter, soft shadows, one violet for labels. */
+.stage { background: radial-gradient(110% 70% at 50% 30%, #1c1b22 0%, #0e0e12 60%, #09090b 100%); font-family: var(--data); }
+:root { --violet: #a48bff; --sub: #a9a9b3; --dim: #8a8a94; --line: #2c2c34; }
+.scene { position: absolute; inset: 0; display: none; overflow: hidden; background: radial-gradient(110% 70% at 50% 30%, #1c1b22 0%, #0e0e12 60%, #09090b 100%); }
+.eyebrow { font: 600 26px/1 var(--data); letter-spacing: 3px; text-transform: uppercase; color: var(--violet); }
+.head { font: 700 76px/1.06 var(--data); letter-spacing: -2.5px; margin-top: 22px; text-wrap: balance; }
+.sub { font: 400 34px/1.4 var(--data); color: var(--sub); margin-top: 22px; text-wrap: balance; }
+.top { position: absolute; left: 84px; right: 84px; top: 110px; }
+.box { position: absolute; left: 0; top: 0; overflow: hidden; background: #18181b; }
+.box img { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: block; }
+.box .after { clip-path: inset(0 0 0 100%); }
+.slider { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 24px rgba(255, 255, 255, 0.6); }
+.shade { position: absolute; inset: 0; background: linear-gradient(rgba(9, 9, 11, 0) 50%, rgba(9, 9, 11, 0.94) 84%); }
+.lower { position: absolute; left: 84px; right: 84px; bottom: 120px; }
+.lower .head { font-size: 60px; margin-top: 16px; }
+.mark { position: absolute; left: 84px; bottom: 60px; display: flex; gap: 14px; align-items: center; font: 600 26px var(--data); color: var(--dim); }
+.mark img { width: 34px; height: 34px; image-rendering: pixelated; border-radius: 6px; }
+.dots { position: absolute; right: 84px; bottom: 72px; display: flex; gap: 8px; }
+.dots i { width: 26px; height: 4px; background: #34343c; border-radius: 2px; }
+.dots i.on { background: var(--violet); }
+.say { position: absolute; left: 90px; right: 90px; top: 50%; transform: translateY(-50%); }
+.say div { font: 600 70px/1.15 var(--data); letter-spacing: -2px; text-wrap: balance; margin: 0.3em 0; }
+.say div.muted { color: var(--sub); }
+.say div.small { font-size: 34px; font-weight: 500; letter-spacing: 0; color: var(--sub); }
+.say div.sign { font-size: 36px; font-weight: 500; letter-spacing: 0; color: var(--violet); margin-top: 1.2em; }
+.bgpic { position: absolute; inset: 0; overflow: hidden; opacity: 0.22; filter: grayscale(1) blur(2px); }
+.bgpic img { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.layerbox { position: absolute; left: 84px; width: 912px; border: 1.5px solid #3a3a46; border-radius: 16px; background: #15151b; padding: 24px 28px; }
+.layerbox b { display: block; font: 600 34px var(--data); }
+.layerbox span { display: block; font: 400 25px/1.35 var(--data); color: #9a9aa6; margin-top: 8px; }
+.layerbox.small { width: 280px; padding: 20px 22px; }
+.layerbox.small b { font-size: 27px; }
+.wire { position: absolute; width: 2px; background: linear-gradient(var(--violet), #6d55c9); transform-origin: 0 0; }
+.wirelabel { position: absolute; font: 500 22px var(--data); color: var(--violet); }
+.rows { position: absolute; left: 84px; right: 84px; top: 250px; }
+.stat { border-top: 1px solid var(--line); padding: 36px 0; display: flex; align-items: baseline; gap: 28px; }
+.stat b { font: 700 70px/1 var(--data); letter-spacing: -2px; min-width: 410px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stat span { font: 400 32px/1.3 var(--data); color: var(--sub); }
+.centre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 90px; }
+.centre .icon { width: 128px; height: 128px; image-rendering: pixelated; border-radius: 24px; }
+.centre .name { font: 700 104px/1 var(--data); letter-spacing: -3px; margin-top: 40px; }
+.centre .line { font: 400 38px/1.4 var(--data); color: #c9c9d1; margin-top: 26px; max-width: 860px; text-wrap: balance; }
+.centre .url { font: 600 42px var(--data); margin-top: 56px; }
+.centre .git { font: 500 30px var(--data); color: var(--dim); margin-top: 16px; }
+.centre .by { font: 500 28px var(--data); color: var(--dim); margin-top: 40px; }
+.title .top { top: 170px; }
+.title .top img { width: 96px; height: 96px; image-rendering: pixelated; border-radius: 18px; }
+.title .head { font-size: 108px; margin-top: 40px; }
+.title .sub { font-size: 42px; color: #c9c9d1; }
+.doc .lower .time { font: 600 30px var(--data); color: var(--violet); font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.doc .lower .head { font-size: 54px; }
+.reveal { opacity: 0; }
