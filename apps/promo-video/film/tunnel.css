@@ -1,0 +1,6 @@
+/* Fast film 3, tunnel: one canvas that dives from window to window, scan lines and a vignette over it. */
+#cv { position: absolute; inset: 0; }
+.scan { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 5px); }
+.vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(85% 70% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.7) 100%); }
+.end { background: radial-gradient(80% 55% at 50% 42%, #24173f 0%, #0b0a10 75%); }
+.end .end__name { text-shadow: 0 0 40px rgba(145, 100, 246, 0.8); }

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CuePoint: slam</title>
+    <link rel="stylesheet" href="film.css" />
+    <link rel="stylesheet" href="slam.css" />
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute">
+      <filter id="whip0" x="-20%" y="0" width="140%" height="100%"><feGaussianBlur id="whipBlur0" stdDeviation="0 0" /></filter>
+      <filter id="whip1" x="-20%" y="0" width="140%" height="100%"><feGaussianBlur id="whipBlur1" stdDeviation="0 0" /></filter>
+    </svg>
+    <div class="stage" id="stage">
+      <div class="bg" id="bg"><div class="floor" id="floor"></div></div>
+      <div class="chips" id="chips"></div>
+      <div class="intro" id="intro">
+        <div class="intro__pic"><img id="introPic" src="frames/wipe-library-before.png" alt="" /></div>
+        <div class="intro__word" id="introWord"></div>
+        <div class="intro__blocks" id="blocks"></div>
+        <div class="intro__name" id="introName">CuePoint</div>
+      </div>
+      <div class="slot" id="slot0">
+        <div class="word"></div>
+        <div class="card"><img alt="" /></div>
+        <div class="band"><div class="band__word"></div><div class="band__line"></div></div>
+      </div>
+      <div class="slot" id="slot1">
+        <div class="word"></div>
+        <div class="card"><img alt="" /></div>
+        <div class="band"><div class="band__word"></div><div class="band__line"></div></div>
+      </div>
+      <div class="slash" id="slash"></div>
+      <div class="finale" id="finale"><img id="finalePic" alt="" /><div class="finale__word" id="finaleWord"></div></div>
+      <div class="burst" id="burst"></div>
+      <div class="end" id="end">
+        <div class="end__body">
+          <img class="end__icon" src="../demo/assets/icon.png" alt="" />
+          <div class="end__name">CuePoint</div>
+          <div class="end__line">Your Rekordbox library, cleaned up and ready for the booth.</div>
+          <div class="end__chip">Free and open source</div>
+          <div class="end__url">usecuepoint.com</div>
+          <div class="end__os">Windows and Mac</div>
+        </div>
+      </div>
+      <div class="flash" id="flash"></div>
+      <div class="fade" id="fade"></div>
+    </div>
+    <script type="module" src="slam.js"></script>
+  </body>
+</html>

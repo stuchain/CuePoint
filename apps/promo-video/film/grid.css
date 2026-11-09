@@ -1,0 +1,24 @@
+/* Fast film 2, grid: paper-light kinetic type, then the app in a grid, in split screens, in flash cuts and a mosaic. */
+:root { --paper: #f3efe6; --ink: #0b0b0f; }
+.paper { position: absolute; inset: 0; background-color: var(--paper); background-image: linear-gradient(rgba(11, 11, 15, 0.07) 2px, transparent 2px), linear-gradient(90deg, rgba(11, 11, 15, 0.07) 2px, transparent 2px); background-size: 90px 90px; }
+.kin { position: absolute; left: 0; right: 0; top: 70px; }
+.kin__line { font: 900 300px/0.86 var(--data); letter-spacing: -14px; color: var(--ink); white-space: nowrap; text-align: center; will-change: transform; }
+.kin__line--accent { color: var(--accent); }
+.panel { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--accent); }
+.stripe { position: absolute; left: -400px; top: 380px; width: 1900px; height: 520px; background: var(--accent); transform: rotate(-14deg); display: none; border-top: 8px solid var(--ink); border-bottom: 8px solid var(--ink); }
+.tiles { position: absolute; inset: 0; }
+.tile { position: absolute; left: 0; top: 0; overflow: hidden; background: #18181b; border: 6px solid var(--ink); box-shadow: 12px 12px 0 var(--ink); transform-origin: 50% 50%; display: none; }
+.tile img { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: block; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.label { position: absolute; left: 0; top: 0; display: none; transform-origin: 0 100%; }
+.label__word { font: 900 170px/0.9 var(--data); letter-spacing: -6px; color: #fff; -webkit-text-stroke: 10px var(--ink); paint-order: stroke fill; white-space: nowrap; }
+.label__word span { display: inline-block; }
+.label__line { display: inline-block; margin-top: 10px; font: 800 32px/1 var(--data); color: var(--ink); background: var(--paper); border: 5px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); padding: 10px 16px 12px; }
+.label--ink .label__word { color: var(--ink); -webkit-text-stroke: 0; }
+.chipline { position: absolute; left: 50%; top: 50%; font: 900 120px/1 var(--data); letter-spacing: -4px; color: var(--ink); background: var(--paper); border: 8px solid var(--ink); box-shadow: 14px 14px 0 var(--ink); padding: 14px 34px 22px; display: none; white-space: nowrap; }
+.end { background: var(--paper); color: var(--ink); }
+.end .end__name { color: var(--ink); }
+.end .end__line { color: #3a3a44; }
+.end .end__os { color: #3a3a44; }
+.end .end__icon { box-shadow: 10px 10px 0 var(--ink); }
+.flash { position: absolute; inset: 0; background: var(--accent); opacity: 0; pointer-events: none; }

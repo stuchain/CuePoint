@@ -1,0 +1,49 @@
+/* Fast film 1, slam: app windows float in 3D over a moving grid, a word slams on each, then the window punches in. */
+.stage { perspective: 1400px; }
+.bg { position: absolute; inset: 0; background: radial-gradient(90% 60% at 50% 38%, #3a2470 0%, #1a1230 45%, #07060b 100%); overflow: hidden; }
+.floor {
+  position: absolute; left: -60%; right: -60%; top: 52%; height: 140%; transform-origin: 50% 0; transform: perspective(520px) rotateX(62deg);
+  background-image: linear-gradient(rgba(145, 100, 246, 0.55) 3px, transparent 3px), linear-gradient(90deg, rgba(145, 100, 246, 0.55) 3px, transparent 3px);
+  background-size: 120px 120px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 100%);
+}
+.chips { position: absolute; inset: 0; }
+.chips div, .burst div {
+  position: absolute; left: 0; top: 0; font: 700 34px/1 var(--pixel); color: #0b0b0f; padding: 8px 14px 10px; border: 4px solid #000; box-shadow: 6px 6px 0 #000;
+}
+
+.intro { position: absolute; inset: 0; }
+.intro__pic { position: absolute; inset: 0; overflow: hidden; }
+.intro__pic img { position: absolute; left: 0; top: 0; transform-origin: 0 0; filter: grayscale(1) contrast(1.2); }
+.intro__pic::after { content: ""; position: absolute; inset: 0; background: rgba(120, 10, 30, 0.55); mix-blend-mode: multiply; }
+.intro__word {
+  position: absolute; left: 0; right: 0; top: 560px; text-align: center; font: 700 140px/1 var(--pixel); color: #fff;
+  text-shadow: 8px 8px 0 #000, -4px 0 0 #ff3b6b, 4px 0 0 #3bd5ff;
+}
+.intro__blocks { position: absolute; left: 380px; top: 360px; width: 320px; height: 320px; }
+.intro__blocks div { position: absolute; width: 80px; height: 80px; background-image: url("../demo/assets/icon.png"); background-size: 320px 320px; image-rendering: pixelated; }
+.intro__name { position: absolute; left: 0; right: 0; top: 740px; text-align: center; font: 700 170px/1 var(--pixel); color: #fff; text-shadow: 10px 10px 0 #000, 0 0 60px rgba(145, 100, 246, 0.9); opacity: 0; }
+
+.slot { position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: 50% 50%; display: none; }
+.card {
+  position: absolute; left: 0; top: 0; overflow: hidden; background: #18181b; border: 5px solid #000; transform-origin: 50% 50%;
+}
+.card img { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: block; }
+.word {
+  position: absolute; left: 0; right: 0; top: 150px; text-align: center; font: 700 190px/1 var(--pixel); color: #fff; letter-spacing: 4px;
+  text-shadow: 12px 12px 0 #000, 0 0 50px rgba(145, 100, 246, 0.85);
+}
+.band { position: absolute; left: 0; bottom: 120px; padding: 18px 36px 22px 48px; background: var(--accent); border: 5px solid #000; border-left: 0; box-shadow: 12px 12px 0 #000; }
+.band__word { font: 700 104px/1 var(--pixel); color: #000; }
+.band__line { font: 700 34px/1.2 var(--data); color: #000; margin-top: 8px; }
+
+.slash { position: absolute; inset: 0; background: var(--accent); display: none; }
+.finale { position: absolute; inset: 0; overflow: hidden; display: none; background: #000; }
+.finale img { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.finale__word {
+  position: absolute; left: 0; right: 0; top: 560px; text-align: center; font: 700 230px/1 var(--pixel); color: #fff;
+  text-shadow: 14px 14px 0 #000, 0 0 70px rgba(145, 100, 246, 1);
+}
+.burst { position: absolute; inset: 0; pointer-events: none; }
+.end { background: radial-gradient(80% 55% at 50% 40%, #2c1d55 0%, var(--bg-app) 70%); }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
