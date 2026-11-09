@@ -38,7 +38,8 @@ jobs:
 
       # Internal links are checked on every build by check:site, so only addresses on other hosts are
       # checked here (--scheme): the site's own address (usecuepoint.com, and github.io/CuePoint) is excluded, and so are the
-      # w3.org and schema.org namespace names, which are identifiers, not pages.
+      # w3.org and schema.org namespace names, which are identifiers, not pages. The Web3Forms submit
+      # address is the forms' POST target: a plain GET always answers 405, so it is not a page either.
       - name: Check external links
         id: lychee
         uses: lycheeverse/lychee-action@v2
@@ -55,6 +56,7 @@ jobs:
             --exclude '^https://usecuepoint\.com'
             --exclude '^https?://www\.w3\.org/'
             --exclude '^https://schema\.org'
+            --exclude '^https://api\.web3forms\.com/submit'
             --root-dir "${{ github.workspace }}/apps/website/dist"
             'apps/website/dist/**/*.html'
           fail: false
