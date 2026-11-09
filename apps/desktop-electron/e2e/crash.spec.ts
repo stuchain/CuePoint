@@ -397,7 +397,10 @@ test.describe("Crash injection (HARDEN-05)", () => {
   test("the engine killed while it writes an export leaves no partial XML, and the restart sweeps its temp file", async () => {
     app = await launchApp({ userDataDir, home });
     const window = await ready(app);
-    const tracks = Number(process.env.CUEPOINT_CRASH_EXPORT_TRACKS ?? "15000");
+    // Big enough that the write lasts long enough to catch: since the export streams its output
+    // (DEC-311), 15,000 tracks were written too quickly on the packaged Apple Silicon build for
+    // eight tries in a row in the v1.0.1 release run.
+    const tracks = Number(process.env.CUEPOINT_CRASH_EXPORT_TRACKS ?? "45000");
     await importLibrary(window, await writeExportFile(path.join(workspace, "source.xml"), plainTracks(tracks), tracks));
 
     // Under the app's own folder, which the engine sweeps at every start.
