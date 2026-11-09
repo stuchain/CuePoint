@@ -81,10 +81,11 @@ function rise(els, u, from, step, dist = 24) {
 /** The framed window (912 wide under the headline) gliding to full bleed on the action as k goes 0 to 1. */
 function glide(s, img, k, f, extra = 1) {
   const box = s.el.querySelector(".box");
-  const x = lerp(40, 0, k);
-  const y = lerp(film.winY ?? 560, 0, k);
-  const w = lerp(1000, W, k);
-  const h = lerp(625, H, k);
+  const [ex, ey, ew, eh] = s.endBox ?? [0, 0, W, H];
+  const x = lerp(40, ex, k);
+  const y = lerp(film.winY ?? 560, ey, k);
+  const w = lerp(1000, ew, k);
+  const h = lerp(625, eh, k);
   Object.assign(box.style, {
     width: `${w}px`, height: `${h}px`, transform: `translate(${x}px, ${y}px)`,
     borderRadius: `${(14 * (1 - k)).toFixed(1)}px`,
@@ -114,7 +115,7 @@ async function draw(s, t) {
       : s.focus ? { focus: s.focus, z: s.z } : null;
     const pics = el.querySelectorAll(".pic");
     // fit: slow the clip so the scene ends on its last frame rather than holding on it
-    const rate = s.fit ? Math.min(s.rate ?? 1, (CLIPS[f.id] / 30 - 0.3 - f.from) / (f.rate * (s.dur + FADE))) : (s.rate ?? 1);
+    const rate = s.fit ? Math.min(s.rate ?? 1, ((s.until ?? CLIPS[f.id] / 30 - 0.3) - f.from) / (f.rate * (s.dur + FADE))) : (s.rate ?? 1);
     if (s.type === "feature") await setSrc(pics[0], featureSrc(f, u * rate));
     else {
       await setSrc(pics[0], `frames/${s.still}-before.png`);
@@ -126,7 +127,7 @@ async function draw(s, t) {
     const settle = easeOut(u / 0.9);
     // a slow push-in under the headline too, so the window never sits still before the zoom
     const push = s.fit ? 0.04 * Math.min(u, zoomAt) / zoomAt : 0;
-    glide(s, pics[0], k, s.zoom === false ? null : f, 1 + push + 0.06 * Math.max(0, u - zoomAt - 1.3) / s.dur);
+    glide(s, pics[0], k, s.zoom === false ? null : f, 1 + push + (s.creep ?? 0.06) * Math.max(0, u - zoomAt - 1.3) / s.dur);
     const box = el.querySelector(".box");
     // after a morph the window is already in place: no settle, no fade of its own
     if (!s.morphed) {
@@ -134,11 +135,11 @@ async function draw(s, t) {
       box.style.opacity = String(smooth(u / 0.5));
     }
     const top = el.querySelector(".top");
-    top.style.opacity = String(smooth(u / 0.6) * (1 - smooth(k * 2)));
+    top.style.opacity = String(smooth(u / 0.6) * (s.keepTop ? 1 : 1 - smooth(k * 2)));
     top.style.transform = `translateY(${((1 - easeOut(u / 0.8)) * 20).toFixed(1)}px)`;
-    el.querySelector(".shade").style.opacity = String(k);
+    el.querySelector(".shade").style.opacity = String(s.keepTop ? 0 : k);
     const lower = el.querySelector(".lower");
-    lower.style.opacity = String(smooth((k - 0.5) * 2));
+    lower.style.opacity = String(s.keepTop ? 0 : smooth((k - 0.5) * 2));
     lower.style.transform = `translateY(${((1 - smooth((k - 0.5) * 2)) * 20).toFixed(1)}px)`;
     if (s.type === "wipe") {
       const p = smooth((u - (s.wipeAt ?? 1) * BEAT) / (s.wipeBeats ?? 3) / BEAT);
@@ -184,7 +185,7 @@ async function draw(s, t) {
       // one sentence at a time: its words ease in from soft focus, then it lifts away as the next one starts
       lines.forEach((l, i) => {
         const from = (s.lines[i].at ?? i * 2) * BEAT;
-        const next = s.lines[i + 1] ? s.lines[i + 1].at * BEAT : s.morph ? s.dur - 1.2 : Infinity;
+        const next = s.lines[i + 1] ? s.lines[i + 1].at * BEAT : s.morph ? s.dur - 0.7 : Infinity;
         const out = smooth((u - (next - 0.55)) / 0.5);
         l.style.opacity = String(1 - out);
         l.style.transform = `translateY(calc(-50% - ${(out * 18).toFixed(1)}px))`;

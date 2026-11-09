@@ -28,8 +28,11 @@ const STEPS = [
  * tags as Sync is pressed, then holds on "Synced 30 files".
  */
 const SHOWCASE_FRAME = {
+  // Play holds still under its headline, the waveforms in full view, and ends before the queue slides in
+  player: { focus: [640, 400], z: 1.1, endBox: [0, 400, 1080, 800], keepTop: true, creep: 0, until: 7.2 },
   statistics: { focus: [340, 400], z: 2 },
-  save: { from: 3.6, clipRate: 1.2, focus: [480, 400], z: 2 },
+  // Tag keeps its headline and grows to full width under it, so the whole Sync dialog and its result stay in view
+  save: { from: 3.6, clipRate: 1.2, focus: [640, 400], z: 1.1, endBox: [0, 400, 1080, 800], keepTop: true },
 };
 
 const BUILT = [
@@ -49,21 +52,21 @@ const BUILT = [
 export const FILMS = {
   /**
    * The showcase: the opening of "why" (first person, now with the digging), the ten features of "launch" with the
-   * window raised under its headline, and the ending of "builder", at the launch film's pace. Underscore from 40.82 s
+   * window raised under its headline, and the ending of "builder", at the launch film's pace. Underscore from 38.42 s
    * (the beat returns on the first feature), lengthened by joining its groove from 19.22 s on at 86.42 s.
    */
   showcase: {
     bpm: 100,
-    poster: 28,
+    poster: 30.4,
     topY: 150,
     winY: 440,
     scenes: [
       {
-        type: "statement", beats: 16, bg: "wipe-library-before", one: true, morph: true,
+        type: "statement", beats: 20, bg: "wipe-library-before", one: true, morph: true,
         lines: [
           { text: "Before every set, I spent hours fixing my Rekordbox library and digging for new tracks." },
-          { text: "Missing keys. Wrong versions. Half-done tags. Endless digging.", cls: "muted", at: 6 },
-          { text: "So I built the tool I wanted.", at: 11.5 },
+          { text: "Missing keys. Wrong versions. Half-done tags. Endless digging.", cls: "muted", at: 7 },
+          { text: "So I built the tool I wanted.", at: 13 },
         ],
       },
       ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 8, feature, label, head, dots: [i + 1, 10], rate: 1.2, fit: true, morphed: i === 0, ...SHOWCASE_FRAME[feature] })),
@@ -137,7 +140,7 @@ export const FILMS = {
       { type: "end", beats: 8, line: FREE },
     ],
   },
-  /** 5 · Why I built it: first-person lines, then what it does in his words. Underscore from 40.82 s. */
+  /** 5 · Why I built it: first-person lines, then what it does in his words. Underscore from 38.42 s. */
   why: {
     bpm: 100,
     poster: 12,
