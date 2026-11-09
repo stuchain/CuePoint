@@ -23,7 +23,44 @@ const STEPS = [
   ["export", "Export", "Send it all back to Rekordbox."],
 ];
 
+const BUILT = [
+  { type: "diagram", beats: 14, head: "A desktop app over a local engine." },
+  {
+    type: "stats", beats: 12, label: "Built to be trusted",
+    rows: [
+      { big: "20,000+", to: 20000, text: "automated tests, Python and TypeScript" },
+      { big: "3 systems", text: "Windows, macOS and Linux, all tested in CI" },
+      { big: "Backed up", text: "before any change to your library or files" },
+      { big: "Open source", text: "Apache 2.0, on GitHub" },
+    ],
+  },
+  { type: "end", beats: 8, line: FREE, git: true, by: BY },
+];
+
 export const FILMS = {
+  /**
+   * The showcase: the opening of "why" (first person, now with the digging), the ten features of "launch" with the
+   * window raised under its headline, and the ending of "builder". Technology from 70.61 s, so the beat returns on
+   * the first feature and the track's hard end falls in the closing fade.
+   */
+  showcase: {
+    bpm: 125,
+    poster: 22,
+    topY: 150,
+    winY: 440,
+    scenes: [
+      {
+        type: "statement", beats: 16, bg: "wipe-library-before",
+        lines: [
+          { text: "Before every set, I spent hours fixing my Rekordbox library and digging for new tracks." },
+          { text: "Missing keys. Wrong versions. Half-done tags. Endless digging.", cls: "muted", at: 6 },
+          { text: "So I built the tool I wanted.", at: 11.5 },
+        ],
+      },
+      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 6, feature, label, head, dots: [i + 1, 10], rate: 1.4 })),
+      ...BUILT,
+    ],
+  },
   /** 1 · Product launch: a title, the ten features one headline each, the end card. Underscore from 45.62 s. */
   launch: {
     bpm: 100,

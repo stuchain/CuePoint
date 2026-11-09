@@ -40,6 +40,7 @@ function build(s) {
       <div class="top"><div class="eyebrow">${esc(s.label)}</div><div class="head">${esc(s.head)}</div>${s.sub ? `<div class="sub">${esc(s.sub)}</div>` : ""}</div>
       <div class="lower"><div class="eyebrow">${esc(s.label)}</div><div class="head">${esc(s.close ?? s.head)}</div></div>
       ${markHtml}${dotsHtml(s.dots)}`;
+    if (film.topY) el.querySelector(".top").style.top = `${film.topY}px`;
   } else if (s.type === "doc") {
     el.innerHTML = `${boxHtml()}<div class="shade"></div><div class="lower"><div class="time">${esc(s.time)}</div><div class="head">${esc(s.head)}</div></div>${markHtml}`;
   } else if (s.type === "statement") {
@@ -78,7 +79,7 @@ function rise(els, u, from, step, dist = 24) {
 function glide(s, img, k, f, extra = 1) {
   const box = s.el.querySelector(".box");
   const x = lerp(40, 0, k);
-  const y = lerp(560, 0, k);
+  const y = lerp(film.winY ?? 560, 0, k);
   const w = lerp(1000, W, k);
   const h = lerp(625, H, k);
   Object.assign(box.style, {

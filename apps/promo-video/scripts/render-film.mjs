@@ -42,6 +42,7 @@ const NEEDS = {
   "pro-builder": { clips: ALL },
   "pro-evening": { clips: ALL },
   "pro-why": { stills: ["wipe-library"], clips: ALL },
+  "pro-showcase": { stills: ["wipe-library"], clips: ALL },
 };
 
 function run(args) {
