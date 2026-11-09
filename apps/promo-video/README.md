@@ -119,3 +119,15 @@ is). They read the ten clips the capture spec records (slam also the before stil
   Musinova's "Minimal Techno Electronic Underscore", `--start=45.62` brings the beat back on the grid.
 - `tunnel` (30.7 s): one canvas diving from window into window through portals, an RGB-split glitch on each landing,
   then a wall of all ten lighting one by one. sub_clair's "Technology", `--start=89.81`.
+
+Five calm showcase films share one look and a few scene kinds (`film/pro.js`, `pro.css`), each film a list of
+scenes in beats (`film/pro-films.js`), rendered as `--film=pro-<name>`:
+
+- `pro-launch` (45.6 s): title, the ten features as numbered chapters (headline, then a glide into the click), end
+  card. Underscore, `--start=45.62`.
+- `pro-case` (33.6 s): the problem over the old library, five steps in order, the same library after behind a
+  slider. Technology, `--start=72.53`.
+- `pro-builder` (37.4 s): five product moments, the architecture drawn in, the numbers, end card with GitHub.
+  Technology, `--start=72.53`.
+- `pro-evening` (48 s): one evening at real speed, full frame, time-stamped lower-thirds. Underscore, `--start=45.62`.
+- `pro-why` (32.4 s): first-person lines, the product in the maker's words, signed. Underscore, `--start=40.82`.

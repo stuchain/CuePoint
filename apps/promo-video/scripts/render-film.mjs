@@ -37,6 +37,11 @@ const NEEDS = {
   slam: { stills: ["wipe-library"], clips: ALL },
   grid: { clips: ALL },
   tunnel: { clips: ALL },
+  "pro-launch": { clips: ALL },
+  "pro-case": { stills: ["wipe-library"], clips: ALL },
+  "pro-builder": { clips: ALL },
+  "pro-evening": { clips: ALL },
+  "pro-why": { stills: ["wipe-library"], clips: ALL },
 };
 
 function run(args) {
@@ -92,7 +97,7 @@ function encoder(args) {
 }
 
 async function main() {
-  if (!NEEDS[film]) throw new Error("--film=wipe|onetake|slam|grid|tunnel is required");
+  if (!NEEDS[film]) throw new Error("--film=<one of NEEDS> is required");
   if (!raw) throw new Error("--raw=<dir of recordings> is required");
   mkdirSync(OUT, { recursive: true });
   prepare();
