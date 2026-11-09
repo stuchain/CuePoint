@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * `node scripts/render-film.mjs --film=wipe|onetake --raw=<dir>`: one of the two short LinkedIn films (film/), 1080 x 1350,
- * from what apps/desktop-electron/e2e/capture/demo.spec.ts recorded into <dir>: the wipe film uses its before/after
- * stills (wipe-*-before.png, wipe-*-after.png), the one-take film the Clean clip (clean.mkv).
+ * `node scripts/render-film.mjs --film=wipe|onetake|slam|grid|tunnel --raw=<dir>`: one of the short LinkedIn films
+ * (film/), 1080 x 1350, from what apps/desktop-electron/e2e/capture/demo.spec.ts recorded into <dir>: the wipe film
+ * uses its before/after stills (wipe-*-before.png, wipe-*-after.png), the one-take film the Clean clip (clean.mkv),
+ * the three fast films (slam, grid, tunnel) all ten clips (slam also the before still of the library).
  *
  *   --stills=5,12.5              no video: PNGs at those seconds, out/film/still-<film>-<t>.png
  *   --track=<audio> --start=<s>  music under it; the file is named -PRIVATE when the track is your own
@@ -29,7 +30,14 @@ const FPS = 30;
 const BT709 = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2" };
 /** What each film reads from the recordings. */
-const NEEDS = { wipe: { stills: ["wipe-library", "wipe-details"] }, onetake: { clip: "clean" } };
+const ALL = ["library", "player", "clean", "discover", "prepare", "keys", "statistics", "save", "export", "settings"];
+const NEEDS = {
+  wipe: { stills: ["wipe-library", "wipe-details"] },
+  onetake: { clips: ["clean"] },
+  slam: { stills: ["wipe-library"], clips: ALL },
+  grid: { clips: ALL },
+  tunnel: { clips: ALL },
+};
 
 function run(args) {
   const r = spawnSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...args], { stdio: "inherit" });
@@ -47,14 +55,15 @@ function prepare() {
     for (const name of need.stills)
       for (const when of ["before", "after"]) {
         const file = join(raw, `${name}-${when}.png`);
+        if (!existsSync(file) && existsSync(join(dir, `${name}-${when}.png`))) continue;
         if (!existsSync(file)) throw new Error(`No still ${file}`);
         copyFileSync(file, join(dir, `${name}-${when}.png`));
       }
   }
-  if (need.clip) {
-    const file = join(raw, `${need.clip}.mkv`);
+  for (const clip of need.clips ?? []) {
+    const file = join(raw, `${clip}.mkv`);
     if (!existsSync(file)) throw new Error(`No clip ${file}`);
-    const dir = join(ROOT, "demo", "frames", `raw-${need.clip}`);
+    const dir = join(ROOT, "demo", "frames", `raw-${clip}`);
     const have = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".jpg")).length : 0;
     if (have < Math.floor(duration(file) * FPS)) {
       mkdirSync(dir, { recursive: true });
@@ -83,7 +92,7 @@ function encoder(args) {
 }
 
 async function main() {
-  if (!NEEDS[film]) throw new Error("--film=wipe|onetake is required");
+  if (!NEEDS[film]) throw new Error("--film=wipe|onetake|slam|grid|tunnel is required");
   if (!raw) throw new Error("--raw=<dir of recordings> is required");
   mkdirSync(OUT, { recursive: true });
   prepare();
@@ -122,7 +131,7 @@ async function main() {
     await stage.screenshot({ path: `${base}-poster.png` });
     const fade = 1.5;
     const audio = track
-      ? ["-ss", String(start), "-t", String(total), "-i", track, "-map", "0:v", "-map", "1:a", "-af", `afade=t=in:d=0.05,afade=t=out:st=${(total - fade).toFixed(3)}:d=${fade},${loudness(track, start, total)}`, "-ar", "48000", "-c:a", "aac", "-b:a", "192k"]
+      ? ["-ss", String(start), "-t", String(total), "-i", track, "-map", "0:v", "-map", "1:a", "-af", `afade=t=in:d=0.05,afade=t=out:st=${(total - fade).toFixed(3)}:d=${fade},${loudness(track, start, total)}`, "-ar", "48000", "-c:a", "aac", "-b:a", "256k"]
       : [];
     const out = `${base}${track ? "-PRIVATE" : ""}.mp4`;
     run(["-i", master, ...audio, "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p", ...BT709, "-t", String(total), "-movflags", "+faststart", out]);

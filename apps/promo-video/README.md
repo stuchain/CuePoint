@@ -95,9 +95,9 @@ Shots dissolve into each other, and the rail chip and counter hand over under th
 the track never goes in the repository. Its loudness is measured over the stretch used and applied as one static
 gain, so a breakdown or a fade-out in the music stays as the track has it.
 
-## The two short films
+## The short films
 
-`film/` holds two films that are not cuts of the tour. `node scripts/render-film.mjs --film=<name> --raw=<recordings>`
+`film/` holds films that are not cuts of the tour. `node scripts/render-film.mjs --film=<name> --raw=<recordings>`
 renders one at 1080 x 1350 (`--stills=5,12` for a quick look, `--track=<mp3> --start=<s>` for music).
 
 - `wipe` (30.9 s): the same Library before CuePoint and after, split by a slider, in three chapters (keys, the
@@ -107,3 +107,15 @@ renders one at 1080 x 1350 (`--stills=5,12` for a quick look, `--track=<mp3> --s
 - `onetake` (26.5 s): the Clean clip at its own speed with no cuts or chrome, the camera creeping in and then
   pushing into the match dialog, the pointer lit, words only at the end. Music: Musinova's "Minimal Techno
   Electronic Underscore", `--start=33.49` brings the beat back on the first "Use this match".
+
+Three fast films cut on the beat show all ten features (`film/fast.js` lists what each plays and where its moment
+is). They read the ten clips the capture spec records (slam also the before still of the library):
+
+- `slam` (30.7 s): problem words slam over the old library, the icon builds from blocks, then each feature floats
+  in 3D under its word, punches in on beat 2 and leaves by a whip, slash, flip or zoom; eight half-beat cuts, chips
+  burst round the end card. sub_clair's "Technology", `--start=72.53` puts the drop on the first feature.
+- `grid` (31.2 s): paper-light, huge kinetic type ("TEN TOOLS. ONE APP."), nine features in a grid on the return,
+  five bars of split screens pushing in on the beats, sixteen flash cuts, a mosaic that folds into the end card.
+  Musinova's "Minimal Techno Electronic Underscore", `--start=45.62` brings the beat back on the grid.
+- `tunnel` (30.7 s): one canvas diving from window into window through portals, an RGB-split glitch on each landing,
+  then a wall of all ten lighting one by one. sub_clair's "Technology", `--start=89.81`.
