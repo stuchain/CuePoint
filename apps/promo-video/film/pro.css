@@ -53,3 +53,20 @@
 .doc .lower .time { font: 600 30px var(--data); color: var(--violet); font-variant-numeric: tabular-nums; letter-spacing: 1px; }
 .doc .lower .head { font-size: 54px; }
 .reveal { opacity: 0; }
+
+/* The same scenes in the taller (9:16) and wider (16:9) frames: headlines stay up while the window grows beside them. */
+.dg { position: absolute; inset: 0; }
+.size-9x16 .stage { width: 1080px; height: 1920px; }
+.size-9x16 .feature .top { top: 330px; }
+.size-9x16 .diagram .top { top: 440px; }
+.size-9x16 .dg { transform: translateY(330px); }
+.size-9x16 .stats .top { top: 605px; }
+.size-9x16 .rows { top: 745px; }
+.size-16x9 .stage { width: 1920px; height: 1080px; }
+.size-16x9 .feature .top { top: 330px; right: auto; width: 600px; }
+.size-16x9 .feature .dots { left: 84px; right: auto; bottom: 130px; }
+.size-16x9 .diagram .top { top: 380px; right: auto; width: 680px; }
+.size-16x9 .dg { transform: translate(840px, -255px); }
+.size-16x9 .stats .top { top: 380px; right: auto; width: 600px; }
+.size-16x9 .rows { left: 760px; top: 255px; }
+.size-16x9 .say { left: 220px; right: 220px; }

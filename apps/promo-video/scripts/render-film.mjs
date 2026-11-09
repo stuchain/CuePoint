@@ -7,6 +7,7 @@
  *
  *   --stills=5,12.5              no video: PNGs at those seconds, out/film/still-<film>-<t>.png
  *   --track=<audio> --start=<s>  music under it; the file is named -PRIVATE when the track is your own
+ *   --size=9x16|16x9             the showcase films (pro-*) in a taller or wider frame, named -9x16 / -16x9
  *
  * Writes out/film/cuepoint-<film>[-PRIVATE].mp4 and a poster.
  */
@@ -26,6 +27,9 @@ const raw = arg("raw");
 const track = arg("track");
 const start = Number(arg("start") ?? 0);
 const stills = arg("stills")?.split(",").map(Number);
+const size = arg("size");
+const VIEW = { "9x16": { width: 1080, height: 1920 }, "16x9": { width: 1920, height: 1080 } }[size] ?? { width: 1080, height: 1350 };
+const tag = size ? `${film}-${size}` : film;
 const FPS = 30;
 const BT709 = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".woff2": "font/woff2" };
@@ -106,21 +110,21 @@ async function main() {
   const origin = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
   try {
-    const page = await browser.newPage({ viewport: { width: 1080, height: 1350 } });
+    const page = await browser.newPage({ viewport: VIEW });
     page.on("pageerror", (e) => console.error("page error:", e.message));
-    await page.goto(`${origin}/film/${film}.html`);
+    await page.goto(`${origin}/film/${film}.html${size ? `?size=${size}` : ""}`);
     await page.waitForFunction(() => document.documentElement.dataset.ready === "1");
     const total = await page.evaluate(() => window.__film.duration);
     const stage = page.locator("#stage");
     if (stills) {
       for (const t of stills) {
         await page.evaluate((s) => window.__film.seek(s), t);
-        await stage.screenshot({ path: join(OUT, `still-${film}-${t}.png`) });
+        await stage.screenshot({ path: join(OUT, `still-${tag}-${t}.png`) });
       }
       console.log(`${film}: ${stills.length} stills`);
       return;
     }
-    const base = join(OUT, `cuepoint-${film}`);
+    const base = join(OUT, `cuepoint-${tag}`);
     const master = `${base}.master.mkv`;
     const enc = encoder(["-f", "image2pipe", "-framerate", String(FPS), "-c:v", "png", "-i", "-", "-vf", "scale=out_color_matrix=bt709:out_range=tv", ...BT709, "-c:v", "libx264", "-preset", "medium", "-crf", "10", "-pix_fmt", "yuv444p", master]);
     const frames = Math.round(total * FPS);

@@ -131,3 +131,7 @@ scenes in beats (`film/pro-films.js`), rendered as `--film=pro-<name>`:
   Technology, `--start=72.53`.
 - `pro-evening` (48 s): one evening at real speed, full frame, time-stamped lower-thirds. Underscore, `--start=45.62`.
 - `pro-why` (32.4 s): first-person lines, the product in the maker's words, signed. Underscore, `--start=40.82`.
+- `pro-showcase` (79.2 s), the one to post: the opening of `pro-why` (one sentence at a time, the old library then
+  settling into the app window), the ten features of `pro-launch` held longer, the ending of `pro-builder`. Underscore
+  lengthened by hand to 79.35 s (from 38.42 s, with four bars repeated and its groove from 19.22 s joined on), `--start=0`.
+  `--size=9x16` and `--size=16x9` render it taller or wider, keeping each headline up while the window grows beside it.

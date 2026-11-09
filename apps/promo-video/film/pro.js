@@ -5,8 +5,26 @@ import { $, FPS, clamp, easeOut, lerp, place, smooth } from "./lib.js";
 import { CLIPS, FEATURES, featureSrc, frameSrc, setSrc } from "./fast.js";
 import { FILMS } from "./pro-films.js";
 
-const W = 1080;
-const H = 1350;
+const film0 = FILMS[document.documentElement.dataset.film];
+/**
+ * The frame: 4:5 by default, or ?size=9x16 / ?size=16x9. win is where a feature's window sits under its headline, full
+ * where its close-up fills; the taller and wider frames keep the headline on screen and grow the window beside it.
+ */
+const SIZE = new URLSearchParams(location.search).get("size") ?? "4x5";
+const LAYOUT = {
+  "4x5": { W: 1080, H: 1350, win: [40, film0.winY ?? 560, 1000, 625], full: [0, 0, 1080, 1350], keep: false },
+  "9x16": { W: 1080, H: 1920, win: [40, 770, 1000, 625], full: [0, 620, 1080, 1100], keep: true },
+  "16x9": { W: 1920, H: 1080, win: [840, 228, 1000, 625], full: [720, 0, 1200, 1080], keep: true },
+}[SIZE];
+const { W, H } = LAYOUT;
+document.documentElement.classList.add(`size-${SIZE}`);
+/** A close-up box made for the 4:5 frame (full width under the headline), fitted into this frame's close-up area. */
+function fitBox([, , ew, eh]) {
+  if (SIZE === "4x5") return null;
+  const [fx, fy, fw, fh] = LAYOUT.full;
+  const h = Math.min(fh, eh * (fw / ew));
+  return [fx, fy + (fh - h) / 2, fw, h];
+}
 const FADE = 0.5;
 const byId = Object.fromEntries(FEATURES.map((f) => [f.id, f]));
 const ICON = "../demo/assets/icon.png";
@@ -43,20 +61,20 @@ function build(s) {
       <div class="top"><div class="eyebrow">${esc(s.label)}</div><div class="head">${esc(s.head)}</div>${s.sub ? `<div class="sub">${esc(s.sub)}</div>` : ""}</div>
       <div class="lower"><div class="eyebrow">${esc(s.label)}</div><div class="head">${esc(s.close ?? s.head)}</div></div>
       ${markHtml}${dotsHtml(s.dots)}`;
-    if (film.topY) el.querySelector(".top").style.top = `${film.topY}px`;
+    if (film.topY && SIZE === "4x5") el.querySelector(".top").style.top = `${film.topY}px`;
   } else if (s.type === "doc") {
     el.innerHTML = `${boxHtml()}<div class="shade"></div><div class="lower"><div class="time">${esc(s.time)}</div><div class="head">${esc(s.head)}</div></div>${markHtml}`;
   } else if (s.type === "statement") {
     el.innerHTML = `${s.bg ? `<div class="bgpic"><img alt="" /></div>` : ""}<div class="say${s.one ? " one" : ""}">${s.lines.map((l) => `<div class="reveal ${l.cls ?? ""}">${s.one ? words(l.text) : esc(l.text)}</div>`).join("")}</div>`;
   } else if (s.type === "diagram") {
     el.innerHTML = `<div class="top"><div class="eyebrow reveal">How it's built</div><div class="head reveal" style="font-size:66px">${esc(s.head)}</div></div>
-      <div class="layerbox reveal" style="top:440px"><b>React interface</b><span>TypeScript, one design system, every page tested</span></div>
+      <div class="dg"><div class="layerbox reveal" style="top:440px"><b>React interface</b><span>TypeScript, one design system, every page tested</span></div>
       <div class="wire reveal" style="left:540px;top:572px;height:66px"></div><div class="wirelabel reveal" style="left:562px;top:590px">narrow preload bridge</div>
       <div class="layerbox reveal" style="top:650px"><b>Electron shell</b><span>supervises the engine and the player, safe updates, crash recovery</span></div>
       <div class="wire reveal" style="left:540px;top:782px;height:66px"></div><div class="wirelabel reveal" style="left:562px;top:800px">authenticated loopback HTTP + live events</div>
       <div class="layerbox reveal" style="top:860px"><b>Python engine</b><span>matching rules, Rekordbox XML, tags, backups and audit trail</span></div>
       <div class="wire reveal" style="left:224px;top:992px;height:66px"></div><div class="wire reveal" style="left:540px;top:992px;height:66px"></div><div class="wire reveal" style="left:856px;top:992px;height:66px"></div>
-      <div class="layerbox small reveal" style="top:1070px;left:84px"><b>Beatport API</b></div><div class="layerbox small reveal" style="top:1070px;left:400px"><b>Rekordbox</b></div><div class="layerbox small reveal" style="top:1070px;left:716px"><b>mpv · FFmpeg</b></div>
+      <div class="layerbox small reveal" style="top:1070px;left:84px"><b>Beatport API</b></div><div class="layerbox small reveal" style="top:1070px;left:400px"><b>Rekordbox</b></div><div class="layerbox small reveal" style="top:1070px;left:716px"><b>mpv · FFmpeg</b></div></div>
       ${markHtml}`;
   } else if (s.type === "stats") {
     el.innerHTML = `<div class="top"><div class="eyebrow reveal">${esc(s.label)}</div></div><div class="rows">${s.rows.map((r) => `<div class="stat reveal"><b data-to="${r.to ?? ""}">${esc(r.big)}</b><span>${esc(r.text)}</span></div>`).join("")}</div>${markHtml}`;
@@ -81,11 +99,12 @@ function rise(els, u, from, step, dist = 24) {
 /** The framed window (912 wide under the headline) gliding to full bleed on the action as k goes 0 to 1. */
 function glide(s, img, k, f, extra = 1) {
   const box = s.el.querySelector(".box");
-  const [ex, ey, ew, eh] = s.endBox ?? [0, 0, W, H];
-  const x = lerp(40, ex, k);
-  const y = lerp(film.winY ?? 560, ey, k);
-  const w = lerp(1000, ew, k);
-  const h = lerp(625, eh, k);
+  const [ex, ey, ew, eh] = (s.endBox && (fitBox(s.endBox) ?? s.endBox)) ?? LAYOUT.full;
+  const [wx, wy, ww, wh] = LAYOUT.win;
+  const x = lerp(wx, ex, k);
+  const y = lerp(wy, ey, k);
+  const w = lerp(ww, ew, k);
+  const h = lerp(wh, eh, k);
   Object.assign(box.style, {
     width: `${w}px`, height: `${h}px`, transform: `translate(${x}px, ${y}px)`,
     borderRadius: `${(14 * (1 - k)).toFixed(1)}px`,
@@ -135,11 +154,11 @@ async function draw(s, t) {
       box.style.opacity = String(smooth(u / 0.5));
     }
     const top = el.querySelector(".top");
-    top.style.opacity = String(smooth(u / 0.6) * (s.keepTop ? 1 : 1 - smooth(k * 2)));
+    top.style.opacity = String(smooth(u / 0.6) * (s.keepTop || LAYOUT.keep ? 1 : 1 - smooth(k * 2)));
     top.style.transform = `translateY(${((1 - easeOut(u / 0.8)) * 20).toFixed(1)}px)`;
-    el.querySelector(".shade").style.opacity = String(s.keepTop ? 0 : k);
+    el.querySelector(".shade").style.opacity = String(s.keepTop || LAYOUT.keep ? 0 : k);
     const lower = el.querySelector(".lower");
-    lower.style.opacity = String(s.keepTop ? 0 : smooth((k - 0.5) * 2));
+    lower.style.opacity = String(s.keepTop || LAYOUT.keep ? 0 : smooth((k - 0.5) * 2));
     lower.style.transform = `translateY(${((1 - smooth((k - 0.5) * 2)) * 20).toFixed(1)}px)`;
     if (s.type === "wipe") {
       const p = smooth((u - (s.wipeAt ?? 1) * BEAT) / (s.wipeBeats ?? 3) / BEAT);
@@ -162,20 +181,22 @@ async function draw(s, t) {
     if (s.bg) {
       const img = el.querySelector(".bgpic img");
       await setSrc(img, `frames/${s.bg}.png`);
-      place(img, W, H, 760, 380, 2.2 + 0.1 * u / s.dur);
+      const cover = 1.1 * Math.max(1, (H * 1.6) / W);
+      place(img, W, H, 760, 380, cover + 0.1 * u / s.dur);
       if (s.morph) {
         // the old library comes into focus and settles into the window the first feature opens in
         const m = smooth((u - (s.dur - 1.5)) / 1.5);
         const e = m * m * (3 - 2 * m);
         const box = el.querySelector(".bgpic");
-        const w = lerp(W, 1000, e);
-        const h = lerp(H, 625, e);
+        const [wx, wy, ww, wh] = LAYOUT.win;
+        const w = lerp(W, ww, e);
+        const h = lerp(H, wh, e);
         Object.assign(box.style, {
-          left: `${lerp(0, 40, e)}px`, top: `${lerp(0, film.winY ?? 560, e)}px`, width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto",
+          left: `${lerp(0, wx, e)}px`, top: `${lerp(0, wy, e)}px`, width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto",
           opacity: String(lerp(0.22, 1, m)), filter: `grayscale(${(1 - m).toFixed(3)}) blur(${(2 * (1 - m)).toFixed(2)}px)`,
           borderRadius: `${(14 * e).toFixed(1)}px`, boxShadow: `0 40px 120px rgba(0,0,0,${(0.7 * e).toFixed(2)})`,
         });
-        place(img, w, h, lerp(760, 640, e), lerp(380, 400, e), lerp(2.2 + 0.1 * u / s.dur, 1, e));
+        place(img, w, h, lerp(760, 640, e), lerp(380, 400, e), lerp(cover + 0.1 * u / s.dur, 1, e));
         // the page itself keeps still for the morph, so the words drift on their own
         el.querySelector(".say").style.transform = `scale(${(1 + 0.05 * u / s.dur).toFixed(5)})`;
       }
