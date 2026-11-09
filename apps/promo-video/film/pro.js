@@ -128,8 +128,11 @@ async function draw(s, t) {
     const push = s.fit ? 0.04 * Math.min(u, zoomAt) / zoomAt : 0;
     glide(s, pics[0], k, s.zoom === false ? null : f, 1 + push + 0.06 * Math.max(0, u - zoomAt - 1.3) / s.dur);
     const box = el.querySelector(".box");
-    box.style.transform += ` translateY(${((1 - settle) * 40).toFixed(1)}px)`;
-    box.style.opacity = String(smooth(u / 0.5));
+    // after a morph the window is already in place: no settle, no fade of its own
+    if (!s.morphed) {
+      box.style.transform += ` translateY(${((1 - settle) * 40).toFixed(1)}px)`;
+      box.style.opacity = String(smooth(u / 0.5));
+    }
     const top = el.querySelector(".top");
     top.style.opacity = String(smooth(u / 0.6) * (1 - smooth(k * 2)));
     top.style.transform = `translateY(${((1 - easeOut(u / 0.8)) * 20).toFixed(1)}px)`;
@@ -159,13 +162,29 @@ async function draw(s, t) {
       const img = el.querySelector(".bgpic img");
       await setSrc(img, `frames/${s.bg}.png`);
       place(img, W, H, 760, 380, 2.2 + 0.1 * u / s.dur);
+      if (s.morph) {
+        // the old library comes into focus and settles into the window the first feature opens in
+        const m = smooth((u - (s.dur - 1.5)) / 1.5);
+        const e = m * m * (3 - 2 * m);
+        const box = el.querySelector(".bgpic");
+        const w = lerp(W, 1000, e);
+        const h = lerp(H, 625, e);
+        Object.assign(box.style, {
+          left: `${lerp(0, 40, e)}px`, top: `${lerp(0, film.winY ?? 560, e)}px`, width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto",
+          opacity: String(lerp(0.22, 1, m)), filter: `grayscale(${(1 - m).toFixed(3)}) blur(${(2 * (1 - m)).toFixed(2)}px)`,
+          borderRadius: `${(14 * e).toFixed(1)}px`, boxShadow: `0 40px 120px rgba(0,0,0,${(0.7 * e).toFixed(2)})`,
+        });
+        place(img, w, h, lerp(760, 640, e), lerp(380, 400, e), lerp(2.2 + 0.1 * u / s.dur, 1, e));
+        // the page itself keeps still for the morph, so the words drift on their own
+        el.querySelector(".say").style.transform = `scale(${(1 + 0.05 * u / s.dur).toFixed(5)})`;
+      }
     }
     const lines = [...el.querySelectorAll(".say > div")];
     if (s.one) {
       // one sentence at a time: its words ease in from soft focus, then it lifts away as the next one starts
       lines.forEach((l, i) => {
         const from = (s.lines[i].at ?? i * 2) * BEAT;
-        const next = s.lines[i + 1] ? s.lines[i + 1].at * BEAT : Infinity;
+        const next = s.lines[i + 1] ? s.lines[i + 1].at * BEAT : s.morph ? s.dur - 1.2 : Infinity;
         const out = smooth((u - (next - 0.55)) / 0.5);
         l.style.opacity = String(1 - out);
         l.style.transform = `translateY(calc(-50% - ${(out * 18).toFixed(1)}px))`;
@@ -214,7 +233,7 @@ async function seek(t) {
     if (!on) continue;
     s.el.style.opacity = i === 0 ? "1" : String(smooth((t - s.start) / FADE));
     // pages of words drift in slowly so nothing ever sits still
-    const still = ["statement", "diagram", "stats", "end", "title"].includes(s.type);
+    const still = ["statement", "diagram", "stats", "end", "title"].includes(s.type) && !s.morph;
     s.el.style.transform = still ? `scale(${(1 + 0.04 * (t - s.start) / s.dur).toFixed(5)})` : "";
     await draw(s, t);
   }
