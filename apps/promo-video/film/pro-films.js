@@ -33,7 +33,7 @@ const SHOWCASE_FRAME = {
 };
 
 const BUILT = [
-  { type: "diagram", beats: 16, head: "A desktop app over a local engine.", step: 0.6 },
+  { type: "diagram", beats: 12, head: "A desktop app over a local engine.", step: 0.45 },
   {
     type: "stats", beats: 12, label: "Built to be trusted", step: 1.5,
     rows: [
@@ -66,7 +66,7 @@ export const FILMS = {
           { text: "So I built the tool I wanted.", at: 11.5 },
         ],
       },
-      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 6, feature, label, head, dots: [i + 1, 10], rate: 1.2, ...SHOWCASE_FRAME[feature] })),
+      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 8, feature, label, head, dots: [i + 1, 10], rate: 1.2, fit: true, ...SHOWCASE_FRAME[feature] })),
       ...BUILT,
     ],
   },
