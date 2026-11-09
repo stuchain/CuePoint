@@ -1,0 +1,48 @@
+/* The two short films (wipe, onetake): the demo's fonts and Neo dark colours, one 1080 x 1350 stage each. */
+@font-face {
+  font-family: "Pixelify Sans";
+  font-weight: 700;
+  src: url("../node_modules/@fontsource/pixelify-sans/files/pixelify-sans-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter Variable";
+  font-weight: 100 900;
+  src: url("../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+}
+:root {
+  --bg-app: #18181b;
+  --outline: #000;
+  --shadow: #09090b;
+  --fg: #fafafa;
+  --muted: #aaaab2;
+  --accent: #9164f6;
+  --before: #ff8b8b;
+  --before-bg: #3a1e22;
+  --after: #7df0b1;
+  --after-bg: #163a2a;
+  --pixel: "Pixelify Sans", sans-serif;
+  --data: "Inter Variable", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; overflow: hidden; }
+.stage { position: relative; width: 1080px; height: 1350px; overflow: hidden; color: var(--fg); font-family: var(--data); background: #000; }
+.fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.layer { position: absolute; inset: 0; overflow: hidden; }
+.layer img { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: block; }
+
+/* the end card (wipe) */
+.end { position: absolute; inset: 0; display: none; background: var(--bg-app); }
+.end__body { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.end__body > * { opacity: 0; }
+.end__icon { width: 160px; height: 160px; image-rendering: pixelated; border: 4px solid var(--outline); box-shadow: 10px 10px 0 var(--shadow); background: var(--accent); }
+.end__name { font: 700 118px/1 var(--pixel); margin-top: 34px; letter-spacing: 1px; }
+.end__line { font: 700 40px/1.3 var(--pixel); color: var(--muted); margin-top: 22px; max-width: 760px; text-wrap: balance; }
+.end__chip {
+  display: inline-block; margin-top: 30px; font: 700 30px var(--pixel); color: var(--outline); background: #4ade80;
+  border: 4px solid var(--outline); box-shadow: 6px 6px 0 var(--shadow); padding: 6px 22px 8px; text-transform: uppercase; letter-spacing: 1px;
+}
+.end__url {
+  display: inline-block; margin-top: 26px; font: 700 44px var(--pixel); color: var(--outline); background: var(--accent);
+  border: 4px solid var(--outline); box-shadow: 8px 8px 0 var(--shadow); padding: 8px 30px 12px;
+}
+.end__os { font: 700 30px var(--pixel); color: var(--muted); margin-top: 26px; }

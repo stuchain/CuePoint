@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CuePoint: before and after</title>
+    <link rel="stylesheet" href="film.css" />
+    <link rel="stylesheet" href="wipe.css" />
+  </head>
+  <body>
+    <div class="stage" id="stage">
+      <div class="bg"></div>
+      <h1 class="title" id="title"><span class="title__line">Same library.</span><span class="title__line"><em>After</em> CuePoint.</span></h1>
+      <div class="tag tag--before" id="tagBefore">Before</div>
+      <div class="tag tag--after" id="tagAfter">After · CuePoint</div>
+      <div class="window" id="window">
+        <div class="layer" id="before"><img id="beforeA" alt="" /><img id="beforeB" alt="" /></div>
+        <div class="layer" id="after"><img id="afterA" alt="" /><img id="afterB" alt="" /></div>
+        <div class="bar" id="bar"><div class="knob"><i></i><i></i></div></div>
+      </div>
+      <div class="note" id="noteNow"><div class="chip"></div><div class="caption"></div></div>
+      <div class="note" id="notePrev"><div class="chip"></div><div class="caption"></div></div>
+      <div class="brand" id="brand"><img src="../demo/assets/icon.png" alt="" /><span>CuePoint</span></div>
+      <div class="url" id="url">usecuepoint.com</div>
+      <div class="end" id="end">
+        <div class="end__body">
+          <img class="end__icon" src="../demo/assets/icon.png" alt="" />
+          <div class="end__name">CuePoint</div>
+          <div class="end__line">Your Rekordbox library, cleaned up and ready for the booth.</div>
+          <div class="end__chip">Free and open source</div>
+          <div class="end__url">usecuepoint.com</div>
+          <div class="end__os">Windows and Mac</div>
+        </div>
+      </div>
+      <div class="fade" id="fade"></div>
+    </div>
+    <script type="module" src="wipe.js"></script>
+  </body>
+</html>

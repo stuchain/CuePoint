@@ -1,0 +1,9 @@
+/* Film C: one take of Clean, no chrome, the pointer in a pool of light, words only at the end. */
+.light { position: absolute; inset: 0; pointer-events: none; }
+.vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(75% 55% at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.5) 88%, #000 100%); }
+.dim { position: absolute; inset: 0; background: #000; opacity: 0; }
+.words { position: absolute; left: 80px; right: 80px; bottom: 120px; }
+.words__line { font: 300 92px/1.08 var(--data); letter-spacing: -2px; opacity: 0; }
+.words__line b { font-weight: 650; }
+.words__small { display: flex; align-items: center; gap: 16px; margin-top: 44px; font: 400 28px var(--data); color: var(--muted); opacity: 0; }
+.words__small img { width: 36px; height: 36px; image-rendering: pixelated; }
