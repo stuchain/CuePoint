@@ -30,9 +30,12 @@ const STEPS = [
 const SHOWCASE_FRAME = {
   // Play holds still under its headline, the waveforms in full view, and ends before the queue slides in
   player: { focus: [640, 400], z: 1.1, endBox: [0, 400, 1080, 800], keepTop: true, creep: 0, until: 7.2 },
+  prepare: { focus: [380, 400], z: 2 },
   statistics: { focus: [340, 400], z: 2 },
   // Tag keeps its headline and grows to full width under it, so the whole Sync dialog and its result stay in view
   save: { from: 3.6, clipRate: 1.2, focus: [640, 400], z: 1.1, endBox: [0, 400, 1080, 800], keepTop: true },
+  export: { focus: [636, 260], z: 1.68, endBox: [0, 400, 1080, 800], keepTop: true },
+  settings: { focus: [590, 400] },
 };
 
 const BUILT = [
