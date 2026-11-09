@@ -25,7 +25,10 @@ export const FEATURES = [
 
 const pad = (n) => String(n).padStart(5, "0");
 /** The frame of recording `id` at clip second s. */
-export const frameSrc = (id, s) => `../demo/frames/raw-${id}/${pad(clamp(Math.round(s * 30) + 1, 1, CLIPS[id]))}.jpg`;
+/** Frames where a recording flickers (Clean's cover art blanks for a few frames while the next one loads): [first, last, use]. */
+const HOLES = { clean: [[540, 546, 539], [636, 645, 635]] };
+const mend = (id, n) => (HOLES[id] ?? []).find(([a, b]) => n >= a && n <= b)?.[2] ?? n;
+export const frameSrc = (id, s) => `../demo/frames/raw-${id}/${pad(mend(id, clamp(Math.round(s * 30) + 1, 1, CLIPS[id])))}.jpg`;
 /** The frame feature f plays u seconds after it starts. */
 export const featureSrc = (f, u) => frameSrc(f.id, f.from + f.rate * Math.max(0, u));
 

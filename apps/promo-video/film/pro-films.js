@@ -59,14 +59,14 @@ export const FILMS = {
     winY: 440,
     scenes: [
       {
-        type: "statement", beats: 16, bg: "wipe-library-before", one: true,
+        type: "statement", beats: 16, bg: "wipe-library-before", one: true, morph: true,
         lines: [
           { text: "Before every set, I spent hours fixing my Rekordbox library and digging for new tracks." },
           { text: "Missing keys. Wrong versions. Half-done tags. Endless digging.", cls: "muted", at: 6 },
           { text: "So I built the tool I wanted.", at: 11.5 },
         ],
       },
-      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 8, feature, label, head, dots: [i + 1, 10], rate: 1.2, fit: true, ...SHOWCASE_FRAME[feature] })),
+      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 8, feature, label, head, dots: [i + 1, 10], rate: 1.2, fit: true, morphed: i === 0, ...SHOWCASE_FRAME[feature] })),
       ...BUILT,
     ],
   },
