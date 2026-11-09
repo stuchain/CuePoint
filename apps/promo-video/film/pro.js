@@ -2,7 +2,7 @@
 // scene kinds, each film a list of scenes measured in beats (pro-films.js). Scenes dissolve into each other; the
 // camera only glides. seek(t) draws t seconds.
 import { $, FPS, clamp, easeOut, lerp, place, smooth } from "./lib.js";
-import { FEATURES, featureSrc, frameSrc, setSrc } from "./fast.js";
+import { CLIPS, FEATURES, featureSrc, frameSrc, setSrc } from "./fast.js";
 import { FILMS } from "./pro-films.js";
 
 const W = 1080;
@@ -113,7 +113,9 @@ async function draw(s, t) {
       ? { ...byId[s.feature], ...(s.from != null && { from: s.from }), ...(s.clipRate && { rate: s.clipRate }), ...(s.focus && { focus: s.focus }), ...(s.z && { z: s.z }) }
       : s.focus ? { focus: s.focus, z: s.z } : null;
     const pics = el.querySelectorAll(".pic");
-    if (s.type === "feature") await setSrc(pics[0], featureSrc(f, u * (s.rate ?? 1)));
+    // fit: slow the clip so the scene ends on its last frame rather than holding on it
+    const rate = s.fit ? Math.min(s.rate ?? 1, (CLIPS[f.id] / 30 - 0.3 - f.from) / (f.rate * (s.dur + FADE))) : (s.rate ?? 1);
+    if (s.type === "feature") await setSrc(pics[0], featureSrc(f, u * rate));
     else {
       await setSrc(pics[0], `frames/${s.still}-before.png`);
       if (pics[1]) await setSrc(pics[1], `frames/${s.still}-after.png`);
@@ -122,7 +124,9 @@ async function draw(s, t) {
     const zoomAt = (s.zoomAt ?? 3) * BEAT;
     const k = s.zoom === false ? 0 : smooth((u - zoomAt) / 1.3);
     const settle = easeOut(u / 0.9);
-    glide(s, pics[0], k, s.zoom === false ? null : f, 1 + 0.06 * Math.max(0, u - zoomAt - 1.3) / s.dur);
+    // a slow push-in under the headline too, so the window never sits still before the zoom
+    const push = s.fit ? 0.04 * Math.min(u, zoomAt) / zoomAt : 0;
+    glide(s, pics[0], k, s.zoom === false ? null : f, 1 + push + 0.06 * Math.max(0, u - zoomAt - 1.3) / s.dur);
     const box = el.querySelector(".box");
     box.style.transform += ` translateY(${((1 - settle) * 40).toFixed(1)}px)`;
     box.style.opacity = String(smooth(u / 0.5));
