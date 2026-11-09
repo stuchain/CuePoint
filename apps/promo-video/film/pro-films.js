@@ -23,10 +23,19 @@ const STEPS = [
   ["export", "Export", "Send it all back to Rekordbox."],
 ];
 
+/**
+ * The showcase's own framing: Know lands on the Files and Beatport counts of the Health tab; Tag lands on the ticked
+ * tags as Sync is pressed, then holds on "Synced 30 files".
+ */
+const SHOWCASE_FRAME = {
+  statistics: { focus: [340, 400], z: 2 },
+  save: { from: 3.6, clipRate: 1.2, focus: [480, 400], z: 2 },
+};
+
 const BUILT = [
-  { type: "diagram", beats: 16, head: "A desktop app over a local engine." },
+  { type: "diagram", beats: 16, head: "A desktop app over a local engine.", step: 0.6 },
   {
-    type: "stats", beats: 12, label: "Built to be trusted",
+    type: "stats", beats: 12, label: "Built to be trusted", step: 1.5,
     rows: [
       { big: "20,000+", to: 20000, text: "automated tests, Python and TypeScript" },
       { big: "3 systems", text: "Windows, macOS and Linux, all tested in CI" },
@@ -34,7 +43,7 @@ const BUILT = [
       { big: "Open source", text: "Apache 2.0, on GitHub" },
     ],
   },
-  { type: "end", beats: 8, line: FREE, git: true, by: BY },
+  { type: "end", beats: 8, line: FREE, git: true },
 ];
 
 export const FILMS = {
@@ -50,14 +59,14 @@ export const FILMS = {
     winY: 440,
     scenes: [
       {
-        type: "statement", beats: 16, bg: "wipe-library-before",
+        type: "statement", beats: 16, bg: "wipe-library-before", one: true,
         lines: [
           { text: "Before every set, I spent hours fixing my Rekordbox library and digging for new tracks." },
           { text: "Missing keys. Wrong versions. Half-done tags. Endless digging.", cls: "muted", at: 6 },
           { text: "So I built the tool I wanted.", at: 11.5 },
         ],
       },
-      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 6, feature, label, head, dots: [i + 1, 10], rate: 1.2 })),
+      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 6, feature, label, head, dots: [i + 1, 10], rate: 1.2, ...SHOWCASE_FRAME[feature] })),
       ...BUILT,
     ],
   },

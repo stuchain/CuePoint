@@ -23,6 +23,9 @@
 .say div.muted { color: var(--sub); }
 .say div.small { font-size: 34px; font-weight: 500; letter-spacing: 0; color: var(--sub); }
 .say div.sign { font-size: 36px; font-weight: 500; letter-spacing: 0; color: var(--violet); margin-top: 1.2em; }
+.say.one { top: 0; bottom: 0; transform: none; }
+.say.one > div { position: absolute; left: 0; right: 0; top: 50%; margin: 0; font-size: 56px; font-weight: 500; line-height: 1.24; letter-spacing: -1px; }
+.say.one .w { display: inline-block; }
 .bgpic { position: absolute; inset: 0; overflow: hidden; opacity: 0.22; filter: grayscale(1) blur(2px); }
 .bgpic img { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .layerbox { position: absolute; left: 84px; width: 912px; border: 1.5px solid #3a3a46; border-radius: 16px; background: #15151b; padding: 24px 28px; }

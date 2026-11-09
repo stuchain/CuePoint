@@ -27,6 +27,9 @@ const boxHtml = (extra = "") => `<div class="box"><img class="pic" alt="" />${ex
 const markHtml = `<div class="mark"><img src="${ICON}" alt="" /><span>CuePoint</span></div>`;
 const dotsHtml = (d) => (d ? `<div class="dots">${Array.from({ length: d[1] }, (_, i) => `<i class="${i < d[0] ? "on" : ""}"></i>`).join("")}</div>` : "");
 
+/** A line as word spans, so the words can ease in one after another. */
+const words = (text) => text.split(" ").map((w) => `<span class="w">${esc(w)}</span>`).join(" ");
+
 function build(s) {
   const el = document.createElement("div");
   el.className = `scene ${s.type}`;
@@ -44,7 +47,7 @@ function build(s) {
   } else if (s.type === "doc") {
     el.innerHTML = `${boxHtml()}<div class="shade"></div><div class="lower"><div class="time">${esc(s.time)}</div><div class="head">${esc(s.head)}</div></div>${markHtml}`;
   } else if (s.type === "statement") {
-    el.innerHTML = `${s.bg ? `<div class="bgpic"><img alt="" /></div>` : ""}<div class="say">${s.lines.map((l) => `<div class="reveal ${l.cls ?? ""}">${esc(l.text)}</div>`).join("")}</div>`;
+    el.innerHTML = `${s.bg ? `<div class="bgpic"><img alt="" /></div>` : ""}<div class="say${s.one ? " one" : ""}">${s.lines.map((l) => `<div class="reveal ${l.cls ?? ""}">${s.one ? words(l.text) : esc(l.text)}</div>`).join("")}</div>`;
   } else if (s.type === "diagram") {
     el.innerHTML = `<div class="top"><div class="eyebrow reveal">How it's built</div><div class="head reveal" style="font-size:66px">${esc(s.head)}</div></div>
       <div class="layerbox reveal" style="top:440px"><b>React interface</b><span>TypeScript, one design system, every page tested</span></div>
@@ -105,7 +108,10 @@ async function draw(s, t) {
     place(img, 912, 570, 640, 400, 1);
     rise([...el.querySelectorAll(".reveal")], u, 0.2, BEAT);
   } else if (s.type === "feature" || s.type === "still" || s.type === "wipe") {
-    const f = s.feature ? byId[s.feature] : s.focus ? { focus: s.focus, z: s.z } : null;
+    // a scene may reframe its feature: its own clip start, clip speed, focus and zoom
+    const f = s.feature
+      ? { ...byId[s.feature], ...(s.from != null && { from: s.from }), ...(s.clipRate && { rate: s.clipRate }), ...(s.focus && { focus: s.focus }), ...(s.z && { z: s.z }) }
+      : s.focus ? { focus: s.focus, z: s.z } : null;
     const pics = el.querySelectorAll(".pic");
     if (s.type === "feature") await setSrc(pics[0], featureSrc(f, u * (s.rate ?? 1)));
     else {
@@ -151,6 +157,25 @@ async function draw(s, t) {
       place(img, W, H, 760, 380, 2.2 + 0.1 * u / s.dur);
     }
     const lines = [...el.querySelectorAll(".say > div")];
+    if (s.one) {
+      // one sentence at a time: its words ease in from soft focus, then it lifts away as the next one starts
+      lines.forEach((l, i) => {
+        const from = (s.lines[i].at ?? i * 2) * BEAT;
+        const next = s.lines[i + 1] ? s.lines[i + 1].at * BEAT : Infinity;
+        const out = smooth((u - (next - 0.55)) / 0.5);
+        l.style.opacity = String(1 - out);
+        l.style.transform = `translateY(calc(-50% - ${(out * 18).toFixed(1)}px))`;
+        l.style.filter = out > 0 ? `blur(${(out * 6).toFixed(2)}px)` : "";
+        l.querySelectorAll(".w").forEach((w, j) => {
+          const k = (u - from - 0.1 - j * 0.05) / 0.6;
+          const e = easeOut(k);
+          w.style.opacity = String(smooth(k));
+          w.style.transform = `translateY(${((1 - e) * 14).toFixed(1)}px)`;
+          w.style.filter = k < 1 ? `blur(${(Math.max(0, 1 - e) * 7).toFixed(2)}px)` : "";
+        });
+      });
+      return;
+    }
     lines.forEach((l, i) => {
       const from = (s.lines[i].at ?? i * 2) * BEAT;
       const k = (u - from) / 0.7;
