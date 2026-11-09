@@ -24,7 +24,7 @@ const STEPS = [
 ];
 
 const BUILT = [
-  { type: "diagram", beats: 14, head: "A desktop app over a local engine." },
+  { type: "diagram", beats: 16, head: "A desktop app over a local engine." },
   {
     type: "stats", beats: 12, label: "Built to be trusted",
     rows: [
@@ -40,12 +40,12 @@ const BUILT = [
 export const FILMS = {
   /**
    * The showcase: the opening of "why" (first person, now with the digging), the ten features of "launch" with the
-   * window raised under its headline, and the ending of "builder". Technology from 70.61 s, so the beat returns on
-   * the first feature and the track's hard end falls in the closing fade.
+   * window raised under its headline, and the ending of "builder", at the launch film's pace. Underscore from 40.82 s
+   * (the beat returns on the first feature), lengthened by joining its groove from 19.22 s on at 86.42 s.
    */
   showcase: {
-    bpm: 125,
-    poster: 22,
+    bpm: 100,
+    poster: 28,
     topY: 150,
     winY: 440,
     scenes: [
@@ -57,7 +57,7 @@ export const FILMS = {
           { text: "So I built the tool I wanted.", at: 11.5 },
         ],
       },
-      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 6, feature, label, head, dots: [i + 1, 10], rate: 1.4 })),
+      ...LAUNCH.map(([feature, label, head], i) => ({ type: "feature", beats: 6, feature, label, head, dots: [i + 1, 10], rate: 1.2 })),
       ...BUILT,
     ],
   },
