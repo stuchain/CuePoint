@@ -94,3 +94,16 @@ keyframes are in shot seconds; frame each so the dialog or list a shot is about 
 Shots dissolve into each other, and the rail chip and counter hand over under the same dissolve. Music: `--track=<your own file> --start=<s>` names the output -PRIVATE;
 the track never goes in the repository. Its loudness is measured over the stretch used and applied as one static
 gain, so a breakdown or a fade-out in the music stays as the track has it.
+
+## The two short films
+
+`film/` holds two films that are not cuts of the tour. `node scripts/render-film.mjs --film=<name> --raw=<recordings>`
+renders one at 1080 x 1350 (`--stills=5,12` for a quick look, `--track=<mp3> --start=<s>` for music).
+
+- `wipe` (30.9 s): the same Library before CuePoint and after, split by a slider, in three chapters (keys, the
+  match, the whole page). It reads the before/after stills the capture spec takes either side of Clean and Save to
+  files (`wipe-library-*.png`, `wipe-details-*.png`, so record with `CUEPOINT_DEMO_ONLY=player,wipe,clean,save`).
+  Music: sub_clair's "Technology", `--start=56.97` puts its return on the last chapter's wipe.
+- `onetake` (26.5 s): the Clean clip at its own speed with no cuts or chrome, the camera creeping in and then
+  pushing into the match dialog, the pointer lit, words only at the end. Music: Musinova's "Minimal Techno
+  Electronic Underscore", `--start=33.49` brings the beat back on the first "Use this match".

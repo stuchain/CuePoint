@@ -12,3 +12,6 @@ demo/frames/
 
 # the tracked mouse pointer per frame (scripts/track-pointer.py), small and checked by verify-demo.mjs
 !demo/pointer.json
+
+# the films' before/after stills (scripts/render-film.mjs copies them from the recordings)
+film/frames/

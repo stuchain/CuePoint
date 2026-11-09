@@ -3,7 +3,8 @@
  *
  * Built on `readme.spec.ts`: the same made-up library, window (1280 x 800 at a device scale of 2),
  * drawn pointer and ffmpeg X11 recording, so it runs only under X (`xvfb-run` with a screen of at
- * least 2600 x 1700). One clip per feature, written as `<id>.mkv` to `CUEPOINT_DEMO_OUT`.
+ * least 2600 x 1700). One clip per feature, written as `<id>.mkv` to `CUEPOINT_DEMO_OUT`, and the wipe film's
+ * before/after stills (`wipe-*-before.png`, `wipe-*-after.png`), taken either side of Clean and Save to files.
  *
  * Skipped unless `CUEPOINT_CAPTURE_DEMO=1`. `CUEPOINT_DEMO_ONLY=keys,stats` retakes some clips.
  */
@@ -501,6 +502,32 @@ test.describe("the demo video's clips", () => {
         await window.waitForTimeout(500);
       };
 
+      /**
+       * The before/after pair for the wipe film (apps/promo-video/film/wipe): the Library on the playlist Clean
+       * matches live, as a still, then one track's details. Taken once before Clean and once after Save to files,
+       * so the two only differ by what CuePoint changed.
+       */
+      const wipePair = async (when: "before" | "after") => {
+        await sidebar("rail");
+        await nav(window, "Library").click();
+        await expect(rows.nth(3)).toBeVisible({ timeout: 30_000 });
+        await closeDetails();
+        await window.getByRole("main").getByText(showcase.livePlaylist, { exact: true }).first().click();
+        await expect(rows.nth(3)).toBeVisible({ timeout: 30_000 });
+        // a playlist can open the details panel on its own; both stills need the same columns
+        await closeDetails();
+        await window.waitForTimeout(800);
+        await still(window, `wipe-library-${when}`);
+        await rows.nth(2).locator('[data-column="title"]').click();
+        const show = window.getByRole("button", { name: "Track details", exact: true }).first();
+        if (!(await details.isVisible())) await show.click();
+        await expect(details).toBeVisible();
+        await window.waitForTimeout(800);
+        await still(window, `wipe-details-${when}`);
+        await closeDetails();
+        await window.getByRole("main").getByText("All tracks", { exact: true }).first().click();
+      };
+
       await picture(window, "clip: library", async () => {
         await sidebar("expanded");
         await nav(window, "Library").click();
@@ -568,6 +595,8 @@ test.describe("the demo video's clips", () => {
         if (await queue.isVisible()) await window.getByRole("button", { name: /Hide the queue|Show the queue/ }).first().click();
         await window.evaluate(() => (window as never as Bridge).cuepoint.player.pause()).catch(() => undefined);
       });
+
+      await picture(window, "still: wipe before", () => wipePair("before"));
 
       await picture(window, "clip: clean", async () => {
         await nav(window, "Clean").click();
@@ -710,6 +739,8 @@ test.describe("the demo video's clips", () => {
         await stop();
         await window.keyboard.press("Escape");
       });
+
+      await picture(window, "still: wipe after", () => wipePair("after"));
 
       await picture(window, "clip: export", async () => {
         await nav(window, "Library").click();

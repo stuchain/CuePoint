@@ -22,6 +22,7 @@ import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 import { EDITS, FORMATS, FPS, SHOTS, layout } from "../demo/shots.js";
+import { loudness } from "./audio.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "out", "demo");
@@ -56,19 +57,6 @@ function extractRaw(shot) {
   mkdirSync(dir, { recursive: true });
   for (const f of readdirSync(dir)) spawnSync("rm", [join(dir, f)]);
   run(["-i", file, "-vf", `fps=${FPS},scale=2048:-1:flags=lanczos`, "-q:v", "3", join(dir, "%05d.jpg")]);
-}
-
-/**
- * The loudness filter for the music under the cut: measured first over the stretch used, then applied as one
- * static gain (linear), so a quiet breakdown or the track's own fade-out is not pumped back up.
- */
-function loudness(track, start, total) {
-  // a true-peak ceiling the static gain can meet (a tighter one makes loudnorm fall back to dynamic gain)
-  const target = "I=-14:TP=-1.0:LRA=11";
-  const r = spawnSync("ffmpeg", ["-hide_banner", "-nostats", "-ss", String(start), "-t", String(total), "-i", track, "-af", `loudnorm=${target}:print_format=json`, "-f", "null", "-"]);
-  const text = r.stderr.toString();
-  const m = JSON.parse(text.slice(text.lastIndexOf("{")));
-  return `loudnorm=${target}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true`;
 }
 
 function serve() {

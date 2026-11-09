@@ -1,0 +1,20 @@
+/* Film A: one window, split by a slider that wipes the library from before CuePoint to after. */
+.bg { position: absolute; inset: 0; background: radial-gradient(120% 70% at 50% 0%, #2a1f4a 0%, var(--bg-app) 60%, #0d0b12 100%); }
+.title { position: absolute; left: 48px; top: 60px; margin: 0; font: 700 74px/1.1 var(--pixel); display: flex; flex-direction: column; }
+.title__line { opacity: 0; }
+.title em { font-style: normal; color: var(--accent); }
+.tag { position: absolute; top: 262px; font: 700 30px var(--pixel); padding: 4px 14px 6px; border: 3px solid var(--outline); box-shadow: 4px 4px 0 var(--shadow); opacity: 0; }
+.tag--before { left: 40px; background: var(--before-bg); color: var(--before); }
+.tag--after { right: 40px; background: var(--after-bg); color: var(--after); }
+.window { position: absolute; left: 40px; top: 328px; width: 1000px; height: 625px; border: 4px solid var(--outline); box-shadow: 12px 12px 0 var(--shadow); background: #18181b; overflow: hidden; }
+.bar { position: absolute; top: 0; bottom: 0; width: 6px; margin-left: -3px; background: var(--accent); box-shadow: 0 0 28px 4px rgba(145, 100, 246, 0.85); opacity: 0; }
+.knob { position: absolute; top: 50%; left: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; background: var(--accent); border: 4px solid var(--outline); box-shadow: 5px 5px 0 var(--shadow); display: flex; align-items: center; justify-content: center; gap: 6px; }
+.knob i { width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; }
+.knob i:first-child { border-right: 10px solid var(--outline); }
+.knob i:last-child { border-left: 10px solid var(--outline); }
+.note { position: absolute; left: 40px; right: 40px; top: 1000px; opacity: 0; }
+.chip { display: inline-block; font: 700 26px var(--pixel); color: var(--outline); background: var(--accent); border: 3px solid var(--outline); box-shadow: 4px 4px 0 var(--shadow); padding: 2px 12px 4px; text-transform: uppercase; letter-spacing: 1px; }
+.caption { margin-top: 20px; font: 600 38px/1.3 var(--data); color: var(--fg); text-wrap: balance; }
+.brand { position: absolute; left: 48px; bottom: 44px; display: flex; align-items: center; gap: 14px; font: 700 32px var(--pixel); }
+.brand img { width: 42px; height: 42px; image-rendering: pixelated; }
+.url { position: absolute; right: 48px; bottom: 50px; font: 600 26px var(--data); color: var(--muted); }
