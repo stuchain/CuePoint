@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   AUDIO_INIT_FAILURE,
+  PLAYER_MISSING_DLL_MESSAGE,
   PLAYER_OUTPUT_LINES,
   PlayerSupervisor,
   PlayerUnavailableError,
@@ -1633,6 +1634,70 @@ describe("what the player reports", () => {
     expect(incidents[0]!.attachment?.text).toContain("audio init failed");
     expect(named("player exited unexpectedly")).toHaveLength(4);
     expect(named("player restarting")).toHaveLength(3);
+  });
+
+  it.each([3221225781, 3221225595])(
+    "exit code %i (a Windows loader failure) gives up at once, as missing-dll, without restarting",
+    async (code) => {
+      const { incidents, reporter, named } = recorder();
+      const { supervisor, children, spawnCalls } = track(harness({ reporter, stableUptimeMs: 60_000 }));
+      await supervisor.play("/music/a.flac");
+      children[0].exit(code);
+      await until(() => incidents.length > 0);
+      await settle(40);
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(named("player restarting")).toHaveLength(0);
+      expect(incidents).toHaveLength(1);
+      expect(incidents[0]!.outcome).toBe("missing-dll");
+      expect(incidents[0]!.data).toMatchObject({ exit_code: code, restarts: 0, exits: 1 });
+      expect(incidents[0]!.data.reason).toBe(PLAYER_MISSING_DLL_MESSAGE);
+      expect(supervisor.getStatus().error).toBe(PLAYER_MISSING_DLL_MESSAGE);
+      expect(supervisor.getStatus().error).not.toMatch(/stopped responding/);
+    },
+  );
+
+  it("a loader failure before the player connects makes play() say so, once, without restarting", async () => {
+    const { incidents, reporter } = recorder();
+    const { supervisor, spawnCalls } = track(
+      harness({
+        reporter,
+        connectFailures: 3,
+        onSpawn: (child, index) => {
+          if (index === 0) queueMicrotask(() => child.exit(3221225781));
+        },
+      }),
+    );
+    await expect(supervisor.play("/music/a.flac")).rejects.toThrow(PLAYER_MISSING_DLL_MESSAGE);
+    await until(() => incidents.length > 0);
+    await settle(80);
+
+    expect(spawnCalls).toHaveLength(1);
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0]!.outcome).toBe("missing-dll");
+    expect(incidents[0]!.message).toBe("player could not start: a DLL it needs is missing");
+    expect(incidents[0]!.data).toMatchObject({ exit_code: 3221225781, restarts: 0 });
+  });
+
+  it("a loader failure during a restart also ends the loop", async () => {
+    const { incidents, reporter } = recorder();
+    const { supervisor, children, spawnCalls } = track(
+      harness({
+        reporter,
+        stableUptimeMs: 60_000,
+        onSpawn: (child, index) => {
+          if (index >= 1) queueMicrotask(() => child.exit(3221225781));
+        },
+      }),
+    );
+    await supervisor.play("/music/a.flac");
+    children[0].exit(1);
+    await until(() => incidents.length > 0);
+    await settle(80);
+
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0]!.outcome).toBe("missing-dll");
+    expect(spawnCalls).toHaveLength(2);
   });
 
   it("a deliberate stop, and playing again after one, are not reported", async () => {

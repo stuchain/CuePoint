@@ -38,6 +38,18 @@ Layout produced (mirroring ``resources/engine/`` so packaging is one pattern)::
 The directory names are electron-builder's `${os}-${arch}` vocabulary, because
 that is what `extraResources` expands when packaging.
 
+**The Visual C++ runtime (Windows).** The pinned Windows mpv hard-imports
+``MSVCP140.dll``, ``VCRUNTIME140.dll`` and ``VCRUNTIME140_1.dll``, which Windows
+does not ship; without them mpv exits at once with 0xC0000135 (Sentry
+ELECTRON-5). So a win32 install also copies those three DLLs next to ``mpv.exe``
+(app-local deployment, allowed by the redistributable licence) and records each
+one's size and SHA-256 in ``installed.json``. They come from the newest Visual
+Studio x64 CRT redist folder (found with ``vswhere`` on a Windows host), or from
+``--vc-runtime-dir DIR`` / ``CUEPOINT_VC_RUNTIME_DIR``. On a Windows host, which
+is where packaging happens, not finding them is a hard error. On any other host
+a win32 target is fetched only for checks, so a missing folder is a loud warning
+and the install is left without them; ``--check-imports`` fails on it.
+
 Nothing here is committed: ``resources/player/`` is build output, exactly as
 ``resources/engine/`` is.
 
@@ -50,6 +62,7 @@ Usage::
     python scripts/fetch_player_sidecar.py --check-analysis # the waveform pipeline
     python scripts/fetch_player_sidecar.py --check-analysis-worker [auto|source|PATH]
                                                             # the engine's analysis worker (C19g)
+    python scripts/fetch_player_sidecar.py --check-imports # Windows: every DLL mpv.exe needs
     python scripts/fetch_player_sidecar.py --print-path    # where the binary is
     python scripts/fetch_player_sidecar.py --update-manifest
     python scripts/fetch_player_sidecar.py --download-archives DIR  # for the mirror
@@ -67,6 +80,7 @@ import platform
 import re
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tarfile
@@ -128,6 +142,79 @@ RECEIPT_NAME = "installed.json"
 
 #: The repository whose releases hold the mpv mirror (DEC-175).
 MIRROR_REPO = "stuchain/CuePoint"
+
+#: The Visual C++ 2015-2022 x64 runtime DLLs the Windows mpv imports, shipped
+#: next to mpv.exe (lower case: Windows resolves DLL names case-insensitively).
+VC_RUNTIME_DLLS: Tuple[str, ...] = (
+    "msvcp140.dll",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+)
+VC_RUNTIME_ENV = "CUEPOINT_VC_RUNTIME_DIR"
+VC_REDIST_COMPONENT = "Microsoft.VisualStudio.Component.VC.Redist.14.Latest"
+
+#: Windows 10 1903+ system DLLs a shipped binary may import without us bundling
+#: them. Everything else mpv.exe imports must sit next to it (or be listed in
+#: ``DRIVER_PROVIDED_DLLS``). ``api-ms-win-*`` / ``ext-ms-win-*`` API sets are
+#: system by prefix (the UCRT ``api-ms-win-crt-*`` among them: built into Win10).
+WINDOWS_SYSTEM_DLLS = frozenset(
+    {
+        "advapi32.dll",
+        "avrt.dll",
+        "bcrypt.dll",
+        "bcryptprimitives.dll",
+        "cfgmgr32.dll",
+        "combase.dll",
+        "comctl32.dll",
+        "comdlg32.dll",
+        "crypt32.dll",
+        "d3d11.dll",
+        "d3d9.dll",
+        "dwmapi.dll",
+        "dwrite.dll",
+        "dxgi.dll",
+        "dxva2.dll",
+        "gdi32.dll",
+        "hid.dll",
+        "icu.dll",  # Windows 10 1903+
+        "imm32.dll",
+        "iphlpapi.dll",
+        "kernel32.dll",
+        "mf.dll",
+        "mfplat.dll",
+        "mfreadwrite.dll",
+        "mmdevapi.dll",
+        "msvcrt.dll",
+        "ncrypt.dll",
+        "normaliz.dll",
+        "ntdll.dll",
+        "ole32.dll",
+        "oleaut32.dll",
+        "opengl32.dll",
+        "powrprof.dll",
+        "propsys.dll",
+        "rpcrt4.dll",
+        "secur32.dll",
+        "setupapi.dll",
+        "shcore.dll",
+        "shell32.dll",
+        "shlwapi.dll",
+        "ucrtbase.dll",
+        "user32.dll",
+        "userenv.dll",
+        "uxtheme.dll",
+        "version.dll",
+        "winmm.dll",
+        "wldap32.dll",
+        "ws2_32.dll",
+        "wtsapi32.dll",
+    }
+)
+#: Installed by GPU drivers, not by Windows and not by us. Accepted for now:
+#: mpv's Vulkan renderer is not used for audio, but the loader still needs the
+#: DLL to be present at startup. A PC with no Vulkan driver fails the same way
+#: the missing runtime did, so this is the next thing to look at if that is reported.
+DRIVER_PROVIDED_DLLS = frozenset({"vulkan-1.dll"})
 
 DOWNLOAD_TIMEOUT_SECONDS = 300
 DOWNLOAD_ATTEMPTS = 3
@@ -666,7 +753,11 @@ def _make_executable(target: Target, install_dir: Path) -> None:
 
 
 def write_receipt(
-    manifest: Manifest, target: Target, install_dir: Path, files: Sequence[Path]
+    manifest: Manifest,
+    target: Target,
+    install_dir: Path,
+    files: Sequence[Path],
+    vc_runtime: Sequence[Dict[str, Any]] = (),
 ) -> Path:
     receipt = {
         "component": manifest.component,
@@ -687,6 +778,8 @@ def write_receipt(
             if p.name != RECEIPT_NAME
         ],
     }
+    if vc_runtime:
+        receipt["vc_runtime"] = list(vc_runtime)
     path = install_dir / RECEIPT_NAME
     path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
     return path
@@ -1483,6 +1576,7 @@ def install_target(
     force: bool = False,
     run_smoke: bool = True,
     quiet: bool = False,
+    vc_runtime_dir: Optional[Path] = None,
 ) -> Path:
     """Fetch, verify, extract and smoke-test one target. Returns the binary."""
     install_dir = install_dir_for(target, dest_root)
@@ -1491,7 +1585,21 @@ def install_target(
     if not force and (install_dir / RECEIPT_NAME).exists():
         try:
             receipt = verify_install(target, dest_root)
-            if receipt.get("asset_sha256") == target.sha256:
+            # An install from before the runtime was bundled is intact and wrong.
+            # Only worth a reinstall where a runtime folder can be had: a Windows host,
+            # or one named explicitly. Elsewhere the install is for checks only.
+            lacks_runtime = (
+                _is_windows(target)
+                and (
+                    _host_is_windows()
+                    or vc_runtime_dir is not None
+                    or bool(os.environ.get(VC_RUNTIME_ENV))
+                )
+                and not _receipt_has_runtime(receipt)
+            )
+            if lacks_runtime and not quiet:
+                print("  installed build has no Visual C++ runtime; reinstalling")
+            if receipt.get("asset_sha256") == target.sha256 and not lacks_runtime:
                 if not quiet:
                     print(f"  up to date: {binary}")
                 if run_smoke:
@@ -1514,8 +1622,19 @@ def install_target(
     )
     files = extract_target(archive, target, install_dir)
     copy_license_files(manifest, install_dir, quiet=quiet)
+    runtime: List[Dict[str, Any]] = []
+    runtime_dir = (
+        resolve_vc_runtime_dir(vc_runtime_dir, quiet=quiet)
+        if _is_windows(target)
+        else None
+    )
+    if runtime_dir is not None:
+        runtime = install_vc_runtime(runtime_dir, install_dir, quiet=quiet)
+        # Packaging host: the install is not good unless mpv.exe can load. Before the
+        # receipt, so a failed check leaves no receipt and a rerun installs again.
+        check_imports(binary, quiet=quiet)
     files = sorted(p for p in install_dir.rglob("*") if p.is_file())
-    write_receipt(manifest, target, install_dir, files)
+    write_receipt(manifest, target, install_dir, files, runtime)
     if not quiet:
         total = sum(p.stat().st_size for p in files)
         print(f"  installed {len(files)} files ({total >> 20} MiB) -> {install_dir}")
@@ -1550,6 +1669,280 @@ def copy_license_files(
     notice = LICENSE_DIR / "NOTICE.md"
     if notice.exists():
         shutil.copy2(notice, licenses / "NOTICE.md")
+
+
+# ---------------------------------------------------------------------------
+# Windows: the Visual C++ runtime, and the check that mpv.exe can load
+# ---------------------------------------------------------------------------
+
+
+def _is_windows(target: Target) -> bool:
+    return target.key.startswith("win32")
+
+
+def _host_is_windows() -> bool:
+    return platform.system() == "Windows"
+
+
+def _receipt_has_runtime(receipt: Dict[str, Any]) -> bool:
+    shipped = {entry.get("name") for entry in receipt.get("vc_runtime", [])}
+    return all(name in shipped for name in VC_RUNTIME_DLLS)
+
+
+def _has_runtime(directory: Path) -> bool:
+    return directory.is_dir() and all(
+        (directory / n).is_file() for n in VC_RUNTIME_DLLS
+    )
+
+
+def find_vc_runtime_dir_with_vswhere() -> Optional[Path]:
+    """The newest Visual Studio x64 CRT redist folder, or None (Windows only)."""
+    candidates = [
+        Path(os.environ.get(var, ""))
+        / "Microsoft Visual Studio"
+        / "Installer"
+        / "vswhere.exe"
+        for var in ("ProgramFiles(x86)", "ProgramFiles")
+    ]
+    vswhere = next((c for c in candidates if c.is_file()), None)
+    if vswhere is None:
+        return None
+    base = [str(vswhere), "-latest", "-products", "*"]
+    # The redist component first; a fallback without it if that finds nothing.
+    for extra in (["-requires", VC_REDIST_COMPONENT], []):
+        try:
+            out = subprocess.run(
+                base + extra + ["-property", "installationPath"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if not out:
+            continue
+        found = _newest_crt_dir(Path(out.splitlines()[0].strip()))
+        if found is not None:
+            return found
+    return None
+
+
+def _numeric_version_key(name: str) -> Tuple[int, ...]:
+    """Sort key for a folder named like ``14.38.33135``; non-numeric names sort lowest."""
+    parts = name.split(".")
+    if not parts or not all(p.isdigit() for p in parts):
+        return ()
+    return tuple(int(p) for p in parts)
+
+
+def _newest_crt_dir(install_path: Path) -> Optional[Path]:
+    redist = install_path / "VC" / "Redist" / "MSVC"
+    if not redist.is_dir():
+        return None
+    versions = [
+        d for d in redist.iterdir() if d.is_dir() and _numeric_version_key(d.name) != ()
+    ]
+    for version_dir in sorted(
+        versions, key=lambda d: _numeric_version_key(d.name), reverse=True
+    ):
+        for crt in sorted((version_dir / "x64").glob("Microsoft.VC14*.CRT")):
+            if _has_runtime(crt):
+                return crt
+    return None
+
+
+def resolve_vc_runtime_dir(
+    explicit: Optional[Path] = None, *, quiet: bool = False
+) -> Optional[Path]:
+    """Where to copy the Visual C++ runtime DLLs from.
+
+    An explicit directory (``--vc-runtime-dir`` or ``CUEPOINT_VC_RUNTIME_DIR``)
+    wins and must hold all three DLLs. Otherwise a Windows host asks vswhere. If
+    nothing is found a Windows host (where packaging happens) fails; any other
+    host is only fetching the win32 target for checks, so it warns and returns None.
+    """
+    chosen = explicit
+    if chosen is None and os.environ.get(VC_RUNTIME_ENV):
+        chosen = Path(os.environ[VC_RUNTIME_ENV])
+    if chosen is not None:
+        if not _has_runtime(chosen):
+            missing = [n for n in VC_RUNTIME_DLLS if not (chosen / n).is_file()]
+            raise PlayerSidecarError(
+                f"The Visual C++ runtime folder {chosen} lacks: {', '.join(missing)}."
+            )
+        return chosen
+    if _host_is_windows():
+        found = find_vc_runtime_dir_with_vswhere()
+        if found is not None:
+            return found
+        raise PlayerSidecarError(
+            "Could not find the Visual C++ x64 runtime DLLs "
+            f"({', '.join(VC_RUNTIME_DLLS)}) that the Windows mpv needs. Install "
+            "Visual Studio or the Build Tools (C++ workload), or pass "
+            "--vc-runtime-dir DIR (or set CUEPOINT_VC_RUNTIME_DIR) to a folder "
+            "holding them, such as VC\\Redist\\MSVC\\<version>\\x64\\Microsoft.VC143.CRT."
+        )
+    if not quiet:
+        print(
+            "WARNING: no Visual C++ runtime folder given (--vc-runtime-dir / "
+            f"{VC_RUNTIME_ENV}); the win32 install has no msvcp140/vcruntime140 DLLs. "
+            "Fine for a check on this host, not for packaging; --check-imports fails on it.",
+            file=sys.stderr,
+        )
+    return None
+
+
+def install_vc_runtime(
+    runtime_dir: Path, install_dir: Path, *, quiet: bool = False
+) -> List[Dict[str, Any]]:
+    """Copy the runtime DLLs next to mpv.exe. Returns their name, size and SHA-256."""
+    records: List[Dict[str, Any]] = []
+    for name in VC_RUNTIME_DLLS:
+        dest = install_dir / name
+        shutil.copy2(runtime_dir / name, dest)
+        records.append(
+            {"name": name, "size": dest.stat().st_size, "sha256": sha256_file(dest)}
+        )
+    if not quiet:
+        print(f"  copied Visual C++ runtime ({len(records)} DLLs) from {runtime_dir}")
+    return records
+
+
+class PEFormatError(PlayerSidecarError):
+    """Bytes that are not a PE32/PE32+ file we can read."""
+
+
+def _read_pe_imports(data: bytes) -> List[str]:
+    """DLL names a PE file imports at load time and via delay-load, in file order.
+
+    Stdlib only: just the import directory (index 1) and the delay-import
+    directory (index 13) of a PE32 or PE32+ image.
+    """
+    if len(data) < 0x40 or data[:2] != b"MZ":
+        raise PEFormatError("not a PE file (no MZ header)")
+    (pe_off,) = struct.unpack_from("<I", data, 0x3C)
+    if data[pe_off : pe_off + 4] != b"PE\0\0":
+        raise PEFormatError("not a PE file (no PE signature)")
+    coff = pe_off + 4
+    (n_sections,) = struct.unpack_from("<H", data, coff + 2)
+    (opt_size,) = struct.unpack_from("<H", data, coff + 16)
+    opt = coff + 20
+    (magic,) = struct.unpack_from("<H", data, opt)
+    if magic == 0x20B:
+        dirs_off, image_base = opt + 112, struct.unpack_from("<Q", data, opt + 24)[0]
+    elif magic == 0x10B:
+        dirs_off, image_base = opt + 96, struct.unpack_from("<I", data, opt + 28)[0]
+    else:
+        raise PEFormatError(f"unknown optional header magic {magic:#x}")
+    (n_dirs,) = struct.unpack_from("<I", data, dirs_off - 4)
+    sections = []
+    sec = opt + opt_size
+    for i in range(n_sections):
+        vsize, vaddr, rawsize, rawptr = struct.unpack_from(
+            "<4I", data, sec + 40 * i + 8
+        )
+        sections.append((vaddr, max(vsize, rawsize), rawptr))
+
+    def to_offset(rva: int) -> int:
+        for vaddr, size, rawptr in sections:
+            if vaddr <= rva < vaddr + size:
+                off = rawptr + rva - vaddr
+                if off >= len(data):
+                    raise PEFormatError(f"RVA {rva:#x} maps outside the file")
+                return off
+        raise PEFormatError(f"RVA {rva:#x} is outside every section")
+
+    def cstring(rva: int) -> str:
+        start = to_offset(rva)
+        end = data.find(b"\0", start)
+        if end < 0:
+            raise PEFormatError("unterminated DLL name")
+        return data[start:end].decode("ascii", "replace")
+
+    def directory(index: int) -> int:
+        if index >= n_dirs:
+            return 0
+        rva, _size = struct.unpack_from("<II", data, dirs_off + 8 * index)
+        return rva
+
+    names: List[str] = []
+    rva = directory(1)
+    if rva:
+        off = to_offset(rva)
+        while off + 20 <= len(data):
+            fields = struct.unpack_from("<5I", data, off)
+            if fields == (0, 0, 0, 0, 0):
+                break
+            names.append(cstring(fields[3]))
+            off += 20
+    rva = directory(13)
+    if rva:
+        off = to_offset(rva)
+        while off + 32 <= len(data):
+            fields = struct.unpack_from("<8I", data, off)
+            if fields == (0,) * 8:
+                break
+            attributes, name_rva = fields[0], fields[1]
+            # Bit 0 set: RVAs. Clear: virtual addresses (very old images).
+            names.append(cstring(name_rva if attributes & 1 else name_rva - image_base))
+            off += 32
+    return names
+
+
+def read_pe_imports(data: bytes) -> List[str]:
+    """DLL names ``data`` imports; any malformed or truncated input is a PEFormatError."""
+    try:
+        return _read_pe_imports(data)
+    except (struct.error, ValueError) as exc:
+        raise PEFormatError(f"malformed PE file: {exc}") from exc
+
+
+def unresolved_imports(imports: Iterable[str], shipped: Iterable[str]) -> List[str]:
+    """Imports that are neither shipped beside the binary nor expected on Windows."""
+    have = {n.lower() for n in shipped}
+    missing: List[str] = []
+    for name in imports:
+        low = name.lower()
+        if (
+            low in have
+            or low in WINDOWS_SYSTEM_DLLS
+            or low in DRIVER_PROVIDED_DLLS
+            or low.startswith(("api-ms-win-", "ext-ms-win-"))
+        ):
+            continue
+        if low not in {m.lower() for m in missing}:
+            missing.append(name)
+    return missing
+
+
+def check_imports(binary: Path, *, quiet: bool = False) -> List[str]:
+    """Fail unless every DLL ``binary`` imports ships beside it or is a Windows DLL."""
+    if not binary.is_file():
+        raise PlayerSidecarError(
+            f"No player binary at {binary}. Run the fetch script first."
+        )
+    imports = read_pe_imports(binary.read_bytes())
+    if not imports and binary.suffix.lower() == ".exe":
+        raise PEFormatError(
+            f"{binary.name} lists no imported DLLs; a real Windows executable always "
+            "imports kernel32.dll, so the file is not a usable PE image."
+        )
+    shipped = [p.name for p in binary.parent.iterdir() if p.is_file()]
+    missing = unresolved_imports(imports, shipped)
+    if missing:
+        raise PlayerSidecarError(
+            f"{binary.name} imports DLLs that are neither shipped next to it nor "
+            f"expected on Windows 10 1903+: {', '.join(missing)}. It would exit with "
+            "0xC0000135 (STATUS_DLL_NOT_FOUND) on a PC without them. Ship them "
+            "beside it, or, for a genuine Windows system DLL, add it to "
+            "WINDOWS_SYSTEM_DLLS."
+        )
+    if not quiet:
+        print(
+            f"  imports ok: {binary.name} needs {len(imports)} DLLs, all accounted for"
+        )
+    return imports
 
 
 # ---------------------------------------------------------------------------
@@ -1819,6 +2212,19 @@ def build_parser() -> argparse.ArgumentParser:
         "python -m cuepoint.engine, or a path",
     )
     parser.add_argument(
+        "--check-imports",
+        action="store_true",
+        help="Windows target: fail if mpv.exe imports a DLL that is neither shipped "
+        "beside it nor a Windows system DLL (static, runs on any host)",
+    )
+    parser.add_argument(
+        "--vc-runtime-dir",
+        type=Path,
+        metavar="DIR",
+        help="Folder with msvcp140.dll, vcruntime140.dll and vcruntime140_1.dll to ship "
+        f"with the Windows mpv (default: ${VC_RUNTIME_ENV}, then vswhere on Windows)",
+    )
+    parser.add_argument(
         "--mpv",
         type=Path,
         help="Check this mpv instead of the bundled one (formats and analysis only)",
@@ -1925,6 +2331,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(binary_path_for(target, args.dest))
             return 0
 
+        if args.check_imports:
+            for target in targets:
+                if not _is_windows(target):
+                    print(
+                        f"  (import check skipped: {target.key} is not a Windows target)"
+                    )
+                    continue
+                check_imports(binary_path_for(target, args.dest), quiet=args.quiet)
+            return 0
+
         if args.verify_only:
             for target in targets:
                 receipt = verify_install(target, args.dest, match_manifest=True)
@@ -1947,6 +2363,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 force=args.force,
                 run_smoke=is_host and not args.skip_smoke,
                 quiet=args.quiet,
+                vc_runtime_dir=args.vc_runtime_dir,
             )
             if not is_host and not args.quiet:
                 print("  (cross-platform target: installed and verified, not executed)")

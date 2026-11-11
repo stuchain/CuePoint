@@ -200,6 +200,11 @@ jobs:
       - name: Fetch player sidecar (mpv)
         run: python scripts/fetch_player_sidecar.py
 
+      # ELECTRON-5: on Windows mpv.exe must find every DLL it imports, shipped beside it or a
+      # system DLL. A no-op notice on the other systems.
+      - name: Player sidecar import check
+        run: python scripts/fetch_player_sidecar.py --check-imports
+
       - name: Player sidecar format decode check
         run: python scripts/fetch_player_sidecar.py --check-formats
 

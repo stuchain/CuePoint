@@ -33,8 +33,8 @@ export function capLine(line: string): string {
 
 export type ProcessName = "engine" | "player";
 
-/** How an incident ended. */
-export type IncidentOutcome = "recovered" | "gave-up" | "start-failed";
+/** How an incident ended. `missing-dll`: Windows could not load the player, so no restart was tried. */
+export type IncidentOutcome = "recovered" | "gave-up" | "start-failed" | "missing-dll";
 
 /**
  * The last lines of a process's output, by stream; any may be absent. The engine reports `stdout`
@@ -71,7 +71,7 @@ export interface ProcessIncident {
     uptime_ms: number | null;
     /** Exits that were not asked for, during the incident. */
     exits: number;
-    /** Why the supervisor stopped trying (`gave-up` and `start-failed`). */
+    /** Why the supervisor stopped trying (`gave-up`, `missing-dll` and `start-failed`). */
     reason?: string;
   };
   attachment: IncidentAttachment | null;
@@ -153,9 +153,13 @@ export class IncidentTracker {
    * The supervisor will not try again: the open incident's one event. Nothing when none is open, so a
    * second restart loop reaching its end cannot send a second report for the same incident.
    */
-  gaveUp(reason: string, output: OutputTail): void {
+  gaveUp(reason: string, output: OutputTail, outcome: "gave-up" | "missing-dll" = "gave-up"): void {
     if (this.open === null) return;
-    this.send("gave-up", `${this.process} exited unexpectedly and was given up on`, reason, output);
+    const message =
+      outcome === "missing-dll"
+        ? `${this.process} could not start: a DLL it needs is missing`
+        : `${this.process} exited unexpectedly and was given up on`;
+    this.send(outcome, message, reason, output);
   }
 
   /** The app is quitting with an incident open: forget it, unsent (see the file comment). */

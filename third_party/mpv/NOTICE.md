@@ -56,6 +56,17 @@ exists:
    records.
 3. **The binary is unmodified**, so there are no changes of ours to publish.
 
+### Microsoft Visual C++ runtime (Windows only)
+
+The Windows mpv build is linked against the Visual C++ 2015-2022 x64 runtime,
+which Windows does not include. CuePoint therefore ships `msvcp140.dll`,
+`vcruntime140.dll` and `vcruntime140_1.dll` next to `mpv.exe`, copied unmodified
+from the Visual Studio redistributable folder. The Microsoft Visual C++ runtime
+DLLs are redistributed under the Visual Studio redistributable terms. Their
+names, sizes and SHA-256 are recorded in `installed.json` (`vc_runtime`), and
+`fetch_player_sidecar.py --check-imports` fails a build in which `mpv.exe`
+needs a DLL that is neither shipped nor a Windows system DLL.
+
 ### If this needs to change
 
 Two things would change the analysis, and both are decisions rather than

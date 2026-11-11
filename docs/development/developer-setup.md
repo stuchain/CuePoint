@@ -139,7 +139,14 @@ python scripts/fetch_player_sidecar.py            # this platform
 python scripts/fetch_player_sidecar.py --target all   # every pinned platform
 python scripts/fetch_player_sidecar.py --verify-only  # re-check an install
 python scripts/fetch_player_sidecar.py --check-formats  # decode the fixtures
+python scripts/fetch_player_sidecar.py --check-imports  # Windows: every DLL mpv.exe needs is shipped
 ```
+
+On Windows the fetch also copies the Visual C++ runtime DLLs (`msvcp140`, `vcruntime140`,
+`vcruntime140_1`) next to `mpv.exe`, because mpv needs them and Windows does not include them.
+They come from Visual Studio or the Build Tools with the C++ workload (the redist CRT folder), or
+from `--vc-runtime-dir DIR` / `CUEPOINT_VC_RUNTIME_DIR`. `--check-imports` fails if `mpv.exe`
+imports a DLL that is neither shipped nor a Windows system DLL.
 
 The download is pinned in `scripts/player_sidecar_manifest.json` and verified
 against the SHA-256 GitHub publishes for the asset; a mismatch fails rather than

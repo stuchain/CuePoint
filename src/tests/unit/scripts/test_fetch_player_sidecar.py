@@ -20,6 +20,7 @@ import io
 import json
 import os
 import math
+import struct
 import subprocess
 import sys
 import tarfile
@@ -67,6 +68,13 @@ def _load_sibling(name: str):
 
 
 pytestmark = pytest.mark.unit
+
+
+@pytest.fixture(autouse=True)
+def _no_vc_runtime_lookup(monkeypatch):
+    """Tests install win32 targets: keep the host and the environment out of it."""
+    monkeypatch.delenv(fps.VC_RUNTIME_ENV, raising=False)
+    monkeypatch.setattr(fps, "_host_is_windows", lambda: False)
 
 
 # ---------------------------------------------------------------------------
@@ -1518,3 +1526,363 @@ class TestAnalysisWorkerCheck:
         )
         assert fps.main(["--check-analysis-worker", "auto"]) == 0
         assert "NOTICE" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# Windows: the Visual C++ runtime and the import check
+# ---------------------------------------------------------------------------
+
+
+def _pe(imports=(), delay=(), magic=0x20B) -> bytes:
+    """A tiny PE32/PE32+ image: one section holding both import tables."""
+    is64 = magic == 0x20B
+    opt_size = 240 if is64 else 224
+    dirs_off = 112 if is64 else 96
+    pe_off = 0x40
+    raw = 0x400
+    va = 0x1000
+    body = bytearray()
+    names = {}
+
+    def name_at(n: str) -> int:
+        if n not in names:
+            names[n] = len(body)
+            body.extend(n.encode() + b"\0")
+        return va + names[n]
+
+    imp_rvas = [name_at(n) for n in imports]
+    delay_rvas = [name_at(n) for n in delay]
+    while len(body) % 8:
+        body.append(0)
+    imp_table = len(body)
+    for rva in imp_rvas:
+        body.extend(struct.pack("<5I", 0, 0, 0, rva, 0))
+    body.extend(b"\0" * 20)
+    delay_table = len(body)
+    for rva in delay_rvas:
+        body.extend(struct.pack("<8I", 1, rva, 0, 0, 0, 0, 0, 0))
+    body.extend(b"\0" * 32)
+
+    dos = bytearray(pe_off)
+    dos[:2] = b"MZ"
+    struct.pack_into("<I", dos, 0x3C, pe_off)
+    coff = b"PE\0\0" + struct.pack("<HHIIIHH", 0x8664, 1, 0, 0, 0, opt_size, 0x22)
+    opt = bytearray(opt_size)
+    struct.pack_into("<H", opt, 0, magic)
+    struct.pack_into("<I", opt, dirs_off - 4, 16)
+    if imports:
+        struct.pack_into(
+            "<II", opt, dirs_off + 8, va + imp_table, 20 * (len(imports) + 1)
+        )
+    if delay:
+        struct.pack_into(
+            "<II", opt, dirs_off + 8 * 13, va + delay_table, 32 * (len(delay) + 1)
+        )
+    section = struct.pack(
+        "<8sIIIIIIHHI", b".rdata", len(body), va, len(body), raw, 0, 0, 0, 0, 0
+    )
+    out = bytearray(dos + coff + opt + section)
+    out.extend(b"\0" * (raw - len(out)))
+    out.extend(body)
+    return bytes(out)
+
+
+class TestPeImports:
+    def test_reads_the_import_directory(self):
+        assert fps.read_pe_imports(_pe(["KERNEL32.dll", "VCRUNTIME140.dll"])) == [
+            "KERNEL32.dll",
+            "VCRUNTIME140.dll",
+        ]
+
+    def test_reads_the_delay_import_directory_too(self):
+        data = _pe(["KERNEL32.dll"], delay=["vulkan-1.dll"])
+        assert fps.read_pe_imports(data) == ["KERNEL32.dll", "vulkan-1.dll"]
+
+    def test_reads_a_pe32_image(self):
+        assert fps.read_pe_imports(_pe(["USER32.dll"], magic=0x10B)) == ["USER32.dll"]
+
+    def test_an_image_without_imports_has_none(self):
+        assert fps.read_pe_imports(_pe()) == []
+
+    def test_rejects_bytes_that_are_not_pe(self):
+        with pytest.raises(fps.PEFormatError):
+            fps.read_pe_imports(b"not a pe file at all" * 10)
+        with pytest.raises(fps.PEFormatError):
+            fps.read_pe_imports(b"MZ" + b"\0" * 100)
+
+
+class TestPeTruncated:
+    def test_truncated_anywhere_is_a_pe_format_error(self):
+        data = _pe(["KERNEL32.dll", "MSVCP140.dll"], delay=["vulkan-1.dll"])
+        for cut in range(0, len(data) - 1, 7):
+            try:
+                fps.read_pe_imports(data[:cut])
+            except fps.PEFormatError:
+                pass
+
+    def test_a_cut_inside_the_headers_is_a_pe_format_error(self):
+        data = _pe(["KERNEL32.dll"])
+        for cut in (0x3C, 0x44, 0x60, 0x100):
+            with pytest.raises(fps.PEFormatError):
+                fps.read_pe_imports(data[:cut])
+
+    def test_a_cut_before_the_import_table_is_a_pe_format_error(self):
+        data = _pe(["KERNEL32.dll"])
+        with pytest.raises(fps.PEFormatError):
+            fps.read_pe_imports(data[:0x400])
+
+    def test_an_unterminated_name_is_a_pe_format_error(self):
+        data = _pe(["KERNEL32.dll"])
+        marker = data.index(b"KERNEL32.dll") + len("KERNEL32.dll")
+        with pytest.raises(fps.PEFormatError):
+            fps.read_pe_imports(data[:marker])
+
+    def test_an_exe_with_no_imports_fails_the_check(self, tmp_path):
+        (tmp_path / "mpv.exe").write_bytes(_pe())
+        with pytest.raises(fps.PEFormatError, match="kernel32"):
+            fps.check_imports(tmp_path / "mpv.exe", quiet=True)
+
+
+class TestRealMpvImports:
+    """The import list of the pinned mpv.exe, read from a real copy."""
+
+    REAL_IMPORTS = [
+        "vulkan-1.dll",
+        "KERNEL32.dll",
+        "ole32.dll",
+        "GDI32.dll",
+        "USER32.dll",
+        "ntdll.dll",
+        "AVRT.dll",
+        "dwmapi.dll",
+        "IMM32.dll",
+        "api-ms-win-core-path-l1-1-0.dll",
+        "api-ms-win-shcore-scaling-l1-1-1.dll",
+        "UxTheme.dll",
+        "VERSION.dll",
+        "OPENGL32.dll",
+        "ADVAPI32.dll",
+        "SHELL32.dll",
+        "MSVCP140.dll",
+        "bcrypt.dll",
+        "SHLWAPI.dll",
+        "dwrite.dll",
+        "WS2_32.dll",
+        "ncrypt.dll",
+        "CRYPT32.dll",
+        "Secur32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "USERENV.dll",
+        "bcryptprimitives.dll",
+        "oleaut32.dll",
+        "api-ms-win-core-winrt-error-l1-1-0.dll",
+        "icu.dll",
+        "Normaliz.dll",
+        "WLDAP32.dll",
+        "api-ms-win-core-winrt-l1-1-0.dll",
+        "api-ms-win-core-winrt-error-l1-1-1.dll",
+        "VCRUNTIME140.dll",
+        "VCRUNTIME140_1.dll",
+    ] + [
+        f"api-ms-win-crt-{n}-l1-1-0.dll"
+        for n in (
+            "time",
+            "locale",
+            "stdio",
+            "runtime",
+            "filesystem",
+            "heap",
+            "math",
+            "convert",
+            "multibyte",
+            "string",
+            "environment",
+            "utility",
+        )
+    ]
+
+    def test_resolves_with_the_runtime_shipped(self):
+        assert fps.unresolved_imports(self.REAL_IMPORTS, fps.VC_RUNTIME_DLLS) == []
+
+    def test_only_the_runtime_is_missing_without_it(self):
+        assert sorted(
+            d.lower() for d in fps.unresolved_imports(self.REAL_IMPORTS, [])
+        ) == sorted(fps.VC_RUNTIME_DLLS)
+
+    def test_the_same_list_survives_a_pe_round_trip(self, tmp_path):
+        (tmp_path / "mpv.exe").write_bytes(_pe(self.REAL_IMPORTS))
+        assert fps.read_pe_imports((tmp_path / "mpv.exe").read_bytes()) == (
+            self.REAL_IMPORTS
+        )
+
+
+class TestCrtVersionSort:
+    def test_numeric_order_and_non_numeric_names_are_ignored(self, tmp_path):
+        redist = tmp_path / "VC" / "Redist" / "MSVC"
+        for ver in ("14.9.1", "14.38.33135", "v143", "14.8.0"):
+            crt = redist / ver / "x64" / "Microsoft.VC143.CRT"
+            crt.mkdir(parents=True)
+            for n in fps.VC_RUNTIME_DLLS:
+                (crt / n).write_bytes(b"x")
+        found = fps._newest_crt_dir(tmp_path)
+        assert found is not None and found.parts[-3] == "14.38.33135"
+
+
+class TestUnresolvedImports:
+    def test_system_api_sets_and_listed_dlls_are_expected(self):
+        imports = [
+            "KERNEL32.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll",
+            "ICU.dll",
+            "SHCORE.dll",
+        ]
+        assert fps.unresolved_imports(imports, []) == []
+
+    def test_shipped_dlls_count_whatever_their_case(self):
+        assert fps.unresolved_imports(["MSVCP140.dll"], ["msvcp140.dll"]) == []
+
+    def test_the_driver_provided_dll_is_accepted_on_purpose(self):
+        assert "vulkan-1.dll" in fps.DRIVER_PROVIDED_DLLS
+        assert fps.unresolved_imports(["vulkan-1.dll"], []) == []
+
+    def test_anything_else_is_reported_once(self):
+        got = fps.unresolved_imports(
+            ["MSVCP140.dll", "msvcp140.dll", "KERNEL32.dll"], []
+        )
+        assert got == ["MSVCP140.dll"]
+
+
+class TestCheckImports:
+    IMPORTS = ["KERNEL32.dll", "MSVCP140.dll", "VCRUNTIME140.dll", "VCRUNTIME140_1.dll"]
+
+    def test_fails_when_the_runtime_is_not_shipped(self, tmp_path):
+        (tmp_path / "mpv.exe").write_bytes(_pe(self.IMPORTS))
+        with pytest.raises(
+            fps.PlayerSidecarError, match="MSVCP140.dll.*VCRUNTIME140_1.dll"
+        ):
+            fps.check_imports(tmp_path / "mpv.exe", quiet=True)
+
+    def test_passes_when_the_runtime_sits_beside_it(self, tmp_path):
+        (tmp_path / "mpv.exe").write_bytes(_pe(self.IMPORTS))
+        for name in fps.VC_RUNTIME_DLLS:
+            (tmp_path / name).write_bytes(b"dll")
+        assert fps.check_imports(tmp_path / "mpv.exe", quiet=True) == self.IMPORTS
+
+    def test_a_missing_binary_is_an_error(self, tmp_path):
+        with pytest.raises(fps.PlayerSidecarError, match="No player binary"):
+            fps.check_imports(tmp_path / "mpv.exe")
+
+    def test_the_command_line_check_fails_for_an_install_without_the_runtime(
+        self, tmp_path
+    ):
+        install = tmp_path / "win-x64"
+        install.mkdir()
+        (install / "mpv.exe").write_bytes(_pe(self.IMPORTS))
+        argv = ["--target", "win32-x64", "--check-imports", "--dest", str(tmp_path)]
+        assert fps.main(argv) == 1
+
+
+class TestVcRuntime:
+    def _runtime(self, tmp_path) -> Path:
+        d = tmp_path / "crt"
+        d.mkdir()
+        for name in fps.VC_RUNTIME_DLLS:
+            (d / name).write_bytes(name.encode())
+        return d
+
+    def test_an_explicit_dir_is_used(self, tmp_path):
+        d = self._runtime(tmp_path)
+        assert fps.resolve_vc_runtime_dir(d) == d
+
+    def test_the_environment_names_one_too(self, tmp_path, monkeypatch):
+        d = self._runtime(tmp_path)
+        monkeypatch.setenv(fps.VC_RUNTIME_ENV, str(d))
+        assert fps.resolve_vc_runtime_dir() == d
+
+    def test_a_dir_with_a_dll_missing_is_refused(self, tmp_path):
+        d = self._runtime(tmp_path)
+        (d / "vcruntime140_1.dll").unlink()
+        with pytest.raises(fps.PlayerSidecarError, match="vcruntime140_1.dll"):
+            fps.resolve_vc_runtime_dir(d)
+
+    def test_a_windows_host_that_finds_nothing_fails_loudly(self, monkeypatch):
+        monkeypatch.setattr(fps, "_host_is_windows", lambda: True)
+        monkeypatch.setattr(fps, "find_vc_runtime_dir_with_vswhere", lambda: None)
+        with pytest.raises(fps.PlayerSidecarError, match="--vc-runtime-dir"):
+            fps.resolve_vc_runtime_dir()
+
+    def test_a_windows_host_uses_vswhere(self, tmp_path, monkeypatch):
+        d = self._runtime(tmp_path)
+        monkeypatch.setattr(fps, "_host_is_windows", lambda: True)
+        monkeypatch.setattr(fps, "find_vc_runtime_dir_with_vswhere", lambda: d)
+        assert fps.resolve_vc_runtime_dir() == d
+
+    def test_another_host_warns_and_goes_on(self, capsys):
+        assert fps.resolve_vc_runtime_dir() is None
+        assert "WARNING" in capsys.readouterr().err
+
+    def test_install_copies_the_dlls_and_the_receipt_records_them(
+        self, tmp_path, monkeypatch
+    ):
+        runtime = self._runtime(tmp_path)
+        archive = tmp_path / "mpv.zip"
+        _flat_zip(archive, {"mpv.exe": _pe(TestCheckImports.IMPORTS)})
+        data = _manifest_dict()
+        data["targets"]["win32-x64"]["sha256"] = hashlib.sha256(
+            archive.read_bytes()
+        ).hexdigest()
+        manifest = fps.parse_manifest(data)
+        target = manifest.target("win32-x64")
+        monkeypatch.setattr(fps, "cached_archive", lambda *a, **k: archive)
+        monkeypatch.setattr(fps, "copy_license_files", lambda *a, **k: None)
+
+        fps.install_target(
+            manifest,
+            target,
+            dest_root=tmp_path / "player",
+            cache_dir=tmp_path / "c",
+            run_smoke=False,
+            quiet=True,
+            vc_runtime_dir=runtime,
+        )
+
+        install_dir = fps.install_dir_for(target, tmp_path / "player")
+        receipt = json.loads((install_dir / "installed.json").read_text())
+        assert [e["name"] for e in receipt["vc_runtime"]] == list(fps.VC_RUNTIME_DLLS)
+        for entry in receipt["vc_runtime"]:
+            copied = install_dir / entry["name"]
+            assert entry["size"] == copied.stat().st_size
+            assert entry["sha256"] == hashlib.sha256(copied.read_bytes()).hexdigest()
+        assert {f["path"] for f in receipt["files"]} >= set(fps.VC_RUNTIME_DLLS)
+        fps.verify_install(target, tmp_path / "player")
+
+    def test_a_failed_import_check_leaves_no_receipt(self, tmp_path, monkeypatch):
+        runtime = self._runtime(tmp_path)
+        archive = tmp_path / "mpv.zip"
+        _flat_zip(archive, {"mpv.exe": _pe(["KERNEL32.dll", "SOMETHING.dll"])})
+        data = _manifest_dict()
+        data["targets"]["win32-x64"]["sha256"] = hashlib.sha256(
+            archive.read_bytes()
+        ).hexdigest()
+        manifest = fps.parse_manifest(data)
+        target = manifest.target("win32-x64")
+        monkeypatch.setattr(fps, "cached_archive", lambda *a, **k: archive)
+        monkeypatch.setattr(fps, "copy_license_files", lambda *a, **k: None)
+        with pytest.raises(fps.PlayerSidecarError, match="SOMETHING.dll"):
+            fps.install_target(
+                manifest,
+                target,
+                dest_root=tmp_path / "player",
+                cache_dir=tmp_path / "c",
+                run_smoke=False,
+                quiet=True,
+                vc_runtime_dir=runtime,
+            )
+        install_dir = fps.install_dir_for(target, tmp_path / "player")
+        assert not (install_dir / "installed.json").exists()
+
+    def test_an_install_without_the_runtime_is_not_up_to_date(self, tmp_path):
+        assert not fps._receipt_has_runtime({"files": []})
+        assert fps._receipt_has_runtime(
+            {"vc_runtime": [{"name": n} for n in fps.VC_RUNTIME_DLLS]}
+        )

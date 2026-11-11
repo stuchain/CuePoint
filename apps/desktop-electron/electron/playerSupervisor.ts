@@ -59,6 +59,17 @@ const PLAYER_CONNECT_RETRY_MS = 100;
 const PLAYER_QUIT_TIMEOUT_MS = 2000;
 
 /**
+ * Windows exit codes that mean the loader could not start mpv: STATUS_DLL_NOT_FOUND (0xC0000135)
+ * and STATUS_INVALID_IMAGE_FORMAT (0xC000007B, "bad image"). Restarting cannot change either, so
+ * the supervisor gives up at once (Sentry ELECTRON-5).
+ */
+export const UNRECOVERABLE_EXIT_CODES: ReadonlySet<number> = new Set([3221225781, 3221225595]);
+
+/** What the user is told when the player cannot load a Windows component. */
+export const PLAYER_MISSING_DLL_MESSAGE =
+  "The audio player can't start on this PC because a Windows component it needs is missing. Reinstalling CuePoint, or updating Windows and the graphics driver, should fix this.";
+
+/**
  * How long mpv must survive before a crash counts as a fresh problem.
  *
  * The attempt budget is not reset just because a start *succeeded*. mpv that
@@ -251,6 +262,8 @@ export class PlayerSupervisor {
   private reconnecting = false;
   private restartTimer: NodeJS.Timeout | null = null;
   private gaveUpReason: string | null = null;
+  /** Set by an exit code no restart can cure (a Windows loader failure); ends the restart loop at once. */
+  private unrecoverableExit = false;
   /** When the current process last became usable, for the stable-uptime rule. */
   private startedAt = 0;
 
@@ -535,6 +548,7 @@ export class PlayerSupervisor {
       );
     }
 
+    this.unrecoverableExit = false;
     const socketPath = this.socketPathFactory();
     const args = buildMpvArgs(socketPath, this.options.mpvArgs ?? []);
 
@@ -578,6 +592,7 @@ export class PlayerSupervisor {
       this.clearStableTimer();
       this.markStopped();
       if (this.stopping || this.disposed) return;
+      if (code !== null && UNRECOVERABLE_EXIT_CODES.has(code >>> 0)) this.unrecoverableExit = true;
       if (stalled && this.stallRepeat) {
         // Already reported this session: a step on the trail, not another event.
         try {
@@ -624,12 +639,16 @@ export class PlayerSupervisor {
     try {
       await this.connectWithRetry(client, () => spawnError, () => exited);
     } catch (error) {
+      // Windows could not load mpv at all: the exit handler has already seen the code and ended the
+      // restart loop, so the first thing the user reads is the clear message.
+      const loaderFailure = this.unrecoverableExit;
       this.child = null;
       try {
         child.kill();
       } catch {
         /* already gone */
       }
+      if (loaderFailure) throw new PlayerUnavailableError(PLAYER_MISSING_DLL_MESSAGE);
       throw new PlayerUnavailableError(
         `The audio player did not start: ${(error as Error).message}`,
       );
@@ -1017,11 +1036,18 @@ export class PlayerSupervisor {
     const max = this.options.maxRestartAttempts ?? MAX_PLAYER_RESTART_ATTEMPTS;
     const backoff = this.options.restartBackoffMs ?? PLAYER_RESTART_BACKOFF_MS;
 
-    if (this.restartAttempts >= max) {
+    if (this.unrecoverableExit || this.restartAttempts >= max) {
       this.reconnecting = false;
-      this.gaveUpReason = "The audio player stopped responding. Play a track to try again.";
+      // A missing or unloadable DLL is the same on every start: say so, once, instead of looping.
+      this.gaveUpReason = this.unrecoverableExit
+        ? PLAYER_MISSING_DLL_MESSAGE
+        : "The audio player stopped responding. Play a track to try again.";
       // The incident's one event (REPORT-05), with the words the user was told.
-      this.incidents.gaveUp(this.gaveUpReason, { output: this.output });
+      this.incidents.gaveUp(
+        this.gaveUpReason,
+        { output: this.output },
+        this.unrecoverableExit ? "missing-dll" : "gave-up",
+      );
       this.push(true);
       return;
     }
