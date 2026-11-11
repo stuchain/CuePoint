@@ -27,6 +27,7 @@ import io
 import threading
 import time
 import uuid
+import weakref
 from typing import Dict, List, Optional, Sequence
 from unittest import mock
 
@@ -60,6 +61,7 @@ from cuepoint.services.artwork_service import (
     ArtworkScanResult,
     ArtworkService,
     FetchGate,
+    SCAN_WORKERS,
     fetch_image,
     lookup_page_artwork,
     size_pixels,
@@ -953,6 +955,62 @@ class TestScan:
         bad = record(artwork, ids[2])
         assert (bad.embedded, bad.embedded_refused) == (EMBEDDED_UNKNOWN, "tags")
         assert record(artwork, ids[3]) is None
+
+    def test_it_never_holds_more_than_a_workers_pictures_at_once(
+        self, make_service, tracks, db
+    ):
+        lock = threading.Lock()
+        state = {"alive": 0, "peak": 0}
+
+        def release() -> None:
+            with lock:
+                state["alive"] -= 1
+
+        def reader(path: str) -> EmbeddedRead:
+            # The read owns its bytes, so it is alive while they are.
+            read = EmbeddedRead(data=path.encode() * 4096)
+            with lock:
+                state["alive"] += 1
+                state["peak"] = max(state["peak"], state["alive"])
+            weakref.finalize(read, release)
+            time.sleep(0.001)
+            return read
+
+        ids = add(tracks, db, [f"/m/{n}.mp3" for n in range(450)])
+        checked(db, ids)
+
+        result = make_service(reader=reader).scan(ids)
+
+        assert result.present == 450
+        assert state["peak"] <= SCAN_WORKERS + 2
+
+    def test_it_records_the_same_hash_and_state_for_every_kind_of_file(
+        self, service, tracks, db, files, artwork
+    ):
+        ids = add(tracks, db, ["/m/pic.mp3", "/m/none.mp3", "/m/bad.mp3"])
+        checked(db, ids)
+        data = jpeg()
+        files.pictures["/m/pic.mp3"] = EmbeddedRead(data=data)
+        files.pictures["/m/bad.mp3"] = EmbeddedRead(error="tags could not be read")
+
+        service.scan(ids)
+
+        present, none, bad = (record(artwork, track) for track in ids)
+        assert (present.embedded, present.embedded_hash) == (
+            EMBEDDED_PRESENT,
+            hashlib.sha256(data).hexdigest(),
+        )
+        assert (present.checked_path, present.embedded_refused) == ("/m/pic.mp3", None)
+        assert (none.embedded, none.embedded_hash, none.embedded_refused) == (
+            EMBEDDED_NONE,
+            None,
+            None,
+        )
+        assert (bad.embedded, bad.embedded_hash, bad.embedded_refused) == (
+            EMBEDDED_UNKNOWN,
+            None,
+            "tags",
+        )
 
     def test_a_scan_decodes_nothing(self, service, tracks, db, files, cache):
         [track] = add(tracks, db, ["/m/a.mp3"])

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The artwork scan no longer holds every picture of a 200-file batch in memory.** On a large, freshly imported library, covers of several megabytes each could add up to gigabytes and run the engine out of memory (Sentry PYTHON-1J). The scan now keeps only each picture's hash as it reads. What is recorded is the same.
+
 ## [1.0.1] - 2026-11-09
 
 **CuePoint 1.0.1 fixes two problems people hit in 1.0.0.** Rekordbox exports up to 4 GB can now be imported: a 2.6 GB collection was refused as too large, and a big import or export now needs far less memory. On a Mac, a Stop from Control Center, headphones or a remote no longer makes the player quit. Installed copies of 1.0.0 on Windows and Mac offer the update on their own.

@@ -51,7 +51,17 @@ import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+)
 
 from cuepoint.data.artwork import EmbeddedRead, inspect_embedded
 from cuepoint.data.artwork_image import (
@@ -201,6 +211,13 @@ def _remember(
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+class _EmbeddedDigest(NamedTuple):
+    """What a scan keeps of a file's picture: never the picture's bytes."""
+
+    readable: bool
+    key: Optional[str]
 
 
 def fetch_image(url: str) -> Optional[bytes]:
@@ -994,10 +1011,12 @@ class ArtworkService(IArtworkService):
                     cancelled = True
                     break
                 chunk = files[start : start + SCAN_CHUNK_SIZE]
-                reads = list(pool.map(lambda item: self._read(item[1]), chunk))
+                # Each worker reduces its file to a digest, so a picture's bytes
+                # are dropped before the thread takes the next file.
+                digests = list(pool.map(lambda item: self._digest(item[1]), chunk))
                 records = [
-                    self._record_for(track_id, path, read)
-                    for (track_id, path), read in zip(chunk, reads)
+                    self._record_from_digest(track_id, path, digest)
+                    for (track_id, path), digest in zip(chunk, digests)
                 ]
                 written = write_waiting(
                     self._db,
@@ -1057,10 +1076,29 @@ class ArtworkService(IArtworkService):
         self._record_scan(result)
         return result
 
+    def _digest(self, path: str) -> _EmbeddedDigest:
+        """Read a file's picture and keep only what a record needs of it."""
+        read = self._read(path)
+        if not read.readable:
+            return _EmbeddedDigest(readable=False, key=None)
+        return _EmbeddedDigest(
+            readable=True,
+            key=_sha256(read.data) if read.data is not None else None,
+        )
+
     def _record_for(
         self, track_id: int, path: str, read: EmbeddedRead
     ) -> EmbeddedRecord:
-        if not read.readable:
+        digest = _EmbeddedDigest(
+            readable=read.readable,
+            key=_sha256(read.data) if read.data is not None else None,
+        )
+        return self._record_from_digest(track_id, path, digest)
+
+    def _record_from_digest(
+        self, track_id: int, path: str, digest: _EmbeddedDigest
+    ) -> EmbeddedRecord:
+        if not digest.readable:
             return EmbeddedRecord(
                 track_id,
                 EMBEDDED_UNKNOWN,
@@ -1069,10 +1107,10 @@ class ArtworkService(IArtworkService):
                 path,
                 refused=REFUSED_TAGS,
             )
-        if read.data is None:
+        if digest.key is None:
             return EmbeddedRecord(track_id, EMBEDDED_NONE, None, self._clock(), path)
         return EmbeddedRecord(
-            track_id, EMBEDDED_PRESENT, _sha256(read.data), self._clock(), path
+            track_id, EMBEDDED_PRESENT, digest.key, self._clock(), path
         )
 
     def _fetch_for_scan(self, track_id: int) -> str:
