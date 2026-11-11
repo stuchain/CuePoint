@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-11
+
+**CuePoint 1.0.2 fixes two problems people hit in 1.0.1.** On Windows, the player now starts on a PC without the Microsoft Visual C++ runtime, and a large library's artwork scan no longer runs out of memory. Installed copies of 1.0.0 and 1.0.1 on Windows and Mac offer the update on their own.
+
+**Known issues.** What 1.0.2 ships with, and what to do about each, is in [Known issues](https://github.com/stuchain/CuePoint/blob/main/docs/release/known-issues.md).
+
 ### Fixed
 - **The Windows player starts on PCs without the Visual C++ runtime.** The player stopped at once with "The audio player stopped responding" (and waveforms could not be made) on a PC that lacked the Microsoft Visual C++ runtime, which Windows does not include (Sentry ELECTRON-5, PYTHON-1E). CuePoint now ships the runtime DLLs next to the player, and a release check fails if the player needs a DLL that is not shipped. If Windows still cannot load the player, it now says "The audio player can't start on this PC because a Windows component it needs is missing. Reinstalling CuePoint, or updating Windows and the graphics driver, should fix this." at once instead of retrying.
 - **The artwork scan no longer holds every picture of a 200-file batch in memory.** On a large, freshly imported library, covers of several megabytes each could add up to gigabytes and run the engine out of memory (Sentry PYTHON-1J). The scan now keeps only each picture's hash as it reads. What is recorded is the same.
