@@ -224,7 +224,7 @@ const ptBr: UiStrings = {
     requirementsTitle: "Onde o CuePoint roda",
     reqWindows: "**Windows:** Windows 10 ou mais novo, de 64 bits (x64).",
     reqMac:
-      "**Mac:** macOS 14 ou mais novo em Apple silicon (M1 e posteriores), ou macOS 15 ou mais novo em chip Intel. Há um download para cada um.",
+      "**Mac:** macOS 15 ou mais novo, em Apple silicon (M1 e posteriores) ou chip Intel. Há um download para cada um.",
     reqLinux:
       "**Linux:** Intel ou AMD de 64 bits, como AppImage. Esta build é experimental e vem sem o player de música embutido.",
     reqRekordbox: "O CuePoint também precisa da sua coleção do Rekordbox, exportada do Rekordbox como um arquivo XML.",

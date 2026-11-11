@@ -5,7 +5,7 @@ This guide takes you from installing CuePoint to a first set of matched, reviewe
 ## System requirements
 
 - **Windows**: Windows 10 or newer, 64-bit (x64).
-- **Mac with an Apple chip (M1 or later)**: macOS 14 or newer.
+- **Mac with an Apple chip (M1 or later)**: macOS 15 or newer.
 - **Intel Mac**: macOS 15 or newer.
 - **Linux**: experimental, with no built-in player.
 - **Your library**: a Rekordbox collection exported as XML, up to 50,000 tracks.

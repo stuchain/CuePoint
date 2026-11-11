@@ -47,7 +47,7 @@
   question: O que eu preciso para rodar o CuePoint?
   answer: >-
     Uma coleção exportada do Rekordbox como XML e um computador com Windows 10 ou mais novo (64 bits), ou um Mac
-    com macOS 14 ou mais novo (Apple silicon) ou macOS 15 ou mais novo (Intel). A versão para Linux é experimental e não tem
+    com macOS 15 ou mais novo (Apple silicon ou Intel). A versão para Linux é experimental e não tem
     player embutido. O Discover, que acha música nova no Beatport, também precisa que você faça login no Beatport em
     Settings.
   links:

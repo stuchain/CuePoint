@@ -115,7 +115,7 @@ themes, and keyboard shortcuts for everything you do often.
 | System | Requirement | Get it |
 | --- | --- | --- |
 | **Windows** | Windows 10 or newer, 64-bit | [Download](https://usecuepoint.com/download/) |
-| **macOS, Apple silicon** | macOS 14 or newer | [Download](https://usecuepoint.com/download/) |
+| **macOS, Apple silicon** | macOS 15 or newer | [Download](https://usecuepoint.com/download/) |
 | **macOS, Intel** | macOS 15 or newer | [Download](https://usecuepoint.com/download/) |
 | **Linux** (experimental) | AppImage, no bundled player | [Download](https://usecuepoint.com/download/) |
 

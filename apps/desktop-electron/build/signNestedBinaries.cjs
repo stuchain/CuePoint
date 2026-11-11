@@ -95,7 +95,7 @@ const ARCH_NAMES = { 0: "ia32", 1: "x64", 2: "armv7l", 3: "arm64", 4: "universal
 
 /**
  * The oldest macOS the bundled mpv runs on for this chip, read from the pinned
- * asset's name (`...-macos-15-intel.zip`, `...-macos-14-arm.zip`).
+ * asset's name (`...-macos-15-intel.zip`, `...-macos-15-arm.zip`).
  *
  * mpv's builds are made on, and only run on, that macOS or newer: on macOS 13
  * the player aborted 38 ms after starting and waveforms could not decode

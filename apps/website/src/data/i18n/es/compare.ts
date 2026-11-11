@@ -87,7 +87,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "Equipos",
         other: fact("Lexicon dice que funciona en Windows y macOS.", LEXICON_HOME),
-        // support-policy.md: Windows 10+ (x64), macOS 14+ on Apple Silicon (15+ on Intel, DEC-296), Linux experimental
+        // support-policy.md: Windows 10+ (x64), macOS 15+ on Apple Silicon and Intel (DEC-296, DEC-315), Linux experimental
         cuepoint:
           "CuePoint funciona en Windows y en Macs con Apple Silicon, y hay una versión experimental para Linux. La página de descarga dice qué hay disponible.",
       },

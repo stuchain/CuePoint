@@ -8810,3 +8810,15 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 **Reason**: 1.0.2 only fixes two problems users reported through Sentry (PYTHON-1J: the artwork scan running the engine out of memory; ELECTRON-5 and PYTHON-1E: the Windows player failing without the Visual C++ runtime). CI covers the packaged app on all four systems.
 
 **Decided with**: User (11 Nov 2026, 11:44 Athens: "Ship now, defer them to 1.0.3") · **Date**: 2026-11-11
+
+## DEC-315 — Apple Silicon Needs macOS 15, with mpv Re-Pinned to v0.42.0-dev (Amends DEC-296)
+
+**Status**: Accepted · **Related**: DEC-175, DEC-296, `scripts/fetch_player_sidecar.py`, `scripts/player_sidecar_manifest.json`, `docs/user-guide/support-policy.md`
+
+**Context**: On 11 Nov 2026 every build failed to fetch the pinned mpv (`v0.41.0-dev-gfd9265a90`): mpv's rolling `git-release` no longer had those archives, and CuePoint's mirror release `sidecar-mpv-v0.41.0-dev-gfd9265a90`, which 1.0.1 was built from on 9 Nov, had been deleted by hand. mpv's current builds come for `macos-15-arm`, `macos-26-arm`, `macos-27-arm` and `macos-15-intel`; there is no `macos-14-arm` any more.
+
+**Decision**: mpv is re-pinned to its current build, and the Apple Silicon target is the `macos-15-arm` archive (`ASSET_TARGETS`). The afterPack hook reads the minimum from the asset name (DEC-296), so the Apple Silicon app now needs macOS 15, as the Intel app already did. The site, README and support policy say macOS 15 or newer on both chips. A Mac on macOS 14 keeps 1.0.1; its updater already declines a build that needs a newer macOS (DEC-296).
+
+**Reason**: The old archive cannot be fetched from anywhere, and building mpv for macOS 14 ourselves would hold back two fixes for crashes users reported.
+
+**Decided with**: User (decision card, 11 Nov 2026, 12:00 Athens: "Yes, Apple Silicon needs macOS 15") · **Date**: 2026-11-11

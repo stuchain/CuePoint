@@ -195,8 +195,8 @@ describe("the oldest macOS the app opens on (ELECTRON-5, PYTHON-1E, DEC-296)", (
     const manifest = JSON.parse(
       fs.readFileSync(path.join(__dirname, "../../../scripts/player_sidecar_manifest.json"), "utf8"),
     );
-    // mpv's builds: macos-14-arm runs on 14 and newer, macos-15-intel on 15 and newer.
-    expect(hook.macMinimumFor("arm64", manifest)).toBe("14.0");
+    // mpv's builds: macos-15-arm and macos-15-intel run on 15 and newer (DEC-315).
+    expect(hook.macMinimumFor("arm64", manifest)).toBe("15.0");
     expect(hook.macMinimumFor("x64", manifest)).toBe("15.0");
   });
 
@@ -214,7 +214,7 @@ describe("the oldest macOS the app opens on (ELECTRON-5, PYTHON-1E, DEC-296)", (
   });
 
   it.each([
-    [ARM64, "14.0"],
+    [ARM64, "15.0"],
     [X64, "15.0"],
   ])("writes it into the app's Info.plist before signing (arch %s)", async (arch, expected) => {
     await hook.default(context("darwin", arch), { exec });

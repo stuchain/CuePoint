@@ -223,7 +223,7 @@ const es: UiStrings = {
     requirementsTitle: "En qué funciona CuePoint",
     reqWindows: "**Windows:** Windows 10 o más reciente, de 64 bits (x64).",
     reqMac:
-      "**Mac:** macOS 14 o más reciente con Apple silicon (M1 y posteriores), o macOS 15 o más reciente con chip Intel. Hay una descarga para cada uno.",
+      "**Mac:** macOS 15 o más reciente, con Apple silicon (M1 y posteriores) o chip Intel. Hay una descarga para cada uno.",
     reqLinux:
       "**Linux:** Intel o AMD de 64 bits, como AppImage. Esta versión es experimental y viene sin el reproductor de música integrado.",
     reqRekordbox: "CuePoint también necesita tu colección de Rekordbox, exportada desde Rekordbox como archivo XML.",

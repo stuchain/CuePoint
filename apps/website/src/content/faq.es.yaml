@@ -46,7 +46,7 @@
   question: ¿Qué necesito para usar CuePoint?
   answer: >-
     Una colección exportada de Rekordbox como XML, y un equipo con Windows 10 o más reciente (64 bits), o un
-    Mac con macOS 14 o más reciente (Apple Silicon) o macOS 15 o más reciente (Intel). Linux es experimental y no
+    Mac con macOS 15 o más reciente (Apple Silicon o Intel). Linux es experimental y no
     tiene reproductor integrado. Discover, que encuentra música nueva en Beatport, además necesita que inicies
     sesión en Beatport en Settings.
   links:

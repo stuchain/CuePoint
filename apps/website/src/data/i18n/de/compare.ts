@@ -89,7 +89,7 @@ export const COMPARE_TOOLS: readonly CompareTool[] = [
       {
         topic: "Computer",
         other: fact("Lexicon sagt, es läuft unter Windows und macOS.", LEXICON_HOME),
-        // support-policy.md: Windows 10+ (x64), macOS 14+ on Apple Silicon (15+ on Intel, DEC-296), Linux experimental
+        // support-policy.md: Windows 10+ (x64), macOS 15+ on Apple Silicon and Intel (DEC-296, DEC-315), Linux experimental
         cuepoint:
           "CuePoint läuft unter Windows und auf Macs mit Apple Silicon, und es gibt einen experimentellen Linux-Build. Die Seite Download sagt, was verfügbar ist.",
       },

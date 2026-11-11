@@ -1952,7 +1952,7 @@ def check_imports(binary: Path, *, quiet: bool = False) -> List[str]:
 #: Release asset suffix -> manifest target key.
 ASSET_TARGETS: Dict[str, str] = {
     "x86_64-pc-windows-msvc": "win32-x64",
-    "macos-14-arm": "darwin-arm64",
+    "macos-15-arm": "darwin-arm64",
     "macos-15-intel": "darwin-x64",
 }
 

@@ -15,7 +15,7 @@ For detailed triage and escalation procedures, see [Support SLA](../policy/suppo
 ## Supported Platforms
 
 - **Windows**: Windows 10 or newer, 64-bit (x64).
-- **macOS**: macOS 14 or newer on Apple Silicon, macOS 15 or newer on Intel. The bundled mpv player runs on nothing older, so the app does not open there (DEC-296). Both chips have their own download.
+- **macOS**: macOS 15 or newer on Apple Silicon and on Intel. The bundled mpv player runs on nothing older, so the app does not open there (DEC-296, DEC-315). A Mac on macOS 14 keeps CuePoint 1.0.1, the last version that opens there. Both chips have their own download.
 - **Linux**: Experimental. CI builds an AppImage and runs the automated checks on it, including the packaged app's tests; nobody checks it by hand before a release. It ships without the bundled player (no mpv binary is pinned for Linux) and does not update itself. Report issues, but they are not guaranteed a fix.
 
 A platform is **supported** when CI tests it and it is recommended for everyday use. It is **experimental** when it may work but is not guaranteed. Anything else is unsupported: not tested, use at your own risk.

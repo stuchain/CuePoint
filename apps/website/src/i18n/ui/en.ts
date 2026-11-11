@@ -235,7 +235,7 @@ export const en = {
     requirementsTitle: "What CuePoint runs on",
     reqWindows: "**Windows:** Windows 10 or newer, 64-bit (x64).",
     reqMac:
-      "**Mac:** macOS 14 or newer on Apple silicon (M1 and later), or macOS 15 or newer on an Intel chip. There is one download for each.",
+      "**Mac:** macOS 15 or newer, on Apple silicon (M1 and later) or an Intel chip. There is one download for each.",
     reqLinux:
       "**Linux:** 64-bit Intel or AMD, as an AppImage. This build is experimental and comes without the built-in music player.",
     reqRekordbox: "CuePoint also needs your Rekordbox collection, exported from Rekordbox as an XML file.",
