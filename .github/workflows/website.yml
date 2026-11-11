@@ -84,8 +84,14 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
+      # The system packages come from Ubuntu's mirror; when the runner cannot reach it (11 Nov 2026,
+      # apt hung for over an hour), the image's own libraries are enough for Chromium.
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          timeout 600 npx playwright install --with-deps chromium || {
+            echo "::warning::Ubuntu's package mirror did not answer; installing Chromium without system packages"
+            npx playwright install chromium
+          }
 
       # Lighthouse launches Chrome through chrome-launcher, which honours CHROME_PATH: give it the
       # pinned Playwright Chromium instead of whatever the runner image ships.
