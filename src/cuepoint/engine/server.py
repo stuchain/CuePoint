@@ -1910,16 +1910,24 @@ def _start_library_work(cfg: EngineConfig) -> None:
 #: latest one into its "engine is slow to answer" warning; keep the two in step.
 PHASE_PREFIX = "cuepoint-engine: phase "
 
+# One line at a time: the library starts on its own thread, and print() writes the
+# text and its newline separately, so two phases could run into one line.
+_PHASE_LOCK = threading.Lock()
+
 
 def announce_phase(phase: str) -> None:
     """Print one short, path-free startup phase line to stdout and flush it.
 
     The app tails stdout, so when a slow machine does not answer ``/health`` for a
-    long time the last phase says how far the engine got. Never raises: a closed or
+    long time the last phase says how far the engine got. Each line is written
+    whole, even when two threads announce at once. Never raises: a closed or
     missing stdout (a windowed build without a console) is no reason to stop.
     """
     try:
-        print(f"{PHASE_PREFIX}{phase}", flush=True)
+        with _PHASE_LOCK:
+            out = sys.stdout
+            out.write(f"{PHASE_PREFIX}{phase}\n")
+            out.flush()
     except Exception:
         pass
 

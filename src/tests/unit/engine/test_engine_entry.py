@@ -14,6 +14,8 @@ from __future__ import annotations
 import importlib
 import re
 import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -184,6 +186,43 @@ class TestPhaseLines:
         assert "library-start" in phases
         assert "serving" in phases
         assert phases.index("bound port=8123") < phases.index("serving")
+
+    def test_phases_announced_at_once_stay_whole_lines(self, monkeypatch):
+        """Regression: print() wrote a phase and its newline apart, so the
+        library thread's phase ran into the main thread's on one line."""
+
+        class SlowStream:
+            """A stdout that lets other threads run between writes."""
+
+            def __init__(self) -> None:
+                self.text = ""
+
+            def write(self, chunk: str) -> int:
+                time.sleep(0.001)
+                self.text += chunk
+                return len(chunk)
+
+            def flush(self) -> None:
+                pass
+
+        stream = SlowStream()
+        monkeypatch.setattr(sys, "stdout", stream)
+        phases = [f"p{thread}-{n}" for thread in range(4) for n in range(20)]
+
+        def announce(thread: int) -> None:
+            for n in range(20):
+                server.announce_phase(f"p{thread}-{n}")
+
+        threads = [
+            threading.Thread(target=announce, args=(thread,)) for thread in range(4)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(30)
+
+        lines = stream.text.splitlines()
+        assert sorted(lines) == sorted(server.PHASE_PREFIX + p for p in phases)
 
     def test_phase_lines_carry_no_paths(self, monkeypatch, capsys, tmp_path):
         monkeypatch.setenv("CUEPOINT_HOME", str(tmp_path))
