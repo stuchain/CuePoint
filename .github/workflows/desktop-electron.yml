@@ -412,6 +412,32 @@ jobs:
       # is read by `e2e/support/launchApp.ts`, which every spec starts the app through. A push (or pull
       # request) runs the specs tagged `@packaged-smoke` (start, import, play, export, quit); a release
       # runs the whole suite. The Linux runner needs the same screen and sound device as above.
+      # Windows only, a release only: every program on the runner started failing with 0xC0000142
+      # (DLL init failed) partway through the packaged run of the v1.0.3 release, twice. A sampler,
+      # started before the run so it keeps going when nothing new can start, writes the process
+      # count, handles, free memory and the most numerous processes every 15 s; printed below.
+      - name: Watch the runner's processes (Windows release)
+        if: ${{ !cancelled() && steps.app.outcome == 'success' && runner.os == 'Windows' && inputs.release }}
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'proc-watch.log'
+          $script = @'
+          param($log)
+          while ($true) {
+            try {
+              $p = Get-Process
+              $os = Get-CimInstance Win32_OperatingSystem
+              $handles = ($p | Measure-Object HandleCount -Sum).Sum
+              "{0} procs={1} handles={2} freeMB={3} freeVirtMB={4}" -f (Get-Date -Format HH:mm:ss), $p.Count, $handles, [int]($os.FreePhysicalMemory / 1024), [int]($os.FreeVirtualMemory / 1024) | Add-Content $log
+              $p | Group-Object ProcessName | Sort-Object Count -Descending | Select-Object -First 8 | ForEach-Object { "  {0} {1}" -f $_.Count, $_.Name } | Add-Content $log
+            } catch { "sample failed: $_" | Add-Content $log }
+            Start-Sleep -Seconds 15
+          }
+          '@
+          $file = Join-Path $env:RUNNER_TEMP 'proc-watch.ps1'
+          Set-Content -Path $file -Value $script
+          Start-Process pwsh -ArgumentList '-NoProfile', '-File', $file, $log -WindowStyle Hidden
+
       - name: Packaged app end-to-end
         id: packaged-e2e
         if: ${{ !cancelled() && steps.app.outcome == 'success' }}
@@ -445,6 +471,13 @@ jobs:
             head -c 20000 "$f"
             echo "::endgroup::"
           done
+
+      - name: Print the runner's process samples (Windows release)
+        if: ${{ always() && runner.os == 'Windows' && inputs.release }}
+        shell: bash
+        run: |
+          log="$RUNNER_TEMP/proc-watch.log"
+          if [ -f "$log" ]; then tail -n 2000 "$log"; else echo "no samples"; fi
 
       - name: Upload the packaged run's failures
         if: failure() && steps.packaged-e2e.outcome == 'failure'
