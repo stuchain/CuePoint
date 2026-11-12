@@ -45,6 +45,12 @@ On 2026-11-11 the owner chose to ship 1.0.2, a fix release, without these rows t
 their 2026-11-02 result as written; read "deferred to 1.0.1" in them as deferred to 1.0.3, where they
 are run.
 
+## Owner's pick for 1.0.3: deferred again, to 1.0.4 (DEC-316)
+
+On 2026-11-12 the owner chose to ship 1.0.3, a fix release, without these rows too. The rows keep
+their 2026-11-02 result as written; read "deferred to 1.0.1" in them as deferred to 1.0.4, where they
+are run.
+
 ## How to read the table
 
 - **Check:** what to do or what has to be true, in plain words.

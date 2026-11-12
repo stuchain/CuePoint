@@ -8822,3 +8822,13 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 **Reason**: The old archive cannot be fetched from anywhere, and building mpv for macOS 14 ourselves would hold back two fixes for crashes users reported.
 
 **Decided with**: User (decision card, 11 Nov 2026, 12:00 Athens: "Yes, Apple Silicon needs macOS 15") · **Date**: 2026-11-11
+
+## DEC-316 — 1.0.3 Ships Without the by-Hand Acceptance Checks (Amends DEC-314)
+
+**Status**: Accepted · **Related**: DEC-309, DEC-313, DEC-314, `docs/release/v1-acceptance.md`, `docs/release/known-issues.md`
+
+**Decision**: `v1.0.3` is tagged without running the by-hand and Remote Control rows that DEC-314 deferred to 1.0.3. They are run before 1.0.4. The rows keep their recorded result; `v1-acceptance.md` says the deferral now runs to 1.0.4, and the known-issues page says the checks were not run by a person before 1.0.0, 1.0.1, 1.0.2 or 1.0.3. Rows whose How is `CI` still need a green run.
+
+**Reason**: 1.0.3 only fixes three problems users reported through Sentry (ELECTRON-9: the app giving up on a slow engine start; ELECTRON-C, ELECTRON-5 and PYTHON-1E: the Windows player failing without the Vulkan loader; ELECTRON-8, ELECTRON-A and ELECTRON-B: waveform status polling overloading the engine). CI covers the packaged app on all four systems.
+
+**Decided with**: User (decision card, 12 Nov 2026, 11:07 Athens: "Ship now, defer them to 1.0.4") · **Date**: 2026-11-12

@@ -1,6 +1,6 @@
-# Known Issues in 1.0.2
+# Known Issues in 1.0.3
 
-What is known not to work as well as it should in CuePoint 1.0.2, and what to do meanwhile. None of these loses data or stops the app being used. Each was checked against the code of this release before it was listed. If you find something that is not here, [open an issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) or use **Help > Get help** in the app.
+What is known not to work as well as it should in CuePoint 1.0.3, and what to do meanwhile. None of these loses data or stops the app being used. Each was checked against the code of this release before it was listed. If you find something that is not here, [open an issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) or use **Help > Get help** in the app.
 
 ## In the app
 
@@ -50,7 +50,7 @@ Both are listed under `above_spec` in `scripts/budgets.json`. Neither is somethi
 
 ### Some checks were not run by hand on this release
 
-Everything the automated builds test passed on Windows, both Macs and Linux. The checks that need a person at the machine (a screen reader walk-through, unplugging a sound interface, opening an export in Rekordbox, installing over an older copy) were not run by hand before 1.0.0, 1.0.1 or 1.0.2, both fix releases, and are done before 1.0.3 (DEC-309, DEC-313, DEC-314). If something in those areas does not work for you, please tell us.
+Everything the automated builds test passed on Windows, both Macs and Linux. The checks that need a person at the machine (a screen reader walk-through, unplugging a sound interface, opening an export in Rekordbox, installing over an older copy) were not run by hand before 1.0.0, 1.0.1, 1.0.2 or 1.0.3, all fix releases, and are done before 1.0.4 (DEC-309, DEC-313, DEC-314, DEC-316). If something in those areas does not work for you, please tell us.
 
 ### The Intel Mac is covered by CI, not by hand
 
