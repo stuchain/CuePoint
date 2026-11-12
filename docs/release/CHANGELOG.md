@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **CuePoint no longer stays on "Starting" when its engine is slow to start.** On a slow PC the engine could take longer than 90 seconds to answer, and the app then gave up for good, even when the engine came up a little later (Sentry ELECTRON-9). The app now waits up to five minutes, picks the engine up as soon as it answers, and tries one fresh start before saying it failed. An engine that crashes on start now quits and reports the error instead of leaving a hidden error window open.
 - **The Windows player starts on PCs without a Vulkan graphics driver.** On some PCs the player still could not start in 1.0.2 because Windows could not find `vulkan-1.dll`, which normally comes with the graphics driver (Sentry ELECTRON-C). CuePoint now ships the signed Khronos Vulkan loader (LunarG 1.4.309.0) next to the player, and the release check requires it. If the player still cannot start because a file is missing, the error report now names the missing files.
 - **The app no longer overloads its own engine while waveforms are being made.** Every open view that showed waveform progress asked the engine for it every two seconds, and each answer counted the whole library again, so a large library could leave the engine too busy to answer (Sentry). The app now asks once for all views, never while a previous answer is pending and not from hidden pages, and the engine counts the library once at a time.
 

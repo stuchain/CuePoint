@@ -188,6 +188,38 @@ export const HEALTH_TIMEOUT_MS = 90_000;
 export const HEALTH_POLL_MS = 250;
 
 /**
+ * How long a start that has used its `HEALTH_TIMEOUT_MS` and is still alive keeps being waited for,
+ * in total from the spawn (ELECTRON-9). A slow Windows PC took longer than 90 s to bind its port;
+ * giving up there left a live engine that was never marked healthy. After this the process tree is
+ * killed and one more start is tried, with the same wait.
+ */
+export const SLOW_START_TOTAL_MS = 300_000;
+/** How often `/health` is asked once the first budget is spent: the engine is slow, not to be nagged. */
+export const SLOW_HEALTH_POLL_MS = 2_000;
+/** How long a request made while the engine starts waits for it before failing as "engine not running". */
+export const READY_HOLD_MS = 120_000;
+
+/** The line the engine prints at each startup phase (`engine/__main__.py`, `server.py`). */
+const ENGINE_PHASE_PREFIX = "cuepoint-engine: phase ";
+
+/** The startup phase named by one engine stdout line, or null when it is not a phase line (pure). */
+export function enginePhaseOf(line: string): string | null {
+  const text = line.trim();
+  return text.startsWith(ENGINE_PHASE_PREFIX) ? text.slice(ENGINE_PHASE_PREFIX.length).trim() : null;
+}
+
+/** What the health asks of one launch found, for the warning about a slow start. */
+interface HealthStats {
+  attempts: number;
+  /** The connection was refused or failed outright: nothing is listening yet. */
+  refused: number;
+  /** The connection was accepted and the ask outlasted its time: listening, but busy. */
+  timedOut: number;
+  /** Anything else: a non-OK status, a body that was not JSON, an unexpected error. */
+  other: number;
+}
+
+/**
  * How hard CuePoint tries to bring a dead engine back (DEC-028).
  *
  * Bounded on purpose. Unlimited restarts would hide a crash-looping engine
@@ -254,8 +286,17 @@ interface EngineSupervisorOptions {
   heartbeat?: { intervalMs?: number; timeoutMs?: number; maxMisses?: number };
   /** Replaces `RESTART_BACKOFF_MS`; for tests. */
   restartBackoffMs?: readonly number[];
-  /** Replaces `HEALTH_TIMEOUT_MS`; for tests. */
+  /**
+   * Replaces `HEALTH_TIMEOUT_MS`; for tests. On its own it is the whole wait (no extended wait, no
+   * restart of a silent engine); set `slowStartTotalMs` as well to test those.
+   */
   healthTimeoutMs?: number;
+  /** Replaces `SLOW_START_TOTAL_MS` (from the spawn, so not less than `healthTimeoutMs`); for tests. */
+  slowStartTotalMs?: number;
+  /** Replaces the 120 s a request waits for a start in flight (`readyClient()`); for tests. */
+  readyHoldMs?: number;
+  /** Replaces `SLOW_HEALTH_POLL_MS`; for tests. */
+  slowHealthPollMs?: number;
   /**
    * Replaces what is spawned, for tests with a stand-in engine. It is given nothing of the
    * environment: `engineEnvironment()` is still what the child runs with.
@@ -342,6 +383,7 @@ export interface EngineRunResult {
 }
 
 /** What a launch answers when `stop()` came before it could spawn. */
+const SUPERSEDED: EngineStatus = { connected: false, error: "Engine start superseded" };
 const STOPPED: EngineStatus = { connected: false, error: "Engine not running" };
 
 /** The supervisor's view of the engine for a failed end-to-end call (no token, no secrets). */
@@ -395,6 +437,17 @@ export class EngineSupervisor {
   private spawnedAt = 0;
   /** When `/health` first answered the engine now running; for `diagnosticsForTest`. */
   private healthyAt = 0;
+  /** What the health asks of the launch in flight found; reset at each spawn. */
+  private healthStats: HealthStats = { attempts: 0, refused: 0, timedOut: 0, other: 0 };
+  /**
+   * A slow start is being killed and tried once more: the person still sees "Starting" across the
+   * gap in which there is no child, not "Engine not running".
+   */
+  private retryingStart = false;
+  /** Counts launches; a launch that finds it changed has been superseded and must do nothing more. */
+  private launchSeq = 0;
+  /** The latest startup phase the current child printed; per child, reset at each spawn. */
+  private lastPhase: string | null = null;
 
   private child: ChildProcess | null = null;
   private port: number | null = null;
@@ -521,7 +574,14 @@ export class EngineSupervisor {
     const stream = child[which];
     if (!stream) return;
     let partial = "";
-    const keep = (line: string): void => this.noteLine(which, line);
+    const keep = (line: string): void => {
+      this.noteLine(which, line);
+      // Per child: a line from one that has been replaced says nothing about the engine now running.
+      if (which === "stdout" && this.child === child) {
+        const phase = enginePhaseOf(line);
+        if (phase !== null) this.lastPhase = phase;
+      }
+    };
     stream.setEncoding("utf-8");
     stream.on("data", (chunk: string) => {
       const lines = (partial + chunk).split(/\r?\n/);
@@ -687,7 +747,7 @@ export class EngineSupervisor {
    * Deliberately not `async`: the start is recorded before this returns, so
    * a window created straight after it cannot ask for anything in between.
    */
-  start(token?: MaintenanceToken): Promise<EngineStatus> {
+  start(token?: MaintenanceToken, singleWait = false): Promise<EngineStatus> {
     // While stopped for maintenance (a restore holds the library), only the holder may start it.
     if (this.maintenance && (!token || token !== this.maintenanceToken)) {
       return Promise.resolve(this.getStatus());
@@ -695,7 +755,9 @@ export class EngineSupervisor {
     this.stopRequested = false;
     this.maintenance = false;
     this.maintenanceToken = null;
-    const run = this.launch();
+    // `singleWait`: an automatic restart already retries by itself (`scheduleRestart`), so its
+    // launch waits once and does not kill and retry inside.
+    const run = this.launch(!singleWait);
     this.startup = run;
     void run
       .catch(() => undefined)
@@ -706,19 +768,26 @@ export class EngineSupervisor {
     return run;
   }
 
-  private async launch(): Promise<EngineStatus> {
+  private async launch(retryAllowed = true): Promise<EngineStatus> {
+    const seq = ++this.launchSeq;
+    // Superseded by a newer launch (a Restart, or stop() then start()) or stopped: do nothing more.
+    const superseded = (): EngineStatus | null =>
+      this.stopRequested ? STOPPED : seq !== this.launchSeq ? SUPERSEDED : null;
     // `stop()` kills the current child; that exit is ours, not a crash.
     this.stopping = true;
     this.healthy = false;
     this.changed();
     await this.killChild();
     this.stopping = false;
-    if (this.stopRequested) return STOPPED;
+    let stale = superseded();
+    if (stale) return stale;
     this.healthy = false;
-    this.port = await this.pickPort();
+    const port = await this.pickPort();
     // `stop()` may have come while the port was being found; spawning now would leave an engine
     // behind a quit that has already happened.
-    if (this.stopRequested) return STOPPED;
+    stale = superseded();
+    if (stale) return stale;
+    this.port = port;
     this.token = crypto.randomBytes(24).toString("hex");
     // The scrubber removes it from anything reported (REPORT-04 left this unwired).
     this.options.reporter?.addToken?.(this.token);
@@ -740,6 +809,7 @@ export class EngineSupervisor {
 
     const spec = this.spawnSpec(baseEnv, []);
     if ("error" in spec) {
+      this.retryingStart = false;
       // Reported here and not by `main.ts`: this start resolves, it does not reject.
       this.incidents.startFailed(
         "missing",
@@ -756,6 +826,9 @@ export class EngineSupervisor {
     });
 
     this.spawnedAt = Date.now();
+    this.healthStats = { attempts: 0, refused: 0, timedOut: 0, other: 0 };
+    this.lastPhase = null;
+    this.retryingStart = false;
     this.healthyAt = 0;
     this.spawnCount += 1;
     this.drain(this.child, "stdout");
@@ -786,8 +859,84 @@ export class EngineSupervisor {
       );
     });
 
-    const ok = await this.pollHealth(this.options.healthTimeoutMs, HEALTH_POLL_MS, child);
-    if (this.stopRequested) return STOPPED;
+    const budgetMs = this.options.healthTimeoutMs ?? HEALTH_TIMEOUT_MS;
+    // A test that replaces the budget gets exactly that budget, unless it also sets the total.
+    const extendedWait = this.options.healthTimeoutMs === undefined || this.options.slowStartTotalMs !== undefined;
+    let ok = await this.pollHealth(budgetMs, HEALTH_POLL_MS, child, seq);
+    stale = superseded();
+    if (stale) return stale;
+    // The first budget is spent and the child is alive: slow, not dead (ELECTRON-9). Say so once,
+    // and keep waiting at a slower pace; the status stays "Starting" meanwhile.
+    if (!ok && !exited && this.child === child && extendedWait) {
+      this.incidents.slowStart(
+        "health",
+        {
+          exit_code: null,
+          signal: null,
+          restarts: this.restartAttempts,
+          uptime_ms: Date.now() - this.spawnedAt,
+          exits: 0,
+          reason: "the engine has not answered /health within its first budget; still waiting",
+          elapsed_ms: Date.now() - this.spawnedAt,
+          health_attempts: this.healthStats.attempts,
+          health_refused: this.healthStats.refused,
+          health_timed_out: this.healthStats.timedOut,
+          health_other: this.healthStats.other,
+          child_alive: true,
+          last_phase: this.lastPhase,
+        },
+        this.outputTail(),
+      );
+      const totalMs = Math.max(budgetMs, this.options.slowStartTotalMs ?? SLOW_START_TOTAL_MS);
+      ok = await this.pollHealth(
+        Math.max(0, totalMs - (Date.now() - this.spawnedAt)),
+        this.options.slowHealthPollMs ?? SLOW_HEALTH_POLL_MS,
+        child,
+        seq,
+      );
+      stale = superseded();
+      if (stale) return stale;
+      if (ok) {
+        this.options.reporter?.breadcrumb("process", `engine slow start ${Math.round((Date.now() - this.spawnedAt) / 1000)} s`, {
+          elapsed_ms: Date.now() - this.spawnedAt,
+          health_attempts: this.healthStats.attempts,
+        });
+      } else if (!exited && this.child === child) {
+        // Still silent after the whole wait: the tree is killed (a hung engine and its bootloader
+        // would otherwise hold the port and the database), and one more start is tried.
+        this.retryingStart = true;
+        this.changed();
+        this.options.reporter?.breadcrumb("process", "engine silent after the extended wait; killing it", {
+          elapsed_ms: Date.now() - this.spawnedAt,
+          retry: retryAllowed,
+        });
+        await this.killChild();
+        stale = superseded();
+        if (stale) {
+          // Whoever replaced this launch owns the status now; only a stop leaves it to us.
+          if (this.stopRequested) this.retryingStart = false;
+          return stale;
+        }
+        if (retryAllowed) {
+          try {
+            return await this.launch(false);
+          } finally {
+            this.retryingStart = false;
+          }
+        }
+        // The second try failed as well: the existing start-failed report, with nothing left
+        // running, so the status is "not running" and not "Starting" for good.
+        this.retryingStart = false;
+        this.incidents.startFailed(
+          "health",
+          "engine did not answer its health check",
+          "the engine started but did not answer /health in time",
+          this.outputTail(),
+        );
+        this.changed();
+        return { connected: false, error: "Engine health check failed or timed out" };
+      }
+    }
     if (!ok) {
       // An engine that died: let its last words arrive before they are read into a report.
       if (exited) await Promise.race([closed, new Promise<void>((resolve) => setTimeout(resolve, 1000).unref?.())]);
@@ -806,6 +955,8 @@ export class EngineSupervisor {
         error: "Engine health check failed or timed out",
       };
     }
+    stale = superseded();
+    if (stale) return stale;
     // It answers: if it came back from an exit, that is the incident's one event.
     this.incidents.recovered(this.outputTail());
     this.startHeartbeat(child);
@@ -963,7 +1114,7 @@ export class EngineSupervisor {
     // `stop()` or the user's Restart ended the wait, and owns what happens next.
     if (this.stopRequested || generation !== this.generation) return;
 
-    const status = await this.start();
+    const status = await this.start(undefined, true);
     if (this.stopRequested || generation !== this.generation) return;
     this.reconnecting = false;
     this.changed();
@@ -1044,6 +1195,15 @@ export class EngineSupervisor {
   }
 
   getStatus(): EngineStatus {
+    if (this.retryingStart && !this.child && !this.stopRequested) {
+      return {
+        connected: false,
+        starting: true,
+        error: "Starting",
+        reconnecting: this.reconnecting,
+        restartAttempts: this.restartAttempts,
+      };
+    }
     if (!this.port || !this.child) {
       return {
         connected: false,
@@ -1083,13 +1243,24 @@ export class EngineSupervisor {
   /**
    * A client, once any start in flight has finished.
    *
-   * Waiting is bounded by the start itself — `HEALTH_TIMEOUT_MS`, or sooner
-   * when the child exits — and a start that fails leaves `client()` to report
-   * it, as it would have done without waiting.
+   * Waiting is bounded: by the start itself when it is quick, and by `READY_HOLD_MS` when it is
+   * slow (the wait for a slow engine can run for minutes, ELECTRON-9). Past that the request fails
+   * as "Engine not running", which the renderer already treats as unavailable. A start that fails
+   * leaves `client()` to report it, as it would have done without waiting.
    */
   private async readyClient(): Promise<EngineClient> {
+    const deadline = Date.now() + (this.options.readyHoldMs ?? READY_HOLD_MS);
     while (this.startup) {
-      await this.startup.catch(() => undefined);
+      const left = deadline - Date.now();
+      if (left <= 0) throw new Error("Engine not running: it is still starting");
+      let timer: NodeJS.Timeout | undefined;
+      const timeout = new Promise<"timeout">((resolve) => {
+        timer = setTimeout(() => resolve("timeout"), left);
+        timer.unref?.();
+      });
+      const result = await Promise.race([this.startup.catch(() => undefined), timeout]);
+      clearTimeout(timer);
+      if (result === "timeout") throw new Error("Engine not running: it is still starting");
     }
     return this.client();
   }
@@ -2019,6 +2190,7 @@ export class EngineSupervisor {
     timeoutMs = HEALTH_TIMEOUT_MS,
     delayMs = HEALTH_POLL_MS,
     child: ChildProcess | null = this.child,
+    seq: number = this.launchSeq,
   ): Promise<boolean> {
     if (!this.port) return false;
     const url = `http://127.0.0.1:${this.port}/health`;
@@ -2026,23 +2198,35 @@ export class EngineSupervisor {
     while (Date.now() < deadline) {
       // Also when a restart has replaced the child this launch spawned: this poll would be asking
       // the old port for the whole budget, and its caller would never be told it had failed.
-      if (!this.child || this.child !== child) return false;
+      if (!this.child || this.child !== child || seq !== this.launchSeq) return false;
       // One ask never outlasts what is left of the budget (nor 10 s): an engine that accepts the
       // connection and never answers must not hold the wait, and so a restart, for good (HARDEN-05).
       const abort = new AbortController();
       const askTimer = setTimeout(() => abort.abort(), Math.max(1, Math.min(HEARTBEAT_TIMEOUT_MS, deadline - Date.now())));
       askTimer.unref?.();
+      this.healthStats.attempts += 1;
       try {
         const res = await fetch(url, { signal: abort.signal });
-        if (res.ok) {
-          const body = (await res.json()) as { version?: string };
+        const body = res.ok ? ((await res.json()) as { version?: string }) : null;
+        // The answer came from an engine, and a launch, that may have been replaced meanwhile.
+        if (!this.child || this.child !== child || seq !== this.launchSeq) return false;
+        if (body !== null) {
           this.version = body.version;
           this.healthy = true;
           this.healthyAt = Date.now();
           return true;
         }
-      } catch {
-        /* retry */
+        this.healthStats.other += 1;
+      } catch (error) {
+        if (this.child === child && seq === this.launchSeq) {
+          // Aborted by our own timer: the port accepted the connection and nobody answered.
+          // ECONNREFUSED: nothing listens on the port yet. Anything else is told apart.
+          const code = (error as { cause?: { code?: unknown }; code?: unknown } | null) ?? {};
+          const errorCode = code.cause?.code ?? code.code;
+          if (abort.signal.aborted) this.healthStats.timedOut += 1;
+          else if (errorCode === "ECONNREFUSED") this.healthStats.refused += 1;
+          else this.healthStats.other += 1;
+        }
       } finally {
         clearTimeout(askTimer);
       }

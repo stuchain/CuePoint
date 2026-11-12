@@ -1906,6 +1906,24 @@ def _start_library_work(cfg: EngineConfig) -> None:
     _schedule_launch_analysis()
 
 
+#: Prefix of the startup phase lines on stdout. ``electron/engineSupervisor.ts`` reads the
+#: latest one into its "engine is slow to answer" warning; keep the two in step.
+PHASE_PREFIX = "cuepoint-engine: phase "
+
+
+def announce_phase(phase: str) -> None:
+    """Print one short, path-free startup phase line to stdout and flush it.
+
+    The app tails stdout, so when a slow machine does not answer ``/health`` for a
+    long time the last phase says how far the engine got. Never raises: a closed or
+    missing stdout (a windowed build without a console) is no reason to stop.
+    """
+    try:
+        print(f"{PHASE_PREFIX}{phase}", flush=True)
+    except Exception:
+        pass
+
+
 def run_engine(config: Optional[EngineConfig] = None) -> None:
     # First, so "may I send?" has its answer before any work starts (REPORT-01, DEC-128).
     set_reporting_enabled(initial_reporting_enabled(os.environ))
@@ -1929,6 +1947,7 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     server = with_error_reporting(
         ThreadingHTTPServer((cfg.host, cfg.port), make_handler(cfg))
     )
+    announce_phase(f"bound port={cfg.port}")
     # Does nothing without a DSN (see resolve_engine_dsn). The socket is bound, so the app's health
     # checks are answered while the SDK loads; what fails meanwhile is held, then replayed.
     start_engine_reporting_in_background()
@@ -1955,6 +1974,7 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
         _start_library_work(cfg)
 
     def start_library() -> None:
+        announce_phase("library-start")
         # The launch backup first, before anything migrates the database; it is
         # skipped entirely when nothing changed since the last one, so the
         # usual cost is a few stat() calls.
@@ -1974,6 +1994,7 @@ def run_engine(config: Optional[EngineConfig] = None) -> None:
     )
     _LIBRARY_START.start()
     _stop_with_parent(server)
+    announce_phase("serving")
     try:
         server.serve_forever()
     finally:

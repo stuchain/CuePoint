@@ -34,7 +34,7 @@ export function capLine(line: string): string {
 export type ProcessName = "engine" | "player";
 
 /** How an incident ended. `missing-dll`: Windows could not load the player, so no restart was tried. */
-export type IncidentOutcome = "recovered" | "gave-up" | "start-failed" | "missing-dll";
+export type IncidentOutcome = "recovered" | "gave-up" | "start-failed" | "missing-dll" | "slow-start";
 
 /**
  * The last lines of a process's output, by stream; any may be absent. The engine reports `stdout`
@@ -80,6 +80,18 @@ export interface ProcessIncident {
     missing_dlls?: string;
     /** `missing-dll` only: delay-loaded DLLs not found, which the loader does not need to start. */
     missing_delay_dlls?: string;
+    /** `slow-start` only: the evidence of a start that is taking longer than its first budget. */
+    elapsed_ms?: number;
+    health_attempts?: number;
+    /** Asks that were refused (nothing bound the port yet). */
+    health_refused?: number;
+    /** Asks that were accepted and then not answered in time (bound, but busy). */
+    health_timed_out?: number;
+    /** Asks that failed some other way: a non-OK status, a bad body, an unexpected error. */
+    health_other?: number;
+    child_alive?: boolean;
+    /** The latest `cuepoint-engine: phase ...` line the engine printed, if any. */
+    last_phase?: string | null;
   };
   attachment: IncidentAttachment | null;
 }
@@ -188,6 +200,33 @@ export class IncidentTracker {
     if (this.open !== null || this.startFailures.has(key)) return;
     this.startFailures.add(key);
     this.send("start-failed", message, reason, output);
+  }
+
+  /**
+   * A start still waiting after its first budget: a warning, once per `key` for the life of the
+   * tracker, and never part of an incident (the process has not failed, it is slow). The caller
+   * keeps waiting; whether it ever fails is `startFailed`'s story.
+   */
+  slowStart(key: string, evidence: ProcessIncident["data"], output: OutputTail): void {
+    const mark = `slow:${key}`;
+    if (this.startFailures.has(mark)) return;
+    this.startFailures.add(mark);
+    const incident: ProcessIncident = {
+      process: this.process,
+      outcome: "slow-start",
+      level: "warning",
+      message: `${this.process} is slow to answer its health check`,
+      data: { ...evidence },
+      attachment: {
+        filename: this.process === "engine" ? "engine-output.txt" : "player-output.txt",
+        text: outputText(output),
+      },
+    };
+    try {
+      this.reporter?.incident(incident);
+    } catch {
+      // Reporting must never stop a supervisor.
+    }
   }
 
   private send(

@@ -39,6 +39,53 @@ def _run_worker() -> int:
         return 1
 
 
+def _run_engine() -> int:
+    """Run the engine server; an exception ends it with a traceback on stderr, not a dialog.
+
+    The frozen sidecar is a windowed (``console=False``) build, which shows an
+    uncaught traceback as a modal dialog nobody sees, leaving a live process with
+    no output. The exception is handed to ``sys.excepthook`` by hand (so Sentry's
+    hook still reports it and the default one prints it to stderr, where the app
+    tails it), and the exit is non-zero so the supervisor sees an engine that died.
+    """
+    try:
+        from cuepoint.engine.server import announce_phase, run_engine
+        from cuepoint.services.analysis_worker_client import enable_worker
+
+        announce_phase("imports-done")
+        # The engine process analyses in a worker; tests that start the engine in
+        # a thread (`start_engine_thread`) do not come here and stay in-process.
+        enable_worker()
+        run_engine()
+        return 0
+    except SystemExit as error:
+        code = error.code
+        if code is None:
+            return 0
+        if isinstance(code, int):
+            return code
+        try:
+            print(str(code), file=sys.stderr)
+        except Exception:
+            pass
+        return 1
+    except KeyboardInterrupt:
+        return 130
+    except BaseException:
+        # Through the interpreter's own hook, so the engine's Sentry integration (which wraps
+        # it) still reports a Python crash with its stack, and the default hook prints it.
+        try:
+            sys.excepthook(*sys.exc_info())
+        except Exception:
+            try:
+                import traceback
+
+                traceback.print_exc(file=sys.stderr)
+            except Exception:
+                pass
+        return 1
+
+
 def _run_selftest(arguments: list) -> int:
     """Run the self-test; the same promise as :func:`_run_worker`."""
     if len(arguments) != 2:
@@ -69,10 +116,4 @@ if __name__ == "__main__":
         _rt = sys.argv.index("--restore")
         raise SystemExit(_restore_main(sys.argv[_rt + 1 :]))
 
-    from cuepoint.engine.server import run_engine
-    from cuepoint.services.analysis_worker_client import enable_worker
-
-    # The engine process analyses in a worker; tests that start the engine in
-    # a thread (`start_engine_thread`) do not come here and stay in-process.
-    enable_worker()
-    run_engine()
+    raise SystemExit(_run_engine())
