@@ -56,6 +56,9 @@ const CONDITIONAL_STOPS: RegExp[] = [
   /^status \| link \| Check files on the Clean page\.$/,
   /^[^|]+ \| button \| (Analyze waveforms|Analyze N waveforms|Analyze again)$/,
   /^region "Waveforms" \| button \| (Pause|Resume)$/,
+  // The Library header drops the First steps chip first when its line is too narrow (LibraryHeader.css),
+  // which depends on the runner's fonts and scale: seen gone on Windows CI.
+  /^banner \| button \| First steps N\/N done$/,
   // Shown only where the updater works: a packaged app (`installed`), or once a check has run.
   /^region "About & updates" \| button \| Check for updates$/,
 ];

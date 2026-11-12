@@ -963,7 +963,10 @@ class TestDeletingTheData:
         requested = analysis.request([lib.id("a")])
         empty_jobs = analysis_jobs(store)
         release.set()
-        deleting.join(TIMEOUT)
+        # Settling only means something once the deletion has started the
+        # analysis again: a slow Windows runner took over 15 s to get there.
+        deleting.join(4 * TIMEOUT)
+        assert not deleting.is_alive()
         settle(store)
 
         assert started is None and requested is None
