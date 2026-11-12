@@ -12,6 +12,7 @@ import type {
 import { ToastProvider } from "../components";
 import { EMPTY_AUDIO_STATE } from "../components/player/playerFormat";
 import { resetPlayerStore } from "../components/player/playerStore";
+import { resetAnalysisStore } from "../components/waveform/analysisStore";
 import { DECODER_MISSING_WORDS, PREVIEW_EMPTY_WORDS } from "../components/waveform/analysisWords";
 import { forgetWaveforms } from "../components/waveform/waveformCache";
 import {
@@ -156,6 +157,7 @@ async function openDiskSpace(user: ReturnType<typeof userEvent.setup>) {
 }
 
 beforeEach(() => {
+  resetAnalysisStore();
   localStorage.clear();
   resetWaveformColourForTests();
   resetWaveformDetailForTests();
@@ -165,6 +167,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  resetAnalysisStore();
   resetPlayerStore();
   forgetWaveforms();
   localStorage.clear();

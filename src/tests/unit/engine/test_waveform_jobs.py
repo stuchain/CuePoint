@@ -750,6 +750,103 @@ class TestStatus:
             2,
         )
 
+    @staticmethod
+    def _slow_plan(analysis):
+        """Make the library count block until released; returns its handles."""
+        real = analysis._service()
+        entered = threading.Event()
+        release = threading.Event()
+        calls: List[int] = []
+
+        class SlowPlan:
+            def __getattr__(self, name):
+                return getattr(real, name)
+
+            def plan(self, *args, **kwargs):
+                calls.append(1)
+                entered.set()
+                assert release.wait(TIMEOUT)
+                return real.plan(*args, **kwargs)
+
+        analysis._service = lambda: SlowPlan()
+        return entered, release, calls
+
+    def test_concurrent_statuses_count_the_library_once(self, lib, engine):
+        """Regression: every concurrent cache miss walked the whole library, so
+        a pile of status reads took seconds each on a big one."""
+        _, analysis = engine
+        lib.add("a")
+        lib.add("b")
+        entered, release, calls = self._slow_plan(analysis)
+        results: list = []
+        started = threading.Semaphore(0)
+
+        def read():
+            started.release()
+            results.append(analysis.status())
+
+        threads = [threading.Thread(target=read) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        assert entered.wait(TIMEOUT)
+        for _ in threads:
+            assert started.acquire(timeout=TIMEOUT)
+        # Every thread is in status(); those that are not the leader wait on
+        # the count, so the count has still been made once.
+        assert len(calls) == 1
+        release.set()
+        for thread in threads:
+            thread.join(TIMEOUT)
+
+        assert not any(thread.is_alive() for thread in threads)
+        assert len(calls) == 1
+        assert len(results) == 8
+        assert {(r.present, r.remaining) for r in results} == {
+            (results[0].present, results[0].remaining)
+        }
+        assert results[0].present == 2
+
+    def test_forgetting_the_count_mid_flight_makes_waiters_recount(self, lib, engine):
+        """A run starting while a count is under way outdates it: the count is
+        not kept, and a caller that waited on it counts again."""
+        _, analysis = engine
+        lib.add("a")
+        entered, release, calls = self._slow_plan(analysis)
+        results: list = []
+        leader = threading.Thread(
+            target=lambda: results.append(analysis._library_count())
+        )
+        leader.start()
+        assert entered.wait(TIMEOUT)
+        waiter = threading.Thread(
+            target=lambda: results.append(analysis._library_count())
+        )
+        waiter.start()
+        waiter.join(0.3)
+        assert waiter.is_alive()  # waiting on the count under way
+        with analysis._lock:
+            analysis._forget_count()
+        release.set()
+        leader.join(TIMEOUT)
+        waiter.join(TIMEOUT)
+
+        assert not leader.is_alive() and not waiter.is_alive()
+        assert len(calls) == 2  # the waiter counted again
+        assert len(results) == 2
+
+    def test_a_count_that_dies_does_not_block_later_statuses(self, lib, engine):
+        _, analysis = engine
+
+        class Dying:
+            def plan(self, *args, **kwargs):
+                raise KeyboardInterrupt
+
+        analysis._service = lambda: Dying()
+        with pytest.raises(KeyboardInterrupt):
+            analysis._library_count()
+
+        assert analysis._count_flight is None
+
     def test_unavailable_says_why(self, lib, engine):
         _, analysis = engine
         lib.decoder_path = None

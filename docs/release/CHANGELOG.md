@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The app no longer overloads its own engine while waveforms are being made.** Every open view that showed waveform progress asked the engine for it every two seconds, and each answer counted the whole library again, so a large library could leave the engine too busy to answer (Sentry). The app now asks once for all views, never while a previous answer is pending and not from hidden pages, and the engine counts the library once at a time.
+
 ## [1.0.2] - 2026-11-11
 
 **CuePoint 1.0.2 fixes two problems people hit in 1.0.1.** On Windows, the player now starts on a PC without the Microsoft Visual C++ runtime, and a large library's artwork scan no longer runs out of memory. Installed copies of 1.0.0 and 1.0.1 on Windows and Mac offer the update on their own. **Macs with Apple Silicon now need macOS 15 or newer**, like Intel Macs already did.

@@ -7,6 +7,11 @@ import type {
   WaveformAnswer,
   WaveformsBridge,
 } from "../../api/cuepointBridge.types";
+import type { ReactNode } from "react";
+import { createElement } from "react";
+
+import { PageActiveContext } from "../shell/pageActive";
+import { resetAnalysisStore } from "./analysisStore";
 import { useWaveformAnalysis } from "./useWaveformAnalysis";
 import { waveformCache } from "./waveformCache";
 
@@ -44,6 +49,7 @@ function install(bridge: Partial<CuePointBridge> | undefined): void {
 }
 
 beforeEach(() => {
+  resetAnalysisStore();
   waveforms = {
     analysis: vi.fn().mockResolvedValue(answer(status())),
     pause: vi.fn().mockResolvedValue(answer(status({ state: "paused", paused: true }))),
@@ -58,6 +64,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  resetAnalysisStore();
   install(undefined);
   vi.useRealTimers();
 });
@@ -179,5 +186,171 @@ describe("useWaveformAnalysis", () => {
     expect(answer!.refusal).toMatchObject({ code: "WAVEFORMS_STORE_FAILED" });
     expect(forget).not.toHaveBeenCalled();
     expect(result.current.status?.state).toBe("idle");
+  });
+
+  describe("one shared poll", () => {
+    const many = (count: number, active = true) =>
+      renderHook(
+        () => {
+          const all = Array.from({ length: count }, () => useWaveformAnalysis(2000));
+          return all;
+        },
+        {
+          wrapper: ({ children }: { children: ReactNode }) =>
+            createElement(PageActiveContext.Provider, { value: active }, children),
+        },
+      );
+
+    it("reads once per interval however many hooks are mounted", async () => {
+      vi.useFakeTimers();
+      const { result } = many(30);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(waveforms.analysis).toHaveBeenCalledTimes(1);
+      expect(result.current.every((one) => one.status?.state === "idle")).toBe(true);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(waveforms.analysis).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(waveforms.analysis).toHaveBeenCalledTimes(3);
+    });
+
+    it("never starts a read while one is pending", async () => {
+      vi.useFakeTimers();
+      let release: (value: WaveformAnswer<WaveformAnalysisStatus>) => void = () => {};
+      waveforms.analysis.mockImplementation(
+        () => new Promise((resolve) => (release = resolve)),
+      );
+      many(5);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+      expect(waveforms.analysis).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        release(answer(status({ state: "running" })));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(waveforms.analysis).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(waveforms.analysis).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not read for a hidden page", async () => {
+      vi.useFakeTimers();
+      many(3, false);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+      expect(waveforms.analysis).not.toHaveBeenCalled();
+    });
+
+    it("gives a pause answer to every consumer", async () => {
+      const { result } = many(4);
+      await waitFor(() => expect(result.current[0]!.status).not.toBeNull());
+
+      await act(async () => {
+        await result.current[0]!.pause();
+      });
+
+      expect(result.current.map((one) => one.status?.state)).toEqual([
+        "paused",
+        "paused",
+        "paused",
+        "paused",
+      ]);
+      expect(waveforms.pause).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not let a stale read overwrite a later Pause answer", async () => {
+      vi.useFakeTimers();
+      let release: (value: WaveformAnswer<WaveformAnalysisStatus>) => void = () => {};
+      waveforms.analysis.mockImplementation(
+        () => new Promise((resolve) => (release = resolve)),
+      );
+      const { result } = many(2);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      await act(async () => {
+        await result.current[0]!.pause();
+      });
+      expect(result.current[1]!.status?.state).toBe("paused");
+
+      await act(async () => {
+        release(answer(status({ state: "running" })));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current[1]!.status?.state).toBe("paused");
+    });
+
+    it("does not let a stale failure set an error after a Pause answer", async () => {
+      vi.useFakeTimers();
+      let fail: (cause: unknown) => void = () => {};
+      waveforms.analysis.mockImplementation(
+        () => new Promise((_, reject) => (fail = reject)),
+      );
+      const { result } = many(2);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      await act(async () => {
+        await result.current[0]!.pause();
+      });
+
+      await act(async () => {
+        fail(new Error("Engine offline"));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current[1]!.error).toBeNull();
+      expect(result.current[1]!.status?.state).toBe("paused");
+    });
+
+    it("stops reading when the last hook unmounts", async () => {
+      vi.useFakeTimers();
+      const { unmount } = many(3);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500);
+      });
+      const before = waveforms.analysis.mock.calls.length;
+      expect(before).toBe(2);
+
+      unmount();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+      expect(waveforms.analysis).toHaveBeenCalledTimes(before);
+    });
+
+    it("starts reading when a hidden page is shown", async () => {
+      vi.useFakeTimers();
+      const wrap = (active: boolean) => ({
+        wrapper: ({ children }: { children: ReactNode }) =>
+          createElement(PageActiveContext.Provider, { value: active }, children),
+      });
+      function useAnalysis() {
+        return useWaveformAnalysis(2000);
+      }
+      const hook = useAnalysis;
+      const view = renderHook(hook, wrap(false));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(waveforms.analysis).not.toHaveBeenCalled();
+
+      view.unmount();
+      renderHook(hook, wrap(true));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(waveforms.analysis).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -12,6 +12,7 @@ import type {
   WaveformsQuery,
 } from "../../api/cuepointBridge.types";
 import { ROW_HEIGHT_FALLBACK, readRowHeight } from "../../components/table/trackTableLayout";
+import { resetAnalysisStore } from "../../components/waveform/analysisStore";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { SetTransition } from "./SetTransition";
 import { describeSetWarning } from "./setWarnings";
@@ -122,6 +123,7 @@ function contextFor(canvas: HTMLCanvasElement) {
 }
 
 beforeEach(() => {
+  resetAnalysisStore();
   forgetWaveforms();
   fills = new Map();
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
@@ -142,6 +144,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  resetAnalysisStore();
   cleanup();
   await new Promise((resolve) => setTimeout(resolve, 0));
   forgetWaveforms();

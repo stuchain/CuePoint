@@ -128,6 +128,8 @@ MAX_REQUESTS = 200
 #: has been analysed. The Health view asks every two seconds, and at 50,000
 #: tracks a count is two queries over both databases.
 STATUS_COUNT_SECONDS = 5.0
+#: How long a status waits for a count another caller is making.
+COUNT_WAIT_SECONDS = 30.0
 
 #: What started a run, as Activity records it. A run that comes back after a job
 #: it stepped aside for is named by that job's type.
@@ -300,6 +302,11 @@ class AnalysisCoordinator:
         self._deleting = 0
         self._progress: Optional[RunProgress] = None
         self._count: Optional[Tuple[float, WorkPlan]] = None
+        #: Bumped whenever the count is forgotten, so a count in flight that
+        #: began before it is not kept.
+        self._count_epoch = 0
+        #: The one count being computed now, which other callers wait for.
+        self._count_flight: Optional[_CountFlight] = None
         store.add_listeners(started=self._job_started, ended=self._job_ended)
 
     @property
@@ -461,7 +468,7 @@ class AnalysisCoordinator:
         finally:
             with self._lock:
                 self._deleting -= 1
-                self._count = None
+                self._forget_count()
                 self._detail_wake.notify_all()
             self._start_after_deletion()
         return result
@@ -732,7 +739,7 @@ class AnalysisCoordinator:
         # A count from before the run may predate the file check that started
         # it, which is what decides what is present: count again, as a run's
         # end does.
-        self._count = None
+        self._forget_count()
         return job
 
     def _run(self, job: Job, control: _Control) -> None:
@@ -820,7 +827,7 @@ class AnalysisCoordinator:
             if self._job is not job:
                 return
             self._job, self._control = None, None
-            self._count = None
+            self._forget_count()
             owed = control.owed
             for_requests = self._restart_for_requests
             self._restart_for_requests = False
@@ -866,24 +873,71 @@ class AnalysisCoordinator:
 
     # -------------------------------------------------------- the count
 
+    def _forget_count(self) -> None:
+        """Drop the last count; the caller holds the lock."""
+        self._count = None
+        self._count_epoch += 1
+
     def _library_count(self) -> WorkPlan:
         """The library's counts, at most :data:`STATUS_COUNT_SECONDS` old.
 
         A run's end forgets the last count, so the status after it is exact.
+        One count runs at a time: a caller that finds one under way returns the
+        last count if there is one, and otherwise waits for that one's answer,
+        so concurrent status reads never each walk the whole library.
         """
-        now = self._clock()
-        with self._lock:
-            cached = self._count
-        if cached is not None and now - cached[0] < STATUS_COUNT_SECONDS:
-            return cached[1]
-        try:
-            count = self._service().plan(limit=0, ordered=False)
-        except Exception as exc:  # noqa: BLE001 — a status must answer
-            _logger.warning("[waveforms] the library could not be counted: %s", exc)
-            return cached[1] if cached is not None else WorkPlan(0, 0, 0)
-        with self._lock:
-            self._count = (now, count)
-        return count
+        while True:
+            now = self._clock()
+            with self._lock:
+                cached = self._count
+                if cached is not None and now - cached[0] < STATUS_COUNT_SECONDS:
+                    return cached[1]
+                flight = self._count_flight
+                if flight is None:
+                    flight = _CountFlight(self._count_epoch)
+                    self._count_flight = flight
+                    leader = True
+                else:
+                    leader = False
+            if not leader:
+                if cached is not None:
+                    return cached[1]
+                if not flight.done.wait(COUNT_WAIT_SECONDS):
+                    return WorkPlan(0, 0, 0)
+                with self._lock:
+                    current = self._count_epoch
+                if flight.plan is not None and flight.epoch == current:
+                    return flight.plan
+                if flight.plan is None:
+                    return WorkPlan(0, 0, 0)
+                continue  # forgotten while it ran: count again
+            count: Optional[WorkPlan] = None
+            try:
+                try:
+                    count = self._service().plan(limit=0, ordered=False)
+                except Exception as exc:  # noqa: BLE001 — a status must answer
+                    _logger.warning(
+                        "[waveforms] the library could not be counted: %s", exc
+                    )
+            finally:
+                with self._lock:
+                    self._count_flight = None
+                    if count is not None and flight.epoch == self._count_epoch:
+                        self._count = (now, count)
+                flight.plan = count
+                flight.done.set()
+            if count is None:
+                return cached[1] if cached is not None else WorkPlan(0, 0, 0)
+            return count
+
+
+class _CountFlight:
+    """A library count under way, and the answer its waiters take."""
+
+    def __init__(self, epoch: int) -> None:
+        self.epoch = epoch
+        self.done = threading.Event()
+        self.plan: Optional[WorkPlan] = None
 
 
 # ------------------------------------------------------------------ registry
