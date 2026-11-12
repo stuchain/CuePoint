@@ -322,6 +322,27 @@ class TestTheJob:
         assert seen == [(0, TRACK_COUNT), (TRACK_COUNT, TRACK_COUNT)]
         assert job.progress.completed_tracks == TRACK_COUNT
 
+    def test_the_first_tick_shows_on_a_machine_just_booted(
+        self, library, store, ids, monkeypatch
+    ):
+        """monotonic() counts from boot: a fresh CI runner is up for under a minute."""
+        monkeypatch.setattr("cuepoint.services.batch_service.BATCH_CHUNK_SIZE", 10)
+        monkeypatch.setattr(batch_jobs, "_PROGRESS_REPORT_INTERVAL_SECONDS", 60.0)
+        monkeypatch.setattr(batch_jobs.time, "monotonic", lambda: 5.0)
+        seen = []
+        original = store.report_progress
+
+        def spy(job, progress: ProgressInfo):
+            seen.append((progress.completed_tracks, progress.total_tracks))
+            original(job, progress)
+
+        monkeypatch.setattr(store, "report_progress", spy)
+
+        job = Job(id="batch-9", type=JOB_TYPE_LIBRARY_BATCH)
+        run_batch_job(job, store, ids, BatchOperation(OPERATION_SET_RATING, 4))
+
+        assert seen == [(0, TRACK_COUNT), (TRACK_COUNT, TRACK_COUNT)]
+
     def test_the_verb_is_the_operations_own(self, library, store, ids, monkeypatch):
         monkeypatch.setattr(batch_jobs, "_PROGRESS_REPORT_INTERVAL_SECONDS", 0.0)
         from cuepoint.services.interfaces import ITagService

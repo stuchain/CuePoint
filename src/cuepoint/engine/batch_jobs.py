@@ -178,7 +178,9 @@ def _run_counted(
     ``total`` and ``to_dict()``.
     """
     started = time.monotonic()
-    last_reported = 0.0
+    # Minus infinity, not 0.0: monotonic() counts from boot, so on a machine up for less
+    # than one interval a 0.0 start would drop the first tick.
+    last_reported = float("-inf")
 
     def on_progress(completed: int, total: int) -> None:
         nonlocal last_reported
