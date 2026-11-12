@@ -1,4 +1,4 @@
-# DIST-04, DEC-175: CuePoint's own copy of the pinned mpv archives. mpv publishes binaries only on
+# DIST-04, DEC-175: CuePoint's own copy of the pinned mpv archives (and, in its own job and release, the pinned Vulkan loader archive). mpv publishes binaries only on
 # a rolling release whose assets are replaced, so a tag built weeks after a pin could find it gone.
 # It runs by itself when a re-pin (`fetch_player_sidecar.py --update-manifest`) lands on main or
 # feature: mpv replaces those assets daily, so a mirror made by hand later can find them gone, as
@@ -48,13 +48,18 @@ jobs:
             echo "done=true" >> "$GITHUB_OUTPUT"
           else
             printf 'Not mirrored yet:\n%s\n' "${missing}"
+            printf '%s\n' "${missing}" > "${RUNNER_TEMP}/missing-assets.txt"
             echo "done=false" >> "$GITHUB_OUTPUT"
           fi
 
       # Every supported target, each checked against its pinned SHA-256 before it is kept.
       - name: Download the pinned archives from upstream
         if: steps.mirrored.outputs.done != 'true'
-        run: python scripts/fetch_player_sidecar.py --download-archives mpv-archives
+        # Only what the mirror lacks: mpv's rolling release may have dropped an archive it already holds.
+        run: |
+          args=()
+          while read -r asset; do args+=(--only "${asset}"); done < "${RUNNER_TEMP}/missing-assets.txt"
+          python scripts/fetch_player_sidecar.py --download-archives mpv-archives "${args[@]}"
 
       # The tag is outside the version scheme (`sidecar-mpv-<mpv version>`), so the updater never
       # offers it. `--clobber` makes a second run harmless.
@@ -69,3 +74,53 @@ jobs:
               --notes "The mpv archives CuePoint builds pin (DEC-175), with the SHA-256 in scripts/player_sidecar_manifest.json. Builds fetch these first and mpv's own release second. Not an app release."
           fi
           gh release upload "${tag}" mpv-archives/* --clobber
+
+  # The Vulkan loader has its own release, `sidecar-vulkan-<loader version>`, so it is mirrored once
+  # per loader version and not again for every mpv re-pin. A separate job: a LunarG outage cannot
+  # stop the mpv archives from being mirrored, and the reverse.
+  mirror-vulkan-loader:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check whether the loader is pinned and already mirrored
+        id: mirrored
+        run: |
+          read -r version asset pinned < <(python -c "import json; v = json.load(open('scripts/player_sidecar_manifest.json')).get('vulkan_loader') or {}; print(v.get('version', ''), v.get('asset', ''), 'yes' if v.get('sha256') else 'no')")
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "asset=${asset}" >> "$GITHUB_OUTPUT"
+          if [ -z "${version}" ] || [ "${pinned}" != "yes" ]; then
+            echo "No pinned Vulkan loader; nothing to mirror."
+            echo "done=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          have="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/sidecar-vulkan-${version}" --jq '.assets[].name' 2>/dev/null || true)"
+          if printf '%s\n' "${have}" | grep -qx "${asset}"; then
+            echo "sidecar-vulkan-${version} already holds ${asset}; nothing to mirror."
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download the pinned loader archive from upstream
+        if: steps.mirrored.outputs.done != 'true'
+        run: python scripts/fetch_player_sidecar.py --download-archives vulkan-archives --only "${{ steps.mirrored.outputs.asset }}"
+
+      - name: Create the mirror release and upload the loader archive
+        if: steps.mirrored.outputs.done != 'true'
+        run: |
+          tag="sidecar-vulkan-${{ steps.mirrored.outputs.version }}"
+          if ! gh release view "${tag}" > /dev/null 2>&1; then
+            gh release create "${tag}" --prerelease --latest=false \
+              --title "Vulkan loader ${{ steps.mirrored.outputs.version }} (player sidecar mirror)" \
+              --notes "The LunarG Vulkan Runtime archive CuePoint builds pin, with the SHA-256 in scripts/player_sidecar_manifest.json (vulkan_loader). Builds fetch this first and LunarG second. Not an app release."
+          fi
+          gh release upload "${tag}" vulkan-archives/* --clobber

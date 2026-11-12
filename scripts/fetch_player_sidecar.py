@@ -50,6 +50,18 @@ is where packaging happens, not finding them is a hard error. On any other host
 a win32 target is fetched only for checks, so a missing folder is a loud warning
 and the install is left without them; ``--check-imports`` fails on it.
 
+**The Vulkan loader (Windows).** ``mpv.exe`` also statically imports
+``vulkan-1.dll``, which Windows does not ship either: GPU drivers install it, and a PC
+whose driver does not (the Microsoft Basic Display driver, a very old vendor driver)
+has none, so mpv exits with the same 0xC0000135 (Sentry ELECTRON-C). So a win32
+install also ships the Khronos Vulkan loader (Apache-2.0) beside ``mpv.exe``. It is
+pinned in the manifest's ``vulkan_loader`` section (the LunarG Vulkan Runtime
+components archive, SHA-256 checked, mirrored with the mpv archives); the x64
+``vulkan-1.dll`` is extracted from it and recorded in ``installed.json``
+(``vulkan_loader``). ``--update-vulkan-loader`` fills in or refreshes the pin. The
+loader finds no driver on such a PC and mpv carries on with its other renderers;
+all it has to do is exist.
+
 Nothing here is committed: ``resources/player/`` is build output, exactly as
 ``resources/engine/`` is.
 
@@ -65,6 +77,7 @@ Usage::
     python scripts/fetch_player_sidecar.py --check-imports # Windows: every DLL mpv.exe needs
     python scripts/fetch_player_sidecar.py --print-path    # where the binary is
     python scripts/fetch_player_sidecar.py --update-manifest
+    python scripts/fetch_player_sidecar.py --update-vulkan-loader  # pin the Vulkan loader
     python scripts/fetch_player_sidecar.py --download-archives DIR  # for the mirror
 """
 
@@ -153,9 +166,23 @@ VC_RUNTIME_DLLS: Tuple[str, ...] = (
 VC_RUNTIME_ENV = "CUEPOINT_VC_RUNTIME_DIR"
 VC_REDIST_COMPONENT = "Microsoft.VisualStudio.Component.VC.Redist.14.Latest"
 
+#: The Khronos Vulkan loader, shipped beside mpv.exe (the manifest's ``vulkan_loader``).
+VULKAN_LOADER_DLL = "vulkan-1.dll"
+#: Where the LunarG Vulkan Runtime components archive for a version lives.
+VULKAN_LOADER_URL = (
+    "https://sdk.lunarg.com/sdk/download/{version}/windows/"
+    "VulkanRT-{version}-Components.zip"
+)
+VULKAN_LOADER_ASSET = "VulkanRT-{version}-Components.zip"
+#: The mirror release for the loader: its own, so it is mirrored once per loader
+#: version and not again for every mpv re-pin.
+VULKAN_MIRROR_PREFIX = "sidecar-vulkan"
+#: Largest ``vulkan-1.dll`` we accept out of the archive (real ones are under 2 MiB).
+VULKAN_LOADER_MAX_BYTES = 16 << 20
+
 #: Windows 10 1903+ system DLLs a shipped binary may import without us bundling
-#: them. Everything else mpv.exe imports must sit next to it (or be listed in
-#: ``DRIVER_PROVIDED_DLLS``). ``api-ms-win-*`` / ``ext-ms-win-*`` API sets are
+#: them. Everything else mpv.exe imports must sit next to it (the VC runtime and
+#: the Vulkan loader are shipped that way). ``api-ms-win-*`` / ``ext-ms-win-*`` API sets are
 #: system by prefix (the UCRT ``api-ms-win-crt-*`` among them: built into Win10).
 WINDOWS_SYSTEM_DLLS = frozenset(
     {
@@ -210,11 +237,6 @@ WINDOWS_SYSTEM_DLLS = frozenset(
         "wtsapi32.dll",
     }
 )
-#: Installed by GPU drivers, not by Windows and not by us. Accepted for now:
-#: mpv's Vulkan renderer is not used for audio, but the loader still needs the
-#: DLL to be present at startup. A PC with no Vulkan driver fails the same way
-#: the missing runtime did, so this is the next thing to look at if that is reported.
-DRIVER_PROVIDED_DLLS = frozenset({"vulkan-1.dll"})
 
 DOWNLOAD_TIMEOUT_SECONDS = 300
 DOWNLOAD_ATTEMPTS = 3
@@ -276,6 +298,41 @@ class Target:
 
 
 @dataclass(frozen=True)
+class VulkanLoader:
+    """The pinned Khronos Vulkan loader shipped beside the Windows mpv.exe.
+
+    ``sha256`` is empty until the pin has been filled in with
+    ``--update-vulkan-loader``; an unpinned loader is never installed.
+    """
+
+    version: str
+    asset: str
+    url: str
+    sha256: str = ""
+    size: int = 0
+    #: The path (or its tail) of the x64 DLL inside the archive.
+    member: str = "x64/vulkan-1.dll"
+    #: The DLL's own size and SHA-256 (checked on extraction when recorded).
+    dll_sha256: str = ""
+    dll_size: int = 0
+    #: LunarG's licence text for the runtime, shipped beside the other licences.
+    runtime_license_member: str = ""
+    license_spdx: str = "Apache-2.0"
+    license_file: str = "LICENSE.Vulkan-Loader"
+    source_url: str = ""
+    targets: Tuple[str, ...] = ("win32-x64",)
+
+    @property
+    def pinned(self) -> bool:
+        return bool(self.sha256)
+
+    @property
+    def runtime_license_name(self) -> str:
+        """The file name the runtime licence is shipped under, or empty."""
+        return self.runtime_license_member.replace("\\", "/").rsplit("/", 1)[-1]
+
+
+@dataclass(frozen=True)
 class Manifest:
     component: str
     version: str
@@ -289,6 +346,7 @@ class Manifest:
     required_options: Tuple[str, ...]
     targets: Dict[str, Target]
     raw: Dict[str, Any] = field(default_factory=dict, repr=False)
+    vulkan_loader: Optional[VulkanLoader] = None
 
     def target(self, key: str) -> Target:
         try:
@@ -304,6 +362,44 @@ def _require(mapping: Dict[str, Any], key: str, where: str) -> Any:
     if key not in mapping:
         raise PlayerSidecarError(f"Manifest {where} is missing required key {key!r}")
     return mapping[key]
+
+
+def _parse_vulkan_loader(raw: Any) -> VulkanLoader:
+    if not isinstance(raw, dict):
+        raise PlayerSidecarError("Manifest 'vulkan_loader' must be an object")
+    sha256 = str(raw.get("sha256", "")).lower()
+    if sha256 and not re.fullmatch(r"[0-9a-f]{64}", sha256):
+        raise PlayerSidecarError(
+            f"Manifest vulkan_loader has a malformed sha256: {sha256!r}"
+        )
+    dll_sha256 = str(raw.get("dll_sha256", "")).lower()
+    if dll_sha256 and not re.fullmatch(r"[0-9a-f]{64}", dll_sha256):
+        raise PlayerSidecarError(
+            f"Manifest vulkan_loader has a malformed dll_sha256: {dll_sha256!r}"
+        )
+    lic = raw.get("license", {})
+    if not isinstance(lic, dict):
+        raise PlayerSidecarError("Manifest vulkan_loader 'license' must be an object")
+    asset = str(_require(raw, "asset", "vulkan_loader"))
+    if "/" in asset or "\\" in asset:
+        raise PlayerSidecarError(
+            f"Manifest vulkan_loader asset {asset!r} must be a file name"
+        )
+    return VulkanLoader(
+        version=str(_require(raw, "version", "vulkan_loader")),
+        asset=asset,
+        url=str(_require(raw, "url", "vulkan_loader")),
+        sha256=sha256,
+        size=int(raw.get("size", 0)),
+        member=str(raw.get("member", "x64/vulkan-1.dll")),
+        dll_sha256=dll_sha256,
+        dll_size=int(raw.get("dll_size", 0)),
+        runtime_license_member=str(raw.get("runtime_license_member", "")),
+        license_spdx=str(lic.get("spdx", "Apache-2.0")),
+        license_file=str(lic.get("file", "LICENSE.Vulkan-Loader")),
+        source_url=str(lic.get("source_url", "")),
+        targets=tuple(str(t) for t in raw.get("targets", ("win32-x64",))),
+    )
 
 
 def parse_manifest(data: Dict[str, Any]) -> Manifest:
@@ -384,6 +480,11 @@ def parse_manifest(data: Dict[str, Any]) -> Manifest:
         required_options=tuple(str(o) for o in data.get("required_options", ())),
         targets=targets,
         raw=data,
+        vulkan_loader=(
+            _parse_vulkan_loader(data["vulkan_loader"])
+            if data.get("vulkan_loader")
+            else None
+        ),
     )
 
 
@@ -447,7 +548,19 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def verify_checksum(path: Path, expected: str, *, what: str) -> None:
+MPV_REPIN_ADVICE = (
+    "mpv publishes binaries only on the rolling `git-release` tag, so "
+    "pins expire when CI republishes. Re-pin and review the diff:\n"
+    "  python scripts/fetch_player_sidecar.py --update-manifest"
+)
+VULKAN_REPIN_ADVICE = (
+    "The Vulkan loader archive is pinned by SHA-256 in the manifest's "
+    "`vulkan_loader`. If LunarG replaced or removed it, re-pin and review the diff:\n"
+    "  python scripts/fetch_player_sidecar.py --update-vulkan-loader"
+)
+
+
+def verify_checksum(path: Path, expected: str, *, what: str, advice: str = "") -> None:
     actual = sha256_file(path)
     if actual != expected.lower():
         raise ChecksumMismatchError(
@@ -456,9 +569,13 @@ def verify_checksum(path: Path, expected: str, *, what: str) -> None:
             f"  expected: {expected}\n"
             f"  actual:   {actual}\n"
             "Refusing to install. Delete the cached file and retry; if it keeps "
-            "failing, the pinned asset was replaced upstream — re-pin with "
-            "`python scripts/fetch_player_sidecar.py --update-manifest` and review "
-            "the diff before committing it."
+            "failing, the pinned asset was replaced upstream. "
+            + (
+                advice
+                or "Re-pin with "
+                "`python scripts/fetch_player_sidecar.py --update-manifest` and review "
+                "the diff before committing it."
+            )
         )
 
 
@@ -476,6 +593,7 @@ def download(
     expected_sha256: str = "",
     attempts: int = DOWNLOAD_ATTEMPTS,
     quiet: bool = False,
+    advice: str = "",
 ) -> Path:
     """Download ``url`` to ``dest``, retrying transient failures.
 
@@ -512,7 +630,7 @@ def download(
                 # carriage-returned ones on a single unreadable line.
                 print(f"  downloaded {dest.name} ({seen >> 20} MiB)")
             if expected_sha256:
-                verify_checksum(tmp, expected_sha256, what=url)
+                verify_checksum(tmp, expected_sha256, what=url, advice=advice)
             tmp.replace(dest)
             return dest
         except urllib.error.HTTPError as exc:
@@ -520,10 +638,7 @@ def download(
             if exc.code == 404:
                 raise AssetRotatedError(
                     f"Pinned asset is no longer published (HTTP 404):\n"
-                    f"  {url}\n\n"
-                    "mpv publishes binaries only on the rolling `git-release` tag, so "
-                    "pins expire when CI republishes. Re-pin and review the diff:\n"
-                    "  python scripts/fetch_player_sidecar.py --update-manifest"
+                    f"  {url}\n\n" + (advice or MPV_REPIN_ADVICE)
                 ) from exc
             last_error = exc
         except ChecksumMismatchError:
@@ -538,34 +653,62 @@ def download(
     raise PlayerSidecarError(f"Failed to download {url}: {last_error}")
 
 
-def mirror_url(version: str, asset: str) -> str:
-    """Where CuePoint's own copy of a pinned archive lives (DEC-175)."""
+def mirror_url(version: str, asset: str, prefix: str = "sidecar-mpv") -> str:
+    """Where CuePoint's own copy of a pinned archive lives (DEC-175).
+
+    The mpv archives live on ``sidecar-mpv-<mpv version>``, the Vulkan loader on
+    ``sidecar-vulkan-<loader version>``, so a loader is mirrored once and not again
+    for every mpv re-pin.
+    """
     return (
-        f"https://github.com/{MIRROR_REPO}/releases/download/"
-        f"sidecar-mpv-{version}/{asset}"
+        f"https://github.com/{MIRROR_REPO}/releases/download/{prefix}-{version}/{asset}"
     )
 
 
 def _download_pinned(
-    target: Target, archive: Path, *, mirror_version: str, quiet: bool
+    target: Target,
+    archive: Path,
+    *,
+    mirror_version: str,
+    quiet: bool,
+    mirror_prefix: str = "sidecar-mpv",
+    advice: str = "",
+    mirror_mismatch_falls_back: bool = False,
 ) -> Path:
     """Fetch ``target``'s archive: the mirror first, then upstream.
 
     A mirror that is missing (404) or unreachable falls back to upstream. A
     checksum mismatch from either source is final: bytes that do not hash to
-    the pin are never worked around by asking someone else.
+    the pin are never worked around by asking someone else. The one exception is
+    ``mirror_mismatch_falls_back`` (the Vulkan loader): a stale mirror copy of a
+    re-pinned loader is dropped and upstream, which is checked just as hard, is asked.
     """
     if mirror_version:
-        url = mirror_url(mirror_version, target.asset)
+        url = mirror_url(mirror_version, target.asset, mirror_prefix)
         try:
-            return download(url, archive, expected_sha256=target.sha256, quiet=quiet)
+            return download(
+                url,
+                archive,
+                expected_sha256=target.sha256,
+                quiet=quiet,
+                advice=advice,
+            )
         except ChecksumMismatchError:
-            raise
+            if not mirror_mismatch_falls_back:
+                raise
+            if not quiet:
+                print("  mirror copy does not match the pin; using upstream")
         except PlayerSidecarError as exc:
             if not quiet:
                 reason = "not published" if isinstance(exc, AssetRotatedError) else exc
                 print(f"  mirror unavailable ({reason}); using upstream")
-    return download(target.url, archive, expected_sha256=target.sha256, quiet=quiet)
+    return download(
+        target.url,
+        archive,
+        expected_sha256=target.sha256,
+        quiet=quiet,
+        advice=advice,
+    )
 
 
 def cached_archive(
@@ -575,6 +718,9 @@ def cached_archive(
     offline: bool,
     quiet: bool = False,
     mirror_version: str = "",
+    mirror_prefix: str = "sidecar-mpv",
+    advice: str = "",
+    mirror_mismatch_falls_back: bool = False,
 ) -> Path:
     """Return a verified archive for ``target``, downloading only if needed.
 
@@ -601,7 +747,15 @@ def cached_archive(
         )
     if not quiet:
         print(f"  downloading {target.asset} ({target.size >> 20} MiB)")
-    return _download_pinned(target, archive, mirror_version=mirror_version, quiet=quiet)
+    return _download_pinned(
+        target,
+        archive,
+        mirror_version=mirror_version,
+        quiet=quiet,
+        mirror_prefix=mirror_prefix,
+        advice=advice,
+        mirror_mismatch_falls_back=mirror_mismatch_falls_back,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -758,6 +912,7 @@ def write_receipt(
     install_dir: Path,
     files: Sequence[Path],
     vc_runtime: Sequence[Dict[str, Any]] = (),
+    vulkan_loader: Optional[Dict[str, Any]] = None,
 ) -> Path:
     receipt = {
         "component": manifest.component,
@@ -780,13 +935,19 @@ def write_receipt(
     }
     if vc_runtime:
         receipt["vc_runtime"] = list(vc_runtime)
+    if vulkan_loader:
+        receipt["vulkan_loader"] = dict(vulkan_loader)
     path = install_dir / RECEIPT_NAME
     path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
     return path
 
 
 def verify_install(
-    target: Target, dest_root: Path, *, match_manifest: bool = False
+    target: Target,
+    dest_root: Path,
+    *,
+    match_manifest: bool = False,
+    loader: Optional[VulkanLoader] = None,
 ) -> Dict[str, Any]:
     """Re-check an installed target against its receipt.
 
@@ -830,6 +991,19 @@ def verify_install(
             f"Player sidecar at {install_dir} is {receipt.get('version')} "
             f"({receipt.get('asset')}), but the manifest pins {target.asset}. "
             "Run `python scripts/fetch_player_sidecar.py` to install the pinned build."
+        )
+    if (
+        match_manifest
+        and loader is not None
+        and loader.pinned
+        and not _receipt_has_vulkan(receipt, loader)
+    ):
+        recorded = receipt.get("vulkan_loader") or {}
+        raise PlayerSidecarError(
+            f"Player sidecar at {install_dir} ships Vulkan loader "
+            f"{recorded.get('version', 'none')}, but the manifest pins "
+            f"{loader.version}. Run `python scripts/fetch_player_sidecar.py` to "
+            "install the pinned build."
         )
     return receipt
 
@@ -1581,6 +1755,7 @@ def install_target(
     """Fetch, verify, extract and smoke-test one target. Returns the binary."""
     install_dir = install_dir_for(target, dest_root)
     binary = binary_path_for(target, dest_root)
+    loader = vulkan_loader_for(manifest, target)
 
     if not force and (install_dir / RECEIPT_NAME).exists():
         try:
@@ -1599,7 +1774,21 @@ def install_target(
             )
             if lacks_runtime and not quiet:
                 print("  installed build has no Visual C++ runtime; reinstalling")
-            if receipt.get("asset_sha256") == target.sha256 and not lacks_runtime:
+            # Likewise an install from before the Vulkan loader was shipped, or from
+            # another loader pin. An unpinned loader never counts: there is nothing to
+            # reinstall it from, and a working install must not be thrown away for it.
+            lacks_vulkan = (
+                loader is not None
+                and loader.pinned
+                and not _receipt_has_vulkan(receipt, loader)
+            )
+            if lacks_vulkan and not quiet:
+                print("  installed build lacks the pinned Vulkan loader; reinstalling")
+            if (
+                receipt.get("asset_sha256") == target.sha256
+                and not lacks_runtime
+                and not lacks_vulkan
+            ):
                 if not quiet:
                     print(f"  up to date: {binary}")
                 if run_smoke:
@@ -1620,8 +1809,25 @@ def install_target(
         quiet=quiet,
         mirror_version=manifest.version,
     )
+    # Fetched before anything is replaced: a loader that cannot be had must not cost
+    # a working install (extract_target removes the old one).
+    vulkan_archive = (
+        fetch_vulkan_loader_archive(
+            loader, cache_dir=cache_dir, offline=offline, quiet=quiet
+        )
+        if loader is not None
+        else None
+    )
     files = extract_target(archive, target, install_dir)
-    copy_license_files(manifest, install_dir, quiet=quiet)
+    copy_license_files(manifest, install_dir, quiet=quiet, vulkan=loader is not None)
+    # Shadowing the GPU driver's own loader with this one is fine: mpv runs with
+    # --no-video (mpvClient.ts), so it never opens a Vulkan device. Revisit if video
+    # or the Vulkan renderer is ever enabled.
+    vulkan = (
+        install_vulkan_loader(loader, vulkan_archive, install_dir, quiet=quiet)
+        if loader is not None and vulkan_archive is not None
+        else None
+    )
     runtime: List[Dict[str, Any]] = []
     runtime_dir = (
         resolve_vc_runtime_dir(vc_runtime_dir, quiet=quiet)
@@ -1634,7 +1840,7 @@ def install_target(
         # receipt, so a failed check leaves no receipt and a rerun installs again.
         check_imports(binary, quiet=quiet)
     files = sorted(p for p in install_dir.rglob("*") if p.is_file())
-    write_receipt(manifest, target, install_dir, files, runtime)
+    write_receipt(manifest, target, install_dir, files, runtime, vulkan)
     if not quiet:
         total = sum(p.stat().st_size for p in files)
         print(f"  installed {len(files)} files ({total >> 20} MiB) -> {install_dir}")
@@ -1644,7 +1850,11 @@ def install_target(
 
 
 def copy_license_files(
-    manifest: Manifest, install_dir: Path, *, quiet: bool = False
+    manifest: Manifest,
+    install_dir: Path,
+    *,
+    quiet: bool = False,
+    vulkan: bool = False,
 ) -> None:
     """Ship the licence texts next to the binary.
 
@@ -1665,6 +1875,13 @@ def copy_license_files(
     licenses = install_dir / "licenses"
     licenses.mkdir(parents=True, exist_ok=True)
     for name in manifest.license_files:
+        shutil.copy2(LICENSE_DIR / name, licenses / name)
+    if vulkan and manifest.vulkan_loader is not None:
+        name = manifest.vulkan_loader.license_file
+        if not (LICENSE_DIR / name).exists():
+            raise PlayerSidecarError(
+                f"The Vulkan loader licence text is missing: third_party/mpv/{name}"
+            )
         shutil.copy2(LICENSE_DIR / name, licenses / name)
     notice = LICENSE_DIR / "NOTICE.md"
     if notice.exists():
@@ -1809,6 +2026,164 @@ def install_vc_runtime(
     return records
 
 
+def vulkan_loader_for(manifest: Manifest, target: Target) -> Optional[VulkanLoader]:
+    """The loader to ship with ``target``, or None (not a Windows target, or none pinned)."""
+    loader = manifest.vulkan_loader
+    if loader is None or not _is_windows(target) or target.key not in loader.targets:
+        return None
+    return loader
+
+
+def _receipt_has_vulkan(receipt: Dict[str, Any], loader: VulkanLoader) -> bool:
+    record = receipt.get("vulkan_loader")
+    return (
+        isinstance(record, dict)
+        and record.get("name") == VULKAN_LOADER_DLL
+        and record.get("version") == loader.version
+        and bool(loader.sha256)
+        and record.get("asset_sha256") == loader.sha256
+    )
+
+
+def _vulkan_archive_target(loader: VulkanLoader) -> Target:
+    """The loader's archive as a Target, so it is fetched like the mpv archives."""
+    return Target(
+        key="vulkan-loader",
+        supported=True,
+        platform_dir="",
+        asset=loader.asset,
+        url=loader.url,
+        sha256=loader.sha256,
+        size=loader.size,
+    )
+
+
+def _read_loader_member(archive: Path, loader: VulkanLoader, member: str) -> bytes:
+    """The bytes of the one archive entry that is ``member`` (or ends in ``/member``)."""
+    want = member.replace("\\", "/").lower().strip("/")
+    try:
+        with zipfile.ZipFile(archive) as zf:
+            infos = [i for i in zf.infolist() if not i.is_dir()]
+            _safe_members(i.filename for i in infos)
+            hits = [
+                i
+                for i in infos
+                if (n := i.filename.replace("\\", "/").lower()) == want
+                or n.endswith("/" + want)
+            ]
+            if len(hits) != 1:
+                raise PlayerSidecarError(
+                    f"{loader.asset} holds {len(hits)} entries matching "
+                    f"{member!r}, expected exactly one; the archive layout "
+                    "changed, so the manifest's vulkan_loader member needs review."
+                )
+            if hits[0].file_size > VULKAN_LOADER_MAX_BYTES:
+                raise PlayerSidecarError(
+                    f"{hits[0].filename} in {loader.asset} is implausibly large"
+                )
+            return zf.read(hits[0])
+    except zipfile.BadZipFile as exc:
+        raise PlayerSidecarError(f"{loader.asset} is not a zip archive: {exc}") from exc
+
+
+def _extract_vulkan_dll(archive: Path, loader: VulkanLoader) -> bytes:
+    """The x64 ``vulkan-1.dll`` bytes out of the LunarG components archive."""
+    data = _read_loader_member(archive, loader, loader.member)
+    # Hold it to what mpv.exe loads: a 64-bit Windows DLL.
+    try:
+        ok = len(data) >= 0x40 and data[:2] == b"MZ"
+        if ok:
+            (pe_off,) = struct.unpack_from("<I", data, 0x3C)
+            ok = data[pe_off : pe_off + 4] == b"PE\0\0" and (
+                struct.unpack_from("<H", data, pe_off + 4)[0] == 0x8664
+            )
+    except struct.error:
+        ok = False
+    if not ok:
+        raise PlayerSidecarError(
+            f"{loader.member} in {loader.asset} is not a 64-bit Windows DLL"
+        )
+    if loader.dll_sha256 and hashlib.sha256(data).hexdigest() != loader.dll_sha256:
+        raise PlayerSidecarError(
+            f"{loader.member} in {loader.asset} does not match the pinned DLL "
+            f"SHA-256 ({loader.dll_sha256}); the archive and the pin disagree."
+        )
+    return data
+
+
+def fetch_vulkan_loader_archive(
+    loader: VulkanLoader,
+    *,
+    cache_dir: Path = DEFAULT_CACHE,
+    offline: bool = False,
+    quiet: bool = False,
+) -> Optional[Path]:
+    """The verified loader archive, or None for an unpinned loader (with a warning).
+
+    An unpinned loader (no SHA-256 yet) is never fetched, and never an error: the
+    install goes ahead without ``vulkan-1.dll`` (an existing working install is kept
+    by the caller) and ``--check-imports`` is what fails on it. The mirror is
+    ``sidecar-vulkan-<loader version>``, tried first; its bytes failing the pin fall
+    back to upstream.
+    """
+    if not loader.pinned:
+        print(
+            f"WARNING: the manifest's vulkan_loader ({loader.version}) has no SHA-256 "
+            "pin yet; run `python scripts/fetch_player_sidecar.py "
+            "--update-vulkan-loader` and commit the manifest. This install has no "
+            "vulkan-1.dll: fine for a check, not for packaging; --check-imports "
+            "fails on it.",
+            file=sys.stderr,
+        )
+        return None
+    return cached_archive(
+        _vulkan_archive_target(loader),
+        cache_dir,
+        offline=offline,
+        quiet=quiet,
+        mirror_version=loader.version,
+        mirror_prefix=VULKAN_MIRROR_PREFIX,
+        advice=VULKAN_REPIN_ADVICE,
+        mirror_mismatch_falls_back=True,
+    )
+
+
+def install_vulkan_loader(
+    loader: VulkanLoader,
+    archive: Path,
+    install_dir: Path,
+    *,
+    quiet: bool = False,
+) -> Dict[str, Any]:
+    """Put ``vulkan-1.dll`` beside mpv.exe, and LunarG's licence with the others.
+
+    Returns the receipt record.
+    """
+    data = _extract_vulkan_dll(archive, loader)
+    dest = install_dir / VULKAN_LOADER_DLL
+    dest.write_bytes(data)
+    record: Dict[str, Any] = {
+        "name": VULKAN_LOADER_DLL,
+        "version": loader.version,
+        "size": dest.stat().st_size,
+        "sha256": sha256_file(dest),
+        "asset": loader.asset,
+        "asset_sha256": loader.sha256,
+        "license_spdx": loader.license_spdx,
+    }
+    if loader.runtime_license_member:
+        licenses = install_dir / "licenses"
+        licenses.mkdir(parents=True, exist_ok=True)
+        text = _read_loader_member(archive, loader, loader.runtime_license_member)
+        (licenses / loader.runtime_license_name).write_bytes(text)
+        record["runtime_license"] = loader.runtime_license_name
+    if not quiet:
+        print(
+            f"  installed Vulkan loader {loader.version} ({dest.stat().st_size} bytes)"
+        )
+    return record
+
+
 class PEFormatError(PlayerSidecarError):
     """Bytes that are not a PE32/PE32+ file we can read."""
 
@@ -1907,7 +2282,6 @@ def unresolved_imports(imports: Iterable[str], shipped: Iterable[str]) -> List[s
         if (
             low in have
             or low in WINDOWS_SYSTEM_DLLS
-            or low in DRIVER_PROVIDED_DLLS
             or low.startswith(("api-ms-win-", "ext-ms-win-"))
         ):
             continue
@@ -1936,7 +2310,8 @@ def check_imports(binary: Path, *, quiet: bool = False) -> List[str]:
             f"expected on Windows 10 1903+: {', '.join(missing)}. It would exit with "
             "0xC0000135 (STATUS_DLL_NOT_FOUND) on a PC without them. Ship them "
             "beside it, or, for a genuine Windows system DLL, add it to "
-            "WINDOWS_SYSTEM_DLLS."
+            "WINDOWS_SYSTEM_DLLS. (vulkan-1.dll is not one: GPU drivers install it, "
+            "so the manifest's vulkan_loader ships it.)"
         )
     if not quiet:
         print(
@@ -2163,6 +2538,98 @@ def fetch_license_texts(repo: str, commit: str, *, quiet: bool = False) -> None:
             print(f"  licence: third_party/mpv/{name} ({len(text)} bytes)")
 
 
+def _download_loader_zip(url: str, dest: Path, *, quiet: bool) -> Path:
+    """Download the loader archive, trying ``?Human=true`` when LunarG answers with HTML.
+
+    LunarG's download URLs sometimes serve a page (not the zip) unless asked the way
+    a browser asks. Whatever comes back must be a zip.
+    """
+    candidates = [url]
+    if "?" not in url:
+        candidates.append(url + "?Human=true")
+    last = ""
+    for candidate in candidates:
+        dest.unlink(missing_ok=True)
+        try:
+            got = download(candidate, dest, quiet=quiet, advice=VULKAN_REPIN_ADVICE)
+        except PlayerSidecarError as exc:
+            last = str(exc)
+            continue
+        if zipfile.is_zipfile(got):
+            return got
+        last = f"{candidate} did not return a zip archive"
+        got.unlink(missing_ok=True)
+    raise PlayerSidecarError(f"Could not download the Vulkan loader: {last}")
+
+
+def update_vulkan_loader(
+    manifest_path: Path = DEFAULT_MANIFEST,
+    *,
+    version: Optional[str] = None,
+    url: Optional[str] = None,
+    cache_dir: Path = DEFAULT_CACHE,
+    quiet: bool = False,
+) -> Dict[str, Any]:
+    """Pin (or re-pin) the Vulkan loader: download it, hash it, write the manifest.
+
+    With no ``version`` the manifest's current one is used. The archive must be a
+    zip holding exactly one x64 ``vulkan-1.dll``. Upstream publishes no digest, so the
+    hash recorded is of the bytes downloaded here (and of the DLL inside); review the
+    diff, then run the Mirror player sidecar workflow so CI holds its own copy.
+    """
+    existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+    section = dict(existing.get("vulkan_loader") or {})
+    version = version or section.get("version")
+    if not version:
+        raise PlayerSidecarError(
+            "No Vulkan loader version: pass --vulkan-loader-version"
+        )
+    if not re.fullmatch(r"\d+(?:\.\d+){2,3}", version):
+        raise PlayerSidecarError(f"Malformed Vulkan loader version: {version!r}")
+    if version != section.get("version"):
+        section.pop("url", None)  # a new version means a new URL
+        for stale in ("dll_sha256", "dll_size"):
+            section.pop(stale, None)
+    asset = VULKAN_LOADER_ASSET.format(version=version)
+    url = url or section.get("url") or VULKAN_LOADER_URL.format(version=version)
+    section.update({"version": version, "asset": asset, "url": url})
+    section.setdefault("member", "x64/vulkan-1.dll")
+    section.setdefault("runtime_license_member", "")
+    section.setdefault(
+        "license",
+        {
+            "spdx": "Apache-2.0",
+            "file": "LICENSE.Vulkan-Loader",
+            "source_url": "https://github.com/KhronosGroup/Vulkan-Loader",
+        },
+    )
+    section.setdefault("targets", ["win32-x64"])
+    section.pop("todo", None)
+    section.pop("dll_sha256", None)  # re-derived below, not trusted from an old pin
+
+    archive = cache_dir / asset
+    if not quiet:
+        print(f"Downloading {url}")
+    archive = _download_loader_zip(url, archive, quiet=quiet)
+    section["sha256"] = sha256_file(archive)
+    section["size"] = archive.stat().st_size
+    loader = _parse_vulkan_loader(section)
+    dll = _extract_vulkan_dll(archive, loader)  # fail here, not at the next build
+    if loader.runtime_license_member:
+        _read_loader_member(archive, loader, loader.runtime_license_member)
+    section["dll_sha256"] = hashlib.sha256(dll).hexdigest()
+    section["dll_size"] = len(dll)
+    if not quiet:
+        print(f"  {loader.member}: {len(dll)} bytes; archive sha256 {loader.sha256}")
+
+    existing["vulkan_loader"] = section
+    parse_manifest(existing)
+    manifest_path.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+    if not quiet:
+        print(f"Wrote {manifest_path}")
+    return existing
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -2225,6 +2692,22 @@ def build_parser() -> argparse.ArgumentParser:
         f"with the Windows mpv (default: ${VC_RUNTIME_ENV}, then vswhere on Windows)",
     )
     parser.add_argument(
+        "--update-vulkan-loader",
+        action="store_true",
+        help="Download the Vulkan loader archive and pin its SHA-256 in the manifest "
+        "(the version in the manifest, or --vulkan-loader-version)",
+    )
+    parser.add_argument(
+        "--vulkan-loader-version",
+        metavar="VERSION",
+        help="With --update-vulkan-loader: the LunarG Vulkan Runtime version, e.g. 1.4.309.0",
+    )
+    parser.add_argument(
+        "--vulkan-loader-url",
+        metavar="URL",
+        help="With --update-vulkan-loader: download from here instead of sdk.lunarg.com",
+    )
+    parser.add_argument(
         "--mpv",
         type=Path,
         help="Check this mpv instead of the bundled one (formats and analysis only)",
@@ -2238,22 +2721,34 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="DIR",
         help="Download and verify every pinned archive from upstream into DIR (the mirror workflow, DIST-04)",
     )
+    parser.add_argument(
+        "--only",
+        action="append",
+        default=None,
+        metavar="ASSET",
+        help="With --download-archives: fetch only this asset (repeatable)",
+    )
     parser.add_argument("-q", "--quiet", action="store_true")
     return parser
 
 
 def download_archives(
-    manifest: Manifest, out_dir: Path, *, quiet: bool = False
+    manifest: Manifest,
+    out_dir: Path,
+    *,
+    quiet: bool = False,
+    only: Optional[Sequence[str]] = None,
 ) -> List[Path]:
     """Download every supported target's pinned archive from upstream into ``out_dir``.
 
     Always upstream, never the mirror: this is what fills the mirror. Each file
-    is checked against its pinned SHA-256 before it is kept.
+    is checked against its pinned SHA-256 before it is kept. The pinned Vulkan
+    loader archive comes with them. ``only`` restricts it to the named assets.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     written: List[Path] = []
     for target in manifest.targets.values():
-        if not target.supported:
+        if not target.supported or (only is not None and target.asset not in only):
             continue
         if not quiet:
             print(f"{target.key}: {target.asset}")
@@ -2265,6 +2760,33 @@ def download_archives(
                 quiet=quiet,
             )
         )
+    loader = manifest.vulkan_loader
+    loader_error: Optional[PlayerSidecarError] = None
+    if loader is not None and (only is None or loader.asset in only):
+        if not loader.pinned:
+            print(
+                f"WARNING: vulkan_loader {loader.version} is not pinned yet "
+                "(--update-vulkan-loader); not downloading it.",
+                file=sys.stderr,
+            )
+        else:
+            if not quiet:
+                print(f"vulkan-loader: {loader.asset}")
+            try:
+                written.append(
+                    download(
+                        loader.url,
+                        out_dir / loader.asset,
+                        expected_sha256=loader.sha256,
+                        quiet=quiet,
+                        advice=VULKAN_REPIN_ADVICE,
+                    )
+                )
+            except PlayerSidecarError as exc:
+                # The mpv archives are already in out_dir: keep them, fail at the end.
+                loader_error = exc
+    if loader_error is not None:
+        raise loader_error
     return written
 
 
@@ -2281,6 +2803,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         if args.update_manifest:
             update_manifest(args.manifest, cache_dir=args.cache_dir, quiet=args.quiet)
+            return 0
+
+        if args.update_vulkan_loader:
+            update_vulkan_loader(
+                args.manifest,
+                version=args.vulkan_loader_version,
+                url=args.vulkan_loader_url,
+                cache_dir=args.cache_dir,
+                quiet=args.quiet,
+            )
             return 0
 
         if args.mpv is not None:
@@ -2303,7 +2835,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         manifest = load_manifest(args.manifest)
         if args.download_archives is not None:
-            download_archives(manifest, args.download_archives, quiet=args.quiet)
+            download_archives(
+                manifest, args.download_archives, quiet=args.quiet, only=args.only
+            )
             return 0
         requested = args.target
         if requested == "host":
@@ -2343,7 +2877,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         if args.verify_only:
             for target in targets:
-                receipt = verify_install(target, args.dest, match_manifest=True)
+                receipt = verify_install(
+                    target,
+                    args.dest,
+                    match_manifest=True,
+                    loader=vulkan_loader_for(manifest, target),
+                )
                 print(
                     f"OK {target.key}: {receipt['version']} ({len(receipt['files'])} files)"
                 )

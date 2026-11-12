@@ -1533,7 +1533,7 @@ class TestAnalysisWorkerCheck:
 # ---------------------------------------------------------------------------
 
 
-def _pe(imports=(), delay=(), magic=0x20B) -> bytes:
+def _pe(imports=(), delay=(), magic=0x20B, machine=0x8664) -> bytes:
     """A tiny PE32/PE32+ image: one section holding both import tables."""
     is64 = magic == 0x20B
     opt_size = 240 if is64 else 224
@@ -1566,7 +1566,7 @@ def _pe(imports=(), delay=(), magic=0x20B) -> bytes:
     dos = bytearray(pe_off)
     dos[:2] = b"MZ"
     struct.pack_into("<I", dos, 0x3C, pe_off)
-    coff = b"PE\0\0" + struct.pack("<HHIIIHH", 0x8664, 1, 0, 0, 0, opt_size, 0x22)
+    coff = b"PE\0\0" + struct.pack("<HHIIIHH", machine, 1, 0, 0, 0, opt_size, 0x22)
     opt = bytearray(opt_size)
     struct.pack_into("<H", opt, 0, magic)
     struct.pack_into("<I", opt, dirs_off - 4, 16)
@@ -1701,13 +1701,19 @@ class TestRealMpvImports:
         )
     ]
 
-    def test_resolves_with_the_runtime_shipped(self):
-        assert fps.unresolved_imports(self.REAL_IMPORTS, fps.VC_RUNTIME_DLLS) == []
+    SHIPPED = [*fps.VC_RUNTIME_DLLS, fps.VULKAN_LOADER_DLL]
 
-    def test_only_the_runtime_is_missing_without_it(self):
+    def test_resolves_with_the_runtime_and_the_vulkan_loader_shipped(self):
+        assert fps.unresolved_imports(self.REAL_IMPORTS, self.SHIPPED) == []
+
+    def test_the_vulkan_loader_is_unresolved_unless_shipped(self):
+        got = fps.unresolved_imports(self.REAL_IMPORTS, fps.VC_RUNTIME_DLLS)
+        assert [d.lower() for d in got] == ["vulkan-1.dll"]
+
+    def test_the_runtime_and_the_loader_are_all_that_is_missing_without_them(self):
         assert sorted(
             d.lower() for d in fps.unresolved_imports(self.REAL_IMPORTS, [])
-        ) == sorted(fps.VC_RUNTIME_DLLS)
+        ) == sorted([*fps.VC_RUNTIME_DLLS, "vulkan-1.dll"])
 
     def test_the_same_list_survives_a_pe_round_trip(self, tmp_path):
         (tmp_path / "mpv.exe").write_bytes(_pe(self.REAL_IMPORTS))
@@ -1741,9 +1747,10 @@ class TestUnresolvedImports:
     def test_shipped_dlls_count_whatever_their_case(self):
         assert fps.unresolved_imports(["MSVCP140.dll"], ["msvcp140.dll"]) == []
 
-    def test_the_driver_provided_dll_is_accepted_on_purpose(self):
-        assert "vulkan-1.dll" in fps.DRIVER_PROVIDED_DLLS
-        assert fps.unresolved_imports(["vulkan-1.dll"], []) == []
+    def test_the_vulkan_loader_is_not_a_system_dll(self):
+        assert not hasattr(fps, "DRIVER_PROVIDED_DLLS")
+        assert fps.unresolved_imports(["vulkan-1.dll"], []) == ["vulkan-1.dll"]
+        assert fps.unresolved_imports(["Vulkan-1.dll"], ["vulkan-1.dll"]) == []
 
     def test_anything_else_is_reported_once(self):
         got = fps.unresolved_imports(
@@ -1886,3 +1893,616 @@ class TestVcRuntime:
         assert fps._receipt_has_runtime(
             {"vc_runtime": [{"name": n} for n in fps.VC_RUNTIME_DLLS]}
         )
+
+
+# ---------------------------------------------------------------------------
+# Windows: the Vulkan loader (ELECTRON-C)
+# ---------------------------------------------------------------------------
+
+LOADER_IMPORTS = [*TestCheckImports.IMPORTS, "vulkan-1.dll"]
+LOADER_MEMBER = "VulkanRT-1.4.309.0-Components/x64/vulkan-1.dll"
+LOADER_DLL = _pe(["KERNEL32.dll"])  # a 64-bit PE: all the extraction check asks
+
+
+def _loader_archive(path: Path, entries=None) -> str:
+    return _flat_zip(
+        path,
+        entries
+        or {
+            LOADER_MEMBER: LOADER_DLL,
+            "VulkanRT-1.4.309.0-Components/x86/vulkan-1.dll": b"MZ-32-bit",
+        },
+    )
+
+
+def _loader_section(sha256: str = "", **overrides) -> dict:
+    section = {
+        "version": "1.4.309.0",
+        "asset": "VulkanRT-1.4.309.0-Components.zip",
+        "url": "https://example.invalid/VulkanRT.zip",
+        "sha256": sha256,
+        "size": 1,
+        "member": "x64/vulkan-1.dll",
+        "license": {
+            "spdx": "Apache-2.0",
+            "file": "LICENSE.Vulkan-Loader",
+            "source_url": "https://github.com/KhronosGroup/Vulkan-Loader",
+        },
+        "targets": ["win32-x64"],
+    }
+    section.update(overrides)
+    return section
+
+
+class TestVulkanLoaderManifest:
+    def test_a_manifest_without_one_has_none(self):
+        assert fps.parse_manifest(_manifest_dict()).vulkan_loader is None
+
+    def test_parses_a_pinned_loader(self):
+        data = _manifest_dict(vulkan_loader=_loader_section("a" * 64))
+        loader = fps.parse_manifest(data).vulkan_loader
+        assert loader is not None and loader.pinned
+        assert loader.version == "1.4.309.0"
+        assert loader.license_spdx == "Apache-2.0"
+
+    def test_an_empty_sha256_is_unpinned_not_an_error(self):
+        loader = fps.parse_manifest(
+            _manifest_dict(vulkan_loader=_loader_section(""))
+        ).vulkan_loader
+        assert loader is not None and not loader.pinned
+
+    def test_a_malformed_sha256_is_rejected(self):
+        with pytest.raises(fps.PlayerSidecarError, match="sha256"):
+            fps.parse_manifest(_manifest_dict(vulkan_loader=_loader_section("xyz")))
+
+    def test_an_asset_with_a_path_is_rejected(self):
+        data = _manifest_dict(vulkan_loader=_loader_section("", asset="../x.zip"))
+        with pytest.raises(fps.PlayerSidecarError, match="file name"):
+            fps.parse_manifest(data)
+
+    def test_the_repository_manifest_carries_the_loader_and_its_licence(self):
+        manifest = fps.load_manifest()
+        loader = manifest.vulkan_loader
+        assert loader is not None
+        assert loader.license_spdx == "Apache-2.0"
+        assert (fps.LICENSE_DIR / loader.license_file).is_file()
+        assert "win32-x64" in loader.targets
+        assert loader.asset == Path(loader.url).name
+
+
+class TestVulkanLoaderInstall:
+    def _manifest(self, tmp_path, *, pinned=True, mpv_imports=LOADER_IMPORTS):
+        mpv = tmp_path / "mpv.zip"
+        _flat_zip(mpv, {"mpv.exe": _pe(mpv_imports)})
+        vk = tmp_path / "VulkanRT-1.4.309.0-Components.zip"
+        vk_sha = _loader_archive(vk)
+        data = _manifest_dict(vulkan_loader=_loader_section(vk_sha if pinned else ""))
+        data["targets"]["win32-x64"]["sha256"] = hashlib.sha256(
+            mpv.read_bytes()
+        ).hexdigest()
+        return fps.parse_manifest(data), mpv, vk
+
+    def _install(self, tmp_path, monkeypatch, manifest, mpv, vk, **kw):
+        monkeypatch.setattr(
+            fps,
+            "cached_archive",
+            lambda t, *a, **k: vk if t.key == "vulkan-loader" else mpv,
+        )
+        monkeypatch.setattr(fps, "copy_license_files", lambda *a, **k: None)
+        runtime = tmp_path / "crt"
+        runtime.mkdir(exist_ok=True)
+        for name in fps.VC_RUNTIME_DLLS:
+            (runtime / name).write_bytes(name.encode())
+        return fps.install_target(
+            manifest,
+            manifest.target("win32-x64"),
+            dest_root=tmp_path / "player",
+            cache_dir=tmp_path / "c",
+            run_smoke=False,
+            quiet=True,
+            vc_runtime_dir=runtime,
+            **kw,
+        )
+
+    def test_install_ships_the_x64_dll_and_records_it(self, tmp_path, monkeypatch):
+        manifest, mpv, vk = self._manifest(tmp_path)
+        self._install(tmp_path, monkeypatch, manifest, mpv, vk)
+        target = manifest.target("win32-x64")
+        install_dir = fps.install_dir_for(target, tmp_path / "player")
+        dll = install_dir / "vulkan-1.dll"
+        assert dll.read_bytes() == LOADER_DLL  # the x64 one, not the x86 one
+        receipt = json.loads((install_dir / "installed.json").read_text())
+        record = receipt["vulkan_loader"]
+        assert record["name"] == "vulkan-1.dll"
+        assert record["version"] == "1.4.309.0"
+        assert record["size"] == dll.stat().st_size
+        assert record["sha256"] == hashlib.sha256(LOADER_DLL).hexdigest()
+        assert record["asset_sha256"] == manifest.vulkan_loader.sha256
+        assert "vulkan-1.dll" in {f["path"] for f in receipt["files"]}
+        fps.verify_install(target, tmp_path / "player")  # --verify-only covers it
+
+    def test_check_imports_passes_only_because_the_loader_is_shipped(
+        self, tmp_path, monkeypatch
+    ):
+        manifest, mpv, vk = self._manifest(tmp_path)
+        binary = self._install(tmp_path, monkeypatch, manifest, mpv, vk)
+        assert "vulkan-1.dll" in fps.check_imports(binary, quiet=True)
+        (binary.parent / "vulkan-1.dll").unlink()
+        with pytest.raises(fps.PlayerSidecarError, match="vulkan-1.dll"):
+            fps.check_imports(binary, quiet=True)
+
+    def test_a_tampered_loader_fails_verify_only(self, tmp_path, monkeypatch):
+        manifest, mpv, vk = self._manifest(tmp_path)
+        self._install(tmp_path, monkeypatch, manifest, mpv, vk)
+        target = manifest.target("win32-x64")
+        dll = fps.install_dir_for(target, tmp_path / "player") / "vulkan-1.dll"
+        dll.write_bytes(b"\0" * dll.stat().st_size)
+        with pytest.raises(fps.PlayerSidecarError, match="vulkan-1.dll"):
+            fps.verify_install(target, tmp_path / "player")
+
+    def test_an_unpinned_loader_on_a_windows_host_warns_and_check_imports_flags_it(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        manifest, mpv, vk = self._manifest(tmp_path, pinned=False)
+        monkeypatch.setattr(fps, "_host_is_windows", lambda: True)
+        # The install's own import check is what fails, naming the DLL.
+        with pytest.raises(fps.PlayerSidecarError, match="vulkan-1.dll"):
+            self._install(tmp_path, monkeypatch, manifest, mpv, vk)
+        assert "--update-vulkan-loader" in capsys.readouterr().err
+
+    def test_an_unpinned_loader_never_replaces_a_working_install(
+        self, tmp_path, monkeypatch
+    ):
+        manifest, mpv, vk = self._manifest(tmp_path)
+        self._install(tmp_path, monkeypatch, manifest, mpv, vk)
+        target = manifest.target("win32-x64")
+        install_dir = fps.install_dir_for(target, tmp_path / "player")
+        before = (install_dir / "installed.json").read_text()
+        # The manifest now has the loader unpinned (as before a re-pin): on a Windows host
+        # the install is up to date and left alone, not rmtree'd and failed.
+        data = _manifest_dict(vulkan_loader=_loader_section(""))
+        data["targets"]["win32-x64"]["sha256"] = target.sha256
+        unpinned = fps.parse_manifest(data)
+        monkeypatch.setattr(fps, "_host_is_windows", lambda: True)
+        monkeypatch.setattr(
+            fps,
+            "extract_target",
+            lambda *a, **k: pytest.fail("a working install must not be replaced"),
+        )
+        fps.install_target(
+            unpinned,
+            unpinned.target("win32-x64"),
+            dest_root=tmp_path / "player",
+            cache_dir=tmp_path / "c",
+            run_smoke=False,
+            quiet=True,
+        )
+        assert (install_dir / "installed.json").read_text() == before
+        assert (install_dir / "vulkan-1.dll").is_file()
+
+    def test_a_loader_that_cannot_be_fetched_costs_no_working_install(
+        self, tmp_path, monkeypatch
+    ):
+        manifest, mpv, vk = self._manifest(tmp_path)
+        self._install(tmp_path, monkeypatch, manifest, mpv, vk)
+        target = manifest.target("win32-x64")
+        install_dir = fps.install_dir_for(target, tmp_path / "player")
+
+        def fake_cached(t, *a, **k):
+            if t.key == "vulkan-loader":
+                raise fps.PlayerSidecarError("LunarG is down")
+            return mpv
+
+        monkeypatch.setattr(fps, "cached_archive", fake_cached)
+        with pytest.raises(fps.PlayerSidecarError, match="LunarG is down"):
+            fps.install_target(
+                manifest,
+                target,
+                dest_root=tmp_path / "player",
+                cache_dir=tmp_path / "c",
+                force=True,
+                run_smoke=False,
+                quiet=True,
+            )
+        assert (install_dir / "mpv.exe").is_file()
+        assert (install_dir / "vulkan-1.dll").is_file()
+
+    def test_an_unpinned_loader_warns_on_another_host(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        manifest, mpv, vk = self._manifest(
+            tmp_path, pinned=False, mpv_imports=TestCheckImports.IMPORTS
+        )
+        self._install(tmp_path, monkeypatch, manifest, mpv, vk)
+        assert "--update-vulkan-loader" in capsys.readouterr().err
+        install_dir = fps.install_dir_for(
+            manifest.target("win32-x64"), tmp_path / "player"
+        )
+        assert not (install_dir / "vulkan-1.dll").exists()
+
+    def test_other_targets_get_no_loader(self):
+        data = _manifest_dict(vulkan_loader=_loader_section("a" * 64))
+        data["targets"]["darwin-arm64"] = {
+            **data["targets"]["win32-x64"],
+            "platform_dir": "mac",
+        }
+        manifest = fps.parse_manifest(data)
+        assert fps.vulkan_loader_for(manifest, manifest.target("win32-x64"))
+        assert fps.vulkan_loader_for(manifest, manifest.target("darwin-arm64")) is None
+
+    def test_an_install_from_before_the_loader_is_not_up_to_date(self):
+        loader = fps.parse_manifest(
+            _manifest_dict(vulkan_loader=_loader_section("a" * 64))
+        ).vulkan_loader
+        assert not fps._receipt_has_vulkan({"files": []}, loader)
+        record = {
+            "name": "vulkan-1.dll",
+            "version": loader.version,
+            "asset_sha256": loader.sha256,
+        }
+        assert fps._receipt_has_vulkan({"vulkan_loader": record}, loader)
+        assert not fps._receipt_has_vulkan(
+            {"vulkan_loader": {**record, "asset_sha256": "b" * 64}}, loader
+        )
+
+    def test_a_32_bit_dll_is_refused(self, tmp_path):
+        archive = tmp_path / "vk.zip"
+        _loader_archive(
+            archive, {LOADER_MEMBER: _pe(["KERNEL32.dll"], magic=0x10B, machine=0x14C)}
+        )
+        loader = fps.parse_manifest(
+            _manifest_dict(vulkan_loader=_loader_section("a" * 64))
+        ).vulkan_loader
+        with pytest.raises(fps.PlayerSidecarError, match="64-bit"):
+            fps._extract_vulkan_dll(archive, loader)
+
+    def test_a_dll_with_a_wild_pe_offset_is_a_clean_error(self, tmp_path):
+        archive = tmp_path / "vk.zip"
+        bad = bytearray(b"MZ" + bytes(0x3E))
+        struct.pack_into("<I", bad, 0x3C, 0xFFFFFFF0)
+        _loader_archive(archive, {LOADER_MEMBER: bytes(bad)})
+        loader = fps.parse_manifest(
+            _manifest_dict(vulkan_loader=_loader_section("a" * 64))
+        ).vulkan_loader
+        with pytest.raises(fps.PlayerSidecarError, match="64-bit"):
+            fps._extract_vulkan_dll(archive, loader)
+
+    def test_the_real_lunarg_layout_picks_only_the_x64_dll(self, tmp_path):
+        root = "VulkanRT-1.4.309.0-Components/"
+        x64 = _pe(["KERNEL32.dll"])
+        archive = tmp_path / "vk.zip"
+        _loader_archive(
+            archive,
+            {
+                root + "VulkanRT-License.txt": b"LunarG licence",
+                root + "x86/vulkaninfo.exe": b"x",
+                root + "x86/vulkaninfo.pdb": b"x",
+                root + "x64/vulkaninfo.exe": b"x",
+                root + "x64/vulkaninfo.pdb": b"x",
+                root + "x86/vulkan-1.dll": _pe(machine=0x14C, magic=0x10B),
+                root + "x86/vulkan-1.pdb": b"x",
+                root + "x64/vulkan-1.dll": x64,
+                root + "x64/vulkan-1.pdb": b"x",
+            },
+        )
+        data = _manifest_dict(
+            vulkan_loader=_loader_section(
+                "a" * 64,
+                dll_sha256=hashlib.sha256(x64).hexdigest(),
+                runtime_license_member="VulkanRT-License.txt",
+            )
+        )
+        loader = fps.parse_manifest(data).vulkan_loader
+        assert fps._extract_vulkan_dll(archive, loader) == x64
+        install = tmp_path / "install"
+        install.mkdir()
+        record = fps.install_vulkan_loader(loader, archive, install, quiet=True)
+        assert (install / "vulkan-1.dll").read_bytes() == x64
+        assert (install / "licenses" / "VulkanRT-License.txt").read_bytes() == (
+            b"LunarG licence"
+        )
+        assert record["runtime_license"] == "VulkanRT-License.txt"
+
+    def test_a_dll_that_differs_from_the_pinned_dll_hash_is_refused(self, tmp_path):
+        archive = tmp_path / "vk.zip"
+        _loader_archive(archive)
+        loader = fps.parse_manifest(
+            _manifest_dict(vulkan_loader=_loader_section("a" * 64, dll_sha256="b" * 64))
+        ).vulkan_loader
+        with pytest.raises(fps.PlayerSidecarError, match="pinned DLL"):
+            fps._extract_vulkan_dll(archive, loader)
+
+    def test_a_non_zip_archive_is_a_clean_error(self, tmp_path):
+        archive = tmp_path / "vk.zip"
+        archive.write_bytes(b"<html>sign in</html>")
+        loader = fps.parse_manifest(
+            _manifest_dict(vulkan_loader=_loader_section("a" * 64))
+        ).vulkan_loader
+        with pytest.raises(fps.PlayerSidecarError, match="not a zip"):
+            fps._extract_vulkan_dll(archive, loader)
+
+    def test_verify_only_checks_the_receipt_against_the_loader_pin(
+        self, tmp_path, monkeypatch
+    ):
+        manifest, mpv, vk = self._manifest(tmp_path)
+        self._install(tmp_path, monkeypatch, manifest, mpv, vk)
+        target = manifest.target("win32-x64")
+        loader = manifest.vulkan_loader
+        receipt = fps.verify_install(
+            target, tmp_path / "player", match_manifest=True, loader=loader
+        )
+        assert receipt["vulkan_loader"]["version"] == "1.4.309.0"
+        repinned = fps.parse_manifest(
+            _manifest_dict(vulkan_loader=_loader_section("c" * 64))
+        ).vulkan_loader
+        with pytest.raises(fps.PlayerSidecarError, match="Vulkan loader"):
+            fps.verify_install(
+                target, tmp_path / "player", match_manifest=True, loader=repinned
+            )
+        # Not asked about the manifest: the receipt alone is enough.
+        fps.verify_install(target, tmp_path / "player", loader=repinned)
+
+    def test_an_archive_without_exactly_one_match_is_refused(self, tmp_path):
+        loader = fps.parse_manifest(
+            _manifest_dict(vulkan_loader=_loader_section("a" * 64))
+        ).vulkan_loader
+        archive = tmp_path / "none.zip"
+        _loader_archive(archive, {"x86/vulkan-1.dll": LOADER_DLL})
+        with pytest.raises(fps.PlayerSidecarError, match="exactly one"):
+            fps._extract_vulkan_dll(archive, loader)
+        archive = tmp_path / "two.zip"
+        _loader_archive(
+            archive,
+            {"a/x64/vulkan-1.dll": LOADER_DLL, "b/x64/vulkan-1.dll": LOADER_DLL},
+        )
+        with pytest.raises(fps.PlayerSidecarError, match="exactly one"):
+            fps._extract_vulkan_dll(archive, loader)
+
+
+class TestVulkanLoaderPinning:
+    def _manifest_file(self, tmp_path, **section) -> Path:
+        data = _manifest_dict(vulkan_loader=_loader_section("", **section))
+        data["vulkan_loader"]["todo"] = "UNPINNED"
+        path = tmp_path / "m.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return path
+
+    def _serve(self, monkeypatch, archive: Path):
+        payload = archive.read_bytes()
+        asked = []
+
+        def fake_download(url, dest, *, expected_sha256="", quiet=False, **_):
+            asked.append(url)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(payload)
+            return dest
+
+        monkeypatch.setattr(fps, "download", fake_download)
+        return asked
+
+    def test_update_fills_the_pin_and_clears_the_todo(self, tmp_path, monkeypatch):
+        archive = tmp_path / "vk.zip"
+        sha = _loader_archive(archive)
+        path = self._manifest_file(tmp_path)
+        asked = self._serve(monkeypatch, archive)
+        fps.update_vulkan_loader(path, cache_dir=tmp_path / "c", quiet=True)
+        written = json.loads(path.read_text())
+        assert written["vulkan_loader"]["sha256"] == sha
+        assert written["vulkan_loader"]["size"] == archive.stat().st_size
+        assert "todo" not in written["vulkan_loader"]
+        assert asked == ["https://example.invalid/VulkanRT.zip"]
+        assert fps.parse_manifest(written).vulkan_loader.pinned
+
+    def test_a_new_version_gets_the_lunarg_url(self, tmp_path, monkeypatch):
+        archive = tmp_path / "vk.zip"
+        _loader_archive(archive)
+        path = self._manifest_file(tmp_path)
+        asked = self._serve(monkeypatch, archive)
+        fps.update_vulkan_loader(
+            path, version="1.4.321.0", cache_dir=tmp_path / "c", quiet=True
+        )
+        written = json.loads(path.read_text())["vulkan_loader"]
+        assert written["version"] == "1.4.321.0"
+        assert written["asset"] == "VulkanRT-1.4.321.0-Components.zip"
+        assert asked == [
+            "https://sdk.lunarg.com/sdk/download/1.4.321.0/windows/"
+            "VulkanRT-1.4.321.0-Components.zip"
+        ]
+
+    def test_an_archive_without_the_dll_is_not_pinned(self, tmp_path, monkeypatch):
+        archive = tmp_path / "vk.zip"
+        _loader_archive(archive, {"readme.txt": b"x"})
+        path = self._manifest_file(tmp_path)
+        before = path.read_text()
+        self._serve(monkeypatch, archive)
+        with pytest.raises(fps.PlayerSidecarError, match="exactly one"):
+            fps.update_vulkan_loader(path, cache_dir=tmp_path / "c", quiet=True)
+        assert path.read_text() == before
+
+    def test_a_malformed_version_is_refused(self, tmp_path):
+        path = self._manifest_file(tmp_path)
+        with pytest.raises(fps.PlayerSidecarError, match="version"):
+            fps.update_vulkan_loader(path, version="../evil", quiet=True)
+
+    def test_update_manifest_keeps_the_loader_section(self):
+        # update_manifest starts from the existing manifest and must not drop it
+        import inspect
+
+        assert "dict(existing)" in inspect.getsource(fps.update_manifest)
+
+    def test_download_archives_includes_a_pinned_loader_and_honours_only(
+        self, tmp_path, monkeypatch
+    ):
+        payload = b"vk"
+        sha = hashlib.sha256(payload).hexdigest()
+        data = _manifest_dict(vulkan_loader=_loader_section(sha))
+        manifest = fps.parse_manifest(data)
+        asked = []
+
+        def fake_download(url, dest, *, expected_sha256="", quiet=False, **_):
+            asked.append(url)
+            dest.write_bytes(b"x")
+            return dest
+
+        monkeypatch.setattr(fps, "download", fake_download)
+        fps.download_archives(manifest, tmp_path / "all", quiet=True)
+        assert asked == [
+            "https://example.invalid/mpv.zip",
+            "https://example.invalid/VulkanRT.zip",
+        ]
+        asked.clear()
+        fps.download_archives(
+            manifest,
+            tmp_path / "one",
+            quiet=True,
+            only=["VulkanRT-1.4.309.0-Components.zip"],
+        )
+        assert asked == ["https://example.invalid/VulkanRT.zip"]
+
+
+class TestVulkanLoaderDownloads:
+    PAYLOAD = b"loader zip bytes"
+
+    @staticmethod
+    def _response(payload: bytes):
+        class _Response(io.BytesIO):
+            headers = {"Content-Length": str(len(payload))}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        return _Response(payload)
+
+    def _serve(self, monkeypatch, routes: dict):
+        asked = []
+
+        def fake_urlopen(url, timeout=0):
+            asked.append(url)
+            result = routes[url]
+            if isinstance(result, int):
+                raise urllib.error.HTTPError(
+                    url, result, "err", email.message.Message(), None
+                )
+            return self._response(result)
+
+        monkeypatch.setattr(fps, "_urlopen", fake_urlopen)
+        return asked
+
+    def _loader(self):
+        sha = hashlib.sha256(self.PAYLOAD).hexdigest()
+        data = _manifest_dict(vulkan_loader=_loader_section(sha))
+        return fps.parse_manifest(data).vulkan_loader
+
+    def test_the_default_url_has_no_x64_in_its_name(self):
+        assert fps.VULKAN_LOADER_URL.format(version="1.4.309.0") == (
+            "https://sdk.lunarg.com/sdk/download/1.4.309.0/windows/"
+            "VulkanRT-1.4.309.0-Components.zip"
+        )
+
+    def test_the_loader_has_its_own_mirror_release(self):
+        assert fps.mirror_url("1.4.309.0", "a.zip", fps.VULKAN_MIRROR_PREFIX) == (
+            "https://github.com/stuchain/CuePoint/releases/download/"
+            "sidecar-vulkan-1.4.309.0/a.zip"
+        )
+
+    def test_the_loader_mirror_is_tried_first_by_the_loader_version(
+        self, tmp_path, monkeypatch
+    ):
+        loader = self._loader()
+        mirror = fps.mirror_url(loader.version, loader.asset, "sidecar-vulkan")
+        asked = self._serve(monkeypatch, {mirror: self.PAYLOAD})
+        got = fps.fetch_vulkan_loader_archive(loader, cache_dir=tmp_path, quiet=True)
+        assert got.read_bytes() == self.PAYLOAD
+        assert asked == [mirror]
+
+    def test_a_mirror_copy_that_mismatches_the_pin_falls_back_to_upstream(
+        self, tmp_path, monkeypatch
+    ):
+        loader = self._loader()
+        mirror = fps.mirror_url(loader.version, loader.asset, "sidecar-vulkan")
+        asked = self._serve(monkeypatch, {mirror: b"stale", loader.url: self.PAYLOAD})
+        got = fps.fetch_vulkan_loader_archive(loader, cache_dir=tmp_path, quiet=True)
+        assert got.read_bytes() == self.PAYLOAD
+        assert asked == [mirror, loader.url]
+
+    def test_an_upstream_mismatch_still_fails_and_gives_loader_advice(
+        self, tmp_path, monkeypatch
+    ):
+        loader = self._loader()
+        mirror = fps.mirror_url(loader.version, loader.asset, "sidecar-vulkan")
+        self._serve(monkeypatch, {mirror: 404, loader.url: b"wrong"})
+        with pytest.raises(fps.ChecksumMismatchError) as excinfo:
+            fps.fetch_vulkan_loader_archive(loader, cache_dir=tmp_path, quiet=True)
+        assert "--update-vulkan-loader" in str(excinfo.value)
+        assert "--update-manifest" not in str(excinfo.value)
+
+    def test_a_404_gives_loader_advice_not_mpv_advice(self, tmp_path, monkeypatch):
+        loader = self._loader()
+        mirror = fps.mirror_url(loader.version, loader.asset, "sidecar-vulkan")
+        self._serve(monkeypatch, {mirror: 404, loader.url: 404})
+        with pytest.raises(fps.AssetRotatedError) as excinfo:
+            fps.fetch_vulkan_loader_archive(loader, cache_dir=tmp_path, quiet=True)
+        text = str(excinfo.value)
+        assert "--update-vulkan-loader" in text
+        assert "--update-manifest" not in text
+        assert "git-release" not in text
+
+    def test_an_mpv_404_keeps_the_mpv_advice(self, tmp_path, monkeypatch):
+        self._serve(monkeypatch, {"https://example.invalid/mpv.zip": 404})
+        with pytest.raises(fps.AssetRotatedError, match="--update-manifest"):
+            fps.download("https://example.invalid/mpv.zip", tmp_path / "x", quiet=True)
+
+    def test_update_retries_with_human_true_when_lunarg_serves_html(
+        self, tmp_path, monkeypatch
+    ):
+        archive = tmp_path / "vk.zip"
+        _loader_archive(archive)
+        url = "https://example.invalid/VulkanRT.zip"
+        asked = self._serve(
+            monkeypatch,
+            {
+                url: b"<html>click here</html>",
+                url + "?Human=true": archive.read_bytes(),
+            },
+        )
+        data = _manifest_dict(vulkan_loader=_loader_section(""))
+        path = tmp_path / "m.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        fps.update_vulkan_loader(path, cache_dir=tmp_path / "c", quiet=True)
+        assert asked == [url, url + "?Human=true"]
+        written = json.loads(path.read_text())["vulkan_loader"]
+        assert written["sha256"] == hashlib.sha256(archive.read_bytes()).hexdigest()
+        assert written["dll_sha256"] == hashlib.sha256(LOADER_DLL).hexdigest()
+        assert written["dll_size"] == len(LOADER_DLL)
+
+    def test_update_refuses_what_is_never_a_zip(self, tmp_path, monkeypatch):
+        url = "https://example.invalid/VulkanRT.zip"
+        self._serve(monkeypatch, {url: b"<html/>", url + "?Human=true": b"<html/>"})
+        data = _manifest_dict(vulkan_loader=_loader_section(""))
+        path = tmp_path / "m.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        before = path.read_text()
+        with pytest.raises(fps.PlayerSidecarError, match="zip"):
+            fps.update_vulkan_loader(path, cache_dir=tmp_path / "c", quiet=True)
+        assert path.read_text() == before
+
+    def test_download_archives_keeps_the_mpv_archives_when_the_loader_fails(
+        self, tmp_path, monkeypatch
+    ):
+        loader_sha = hashlib.sha256(b"vk").hexdigest()
+        data = _manifest_dict(vulkan_loader=_loader_section(loader_sha))
+        manifest = fps.parse_manifest(data)
+
+        def fake_download(url, dest, *, expected_sha256="", quiet=False, **_):
+            if "VulkanRT" in url:
+                raise fps.PlayerSidecarError("LunarG is down")
+            dest.write_bytes(b"mpv")
+            return dest
+
+        monkeypatch.setattr(fps, "download", fake_download)
+        with pytest.raises(fps.PlayerSidecarError, match="LunarG is down"):
+            fps.download_archives(manifest, tmp_path / "out", quiet=True)
+        assert (tmp_path / "out" / "mpv.zip").read_bytes() == b"mpv"

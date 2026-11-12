@@ -14,11 +14,13 @@ without a build:
 2. a `NOTICE.md` exists there recording provenance and the obligations;
 3. the manifest pins a source URL, so the "corresponding source" the licence
    requires can actually be found;
-4. if the sidecar happens to be installed, its shipped `licenses/` directory
+4. the Vulkan loader the Windows build ships (the manifest's `vulkan_loader`) has
+   its Apache-2.0 text there too;
+5. if the sidecar happens to be installed, its shipped `licenses/` directory
    matches what the manifest promised.
 
-Point 4 is skipped when nothing is installed, because this must run on a clean
-checkout in CI. Points 1-3 are not skippable: they fail the build.
+Point 5 is skipped when nothing is installed, because this must run on a clean
+checkout in CI. Points 1-4 are not skippable: they fail the build.
 
 Usage::
 
@@ -80,6 +82,29 @@ def check(
                 f"({path.relative_to(PROJECT_ROOT)}, {path.stat().st_size} bytes)"
             )
 
+    loader = manifest.vulkan_loader
+    if loader is not None:
+        path = LICENSE_DIR / loader.license_file
+        if not loader.license_spdx:
+            problems.append("manifest vulkan_loader does not record a licence")
+        if not path.exists():
+            problems.append(
+                f"missing Vulkan loader licence text: {path.relative_to(PROJECT_ROOT)}"
+            )
+        elif path.stat().st_size < MIN_LICENSE_BYTES:
+            problems.append(
+                f"Vulkan loader licence text looks like a stub "
+                f"({path.relative_to(PROJECT_ROOT)}, {path.stat().st_size} bytes)"
+            )
+        else:
+            text = path.read_text(encoding="utf-8", errors="replace")
+            # The loader includes cJSON (MIT): its notice must travel with it.
+            if "cJSON" not in text or "Dave Gamble" not in text:
+                problems.append(
+                    f"{path.relative_to(PROJECT_ROOT)} lacks the cJSON (MIT) notice "
+                    "the Vulkan loader needs"
+                )
+
     notice = LICENSE_DIR / "NOTICE.md"
     if not notice.exists():
         problems.append(
@@ -96,7 +121,12 @@ def check(
         if not receipt.exists():
             continue  # not built here; nothing to cross-check
         shipped = install_dir / "licenses"
-        for name in manifest.license_files:
+        shipped_names = list(manifest.license_files)
+        if loader is not None and target.key in loader.targets:
+            shipped_names.append(loader.license_file)
+            if loader.runtime_license_name:
+                shipped_names.append(loader.runtime_license_name)
+        for name in shipped_names:
             if not (shipped / name).exists():
                 problems.append(
                     f"installed sidecar for {target.key} is missing "

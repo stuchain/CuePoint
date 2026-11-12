@@ -939,6 +939,27 @@ describe("a process incident (REPORT-05)", () => {
     expect(attachments[0]!.text).toContain("== stderr (last 2 lines) ==");
   });
 
+  it("tags the DLLs a player could not load, and leaves the tag off when none are known", async () => {
+    setup();
+    const data = { exit_code: 3221225781, signal: null, restarts: 0, uptime_ms: 8, exits: 1 };
+    reportProcessIncident(
+      incident({ process: "player", outcome: "missing-dll", data: { ...data, missing_dlls: "vulkan-1.dll" } }),
+    );
+    reportProcessIncident(incident({ process: "player", outcome: "missing-dll", data }));
+    await flush();
+    expect(sent[0]!.event.tags).toMatchObject({ missing_dlls: "vulkan-1.dll" });
+    expect(sent[0]!.event.extra).toMatchObject({ missing_dlls: "vulkan-1.dll" });
+    expect(sent[1]!.event.tags).not.toHaveProperty("missing_dlls");
+
+    const long = Array.from({ length: 40 }, (_, i) => `library${i}.dll`).join(", ");
+    reportProcessIncident(
+      incident({ process: "player", outcome: "missing-dll", data: { ...data, missing_dlls: long } }),
+    );
+    await flush();
+    expect(String((sent[2]!.event.tags as Record<string, unknown>).missing_dlls)).toHaveLength(200);
+    expect(sent[2]!.event.extra).toMatchObject({ missing_dlls: long });
+  });
+
   it("sends the level the incident carries, an error by default", async () => {
     setup();
     reportProcessIncident(incident({ level: "warning" }));

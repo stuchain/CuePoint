@@ -95,5 +95,24 @@
       "platform_dir": "linux-x64",
       "note": "No prebuilt Linux binary is pinned. Linux is best-effort for the desktop app; install mpv from the distribution and point CuePoint at it with CUEPOINT_MPV_PATH."
     }
+  },
+  "vulkan_loader": {
+    "version": "1.4.309.0",
+    "asset": "VulkanRT-1.4.309.0-Components.zip",
+    "url": "https://sdk.lunarg.com/sdk/download/1.4.309.0/windows/VulkanRT-1.4.309.0-Components.zip",
+    "sha256": "7d969f4d7b44e387667d3148f61559497c22d50cbe3d50adc9e5409afbce2df1",
+    "size": 15738272,
+    "member": "x64/vulkan-1.dll",
+    "dll_sha256": "6f6b53f86d2be29c77fdcd69e8aa2034bb90fd116b0b9dc403cf091835a88d70",
+    "dll_size": 1572120,
+    "runtime_license_member": "VulkanRT-License.txt",
+    "license": {
+      "spdx": "Apache-2.0",
+      "file": "LICENSE.Vulkan-Loader",
+      "source_url": "https://github.com/KhronosGroup/Vulkan-Loader"
+    },
+    "targets": [
+      "win32-x64"
+    ]
   }
 }

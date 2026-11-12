@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The Windows player starts on PCs without a Vulkan graphics driver.** On some PCs the player still could not start in 1.0.2 because Windows could not find `vulkan-1.dll`, which normally comes with the graphics driver (Sentry ELECTRON-C). CuePoint now ships the signed Khronos Vulkan loader (LunarG 1.4.309.0) next to the player, and the release check requires it. If the player still cannot start because a file is missing, the error report now names the missing files.
 - **The app no longer overloads its own engine while waveforms are being made.** Every open view that showed waveform progress asked the engine for it every two seconds, and each answer counted the whole library again, so a large library could leave the engine too busy to answer (Sentry). The app now asks once for all views, never while a previous answer is pending and not from hidden pages, and the engine counts the library once at a time.
 
 ## [1.0.2] - 2026-11-11

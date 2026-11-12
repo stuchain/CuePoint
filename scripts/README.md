@@ -9,7 +9,8 @@ here is listed, grouped by what runs it. Run Python scripts from the repository 
   and smoke-tests it. `desktop-electron.yml`; also `npm run build:engine-sidecar`.
 - `fetch_player_sidecar.py`: Downloads the pinned mpv player sidecar (`player_sidecar_manifest.json`),
   verifies it and runs the format, waveform-analysis and Windows import checks (`--check-formats`, `--check-analysis`,
-  `--check-imports`); a Windows install also ships the VC runtime DLLs (`--vc-runtime-dir`).
+  `--check-imports`); a Windows install also ships the VC runtime DLLs (`--vc-runtime-dir`) and the Khronos Vulkan loader `vulkan-1.dll`
+  (the manifest's `vulkan_loader`; `--update-vulkan-loader` pins it).
   `desktop-electron.yml`; also `npm run fetch:player-sidecar` and `verify:player-sidecar`.
 - `player_sidecar_manifest.json`: The pinned mpv/FFmpeg versions and checksums `fetch_player_sidecar.py` reads.
 - `check_bundled_licenses.py`: Checks the bundled mpv/FFmpeg component licences. `desktop-electron.yml`,

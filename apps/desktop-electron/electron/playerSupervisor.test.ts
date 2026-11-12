@@ -215,6 +215,8 @@ function harness(
     onSpawn?: (child: FakeChild, index: number) => void;
     /** Exclusive output exists only on some platforms (PLAYER-11, DEC-055). */
     platform?: NodeJS.Platform;
+    /** Replaces the import-table diagnosis of a loader failure (ELECTRON-C). */
+    findMissingDlls?: (exePath: string) => { missing: string[]; missingDelay: string[] };
   } = {},
 ): Harness {
   const children: FakeChild[] = [];
@@ -235,6 +237,7 @@ function harness(
     stableUptimeMs: overrides.stableUptimeMs,
     reporter: overrides.reporter,
     heartbeat: overrides.heartbeat,
+    findMissingDlls: overrides.findMissingDlls,
     positionPushIntervalMs: 5,
     createSocketPath: () => `/tmp/sock-${children.length}`,
     spawn: ((binary: string, args: string[]) => {
@@ -1656,6 +1659,68 @@ describe("what the player reports", () => {
       expect(supervisor.getStatus().error).not.toMatch(/stopped responding/);
     },
   );
+
+  it("a loader failure names the DLLs the player imports and cannot find (ELECTRON-C)", async () => {
+    const { incidents, reporter } = recorder();
+    const asked: string[] = [];
+    const { supervisor, children } = track(
+      harness({
+        reporter,
+        stableUptimeMs: 60_000,
+        findMissingDlls: (exe) => {
+          asked.push(exe);
+          return { missing: ["vulkan-1.dll", "foo.dll"], missingDelay: ["late.dll"] };
+        },
+      }),
+    );
+    await supervisor.play("/music/a.flac");
+    children[0].exit(3221225781);
+    await until(() => incidents.length > 0);
+
+    expect(incidents[0]!.outcome).toBe("missing-dll");
+    expect(incidents[0]!.data.missing_dlls).toBe("vulkan-1.dll, foo.dll");
+    expect(incidents[0]!.data.missing_delay_dlls).toBe("late.dll");
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toMatch(/mpv/);
+  });
+
+  it("a diagnosis that finds nothing, or throws, does not hold up or change the give-up", async () => {
+    for (const find of [
+      () => ({ missing: [], missingDelay: [] }),
+      () => {
+        throw new Error("disk on fire");
+      },
+    ]) {
+      const { incidents, reporter } = recorder();
+      const { supervisor, children, spawnCalls } = track(
+        harness({ reporter, stableUptimeMs: 60_000, findMissingDlls: find }),
+      );
+      await supervisor.play("/music/a.flac");
+      children[0].exit(3221225781);
+      await until(() => incidents.length > 0);
+      await settle(20);
+
+      expect(incidents).toHaveLength(1);
+      expect(incidents[0]!.outcome).toBe("missing-dll");
+      expect(incidents[0]!.data).not.toHaveProperty("missing_dlls");
+      expect(incidents[0]!.data.reason).toBe(PLAYER_MISSING_DLL_MESSAGE);
+      expect(spawnCalls).toHaveLength(1);
+    }
+  });
+
+  it("the diagnosis runs only for a loader failure, not for an ordinary give-up", async () => {
+    const { incidents, reporter } = recorder();
+    const find = vi.fn(() => ({ missing: ["vulkan-1.dll"], missingDelay: [] }));
+    const { supervisor, children } = track(harness({ reporter, stableUptimeMs: 60_000, findMissingDlls: find }));
+    await supervisor.play("/music/a.flac");
+    for (let i = 0; i < 6; i += 1) {
+      children.at(-1)?.exit(3);
+      await settle(20);
+    }
+    expect(incidents[0]!.outcome).toBe("gave-up");
+    expect(find).not.toHaveBeenCalled();
+    expect(incidents[0]!.data).not.toHaveProperty("missing_dlls");
+  });
 
   it("a loader failure before the player connects makes play() say so, once, without restarting", async () => {
     const { incidents, reporter } = recorder();

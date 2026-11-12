@@ -422,6 +422,9 @@ export function reportProcessIncident(incident: ProcessIncident): string | null 
           "process.type": incident.process,
           "process.outcome": incident.outcome,
           "process.exit_code": String(incident.data.exit_code ?? ""),
+          // Which DLLs a player that could not load was missing (ELECTRON-C), when that is known.
+          // Capped for the tag; the full list stays in `extra`.
+          ...(incident.data.missing_dlls ? { missing_dlls: incident.data.missing_dlls.slice(0, 200) } : {}),
         },
         extra: { ...incident.data },
       },

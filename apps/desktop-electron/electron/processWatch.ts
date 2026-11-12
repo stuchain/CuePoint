@@ -73,6 +73,13 @@ export interface ProcessIncident {
     exits: number;
     /** Why the supervisor stopped trying (`gave-up`, `missing-dll` and `start-failed`). */
     reason?: string;
+    /**
+     * `missing-dll` only: the DLLs the player imports that are in neither its folder nor System32,
+     * comma-separated (`peImports.ts`). Absent when the diagnosis could not tell.
+     */
+    missing_dlls?: string;
+    /** `missing-dll` only: delay-loaded DLLs not found, which the loader does not need to start. */
+    missing_delay_dlls?: string;
   };
   attachment: IncidentAttachment | null;
 }
@@ -153,13 +160,18 @@ export class IncidentTracker {
    * The supervisor will not try again: the open incident's one event. Nothing when none is open, so a
    * second restart loop reaching its end cannot send a second report for the same incident.
    */
-  gaveUp(reason: string, output: OutputTail, outcome: "gave-up" | "missing-dll" = "gave-up"): void {
+  gaveUp(
+    reason: string,
+    output: OutputTail,
+    outcome: "gave-up" | "missing-dll" = "gave-up",
+    missing: { missing: readonly string[]; missingDelay: readonly string[] } = { missing: [], missingDelay: [] },
+  ): void {
     if (this.open === null) return;
     const message =
       outcome === "missing-dll"
         ? `${this.process} could not start: a DLL it needs is missing`
         : `${this.process} exited unexpectedly and was given up on`;
-    this.send(outcome, message, reason, output);
+    this.send(outcome, message, reason, output, missing);
   }
 
   /** The app is quitting with an incident open: forget it, unsent (see the file comment). */
@@ -178,7 +190,13 @@ export class IncidentTracker {
     this.send("start-failed", message, reason, output);
   }
 
-  private send(outcome: IncidentOutcome, message: string, reason: string | undefined, output: OutputTail): void {
+  private send(
+    outcome: IncidentOutcome,
+    message: string,
+    reason: string | undefined,
+    output: OutputTail,
+    missing: { missing: readonly string[]; missingDelay: readonly string[] } = { missing: [], missingDelay: [] },
+  ): void {
     const open = this.open;
     this.open = null;
     // mpv exiting 0 with no signal means something told it to quit (ELECTRON-7), not that it crashed.
@@ -195,6 +213,8 @@ export class IncidentTracker {
         uptime_ms: open?.last.uptimeMs ?? null,
         exits: open?.exits ?? 0,
         ...(reason !== undefined ? { reason } : {}),
+        ...(missing.missing.length > 0 ? { missing_dlls: missing.missing.join(", ") } : {}),
+        ...(missing.missingDelay.length > 0 ? { missing_delay_dlls: missing.missingDelay.join(", ") } : {}),
       },
       attachment: {
         filename: this.process === "engine" ? "engine-output.txt" : "player-output.txt",

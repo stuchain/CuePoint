@@ -15,6 +15,7 @@ import {
   type ResolvePlayerBinaryOptions,
 } from "./playerLaunch";
 import { HEARTBEAT_TIMEOUT_MS, Heartbeat } from "./heartbeat";
+import { findMissingDlls, type MissingDlls } from "./peImports";
 import { IncidentTracker, capLine, type ProcessReporter } from "./processWatch";
 
 /**
@@ -54,6 +55,9 @@ const PLAYER_RESTART_BACKOFF_MS = [1000, 2000, 4000];
 /** How long to wait for mpv to create its socket before giving up. */
 const PLAYER_CONNECT_ATTEMPTS = 25;
 const PLAYER_CONNECT_RETRY_MS = 100;
+
+/** The answer when a loader failure could not be diagnosed. */
+const NO_MISSING_DLLS: MissingDlls = { missing: [], missingDelay: [] };
 
 /** How long a polite shutdown gets before the process is killed. */
 const PLAYER_QUIT_TIMEOUT_MS = 2000;
@@ -225,6 +229,11 @@ interface PlayerSupervisorOptions extends Partial<ResolvePlayerBinaryOptions> {
    * Absent, nothing is reported.
    */
   reporter?: ProcessReporter;
+  /**
+   * Names the DLLs a player that Windows could not load imports and cannot find (`peImports.ts`).
+   * Replaced in tests; the default reads the executable's import tables.
+   */
+  findMissingDlls?: (exePath: string) => MissingDlls;
 }
 
 type SnapshotListener = (snapshot: PlayerSnapshot) => void;
@@ -266,6 +275,8 @@ export class PlayerSupervisor {
   private unrecoverableExit = false;
   /** When the current process last became usable, for the stable-uptime rule. */
   private startedAt = 0;
+  /** The executable last spawned, for the diagnosis of a loader failure. */
+  private lastBinaryPath: string | null = null;
 
   private playback: PlaybackState = { ...IDLE_PLAYBACK };
   private lastPushAt = 0;
@@ -549,6 +560,7 @@ export class PlayerSupervisor {
     }
 
     this.unrecoverableExit = false;
+    this.lastBinaryPath = binary.path;
     const socketPath = this.socketPathFactory();
     const args = buildMpvArgs(socketPath, this.options.mpvArgs ?? []);
 
@@ -1026,6 +1038,24 @@ export class PlayerSupervisor {
   }
 
   /**
+   * Which imported DLLs the player that Windows could not load cannot find, for the incident.
+   * A bounded read of a few headers; it never throws and never decides anything, so a failure
+   * is an empty answer and the give-up goes ahead exactly as it would have.
+   */
+  private async diagnoseMissingDlls(): Promise<MissingDlls> {
+    const exe = this.lastBinaryPath;
+    if (exe === null) return NO_MISSING_DLLS;
+    try {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      const find = this.options.findMissingDlls ?? ((p: string) => findMissingDlls(p));
+      const found = find(exe);
+      return { missing: found.missing.slice(0, 16), missingDelay: found.missingDelay.slice(0, 16) };
+    } catch {
+      return NO_MISSING_DLLS;
+    }
+  }
+
+  /**
    * Bring a crashed player back, up to a bounded number of attempts.
    *
    * Playback is not resumed: the queue lives in PLAYER-04 and, per DEC-014,
@@ -1037,6 +1067,10 @@ export class PlayerSupervisor {
     const backoff = this.options.restartBackoffMs ?? PLAYER_RESTART_BACKOFF_MS;
 
     if (this.unrecoverableExit || this.restartAttempts >= max) {
+      // Before any state changes, and off this turn of the event loop: reading the executable's
+      // headers is quick but synchronous, and the give-up must not wait on a slow disk's turn.
+      const missing = this.unrecoverableExit ? await this.diagnoseMissingDlls() : NO_MISSING_DLLS;
+      if (this.disposed) return;
       this.reconnecting = false;
       // A missing or unloadable DLL is the same on every start: say so, once, instead of looping.
       this.gaveUpReason = this.unrecoverableExit
@@ -1047,6 +1081,7 @@ export class PlayerSupervisor {
         this.gaveUpReason,
         { output: this.output },
         this.unrecoverableExit ? "missing-dll" : "gave-up",
+        missing,
       );
       this.push(true);
       return;

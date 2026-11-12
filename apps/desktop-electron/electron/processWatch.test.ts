@@ -56,6 +56,19 @@ describe("a clean player exit (ELECTRON-7)", () => {
     expect(e.incidents[0]!.level).toBe("error");
   });
 
+  it("a missing-dll give-up carries the DLL names, and only when some are known", () => {
+    const named = player();
+    named.tracker.exited(exit(3221225781));
+    named.tracker.gaveUp("why", {}, "missing-dll", { missing: ["vulkan-1.dll", "b.dll"], missingDelay: ["c.dll"] });
+    expect(named.incidents[0]!.data.missing_dlls).toBe("vulkan-1.dll, b.dll");
+    expect(named.incidents[0]!.data.missing_delay_dlls).toBe("c.dll");
+
+    const unknown = player();
+    unknown.tracker.exited(exit(3221225781));
+    unknown.tracker.gaveUp("why", {}, "missing-dll");
+    expect(unknown.incidents[0]!.data).not.toHaveProperty("missing_dlls");
+  });
+
   it("a give-up is an error even after clean exits", () => {
     const { incidents, tracker } = player();
     tracker.exited(exit(0));

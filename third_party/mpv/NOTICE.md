@@ -67,6 +67,26 @@ names, sizes and SHA-256 are recorded in `installed.json` (`vc_runtime`), and
 `fetch_player_sidecar.py --check-imports` fails a build in which `mpv.exe`
 needs a DLL that is neither shipped nor a Windows system DLL.
 
+### Khronos Vulkan loader (Windows only)
+
+`mpv.exe` statically imports `vulkan-1.dll`, the Vulkan loader. Windows does not
+include it (GPU drivers install it), and a PC whose driver does not has none, so
+mpv would fail to start with 0xC0000135. CuePoint therefore ships the x64
+`vulkan-1.dll` from the LunarG Vulkan Runtime components archive next to
+`mpv.exe`, unmodified (it shadows a driver's own loader, which is fine: mpv runs with
+`--no-video`). The loader is **Apache-2.0** (source:
+https://github.com/KhronosGroup/Vulkan-Loader); its licence text is
+`LICENSE.Vulkan-Loader` in this directory and is copied to
+`resources/player/win-x64/licenses/`. The archive is pinned by SHA-256 in the
+`vulkan_loader` section of `scripts/player_sidecar_manifest.json`, mirrored with
+the mpv archives, and the DLL's size and SHA-256 are recorded in `installed.json`
+(`vulkan_loader`). The loader includes **cJSON** (MIT, Copyright (c) 2009-2017 Dave Gamble and cJSON
+contributors); its notice is reproduced in `LICENSE.Vulkan-Loader`. LunarG's own licence
+text for the runtime, `VulkanRT-License.txt`, is taken from the same archive and shipped
+as `licenses/VulkanRT-License.txt`. The DLL is mirrored under its own release,
+`sidecar-vulkan-<loader version>`. It is a separate DLL that mpv loads, not part of
+CuePoint's code.
+
 ### If this needs to change
 
 Two things would change the analysis, and both are decisions rather than

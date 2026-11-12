@@ -148,6 +148,14 @@ They come from Visual Studio or the Build Tools with the C++ workload (the redis
 from `--vc-runtime-dir DIR` / `CUEPOINT_VC_RUNTIME_DIR`. `--check-imports` fails if `mpv.exe`
 imports a DLL that is neither shipped nor a Windows system DLL.
 
+The Windows mpv also imports `vulkan-1.dll`, the Vulkan loader, which GPU drivers install and a PC on the
+Microsoft Basic Display driver does not have (mpv then exits 0xC0000135, Sentry ELECTRON-C). So the fetch also
+ships the Khronos loader (Apache-2.0) from the manifest's `vulkan_loader` pin (a LunarG Vulkan Runtime archive,
+SHA-256 checked, mirrored with the mpv archives) next to `mpv.exe`. To pin or refresh it, run
+`python scripts/fetch_player_sidecar.py --update-vulkan-loader [--vulkan-loader-version X.Y.Z.W]` on a machine that
+can reach sdk.lunarg.com, review the manifest diff and commit it. It is pinned at 1.4.309.0; the zip also supplies
+LunarG's `VulkanRT-License.txt`, shipped under `licenses/`.
+
 The download is pinned in `scripts/player_sidecar_manifest.json` and verified
 against the SHA-256 GitHub publishes for the asset; a mismatch fails rather than
 warns. It installs into `apps/desktop-electron/resources/player/<os>-<arch>/`
