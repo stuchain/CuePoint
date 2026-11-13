@@ -12101,5 +12101,34 @@
         "formatted": "Support bundle created: '<home>/<dir>/<dir>/<file>.zip'"
       }
     }
+  },
+  {
+    "name": "cuepoint/data/tag_fields.py::_require_parsed_atoms::{quoted(path)} holds an atom CuePoint cannot read ({', '.join((repr(name) for name in unreadable))})",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "TagFieldsError",
+            "value": "\"/Users/anna/Music/Lovin' You (Ol' Skool Mix).m4a\" holds an atom CuePoint cannot read ('©day')"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "TagFieldsError",
+            "value": "\"<home>/<dir>/<file>.m4a\" holds an atom CuePoint cannot read ('<value>')"
+          }
+        ]
+      }
+    }
   }
 ]

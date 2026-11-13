@@ -424,6 +424,10 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/data/tag_fields.py::_require_parsed_atoms::{quoted(path)} holds an atom CuePoint cannot read ({', '.join((repr(name) for name in unreadable))})": {
+    "holds": "a file path (it can name the user's folders and files)",
+    "verdict": "corpus"
+  },
   "cuepoint/data/tag_fields.py::_slots_for::Unknown tag format {tag_format!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
