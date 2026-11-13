@@ -98,6 +98,12 @@ TYPESCRIPT_ALLOWED: Dict[str, List[Tuple[str, str]]] = {
         ("await fs.promises.rename(", "the helper itself"),
         ("fs.renameSync(", "the helper itself"),
     ],
+    "apps/desktop-electron/electron/engineTempCopies.ts": [
+        (
+            "if (taken !== from) fs.renameSync(from, taken);",
+            "claims a stale unpacked engine folder in the temp folder before deleting it; no user data",
+        ),
+    ],
     "apps/desktop-electron/electron/mainLog.ts": [
         ("appendFile", "logging"),
         ("rename", "log rotation (logging)"),
