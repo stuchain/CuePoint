@@ -4,10 +4,9 @@ CuePoint plays your tracks. Not a preview and not a browser's audio player —
 the same playback program the audiophile players use, playing the file on your disk at
 its own sample rate, gaplessly, and out of whichever audio device you choose.
 
-Nothing plays until you ask it to. The bar along the bottom is always there; until you
-play something it reads **Nothing playing** and its transport buttons are greyed, so the
-page does not jump when the first track starts. In a window under 800 pixels tall it
-becomes one compact line.
+Nothing plays until you ask it to. The bar along the bottom appears when you first play
+or queue a track, and stays until you quit CuePoint; before that the table has the room.
+In a window under 800 pixels tall it becomes one compact line.
 
 ## Playing a track
 

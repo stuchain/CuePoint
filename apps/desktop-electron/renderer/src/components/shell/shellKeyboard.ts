@@ -45,7 +45,8 @@ export function shownPanes(root: ParentNode = document): HTMLElement[] {
       isShown(element) &&
       element.closest("[inert]") === null &&
       // A region the shell keeps for a panel that is closed or empty holds nothing to go to.
-      (element.childElementCount > 0 || element.hasAttribute("tabindex")),
+      // A live region (the player's announcer before the first play) is not somewhere to go.
+      ([...element.children].some((child) => !child.hasAttribute("aria-live")) || element.hasAttribute("tabindex")),
   );
   return all.filter((element) => !all.some((other) => other !== element && element.contains(other)));
 }

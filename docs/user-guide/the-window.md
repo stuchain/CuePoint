@@ -46,8 +46,8 @@ track's own details. **Statistics** follows Prepare and shows what you play most
 and **inCrate** became Discover; a link to any of them opens the page that
 replaced it. There is no **Tools** group any more: when CuePoint has no page to
 reopen, it opens on the Library. Double-clicking a track there plays it; the bar
-along the bottom of the window is the player, which reads **Nothing playing** until you
-play something — see [Playing music](player.md).
+along the bottom of the window is the player, which appears when you first play or queue
+a track and stays until you quit — see [Playing music](player.md).
 
 Collapse the sidebar with the arrow button under the logo (**Collapse sidebar
 (Ctrl+B)**), or press **Ctrl+B**, or choose **View > Sidebar**. Collapsed, it shows

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { formatEventSummary } from "./activityFormat";
 import { clearInert, keepInert, markInert } from "./offlineInert";
-import { nextPane, PANE_ATTRIBUTE } from "./shellKeyboard";
+import { nextPane, PANE_ATTRIBUTE, shownPanes } from "./shellKeyboard";
 import { jobDoneLine } from "./useActiveJob";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 
@@ -20,6 +20,28 @@ function pane(name: string): HTMLElement {
   document.body.appendChild(element);
   return element;
 }
+
+describe("shownPanes", () => {
+  it("skips a pane that holds only live regions (the player before the first play)", () => {
+    const empty = pane("player");
+    const announcer = document.createElement("div");
+    announcer.setAttribute("aria-live", "polite");
+    empty.appendChild(announcer);
+    const full = pane("page");
+    full.appendChild(document.createElement("button"));
+    const found = shownPanes();
+    expect(found).not.toContain(empty);
+    expect(found).toContain(full);
+  });
+
+  it("keeps a pane that holds a live region and something else", () => {
+    const filled = pane("player");
+    const live = document.createElement("div");
+    live.setAttribute("aria-live", "polite");
+    filled.append(live, document.createElement("button"));
+    expect(shownPanes()).toContain(filled);
+  });
+});
 
 describe("nextPane", () => {
   it("goes to the first pane when focus is in none, the last going back", () => {

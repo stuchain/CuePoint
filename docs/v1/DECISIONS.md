@@ -1324,6 +1324,10 @@ one-time layout shift costs less than a permanently reserved strip with nothing 
 
 **Decided with**: User · **Date**: 2026-09-05
 
+### Amended (2026-11-13, brainstorm I6) — back in force
+
+Area 83 (round 2 of the UI changes) had drawn the bar from the start, reading "Nothing playing". Stelios picked I6 B: the bar is hidden again until a track first plays or is first queued, then stays for the session; a renderer reload after a crash keeps it (sessionStorage), quitting resets it. The screen-reader announcer stays mounted before the bar exists, and F6 skips the empty player pane.
+
 ---
 
 ## DEC-054 — A Queued File That Will Not Play Is Skipped

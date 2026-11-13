@@ -141,18 +141,16 @@ function Slot() {
 }
 
 describe("when the bar exists (DEC-053)", () => {
-  it("is there before the first play, saying Nothing playing with the transport greyed (area 83)", async () => {
+  it("is not there before the first play: no bar, nothing playing text (I6, DEC-053)", async () => {
     installBridge(
       snapshot({ playback: { filePath: null }, items: [], currentId: null }),
     );
     const { container } = render(<Slot />);
 
     await waitFor(() => expect(window.cuepoint?.player?.getState).toHaveBeenCalled());
-    expect(screen.getByRole("region", { name: "Player" })).toBeInTheDocument();
-    expect(container.querySelector(".cp-player-bar")).not.toBeNull();
-    expect(screen.getByText("Nothing playing")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^(Play|Pause)$/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Next track" })).toBeDisabled();
+    expect(screen.queryByRole("region", { name: "Player" })).toBeNull();
+    expect(container.querySelector(".cp-player-bar")).toBeNull();
+    expect(screen.queryByText("Nothing playing")).toBeNull();
   });
 
   it("appears once something is playing", async () => {

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The player bar appears when you first play or queue a track.** Before that, the window has no player bar, so the pages get about two more rows. Once it appears it stays until you quit.
+
 ### Fixed
 - **Prepare no longer fails with "database is locked" while the app is saving matches.** Opening a set, its checks or its set list read the library with a write lock, so on a slow PC it could wait on a running match job and then fail (Sentry PYTHON-1M, PYTHON-1K). These reads now take a read-only snapshot and never wait on a writer. If the library is still busy, Prepare tries again once and then says "The library is busy. Try again in a moment." with a Try again button, instead of reporting an error.
 
