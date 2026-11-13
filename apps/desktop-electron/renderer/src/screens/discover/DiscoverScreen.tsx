@@ -116,10 +116,15 @@ export function DiscoverScreen() {
   } | null>(null);
   const [runsVersion, setRunsVersion] = useState(0);
   const [pushNotice, setPushNotice] = useState<PlaylistOutcome | null>(null);
-  // New tracks from the artists and labels followed: the Following tab's count. Read from the
-  // cache when the page opens, and told again by the tab when it reads or marks them.
+  // New tracks from the artists and labels followed: the Following tab's count. The tab tells it
+  // while it is the one on screen; otherwise it is read from the cache when the page is shown and
+  // when the tab is left (a follow made on an artist or label page counts then too).
   const [followsNew, setFollowsNew] = useState(0);
+  // A tab on a page that is hidden is not on screen, so it counts as left (usePageActive).
+  const pageActive = usePageActive();
+  const followingShown = section === "following";
   useEffect(() => {
+    if (!pageActive || followingShown) return;
     const bridge = window.cuepoint?.getFollows;
     if (!bridge) return;
     let live = true;
@@ -131,9 +136,7 @@ export function DiscoverScreen() {
     return () => {
       live = false;
     };
-  }, []);
-  // A tab on a page that is hidden is not on screen, so it counts as left (usePageActive).
-  const pageActive = usePageActive();
+  }, [pageActive, followingShown]);
 
   // Which tabs show rows of tracks (M490): the Details slot is filled only while one is showing, so
   // an empty Results, New dig or an empty Wantlist has no Details button for nothing.

@@ -18,6 +18,7 @@ import { ToastProvider } from "../../components";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import fixture from "./discoverPage.fixture.json";
 import { FollowingView } from "./FollowingView";
+import { RETRY } from "../../format/words";
 import { followStatusLine, checkedAgo, oldestSeenThrough } from "./followFormat";
 import type { DiscoverTools } from "./discoverTools";
 
@@ -146,18 +147,30 @@ function tools(over: Partial<DiscoverTools> = {}): DiscoverTools {
 }
 
 function renderView(props: { active?: boolean; tools?: DiscoverTools; onNewCount?: (n: number) => void } = {}) {
-  const common = { tools: props.tools ?? tools(), onNewCount: props.onNewCount ?? vi.fn() };
-  const ui = (active: boolean) => (
+  const onNewCount = props.onNewCount ?? vi.fn();
+  let current = props.tools ?? tools();
+  let shown = props.active ?? true;
+  const ui = () => (
     <ScaleProvider>
       <ToastProvider>
         <MemoryRouter>
-          <FollowingView {...common} active={active} />
+          <FollowingView tools={current} onNewCount={onNewCount} active={shown} />
         </MemoryRouter>
       </ToastProvider>
     </ScaleProvider>
   );
-  const view = render(ui(props.active ?? true));
-  return { ...view, setActive: (active: boolean) => view.rerender(ui(active)) };
+  const view = render(ui());
+  return {
+    ...view,
+    setActive: (active: boolean) => {
+      shown = active;
+      view.rerender(ui());
+    },
+    setTools: (next: DiscoverTools) => {
+      current = next;
+      view.rerender(ui());
+    },
+  };
 }
 
 beforeAll(() => {
@@ -193,6 +206,7 @@ function rowsOf(name: string) {
 }
 
 const FEED = "New tracks from who you follow";
+const statusLine = () => document.querySelector<HTMLElement>(".discover-following__status");
 
 describe("with nobody followed", () => {
   beforeEach(() => install(emptyFollows()));
@@ -281,8 +295,10 @@ describe("with follows", () => {
 
   it("says what is new, when it was checked and what is hidden", async () => {
     renderView();
-    const status = await screen.findByText(/new tracks since you last looked/);
-    await waitFor(() => expect(status.textContent).toMatch(/^3 new tracks since you last looked, Nov 6 · checked just now · 3 you own hidden$/), LOADED);
+    await screen.findByRole("navigation", { name: "Followed artists and labels" });
+    await waitFor(() => expect(statusLine()?.textContent).toMatch(/^3 new tracks since Nov 7 · checked just now · 3 you own hidden$/), LOADED);
+    // The count is the bold part.
+    expect(within(statusLine()!).getByText("3 new tracks").tagName).toBe("STRONG");
   });
 
   it("filters the feed to one follow, and back to all", async () => {
@@ -382,6 +398,171 @@ describe("leaving the tab", () => {
   });
 });
 
+describe("review fixes", () => {
+  const busy = {
+    value: null,
+    refusal: { code: "DISCOVER_BUSY", message: "busy", job_type: "follows_check", job_id: "job-m" },
+  };
+
+  it("does not mark seen when the tab is left while a check is still running", async () => {
+    install({ getJob: vi.fn(async (id: string) => ({ id, state: "running" })) });
+    const view = renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalled());
+    view.setActive(false);
+    view.unmount();
+    await act(async () => {});
+    expect(bridge.markFollowsSeen).not.toHaveBeenCalled();
+  });
+
+  it("moves out of loading when Retry follows a failed first read", async () => {
+    const getFollows = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(value({ follows: FOLLOWS, new_count: 3 }));
+    install({ getFollows });
+    renderView();
+    fireEvent.click(await screen.findByRole("button", { name: RETRY }));
+    expect(await screen.findByRole("navigation", { name: "Followed artists and labels" }, LOADED)).toBeInTheDocument();
+  });
+
+  it("moves to the suggestions when Retry finds nobody followed", async () => {
+    const getFollows = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(value({ follows: [], new_count: 0 }));
+    install({ getFollows });
+    renderView();
+    fireEvent.click(await screen.findByRole("button", { name: RETRY }));
+    expect(await screen.findByRole("heading", { name: "Follow artists and labels" }, LOADED)).toBeInTheDocument();
+  });
+
+  it("shows an error with Retry when the suggestions cannot be read", async () => {
+    const getFollowSuggestions = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(value({ suggestions: SUGGESTIONS }));
+    install({ ...emptyFollows(), getFollowSuggestions });
+    renderView();
+    fireEvent.click(await screen.findByRole("button", { name: RETRY }));
+    expect(await screen.findByRole("button", { name: "Follow Amsel" }, LOADED)).toBeInTheDocument();
+  });
+
+  it("says one follow's own count and date when it is picked", async () => {
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    fireEvent.click(screen.getByRole("button", { name: /^Anouk Dreyer/ }));
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(1), LOADED);
+    await waitFor(() => expect(statusLine()?.textContent).toMatch(/^1 new track since Nov 7 /), LOADED);
+  });
+
+  it("does not say a cancelled check was done", async () => {
+    install({
+      getJobResults: vi.fn(async (id: string) => ({
+        id,
+        state: "succeeded",
+        result: { outcome: "cancelled", state: "cancelled", checked: 1, from_cache: 0, failed: [], total: 3 },
+      })),
+    });
+    const t = tools();
+    renderView({ tools: t });
+    await waitFor(() => expect(bridge.getJobResults).toHaveBeenCalledTimes(1), LOADED);
+    bridge.startFollowsCheck!.mockClear();
+    fireEvent.click(await screen.findByRole("button", { name: "Check again" }));
+    await waitFor(() => expect(bridge.getJobResults).toHaveBeenCalledTimes(2), LOADED);
+    await act(async () => {});
+    expect(t.notify).not.toHaveBeenCalledWith("Checked for new releases.", "success");
+  });
+
+  it("keeps the toast of Check again when an automatic check follows the same job", async () => {
+    let manualStart: ((answer: unknown) => void) | null = null;
+    let first = true;
+    install({
+      startFollowsCheck: vi.fn((params: { refresh: boolean }) => {
+        if (params.refresh) return new Promise((resolve) => (manualStart = resolve));
+        if (first) {
+          first = false;
+          return Promise.resolve(value({ id: "job-follows", type: "follows_check", state: "queued" }));
+        }
+        return Promise.resolve(busy);
+      }),
+    });
+    const t = tools();
+    const view = renderView({ tools: t });
+    await waitFor(() => expect(bridge.getJobResults).toHaveBeenCalledTimes(1), LOADED);
+    fireEvent.click(await screen.findByRole("button", { name: "Check again" }));
+    await waitFor(() => expect(manualStart).not.toBeNull());
+    // Leave and come back while the manual start is out: the automatic check is refused as busy.
+    view.setActive(false);
+    view.setActive(true);
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalledTimes(3), LOADED);
+    await act(async () => {});
+    manualStart!(busy);
+    await waitFor(() => expect(bridge.getJobResults).toHaveBeenCalledWith("job-m"), LOADED);
+    await waitFor(() => expect(t.notify).toHaveBeenCalledWith("Checked for new releases.", "success"), LOADED);
+  });
+
+  it("starts the check once when Beatport becomes usable while the tab is active", async () => {
+    const view = renderView({ tools: tools({ beatportState: "no_token" }) });
+    await screen.findByRole("navigation", { name: "Followed artists and labels" });
+    expect(bridge.startFollowsCheck).not.toHaveBeenCalled();
+    view.setTools(tools({ beatportState: "ok" }));
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalledTimes(1), LOADED);
+    view.setTools(tools({ beatportState: "ok" }));
+    await act(async () => {});
+    expect(bridge.startFollowsCheck).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves focus to All after Unfollow", async () => {
+    renderView();
+    await screen.findByRole("navigation", { name: "Followed artists and labels" });
+    fireEvent.click(screen.getByRole("button", { name: /^Amsel/ }));
+    bridge.getFollows!.mockResolvedValue(value({ follows: [DREYER, MONO], new_count: 1 }));
+    fireEvent.click(await screen.findByRole("button", { name: "Unfollow Amsel" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Amsel/ })).toBeNull(), LOADED);
+    await waitFor(() => expect(screen.getByRole("button", { name: /^All/ })).toHaveFocus(), LOADED);
+  });
+
+  it("shows just the number on a follow's chip, with the words for a screen reader", async () => {
+    renderView();
+    const button = await screen.findByRole("button", { name: /^Amsel 2 new$/ });
+    expect(within(button).getByText("2")).toBeInTheDocument();
+    expect(button.querySelector(".cp-visually-hidden")?.textContent).toBe(" new");
+  });
+
+  it("shows eight names in a group and a + N more button for the rest", async () => {
+    const many = Array.from({ length: 11 }, (_, at) =>
+      follow({ beatport_id: 100 + at, name: `Name ${String(at).padStart(2, "0")}`, new_count: 0 }),
+    );
+    install({ getFollows: vi.fn(async () => value({ follows: many, new_count: 0 })) });
+    renderView();
+    const list = await screen.findByRole("navigation", { name: "Followed artists and labels" });
+    expect(within(list).getAllByRole("button", { name: /^Name / })).toHaveLength(8);
+    fireEvent.click(within(list).getByRole("button", { name: "+ 3 more" }));
+    expect(within(list).getAllByRole("button", { name: /^Name / })).toHaveLength(11);
+    expect(within(list).queryByRole("button", { name: /more$/ })).toBeNull();
+  });
+
+  it("does not read the follows when a check ends while the tab is hidden, and reads when shown", async () => {
+    let ended = false;
+    install({ getJob: vi.fn(async (id: string) => ({ id, state: ended ? "succeeded" : "running" })) });
+    const view = renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalled());
+    view.setActive(false);
+    await act(async () => {});
+    const reads = bridge.getFollows!.mock.calls.length;
+    const feeds = bridge.getFollowFeed!.mock.calls.length;
+    ended = true;
+    await waitFor(() => expect(bridge.getJobResults).toHaveBeenCalled(), LOADED);
+    await act(async () => {});
+    expect(bridge.getFollows!.mock.calls.length).toBe(reads);
+    expect(bridge.getFollowFeed!.mock.calls.length).toBe(feeds);
+    view.setActive(true);
+    await waitFor(() => expect(bridge.getFollows!.mock.calls.length).toBeGreaterThan(reads), LOADED);
+  });
+});
+
 describe("the sentences", () => {
   const now = new Date(2026, 10, 13, 12, 0, 0);
   it("says how long ago it checked", () => {
@@ -394,10 +575,38 @@ describe("the sentences", () => {
   it("leaves the hidden part out when nothing is hidden", () => {
     const line = followStatusLine(
       { total: 1, hidden_owned: 0, checked_at: new Date(now.getTime() - 120_000).toISOString() },
-      "2026-11-06",
+      { newCount: 1, seenThrough: "2026-11-06", hiding: true },
       now,
     );
-    expect(line).toBe("1 new track since you last looked, Nov 6 · checked 2 min ago");
+    expect(line).toBe("1 new track since Nov 7 · checked 2 min ago");
+  });
+
+  it("never reads 'checked not checked yet'", () => {
+    const line = followStatusLine(
+      { total: 1, hidden_owned: 0, checked_at: null },
+      { newCount: 1, seenThrough: "2026-11-06", hiding: true },
+      now,
+    );
+    expect(line).toBe("1 new track since Nov 7 · not checked yet");
+    expect(line).not.toMatch(/checked not/);
+  });
+
+  it("keeps the new count and appends the owned tracks shown when Hide owned is off", () => {
+    const line = followStatusLine(
+      { total: 5, hidden_owned: 0, checked_at: null },
+      { newCount: 3, seenThrough: "2026-11-11", hiding: false },
+      now,
+    );
+    expect(line).toBe("3 new tracks since yesterday · not checked yet · 2 you own shown");
+  });
+
+  it("says since the day after the one seen through, in words near today", () => {
+    const line = followStatusLine(
+      { total: 1, hidden_owned: 0, checked_at: null },
+      { newCount: 1, seenThrough: "2026-11-12", hiding: true },
+      now,
+    );
+    expect(line).toMatch(/^1 new track since today/);
   });
 
   it("takes the oldest day any follow was seen through", () => {

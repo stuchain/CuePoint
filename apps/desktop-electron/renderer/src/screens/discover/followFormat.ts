@@ -23,7 +23,7 @@ export function checkedAgo(value: string | null, now: Date = new Date()): string
   return formatDayInSentence(then, { now });
 }
 
-/** The oldest day any follow was last seen through: what "since you last looked" means. */
+/** The oldest day any follow was last seen through: the start of what is new. */
 export function oldestSeenThrough(follows: readonly FollowRow[]): string | null {
   let oldest: string | null = null;
   for (const follow of follows) {
@@ -32,20 +32,53 @@ export function oldestSeenThrough(follows: readonly FollowRow[]): string | null 
   return oldest;
 }
 
+/** The day after `seenThrough` (an ISO day): the first day whose releases are new. */
+function firstNewDay(seenThrough: string | null): Date | null {
+  const day = calendarDay(seenThrough);
+  if (!(day instanceof Date) || Number.isNaN(day.getTime())) return null;
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+}
+
+export interface FollowStatusInput {
+  /** New tracks you do not own: `follows().new_count`, or the picked follow's own. */
+  newCount: number;
+  /** The day the follow (or the oldest of them) was seen through. */
+  seenThrough: string | null;
+  /** Whether Hide owned is on. */
+  hiding: boolean;
+}
+
 /**
- * "14 new tracks since you last looked, Nov 6 · checked 2 min ago · 3 you own hidden". The
- * hidden part is left out when nothing is hidden.
+ * The status line as two parts, so the count can be bold: "14 new tracks" and the rest
+ * (" since Nov 7 · checked 2 min ago · 3 you own hidden"). The count never changes with the owned
+ * filter; the owned tracks are said after it, hidden or shown.
  */
+export function followStatusParts(
+  feed: Pick<FollowFeed, "total" | "hidden_owned" | "checked_at">,
+  input: FollowStatusInput,
+  now: Date = new Date(),
+): { count: string; rest: string } {
+  const first = firstNewDay(input.seenThrough);
+  const since = first ? ` since ${formatDayInSentence(first, { now })}` : "";
+  const ago = checkedAgo(feed.checked_at, now);
+  const parts = [ago === "not checked yet" ? ago : `checked ${ago}`];
+  if (input.hiding) {
+    if (feed.hidden_owned > 0) parts.push(`${formatCount(feed.hidden_owned)} you own hidden`);
+  } else {
+    const shown = Math.max(0, feed.total - input.newCount);
+    if (shown > 0) parts.push(`${formatCount(shown)} you own shown`);
+  }
+  return { count: countNoun(input.newCount, "new track"), rest: `${since} · ${parts.join(" · ")}` };
+}
+
+/** "14 new tracks since Nov 7 · checked 2 min ago · 3 you own hidden". */
 export function followStatusLine(
   feed: Pick<FollowFeed, "total" | "hidden_owned" | "checked_at">,
-  seenThrough: string | null,
+  input: FollowStatusInput,
   now: Date = new Date(),
 ): string {
-  const day = seenThrough ? formatDayInSentence(calendarDay(seenThrough), { now }) : "";
-  const parts = [`${countNoun(feed.total, "new track")} since you last looked${day ? `, ${day}` : ""}`];
-  parts.push(`checked ${checkedAgo(feed.checked_at, now)}`);
-  if (feed.hidden_owned > 0) parts.push(`${formatCount(feed.hidden_owned)} you own hidden`);
-  return parts.join(" · ");
+  const { count, rest } = followStatusParts(feed, input, now);
+  return `${count}${rest}`;
 }
 
 /** The count chip beside a name or the tab: "4" reads as "4 new" in words for a screen reader. */

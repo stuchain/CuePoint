@@ -30,6 +30,7 @@ import type {
 import { invalidateReads } from "../../api/engineReads";
 import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
+import { PageActiveContext } from "../../components/shell/pageActive";
 import { jobExplainer } from "../../components/shell/useActiveJob";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { ScaleProvider } from "../../tokens/ScaleContext";
@@ -1733,6 +1734,32 @@ describe("the Following tab", () => {
     expect(await screen.findByRole("button", { name: "Follow Amsel" })).toBeInTheDocument();
   });
 
+  it("reads the count again when the page is shown again, not while it is hidden", async () => {
+    install({ getFollows: followsList(2) });
+    const ui = (active: boolean) => (
+      <PageActiveContext.Provider value={active}>
+        <ScaleProvider>
+          <ToastProvider>
+            <InspectorSlotProvider>
+              <MemoryRouter initialEntries={["/discover"]}>
+                <Routes>
+                  <Route path="/discover" element={<DiscoverScreen />} />
+                </Routes>
+              </MemoryRouter>
+            </InspectorSlotProvider>
+          </ToastProvider>
+        </ScaleProvider>
+      </PageActiveContext.Provider>
+    );
+    const view = render(ui(true));
+    await waitFor(() => expect(bridge.getFollows).toHaveBeenCalledTimes(1));
+    view.rerender(ui(false));
+    await act(async () => {});
+    expect(bridge.getFollows).toHaveBeenCalledTimes(1);
+    view.rerender(ui(true));
+    await waitFor(() => expect(bridge.getFollows).toHaveBeenCalledTimes(2));
+  });
+
   it("marks what was new as seen once, when another tab is chosen", async () => {
     const amsel = {
       kind: "artist",
@@ -1745,7 +1772,10 @@ describe("the Following tab", () => {
       state: null,
     };
     install({
-      getFollows: vi.fn(async () => value({ follows: [amsel], new_count: 2 })),
+      // Once marked, the engine counts nothing new.
+      getFollows: vi.fn(async () =>
+        value({ follows: [amsel], new_count: bridge.markFollowsSeen?.mock.calls.length ? 0 : 2 }),
+      ),
       getFollowFeed: vi.fn(async () =>
         value({
           rows: [],

@@ -207,10 +207,14 @@ Once you follow someone, the tab is a list of them at the left and their new tra
 newest release first. Opening the tab shows what is already saved at once and checks Beatport for
 each name, one request each, so the list updates by itself when the check ends; **Check again**
 asks Beatport again right away. **All** shows everything, and choosing a name shows only theirs;
-with a name chosen, **Unfollow** appears under the list. "New" means released since you last
-looked: leaving the tab marks what was shown as seen, so the count after **Following** in the tab
-strip goes back to nothing. Tracks you own are hidden by default, with the same switch the other
-tables have, and the status line says how many are hidden. A name Beatport could not be read for
+with a name chosen, **Unfollow** appears under the list, and focus returns to **All**. A group
+shows its first eight names, then **+ N more**. "New" means released after the day you last saw
+that name ("14 new tracks since Nov 7"): leaving the tab marks what was shown as seen, so the count
+after **Following** in the tab strip goes back to nothing. If a check is still running when you
+leave, nothing is marked, and those tracks stay new until a later visit. The counts are tracks you
+do not own, the same number in the status line and the list. Tracks you own are hidden by default,
+with the same switch the other tables have, and the status line says how many are hidden (or, with
+the switch off, how many you own are shown). A name Beatport could not be read for
 says so in the list. Checking needs a Beatport sign-in. The tracks work like any Discover table:
 play a preview, add to the wantlist, add to a Beatport playlist, or open on Beatport.
 

@@ -3,7 +3,7 @@
 .discover-following {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
   flex: 1 0 auto;
   min-height: 100%;
   min-width: 0;
@@ -17,8 +17,8 @@
 .discover-following__suggest {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
-  padding: var(--space-md);
+  gap: var(--gap-box);
+  padding: var(--space-lg);
   background: var(--bg-panel);
 }
 
@@ -36,8 +36,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) calc(64px * var(--scale)) calc(130px * var(--scale)) auto;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-xs) 0;
+  gap: var(--space-lg);
+  padding: var(--space-md) 0;
   border-bottom: var(--divider);
 }
 
@@ -71,30 +71,54 @@
 /* The feed: the list at the left, the table at the right. */
 .discover-following--feed {
   display: grid;
-  grid-template-columns: minmax(calc(220px * var(--scale)), min(22%, calc(300px * var(--scale)))) minmax(0, 1fr);
-  column-gap: var(--space-xl);
-  align-items: start;
+  /* The list never takes more than a quarter, so the table keeps most of the width at 1024 wide and
+     at large text; the names are cut with an ellipsis. */
+  grid-template-columns: minmax(calc(160px * var(--scale)), 24%) minmax(0, 1fr);
+  column-gap: var(--gap-box);
+  align-items: stretch;
 }
 
 .discover-following__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   min-width: 0;
+  padding: var(--space-lg);
+  background: var(--bg-panel);
+  align-self: start;
 }
 
 .discover-following__group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  margin-top: var(--space-md);
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.discover-following__more-names {
+  align-self: flex-start;
+  padding: var(--space-md) var(--space-lg);
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  cursor: default;
+}
+
+.discover-following__more-names:hover {
+  background: var(--row-hover);
+}
+
+.discover-following__more-names:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .discover-following__heading {
   display: flex;
   justify-content: space-between;
   margin: 0;
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-lg);
   font-family: var(--font-voice);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-regular);
@@ -104,9 +128,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: var(--space-sm);
+  column-gap: var(--space-md);
   width: 100%;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   border: 0;
   background: transparent;
   color: var(--fg-primary);
@@ -115,7 +139,7 @@
 }
 
 .discover-following__item:hover {
-  background: var(--bg-panel);
+  background: var(--row-hover);
 }
 
 .discover-following__item:focus-visible {
@@ -138,13 +162,13 @@
 
 .discover-following__unfollow {
   align-self: flex-start;
-  margin-top: var(--space-md);
+  margin-top: var(--space-lg);
 }
 
 .discover-following__feed {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
   min-width: 0;
   min-height: 0;
 }
@@ -153,7 +177,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-lg);
+}
+
+.discover-following__count {
+  font-weight: var(--weight-strong);
 }
 
 .discover-following__status {
