@@ -76,7 +76,7 @@ TRACK_ROW = set(
         title="t",
         url="https://www.beatport.com/track/t/1",
         fetched_at="x",
-    ).to_dict()
+    ).to_api_dict()
 ) | {"artists", "remixers", "owned", "on_wantlist"}
 
 
@@ -278,6 +278,7 @@ GET_PATHS = [
     run_path(1, "/groups/tracks"),
     run_path(1, "/groups/summary"),
     run_path(1, "/art"),
+    f"{api.PREFIX}tracks/1/art",
     api.WANTLIST_PATH,
     api.ENTITY_PATH,
     api.ENTITY_BEATPORT_PATH,
@@ -311,7 +312,10 @@ class TestTheRoutes:
             assert "incrate" not in path, path
 
     def test_the_list_of_paths_is_the_one_tested_here(self):
-        concrete = {p.replace("/runs/1", "/runs/{id}") for p in GET_PATHS}
+        concrete = {
+            p.replace("/runs/1", "/runs/{id}").replace("/tracks/1/", "/tracks/{id}/")
+            for p in GET_PATHS
+        }
         assert concrete == set(api.GET_PATHS)
         concrete = {p.replace("/runs/1", "/runs/{id}") for p in POST_PATHS}
         assert concrete == set(api.POST_PATHS)
@@ -904,6 +908,7 @@ class TestTheWantlist:
         page = ok(get(engine, api.WANTLIST_PATH))
         assert set(ids_of(page["rows"])) == {3, 7}
         row = page["rows"][0]
+        assert isinstance(row["has_art"], bool) and "release_image_url" not in row
         assert set(row) == TRACK_ROW | {
             "note",
             "added_at",
@@ -1297,6 +1302,9 @@ class TestPages:
         assert half["beatport_id"] == 40211
         assert all(set(r) == TRACK_ROW for r in half["page"]["rows"])
         assert {7, 8} <= set(ids_of(half["page"]["rows"]))
+        # Each row says whether a cover is known (or can be asked for), never what it is.
+        assert all(isinstance(r["has_art"], bool) for r in half["page"]["rows"])
+        assert "release_image_url" not in half["page"]["rows"][0]
 
     def test_an_artist_by_name_is_never_looked_up(self, engine, world, library):
         half = ok(get(engine, api.ENTITY_BEATPORT_PATH, kind="artist", ref="name:Kiko"))
@@ -1719,6 +1727,59 @@ class TestResultsAsCards:
         empty = ok(get(engine, run_path(run, "/art"), kind="artist", key="mara veil"))
         assert empty["jpeg_base64"] is None
         refused(get(engine, run_path(run, "/art"), key="1"), 400, "INVALID_REQUEST")
+
+    def test_a_tracks_release_cover_is_a_thumbnail_and_the_row_says_only_has_art(
+        self, engine, store, world, monkeypatch
+    ):
+        import base64
+        import io
+
+        from PIL import Image
+
+        from cuepoint.services import artwork_service
+
+        for track in world.tracks.values():
+            world.images[("release", track.release[0])] = (
+                "https://geo-media.beatport.com/image_size/{w}x{h}/r.jpg"
+            )
+        buffer = io.BytesIO()
+        Image.new("RGB", (600, 600), (30, 30, 200)).save(buffer, "JPEG")
+        monkeypatch.setattr(
+            artwork_service, "fetch_image", lambda url: buffer.getvalue()
+        )
+        run = dig(engine, store, artists=["Mara Veil"])
+        rows = ok(get(engine, run_path(run, "/tracks"), owned="all"))["rows"]
+        assert rows and all(row["has_art"] is True for row in rows)
+        assert "geo-media" not in json.dumps(rows)
+        answer = ok(
+            get(
+                engine,
+                run_path(run, "/art"),
+                kind="track",
+                key=str(rows[0]["beatport_track_id"]),
+                size="row",
+            )
+        )
+        assert base64.b64decode(answer["jpeg_base64"])[:2] == b"\xff\xd8"
+        # The same cover by the track's id alone, for the tables that are not a run's.
+        alone = ok(
+            get(engine, f"{api.PREFIX}tracks/{rows[0]['beatport_track_id']}/art")
+        )
+        assert base64.b64decode(alone["jpeg_base64"])[:2] == b"\xff\xd8"
+        assert "geo-media" not in json.dumps(alone)
+        # A track the cache does not hold has none, and a bad id is refused.
+        assert (
+            ok(get(engine, f"{api.PREFIX}tracks/999999999/art"))["jpeg_base64"] is None
+        )
+        refused(get(engine, f"{api.PREFIX}tracks/x/art"), 400, "INVALID_REQUEST")
+        # A track the run did not find has no cover to give; a key that is no id is refused.
+        gone = ok(get(engine, run_path(run, "/art"), kind="track", key="999999999"))
+        assert gone["jpeg_base64"] is None
+        refused(
+            get(engine, run_path(run, "/art"), kind="track", key="x"),
+            400,
+            "INVALID_REQUEST",
+        )
 
 
 class TestAddingTickedCards:

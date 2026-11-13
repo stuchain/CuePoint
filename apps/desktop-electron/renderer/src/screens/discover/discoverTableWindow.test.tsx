@@ -43,6 +43,7 @@ function track(index: number): DiscoverRunTrackRow {
     artists: ["Artist"],
     remixers: [],
     owned: false,
+    has_art: false,
     on_wantlist: false,
     position: index,
     sources: [],

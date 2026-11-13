@@ -80,6 +80,16 @@ def _runner(service: DatabaseService, through: int) -> MigrationRunner:
 def version_23(tmp_path):
     service = DatabaseService(db_path=tmp_path / "v23.db")
     _runner(service, 23).migrate()
+    # The catalog repository these tests fill it with writes today's columns; the
+    # tests only ever go on to version 24, so m0035 never meets this column.
+    conn = service.connect()
+    have = {r[1] for r in conn.execute("PRAGMA table_info(beatport_tracks)")}
+    for column, kind in (
+        ("release_image_url", "TEXT"),
+        ("release_cover_read", "INTEGER NOT NULL DEFAULT 0"),
+    ):
+        if column not in have:
+            conn.execute(f"ALTER TABLE beatport_tracks ADD COLUMN {column} {kind}")
     yield service
     service.close_all()
 

@@ -130,6 +130,12 @@ Each card has a picture, its name, what it holds and a **tick** in its corner.
 A row shows its first six cards; **See all** shows the rest. Click a card to open
 its tracks: a table with a preview, key, BPM and **In your library** marks, in
 which you can select tracks to leave some out, and **All results** to go back.
+Every Beatport table, including the wantlist, the Artist and Label pages and
+Following, starts each title with a small square: the cover of the release the
+track is on, or a plain grey square when Beatport named none. A track read before
+covers were kept asks Beatport for its cover once, when you scroll to it (not
+when signed out), and keeps the answer. Artist and label cards ask for their
+picture the same way. Chart cards show the chart's own picture when Beatport gave one.
 
 **Tick** cards to act on several at once. A bar appears at the foot: "Ticked:
 Argy, Afterlife · 20 tracks · 3 already in your library", in the same plain bar. A track on two ticked

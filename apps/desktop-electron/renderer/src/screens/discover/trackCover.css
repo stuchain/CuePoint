@@ -1,0 +1,24 @@
+/* A run's track cover (TrackCover.tsx): a square inside the row, at any scale, on the alt tone that
+   a track with no cover keeps as its neutral placeholder. */
+.discover-track-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.discover-track-cover {
+  flex: none;
+  display: block;
+  overflow: hidden;
+  width: round(nearest, calc(var(--row-height) - 4px * var(--scale)), 1px);
+  height: round(nearest, calc(var(--row-height) - 4px * var(--scale)), 1px);
+  background: var(--bg-panel-alt);
+}
+
+.discover-track-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

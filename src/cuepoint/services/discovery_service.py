@@ -66,7 +66,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from typing import (
     Any,
@@ -128,6 +128,7 @@ from cuepoint.services.beatport_api_client import (
 from cuepoint.services.beatport_catalog import positive_id
 from cuepoint.services.interfaces import (
     IActivityService,
+    IBeatportCatalogRepository,
     IDiscoveryRepository,
     IDiscoveryService,
     ITrackCreditRepository,
@@ -224,6 +225,16 @@ class DiscoverySource(Protocol):
 
     def search_artist_by_name(self, name: str) -> Optional[int]:
         """An artist's Beatport id by exact name, or None."""
+        ...
+
+    def get_track(
+        self,
+        track_id: int,
+        timeout: Optional[float] = None,
+        retry_on_timeout: bool = True,
+        wait_on_rate_limit: bool = True,
+    ) -> Optional[CatalogTrack]:
+        """One catalog track by id, or None."""
         ...
 
     def get_artist(self, artist_id: int) -> Optional[CatalogArtist]:
@@ -481,6 +492,7 @@ class DiscoveryService(IDiscoveryService):
         activity_service: Optional[IActivityService] = None,
         config_service: Optional[Any] = None,
         *,
+        catalog: IBeatportCatalogRepository,
         max_consecutive_failures: int = MAX_CONSECUTIVE_FAILURES,
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         monotonic: Callable[[], float] = time.monotonic,
@@ -489,6 +501,7 @@ class DiscoveryService(IDiscoveryService):
             raise ValueError("max_consecutive_failures must be at least 1")
         self._runs = runs
         self._credits = credits
+        self._catalog = catalog
         self._beatport = beatport
         self._activity = activity_service
         self._config = config_service
@@ -1426,7 +1439,15 @@ class DiscoveryService(IDiscoveryService):
             LookupError: If there is no such run.
         """
         self._require_run(run_id)
-        return self._runs.run_groups(run_id)
+        return [
+            replace(card, art_pending=True)
+            if card.group.art_url is None
+            and card.group.kind in (GROUP_ARTIST, GROUP_LABEL)
+            and card.group.beatport_id is not None
+            and (run_id, card.group.kind, card.group.key) not in _ART_MISSES
+            else card
+            for card in self._runs.run_groups(run_id)
+        ]
 
     def group_tracks(
         self,
@@ -1511,6 +1532,54 @@ class DiscoveryService(IDiscoveryService):
             self._runs.set_group_art(run_id, kind, key, art)
         return art
 
+    def track_art_url(self, run_id: int, track_id: int) -> Optional[str]:
+        """The release cover of a track a run found, or None.
+
+        Only a track this run found is answered; see :meth:`cached_track_art_url`.
+
+        Raises:
+            LookupError: If there is no such run.
+        """
+        self._require_run(run_id)
+        if track_id not in self._runs.tracks_in_run(run_id, [track_id]):
+            return None
+        return self.cached_track_art_url(track_id)
+
+    def cached_track_art_url(self, track_id: int) -> Optional[str]:
+        """The release cover of a cached Beatport track, for the thumbnailer only.
+
+        It was kept with the track when a read named it. A track cached before
+        covers were kept was never asked for one: it is asked for here, once,
+        when somebody looks at it, with a short timeout, no retry and no wait
+        on a rate limit; the answer, a miss included, is kept on the track. Signed
+        out, nothing is asked and nothing is remembered. A failure is not asked
+        again until the engine restarts.
+        """
+        found = self._catalog.release_cover(track_id)
+        if found is None:
+            return None
+        url, read = found
+        if url is not None or read or track_id in _COVER_MISSES:
+            return url
+        try:
+            self._beatport.require_token()
+        except Exception:  # noqa: BLE001 — signed out: no picture, and no memory of it
+            return None
+        try:
+            track = self._beatport.get_track(
+                track_id,
+                timeout=_COVER_TIMEOUT_SECONDS,
+                retry_on_timeout=False,
+                wait_on_rate_limit=False,
+            )
+        except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
+            _logger.debug("[discover] no cover for track %s: %s", track_id, exc)
+            _COVER_MISSES.add(track_id)
+            return None
+        url = track.release_image_url if track is not None else None
+        self._catalog.set_release_cover(track_id, url)
+        return url
+
     def run_notes(self, run_id: int) -> List[str]:
         """What a run left out on purpose, in words, so the page can say so."""
         run = self._runs.get_run(run_id)
@@ -1532,6 +1601,12 @@ class DiscoveryService(IDiscoveryService):
         if self._runs.get_run(run_id) is None:
             raise LookupError(f"No discovery run {run_id}")
 
+
+#: Tracks whose cover Beatport could not be asked for (an error), per process.
+_COVER_MISSES: Set[int] = set()
+
+#: How long a cover lookup waits for Beatport: nobody is waiting on it.
+_COVER_TIMEOUT_SECONDS = 8.0
 
 #: Cards whose picture Beatport could not give when asked, per process.
 _ART_MISSES: Set[Tuple[int, str, str]] = set()

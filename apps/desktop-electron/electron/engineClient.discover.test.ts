@@ -125,6 +125,16 @@ describe("reads", () => {
     expect(await client().getDiscoveryGroupArt({ run_id: 7, kind: "artist", key: "x" })).toBeNull();
   });
 
+  it("answers a cached track's cover by its id alone, as bytes or null", async () => {
+    const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    const calls = engineAnswering(200, { track_id: 55, jpeg_base64: bytes.toString("base64") });
+    const picture = await client().getDiscoveryTrackArt({ track_id: 55, size: "row" });
+    expect(Array.from(picture!)).toEqual([0xff, 0xd8, 0xff, 0xd9]);
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/discover/tracks/55/art?size=row`);
+    engineAnswering(200, { track_id: 55, jpeg_base64: null });
+    expect(await client().getDiscoveryTrackArt({ track_id: 55 })).toBeNull();
+  });
+
   it("adds ticked cards to the wantlist and to a playlist by the run and the cards", async () => {
     const calls = engineAnswering(200, {});
     const groups = [{ kind: "label" as const, key: "afterlife" }];

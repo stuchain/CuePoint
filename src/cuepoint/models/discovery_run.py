@@ -420,6 +420,7 @@ class GroupCard:
         owned: How many of those the library owns now (DEC-092).
         charts: For an artist, how many charts of theirs the run read.
         new: For an artist or a label, the tracks found as new releases.
+        art_pending: The card has no picture yet but one can be asked for.
     """
 
     group: DiscoveryRunGroup
@@ -427,9 +428,14 @@ class GroupCard:
     owned: int = 0
     charts: int = 0
     new: int = 0
+    art_pending: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize for the API; the image URL stays behind (``has_art``)."""
+        """Serialize for the API; the image URL stays behind (``has_art``).
+
+        ``has_art`` is also true for a card whose picture is not known yet but
+        can be asked for (``art_pending``): the page then asks, once.
+        """
         return {
             "kind": self.group.kind,
             "key": self.group.key,
@@ -439,7 +445,7 @@ class GroupCard:
             "owned": self.owned,
             "charts": self.charts,
             "new": self.new,
-            "has_art": self.group.art_url is not None,
+            "has_art": self.group.art_url is not None or self.art_pending,
         }
 
 
@@ -495,7 +501,7 @@ class RunTrackRow:
         the row already says.
         """
         return {
-            **self.track.to_dict(),
+            **self.track.to_api_dict(),
             "artists": list(self.artists),
             "remixers": list(self.remixers),
             "owned": self.owned,

@@ -2113,6 +2113,8 @@ export interface BeatportTrackRow {
   remixers: string[];
   owned: boolean;
   on_wantlist: boolean;
+  /** Whether the engine holds a release cover for it; the URL never leaves the engine. */
+  has_art: boolean;
 }
 
 /** One reason a run found a track. */
@@ -3756,18 +3758,36 @@ export class EngineClient {
   }
 
   /**
-   * A card's picture as JPEG bytes, or null when it has none. The engine
+   * A card's picture (or, with kind "track", a track's release cover, keyed by its
+   * Beatport id) as JPEG bytes, or null when it has none. The engine
    * fetches, checks and re-encodes it (DEC-076): no URL reaches the renderer.
    */
   async getDiscoveryGroupArt(params: {
     run_id: number;
-    kind: DiscoverGroupKind;
+    kind: DiscoverGroupKind | "track";
     key: string;
     size?: ArtworkSize;
   }): Promise<Uint8Array | null> {
     const { run_id, ...card } = params;
     const answer = await this.getJson<{ jpeg_base64: string | null }>(
       `/api/v1/discover/runs/${encodeURIComponent(String(run_id))}/art${discoverQuery({ ...card })}`,
+    );
+    if (!answer.jpeg_base64) return null;
+    return new Uint8Array(Buffer.from(answer.jpeg_base64, "base64"));
+  }
+
+  /**
+   * A cached Beatport track's release cover as JPEG bytes, or null when it has none.
+   * Not tied to a run: the wantlist, the Artist and Label pages and Following use it.
+   * The engine fetches, checks and re-encodes it (DEC-076): no URL reaches the renderer.
+   */
+  async getDiscoveryTrackArt(params: {
+    track_id: number;
+    size?: ArtworkSize;
+  }): Promise<Uint8Array | null> {
+    const { track_id, ...rest } = params;
+    const answer = await this.getJson<{ jpeg_base64: string | null }>(
+      `/api/v1/discover/tracks/${encodeURIComponent(String(track_id))}/art${discoverQuery({ ...rest })}`,
     );
     if (!answer.jpeg_base64) return null;
     return new Uint8Array(Buffer.from(answer.jpeg_base64, "base64"));

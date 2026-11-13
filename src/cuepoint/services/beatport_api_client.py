@@ -398,6 +398,7 @@ class BeatportApiClient:
         params: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = None,
         retry_on_timeout: bool = True,
+        wait_on_rate_limit: bool = True,
     ) -> Any:
         """GET path with optional query params; return JSON.
 
@@ -407,6 +408,8 @@ class BeatportApiClient:
         ``timeout`` replaces the client's own for this call, and
         ``retry_on_timeout=False`` stops the 5xx backoff retrying a request
         that timed out; both default to the behaviour every other read has.
+        ``wait_on_rate_limit=False`` raises a 429 at once instead of waiting out
+        its ``Retry-After``, for a read nobody is waiting on.
         """
         self._require_token()
 
@@ -428,6 +431,8 @@ class BeatportApiClient:
 
         try:
             try:
+                if not wait_on_rate_limit:
+                    return _get()
                 return self._honoring_rate_limit_once(_get)
             except BeatportAPIError as e:
                 status = getattr(e, "status_code", None) or 0

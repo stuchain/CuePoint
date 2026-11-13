@@ -109,6 +109,9 @@ COLUMNS: Dict[str, tuple] = {
         "genre_id",
         "genre_name",
         "fetched_at",
+        # Added by migration 35, after the table's first version.
+        "release_image_url",
+        "release_cover_read",
     ),
     "beatport_track_artists": (
         "beatport_track_id",
@@ -1135,7 +1138,14 @@ class TestRequiredAndOptional:
         [
             ("beatport_tracks", c)
             for c in COLUMNS["beatport_tracks"]
-            if c not in ("beatport_track_id", "title", "url", "fetched_at")
+            if c
+            not in (
+                "beatport_track_id",
+                "title",
+                "url",
+                "fetched_at",
+                "release_cover_read",  # never null: 0 until Beatport was asked
+            )
         ]
         + [
             ("beatport_track_artists", "artist_id"),
@@ -1156,6 +1166,17 @@ class TestRequiredAndOptional:
         row = self._row(db, table)
         row[column] = None
         insert(db, table, row)
+
+    def test_a_track_is_not_read_for_its_cover_until_it_says_so(self, db):
+        row = self._row(db, "beatport_tracks")
+        row.pop("release_cover_read", None)
+        insert(db, "beatport_tracks", row)
+        stored = (
+            db.connect()
+            .execute("SELECT release_cover_read FROM beatport_tracks")
+            .fetchone()
+        )
+        assert stored[0] == 0
 
     def test_every_count_on_a_run_starts_at_zero(self, db):
         run = insert(db, "discovery_runs", dict(started_at=NOW, params_json="{}"))
@@ -1349,6 +1370,7 @@ class TestTheCatalogFollowsDiscover01:
         assert set(columns_of(db, "beatport_tracks")) - parsed == {
             "label_key",
             "fetched_at",
+            "release_cover_read",
         }
 
     def test_the_fixture_track_stores_and_reads_back(self, db):

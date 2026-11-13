@@ -179,7 +179,7 @@ class WantlistRow:
         are sent, since neither is derived from the other (DEC-093).
         """
         return {
-            **self.track.to_dict(),
+            **self.track.to_api_dict(),
             "artists": list(self.artists),
             "remixers": list(self.remixers),
             "owned": self.owned,

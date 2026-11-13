@@ -466,21 +466,27 @@ class BeatportApi:
         track_id: int,
         timeout: Optional[float] = None,
         retry_on_timeout: bool = True,
+        wait_on_rate_limit: bool = True,
     ) -> Optional[CatalogTrack]:
         """One catalog track by id, or None when Beatport has no such track.
 
-        ``timeout`` and ``retry_on_timeout`` are passed to the client for this
-        read only; left alone, the read has the client's own budget.
+        ``timeout``, ``retry_on_timeout`` and ``wait_on_rate_limit`` are passed
+        to the client for this read only; left alone, the read has the client's
+        own budget.
         """
         tid = positive_id(track_id)
         if tid is None:
             return None
         path = f"/catalog/tracks/{tid}/"
-        if timeout is None and retry_on_timeout:
+        if timeout is None and retry_on_timeout and wait_on_rate_limit:
             return parse_catalog_track(self._client.get(path))
-        return parse_catalog_track(
-            self._client.get(path, timeout=timeout, retry_on_timeout=retry_on_timeout)
-        )
+        options: Dict[str, Any] = {
+            "timeout": timeout,
+            "retry_on_timeout": retry_on_timeout,
+        }
+        if not wait_on_rate_limit:
+            options["wait_on_rate_limit"] = False
+        return parse_catalog_track(self._client.get(path, **options))
 
     def get_tracks(self, track_ids: Iterable[int]) -> List[CatalogTrack]:
         """Catalog tracks by id, in the order asked, leaving out any not found.

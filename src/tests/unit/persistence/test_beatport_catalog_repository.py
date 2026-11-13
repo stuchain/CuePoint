@@ -103,6 +103,10 @@ class TestTheMapping:
             "genre_id": 5,
             "genre_name": "House",
             "fetched_at": NOW,
+            "release_image_url": (
+                "https://geo-media.beatport.com/image_size/{w}x{h}/4500001.jpg"
+            ),
+            "release_cover_read": True,
         }
         assert [
             (c.role, c.position, c.artist_id, c.name, c.name_key) for c in credits
@@ -180,6 +184,29 @@ class TestStoring:
         assert [(c.role, c.position, c.artist_id) for c in repo.credits(7)] == [
             ("artist", 0, 2)
         ]
+
+    def test_a_re_read_that_names_no_cover_keeps_the_one_it_had(self, db, repo):
+        cover = "https://geo-media.beatport.com/image_size/{w}x{h}/r.jpg"
+        repo.upsert_tracks(
+            [replace(catalog_track(7), release_image_url=cover)], EARLIER
+        )
+        repo.upsert_tracks([catalog_track(7)], LATER)
+        assert repo.get_tracks([7])[7].release_image_url == cover
+        other = "https://geo-media.beatport.com/image_size/{w}x{h}/new.jpg"
+        repo.upsert_tracks([replace(catalog_track(7), release_image_url=other)], LATER)
+        assert repo.get_tracks([7])[7].release_image_url == other
+
+    def test_the_api_row_says_whether_there_is_a_cover_never_its_url(self, repo):
+        cover = "https://geo-media.beatport.com/image_size/{w}x{h}/r.jpg"
+        repo.upsert_tracks(
+            [replace(catalog_track(7), release_image_url=cover), catalog_track(8)],
+            NOW,
+        )
+        rows = repo.get_tracks([7, 8])
+        with_cover, without = rows[7].to_api_dict(), rows[8].to_api_dict()
+        assert with_cover["has_art"] is True and without["has_art"] is False
+        assert "release_image_url" not in with_cover
+        assert cover not in str(with_cover)
 
     def test_a_re_read_keeps_what_references_the_track(self, db, repo):
         """An upsert, not ``INSERT OR REPLACE``: the wantlist entry survives."""

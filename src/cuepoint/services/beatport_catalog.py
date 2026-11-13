@@ -198,6 +198,7 @@ def parse_catalog_track(obj: Any) -> Optional[CatalogTrack]:
         genre_name=_optional_text(genre.get("name")),
         sample_url=_sample_url(track.get("sample_url")),
         label_image_url=label.image_url if label else None,
+        release_image_url=catalog_image(release.get("image")),
     )
 
 

@@ -70,7 +70,8 @@ class BeatportWorld:
     access_token: str = "token"
     #: Playlists created, by id: ``{"name": …, "tracks": [ids in order]}``.
     playlists: Dict[int, Dict[str, Any]] = field(default_factory=dict)
-    #: Pictures by ``(kind, id)`` for ``kind`` ``chart``, ``artist`` or ``label``,
+    #: Pictures by ``(kind, id)`` for ``kind`` ``chart``, ``artist``, ``label`` or
+    #: ``release`` (a track's own cover),
     #: served as v4's ``image`` object (Discover's grouped results).
     images: Dict[Tuple[str, int], str] = field(default_factory=dict)
     #: Pictures that only ``catalog/artists/{id}`` and ``catalog/labels/{id}``
@@ -141,7 +142,12 @@ class BeatportWorld:
             return {"id": track_id}
         raise BeatportAPIError("Beatport answered 404", status_code=404)
 
-    def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def get(
+        self,
+        path: str,
+        params: Optional[Dict[str, Any]] = None,
+        **_options: Any,
+    ) -> Any:
         params = dict(params or {})
         route = path.strip("/")
         self._ask(route, params)
@@ -285,6 +291,7 @@ class BeatportWorld:
                 "id": track.release[0],
                 "name": track.release[1],
                 "slug": "release",
+                **self._picture("release", track.release[0]),
                 "label": {
                     "id": track.label[0],
                     "name": track.label[1],

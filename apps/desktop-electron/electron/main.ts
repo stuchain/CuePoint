@@ -1138,6 +1138,9 @@ function registerIpcHandlers(): void {
   handle("engine:getDiscoveryGroupArt", (_event, params) =>
     engine.getDiscoveryGroupArt(params),
   );
+  handle("engine:getDiscoveryTrackArt", (_event, params) =>
+    engine.getDiscoveryTrackArt(params),
+  );
   handle("engine:getBeatportPlaylists", () => engine.getBeatportPlaylists());
   handle("engine:startDiscoveryRun", (_event, params) =>
     engine.startDiscoveryRun(params),

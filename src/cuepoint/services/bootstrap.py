@@ -943,6 +943,7 @@ def bootstrap_services() -> None:
             beatport=container.resolve(BeatportApi),
             activity_service=container.resolve(IActivityService),
             config_service=config_service,
+            catalog=container.resolve(IBeatportCatalogRepository),
         )
 
     container.register_factory(IDiscoveryService, create_discovery_service)

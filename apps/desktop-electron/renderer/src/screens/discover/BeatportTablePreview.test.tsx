@@ -46,6 +46,7 @@ const row = (id: number, title: string): BeatportTrackRow => ({
   artists: [],
   remixers: [],
   owned: false,
+  has_art: false,
   on_wantlist: false,
 });
 

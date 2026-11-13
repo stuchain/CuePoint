@@ -285,6 +285,174 @@ class TestTheCards:
         assert order[:2] == [(GROUP_ARTIST, "kiko"), (GROUP_ARTIST, "mara veil")]
 
 
+class TestTrackCovers:
+    def rows(self, db, run_id):
+        return (
+            DiscoveryRepository(db)
+            .run_tracks(run_id, OWNED_ALL, "position", False, 0, 50)
+            .rows
+        )
+
+    def forget_covers(self, db):
+        """The state of a track cached before covers were kept."""
+        with db.transaction() as conn:
+            conn.execute(
+                "UPDATE beatport_tracks SET release_image_url = NULL,"
+                " release_cover_read = 0"
+            )
+
+    def covers_asked(self, world, track_id):
+        return world.paths(f"catalog/tracks/{track_id}")
+
+    def test_a_found_track_keeps_its_release_cover_and_the_row_only_says_so(
+        self, db, library, world
+    ):
+        cover = ART % "release"
+        for track in world.tracks.values():
+            world.images[("release", track.release[0])] = cover
+        service = make(db, world)
+        run = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        rows = self.rows(db, run.id)
+        assert rows
+        sent = [row.to_dict() for row in rows]
+        assert all(row["has_art"] for row in sent)
+        assert not any("release_image_url" in row for row in sent)
+        first = rows[0].track.beatport_track_id
+        assert service.track_art_url(run.id, first) == cover
+        with pytest.raises(LookupError):
+            service.track_art_url(run.id + 999, first)
+
+    def test_a_track_whose_release_has_no_cover_has_none_and_is_not_asked_again(
+        self, db, library, world
+    ):
+        service = make(db, world)
+        run = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        rows = self.rows(db, run.id)
+        assert rows
+        assert not any(row.to_dict()["has_art"] for row in rows)
+        first = rows[0].track.beatport_track_id
+        before = len(self.covers_asked(world, first))
+        assert service.track_art_url(run.id, first) is None
+        assert len(self.covers_asked(world, first)) == before
+
+    def test_an_older_dig_asks_for_a_cover_once_when_looked_at_and_keeps_it(
+        self, db, library, world
+    ):
+        cover = ART % "late"
+        service = make(db, world)
+        run = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        first = self.rows(db, run.id)[0].track.beatport_track_id
+        self.forget_covers(db)
+        world.images[("release", world.tracks[first].release[0])] = cover
+        # The row says a cover may be asked for.
+        assert all(row.to_dict()["has_art"] for row in self.rows(db, run.id))
+        before = len(self.covers_asked(world, first))
+        assert service.track_art_url(run.id, first) == cover
+        assert len(self.covers_asked(world, first)) == before + 1
+        assert service.track_art_url(run.id, first) == cover
+        assert service.cached_track_art_url(first) == cover
+        assert len(self.covers_asked(world, first)) == before + 1
+        stored = next(
+            r for r in self.rows(db, run.id) if r.track.beatport_track_id == first
+        )
+        assert (
+            stored.track.release_image_url == cover and stored.track.release_cover_read
+        )
+
+    def test_a_release_with_no_cover_is_asked_once_and_then_known_to_have_none(
+        self, db, library, world
+    ):
+        service = make(db, world)
+        run = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        first = self.rows(db, run.id)[0].track.beatport_track_id
+        self.forget_covers(db)
+        before = len(self.covers_asked(world, first))
+        assert service.cached_track_art_url(first) is None
+        assert service.cached_track_art_url(first) is None
+        assert len(self.covers_asked(world, first)) == before + 1
+        row = next(
+            r for r in self.rows(db, run.id) if r.track.beatport_track_id == first
+        )
+        assert row.to_dict()["has_art"] is False
+
+    def test_signed_out_nothing_is_asked_and_nothing_is_remembered(
+        self, db, library, world
+    ):
+        cover = ART % "signedout"
+        service = make(db, world)
+        run = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        first = self.rows(db, run.id)[0].track.beatport_track_id
+        self.forget_covers(db)
+        world.images[("release", world.tracks[first].release[0])] = cover
+        world.access_token = ""
+        before = len(self.covers_asked(world, first))
+        assert service.cached_track_art_url(first) is None
+        assert len(self.covers_asked(world, first)) == before
+        world.access_token = "token"
+        assert service.cached_track_art_url(first) == cover
+
+    def test_a_failed_lookup_is_remembered_and_not_asked_again(
+        self, db, library, world, monkeypatch
+    ):
+        from cuepoint.services import discovery_service
+
+        monkeypatch.setattr(discovery_service, "_COVER_MISSES", set())
+        service = make(db, world)
+        run = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        first = self.rows(db, run.id)[0].track.beatport_track_id
+        self.forget_covers(db)
+        world.failures.append(
+            lambda path, params, n: 500 if path.startswith("catalog/tracks/") else None
+        )
+        before = len(self.covers_asked(world, first))
+        assert service.cached_track_art_url(first) is None
+        assert service.cached_track_art_url(first) is None
+        assert len(self.covers_asked(world, first)) == before + 1
+
+    def test_a_track_asked_under_another_run_has_no_cover(self, db, library, world):
+        world.images.update(
+            {("release", t.release[0]): ART % "r" for t in world.tracks.values()}
+        )
+        service = make(db, world)
+        mara = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        other = service.run(request(service, artists=[GHOST], labels=[]))
+        first = self.rows(db, mara.id)[0].track.beatport_track_id
+        assert service.track_art_url(mara.id, first) == ART % "r"
+        assert first not in {r.track.beatport_track_id for r in self.rows(db, other.id)}
+        assert service.track_art_url(other.id, first) is None
+
+    def test_a_track_the_cache_does_not_hold_has_no_cover(self, db, library, world):
+        service = make(db, world)
+        assert service.cached_track_art_url(999_999_999) is None
+        assert world.paths("catalog/tracks/999999999") == []
+
+    def test_an_artist_card_without_a_picture_says_it_can_be_asked_for_until_a_miss(
+        self, db, library, world
+    ):
+        world.images[("artist", MARA[0])] = ART % "mara"
+        world.no_credit_images = {("artist", MARA[0]), ("label", NIGHTFALL[0])}
+        service = make(db, world)
+        run = service.run(
+            request(service, artists=["Mara Veil"], labels=["Nightfall Audio"])
+        )
+
+        def has_art():
+            return {
+                (c.group.kind, c.group.key): c.to_dict()["has_art"]
+                for c in service.run_groups(run.id)
+            }
+
+        sent = has_art()
+        assert sent[(GROUP_ARTIST, "mara veil")] is True
+        assert sent[(GROUP_LABEL, "nightfall audio")] is True
+        assert service.group_art_url(run.id, GROUP_ARTIST, "mara veil") == ART % "mara"
+        # The label has no picture: asked once, then the card stops saying it can be.
+        assert service.group_art_url(run.id, GROUP_LABEL, "nightfall audio") is None
+        sent = has_art()
+        assert sent[(GROUP_ARTIST, "mara veil")] is True
+        assert sent[(GROUP_LABEL, "nightfall audio")] is False
+
+
 class TestPicturesAndLimits:
     def test_a_run_asks_for_no_picture_of_its_own(self, db, library, world):
         world.images[("artist", MARA[0])] = ART % "mara"

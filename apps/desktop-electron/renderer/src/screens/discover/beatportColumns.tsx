@@ -26,6 +26,7 @@ import { formatBpm } from "../library/trackValues";
 import { beatportRowKey } from "./beatportKey";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { artistsText, formatIsoDay, formatWhen, sourcesText, trackName } from "./discoverFormat";
+import { TrackCover } from "./TrackCover";
 
 /**
  * The genres a Beatport genre string names, each once, in its order (M95): the engine's
@@ -91,10 +92,21 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       header: "Title",
       sortKey: "title",
       accessor: (row) => trackName(row),
-      minWidthPx: 120,
-      defaultWidthPx: 210,
+      // The cover and its gap take 26 px of the room the name had.
+      minWidthPx: 146,
+      defaultWidthPx: 236,
       sticky: true,
-      render: (row) => trackName(row),
+      // Every Beatport table starts the title with the release's cover: a small square, a neutral
+      // one when there is none. The plain name is what copying and the app hint read.
+      render: (row) => (
+        <span className="discover-track-title">
+          <TrackCover trackId={row.beatport_track_id} hasArt={row.has_art === true} />
+          <span className="track-table__cell-text" data-cut-hint="">
+            {trackName(row)}
+          </span>
+        </span>
+      ),
+      text: (row) => trackName(row),
     },
     {
       id: "artists",

@@ -67,6 +67,9 @@ class CatalogTrack:
     #: The label's picture, from the release's own ``label`` object; a picture,
     #: not an identity, so it is left out of equality.
     label_image_url: Optional[str] = field(default=None, compare=False)
+    #: The release's cover, from the track's ``release.image``; a picture, not
+    #: an identity, so it is left out of equality.
+    release_image_url: Optional[str] = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)

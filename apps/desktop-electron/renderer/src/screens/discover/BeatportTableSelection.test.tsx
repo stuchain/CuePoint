@@ -38,6 +38,7 @@ function track(id: number, title: string, label: string, artist = "Artist"): Dis
     artists: [artist],
     remixers: [],
     owned: false,
+    has_art: false,
     on_wantlist: false,
     position: id,
     sources: [],

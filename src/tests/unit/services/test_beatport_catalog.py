@@ -351,6 +351,30 @@ class TestSmallParsers:
         assert chart_owner_name(None) == ""
 
 
+class TestReleaseCover:
+    def test_it_is_the_releases_own_image_not_the_labels(self) -> None:
+        track = parse_catalog_track(load("track.json"))
+        assert track.release_image_url == (
+            "https://geo-media.beatport.com/image_size/{w}x{h}/4500001.jpg"
+        )
+        assert track.label_image_url != track.release_image_url
+
+    def test_a_release_with_no_image_or_a_foreign_one_has_none(self) -> None:
+        raw = load("track.json")
+        raw["release"].pop("image")
+        assert parse_catalog_track(raw).release_image_url is None
+        raw["release"]["image"] = {"uri": "https://evil.example/x.jpg"}
+        assert parse_catalog_track(raw).release_image_url is None
+
+    def test_a_recorded_track_carries_its_release_cover(self) -> None:
+        body = json.loads(
+            (FIXTURES / "recorded" / "tracks_by_id.json").read_text(encoding="utf-8")
+        )
+        items, _ = page_items(body)
+        covers = [parse_catalog_track(i).release_image_url for i in items]
+        assert covers and all(c and c.startswith("https://geo-media.") for c in covers)
+
+
 # --- Agreement tests over every fixture, recorded ones included -----------------
 
 
@@ -401,6 +425,10 @@ def _assert_track_agrees(raw: Dict[str, Any], track: Optional[CatalogTrack]) -> 
     assert track.release_id == release.get("id")
     assert track.label_id == label.get("id")
     assert track.label_name == (label.get("name") or None)
+    cover = release.get("image") or {}
+    assert track.release_image_url == (
+        cover.get("dynamic_uri") or cover.get("uri") or None
+    )
     genre = raw.get("genre") or {}
     assert track.genre_id == genre.get("id")
     assert track.bpm == (float(raw["bpm"]) if raw.get("bpm") else None)

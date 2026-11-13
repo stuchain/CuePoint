@@ -113,6 +113,8 @@ class TestFollowing:
         feed = ok(get(engine, api.FOLLOWS_FEED_PATH))
         assert sorted(r["beatport_track_id"] for r in feed["rows"]) == [2, 7, 8]
         assert all(r["follows"][0]["beatport_id"] == LABEL for r in feed["rows"])
+        assert all(isinstance(r["has_art"], bool) for r in feed["rows"])
+        assert not any("release_image_url" in r for r in feed["rows"])
         assert feed["checked_at"] is not None and feed["states"] == []
         assert ok(get(engine, api.FOLLOWS_PATH))["follows"][0]["new_count"] == 3
         # Nothing for a follow named, nothing for another.

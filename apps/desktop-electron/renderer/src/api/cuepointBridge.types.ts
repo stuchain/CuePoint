@@ -2519,6 +2519,8 @@ export interface BeatportTrackRow {
   remixers: string[];
   owned: boolean;
   on_wantlist: boolean;
+  /** Whether the engine holds a release cover for it (asked for with kind "track"; never a URL). */
+  has_art: boolean;
 }
 
 /** One reason a run found a track. */
@@ -4395,10 +4397,12 @@ export interface CuePointBridge {
   /** A card's picture as an object URL, or null; release with `releaseTrackArtwork`. */
   getDiscoveryGroupArt?: (params: {
     run_id: number;
-    kind: DiscoverGroupKind;
+    kind: DiscoverGroupKind | "track";
     key: string;
     size?: ArtworkSize;
   }) => Promise<string | null>;
+  /** A cached Beatport track's release cover as an object URL, or null; release with `releaseTrackArtwork`. */
+  getDiscoveryTrackArt?: (params: { track_id: number; size?: ArtworkSize }) => Promise<string | null>;
   /** The user's own Beatport playlists, to add tracks to one. */
   getBeatportPlaylists?: () => Promise<DiscoverAnswer<BeatportPlaylists>>;
   /** Start a discovery run; a refusal is an answer, and nothing starts. */

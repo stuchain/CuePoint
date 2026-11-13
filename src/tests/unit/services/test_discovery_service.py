@@ -167,6 +167,7 @@ def make(
         else None,
         config,
         clock=clock or Clock(),
+        catalog=BeatportCatalogRepository(db),
         **kwargs,
     )
 
@@ -760,6 +761,7 @@ class TestFailures:
             TrackCreditRepository(db),
             BeatportApi(BeatportApiClient("https://api.beatport.com/v4", "")),
             clock=Clock(),
+            catalog=BeatportCatalogRepository(db),
         )
         with pytest.raises(Exception):
             service.require_token()

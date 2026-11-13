@@ -493,6 +493,9 @@ MIGRATION_ASSERTIONS: Dict[str, Callable[[sqlite3.Connection, Crossing], None]] 
     "m0032_path_nfc": _m0032,
     "m0033_search_keys": _m0033,
     "m0034_follows": table_check("follows"),
+    "m0035_release_cover": column_check(
+        "beatport_tracks", "release_image_url", "release_cover_read"
+    ),
 }
 
 

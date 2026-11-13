@@ -388,7 +388,7 @@ class EntityTrackRow:
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API."""
         return {
-            **self.track.to_dict(),
+            **self.track.to_api_dict(),
             "artists": list(self.artists),
             "remixers": list(self.remixers),
             "owned": self.owned,

@@ -51,6 +51,7 @@ from cuepoint.models.row_values import (
     https_url,
     non_negative,
     one_of,
+    optional_https_url,
     optional_id,
     optional_iso_date,
     optional_number,
@@ -96,6 +97,11 @@ class CachedBeatportTrack:
         key: Classic notation ("Ebm"), converted by DISCOVER-01's parser.
         genre_id: Beatport's genre id.
         genre_name: The genre's name.
+        release_image_url: The release cover Beatport named; never sent to the
+            renderer (:meth:`to_api_dict` says only whether there is one).
+        release_cover_read: Whether Beatport was asked for the cover. Every read
+            of the track asks, so only a track cached before covers were kept
+            is not read yet.
     """
 
     beatport_track_id: int
@@ -113,6 +119,8 @@ class CachedBeatportTrack:
     key: Optional[str] = None
     genre_id: Optional[int] = None
     genre_name: Optional[str] = None
+    release_image_url: Optional[str] = None
+    release_cover_read: bool = False
 
     def __post_init__(self) -> None:
         """Validate the row."""
@@ -133,6 +141,8 @@ class CachedBeatportTrack:
             "genre_name",
         ):
             optional_text(getattr(self, name), name)
+        optional_https_url(self.release_image_url, "release_image_url")
+        object.__setattr__(self, "release_cover_read", bool(self.release_cover_read))
         for name in ("label_id", "release_id", "genre_id"):
             object.__setattr__(self, name, optional_id(getattr(self, name), name))
         optional_iso_date(self.release_date, "release_date")
@@ -161,7 +171,22 @@ class CachedBeatportTrack:
             "genre_id": self.genre_id,
             "genre_name": self.genre_name,
             "fetched_at": self.fetched_at,
+            "release_image_url": self.release_image_url,
+            "release_cover_read": self.release_cover_read,
         }
+
+    def to_api_dict(self) -> Dict[str, Any]:
+        """The row as the API sends it: ``has_art`` in place of the cover's URL.
+
+        ``has_art`` is true when a cover is known, and also when none was ever
+        asked for (a track cached before covers were kept): the renderer then
+        asks, once, and the engine answers with a picture or none.
+        """
+        data = self.to_dict()
+        url = data.pop("release_image_url")
+        read = data.pop("release_cover_read")
+        data["has_art"] = url is not None or not read
+        return data
 
     @classmethod
     def from_row(cls, row: Any) -> "CachedBeatportTrack":
@@ -183,6 +208,8 @@ class CachedBeatportTrack:
             key=data.get("key"),
             genre_id=data.get("genre_id"),
             genre_name=data.get("genre_name"),
+            release_image_url=data.get("release_image_url"),
+            release_cover_read=bool(data.get("release_cover_read")),
         )
 
 

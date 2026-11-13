@@ -128,6 +128,7 @@ _RUN_GROUPS_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups$")
 _RUN_GROUP_TRACKS_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups/tracks$")
 _RUN_GROUP_SUMMARY_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups/summary$")
 _RUN_ART_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/art$")
+_TRACK_ART_ROUTE = re.compile(r"^/api/v1/discover/tracks/([^/]+)/art$")
 
 #: The refusal codes a caller can branch on. Named here and in the client,
 #: and a test compares the two.
@@ -183,6 +184,10 @@ RUN_GROUP_TRACKS_PARAMS: Tuple[str, ...] = (
 )
 RUN_GROUP_SUMMARY_PARAMS: Tuple[str, ...] = ("groups",)
 RUN_ART_PARAMS: Tuple[str, ...] = ("kind", "key", "size")
+TRACK_ART_PARAMS: Tuple[str, ...] = ("size",)
+#: ``kind`` of an art request for a run's track (key: its Beatport track id): its
+#: release cover, where a card's kind asks for a card's picture.
+TRACK_ART_KIND = "track"
 WANTLIST_PARAMS: Tuple[str, ...] = (
     "owned",
     "bought",
@@ -941,7 +946,7 @@ def run_group_summary(run_id: int, params: Dict[str, List[str]]) -> Dict[str, An
 
 
 def run_art(run_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
-    """A card's picture as a JPEG thumbnail, base64, or null when it has none.
+    """A card's or a track's picture as a JPEG thumbnail, base64, or null.
 
     The image is fetched, checked and re-encoded by the artwork service, the
     one place an image from Beatport is read (DEC-076): the renderer is sent
@@ -952,13 +957,18 @@ def run_art(run_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
     from cuepoint.models.discovery_run import GROUP_KINDS
 
     query = _params(params, RUN_ART_PARAMS)
-    kind = _query_choice(query, "kind", GROUP_KINDS, "")
+    kind = _query_choice(query, "kind", (*GROUP_KINDS, TRACK_ART_KIND), "")
     if kind == "":
         raise bad_request("kind is required")
     key = _query_required(query, "key")
     size = _query_choice(query, "size", ("row", "inspector"), "inspector")
     try:
-        url = _resolve("IDiscoveryService").group_art_url(run_id, kind, key)
+        if kind == TRACK_ART_KIND:
+            url = _resolve("IDiscoveryService").track_art_url(
+                run_id, _query_int(query, "key", 0, 1, 2**63 - 1)
+            )
+        else:
+            url = _resolve("IDiscoveryService").group_art_url(run_id, kind, key)
     except LookupError as exc:
         raise not_found(RUN_NOT_FOUND, str(exc)) from None
     body = (
@@ -966,6 +976,26 @@ def run_art(run_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
     )
     return {
         "run_id": run_id,
+        "jpeg_base64": base64.b64encode(body).decode("ascii") if body else None,
+    }
+
+
+def track_art(track_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """A cached Beatport track's release cover, as :func:`run_art` answers a track.
+
+    Not tied to a run, for the wantlist, the Artist and Label pages and the
+    Following feed. Only a track the catalog cache holds has one to give.
+    """
+    import base64
+
+    query = _params(params, TRACK_ART_PARAMS)
+    size = _query_choice(query, "size", ("row", "inspector"), "row")
+    url = _resolve("IDiscoveryService").cached_track_art_url(track_id)
+    body = (
+        _resolve("IArtworkService").beatport_image_thumbnail(url, size) if url else None
+    )
+    return {
+        "track_id": track_id,
         "jpeg_base64": base64.b64encode(body).decode("ascii") if body else None,
     }
 
@@ -1408,6 +1438,7 @@ GET_PATHS: Tuple[str, ...] = (
     PREFIX + "runs/{id}/groups/tracks",
     PREFIX + "runs/{id}/groups/summary",
     PREFIX + "runs/{id}/art",
+    PREFIX + "tracks/{id}/art",
 )
 
 #: The routes of a run's own, by what follows the id, for the dispatch below.
@@ -1431,6 +1462,7 @@ def handles_get(path: str) -> bool:
         path in _GET_ROUTES
         or bool(_RUN_ROUTE.match(path))
         or any(route.match(path) for route, _ in _RUN_GET_ROUTES)
+        or bool(_TRACK_ART_ROUTE.match(path))
     )
 
 
@@ -1452,6 +1484,9 @@ def handle_get(path: str, params: Dict[str, List[str]]) -> Tuple[int, Dict[str, 
         matched = route.match(path)
         if matched:
             return 200, answer(_id_in_path(matched.group(1), "run"), params)
+    cover = _TRACK_ART_ROUTE.match(path)
+    if cover:
+        return 200, track_art(_id_in_path(cover.group(1), "track"), params)
     run = _RUN_ROUTE.match(path)
     if run:
         return 200, run_header(_id_in_path(run.group(1), "run"), params)

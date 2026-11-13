@@ -1269,6 +1269,16 @@ describe("desktop contract", () => {
       expect(clientMethod("getDiscoveryGroupArt")).toContain("Promise<Uint8Array | null>");
     });
 
+    it("carries a cached track's cover the same way, by track id and with no run", () => {
+      expect(invokedChannels(preload)).toContain("engine:getDiscoveryTrackArt");
+      expect(handledChannels(main)).toContain("engine:getDiscoveryTrackArt");
+      expect(supervisor).toContain("(await this.readyClient()).getDiscoveryTrackArt(");
+      expect(preload).toMatch(/getDiscoveryTrackArt: async[\s\S]{0,260}URL\.createObjectURL/);
+      expect(bridgeTypes).toContain("getDiscoveryTrackArt?: (params: {");
+      expect(clientMethod("getDiscoveryTrackArt")).toContain("Promise<Uint8Array | null>");
+      expect(clientMethod("getDiscoveryTrackArt")).toContain("/api/v1/discover/tracks/");
+    });
+
     it.each(methods)("exposes %s on the preload", (method) => {
       expect(invokedChannels(preload)).toContain(`engine:${method}`);
     });

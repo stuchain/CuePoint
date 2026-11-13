@@ -1481,6 +1481,16 @@ class IBeatportCatalogRepository(ABC):
         ...
 
     @abstractmethod
+    def release_cover(self, track_id: int) -> Optional[Tuple[Optional[str], bool]]:
+        """``(cover URL, whether Beatport was asked)`` of a cached track, or None."""
+        ...
+
+    @abstractmethod
+    def set_release_cover(self, track_id: int, url: Optional[str]) -> None:
+        """Keep what Beatport answered for a track's cover (a miss counts as asked)."""
+        ...
+
+    @abstractmethod
     def get_tracks(self, ids: Iterable[int]) -> Dict[int, "CachedBeatportTrack"]:
         """The cached tracks among ``ids``, keyed by Beatport track id."""
         ...
@@ -1864,6 +1874,16 @@ class IDiscoveryService(ABC):
     @abstractmethod
     def group_art_url(self, run_id: int, kind: str, key: str) -> Optional[str]:
         """The picture Beatport named for a card (for the thumbnailer only)."""
+        ...
+
+    @abstractmethod
+    def track_art_url(self, run_id: int, track_id: int) -> Optional[str]:
+        """The release cover Beatport named for a track a run found (thumbnailer only)."""
+        ...
+
+    @abstractmethod
+    def cached_track_art_url(self, track_id: int) -> Optional[str]:
+        """The release cover of any cached Beatport track (thumbnailer only)."""
         ...
 
 

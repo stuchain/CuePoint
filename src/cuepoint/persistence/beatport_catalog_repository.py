@@ -128,6 +128,8 @@ CATALOG_TRACK_COLUMNS: Tuple[str, ...] = (
     "genre_id",
     "genre_name",
     "fetched_at",
+    "release_image_url",
+    "release_cover_read",
 )
 
 _TRACK_COLUMNS = CATALOG_TRACK_COLUMNS
@@ -145,7 +147,13 @@ _UPSERT_TRACK = (
     f"INSERT INTO beatport_tracks ({', '.join(_TRACK_COLUMNS)})"
     f" VALUES ({', '.join('?' for _ in _TRACK_COLUMNS)})"
     " ON CONFLICT (beatport_track_id) DO UPDATE SET "
-    + ", ".join(f"{c} = excluded.{c}" for c in _TRACK_COLUMNS[1:])
+    + ", ".join(
+        # A read that names no cover keeps the one an earlier read named.
+        f"{c} = coalesce(excluded.{c}, {c})"
+        if c == "release_image_url"
+        else f"{c} = excluded.{c}"
+        for c in _TRACK_COLUMNS[1:]
+    )
 )
 
 _INSERT_CREDIT = (
@@ -223,6 +231,8 @@ def catalog_rows(
         key=track.key or None,
         genre_id=track.genre_id,
         genre_name=track.genre_name or None,
+        release_image_url=track.release_image_url or None,
+        release_cover_read=True,
     )
     credits = [
         CachedBeatportCredit(
@@ -612,6 +622,32 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
             owned=sum(1 for i in by_track if i in owned_ids),
             per_source=tuple(per_source),
         )
+
+    def release_cover(self, track_id: int) -> Optional[Tuple[Optional[str], bool]]:
+        """``(cover URL, whether Beatport was asked)`` of a cached track, or None.
+
+        None is a track the catalog cache does not hold.
+        """
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT release_image_url, release_cover_read FROM beatport_tracks"
+                " WHERE beatport_track_id = ?",
+                (int(track_id),),
+            )
+            .fetchone()
+        )
+        return None if row is None else (row[0], bool(row[1]))
+
+    def set_release_cover(self, track_id: int, url: Optional[str]) -> None:
+        """Keep what Beatport answered for a track's cover; a miss counts as asked."""
+        with self._db.transaction() as conn:
+            conn.execute(
+                "UPDATE beatport_tracks"
+                " SET release_image_url = coalesce(?, release_image_url),"
+                " release_cover_read = 1 WHERE beatport_track_id = ?",
+                (url, int(track_id)),
+            )
 
     def get_tracks(self, ids: Iterable[int]) -> Dict[int, CachedBeatportTrack]:
         """The cached tracks among ``ids``, keyed by Beatport track id."""

@@ -364,6 +364,12 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     if (!bytes) return null;
     return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
   },
+  // A cached Beatport track's release cover, the same road as a card's picture.
+  getDiscoveryTrackArt: async (params) => {
+    const bytes = await ipcRenderer.invoke("engine:getDiscoveryTrackArt", params);
+    if (!bytes) return null;
+    return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+  },
   getBeatportPlaylists: () => ipcRenderer.invoke("engine:getBeatportPlaylists"),
   startDiscoveryRun: (params) => ipcRenderer.invoke("engine:startDiscoveryRun", params),
   continueDiscoveryRun: (params) => ipcRenderer.invoke("engine:continueDiscoveryRun", params),
