@@ -97,7 +97,7 @@
   padding: 0 var(--space-md);
   font-family: var(--font-voice);
   font-size: var(--font-size-sm);
-  font-weight: normal;
+  font-weight: var(--font-weight-regular);
 }
 
 .discover-following__item {
