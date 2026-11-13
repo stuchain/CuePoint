@@ -1,0 +1,108 @@
+/*
+ * "Plays well next" in Track details. Every size is a token: 8 between the heading and the rows
+ * (--space-xs), 12 inside a row (--space-sm), so the section reads like its siblings.
+ */
+
+.cp-next-picks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.cp-next-picks__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: var(--control-height);
+}
+
+.cp-next-picks__heading {
+  margin: 0;
+  color: var(--fg-primary);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+}
+
+.cp-next-picks__meta {
+  color: var(--fg-muted);
+  font-family: var(--font-meta);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.cp-next-picks__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cp-next-picks__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  padding-block: var(--space-xs);
+  border-block-end: var(--hairline) solid var(--border-muted);
+}
+
+.cp-next-picks__row:last-child {
+  border-block-end: 0;
+}
+
+/* Two lines tall: the title, then the key, BPM and marks. */
+.cp-next-picks__cover {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--row-height) * 1.5);
+  height: calc(var(--row-height) * 1.5);
+  overflow: hidden;
+  background: var(--bg-panel);
+}
+
+.cp-next-picks__cover .library-cell__artwork {
+  width: 100%;
+  height: 100%;
+}
+
+.cp-next-picks__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.cp-next-picks__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-next-picks__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-next-picks__mark {
+  color: var(--success-text);
+}
+
+.cp-next-picks__row > .cp-btn {
+  flex: none;
+}
+
+/* The height of three rows, so the panel does not jump while the list is read. */
+.cp-next-picks__placeholder {
+  height: calc(var(--row-height) * 1.5 * 3 + var(--space-xs) * 6);
+}

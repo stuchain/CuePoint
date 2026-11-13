@@ -58,6 +58,7 @@ import { DisclosureSection } from "./DisclosureSection";
 import { followJob } from "./followJob";
 import { jobErrorMessage } from "./libraryFormat";
 import { TrackArtwork } from "./TrackArtwork";
+import { NextTrackPicks } from "./NextTrackPicks";
 import { MatchOnBeatport, TrackBeatportSection } from "./TrackBeatportSection";
 import { TrackHistorySection } from "./TrackHistorySection";
 import { TrackMarksSection } from "./TrackMarksSection";
@@ -638,6 +639,9 @@ export function TrackDetailPanel({
           {track.id != null && window.cuepoint?.waveforms && (
             <TrackWaveform key={`waveform-${track.id}`} trackId={track.id} loudnessInFacts onReading={onReading} />
           )}
+
+          {/* The tracks that mix best out of this one, each with a visible Play next. */}
+          {track.id != null && <NextTrackPicks key={`next-${track.id}`} track={track} onMessage={onMessage} />}
 
           {/* The rest of Rekordbox's record: its cues and grid (WAVE-04). */}
           {detail.marks && (
