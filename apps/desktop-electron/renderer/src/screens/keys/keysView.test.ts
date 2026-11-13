@@ -126,16 +126,21 @@ describe("the two panes (D12)", () => {
     expect(tracks).toMatch(/flex:\s*1 1 calc\(\d+px \* var\(--scale\)\)/);
   });
 
-  it("moves the list under the wheel below about 1024 wide at 1.25 text size, in em of the content region (C206)", () => {
+  it("drops the list under the wheel only when it no longer fits beside it, never at a set width (B16)", () => {
     const stacked = parseRules(stripComments(keysCss)).find(
-      (r) => r.selector === ".keys-page__tracks" && r.context.startsWith("@container content"),
+      (r) => r.selector === ".keys-page__tracks" && /flex-basis:\s*100%/.test(r.body),
     );
-    // Moved (CI wave 3, Windows keys.spec): text at 1.25 is a whole 13px, so 1024px is 78.75em; the
-    // old 81.92em (of 12.5px) was 1065px and wrapped the list at the default window on Windows.
-    expect(stacked?.context).toBe("@container content (max-width: 78.75em)");
-    expect(stacked?.body).toContain("flex-basis: 100%");
-    expect(78.75 * 13).toBeCloseTo(1024, 0);
+    expect(stacked).toBeUndefined();
+    expect(rule(".keys-page__top")).toContain("flex-wrap: wrap");
     expect(keysCss).not.toMatch(/@media/);
+  });
+
+  it("keeps Sources, the wheel and the tracks side by side on the smallest windows (B21)", () => {
+    const small = parseRules(stripComments(keysCss)).filter((r) => r.context === "@container content (max-width: 72em)");
+    expect(small.find((r) => r.selector === ".keys-sources")?.body).toContain(
+      "flex-basis: calc(150px * var(--scale) + var(--safe-left))",
+    );
+    expect(small.find((r) => r.selector === ".keys-page__tracks")?.body).toContain("flex: 1 1 calc(100px * var(--scale))");
   });
 
   it("makes the wheel and the list the same box, so switching moves nothing (C249)", () => {

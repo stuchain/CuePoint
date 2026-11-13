@@ -7,7 +7,7 @@
  * read like the sentences themselves, not tests that go through a render.
  */
 import { noteDiskFull } from "../../api/stripMessages";
-import { formatDayTime } from "../../format/dates";
+import { formatDayTime, formatTimeOfDay, toDate, type DateOptions } from "../../format/dates";
 import { countNoun, formatCount as groupCount } from "../../format/counts";
 import { UP_TO_DATE } from "../../format/words";
 import { formatTotal } from "../../format/durations";
@@ -44,6 +44,20 @@ export function formatWhen(iso: string | null | undefined): string {
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return iso;
   return formatDayTime(parsed);
+}
+
+/**
+ * When the export was read, for the Library header's "· read …" (B1): the time alone when it was
+ * today ("12:05 PM"), the day and time otherwise. The date beside a two-digit hour made the header
+ * wrap from 10:00 to 12:59.
+ */
+export function formatReadWhen(iso: string | null | undefined, options: DateOptions = {}): string {
+  const date = toDate(iso ?? null);
+  if (!date) return iso ?? "";
+  const now = options.now ?? new Date();
+  const today =
+    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+  return today ? formatTimeOfDay(date, options) : formatDayTime(date, options);
 }
 
 type SourceState = "missing" | "changed" | "unknown" | "unchanged";

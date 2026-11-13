@@ -223,6 +223,18 @@
   cursor: default;
 }
 
+/* B15: a rail below 2x that would scroll (data-snug, railSnug) draws its entries a twelfth shorter,
+   44 at Medium, and the closed rail's squares to match: at 1280 x 800 the zoomed waveform left it 4
+   short. 2x and up goes tight instead (M70). */
+.cp-sidebar[data-snug] .cp-sidebar__link,
+.cp-sidebar[data-snug] .cp-sidebar__search {
+  min-height: round(nearest, calc(var(--toolbar-height) * 11 / 12), 1px);
+}
+
+.cp-sidebar[data-snug].cp-sidebar--collapsed .cp-sidebar__link {
+  width: round(nearest, calc(var(--toolbar-height) * 11 / 12), 1px);
+}
+
 .cp-sidebar--collapsed .cp-sidebar__link {
   justify-content: center;
   /* A bar-tall square at every scale (M487). */

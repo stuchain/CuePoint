@@ -314,6 +314,9 @@ export function CandidatePanel({
   const yours = payload?.track ?? null;
   // Your track's length is not in the match payload: read the library's track for it.
   const [yourLength, setYourLength] = useState<{ trackId: number; seconds: number | null } | null>(null);
+  // B12: the keyboard keys are one "?" away, so the candidates start higher up.
+  const [keysShown, setKeysShown] = useState(false);
+  const keysId = useId();
   useEffect(() => {
     const read = window.cuepoint?.getLibraryTrack;
     if (!read) return;
@@ -539,31 +542,52 @@ export function CandidatePanel({
         </header>
 
         <div className="review-panel__scroll">
-          <p className="review-panel__hint">
-            Up and Down move along the tracks · 1–9 or ←/→ choose a match · Enter uses it · Backspace leaves the track
-            out · Esc closes
-          </p>
-
-          <section className="review-card" aria-label="Your track">
+          {/* B12: one compact row (small art, the title at body size, then who made it and its facts on
+              one muted line), so the Beatport candidates show without scrolling. */}
+          <section className="review-card review-card--compact" aria-label="Your track">
             <CardArt src={yourArt} />
             <div className="review-card__facts">
-              <p className="cp-text-label review-card__eyebrow">Your track · from your library</p>
+              <p className="cp-visually-hidden">Your track · from your library</p>
               <p className="review-card__title">{yours?.title ?? row.title}</p>
-              <p className="review-card__artists">{yours?.artist ?? row.artist}</p>
               <p className="review-card__line">
-                {factsLine({
-                  label: yours?.label,
-                  key: yours?.key,
-                  bpm: yours?.bpm,
-                  seconds: yourSeconds,
-                  year: yours?.year,
-                })}
+                {[
+                  yours?.artist ?? row.artist,
+                  factsLine({
+                    label: yours?.label,
+                    key: yours?.key,
+                    bpm: yours?.bpm,
+                    seconds: yourSeconds,
+                    year: yours?.year,
+                  }),
+                ]
+                  .filter(Boolean)
+                  .join(" \u00b7 ")}
               </p>
             </div>
             <PlayButton aria-label="Play your track" playing={false} onClick={playFile} />
           </section>
 
-          <h3 className="cp-text-label review-panel__eyebrow">Found on Beatport · pick the right one</h3>
+          {/* B12: the keyboard keys are one "?" away, beside the list they work on, so the candidates
+              start higher up; the header keeps its room for the title. */}
+          <div className="review-panel__eyebrow-row">
+            <h3 className="cp-text-label review-panel__eyebrow">Found on Beatport · pick the right one</h3>
+            <Button
+              variant="quiet"
+              size="sm"
+              className="review-panel__keys"
+              aria-label="Keyboard keys"
+              aria-expanded={keysShown}
+              aria-controls={keysId}
+              onClick={() => setKeysShown((shown) => !shown)}
+            >
+              ?
+            </Button>
+          </div>
+          <p className="review-panel__hint" id={keysId} hidden={!keysShown}>
+            Up and Down move along the tracks · 1–9 or ←/→ choose a match · Enter uses it · Backspace leaves the track
+            out · Esc closes
+          </p>
+
           {matches.error && (
             <Notice
               kind="danger"

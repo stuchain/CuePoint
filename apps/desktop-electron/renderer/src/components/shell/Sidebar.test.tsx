@@ -19,7 +19,7 @@ import { NAV_DESTINATIONS } from "./navRegistry";
 import sidebarCss from "./Sidebar.css?raw";
 import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
 import { HINT_HOVER_DELAY_MS } from "../Hint";
-import { SIDEBAR_COLLAPSED_STORAGE_KEY, neededHeightFor, railTight } from "./sidebarState";
+import { SIDEBAR_COLLAPSED_STORAGE_KEY, neededHeightFor, railSnug, railTight } from "./sidebarState";
 import { expectNoAxeViolations } from "../../test/axe";
 
 function renderSidebar(initialPath = "/") {
@@ -685,6 +685,18 @@ describe("a window too short for the rail (item 2, at 2x in 1264x735)", () => {
     expect(railTight(false, { overflow: 40, height: 600, needed: 0, scale: 3 })).toBe(true);
     // A pixel of rounding is not an overflow.
     expect(railTight(false, { overflow: 1, height: 600, needed: 0 })).toBe(false);
+  });
+
+  it("below 2x, a rail that would scroll draws its entries a twelfth shorter instead (B15)", () => {
+    expect(railSnug(false, { overflow: 4, height: 600, needed: 0, scale: 1.5 })).toBe(true);
+    expect(railSnug(false, { overflow: 1, height: 600, needed: 0, scale: 1.5 })).toBe(false);
+    expect(railSnug(true, { overflow: 0, height: 600, needed: 604, scale: 1.5 })).toBe(true);
+    expect(railSnug(true, { overflow: 0, height: 604, needed: 604, scale: 1.5 })).toBe(false);
+    // 2x and up goes tight instead.
+    expect(railSnug(false, { overflow: 40, height: 600, needed: 0, scale: 2 })).toBe(false);
+    expect(sidebarCss).toMatch(
+      /\.cp-sidebar\[data-snug\] \.cp-sidebar__link,\s*\.cp-sidebar\[data-snug\] \.cp-sidebar__search \{\s*min-height: round\(nearest, calc\(var\(--toolbar-height\) \* 11 \/ 12\), 1px\);/,
+    );
   });
 
   it("reads the text size from the rail and stays loose at 1.5x", () => {

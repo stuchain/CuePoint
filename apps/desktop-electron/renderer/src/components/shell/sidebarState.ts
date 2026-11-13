@@ -49,6 +49,19 @@ export function railTight(
 }
 
 /**
+ * B15: below 2x, where the rail never goes tight (M70), a rail that would scroll draws its entries a
+ * twelfth shorter instead (44 at Medium): at 1280 x 800 the zoomed waveform left it 4 short. Same
+ * rule as `railTight`: on once it would scroll, off only when the window is as tall as it needed.
+ */
+export function railSnug(
+  snug: boolean,
+  measure: { overflow: number; height: number; needed: number; scale?: number },
+): boolean {
+  if (measure.scale !== undefined && Number.isFinite(measure.scale) && measure.scale >= TIGHT_FROM_SCALE) return false;
+  return snug ? measure.height < measure.needed : measure.overflow > 1;
+}
+
+/**
  * The text size from which the rail may go tight (M70). At 1.5x in 1264x735 the rail used to
  * tighten with 251 px to spare, which made the targets smaller at a larger size.
  */

@@ -56,6 +56,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("the keyboard keys (B12)", () => {
+  it("are behind a ? button in the header, hidden until it is pressed", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    const keys = screen.getByRole("button", { name: "Keyboard keys" });
+    expect(keys).toHaveAttribute("aria-expanded", "false");
+    const hint = screen.getByText(/^Up and Down move along the tracks/);
+    expect(hint).not.toBeVisible();
+    await user.click(keys);
+    expect(keys).toHaveAttribute("aria-expanded", "true");
+    expect(hint).toBeVisible();
+  });
+});
+
 describe("the candidates", () => {
   it("opens focused, on your track card and every candidate with its facts, the one in use marked", async () => {
     renderPanel();
@@ -63,11 +77,12 @@ describe("the candidates", () => {
     expect(panel).toHaveFocus();
     expect(panel).toHaveClass("cp-side-panel");
     const card = within(panel).getByRole("region", { name: "Your track" });
-    // Labelled as yours, with a big title, the artists, and label, key and BPM (length and year when known).
-    expect(within(card).getByText("Your track \u00b7 from your library")).toBeInTheDocument();
+    // Labelled as yours (said, not drawn: B12's compact row), the title, then the artists with
+    // label, key and BPM on one line (length and year when known).
+    expect(within(card).getByText("Your track \u00b7 from your library")).toHaveClass("cp-visually-hidden");
+    expect(card).toHaveClass("review-card--compact");
     expect(within(card).getByText("Track 1")).toBeInTheDocument();
-    expect(within(card).getByText("Artist 1")).toBeInTheDocument();
-    expect(await within(card).findByText(/^Label One \u00b7 8A \u00b7 126 BPM/)).toBeInTheDocument();
+    expect(await within(card).findByText(/^Artist 1 \u00b7 Label One \u00b7 8A \u00b7 126 BPM/)).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Play your track" })).toBeInTheDocument();
     expect(within(panel).getByText("Found on Beatport \u00b7 pick the right one")).toBeInTheDocument();
     const list = await candidates();

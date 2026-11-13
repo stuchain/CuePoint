@@ -15,6 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
+import { Button } from "../../components/Button";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import {
   SOURCE_DEFAULT_WIDTH,
@@ -24,6 +25,18 @@ import {
   saveSourceWidth,
   sourceWidthBounds,
 } from "./prepareLayoutState";
+
+/**
+ * B14: under this window width the source panel folds away by itself, so the Set keeps its columns
+ * (at 1024 x 700 it showed only Title). A narrow button at the right edge opens it again.
+ */
+export const SOURCE_FOLD_BELOW = 1100;
+
+/** The window's width as the page draws it; a document with no layout (a test) is never narrow. */
+function isNarrowWindow(): boolean {
+  const width = document.documentElement.clientWidth;
+  return width > 0 && width < SOURCE_FOLD_BELOW;
+}
 
 interface PrepareLayoutProps {
   set: ReactNode;
@@ -57,6 +70,15 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
   const [paneWidth, setPaneWidth] = useState(() => window.innerWidth);
   const [dragging, setDragging] = useState(false);
   const hasSource = Boolean(source);
+  const [narrow, setNarrow] = useState(isNarrowWindow);
+  // Opened by hand on a narrow window; a window widened past the line shows it anyway.
+  const [unfolded, setUnfolded] = useState(false);
+  useEffect(() => {
+    const check = () => setNarrow(isNarrowWindow());
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  const folded = narrow && !unfolded;
 
   useEffect(() => {
     const measure = () => {
@@ -71,7 +93,7 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
       window.removeEventListener("resize", measure);
       observer?.disconnect();
     };
-  }, [hasSource, sourceHidden]);
+  }, [hasSource, sourceHidden, folded]);
 
   const width = clampSourceWidth(stored * scale, paneWidth, scale);
   // The divider says the range it moves in, from the same clamp (M359).
@@ -106,17 +128,32 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
       </div>
     );
   }
+  // Folded (B14): the Set, then one narrow column holding the button that opens the panel.
+  const fold = narrow && !sourceHidden;
+  const foldButton = fold ? (
+    <div className="prepare-layout__fold">
+      <Button
+        variant="secondary"
+        iconOnly
+        icon={folded ? "chevron-left" : "chevron-right"}
+        aria-label={folded ? "Show suggestions" : "Fold suggestions"}
+        aria-expanded={!folded}
+        onClick={() => setUnfolded(folded)}
+      />
+    </div>
+  ) : null;
   return (
     <div
       ref={box}
-      className={`prepare-layout${sourceHidden ? " prepare-layout--single" : ""}`}
+      className={`prepare-layout${sourceHidden ? " prepare-layout--single" : ""}${fold ? " prepare-layout--fold" : ""}${folded && !sourceHidden ? " prepare-layout--folded" : ""}`}
       style={{ ["--prepare-source-width" as string]: `${width}px` }}
     >
       <div className="prepare-layout__set" data-pane="set">
         {set}
       </div>
+      {foldButton}
       {/* The same three slots whether the source shows or not, so hiding it keeps its state. */}
-      {sourceHidden ? null : (
+      {sourceHidden || fold ? null : (
       <div
         className={`prepare-layout__divider${dragging ? " prepare-layout__divider--active" : ""}`}
         role="separator"
@@ -144,7 +181,7 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
         }}
       />
       )}
-      <div className="prepare-layout__source" hidden={sourceHidden}>
+      <div className="prepare-layout__source" hidden={sourceHidden || folded}>
         {source}
       </div>
     </div>

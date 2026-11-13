@@ -10,9 +10,16 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { PrepareLayout } from "./PrepareLayout";
 import { SOURCE_DEFAULT_WIDTH, SOURCE_MIN_WIDTH, SOURCE_WIDTH_STORAGE_KEY } from "./prepareLayoutState";
 
+/** The window's width as the page reads it (B14), on the root element alone. */
+function windowWidth(width: number) {
+  Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, get: () => width });
+}
+
 afterEach(() => {
+  delete (document.documentElement as { clientWidth?: number }).clientWidth;
   localStorage.clear();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 /** The layout at a text scale (the scale is stored by the Settings page and read by the provider). */
@@ -32,14 +39,15 @@ function divider() {
 
 describe("the layout", () => {
   it("draws a fresh and a migrated width the same at any size, both in 1x units (C209)", () => {
-    expect(SOURCE_DEFAULT_WIDTH).toBe(240);
+    // B17: 313, 470 at Medium (was 240, 360 px, which cut the suggestions' titles).
+    expect(SOURCE_DEFAULT_WIDTH).toBe(313);
     expect(SOURCE_MIN_WIDTH).toBe(160);
     const { unmount } = renderAtScale(1.5, true, 2400);
     const fresh = divider().getAttribute("aria-valuenow");
-    expect(fresh).toBe(String(SOURCE_DEFAULT_WIDTH * 1.5));
+    expect(fresh).toBe("470");
     unmount();
-    // The old default, 360 px, read at the same size.
-    localStorage.setItem(SOURCE_WIDTH_STORAGE_KEY, "360");
+    // A width saved as pixels by an older version, read at the same size, is kept as chosen.
+    localStorage.setItem(SOURCE_WIDTH_STORAGE_KEY, "470");
     renderAtScale(1.5, true, 2400);
     expect(divider().getAttribute("aria-valuenow")).toBe(fresh);
   });
@@ -71,6 +79,19 @@ describe("the layout", () => {
     // Mounted, so what was picked in it survives, but not shown: one right-hand panel at a time.
     expect(screen.getByText("the source", { selector: "p" })).not.toBeVisible();
     expect(container.querySelector(".prepare-layout--single")).not.toBeNull();
+  });
+
+  it("folds the source panel away on a window under 1100 wide, with a button that opens it (B14)", () => {
+    windowWidth(1024);
+    const { container } = renderAtScale(1.5, true, 1024);
+    expect(screen.queryByRole("separator")).toBeNull();
+    expect(screen.getByText("the source", { selector: "p" })).not.toBeVisible();
+    expect(container.querySelector(".prepare-layout--folded")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show suggestions" }));
+    expect(screen.getByText("the source", { selector: "p" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Fold suggestions" })).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Fold suggestions" }));
+    expect(screen.getByText("the source", { selector: "p" })).not.toBeVisible();
   });
 
   it("gives the Set the width, with no divider, when there is no source panel", () => {
@@ -137,6 +158,8 @@ describe("the layout", () => {
     // the two panes share far less. A remembered 500 is clamped to 45% of it.
     localStorage.setItem(SOURCE_WIDTH_STORAGE_KEY, "500");
     const spy = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(620);
+    // The window itself is wide enough that the panel does not fold (B14).
+    windowWidth(1200);
     try {
       renderAtScale(1);
       expect(divider()).toHaveAttribute("aria-valuenow", String(Math.floor(620 * 0.45)));

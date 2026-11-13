@@ -5,8 +5,11 @@
 export const SOURCE_WIDTH_STORAGE_KEY = "cuepoint-prepare-source-width";
 /** Narrower than this and a source row cannot show a title and its reasons. In 1x units (C209), drawn times the scale. */
 export const SOURCE_MIN_WIDTH = 160;
-/** In 1x units too, so a fresh and a migrated person draw the same width at any size. */
-export const SOURCE_DEFAULT_WIDTH = 240;
+/**
+ * In 1x units too, so a fresh and a migrated person draw the same width at any size. 313 is 470 at
+ * Medium (B17: at 240, 360 px, titles cut to "Lunar Ar…" and the BPM change heading was cut).
+ */
+export const SOURCE_DEFAULT_WIDTH = 313;
 /** The Set stays the wider pane (DEC-112). */
 const SOURCE_MAX_FRACTION = 0.45;
 /** How far an arrow key moves the divider. */

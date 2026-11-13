@@ -21,6 +21,23 @@ describe("Library figures (P15)", () => {
     expect(css).not.toContain(".library-figures__cell:first-child");
   });
 
+  it("lays the four cards out four in a row or two by two, never three and one (B24)", () => {
+    const grid = body(".library-figures").replace(/\s+/g, " ");
+    expect(grid).toContain("--figures-four: calc(4 * 140px * var(--scale) + 3 * var(--gap-box));");
+    expect(grid).toContain(
+      "repeat( auto-fill, minmax( max( calc((100% - 3 * var(--gap-box)) / 4), min(calc((100% - var(--gap-box)) / 2), calc((var(--figures-four) - 100%) * 1000)) ), 1fr ) )",
+    );
+    // The same track, worked through at Medium (scale 1.5, gap 20): how many columns auto-fill makes.
+    const gap = 20;
+    const four = 4 * 140 * 1.5 + 3 * gap;
+    const columns = (width: number) => {
+      const track = Math.max((width - 3 * gap) / 4, Math.min((width - gap) / 2, (four - width) * 1000));
+      return Math.max(1, Math.floor((width + gap) / (track + gap)));
+    };
+    for (const width of [600, 760, 880, 899]) expect(columns(width)).toBe(2);
+    for (const width of [900, 1000, 1040, 1400]) expect(columns(width)).toBe(4);
+  });
+
   it("sets the value in Inter semibold, tabular, at the figure size", () => {
     const value = body(".library-figures__value");
     expect(value).toMatch(/font-family:\s*var\(--font-data\)/);

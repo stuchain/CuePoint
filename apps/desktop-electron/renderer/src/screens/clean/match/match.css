@@ -481,6 +481,14 @@
   margin: 0;
 }
 
+/* B12: the list's eyebrow with the "?" that shows the keyboard keys at its end. */
+.review-panel__eyebrow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
 /* Your track: the art, its facts, and a button to hear it. A bar on its left edge says it is yours. */
 .review-card {
   display: flex;
@@ -510,10 +518,6 @@
   overflow-wrap: anywhere;
 }
 
-.review-card__artists {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
 
 .review-card__line {
   margin: 0;
@@ -521,6 +525,24 @@
   font-family: var(--font-data);
   font-size: var(--control-font-size);
   overflow-wrap: anywhere;
+}
+
+/* B12: the compact row. The art is two thirds of a row's art, the title at body size, one line each. */
+.review-card--compact {
+  padding-block: var(--space-sm);
+}
+
+.review-card--compact .review-panel__art {
+  width: calc(24px * var(--scale));
+  height: calc(24px * var(--scale));
+}
+
+.review-card--compact .review-card__facts {
+  gap: var(--space-2xs);
+}
+
+.review-card--compact .review-card__title {
+  font-size: var(--text-body);
 }
 
 .review-card__score--refused {

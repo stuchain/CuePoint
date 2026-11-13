@@ -417,13 +417,12 @@
   flex: 1 1 calc(300px * var(--scale));
   min-width: 0;
   margin: 0;
-  overflow: hidden;
   color: var(--fg-primary);
-  /* Body size, and the figures in the data face like a table's. */
+  /* Body size, and the figures in the data face like a table's. It wraps to a second line rather
+     than cutting "from the last 3…" on a small window (B14). */
   font-family: var(--font-data);
   font-size: var(--text-body);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .discover-new__summary strong {

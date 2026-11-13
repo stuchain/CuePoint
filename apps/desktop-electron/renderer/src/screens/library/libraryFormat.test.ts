@@ -22,6 +22,7 @@ import {
   formatBpmRange,
   formatCount,
   formatLength,
+  formatReadWhen,
   formatWhen,
   jobErrorMessage,
   needsReferenceConfirmation,
@@ -549,5 +550,19 @@ describe("refreshedWords (M516)", () => {
       "Library refreshed: 12 added · 2 removed",
     );
     expect(refreshedWords(base)).toBe("Library refreshed.");
+  });
+});
+
+describe("formatReadWhen (B1)", () => {
+  const now = new Date(2026, 10, 13, 15, 0);
+  it("says only the time when the export was read today", () => {
+    expect(formatReadWhen(new Date(2026, 10, 13, 12, 5).toISOString(), { now, locale: "en-US" })).toBe("12:05 PM");
+  });
+  it("keeps the day for an older read", () => {
+    expect(formatReadWhen(new Date(2026, 10, 12, 12, 5).toISOString(), { now, locale: "en-US" })).toBe("Nov 12, 12:05 PM");
+  });
+  it("passes through what is not a date", () => {
+    expect(formatReadWhen("not a date")).toBe("not a date");
+    expect(formatReadWhen(null)).toBe("");
   });
 });

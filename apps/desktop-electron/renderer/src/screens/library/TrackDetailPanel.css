@@ -170,6 +170,23 @@
   padding: 0 var(--space-sm);
 }
 
+/* B11: with no key, "Match on Beatport" takes the row under the Key label, so it reads on one line
+   instead of one letter per line in the value column. */
+.cp-track-detail__fact--key-match .cp-track-detail__factvalue {
+  grid-column: 1 / -1;
+}
+
+.cp-track-detail__fact--key-match .cp-track-detail__file {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-md);
+}
+
+.cp-track-detail__fact--key-match .cp-link {
+  white-space: nowrap;
+}
+
 .cp-track-detail__tabpanel {
   display: flex;
   flex-direction: column;
