@@ -1,8 +1,8 @@
 /**
  * The Discover page (DISCOVER-10, DEC-021, DEC-091…DEC-093, FLW-15).
  *
- * Three tabs, the one last used remembered: New search, Results (the past
- * searches) and Wantlist. Everything the page shows is DISCOVER-09's wire:
+ * Four tabs, the one last used remembered: New search, Results (the past
+ * searches), Wantlist and Following. Everything the page shows is DISCOVER-09's wire:
  * `options` when it opens, the searches and their tracks, the wantlist; every
  * action is one of its routes. It adds surface, not rules. "Run" is the
  * engine's word for a search and is never shown (DSC-2).
@@ -37,6 +37,7 @@ import {
   useReportReadError,
   useSharedRead,
 } from "../../api/sharedReads";
+import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
@@ -47,11 +48,14 @@ import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
+import { formatCount } from "../../format/counts";
 import { RETRY, STATUS_STRIP } from "../../format/words";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
+import { usePageActive } from "../../components/shell/pageActive";
 import { libraryImportState } from "../library/libraryLink";
 import { NewRunPanel } from "./NewRunPanel";
 import { PlaylistNotice, type PlaylistOutcome } from "./PlaylistNotice";
+import { FollowingView } from "./FollowingView";
 import { RunsView } from "./RunsView";
 import { WantlistView } from "./WantlistView";
 import { beatportNotice, beatportUsable, refusalState, unusableReason } from "./beatportState";
@@ -112,6 +116,24 @@ export function DiscoverScreen() {
   } | null>(null);
   const [runsVersion, setRunsVersion] = useState(0);
   const [pushNotice, setPushNotice] = useState<PlaylistOutcome | null>(null);
+  // New tracks from the artists and labels followed: the Following tab's count. Read from the
+  // cache when the page opens, and told again by the tab when it reads or marks them.
+  const [followsNew, setFollowsNew] = useState(0);
+  useEffect(() => {
+    const bridge = window.cuepoint?.getFollows;
+    if (!bridge) return;
+    let live = true;
+    void bridge()
+      .then((answer) => {
+        if (live && !answer.refusal) setFollowsNew(answer.value.new_count);
+      })
+      .catch(reportUnexpected);
+    return () => {
+      live = false;
+    };
+  }, []);
+  // A tab on a page that is hidden is not on screen, so it counts as left (usePageActive).
+  const pageActive = usePageActive();
 
   // Which tabs show rows of tracks (M490): the Details slot is filled only while one is showing, so
   // an empty Results, New dig or an empty Wantlist has no Details button for nothing.
@@ -486,7 +508,18 @@ export function DiscoverScreen() {
         facts={discoverFacts(tools.options)}
         tabs={
           <Tabs
-            tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
+            tabs={DISCOVER_SECTIONS.map((entry) => ({
+              id: entry.id,
+              label: entry.label,
+              // The count of new tracks after the name, in the tinted chip; the words are for a screen reader.
+              detail:
+                entry.id === "following" && followsNew > 0 ? (
+                  <Badge variant="accent">
+                    {formatCount(followsNew)}
+                    <span className="cp-visually-hidden">{" new tracks"}</span>
+                  </Badge>
+                ) : undefined,
+            }))}
             activeId={section}
             onChange={choose}
             // M474: the tabs name their panels, and the strip has a name.
@@ -564,6 +597,21 @@ export function DiscoverScreen() {
             className="discover-screen__panel"
           >
             <WantlistView tools={tools} onHasRows={wantlistHasRows} />
+          </div>
+        )}
+        {seen.has("following") && (
+          <div
+            role="tabpanel"
+            id={panelId(DISCOVER_TABS, "following")}
+            aria-labelledby={tabId(DISCOVER_TABS, "following")}
+            hidden={section !== "following"}
+            className="discover-screen__panel"
+          >
+            <FollowingView
+              tools={tools}
+              active={section === "following" && pageActive}
+              onNewCount={setFollowsNew}
+            />
           </div>
         )}
       </div>

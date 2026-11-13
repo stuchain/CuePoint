@@ -1002,3 +1002,42 @@ describe("the Inspector on a page", () => {
     await waitFor(() => expect(within(library).queryByText("1 selected")).toBeNull());
   });
 });
+
+describe("Follow (DEC-317)", () => {
+  it("is absent on a page that is not followable", async () => {
+    renderAt(entityPath("artist", "name:Kiko"));
+    await opened("Kiko");
+    expect(screen.queryByRole("button", { name: /^Follow/ })).toBeNull();
+  });
+
+  it("follows and unfollows from the header, with the name from the title", async () => {
+    install({
+      addFollow: vi.fn(async () => value({ changed: true, followed: true })),
+      removeFollow: vi.fn(async () => value({ changed: true, followed: false })),
+    });
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Mara Veil");
+    const button = await screen.findByRole("button", { name: "Follow" });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(mock("addFollow")).toHaveBeenCalledWith({ kind: "artist", beatport_id: 301001, name: "Mara Veil" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Following" }));
+    await waitFor(() =>
+      expect(mock("removeFollow")).toHaveBeenCalledWith({ kind: "artist", beatport_id: 301001 }),
+    );
+    expect(await screen.findByRole("button", { name: "Follow" })).toBeInTheDocument();
+  });
+
+  it("starts as Following when the page says it is", async () => {
+    install({
+      getEntityPage: vi.fn(async () => {
+        const page = pages.page_artist_id as unknown as DiscoverAnswer<EntityPage>;
+        return { ...page, value: { ...page.value!, followed: true } };
+      }),
+    });
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Mara Veil");
+    expect(await screen.findByRole("button", { name: "Following" })).toBeInTheDocument();
+  });
+});

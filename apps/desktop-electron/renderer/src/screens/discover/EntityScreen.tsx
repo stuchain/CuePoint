@@ -47,6 +47,7 @@ import { useCollectionTree } from "../library/useCollectionTree";
 import { useFilterVocabulary } from "../library/useFilterVocabulary";
 import { useTrackDetail } from "../library/useTrackDetail";
 import { BeatportHalf } from "./BeatportHalf";
+import { FollowButton } from "./FollowButton";
 import { LibraryHalf } from "./LibraryHalf";
 import { entityPath, nameRef, originState, pageOrigin, similarPath } from "./discoverLinks";
 import { PageCrumb } from "./PageCrumb";
@@ -283,6 +284,14 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
             >
               {goTo("Library")}
             </LinkButton>
+            {shown.followable && shown.beatport_id !== null && (
+              <FollowButton
+                kind={shown.kind}
+                beatportId={shown.beatport_id}
+                name={pageTitle(shown)}
+                followed={shown.followed}
+              />
+            )}
             <Button
               variant="secondary"
               disabled={!window.cuepoint?.saveSmartCollection}

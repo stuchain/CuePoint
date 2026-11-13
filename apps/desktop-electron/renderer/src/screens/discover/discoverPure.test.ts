@@ -93,11 +93,12 @@ function refusal(code: DiscoverRefusal["code"], extra: Partial<DiscoverRefusal> 
 afterEach(() => localStorage.clear());
 
 describe("the remembered tab", () => {
-  it("has the three tabs FLW-15 names, and never says Run", () => {
+  it("has the four tabs FLW-15 and the follows name, and never says Run", () => {
     expect(DISCOVER_SECTIONS.map((section) => section.label)).toEqual([
       "Results",
       "New dig",
       "Wantlist",
+      "Following",
     ]);
   });
 

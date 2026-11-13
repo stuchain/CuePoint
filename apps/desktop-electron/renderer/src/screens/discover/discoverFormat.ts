@@ -27,7 +27,7 @@ import type { HeaderFacts } from "../../components/shell/ScreenHeader";
  * A calendar day the engine wrote as "2026-09-01". Read as that day on this computer, not as
  * midnight UTC, which is the evening before west of Greenwich.
  */
-function calendarDay(value: string | null | undefined): Date | string | null {
+export function calendarDay(value: string | null | undefined): Date | string | null {
   if (!value) return null;
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : value;

@@ -264,10 +264,10 @@ afterEach(() => {
 });
 
 describe("the page", () => {
-  it("opens on Results with the three tabs, and remembers the one last used", async () => {
+  it("opens on Results with the four tabs, and remembers the one last used", async () => {
     const first = renderDiscover();
     const tabs = await screen.findAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["Results", "New dig", "Wantlist"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Results", "New dig", "Wantlist", "Following"]);
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
     fireEvent.click(tabs[2]!);
     expect(localStorage.getItem(DISCOVER_SECTION_STORAGE_KEY)).toBe("wantlist");
@@ -1690,5 +1690,89 @@ describe("Discover accessibility (HARDEN-08)", () => {
     await waitFor(() => expect(rowsOf("Wantlist").length).toBeGreaterThan(0), LOADED);
     expect(actionsBar("Wantlist")).toBeInTheDocument();
     await expectNoAxeViolations();
+  });
+});
+
+describe("the Following tab", () => {
+  const followsList = (count: number) =>
+    vi.fn(async () => value({ follows: [], new_count: count }));
+
+  it("shows a count of new tracks after the name when there are some", async () => {
+    install({ getFollows: followsList(14) });
+    renderDiscover();
+    const tab = await screen.findByRole("tab", { name: /^Following/ });
+    await waitFor(() => expect(tab).toHaveTextContent("14"), LOADED);
+  });
+
+  it("shows no count when nothing is new, or when the follows cannot be read", async () => {
+    install({ getFollows: followsList(0) });
+    const first = renderDiscover();
+    await screen.findByRole("tab", { name: "Following" });
+    await waitFor(() => expect(bridge.getFollows).toHaveBeenCalled());
+    expect(screen.getByRole("tab", { name: "Following" }).textContent).toBe("Following");
+    first.unmount();
+
+    install({ getFollows: vi.fn().mockRejectedValue(new Error("offline")) });
+    renderDiscover();
+    expect((await screen.findByRole("tab", { name: "Following" })).textContent).toBe("Following");
+  });
+
+  it("opens on the suggestions with nobody followed, and remembers the tab", async () => {
+    install({
+      getFollows: followsList(0),
+      getFollowSuggestions: vi.fn(async () =>
+        value({
+          suggestions: [{ kind: "artist", beatport_id: 1, name: "Amsel", track_count: 42, followed: false }],
+        }),
+      ),
+    });
+    renderDiscover();
+    fireEvent.click(await screen.findByRole("tab", { name: "Following" }));
+    expect(localStorage.getItem(DISCOVER_SECTION_STORAGE_KEY)).toBe("following");
+    expect(await screen.findByRole("heading", { name: "Follow artists and labels" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Follow Amsel" })).toBeInTheDocument();
+  });
+
+  it("marks what was new as seen once, when another tab is chosen", async () => {
+    const amsel = {
+      kind: "artist",
+      beatport_id: 1,
+      name: "Amsel",
+      followed_at: "2026-11-01T00:00:00Z",
+      seen_through: "2026-11-06",
+      new_count: 2,
+      checked_at: null,
+      state: null,
+    };
+    install({
+      getFollows: vi.fn(async () => value({ follows: [amsel], new_count: 2 })),
+      getFollowFeed: vi.fn(async () =>
+        value({
+          rows: [],
+          total: 0,
+          hidden_owned: 0,
+          checked_at: null,
+          unchecked: 0,
+          states: [],
+          follow_count: 1,
+          window: { kind: null, beatport_id: null, owned: "hide", offset: 0, limit: 100 },
+        }),
+      ),
+      startFollowsCheck: vi.fn(async () => value({ id: "job-follows", type: "follows_check", state: "queued" })),
+      markFollowsSeen: vi.fn(async () => value({ changed: 1, seen_through: "2026-11-13" })),
+    });
+    renderDiscover();
+    fireEvent.click(await screen.findByRole("tab", { name: /^Following/ }));
+    await screen.findByRole("navigation", { name: "Followed artists and labels" }, LOADED);
+    expect(bridge.markFollowsSeen).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Wantlist" }));
+    await waitFor(() => expect(bridge.markFollowsSeen).toHaveBeenCalledTimes(1));
+    expect(bridge.markFollowsSeen).toHaveBeenCalledWith({});
+    // The count after the name goes with it.
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Following" })).toBeInTheDocument(), LOADED);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Results" }));
+    expect(bridge.markFollowsSeen).toHaveBeenCalledTimes(1);
   });
 });

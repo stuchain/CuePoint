@@ -10,7 +10,7 @@ It works on the library you imported on the [Library](library.md) page, so
 import a collection first. It reads Beatport as you, once you sign in to Beatport (see
 [Signing in to Beatport](#signing-in-to-beatport)).
 
-Discover has three tabs, **New dig**, **Results** and **Wantlist**, and
+Discover has four tabs, **New dig**, **Results**, **Wantlist** and **Following**, and
 reopens on the tab you used last. From any artist or label name in a table you
 can open that [artist's or label's page](#artist-and-label-pages), and from a
 track's details in the Library you can open its
@@ -194,6 +194,25 @@ library once you import the file and Clean matches it. One line counts the
 wanted tracks, how many are marked bought and how many are in your library.
 
 An empty wantlist shows its icon and a short note on how to fill it (use **Add to wantlist** on a dig's results); its filters and table appear once it holds a track. Every empty list on the page, and every "could not be read", is drawn the same way: an icon, one line without a full stop, and at most one button.
+
+## Following
+
+The **Following** tab keeps up with the artists and labels you choose. The first time you open it,
+it lists the names you own the most tracks by, each with its own **Follow** button; only names
+already linked to one Beatport artist or label are offered. Follow some, then choose **Show what's
+new**. After that, **Follow** sits on every artist and label page, and the same button there says
+**Following** and unfollows.
+
+Once you follow someone, the tab is a list of them at the left and their new tracks at the right,
+newest release first. Opening the tab shows what is already saved at once and checks Beatport for
+each name, one request each, so the list updates by itself when the check ends; **Check again**
+asks Beatport again right away. **All** shows everything, and choosing a name shows only theirs;
+with a name chosen, **Unfollow** appears under the list. "New" means released since you last
+looked: leaving the tab marks what was shown as seen, so the count after **Following** in the tab
+strip goes back to nothing. Tracks you own are hidden by default, with the same switch the other
+tables have, and the status line says how many are hidden. A name Beatport could not be read for
+says so in the list. Checking needs a Beatport sign-in. The tracks work like any Discover table:
+play a preview, add to the wantlist, add to a Beatport playlist, or open on Beatport.
 
 ## What you can do with Beatport tracks
 

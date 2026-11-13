@@ -1,0 +1,164 @@
+/* The Following tab: a list of who is followed, and what is new from them. */
+
+.discover-following {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  flex: 1 0 auto;
+  min-height: 100%;
+  min-width: 0;
+}
+
+/* First use: the names offered, in one panel, and the one main button under it. */
+.discover-following--first {
+  max-width: calc(720px * var(--scale));
+}
+
+.discover-following__suggest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--bg-panel);
+}
+
+.discover-following__suggestions,
+.discover-following__groups,
+.discover-following__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.discover-following__suggestion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(64px * var(--scale)) calc(130px * var(--scale)) auto;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xs) 0;
+  border-bottom: var(--divider);
+}
+
+.discover-following__suggestion:last-child {
+  border-bottom: 0;
+}
+
+.discover-following__kind,
+.discover-following__tracks,
+.discover-following__quiet {
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.discover-following__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discover-following__more,
+.discover-following__go {
+  display: flex;
+}
+
+.discover-following__go {
+  justify-content: flex-end;
+}
+
+/* The feed: the list at the left, the table at the right. */
+.discover-following--feed {
+  display: grid;
+  grid-template-columns: minmax(calc(220px * var(--scale)), min(22%, calc(300px * var(--scale)))) minmax(0, 1fr);
+  column-gap: var(--space-xl);
+  align-items: start;
+}
+
+.discover-following__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.discover-following__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+}
+
+.discover-following__heading {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0 var(--space-md);
+  font-family: var(--font-voice);
+  font-size: var(--font-size-sm);
+  font-weight: normal;
+}
+
+.discover-following__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  text-align: left;
+  cursor: default;
+}
+
+.discover-following__item:hover {
+  background: var(--bg-panel);
+}
+
+.discover-following__item:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
+}
+
+.discover-following__item--selected,
+.discover-following__item--selected:hover {
+  background: var(--selected-row-background);
+  background-origin: border-box;
+}
+
+/* Why a follow could not be checked: a muted line of its own under the name. */
+.discover-following__problem {
+  grid-column: 1 / -1;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.discover-following__unfollow {
+  align-self: flex-start;
+  margin-top: var(--space-md);
+}
+
+.discover-following__feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+  min-height: 0;
+}
+
+.discover-following__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.discover-following__status {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-sm);
+}

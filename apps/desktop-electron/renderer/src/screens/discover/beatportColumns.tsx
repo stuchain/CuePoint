@@ -14,6 +14,7 @@
  * by has no `sortKey`. Each table keeps its own layout (DEC-042).
  */
 import type {
+  FollowFeedRow,
   BeatportTrackRow,
   DiscoverRunTrackRow,
   WantlistRow,
@@ -48,6 +49,7 @@ export function beatportGenres(raw: string | null | undefined): string[] {
 
 export const RUN_TABLE_LAYOUT_KEY = "cuepoint-discover-run-table-layout";
 export const WANTLIST_TABLE_LAYOUT_KEY = "cuepoint-discover-wantlist-table-layout";
+export const FOLLOW_TABLE_LAYOUT_KEY = "cuepoint-discover-following-layout";
 export const ENTITY_TABLE_LAYOUT_KEY = "cuepoint-discover-page-beatport-layout";
 
 /**
@@ -236,6 +238,22 @@ export const ENTITY_COLUMNS: readonly TrackColumnDef<BeatportTrackRow>[] = [
   ...sharedColumns<BeatportTrackRow>().map(({ sortKey: _engineOrder, ...column }) => column),
   ownedColumn<BeatportTrackRow>(),
   wantedColumn<BeatportTrackRow>(),
+];
+
+/**
+ * The Following tab's feed: the shared columns with the label and the release date up front, as
+ * the mockup shows them. The engine orders it newest release first and takes no other order, so no
+ * heading asks it to; the headings still sort the rows held, as on an artist's page.
+ */
+const FOLLOW_ORDER = ["title", "artists", "label", "release_date", "key", "bpm", "genre", "release"];
+const FOLLOW_SHOWN = new Set(["label", "release_date"]);
+export const FOLLOW_COLUMNS: readonly TrackColumnDef<FollowFeedRow>[] = [
+  ...FOLLOW_ORDER.map((id) => sharedColumns<FollowFeedRow>().find((column) => column.id === id)!).map(
+    ({ sortKey: _engineOrder, hiddenByDefault, ...column }) =>
+      FOLLOW_SHOWN.has(column.id) ? column : { ...column, ...(hiddenByDefault ? { hiddenByDefault } : {}) },
+  ),
+  ownedColumn<FollowFeedRow>(),
+  wantedColumn<FollowFeedRow>(),
 ];
 
 export const WANTLIST_COLUMNS: readonly TrackColumnDef<WantlistRow>[] = [
