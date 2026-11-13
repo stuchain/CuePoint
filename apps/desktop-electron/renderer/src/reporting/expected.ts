@@ -53,6 +53,8 @@ export const EXPECTED_JOB_ERROR_CODES: readonly string[] = [
   "DB_SCHEMA_TOO_NEW",
   // A route's 500 the user owns (`EXPECTED_ROUTE_ERROR_CODES`).
   "SET_LIST_WRITE_FAILED",
+  // Prepare's reads found the library held by a writer past the wait (PYTHON-1M).
+  "LIBRARY_BUSY",
   // The library's own states (HARDEN-03): a full disk, no room to upgrade, an upgrade waiting for
   // "Try again" or still running. Not `DB_UNREADABLE` or `DB_MIGRATION_FAILED`: those are reported.
   "R002",
