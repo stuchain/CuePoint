@@ -29,6 +29,7 @@ import contextlib
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import IO, Any, Iterable, Iterator, List, Sequence, Union
 
@@ -152,12 +153,55 @@ def fsync_file(path: PathLike) -> None:
         os.close(descriptor)
 
 
+#: The waits between tries of a replace Windows refused as busy: about a second in all,
+#: the same as the Electron side's ``BUSY_RETRY_DELAYS_MS`` (``electron/atomicWrite.ts``).
+BUSY_RETRY_DELAYS_S: tuple[float, ...] = (0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.37)
+
+# ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION, ERROR_LOCK_VIOLATION.
+_BUSY_WINERRORS = frozenset({5, 32, 33})
+
+
+def _is_busy(error: OSError, platform: str) -> bool:
+    """A refusal Windows gives while another program holds the target for a moment."""
+    if platform != "win32":
+        return False
+    winerror = getattr(error, "winerror", None)
+    return isinstance(error, PermissionError) or winerror in _BUSY_WINERRORS
+
+
+def replace_retrying(
+    temp: PathLike,
+    path: PathLike,
+    *,
+    platform: str | None = None,
+    sleep: Any = None,
+) -> None:
+    """``os.replace``, tried again while Windows says the target is busy (B7).
+
+    An antivirus scan, Explorer's preview or the search indexer can hold a file
+    for a moment, and the replace then fails with "Access is denied". It is
+    tried again for about a second before the error is raised. Elsewhere, and
+    for any other error, the first failure is raised at once.
+    """
+    platform = sys.platform if platform is None else platform
+    sleep = time.sleep if sleep is None else sleep
+    for attempt in range(len(BUSY_RETRY_DELAYS_S) + 1):
+        try:
+            os.replace(temp, path)
+            return
+        except OSError as error:
+            if not _is_busy(error, platform) or attempt >= len(BUSY_RETRY_DELAYS_S):
+                raise
+            sleep(BUSY_RETRY_DELAYS_S[attempt])
+
+
 def commit_temp(temp: PathLike, path: PathLike) -> None:
     """Put the temporary file in place of ``path``, then ``fsync`` the folder.
 
+    On Windows a target held for a moment is tried again (:func:`replace_retrying`).
     The temporary file is not removed on failure; the caller discards it.
     """
-    os.replace(temp, path)
+    replace_retrying(temp, path)
     fsync_folder(Path(path).parent)
 
 
