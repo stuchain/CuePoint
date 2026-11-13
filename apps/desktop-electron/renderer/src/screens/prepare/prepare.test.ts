@@ -573,9 +573,9 @@ describe("the divider's width", () => {
 
   it("keeps its floor and default in 1x units, drawn times the scale (C209)", () => {
     expect(SOURCE_MIN_WIDTH).toBe(160);
-    expect(SOURCE_DEFAULT_WIDTH).toBe(240);
+    expect(SOURCE_DEFAULT_WIDTH).toBe(313);
     expect(clampSourceWidth(100, 2400, 2)).toBe(320);
-    expect(clampSourceWidth(Number.NaN, 2400, 1.5)).toBe(360);
+    expect(clampSourceWidth(Number.NaN, 2400, 1.5)).toBe(470);
     expect(clampSourceWidth(500, 1000, 1.5)).toBe(450);
   });
 

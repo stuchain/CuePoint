@@ -486,7 +486,10 @@ export function TrackDetailPanel({
         "overview",
         <>
           <dl className="cp-facts cp-track-detail__facts" aria-label="Facts">
-            <div className="cp-track-detail__fact cp-track-detail__fact--key" data-testid="track-key">
+            <div
+              className={`cp-track-detail__fact cp-track-detail__fact--key${key === null && keyMatchOffered && track.id != null ? " cp-track-detail__fact--key-match" : ""}`}
+              data-testid="track-key"
+            >
               <dt className="cp-track-detail__factlabel">Key</dt>
               <dd className="cp-track-detail__factvalue">
                 {key !== null ? (

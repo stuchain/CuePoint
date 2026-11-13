@@ -208,10 +208,23 @@
   gap: var(--space-xl);
 }
 
-/* Four numbers, each on a card of its own (P15), a box gap apart; no frame. */
+/* Four numbers, each on a card of its own (P15), a box gap apart; no frame. B24: four in one row
+   while each card keeps 140 points, otherwise two by two, never three and a lone fourth. The track
+   is a quarter of the row at or above that width (the multiplied term is then 0 or less) and half
+   of it below (the multiplied term is then huge, so the half wins). */
 .library-figures {
+  --figures-four: calc(4 * 140px * var(--scale) + 3 * var(--gap-box));
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(calc(160px * var(--scale)), 1fr));
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(
+      max(
+        calc((100% - 3 * var(--gap-box)) / 4),
+        min(calc((100% - var(--gap-box)) / 2), calc((var(--figures-four) - 100%) * 1000))
+      ),
+      1fr
+    )
+  );
   gap: var(--gap-box);
   margin: 0;
   border: 0;

@@ -160,12 +160,12 @@ describe("the dig bar", () => {
     expect(grid?.compareDocumentPosition(bar)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it("is one line pinned at the foot of the form: the sentence cut short and Start", async () => {
+  it("is pinned at the foot of the form: the sentence, wrapping on a small window (B14), and Start", async () => {
     install([]);
     const panel = await renderPanel();
     const bar = within(panel).getByRole("group", { name: "Start a dig" });
     const summary = bar.querySelector(".discover-new__summary") as HTMLElement;
-    // Cut with an ellipsis: the app hint shows the whole sentence, so no native title is set.
+    // No native title: the sentence is shown whole.
     expect(summary).toHaveAttribute("data-cut-hint");
     expect(summary).not.toHaveAttribute("title");
     expect(summary.textContent).toContain("Dig charts in 0 genres");
@@ -181,7 +181,9 @@ describe("the dig bar", () => {
     expect(barRule).toContain("background: var(--bg-between)"); // P14 (was --bg-panel)
     expect(barRule).toContain("min-height: var(--toolbar-height)");
     expect(barRule).not.toMatch(/accent|color-mix|border: 1px/);
-    expect(css).toMatch(/\.discover-new__summary \{[^}]*text-overflow: ellipsis[^}]*white-space: nowrap/);
+    // B14: it wraps to a second line, never cut to "from the last 3…".
+    const summaryRule = /\.discover-new__summary \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(summaryRule).not.toMatch(/white-space: nowrap|text-overflow|overflow: hidden/);
     // The form, what to fix and the bar are one centred block (M181).
     expect(css).toMatch(/\.discover-new__body > \* \{[^}]*max-width:[^}]*margin-inline: auto/);
   });

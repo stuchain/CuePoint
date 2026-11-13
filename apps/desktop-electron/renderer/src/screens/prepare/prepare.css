@@ -186,7 +186,7 @@
 
 .prepare-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--space-xl) var(--prepare-source-width, 360px);
+  grid-template-columns: minmax(0, 1fr) var(--space-xl) var(--prepare-source-width, 470px);
   /* Page-edges B: the Set meets the sidebar's edge, as the Library's pane does (D36). The layout steps
      out over the page's left gutter and the Set's column takes it, so the side table keeps its place;
      the rows pad back in by the gutter (--track-table-edge) and the lanes and strip stay on the
@@ -199,6 +199,23 @@
 
 .prepare-layout--single {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* B14: under 1100 wide the source panel folds to a narrow column with the button that opens it; open,
+   the button stays in that column beside the panel (no divider: the panel keeps its width). */
+.prepare-layout--fold {
+  grid-template-columns: minmax(0, 1fr) auto var(--prepare-source-width, 470px);
+}
+
+.prepare-layout--folded {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.prepare-layout__fold {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-xs) var(--space-xs) 0;
 }
 
 .prepare-layout__set,

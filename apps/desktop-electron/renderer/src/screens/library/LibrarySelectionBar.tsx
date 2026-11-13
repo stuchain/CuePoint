@@ -54,6 +54,8 @@ export function LibrarySelectionBar({
 }: LibrarySelectionBarProps) {
   // How many of the groups before More are folded into it, counted from the end (M72).
   const [folded, setFolded] = useState(0);
+  // B14: with every group folded and More still past the bar's end, More shows as "•••" alone.
+  const [compact, setCompact] = useState(false);
   const foldable = groups.filter((group) => group.id !== "more").length;
   const hasMore = groups.some((group) => group.id === "more");
   const fold = hasMore ? Math.min(folded, foldable) : 0;
@@ -75,7 +77,11 @@ export function LibrarySelectionBar({
     if (!row || !bar || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       for (const button of row.querySelectorAll<HTMLElement>("[data-group]")) {
-        const width = button.offsetWidth;
+        // The "•••" More is not its labelled width: keep the label's, so it can come back.
+        if (button.dataset.compact === "true") continue;
+        // Its own width, not a squeezed one (B14): a button the row had already shrunk measured
+        // short, so nothing folded and the buttons drew over each other at 1024 wide.
+        const width = Math.max(button.offsetWidth, button.scrollWidth);
         if (width > 0) widths.current.set(button.dataset.group ?? "", width);
       }
       const style = getComputedStyle(bar);
@@ -106,12 +112,13 @@ export function LibrarySelectionBar({
       let next = 0;
       while (next < foldable && need(next) > room + hang) next += 1;
       setFolded(next);
+      setCompact(hasMore && need(foldable) > room + hang);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(bar);
     return () => observer.disconnect();
-  }, [foldable, groups, keys.ref]);
+  }, [foldable, groups, hasMore, keys.ref]);
 
   // The bar comes back with Tab landing on its first button, not wherever the arrows left it.
   useEffect(() => {
@@ -142,24 +149,29 @@ export function LibrarySelectionBar({
   return (
     <SelectionBar count={selected} onClear={onClear} overlay selectAll={selectAll}>
       <div ref={keys.ref} className="library-selection-bar__groups" onKeyDown={onKeyDown}>
-        {shownGroups.map((group, index) => (
-          <Hint key={group.id} text={group.disabledReason ?? undefined}>
-            <Button
-              variant="secondary"
-              menu
-              data-group={group.id}
-              aria-expanded={openGroup === group.id}
-              aria-disabled={group.disabledReason ? true : undefined}
-              {...keys.buttonProps(index)}
-              onClick={(event) => {
-                if (group.disabledReason) return;
-                open(group.id, event.currentTarget);
-              }}
-            >
-              {group.label}
-            </Button>
-          </Hint>
-        ))}
+        {shownGroups.map((group, index) => {
+          const shared = {
+            "data-group": group.id,
+            "aria-expanded": openGroup === group.id,
+            "aria-disabled": group.disabledReason ? true : undefined,
+            ...keys.buttonProps(index),
+            onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
+              if (group.disabledReason) return;
+              open(group.id, event.currentTarget);
+            },
+          };
+          return (
+            <Hint key={group.id} text={group.disabledReason ?? (compact && group.id === "more" ? group.label : undefined)}>
+              {compact && group.id === "more" ? (
+                <Button variant="secondary" {...shared} iconOnly icon="more" aria-label={group.label} aria-haspopup="menu" data-compact="true" />
+              ) : (
+                <Button variant="secondary" {...shared} menu>
+                  {group.label}
+                </Button>
+              )}
+            </Hint>
+          );
+        })}
         {describedByQuery && selected > 1 && (
           // Said, not drawn: the bar stays as short as "3 selected".
           <span className="cp-visually-hidden" role="status">

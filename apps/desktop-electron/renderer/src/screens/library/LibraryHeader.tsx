@@ -43,6 +43,7 @@ import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import type { LibraryPending, LibraryQuickFacets, LibrarySummary } from "../../api/cuepointBridge.types";
 import {
   fileName,
+  formatReadWhen,
   formatWhen,
   scopeFactsLine,
   sourceBadge,
@@ -367,7 +368,7 @@ export function LibraryHeader({
       )}
       {!readGone && (
         <span className="library-header__read" title={displayPath(source.xml_path, { keepHome: true })}>
-          · read {formatWhen(source.imported_at)}
+          · read {formatReadWhen(source.imported_at)}
         </span>
       )}
       {!needsLook && (

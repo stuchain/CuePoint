@@ -630,20 +630,20 @@ describe("the wheel in counts mode (PAGES-16)", () => {
     }
   });
 
-  it("sizes a cell from the text size: round(nearest, 6px * scale, 1px), at most 9px * scale (D12)", () => {
+  it("sizes a cell from the text size: round(nearest, 4px * scale, 1px), at most 11px * scale (D12, B16)", () => {
     const body = parseRules(stripComments(keysCss)).find((r) => r.selector === ".keys-page")!.body;
     // Moved for M168 (R4): the cell grows with the window's height from this least cell, which is
-    // still the text size's own (6 points, whole pixels); the 9-point cap became 11 with the plan.
+    // still the text size's own (4 points since B16, whole pixels); the 9-point cap became 11 with the plan.
     const least = /--keys-cell-least:\s*([^;]+);/.exec(body)![1]!;
-    expect(least).toBe("round(nearest, calc(6px * var(--scale)), 1px)");
+    expect(least).toBe("round(nearest, calc(4px * var(--scale)), 1px)");
     const cell = /--keys-cell:\s*([^;]+);/.exec(body)![1]!.replace(/\s+/g, " ");
     expect(cell).toMatch(/^clamp\( var\(--keys-cell-least\),/);
     // Never from the window's width: the width beside the tracks may only hold the growth back
     // (100cqw less what the row needs beside the wheel), never set the cell above its least.
     expect(cell).not.toMatch(/cqi|vw|%/);
-    // At each text size that is a whole pixel count (the 9 * scale cap is a ceiling the rounding never reaches).
-    const px = [1, 1.25, 1.5, 2, 3].map((scale) => Math.min(Math.round(6 * scale), 9 * scale));
-    expect(px).toEqual([6, 8, 9, 12, 18]);
+    // At each text size that is a whole pixel count: 6 at Medium, so the whole wheel shows at 1280 x 800.
+    const px = [1, 1.25, 1.5, 2, 3].map((scale) => Math.round(4 * scale));
+    expect(px).toEqual([4, 5, 6, 8, 12]);
     expect(px.every(Number.isInteger)).toBe(true);
   });
 

@@ -418,3 +418,17 @@ describe("focus when the page changes (item 14)", () => {
     expect(shellCss).toMatch(/\[data-pane\]:focus-visible/);
   });
 });
+
+describe("the queue and Track details on a small window (B22)", () => {
+  it("float over the page's right side under 1200 wide, taking no column from it", () => {
+    const rule = parseRules(stripComments(css)).find(
+      (r) => r.selector === ".app-shell__inspector" && r.context === "@media (max-width: 1199px)",
+    );
+    expect(rule).toBeDefined();
+    const decls = Object.fromEntries(declarations(rule!.body));
+    expect(decls["grid-column"]).toBe("2 / 4");
+    expect(decls["grid-row"]).toBe("1 / 3");
+    expect(decls["justify-self"]).toBe("end");
+    expect(decls["z-index"]).toBe("calc(var(--z-banner) + 1)");
+  });
+});

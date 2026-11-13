@@ -16,7 +16,7 @@ import { Kbd } from "../Kbd";
 import { isDialogOpen } from "./shellKeyboard";
 import { emitShellCommand, useShellCommand } from "./shellCommands";
 import { reportViewState } from "../../api/menuViewState";
-import { loadSidebarCollapsed, neededHeightFor, saveSidebarCollapsed, railTight } from "./sidebarState";
+import { loadSidebarCollapsed, neededHeightFor, saveSidebarCollapsed, railSnug, railTight } from "./sidebarState";
 import { useLibraryEmpty } from "./useLibraryPresence";
 import "./Sidebar.css";
 
@@ -159,6 +159,9 @@ export function Sidebar() {
   // What the loose rail needed when it tightened, for the mode (open or closed, text size) it was
   // measured in: a height from another mode is not trusted (neededHeightFor).
   const neededHeight = useRef<{ mode: string; height: number } | null>(null);
+  // B15: the same below 2x, where entries go a twelfth shorter instead (railSnug).
+  const [snug, setSnug] = useState(false);
+  const snugHeight = useRef<{ mode: string; height: number } | null>(null);
   const measureRail = useCallback(() => {
     const rail = navRef.current;
     const list = listRef.current;
@@ -170,7 +173,10 @@ export function Sidebar() {
     const next = railTight(tight, { overflow, height, needed: neededHeightFor(neededHeight.current, mode), scale });
     if (next && !tight) neededHeight.current = { mode, height: height + overflow };
     if (next !== tight) setTight(next);
-  }, [tight, collapsed]);
+    const nextSnug = railSnug(snug, { overflow, height, needed: neededHeightFor(snugHeight.current, mode), scale });
+    if (nextSnug && !snug) snugHeight.current = { mode, height: height + overflow };
+    if (nextSnug !== snug) setSnug(nextSnug);
+  }, [tight, snug, collapsed]);
   useLayoutEffect(measureRail, [measureRail, collapsed]);
   useEffect(() => {
     const rail = navRef.current;
@@ -263,6 +269,7 @@ export function Sidebar() {
       data-collapsed={collapsed ? "true" : "false"}
       data-library-empty={libraryEmpty ? "true" : undefined}
       data-tight={tight ? "" : undefined}
+      data-snug={snug ? "" : undefined}
       ref={navRef}
     >
       {/* Fixed above the list, so the logo never scrolls out of the window (R2-9). */}

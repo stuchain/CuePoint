@@ -30,6 +30,12 @@ describe("Track details sub-tabs (C260)", () => {
     expect(rule(".cp-track-detail > .cp-tabs")).not.toMatch(/gap/);
     expect(rule(".cp-track-detail > .cp-tabs .cp-tabs__tab")).toMatch(/flex:\s*1 1 auto/);
   });
+
+  it("puts Match on Beatport on the row under Key, on one line (B11)", () => {
+    expect(rule(".cp-track-detail__fact--key-match .cp-track-detail__factvalue")).toMatch(/grid-column:\s*1 \/ -1/);
+    expect(rule(".cp-track-detail__fact--key-match .cp-link")).toMatch(/white-space:\s*nowrap/);
+    expect(tsx).toContain("cp-track-detail__fact--key-match");
+  });
 });
 
 describe("Track details chrome (round 3)", () => {

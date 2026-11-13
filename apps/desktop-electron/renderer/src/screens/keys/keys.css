@@ -6,8 +6,9 @@
  * instead (the wheel stacks above the tracks).
  */
 .keys-page {
-  /* The smallest cell the wheel is drawn at, at this text size (M162): 6 points, a whole pixel. */
-  --keys-cell-least: round(nearest, calc(6px * var(--scale)), 1px);
+  /* The smallest cell the wheel is drawn at, at this text size (M162): 4 points, a whole pixel; 6 px
+     at Medium (B16, was 6 points: at 1280 x 800 the wheel's bottom row was cut). */
+  --keys-cell-least: round(nearest, calc(4px * var(--scale)), 1px);
   /* What the window's height holds besides the wheel (M168): the page and pane heads, the pane's
      padding, the legend, the no-key row and the caption, the status strip and the player bar. An
      estimate for the pane's width; the wheel itself fits the pane's real height (.keys-page__wheel). */
@@ -16,7 +17,7 @@
      floor, the two gaps and the pane's padding (M168). The wheel never widens the pane past it, so a
      tall window does not push the tracks under the wheel. */
   --keys-beside: calc(180px * var(--scale) + 260px * var(--scale) + 2 * var(--space-xl) + 2 * var(--space-lg));
-  /* The wheel is 48 cells across and a cell is a whole number of pixels (M168): 6 points at the
+  /* The wheel is 48 cells across and a cell is a whole number of pixels (M168): 4 points at the
      least, growing with the window's height up to 11, and only as far as the width beside the
      tracks allows. The pane takes this width; the wheel then fits the pane's real height. */
   --keys-cell: clamp(
@@ -416,14 +417,20 @@
   padding: 0;
 }
 
-/* Below about 1024 wide at 1.25 text size (C206: a container query, in em of the content region's
-   text) the tracks move under Sources and the wheel and take the whole row (M162). Text at 1.25 is
-   whole pixels, 13px, not 12.5, so 1024px is 78.75em: 81.92em was 1065px, one pixel under the
-   default 1264 x 735 window's region on Linux, and a Windows scrollbar (17px) crossed it, so the
-   list wrapped there (wave 3). The two panes above stay one height: the row stretches them. */
-@container content (max-width: 78.75em) {
+/* The tracks drop under Sources and the wheel only when they no longer fit beside them (their
+   floor, .keys-page__tracks), never at a set width: the C206 rule at 78.75em stacked them at 1280 x 800
+   at Medium and left the right third of the page empty (B16). */
+/* B21: on a content region up to 72em (1080 at Medium: up to a 1280 window) Sources narrows to 150
+   points and the tracks stay beside the wheel while they keep 100, so Sources, the wheel and the
+   tracks sit side by side instead of Sources over a strip of wheel at 1024, and the tracks fill the
+   right third at 1280 (B16); a larger text size still wraps the tracks under. */
+@container content (max-width: 72em) {
+  .keys-sources {
+    flex-basis: calc(150px * var(--scale) + var(--safe-left));
+  }
+
   .keys-page__tracks {
-    flex-basis: 100%;
+    flex: 1 1 calc(100px * var(--scale));
   }
 }
 
