@@ -20,6 +20,9 @@
      the first content starts level with the rail's first link. Taller content still grows it. */
   box-sizing: border-box;
   min-height: calc(2 * var(--toolbar-height) + 4 * var(--space-xs) + var(--hairline));
+  /* A page is a column of flex boxes: without this a page whose body is tall squeezes the header back
+     to its least height when its buttons wrap, and the tabs draw over the content below (B20). */
+  flex-shrink: 0;
   /* Divider to the first content: the rail's step from its line to its first link. */
   margin-bottom: var(--space-md);
   background: var(--bg-app);

@@ -233,6 +233,10 @@ describe("ScreenHeader", () => {
     });
   });
 
+  it("is never squeezed below its content, so wrapped buttons push the tabs down instead of over the page (B20)", () => {
+    expect(/\.cp-screen-header\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/flex-shrink:\s*0/);
+  });
+
   describe("a narrow page", () => {
     const rule = (selector: string) =>
       css.split("}").find((block) => block.trim().startsWith(selector))?.split("{")[1] ?? "";
