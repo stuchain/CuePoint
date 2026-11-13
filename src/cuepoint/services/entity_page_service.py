@@ -88,6 +88,7 @@ from cuepoint.models.entity_page import (
     EntityBeatportHalf,
     EntityLibrarySummary,
     EntityPage,
+    EntityTracksPage,
     EntityRef,
     EntityResolution,
     LinkedEntity,
@@ -264,8 +265,18 @@ class EntityPageService(IEntityPageService):
             rules = RuleSet(
                 rules=(FilterRule(ID_FIELDS[kind], OP_IS, ref.beatport_id),)
             ).validated()
+            shared = (
+                kind == ENTITY_LABEL
+                and requested.name_key is not None
+                and len(self._credits.label_links(requested.name_key)) > 1
+            )
             return EntityResolution(
-                ref=ref, requested=requested, name=name, rules=rules, names=names
+                ref=ref,
+                requested=requested,
+                name=name,
+                rules=rules,
+                names=names,
+                shared_label=shared,
             )
         key = str(ref.name_key)
         name = self._credits.library_name(kind, key)
@@ -314,8 +325,12 @@ class EntityPageService(IEntityPageService):
         owned: str = OWNED_ALL,
         offset: int = 0,
         limit: int = 100,
+        listing_only: bool = False,
     ) -> EntityBeatportHalf:
         """A page's recent Beatport tracks, or the state that stands in for them.
+
+        ``listing_only`` keeps the listing fresh and answers with no rows and
+        no ownership read: what the follows check needs.
 
         A refusal from Beatport is an answer, not an error: it comes back as
         the half's state. ``refresh`` reads the listing again however fresh it
@@ -391,8 +406,10 @@ class EntityPageService(IEntityPageService):
             and listing.answers_for(since)
             and listing.fetched_at >= (now - LISTING_MAX_AGE).isoformat()
         )
+        listed_tracks = 0
         if fresh and listing is not None:
             fetched_at = listing.fetched_at
+            listed_tracks = listing.tracks
         else:
             read = (
                 self._beatport.artist_tracks
@@ -408,6 +425,7 @@ class EntityPageService(IEntityPageService):
                     ref, exc, beatport_id, found_by_name, resolvable, window
                 )
             fetched_at = now.isoformat()
+            listed_tracks = len(tracks)
             self._catalog.store_listing(
                 BeatportListing(
                     kind=kind,
@@ -418,19 +436,22 @@ class EntityPageService(IEntityPageService):
                 ),
                 tracks,
             )
-        page = self._catalog.entity_tracks(
-            kind, beatport_id, since, until, owned, int(offset), int(limit)
-        )
-        listed = self._wantlist.entries(
-            [row.track.beatport_track_id for row in page.rows]
-        )
-        page = replace(
-            page,
-            rows=tuple(
-                replace(row, on_wantlist=row.track.beatport_track_id in listed)
-                for row in page.rows
-            ),
-        )
+        if listing_only:
+            page = EntityTracksPage(rows=(), total=0, tracks=listed_tracks, owned=0)
+        else:
+            page = self._catalog.entity_tracks(
+                kind, beatport_id, since, until, owned, int(offset), int(limit)
+            )
+            listed = self._wantlist.entries(
+                [row.track.beatport_track_id for row in page.rows]
+            )
+            page = replace(
+                page,
+                rows=tuple(
+                    replace(row, on_wantlist=row.track.beatport_track_id in listed)
+                    for row in page.rows
+                ),
+            )
         released = (
             f"{_count(page.tracks, 'track', 'tracks')} released on Beatport"
             f" since {since}"

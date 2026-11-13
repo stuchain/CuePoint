@@ -1192,12 +1192,19 @@ def entity(params: Dict[str, List[str]]) -> Dict[str, Any]:
     ref = _query_required(query, "ref")
     page = _resolve("IEntityPageService").page(kind, ref)
     result: Dict[str, Any] = page.to_dict()
-    # Only a Beatport id can be followed: a name shared by several Beatport
-    # artists is a name page and offers no Follow.
+    # Only a Beatport id (or a name linked to exactly one) can be followed: a
+    # name shared by several Beatport artists or labels offers no Follow.
     beatport_id = page.resolution.ref.beatport_id
-    result["followable"] = beatport_id is not None
-    result["followed"] = beatport_id is not None and bool(
-        _resolve("IFollowService").is_followed(page.resolution.ref.kind, beatport_id)
+    followable = page.resolution.followable
+    result["followable"] = followable
+    result["followed"] = (
+        followable
+        and beatport_id is not None
+        and bool(
+            _resolve("IFollowService").is_followed(
+                page.resolution.ref.kind, beatport_id
+            )
+        )
     )
     return result
 

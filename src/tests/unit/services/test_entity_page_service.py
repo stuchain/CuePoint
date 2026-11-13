@@ -286,6 +286,19 @@ class TestResolving:
         assert resolution.name == "Nightfall Audio"
         assert [n.name_key for n in resolution.names] == ["nightfall"]
 
+    def test_only_an_id_or_a_name_linked_to_one_id_is_followable(self, service, lib):
+        lib.add("n1", "A", "Nightfall", beatport_label=(900, "Nightfall Audio"))
+        lib.add("n3", "A", "Nightfall", beatport_label=(950, "Nightfall Records"))
+        lib.add("s1", "A", "Solo", beatport_label=(777, "Solo Records"))
+        lib.add("a1", "Kiko", beatport=[(100, "Kiko")])
+        assert service.resolve("label", "bp:900").followable is True
+        assert service.resolve("label", "name:solo").followable is True
+        assert service.resolve("artist", "name:kiko").followable is True
+        # Linked to two label ids: it redirects to one, but names neither.
+        shared = service.resolve("label", "name:nightfall")
+        assert shared.ref.token == "bp:900" and shared.followable is False
+        assert service.resolve("label", "name:somewhere").followable is False
+
     def test_a_name_the_library_does_not_hold_is_scoped_by_its_key(self, service):
         resolution = service.resolve("label", "name:somewhere")
         assert resolution.name is None

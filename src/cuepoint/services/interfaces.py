@@ -114,7 +114,7 @@ if TYPE_CHECKING:
         GroupSelection,
         RunTracksPage,
     )
-    from cuepoint.models.follow import Follow
+    from cuepoint.models.follow import Follow, FollowedTracks
     from cuepoint.models.wantlist import WantlistEntry, WantlistPage
     from cuepoint.services.wantlist_service import WantlistChange
     from cuepoint.services.beatport_playlist_service import (
@@ -1543,6 +1543,18 @@ class IBeatportCatalogRepository(ABC):
         """A window of an artist's or label's cached tracks released in a window."""
         ...
 
+    @abstractmethod
+    def followed_tracks(
+        self,
+        sources: Sequence[Tuple[str, int, str]],
+        until: str,
+        owned: str = "all",
+        offset: int = 0,
+        limit: int = 100,
+    ) -> "FollowedTracks":
+        """Cached tracks of several artists and labels, each track once."""
+        ...
+
 
 class IDiscoveryRepository(ABC):
     """Interface for discovery runs and the name-lookup cache (DISCOVER-05, DEC-091)."""
@@ -2054,6 +2066,7 @@ class IEntityPageService(ABC):
         owned: str = "all",
         offset: int = 0,
         limit: int = 100,
+        listing_only: bool = False,
     ) -> "EntityBeatportHalf":
         """A page's recent Beatport tracks, or the state that stands in for them."""
         ...

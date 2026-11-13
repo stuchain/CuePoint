@@ -98,6 +98,7 @@ from cuepoint.models.entity_page import (
     EntityTrackRow,
     EntityTracksPage,
 )
+from cuepoint.models.follow import FollowedTracks
 from cuepoint.models.track_credit import ROLE_ARTIST, ROLE_REMIXER
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
 from cuepoint.persistence.track_credit_repository import label_key_of
@@ -537,6 +538,79 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
             total=int(counted["total"]),
             tracks=int(counted["tracks"]),
             owned=int(counted["owned"]),
+        )
+
+    def followed_tracks(
+        self,
+        sources: Sequence[Tuple[str, int, str]],
+        until: str,
+        owned: str = OWNED_ALL,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> FollowedTracks:
+        """Cached tracks of several artists and labels, each track once.
+
+        ``sources`` are ``(kind, beatport_id, since)``: a source's tracks are
+        those released from ``since`` to ``until``. Newest release first, then
+        the higher id (as :meth:`entity_tracks` orders), however many sources
+        there are and whatever the window: nothing is cut before the window is
+        taken. Ownership is read once for every track (DEC-092).
+
+        Raises:
+            ValueError: If a kind, the filter or the window is not one this
+                answers.
+        """
+        if owned not in OWNED_FILTERS:
+            raise ValueError(f"owned must be one of {OWNED_FILTERS}, got {owned!r}")
+        if not 1 <= int(limit) <= MAX_ENTITY_WINDOW or int(offset) < 0:
+            raise ValueError(
+                f"A window is 1 to {MAX_ENTITY_WINDOW} tracks from offset 0 or later"
+            )
+        conn = self._db.connect()
+        by_track: Dict[int, Tuple[str, List[int]]] = {}
+        for position, (kind, beatport_id, since) in enumerate(sources):
+            if kind not in _ENTITY_TRACK_IDS:
+                raise ValueError(f"No entity of kind {kind!r}")
+            for row in conn.execute(
+                "SELECT b.beatport_track_id AS id, b.release_date AS day"
+                " FROM beatport_tracks AS b WHERE b.beatport_track_id IN"
+                f" ({_ENTITY_TRACK_IDS[kind]})",
+                {"id": int(beatport_id), "since": str(since), "until": str(until)},
+            ):
+                found = by_track.setdefault(int(row["id"]), (row["day"] or "", []))
+                found[1].append(position)
+        owned_ids = self.owned_among(by_track)
+        per_source = [0] * len(sources)
+        kept: List[int] = []
+        for track_id, (_, positions) in by_track.items():
+            is_owned = track_id in owned_ids
+            if owned == OWNED_HIDE and is_owned or owned == OWNED_ONLY and not is_owned:
+                continue
+            kept.append(track_id)
+            for position in positions:
+                per_source[position] += 1
+        kept.sort(key=lambda i: (by_track[i][0], i), reverse=True)
+        window_ids = kept[int(offset) : int(offset) + int(limit)]
+        tracks = self.get_tracks(window_ids)
+        credits = credit_names(conn, window_ids)
+        rows = tuple(
+            (
+                EntityTrackRow(
+                    track=tracks[i],
+                    artists=credits.get(i, ((), ()))[0],
+                    remixers=credits.get(i, ((), ()))[1],
+                    owned=i in owned_ids,
+                ),
+                tuple(by_track[i][1]),
+            )
+            for i in window_ids
+            if i in tracks
+        )
+        return FollowedTracks(
+            rows=rows,
+            total=len(kept),
+            owned=sum(1 for i in by_track if i in owned_ids),
+            per_source=tuple(per_source),
         )
 
     def get_tracks(self, ids: Iterable[int]) -> Dict[int, CachedBeatportTrack]:

@@ -82,6 +82,7 @@ from cuepoint.models.track_credit import (
     DerivedIndex,
     TrackCredit,
 )
+from cuepoint.persistence import revision_counters
 from cuepoint.persistence.id_chunks import CHUNK_SIZE
 from cuepoint.services.interfaces import IDatabaseService, ITrackCreditRepository
 
@@ -446,6 +447,9 @@ class TrackCreditRepository(ITrackCreditRepository):
     def __init__(self, database_service: IDatabaseService) -> None:
         """Store the database service this repository reads and writes through."""
         self._db = database_service
+        self._candidate_cache: Dict[
+            str, Tuple[Tuple[int, ...], List[Tuple[int, str, int]]]
+        ] = {}
 
     # ------------------------------------------------------------------ read
 
@@ -701,29 +705,53 @@ class TrackCreditRepository(ITrackCreditRepository):
             links = _LABEL_LINKS
         else:
             raise ValueError(f"No candidates of kind {kind!r}")
-        rows = (
-            self._db.connect()
-            .execute(
-                f"WITH links AS ({links}),"
-                " single AS (SELECT name_key, max(beatport_id) AS beatport_id,"
-                " sum(tracks) AS tracks FROM links GROUP BY name_key"
-                " HAVING count(*) = 1)"
-                " SELECT beatport_id, min(name_key) AS name_key, sum(tracks) AS tracks"
-                " FROM single WHERE beatport_id NOT IN"
-                " (SELECT beatport_id FROM follows WHERE kind = ?)"
-                " GROUP BY beatport_id ORDER BY tracks DESC, beatport_id LIMIT ?",
-                (kind, int(limit)),
+        conn = self._db.connect()
+        ranked = self._ranked_candidates(conn, kind, links)
+        followed = {
+            int(r["beatport_id"])
+            for r in conn.execute(
+                "SELECT beatport_id FROM follows WHERE kind = ?", (kind,)
             )
-            .fetchall()
-        )
+        }
+        offered = [c for c in ranked if c[0] not in followed][: int(limit)]
         return [
             (
-                int(r["beatport_id"]),
-                self.library_name(kind, str(r["name_key"])) or str(r["name_key"]),
-                int(r["tracks"]),
+                beatport_id,
+                self.library_name(kind, key) or key,
+                tracks,
             )
-            for r in rows
+            for beatport_id, key, tracks in offered
         ]
+
+    def _ranked_candidates(
+        self, conn: sqlite3.Connection, kind: str, links: str
+    ) -> List[Tuple[int, str, int]]:
+        """Every single-id name as ``(beatport_id, name_key, tracks)``, ranked.
+
+        The full-library group-by is kept while the library's and the catalog
+        cache's change counters stand still (the links read both), so reopening the tab asks the database nothing; follows
+        are taken out by the caller, since they change on their own.
+        """
+        revision = revision_counters.read(
+            conn, (revision_counters.LIBRARY, revision_counters.DISCOVER)
+        )
+        cached = self._candidate_cache.get(kind)
+        if revision is not None and cached is not None and cached[0] == revision:
+            return cached[1]
+        rows = conn.execute(
+            f"WITH links AS ({links}),"
+            " single AS (SELECT name_key, max(beatport_id) AS beatport_id,"
+            " sum(tracks) AS tracks FROM links GROUP BY name_key"
+            " HAVING count(*) = 1)"
+            " SELECT beatport_id, min(name_key) AS name_key, sum(tracks) AS tracks"
+            " FROM single GROUP BY beatport_id ORDER BY tracks DESC, beatport_id"
+        ).fetchall()
+        ranked = [
+            (int(r["beatport_id"]), str(r["name_key"]), int(r["tracks"])) for r in rows
+        ]
+        if revision is not None:
+            self._candidate_cache[kind] = (revision, ranked)
+        return ranked
 
     def track_count(self) -> int:
         """How many tracks a rebuild will read."""

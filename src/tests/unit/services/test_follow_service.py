@@ -412,7 +412,10 @@ class TestChecking:
         world.access_token = ""
         result = service.check()
         assert result["outcome"] == "no_token" and result["state"] == "no_token"
-        assert [f["state"] for f in result["failed"]] == ["no_token"]
+        # It is the check's state, not any one follow's.
+        assert result["failed"] == []
+        assert all(f["state"] is None for f in service.follows()["follows"])
+        assert service.feed()["states"] == []
         assert world.requests == []
 
     def test_it_reports_progress_and_can_be_stopped(self, service):
@@ -474,8 +477,9 @@ class TestTheFeed:
     ):
         feed = service.feed()
         # Track 12 is 40 days old, before the 30-day start. 15 and 16 share a
-        # day, so the title breaks the tie; 11 is older.
-        assert titles(feed) == ["Track 15", "Track 16", "Track 11"]
+        # day, so the higher id comes first (as the entity page orders); 11 is
+        # older.
+        assert titles(feed) == ["Track 16", "Track 15", "Track 11"]
         assert feed["total"] == 3 and feed["hidden_owned"] == 0
         assert feed["follow_count"] == 3
 
@@ -514,9 +518,12 @@ class TestTheFeed:
         assert titles(service.feed("artist", 100)) == []
         assert titles(service.feed("artist", 8)) == ["Track 15"]
         moved = service.mark_seen()
-        assert moved["changed"] == 2 and moved["seen_through"] == TODAY.isoformat()
+        assert moved["changed"] == 2 and moved["seen_through"] == days(1).isoformat()
         assert service.feed()["rows"] == []
-        assert service.mark_seen() == {"changed": 0, "seen_through": TODAY.isoformat()}
+        assert service.mark_seen() == {
+            "changed": 0,
+            "seen_through": days(1).isoformat(),
+        }
 
     def test_a_release_after_the_day_marked_seen_is_new(self, service, world, clock):
         service.add("artist", 100, "Âme")
@@ -538,10 +545,10 @@ class TestTheFeed:
     ):
         lib.add("mine", "Âme", owns=11)
         hidden = service.feed()
-        assert titles(hidden) == ["Track 15", "Track 16"]
+        assert titles(hidden) == ["Track 16", "Track 15"]
         assert hidden["hidden_owned"] == 1 and hidden["total"] == 2
         shown = service.feed(owned="all")
-        assert titles(shown) == ["Track 15", "Track 16", "Track 11"]
+        assert titles(shown) == ["Track 16", "Track 15", "Track 11"]
         assert shown["hidden_owned"] == 0
         owned_only = service.feed(owned="only")
         assert titles(owned_only) == ["Track 11"]
@@ -559,7 +566,7 @@ class TestTheFeed:
     def test_it_pages(self, service, following):
         first = service.feed(offset=0, limit=2)
         rest = service.feed(offset=2, limit=2)
-        assert titles(first) == ["Track 15", "Track 16"]
+        assert titles(first) == ["Track 16", "Track 15"]
         assert titles(rest) == ["Track 11"]
         assert first["total"] == rest["total"] == 3
 
@@ -600,7 +607,8 @@ class TestTheFeed:
             (f["kind"], f["beatport_id"]): f["new_count"] for f in listed["follows"]
         }
         assert counts == {("artist", 100): 1, ("artist", 8): 1, ("label", 900): 1}
-        assert listed["new_count"] == 3
+        # Track 15 is by two follows: the total counts it once, as the feed does.
+        assert listed["new_count"] == 2 == service.feed()["total"]
 
     def test_a_follow_marked_seen_has_none_new(self, service, following):
         service.mark_seen("label", 900)
@@ -608,3 +616,188 @@ class TestTheFeed:
             f["beatport_id"]: f["new_count"] for f in service.follows()["follows"]
         }
         assert counts[900] == 0
+
+
+# ------------------------------------------------------------------ review fixes
+
+
+class TestMarkSeenKeepsTodayVisible:
+    def test_a_release_published_later_today_is_still_new(self, service, world):
+        service.add("artist", 100, "Âme")
+        service.check()
+        moved = service.mark_seen()
+        assert moved["seen_through"] == days(1).isoformat()
+        world.add_track(
+            40, TODAY, (900, "Innervisions"), (9, "Later Today"), [(100, "Âme")]
+        )
+        service.check(refresh=True)
+        assert titles(service.feed()) == ["Track 40"]
+        assert service.follows()["follows"][0]["new_count"] == 1
+
+
+class TestManyCachedTracks:
+    @pytest.fixture
+    def many(self, db, service):
+        service.add("label", 900, "Innervisions")
+        catalog = BeatportCatalogRepository(db)
+        catalog.upsert_tracks(
+            [
+                catalog_track(
+                    1000 + i,
+                    artists=[(7, "Bulk")],
+                    label=(900, "Innervisions"),
+                    release_date=days(1).isoformat(),
+                )
+                for i in range(650)
+            ],
+            NOW.isoformat(),
+        )
+
+    def test_the_total_and_any_window_agree_with_the_count(self, service, many):
+        counted = service.follows()["follows"][0]["new_count"]
+        assert counted == 650
+        assert service.follows()["new_count"] == 650
+        feed = service.feed(limit=100)
+        assert feed["total"] == 650
+        seen = []
+        for offset in range(0, 700, 100):
+            page = service.feed(offset=offset, limit=100)
+            assert page["total"] == 650
+            seen += [r["beatport_track_id"] for r in page["rows"]]
+        assert len(seen) == 650 and len(set(seen)) == 650
+        assert seen == sorted(seen, reverse=True)
+
+    def test_a_window_past_the_old_cap_has_rows(self, service, many):
+        page = service.feed(offset=600, limit=100)
+        assert len(page["rows"]) == 50
+
+
+class TestOwnershipIsReadOnce:
+    @pytest.fixture
+    def following(self, service):
+        service.add("artist", 100, "Âme")
+        service.add("artist", 8, "Dixon")
+        service.add("label", 900, "Innervisions")
+        service.check()
+
+    @pytest.fixture
+    def reads(self, service, monkeypatch):
+        calls: List[int] = []
+        catalog = service._catalog
+        real = catalog.owned_among
+        real_tracks = catalog.entity_tracks
+
+        def spy(ids):
+            calls.append(1)
+            return real(ids)
+
+        def spy_tracks(*a, **k):
+            calls.append(1)
+            return real_tracks(*a, **k)
+
+        monkeypatch.setattr(catalog, "owned_among", spy)
+        monkeypatch.setattr(catalog, "entity_tracks", spy_tracks)
+        return calls
+
+    def test_follows_and_feed_read_it_once_each(self, service, following, reads):
+        service.follows()
+        assert len(reads) == 1
+        service.feed()
+        assert len(reads) == 2
+
+    def test_a_check_reads_none(self, service, following, reads):
+        service.check(refresh=True)
+        assert reads == []
+
+
+class TestSuggestionsCache:
+    @pytest.fixture
+    def statements(self, db):
+        seen: List[str] = []
+        db.connect().set_trace_callback(seen.append)
+        return seen
+
+    def aggregates(self, statements) -> int:
+        return sum(1 for s in statements if "WITH links AS" in s)
+
+    def test_reopening_reruns_nothing_until_the_library_changes(
+        self, service, lib, statements
+    ):
+        lib.add("a1", "Âme", beatport=[(100, "Âme")])
+        first = service.suggestions()
+        ran = self.aggregates(statements)
+        assert ran >= 1
+        assert service.suggestions() == first
+        assert self.aggregates(statements) == ran
+        lib.add("a2", "Solo", beatport=[(200, "Solo")])
+        assert {s["beatport_id"] for s in service.suggestions()["suggestions"]} == {
+            100,
+            200,
+        }
+        assert self.aggregates(statements) > ran
+
+    def test_a_follow_still_leaves_a_cached_candidate_out(self, service, lib):
+        lib.add("a1", "Âme", beatport=[(100, "Âme")])
+        assert len(service.suggestions()["suggestions"]) == 1
+        service.add("artist", 100, "Âme")
+        assert service.suggestions() == {"suggestions": []}
+        service.remove("artist", 100)
+        assert len(service.suggestions()["suggestions"]) == 1
+
+
+class _Pages:
+    """An entity page service that answers by follow, for the check's edges."""
+
+    def __init__(self, real, behaviour) -> None:
+        self._real = real
+        self._behaviour = behaviour
+
+    def beatport(self, kind, token, **kwargs):
+        return self._behaviour(self._real, kind, token, kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+
+class TestCheckEdges:
+    def test_a_follow_removed_mid_check_gets_no_state(self, service, world):
+        service.add("artist", 100, "Âme")
+        service.add("artist", 8, "Dixon")
+        world.failures.append(lambda path, params, n: 500)
+
+        def behaviour(real, kind, token, kwargs):
+            half = real.beatport(kind, token, **kwargs)
+            if token == "bp:100":
+                service.remove("artist", 100)
+            return half
+
+        service._pages = _Pages(service._pages, behaviour)
+        result = service.check()
+        assert [f["beatport_id"] for f in result["failed"]] == [8]
+        service.add("artist", 100, "Âme")
+        assert [
+            f["state"] for f in service.follows()["follows"] if f["beatport_id"] == 100
+        ] == [None]
+
+    def test_an_unexpected_error_is_that_follows_unavailable_state(
+        self, service, caplog
+    ):
+        service.add("artist", 100, "Âme")
+        service.add("artist", 8, "Dixon")
+
+        def behaviour(real, kind, token, kwargs):
+            if token == "bp:8":
+                raise RuntimeError("disk on fire")
+            return real.beatport(kind, token, **kwargs)
+
+        service._pages = _Pages(service._pages, behaviour)
+        with caplog.at_level("WARNING"):
+            result = service.check()
+        assert result["outcome"] == "ok" and result["checked"] == 1
+        assert [(f["beatport_id"], f["state"]) for f in result["failed"]] == [
+            (8, "unavailable")
+        ]
+        assert "disk on fire" in caplog.text
+        listed = {f["beatport_id"]: f for f in service.follows()["follows"]}
+        assert listed[8]["state"]["state"] == "unavailable"
+        assert listed[100]["state"] is None

@@ -6,9 +6,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from cuepoint.models.beatport_cache import ENTITY_KINDS, MAX_BEATPORT_ID
+from cuepoint.models.entity_page import EntityTrackRow
 from cuepoint.models.row_values import (
     one_of,
     optional_iso_date,
@@ -59,3 +60,22 @@ class Follow:
             "followed_at": self.followed_at,
             "seen_through": self.seen_through,
         }
+
+
+@dataclass(frozen=True)
+class FollowedTracks:
+    """New tracks across several follows, each track once.
+
+    Attributes:
+        rows: The window, newest release first, then the higher id, each with
+            the positions (in the sources asked about) of the follows it is by.
+        total: Distinct tracks under the owned filter.
+        owned: Distinct tracks the library owns, whatever the filter.
+        per_source: Under the owned filter, how many tracks each source has
+            (a track by two sources counts for both).
+    """
+
+    rows: Tuple[Tuple[EntityTrackRow, Tuple[int, ...]], ...]
+    total: int
+    owned: int
+    per_source: Tuple[int, ...]

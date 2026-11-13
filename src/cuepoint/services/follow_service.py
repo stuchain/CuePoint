@@ -21,8 +21,10 @@ no token ends it, since every follow would be refused the same way.
 What is new
 -----------
 Releases dated after the follow's ``seen_through``. A new follow starts it 30
-days back so its first look is not empty; marking seen moves it to today and
-never backwards. A track by two follows appears once, naming both.
+days back so its first look is not empty; marking seen moves it to yesterday
+and never backwards, so a track Beatport lists later today (the feed starts the
+day after ``seen_through``) is still new until the next day's look. A track by
+two follows appears once, naming both.
 
 What is not stored
 ------------------
@@ -40,16 +42,14 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.models.beatport_cache import ENTITY_KINDS, MAX_BEATPORT_ID
 from cuepoint.models.discovery_run import (
-    OWNED_ALL,
     OWNED_FILTERS,
     OWNED_HIDE,
-    OWNED_ONLY,
 )
 from cuepoint.models.entity_page import (
     MAX_ENTITY_WINDOW,
     STATE_NO_TOKEN,
     STATE_OK,
-    EntityTrackRow,
+    STATE_UNAVAILABLE,
 )
 from cuepoint.models.follow import FOLLOW_LOOKBACK_DAYS, Follow
 from cuepoint.services.discovery_service import local_date
@@ -155,28 +155,29 @@ class FollowService(IFollowService):
     def follows(self) -> Dict[str, Any]:
         """Every follow, with how many new tracks it has in the cache.
 
-        ``new_count`` is tracks released after ``seen_through`` that the
-        library does not own: what the feed shows by default. The top-level
-        ``new_count`` adds them up, so a track by two follows counts for each.
+        A follow's ``new_count`` is tracks released after its ``seen_through``
+        that the library does not own: what the feed shows by default. The
+        top-level ``new_count`` counts each track once, so it is the feed's
+        ``total`` for ``owned="hide"``. Ownership is read once for all follows.
         """
-        today = local_date(self._clock())
-        rows: List[Dict[str, Any]] = []
+        today = local_date(self._clock()).isoformat()
+        every = self._follows.list()
+        live = [(f, _day_after(f.seen_through)) for f in every]
+        live = [(f, since) for f, since in live if since <= today]
+        counts: Dict[Tuple[str, int], int] = {}
         total = 0
-        for follow in self._follows.list():
-            since = _day_after(follow.seen_through)
-            count = 0
-            if since <= today.isoformat():
-                count = self._catalog.entity_tracks(
-                    follow.kind,
-                    follow.beatport_id,
-                    since,
-                    today.isoformat(),
-                    OWNED_HIDE,
-                    0,
-                    1,
-                ).total
-            total += count
-            rows.append(self._row(follow, count))
+        if live:
+            page = self._catalog.followed_tracks(
+                [(f.kind, f.beatport_id, since) for f, since in live],
+                today,
+                OWNED_HIDE,
+                0,
+                1,
+            )
+            total = page.total
+            for (f, _), count in zip(live, page.per_source):
+                counts[(f.kind, f.beatport_id)] = count
+        rows = [self._row(f, counts.get((f.kind, f.beatport_id), 0)) for f in every]
         return {"follows": rows, "new_count": total}
 
     def _row(self, follow: Follow, new_count: int) -> Dict[str, Any]:
@@ -257,10 +258,10 @@ class FollowService(IFollowService):
             if which == (None, None) or (f.kind, f.beatport_id) == which
         ]
         today = local_date(self._clock()).isoformat()
-        merged: Dict[int, Tuple[EntityTrackRow, List[Dict[str, Any]]]] = {}
         fetched: List[str] = []
         unchecked = 0
         states: List[Dict[str, Any]] = []
+        live: List[Tuple[Follow, str]] = []
         for follow in follows:
             listing = self._catalog.listing(follow.kind, follow.beatport_id)
             if listing is None:
@@ -273,52 +274,43 @@ class FollowService(IFollowService):
                     {"kind": follow.kind, "beatport_id": follow.beatport_id, **failed}
                 )
             since = _day_after(follow.seen_through)
-            if since > today:
-                continue
-            page = self._catalog.entity_tracks(
-                follow.kind,
-                follow.beatport_id,
-                since,
+            if since <= today:
+                live.append((follow, since))
+        rows: List[Dict[str, Any]] = []
+        total = 0
+        hidden = 0
+        if live:
+            page = self._catalog.followed_tracks(
+                [(f.kind, f.beatport_id, since) for f, since in live],
                 today,
-                OWNED_ALL,
-                0,
-                MAX_ENTITY_WINDOW,
+                owned,
+                offset,
+                limit,
             )
-            source = {
-                "kind": follow.kind,
-                "beatport_id": follow.beatport_id,
-                "name": follow.name,
-            }
-            for row in page.rows:
-                key = row.track.beatport_track_id
-                if key in merged:
-                    merged[key][1].append(source)
-                else:
-                    merged[key] = (row, [source])
-        everything = list(merged.values())
-        hidden = sum(1 for row, _ in everything if row.owned)
-        if owned == OWNED_HIDE:
-            everything = [pair for pair in everything if not pair[0].owned]
-        elif owned == OWNED_ONLY:
-            everything = [pair for pair in everything if pair[0].owned]
-        everything.sort(key=lambda pair: pair[0].track.title.casefold())
-        everything.sort(key=lambda pair: pair[0].track.release_date or "", reverse=True)
-        window = everything[offset : offset + limit]
-        listed = self._wantlist.entries(
-            [row.track.beatport_track_id for row, _ in window]
-        )
-        rows = [
-            {
-                **replace(
-                    row, on_wantlist=row.track.beatport_track_id in listed
-                ).to_dict(),
-                "follows": sources,
-            }
-            for row, sources in window
-        ]
+            total = page.total
+            hidden = page.owned
+            listed = self._wantlist.entries(
+                [row.track.beatport_track_id for row, _ in page.rows]
+            )
+            for row, positions in page.rows:
+                rows.append(
+                    {
+                        **replace(
+                            row, on_wantlist=row.track.beatport_track_id in listed
+                        ).to_dict(),
+                        "follows": [
+                            {
+                                "kind": live[p][0].kind,
+                                "beatport_id": live[p][0].beatport_id,
+                                "name": live[p][0].name,
+                            }
+                            for p in positions
+                        ],
+                    }
+                )
         return {
             "rows": rows,
-            "total": len(everything),
+            "total": total,
             "hidden_owned": hidden if owned == OWNED_HIDE else 0,
             "checked_at": min(fetched) if fetched and not unchecked else None,
             "unchecked": unchecked,
@@ -390,11 +382,16 @@ class FollowService(IFollowService):
     def mark_seen(
         self, kind: Optional[str] = None, beatport_id: Optional[int] = None
     ) -> Dict[str, Any]:
-        """Mark one follow's, or every follow's, tracks seen through today."""
+        """Mark one follow's, or every follow's, tracks seen through yesterday.
+
+        Not today: the feed starts the day after ``seen_through``, and Beatport
+        can list a track dated today later in the day, so today's releases
+        stay new until the next day's look.
+        """
         which = _check_which(kind, beatport_id)
-        today = local_date(self._clock()).isoformat()
+        through = (local_date(self._clock()) - timedelta(days=1)).isoformat()
         with self._db.transaction():
-            moved = self._follows.mark_seen(today, which[0], which[1])
+            moved = self._follows.mark_seen(through, which[0], which[1])
             if moved:
                 names = ", ".join(f.name for f in moved[:3])
                 self._activity.record_event(
@@ -407,10 +404,10 @@ class FollowService(IFollowService):
                             {"kind": f.kind, "beatport_id": f.beatport_id}
                             for f in moved[:100]
                         ],
-                        "seen_through": today,
+                        "seen_through": through,
                     },
                 )
-        return {"changed": len(moved), "seen_through": today}
+        return {"changed": len(moved), "seen_through": through}
 
     # ----------------------------------------------------------------- check
 
@@ -431,7 +428,9 @@ class FollowService(IFollowService):
 
         Returns ``{outcome, state, checked, from_cache, failed, total}``:
         ``outcome`` is ``ok``, ``no_token`` or ``cancelled``; ``failed`` lists
-        ``{kind, beatport_id, name, state, message}``.
+        ``{kind, beatport_id, name, state, message}`` for the follows refused
+        (not for ``no_token``, which is the outcome). An error other than
+        Beatport's refusals is that follow's ``unavailable``.
         """
         follows = self._follows.list()
         total = len(follows)
@@ -444,39 +443,60 @@ class FollowService(IFollowService):
             if should_cancel is not None and should_cancel():
                 outcome = "cancelled"
                 break
-            half = self._pages.beatport(
-                follow.kind,
-                f"bp:{follow.beatport_id}",
-                refresh=refresh,
-                limit=1,
-            )
             key = (follow.kind, follow.beatport_id)
-            if half.state == STATE_OK:
+            try:
+                half = self._pages.beatport(
+                    follow.kind,
+                    f"bp:{follow.beatport_id}",
+                    refresh=refresh,
+                    limit=1,
+                    listing_only=True,
+                )
+                state, message, from_cache = half.state, half.message, half.from_cache
+            except Exception as exc:  # noqa: BLE001 - one follow must not end the check
+                _logger.warning(
+                    "[follows] %s %s: check failed: %s",
+                    follow.kind,
+                    follow.beatport_id,
+                    exc,
+                    exc_info=True,
+                )
+                state, message, from_cache = (
+                    STATE_UNAVAILABLE,
+                    f"The check could not read this one: {exc}",
+                    False,
+                )
+            if state == STATE_OK:
                 with _STATES_LOCK:
                     _STATES.pop(key, None)
                 checked += 1
-                cached += 1 if half.from_cache else 0
+                cached += 1 if from_cache else 0
+            elif state == STATE_NO_TOKEN:
+                # The check's state, not this follow's: every follow would be
+                # refused alike, and none is marked.
+                _logger.info("[follows] no Beatport token; the check stops")
+                outcome = STATE_NO_TOKEN
+                break
             else:
-                entry = {"state": half.state, "message": half.message}
-                with _STATES_LOCK:
-                    _STATES[key] = entry
-                failed.append(
-                    {
-                        "kind": follow.kind,
-                        "beatport_id": follow.beatport_id,
-                        "name": follow.name,
-                        **entry,
-                    }
-                )
+                entry = {"state": state, "message": message}
+                # A follow removed while it was being read gets no state.
+                if self._follows.get(follow.kind, follow.beatport_id) is not None:
+                    with _STATES_LOCK:
+                        _STATES[key] = entry
+                    failed.append(
+                        {
+                            "kind": follow.kind,
+                            "beatport_id": follow.beatport_id,
+                            "name": follow.name,
+                            **entry,
+                        }
+                    )
                 _logger.info(
                     "[follows] %s %s: Beatport said %s",
                     follow.kind,
                     follow.beatport_id,
-                    half.state,
+                    state,
                 )
-                if half.state == STATE_NO_TOKEN:
-                    outcome = STATE_NO_TOKEN
-                    break
             if on_progress is not None:
                 on_progress(done + 1, total)
         return {

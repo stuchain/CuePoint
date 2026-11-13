@@ -253,6 +253,9 @@ class EntityResolution:
         names: For an id page, the library names whose unresolved tracks it
             gathers. Empty for a name page.
         rules: The library half, for the Library's browse as it is.
+        shared_label: True for a label name that redirected to its most-used
+            Beatport id though it is linked to several: the page is that
+            id's, but the name names none of them (DEC-317).
     """
 
     ref: EntityRef
@@ -261,6 +264,12 @@ class EntityResolution:
     rules: RuleSet
     links: Tuple[LinkedEntity, ...] = ()
     names: Tuple[LinkedName, ...] = ()
+    shared_label: bool = False
+
+    @property
+    def followable(self) -> bool:
+        """True for a Beatport id, or a name linked to exactly that one id."""
+        return self.ref.beatport_id is not None and not self.shared_label
 
     def __post_init__(self) -> None:
         """Validate the resolution."""

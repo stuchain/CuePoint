@@ -2698,7 +2698,7 @@ export interface FollowRefusal {
   message: string;
 }
 
-/** `GET follows`: from the cache only. `new_count` adds the rows' up. */
+/** `GET follows`: from the cache only. `new_count` counts each new track once, as the feed's total does; a track by two follows is in both rows' counts. */
 export interface FollowsList {
   follows: FollowRow[];
   new_count: number;
