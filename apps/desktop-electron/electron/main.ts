@@ -10,6 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { sweepTempFilesAsync, writeAtomic } from "./atomicWrite";
+import { sweepEngineCopies } from "./engineTempCopies";
 import { EngineSupervisor, resolvePreloadPath, type EngineDiagnostics } from "./engineSupervisor";
 import { RESTORE_FILES_LIMIT, TagWriteRelease } from "./tagWriteRelease";
 import { BEATPORT_PARTITION, BeatportAuth, ElectronSignInHost } from "./beatportAuth";
@@ -1740,6 +1741,8 @@ function sweepLeftoverTemps(): void {
     (folder): folder is string => typeof folder === "string",
   );
   void sweepTempFilesAsync(new Set(folders)).catch(() => undefined);
+  // B6: the engine copies earlier runs unpacked into the temp folder (Windows only; never rejects).
+  void sweepEngineCopies(app.getPath("temp"));
 }
 
 async function createWindow(options: { startEngine?: boolean } = {}): Promise<void> {
