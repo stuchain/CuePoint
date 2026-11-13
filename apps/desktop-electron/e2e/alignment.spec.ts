@@ -294,7 +294,13 @@ test.describe("Alignment (L9)", () => {
           [".prepare-source__point"],
           [".prepare-source .cp-tabs", ".prepare-source__select", ".prepare-source__controls .cp-btn", ".prepare-source__table"],
         );
-        oneEdge(`${WINDOWS_INNER.width} px, ${scale}x: Prepare's side panel: the line, the tabs and the boxes`, Object.values(source).map((list) => list[0]!.left));
+        // B17: at the wider default (313 px at 1x) the button can sit beside the select on its line;
+        // only a button that starts a line of its own is held to the edge.
+        const select = source[".prepare-source__select"]![0]!;
+        const lefts = Object.entries(source)
+          .filter(([s, list]) => !(s === ".prepare-source__controls .cp-btn" && list[0]!.top < select.bottom && list[0]!.bottom > select.top && list[0]!.left >= select.right))
+          .map(([, list]) => list[0]!.left);
+        oneEdge(`${WINDOWS_INNER.width} px, ${scale}x: Prepare's side panel: the line, the tabs and the boxes`, lefts);
       }
     } finally {
       await app.close();

@@ -43,6 +43,9 @@ interface LibrarySelectionBarProps {
   selectAll?: { total: number; onSelectAll: () => void };
 }
 
+/** How far a button may be squeezed, in pixels, before its own width counts instead (B14). */
+const SQUEEZE_SLACK = 3;
+
 export function LibrarySelectionBar({
   groups,
   selected,
@@ -80,8 +83,10 @@ export function LibrarySelectionBar({
         // The "•••" More is not its labelled width: keep the label's, so it can come back.
         if (button.dataset.compact === "true") continue;
         // Its own width, not a squeezed one (B14): a button the row had already shrunk measured
-        // short, so nothing folded and the buttons drew over each other at 1024 wide.
-        const width = Math.max(button.offsetWidth, button.scrollWidth);
+        // short, so nothing folded and the buttons drew over each other at 1024 wide. A pixel or two
+        // of sub-pixel squeeze is not drawn over anything and folds nothing.
+        const squeezed = button.scrollWidth - button.offsetWidth > SQUEEZE_SLACK;
+        const width = squeezed ? button.scrollWidth : button.offsetWidth;
         if (width > 0) widths.current.set(button.dataset.group ?? "", width);
       }
       const style = getComputedStyle(bar);

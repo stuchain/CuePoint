@@ -437,6 +437,11 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       });
       expect(Math.abs(ends.endLeft - ends.reservedLeft), "the buttons sit on their own column").toBeLessThan(1);
       expect(ends.dataRight, "no data cell runs under the buttons").toBeLessThanOrEqual(ends.endLeft + 1);
+      // The Set is narrower beside the 470 px Suggestions (B17): bring Mix in to the middle of the
+      // table first, as a person scrolls to it, so neither sticky edge covers it.
+      await focusedRow.getByRole("button", { name: mixInName, exact: true }).evaluate((cell) =>
+        cell.scrollIntoView({ block: "nearest", inline: "center" }),
+      );
       const mixInBox = (await focusedRow.getByRole("button", { name: mixInName, exact: true }).boundingBox())!;
       await win.waitForTimeout(600); // past a double-click's length, so this is a click of its own
       const at = { x: mixInBox.x + mixInBox.width / 2, y: mixInBox.y + mixInBox.height / 2 };

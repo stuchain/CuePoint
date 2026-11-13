@@ -456,16 +456,22 @@ test.describe("The Library page (LIBRARY-11)", () => {
           // 20px scrollbars are a stress: the filter bar's third line costs two rows there.
           inner ? (wideScrollbars ? WHOLE_ROWS_LIBRARY_WINDOWS_INNER - 2 : WHOLE_ROWS_LIBRARY_WINDOWS_INNER) : WHOLE_ROWS_LIBRARY_WINDOWS_INNER,
         );
-        // The bar holds at most two lines with Track details open (its column is 503px): the four
-        // groups, in order, and the close button. It is never cut.
+        // The bar holds at most two lines with Track details open (its column is 503px): the groups
+        // that fit, in order, then More, and the close button. It is never cut, and since B14 no
+        // button is squeezed under its own label: a group that does not fit folds into More.
         expect(m.barLines, `selection bar lines at ${label}`).toBeLessThanOrEqual(2);
-        expect(m.barLabels, `the selection bar's controls at ${label}`).toEqual([
-          "Clear selection",
-          "Play",
-          "Organize",
-          "Beatport",
-          "More",
-        ]);
+        const groups = ["Play", "Organize", "Beatport"];
+        expect(m.barLabels[0], `the selection bar's first control at ${label}`).toBe("Clear selection");
+        expect(m.barLabels.at(-1), `the selection bar's last control at ${label}`).toBe("More");
+        const shownGroups = m.barLabels.slice(1, -1);
+        expect(shownGroups, `the selection bar's groups at ${label}`).toEqual(groups.slice(0, shownGroups.length));
+        expect(shownGroups.length, `groups left beside More at ${label}`).toBeGreaterThanOrEqual(2);
+        const squeezed = await window.evaluate(() =>
+          [...document.querySelectorAll<HTMLElement>(".cp-selection-bar [data-group]")]
+            .filter((button) => button.offsetParent && button.scrollWidth - button.offsetWidth > 3)
+            .map((button) => button.textContent),
+        );
+        expect(squeezed, `buttons squeezed under their label at ${label}`).toEqual([]);
         expect(m.barCut, `the selection bar is cut at ${label}`).toBe(false);
       }
     } finally {
