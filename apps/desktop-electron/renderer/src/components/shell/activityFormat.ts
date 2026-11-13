@@ -150,6 +150,9 @@ const EVENT_WORDS: Record<string, string> = {
   "discover.wantlist.noted": "Wantlist",
   "discover.wantlist.bought": "Wantlist",
   "discover.wantlist.unbought": "Wantlist",
+  "discover.follow.added": "Following",
+  "discover.follow.removed": "Following",
+  "discover.follow.seen": "Following",
 };
 
 export const RECORDED_EVENT_TYPES: readonly string[] = Object.keys(EVENT_WORDS);
