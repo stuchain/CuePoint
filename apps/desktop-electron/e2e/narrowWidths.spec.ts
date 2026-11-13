@@ -155,6 +155,8 @@ test.describe("the tightest rows at 1,024 px wide and 1.5x (P2)", () => {
       // --- Prepare's source toolbar -------------------------------------------------------
       await win.evaluate((id) => (window.location.hash = `#/prepare/${id}`), setId);
       await expect(win.getByRole("grid", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+      // Under 1,100 wide the source panel starts folded (B14); opened, its toolbar must still fit.
+      await win.getByRole("button", { name: "Show suggestions" }).click();
       await expect(win.locator(".prepare-source__controls")).toBeVisible();
       const prepare = await fit(win, ".prepare-source__controls");
       console.log("Prepare source toolbar at 1024 px / 1.5x:", JSON.stringify(prepare));
