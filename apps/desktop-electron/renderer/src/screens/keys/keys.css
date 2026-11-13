@@ -201,6 +201,8 @@
      title's edge (the head and body pad in by the gutter it covers). */
   margin-inline-start: calc(-1 * var(--safe-left));
   background: var(--bg-panel);
+  /* A panel-toned pane like .cp-panel: its search box takes the darker input tone (B19). */
+  --field-fill: var(--bg-input);
 }
 
 .keys-sources__head {

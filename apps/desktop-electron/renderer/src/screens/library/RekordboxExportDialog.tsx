@@ -671,7 +671,9 @@ export function RekordboxExportDialog({
                       })}
                     </fieldset>
                   )}
-                  {preview && (
+                  {/* With nothing to tick, the note above is the one answer: a second "tick a
+                      Collection" would name a box that is not there (B13). */}
+                  {preview && rows.length > 0 && (
                     <>
                       <p data-testid="export-playlist-headline">
                         {playlistHeadline(preview, choice.length)}

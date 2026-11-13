@@ -35,6 +35,16 @@ describe("Settings page CSS", () => {
     expect(body(".settings-page__about p:not(.settings-note):not(.cp-reason)")).toMatch(/font-size/);
   });
 
+  it("writes the About card's lines at the body size, as every other section's status line (B23)", () => {
+    expect(body(".settings-page__about p:not(.settings-note):not(.cp-reason)")).toMatch(/font-size:\s*var\(--text-body\)/);
+  });
+
+  it("gives fields in a see-through section card the page's field tone, so they show (B18)", () => {
+    const card = body(".settings-page__section > .cp-card");
+    expect(card).toMatch(/background:\s*transparent/);
+    expect(card).toMatch(/--field-fill:\s*var\(--bg-panel\)/);
+  });
+
   it("lands a section and its heading a box's gap below the sticky header (C124)", () => {
     for (const selector of [".settings-page__section", ".settings-page__section h2", ".settings-page__section h3"]) {
       expect(body(selector)).toMatch(/scroll-margin-top:\s*calc\(var\(--screen-header-height, 0px\) \+ var\(--gap-box\)\)/);

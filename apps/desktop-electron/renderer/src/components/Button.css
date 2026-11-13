@@ -294,9 +294,14 @@
 }
 
 .cp-btn--icon.cp-btn--sm {
-  position: relative;
   width: var(--control-height-sm);
   min-width: var(--control-height-sm);
+}
+
+/* The hit square below needs a positioned box, but at no weight: a button its owner places (a card's
+   ⋯ menu, position: absolute) keeps its place (B9). */
+:where(.cp-btn--icon.cp-btn--sm) {
+  position: relative;
 }
 
 /* The small icon button is drawn small and hit at 24 (M477): an invisible square reaches out from it. */
