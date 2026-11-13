@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Prepare no longer fails with "database is locked" while the app is saving matches.** Opening a set, its checks or its set list read the library with a write lock, so on a slow PC it could wait on a running match job and then fail (Sentry PYTHON-1M, PYTHON-1K). These reads now take a read-only snapshot and never wait on a writer. If the library is still busy, Prepare tries again once and then says "The library is busy. Try again in a moment." with a Try again button, instead of reporting an error.
+- **Saves on Windows no longer fail when another program holds the file for a moment.** An antivirus scan, Explorer's preview or the search indexer could make Save to files, an export, a set list or a settings save fail with "Access is denied". The engine now tries again for about a second, as the app already did.
+- **Windows no longer fills the temp folder with old copies of the engine.** The engine unpacks itself into the temp folder (about 70 MB) at every start, and that copy stayed behind after each quit. The app now deletes CuePoint's own leftover copies when it starts, and only the ones nothing is using.
+- **Settings' dropdowns and the Keys search box show their box again.** In Neo dark, Classic, Club neon and Muted they were drawn in the colour behind them and read as plain text.
+- **A page header no longer draws its tabs over the page.** With the queue open on a small window, Statistics' header buttons moved to a second line and the tabs sat on top of the first lines below.
+- **Smaller fixes.** A dig card's ⋯ button sits at the card's top right again instead of under the card; the player bar reads "Ninefold · 136 BPM" for a track without a key, not "Ninefold ·136 BPM"; Export to Rekordbox says once that there are no Collections or Sets; Settings > About & updates uses the same text size as the other sections.
 
 ### Added
 - **The engine records what it was doing when it stops answering.** When the engine is stuck for 40 seconds, it writes the stack of every thread to `engine-stall.txt` in the logs folder, and the error report sent when the app restarts the engine includes that file (Sentry ELECTRON-3). This does not fix the freeze; it shows where it happens.
