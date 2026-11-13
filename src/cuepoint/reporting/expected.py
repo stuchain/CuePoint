@@ -71,6 +71,8 @@ EXPECTED_ROUTE_ERROR_CODES: frozenset[str] = frozenset(
     {
         # The set list's destination refused the write: a full or read-only disk.
         "SET_LIST_WRITE_FAILED",
+        # Another writer held the library's lock past a read's wait: try again in a moment.
+        "LIBRARY_BUSY",
         # The library's own states (HARDEN-03): a full disk, no room to upgrade, an upgrade
         # that waits for "Try again" or is still running. DB_UNREADABLE and
         # DB_MIGRATION_FAILED are deliberately not here: the library state reports

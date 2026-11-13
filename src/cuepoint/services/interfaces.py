@@ -719,6 +719,17 @@ class IDatabaseService(ABC):
         ...
 
     @abstractmethod
+    def read_snapshot(self) -> "AbstractContextManager[sqlite3.Connection]":
+        """Context manager reading several things as of one moment.
+
+        A deferred transaction that is always rolled back: it never takes the
+        write lock, so a read cannot queue behind (or fail on) a writer. Joins
+        a transaction already open on this connection and leaves its outcome to
+        the owner. Only reads belong inside.
+        """
+        ...
+
+    @abstractmethod
     def savepoint(self) -> "AbstractContextManager[sqlite3.Connection]":
         """Context manager for a part of the open transaction that can fail alone.
 

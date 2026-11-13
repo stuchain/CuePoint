@@ -247,6 +247,7 @@ export const SET_REFUSAL_CODES: readonly SetRefusalCode[] = [
   "SET_INSERTION_POINT_REFUSED",
   "SET_LIST_DESTINATION_REFUSED",
   "SET_LIST_WRITE_FAILED",
+  "LIBRARY_BUSY",
 ];
 
 /** Every reason a Set refusal names, so one the engine never sends reads as none. */
@@ -2878,7 +2879,8 @@ export type SetRefusalCode =
   | "SET_NOT_FOUND"
   | "SET_INSERTION_POINT_REFUSED"
   | "SET_LIST_DESTINATION_REFUSED"
-  | "SET_LIST_WRITE_FAILED";
+  | "SET_LIST_WRITE_FAILED"
+  | "LIBRARY_BUSY";
 
 /** What a `SET_NOT_FOUND` names: gone in another window, or by a refresh. */
 export type SetNotFoundReason = "set" | "chapter" | "entry";

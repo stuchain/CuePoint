@@ -517,7 +517,7 @@ class SetService(ISetService):
         Raises:
             ValueError: If there is no such Set.
         """
-        with self._db.transaction(join_existing=True):
+        with self._db.read_snapshot():
             node = self._require_set(set_id)
             details = self._collections.set_details(int(set_id))
             chapters = self._collections.chapters(int(set_id))

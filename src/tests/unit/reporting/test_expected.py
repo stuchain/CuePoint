@@ -41,9 +41,10 @@ def test_beatport_classes_match_the_client_constants() -> None:
 
 
 def test_route_codes_match_the_api_constants() -> None:
-    from cuepoint.engine.sets_api import SET_LIST_WRITE_FAILED
+    from cuepoint.engine.sets_api import LIBRARY_BUSY, SET_LIST_WRITE_FAILED
 
     assert SET_LIST_WRITE_FAILED in EXPECTED_ROUTE_ERROR_CODES
+    assert LIBRARY_BUSY in EXPECTED_ROUTE_ERROR_CODES
 
 
 def test_generic_codes_are_never_expected() -> None:

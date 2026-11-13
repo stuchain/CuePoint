@@ -465,15 +465,8 @@ class StatisticsRepository(IStatisticsRepository):
         statements agree whatever a refresh commits meanwhile. Joins a transaction
         already open on the connection, which then owns the boundary.
         """
-        connection = self._db.connect()
-        if connection.in_transaction:
+        with self._db.read_snapshot():
             yield
-            return
-        connection.execute("BEGIN")
-        try:
-            yield
-        finally:
-            connection.execute("ROLLBACK")
 
     def present_files(self, scope: RuleSet) -> List[Tuple[int, str, Optional[int]]]:
         """``(track id, path, size)`` of each scope track the last check found present.

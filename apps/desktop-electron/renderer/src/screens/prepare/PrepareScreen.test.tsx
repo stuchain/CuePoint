@@ -37,6 +37,20 @@ import { PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
 import { SETS_NEED_DESKTOP, WHAT_A_SET_IS } from "./prepareFormat";
 import { LAST_SET_STORAGE_KEY, PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
 import { expectNoAxeViolations } from "../../test/axe";
+import { reportUnexpected } from "../../reporting/reporting";
+
+vi.mock("../../reporting/reporting", async (original) => ({
+  ...(await original<typeof import("../../reporting/reporting")>()),
+  reportUnexpected: vi.fn(),
+}));
+
+/** The engine's 503 when a writer held the library's lock past the wait. */
+const BUSY: SetRefusal = {
+  code: "LIBRARY_BUSY",
+  message: "The library is busy. Try again in a moment.",
+  reason: null,
+  path: null,
+};
 
 /** What a button draws: the name of its icon, else its words. */
 const markOf = (b: HTMLElement): string | null => b.querySelector("[data-icon]")?.getAttribute("data-icon") ?? b.textContent;
@@ -299,6 +313,7 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  vi.mocked(reportUnexpected).mockClear();
   install();
 });
 
@@ -627,6 +642,23 @@ describe("which Set opens", () => {
     sets.plan.mockRejectedValueOnce(new Error("The engine is not running"));
     renderAt(preparePath(IDS.friday));
     expect(await screen.findByText("The engine is not running", {}, LOADED)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await opened();
+  });
+
+  it("tries a busy library once more by itself, without reporting it", async () => {
+    sets.plan.mockResolvedValueOnce(refused(BUSY));
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(sets.plan).toHaveBeenCalledTimes(2);
+    expect(reportUnexpected).not.toHaveBeenCalled();
+  });
+
+  it("says a library still busy is busy, and tries again on request", async () => {
+    sets.plan.mockResolvedValueOnce(refused(BUSY)).mockResolvedValueOnce(refused(BUSY));
+    renderAt(preparePath(IDS.friday));
+    expect(await screen.findByText(BUSY.message, {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(reportUnexpected).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await opened();
   });

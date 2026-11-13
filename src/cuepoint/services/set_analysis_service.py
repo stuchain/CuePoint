@@ -305,7 +305,7 @@ class SetAnalysisService(ISetAnalysisService):
         Raises:
             ValueError: If there is no such Set, or the node is not one.
         """
-        with self._db.transaction(join_existing=True):
+        with self._db.read_snapshot():
             node = self._require_set(set_id)
             analysis = self._analysis(int(set_id))
         # Keys show in Camelot everywhere (DEC-201), whatever the imported file used.

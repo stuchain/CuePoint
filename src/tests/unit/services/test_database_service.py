@@ -305,6 +305,65 @@ class TestTransactions:
 
 
 @pytest.mark.unit
+class TestReadSnapshot:
+    def test_it_reads_one_moment_and_ends_with_nothing_open(self, service, db_path):
+        service.connect().execute("CREATE TABLE t (v TEXT)")
+        service.connect().execute("INSERT INTO t (v) VALUES ('a')")
+        other = sqlite3.connect(db_path, isolation_level=None)
+        try:
+            with service.read_snapshot() as conn:
+                assert conn.in_transaction
+                assert conn.execute("SELECT count(*) FROM t").fetchone()[0] == 1
+                other.execute("INSERT INTO t (v) VALUES ('b')")
+                # The writer committed, and the snapshot does not see it.
+                assert conn.execute("SELECT count(*) FROM t").fetchone()[0] == 1
+        finally:
+            other.close()
+        assert not service.connect().in_transaction
+        assert service.connect().execute("SELECT count(*) FROM t").fetchone()[0] == 2
+
+    def test_it_never_takes_the_write_lock(self, service, db_path):
+        service.connect().execute("CREATE TABLE t (v TEXT)")
+        other = sqlite3.connect(db_path, isolation_level=None, timeout=0.1)
+        try:
+            with service.read_snapshot() as conn:
+                conn.execute("SELECT * FROM t").fetchall()
+                # Another connection can still take the write lock and commit.
+                other.execute("BEGIN IMMEDIATE")
+                other.execute("INSERT INTO t (v) VALUES ('x')")
+                other.execute("COMMIT")
+        finally:
+            other.close()
+
+    def test_it_joins_an_open_transaction_and_leaves_the_callers_work(self, service):
+        service.connect().execute("CREATE TABLE t (v TEXT)")
+        with service.transaction() as outer:
+            outer.execute("INSERT INTO t (v) VALUES ('a')")
+            with service.read_snapshot() as joined:
+                assert joined is outer
+                assert joined.execute("SELECT count(*) FROM t").fetchone()[0] == 1
+            # Still open, and the insert was not rolled back by the snapshot.
+            assert outer.in_transaction
+            assert outer.execute("SELECT count(*) FROM t").fetchone()[0] == 1
+        assert service.connect().execute("SELECT count(*) FROM t").fetchone()[0] == 1
+
+    def test_it_nests(self, service):
+        with service.read_snapshot() as outer:
+            with service.read_snapshot() as inner:
+                assert inner is outer
+            assert outer.in_transaction
+        assert not service.connect().in_transaction
+
+    def test_an_error_inside_still_ends_the_snapshot(self, service):
+        with pytest.raises(RuntimeError):
+            with service.read_snapshot():
+                raise RuntimeError("boom")
+        assert not service.connect().in_transaction
+        with service.transaction() as conn:
+            assert conn.in_transaction
+
+
+@pytest.mark.unit
 class TestExecuteScript:
     def test_runs_multiple_statements(self, service):
         service.execute_script(

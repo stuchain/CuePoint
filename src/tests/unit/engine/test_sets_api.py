@@ -1352,6 +1352,29 @@ class TestTheRefusalMap:
         error = ApiError(404, "SET_NOT_FOUND", "gone", reason="set")
         assert api.status_for(error) == (404, error.payload())
 
+    def test_a_locked_library_is_a_503_try_again_and_never_reported(self):
+        import sqlite3
+
+        from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
+        from cuepoint.reporting.expected import is_expected_code
+
+        locked = sqlite3.OperationalError("database is locked")
+        for exc in (locked, DatabaseError("Could not save", "X")):
+            if exc is not locked:
+                exc.__cause__ = locked
+            status, payload = api.status_for(exc)
+            assert status == 503
+            assert payload == {
+                "error": {
+                    "code": "LIBRARY_BUSY",
+                    "message": "The library is busy. Try again in a moment.",
+                }
+            }
+        assert is_expected_code(payload["error"]["code"])
+        # Another operational error is still a bug.
+        other = api.status_for(sqlite3.OperationalError("no such table: x"))
+        assert (other[0], other[1]["error"]["code"]) == (500, "SETS_FAILED")
+
     def test_every_code_it_can_give_is_a_refusal_code(self):
         assert set(api.REFUSAL_CODES) == {
             "INVALID_REQUEST",
@@ -1359,4 +1382,5 @@ class TestTheRefusalMap:
             "SET_INSERTION_POINT_REFUSED",
             "SET_LIST_DESTINATION_REFUSED",
             "SET_LIST_WRITE_FAILED",
+            "LIBRARY_BUSY",
         }

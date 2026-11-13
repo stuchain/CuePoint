@@ -156,15 +156,8 @@ class MatchStatusRepository(IMatchStatusRepository):
         A deferred transaction: in WAL mode the first read fixes the snapshot,
         and a writer committing meanwhile is not seen. Joins one already open.
         """
-        connection = self._db.connect()
-        if connection.in_transaction:
+        with self._db.read_snapshot():
             yield
-            return
-        connection.execute("BEGIN")
-        try:
-            yield
-        finally:
-            connection.execute("ROLLBACK")
 
     def tree(self) -> List[PlaylistNode]:
         """Return every folder and playlist, in order within each parent."""

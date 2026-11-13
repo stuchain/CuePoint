@@ -237,7 +237,7 @@ class SetListService(ISetListService):
         Raises:
             ValueError: If there is no such Set, or the node is not one.
         """
-        with self._db.transaction(join_existing=True):
+        with self._db.read_snapshot():
             plan = self._sets.plan(int(set_id))
             facts = {
                 row.entry_id: row for row in self._set_rows.entry_facts(int(set_id))

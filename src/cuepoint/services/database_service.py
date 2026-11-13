@@ -394,6 +394,45 @@ class DatabaseService(IDatabaseService):
             ) from exc
 
     @contextmanager
+    def read_snapshot(self) -> Iterator[sqlite3.Connection]:
+        """Read several things as of one moment, without taking the write lock.
+
+        A *deferred* ``BEGIN``: in WAL mode the first read fixes the snapshot, a
+        writer committing meanwhile is not seen, and no lock is taken at all, so
+        the read never queues behind a writer. (SQLite can still answer "busy"
+        in rare cases such as WAL recovery, so callers keep mapping that.) It
+        always ends with ``ROLLBACK``, which for a read is just letting the
+        snapshot go. That is why this exists beside
+        :meth:`transaction`, which begins ``IMMEDIATE`` and so waits for, then
+        holds, the single write lock: a read that only wants consistency must
+        not pay for that.
+
+        When a transaction is already open on this connection the block joins
+        it, as ``transaction(join_existing=True)`` does: no BEGIN and no
+        ROLLBACK, so the caller's work is neither ended nor undone. That makes
+        it safe to nest. Only reads belong in the block; a write inside a
+        standalone snapshot would be rolled back.
+        """
+        connection = self.connect()
+        if connection.in_transaction:
+            yield connection
+            return
+        connection.execute("BEGIN")
+        try:
+            yield connection
+        finally:
+            try:
+                connection.execute("ROLLBACK")
+            except sqlite3.Error:
+                # Nothing was written, so a failed ROLLBACK loses nothing; it
+                # must not hide the error that ended the block.
+                pass
+            if connection.in_transaction:
+                # Still open after all: this thread's connection would carry a
+                # stale snapshot into its next read, so it is let go.
+                self.close()
+
+    @contextmanager
     def savepoint(self) -> Iterator[sqlite3.Connection]:
         """Run part of the open transaction so that it can fail alone.
 

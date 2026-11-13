@@ -95,6 +95,7 @@ from typing import (
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
 from cuepoint.models.filter_rule import FilterRuleError
+from cuepoint.services import busy_wait
 from cuepoint.utils.quoting import quoted
 
 _logger = logging.getLogger(__name__)
@@ -130,6 +131,11 @@ SET_NOT_FOUND = "SET_NOT_FOUND"
 INSERTION_POINT_REFUSED = "SET_INSERTION_POINT_REFUSED"
 SET_LIST_DESTINATION_REFUSED = "SET_LIST_DESTINATION_REFUSED"
 SET_LIST_WRITE_FAILED = "SET_LIST_WRITE_FAILED"
+#: The library database is locked by another writer for longer than a request
+#: waits. Not the user's to fix and not a bug: try again in a moment. It shares
+#: the spelling Rekordbox export uses for a library held by a job.
+LIBRARY_BUSY = "LIBRARY_BUSY"
+LIBRARY_BUSY_MESSAGE = "The library is busy. Try again in a moment."
 
 REFUSAL_CODES: Tuple[str, ...] = (
     INVALID_REQUEST,
@@ -137,6 +143,7 @@ REFUSAL_CODES: Tuple[str, ...] = (
     INSERTION_POINT_REFUSED,
     SET_LIST_DESTINATION_REFUSED,
     SET_LIST_WRITE_FAILED,
+    LIBRARY_BUSY,
 )
 
 #: What a ``SET_NOT_FOUND`` names.
@@ -972,6 +979,13 @@ def status_for(exc: BaseException) -> Tuple[int, Dict[str, Any]]:
         return 400, error_payload(INVALID_REQUEST, exc.message)
     if isinstance(exc, SetsUnavailableError):
         return 503, error_payload("LIBRARY_UNAVAILABLE", str(exc))
+    if busy_wait.database_busy(exc):
+        # A writer (a match job's upsert, an import) held the lock past the
+        # busy timeout. Expected, so it is a 503 to retry, not a reported bug.
+        # Logged as a warning: "locked" also covers a few real bugs (a table
+        # lock, a read that tried to write), which should stay findable.
+        _logger.warning("[sets] library busy: %s", exc)
+        return 503, error_payload(LIBRARY_BUSY, LIBRARY_BUSY_MESSAGE)
     _logger.warning("[sets] request failed: %s", exc, exc_info=exc)
     return 500, error_payload("SETS_FAILED", str(exc))
 
@@ -980,6 +994,7 @@ __all__: Sequence[str] = (
     "GET_PATHS",
     "INSERTION_POINT_REFUSED",
     "INVALID_REQUEST",
+    "LIBRARY_BUSY",
     "NOT_FOUND_REASONS",
     "POST_PATHS",
     "PREFIX",

@@ -3042,7 +3042,9 @@ export type SetRefusalCode =
   | "SET_NOT_FOUND"
   | "SET_INSERTION_POINT_REFUSED"
   | "SET_LIST_DESTINATION_REFUSED"
-  | "SET_LIST_WRITE_FAILED";
+  | "SET_LIST_WRITE_FAILED"
+  /** Another writer held the library's lock past the wait (503): try again in a moment. */
+  | "LIBRARY_BUSY";
 
 /** What a `SET_NOT_FOUND` names: gone in another window, or by a refresh. */
 export type SetNotFoundReason = "set" | "chapter" | "entry";

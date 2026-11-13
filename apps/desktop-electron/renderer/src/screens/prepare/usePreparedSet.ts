@@ -14,6 +14,10 @@
  *   so the page says so and leaves (`gone`).
  * - `SET_NOT_FOUND` for a chapter or an entry, and a `stale` insertion point:
  *   something moved under the gesture, so the page says so and re-reads.
+ * - `LIBRARY_BUSY`: another writer (a match job, an import) held the library's
+ *   lock past the wait. Expected, so it is never reported: the read is tried
+ *   once more after a second and, if it is still busy, the engine's words are
+ *   shown with the page's Try again.
  * - Anything else (`INVALID_REQUEST`): the engine's words, and nothing moves.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -87,14 +91,34 @@ type Read =
   | { kind: "refused"; refusal: SetRefusal }
   | { kind: "failed"; message: string };
 
-async function readSet(sets: SetsBridge, setId: number): Promise<Read> {
+/** How long a read that found the library busy waits before its one second try. */
+export const BUSY_RETRY_MS = 1000;
+
+/** The refusal that decides a read: one that is not "busy" (a Set that is gone) comes first. */
+function firstRefusal(refusals: Array<SetRefusal | null | undefined>): SetRefusal | null {
+  const present = refusals.filter((refusal): refusal is SetRefusal => refusal != null);
+  return present.find((refusal) => refusal.code !== "LIBRARY_BUSY") ?? present[0] ?? null;
+}
+
+async function readSet(
+  sets: SetsBridge,
+  setId: number,
+  retry = true,
+  stillWanted: () => boolean = () => true,
+): Promise<Read> {
   try {
     const [plan, entries, analysis] = await Promise.all([
       sets.plan({ set_id: setId }),
       sets.entries({ set_id: setId }),
       sets.analysis({ set_id: setId }),
     ]);
-    const refusal = plan.refusal ?? entries.refusal ?? analysis.refusal;
+    const refusal = firstRefusal([plan.refusal, entries.refusal, analysis.refusal]);
+    if (refusal?.code === "LIBRARY_BUSY" && retry) {
+      await new Promise((resolve) => setTimeout(resolve, BUSY_RETRY_MS));
+      // The page left or named another Set meanwhile: no second read for nobody.
+      if (!stillWanted()) return { kind: "refused", refusal };
+      return readSet(sets, setId, false);
+    }
     if (refusal) return { kind: "refused", refusal };
     return {
       kind: "read",
@@ -157,7 +181,7 @@ export function usePreparedSet({
     let current = true;
     const ticket = ++started.current;
     setLoading(true);
-    void readSet(sets, setId).then((result) => {
+    void readSet(sets, setId, true, () => current).then((result) => {
       if (current) apply(result, ticket, false);
     });
     return () => {
