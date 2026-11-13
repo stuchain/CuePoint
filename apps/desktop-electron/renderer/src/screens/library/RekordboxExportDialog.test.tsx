@@ -307,6 +307,9 @@ describe("choosing what to send", () => {
     await openDetails();
     expect(within(dialog()).getByText(/You have no Collections or Sets yet/)).toBeInTheDocument();
     expect(within(dialog()).queryByRole("checkbox")).toBeNull();
+    // Said once (B13): no second line telling to tick a Collection that is not there.
+    expect(within(dialog()).queryByTestId("export-playlist-headline")).toBeNull();
+    expect(within(dialog()).queryByText(/Tick a Collection/)).toBeNull();
   });
 
   it("says a ticked folder with nothing in it adds no playlists", async () => {

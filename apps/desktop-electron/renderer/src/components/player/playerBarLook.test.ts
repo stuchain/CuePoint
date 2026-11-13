@@ -158,6 +158,11 @@ describe("the player bar keeps its look", () => {
     expect(ruleDecls(playerBar, ".cp-player-bar__meta-fixed")["flex"]).toBe("none");
   });
 
+  it("keeps the space after the lead's trailing separator, so a keyless track reads “Ninefold · 136 BPM” (B10)", () => {
+    // The lead ends in " · " when fixed parts follow; nowrap trims a line's trailing space, pre keeps it.
+    expect(ruleDecls(playerBar, ".cp-player-bar__meta-lead")["white-space"]).toBe("pre");
+  });
+
   // --shadow-badge stays defined: the website's synced tokens use it (Badge.astro, Button.astro); only the
   // player badge that used it in the app is gone (P22).
   it("keeps the structural tokens", () => {

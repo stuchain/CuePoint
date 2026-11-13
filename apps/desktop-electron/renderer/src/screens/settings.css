@@ -140,6 +140,9 @@
 .settings-page__section > .cp-card {
   padding: 0;
   background: transparent;
+  /* The card is see-through here, so its fields sit on the page ground: give them the page's field
+     tone, or they vanish in every theme whose input tone is the page tone (B18). */
+  --field-fill: var(--bg-panel);
 }
 
 .settings-page__about {
@@ -185,10 +188,11 @@
   min-width: 0;
 }
 
-/* The About card's own lines; a hint and a greyed button's reason keep their one size (C59). */
+/* The About card's own lines; a hint and a greyed button's reason keep their one size (C59). They are
+   status lines like every other section's, so they share the body size (B23: 12px here read 18 at 1.5). */
 .settings-page__about p:not(.settings-note):not(.cp-reason) {
   margin: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
 }
 
 /* One column below about 700px at the default size (C206: a container query in em of the content

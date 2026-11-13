@@ -85,7 +85,9 @@
   overflow-y: visible;
   overflow-clip-margin: calc(8px * var(--scale));
   text-overflow: ellipsis;
-  white-space: nowrap;
+  /* pre, as the fixed parts: the lead ends in its separator " · ", and nowrap would drop that
+     trailing space and draw "Ninefold ·136 BPM" (B10). It still never wraps. */
+  white-space: pre;
 }
 
 .cp-player-bar__meta-fixed {
