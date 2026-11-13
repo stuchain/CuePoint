@@ -23,6 +23,29 @@ genre       ``TCON``             ``GENRE``              ``GENRE``
 comment     every ``COMM``       ``COMMENT``            ``COMMENT``
 ==========  ===================  =====================  ==================
 
+==========  =========================================  ===================
+Field       M4A, MP4, M4B: standard atom               legacy atom
+==========  =========================================  ===================
+key         ``----:com.apple.iTunes:initialkey``       ``KEY\x00``
+year        ``\xa9day``                                 ``DATE``
+label       ``----:com.apple.iTunes:LABEL``            ``LABE``
+bpm         ``tmpo`` (a list of integers)              ``BPM\x00``
+genre       ``\xa9gen``                                 ``GENR``
+comment     ``\xa9cmt``                                 ``COMM``
+==========  =========================================  ===================
+
+The MP4 writer removes the legacy atom (what versions before 1.0.0 wrote) once
+the standard atom holds a value, so a field's slots are both atoms and a restore
+puts both back. A freeform atom's payload is stored as text when it is UTF-8
+text with the UTF-8 data type, and otherwise as ``{"dataformat", "data"}`` (data
+in base64), so a restore gives back the same bytes with the same data type.
+
+"Exactly" holds for values and freeform payloads, not for the file's bytes: a
+legacy ``gnre`` genre becomes ``\xa9gen`` once a genre is written, and the
+freeform atom's version flag and the order of atoms in the file are not kept.
+A file holding an atom of ours that mutagen cannot parse (a ``tmpo`` that is
+text, a UTF-16 ``\xa9cmt``) is refused as unreadable rather than risk replacing it.
+
 The writer deletes every ``COMM`` frame before adding its own, so a comment's
 value is all of them — the ``iTunNORM`` a player wrote as well as the text a
 user typed — and a restore puts all of them back. The writer saves ID3v2.4, in
@@ -36,16 +59,17 @@ would have nothing to do. Encodings are not part of a value: text is text.
 
 Formats
 -------
-MP3, AIFF, FLAC and Ogg Vorbis. WAV is skipped by the rule both existing callers
-apply, and every other container is refused: an M4A's atoms are not recorded or restored
-here (the writer stores them under the standard iTunes atoms).
+MP3, AIFF, FLAC, Ogg Vorbis and the MP4 family (``.m4a``, ``.mp4``, ``.m4b``).
+WAV is skipped by the rule both existing callers apply, and every other
+container is refused, ``.m4p`` (protected purchases) among them.
 
 Pictures
 --------
 A snapshot lists a SHA-256 of every picture a file holds, in stored order. A
 picture is embedded only into a file that holds none, checked here immediately
 before the save as well as by the caller, and removed by its hash, so a restore
-removes the picture CuePoint added and nothing else (DEC-076).
+removes the picture CuePoint added and nothing else (DEC-076). In an MP4 the
+pictures are its ``covr`` atoms, and a cover is embedded as a JPEG ``MP4Cover``.
 """
 
 from __future__ import annotations
@@ -59,6 +83,13 @@ from cuepoint.data.tag_save import (
     MESSAGE_TAGS_DIFFER,
     TagSaveError,
     save_via_copy,
+)
+from cuepoint.data.tag_writer import (
+    MP4_ATOMS,
+    MP4_LEGACY_ATOMS,
+    MP4_SUFFIXES,
+    _mp4_bpm,
+    _same_year,
 )
 from cuepoint.utils.long_path import os_path
 from cuepoint.utils.quoting import quoted
@@ -83,6 +114,7 @@ TAG_FIELDS: Tuple[str, ...] = (
 FORMAT_ID3 = "id3"
 FORMAT_FLAC = "flac"
 FORMAT_VORBIS = "vorbis"
+FORMAT_MP4 = "mp4"
 
 #: Which family a file is, by its extension — the rule ``tag_writer`` routes by.
 _FORMAT_BY_SUFFIX: Dict[str, str] = {
@@ -91,6 +123,7 @@ _FORMAT_BY_SUFFIX: Dict[str, str] = {
     ".aif": FORMAT_ID3,
     ".flac": FORMAT_FLAC,
     ".ogg": FORMAT_VORBIS,
+    **{suffix: FORMAT_MP4 for suffix in MP4_SUFFIXES},
 }
 
 _ID3_SLOTS: Dict[str, Tuple[str, ...]] = {
@@ -117,11 +150,21 @@ _FLAC_SLOTS: Dict[str, Tuple[str, ...]] = {
     FIELD_KEY: ("KEY", "INITIALKEY"),
 }
 
+#: MP4 holds each field in the standard atom and the legacy one the writer removes.
+_MP4_SLOTS: Dict[str, Tuple[str, ...]] = {
+    field: (MP4_ATOMS[field], MP4_LEGACY_ATOMS[field]) for field in TAG_FIELDS
+}
+
 _SLOTS: Dict[str, Dict[str, Tuple[str, ...]]] = {
     FORMAT_ID3: _ID3_SLOTS,
     FORMAT_FLAC: _FLAC_SLOTS,
     FORMAT_VORBIS: _VORBIS_SLOTS,
+    FORMAT_MP4: _MP4_SLOTS,
 }
+
+#: The MP4 picture atom, and the key a freeform atom's name starts with.
+_MP4_COVER = "covr"
+_MP4_FREEFORM_PREFIX = "----:"
 
 #: The language and description the writer gives the comment it adds.
 WRITER_COMMENT_LANGUAGE = "XXX"
@@ -194,11 +237,15 @@ def picture_hash(data: bytes) -> str:
     return hashlib.sha256(bytes(data)).hexdigest()
 
 
-def predicted_value(tag_format: str, field: str, text: str) -> Dict[str, Any]:
+def predicted_value(
+    tag_format: str, field: str, text: str, before: FieldValue = None
+) -> Dict[str, Any]:
     """The value a field holds after the writer writes ``text`` into it.
 
     Mirrors ``tag_writer``'s per-format writers; the round-trip tests hold the
-    two to each other for every field and format.
+    two to each other for every field and format. ``before`` is what the file
+    held, which only an MP4 year needs: the writer keeps a full date in the same
+    year (``2019-05-04`` for 2019) rather than replacing it.
 
     Raises:
         ValueError: If the format or field is unknown, or the text is blank.
@@ -208,7 +255,43 @@ def predicted_value(tag_format: str, field: str, text: str) -> Dict[str, Any]:
         raise ValueError(f"A {field} to write cannot be blank")
     if tag_format == FORMAT_ID3 and field == FIELD_COMMENT:
         return {"COMM": [[WRITER_COMMENT_LANGUAGE, WRITER_COMMENT_DESCRIPTION, [text]]]}
+    if tag_format == FORMAT_MP4:
+        # Only the standard atom: the writer removes the legacy one. A BPM is
+        # the whole number ``tmpo`` holds; one it cannot hold is left as text,
+        # which no file reads back as, so the write is reported as failed.
+        if field == FIELD_YEAR and before:
+            held = before.get(slots[0]) or []
+            if held and isinstance(held[0], str) and _same_year(held[0], text):
+                return {slots[0]: list(held)}
+        if field == FIELD_BPM:
+            tempo = _mp4_bpm(text)
+            return {slots[0]: [tempo if tempo is not None else text]}
+        return {slots[0]: [text]}
     return {slot: [text] for slot in slots}
+
+
+def mp4_migrated_value(field: str, before: FieldValue) -> FieldValue:
+    """What an MP4 write leaves in a field it was *not* asked to write, or None.
+
+    The writer moves a value held only under the legacy atom to the standard
+    atom, and drops a legacy atom the standard one stands beside, for every
+    field whatever the call writes. None when the field is left as it is.
+    """
+    standard, legacy = _slots_for(FORMAT_MP4)[require_field(field)]
+    if not before or legacy not in before:
+        return None
+    if standard in before:
+        return {standard: list(before[standard])}
+    carried: List[Any] = []
+    for item in before[legacy]:
+        text = str(item)
+        if field == FIELD_BPM:
+            tempo = _mp4_bpm(text)
+            if tempo is not None:
+                carried.append(tempo)
+        else:
+            carried.append(text)
+    return {standard: carried} if carried else None
 
 
 def display_value(value: FieldValue) -> Optional[str]:
@@ -227,8 +310,9 @@ def display_value(value: FieldValue) -> Optional[str]:
                     texts.extend(str(text) for text in comment_texts)
             continue
         for text in contents:
-            if str(text) not in texts:
-                texts.append(str(text))
+            shown = "(binary)" if isinstance(text, dict) else str(text)
+            if shown not in texts:
+                texts.append(shown)
     shown = "; ".join(text for text in texts if text)
     return shown or None
 
@@ -240,7 +324,7 @@ def read_tag_fields(path: PathLike) -> TagSnapshot:
     """Read every tag field and picture a file holds.
 
     Raises:
-        UnsupportedTagFormat: If the file is not MP3, AIFF, FLAC or Ogg Vorbis.
+        UnsupportedTagFormat: If the file is not MP3, AIFF, FLAC, Ogg Vorbis or MP4.
         TagFieldsError: If its tags cannot be read.
     """
     tag_format = _require_format(path)
@@ -263,6 +347,13 @@ def _read_fields(path: PathLike, tag_format: str, suffix: str) -> TagSnapshot:
         _audio, tags = _load_id3(path, suffix)
         fields = {field: _id3_value(tags, slots) for field, slots in _ID3_SLOTS.items()}
         pictures = tuple(picture_hash(frame.data) for frame in tags.getall("APIC"))
+    elif tag_format == FORMAT_MP4:
+        mp4_tags = _load_mp4(path).tags
+        _require_parsed_atoms(path, mp4_tags)
+        fields = {
+            field: _mp4_value(mp4_tags, slots) for field, slots in _MP4_SLOTS.items()
+        }
+        pictures = _mp4_pictures(mp4_tags)
     else:
         audio = _load_vorbis(path, tag_format)
         comments = audio.tags
@@ -303,6 +394,14 @@ def restore_tag_fields(path: PathLike, values: Mapping[str, FieldValue]) -> None
                 for slot in slots_by_field[field]:
                     _set_id3_slot(tags, slot, (value or {}).get(slot))
             _save_id3(work, audio, tags)
+        elif tag_format == FORMAT_MP4:
+            mp4 = _load_mp4(work)
+            if mp4.tags is None:
+                mp4.add_tags()
+            for field, value in wanted.items():
+                for slot in slots_by_field[field]:
+                    _set_mp4_slot(mp4.tags, slot, (value or {}).get(slot))
+            mp4.save()
         else:
             vorbis = _load_vorbis(work, tag_format)
             if vorbis.tags is None:
@@ -371,6 +470,16 @@ def embed_front_cover(path: PathLike, jpeg: bytes, width: int, height: int) -> s
                 )
             )
             _save_id3(work, audio, tags)
+        elif tag_format == FORMAT_MP4:
+            from mutagen.mp4 import MP4Cover
+
+            mp4 = _load_mp4(work)
+            if mp4.tags is None:
+                mp4.add_tags()
+            if _mp4_pictures(mp4.tags):
+                raise _HoldsPicture()
+            mp4.tags[_MP4_COVER] = [MP4Cover(data, imageformat=MP4Cover.FORMAT_JPEG)]
+            mp4.save()
         else:
             vorbis = _load_vorbis(work, tag_format)
             if _vorbis_pictures(vorbis, tag_format):
@@ -425,6 +534,16 @@ def remove_picture(path: PathLike, sha256: str) -> bool:
                 if picture_hash(frame.data) == sha256:
                     del tags[frame.HashKey]
                     _save_id3(work, audio, tags)
+                    return True
+            return False
+        if tag_format == FORMAT_MP4:
+            mp4 = _load_mp4(work)
+            covers = list(mp4.tags.get(_MP4_COVER) or []) if mp4.tags else []
+            for index, cover in enumerate(covers):
+                if picture_hash(bytes(cover)) == sha256:
+                    del covers[index]
+                    _set_mp4_slot(mp4.tags, _MP4_COVER, covers or None)
+                    mp4.save()
                     return True
             return False
         vorbis = _load_vorbis(work, tag_format)
@@ -530,6 +649,92 @@ def _load_vorbis(path: PathLike, tag_format: str) -> Any:
     from mutagen.oggvorbis import OggVorbis
 
     return OggVorbis(_os(path))
+
+
+def _load_mp4(path: PathLike) -> Any:
+    from mutagen.mp4 import MP4
+
+    return MP4(_os(path))
+
+
+def _require_parsed_atoms(path: PathLike, tags: Any) -> None:
+    """Refuse a file with an atom of ours that mutagen could not parse.
+
+    Such an atom is kept aside and read as absent, so a snapshot would say the
+    field is empty while a write replaces (and so loses) what is there.
+    """
+    failed = getattr(tags, "_failed_atoms", None) or {}
+    ours = {slot for slots in _MP4_SLOTS.values() for slot in slots} | {_MP4_COVER}
+    unreadable = sorted(name for name in failed if name in ours)
+    if unreadable:
+        raise TagFieldsError(
+            f"{quoted(path)} holds an atom CuePoint cannot read"
+            f" ({', '.join(repr(name) for name in unreadable)})"
+        )
+
+
+def _mp4_item(slot: str, item: Any) -> Any:
+    """One atom value as JSON: text, an integer, or a freeform atom's exact bytes."""
+    from mutagen.mp4 import AtomDataType, MP4FreeForm
+
+    if isinstance(item, MP4FreeForm):
+        raw = bytes(item)
+        if item.dataformat == AtomDataType.UTF8:
+            try:
+                return raw.decode("utf-8")
+            except UnicodeDecodeError:
+                pass
+        return {
+            "dataformat": int(item.dataformat),
+            "data": base64.b64encode(raw).decode("ascii"),
+        }
+    if isinstance(item, bool) or not isinstance(item, (str, int)):
+        return str(item)
+    return item
+
+
+def _mp4_value(tags: Any, slots: Sequence[str]) -> FieldValue:
+    value: Dict[str, Any] = {}
+    if tags is None:
+        return None
+    for slot in slots:
+        found = tags.get(slot)
+        if found:
+            value[slot] = [_mp4_item(slot, item) for item in found]
+    return value or None
+
+
+def _mp4_pictures(tags: Any) -> Tuple[str, ...]:
+    if tags is None:
+        return ()
+    return tuple(picture_hash(bytes(cover)) for cover in tags.get(_MP4_COVER) or [])
+
+
+def _set_mp4_slot(tags: Any, slot: str, contents: Any) -> None:
+    from mutagen.mp4 import AtomDataType, MP4FreeForm
+
+    if contents is None:
+        if slot in tags:
+            del tags[slot]
+        return
+    items: List[Any] = []
+    for item in contents:
+        if slot == _MP4_COVER:
+            items.append(item)
+        elif isinstance(item, dict):
+            items.append(
+                MP4FreeForm(
+                    base64.b64decode(item["data"]),
+                    dataformat=int(item["dataformat"]),
+                )
+            )
+        elif slot.startswith(_MP4_FREEFORM_PREFIX):
+            items.append(
+                MP4FreeForm(str(item).encode("utf-8"), dataformat=AtomDataType.UTF8)
+            )
+        else:
+            items.append(item)
+    tags[slot] = items
 
 
 def _id3_value(tags: Any, slots: Sequence[str]) -> FieldValue:
@@ -651,6 +856,7 @@ __all__ = (
     "FIELD_YEAR",
     "FORMAT_FLAC",
     "FORMAT_ID3",
+    "FORMAT_MP4",
     "FORMAT_VORBIS",
     "FieldValue",
     "PICTURE_FRONT_COVER",
@@ -661,6 +867,7 @@ __all__ = (
     "UnsupportedTagFormat",
     "display_value",
     "embed_front_cover",
+    "mp4_migrated_value",
     "picture_hash",
     "predicted_value",
     "read_tag_fields",

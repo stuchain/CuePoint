@@ -115,7 +115,10 @@ def add_library(tmp_path: Path) -> Dict[str, Any]:
                 {"path": path, "status": FILE_PRESENT, "picture": index % 3 == 0}
             )
     entries.append({"path": audio_copy(music, "wav"), "status": FILE_PRESENT})
-    entries.append({"path": audio_copy(music, "m4a"), "status": FILE_PRESENT})
+    # A protected iTunes purchase: the MP4 family is written, this is refused.
+    entries.append(
+        {"path": audio_copy(music, "m4a", "bought.m4p"), "status": FILE_PRESENT}
+    )
     entries.append({"path": music / "gone.mp3", "status": FILE_MISSING})
 
     prefix = uuid.uuid4().hex[:6]
@@ -252,7 +255,7 @@ def test_a_scope_is_previewed_written_and_restored_as_jobs(
     untouched = {
         entry["path"]: entry["path"].read_bytes()
         for entry in entries
-        if entry["path"].suffix in (".wav", ".m4a")
+        if entry["path"].suffix in (".wav", ".m4p")
     }
     track_ids = [entry["track_id"] for entry in entries]
     previews = TagWritePreviewStore()

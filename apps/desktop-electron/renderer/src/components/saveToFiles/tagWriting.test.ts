@@ -14,7 +14,7 @@ import {
 
 describe("the words for reasons and fields", () => {
   it.each([
-    ["unsupported_format", "MP3, AIFF, FLAC and Ogg Vorbis"],
+    ["unsupported_format", "MP3, AIFF, FLAC, Ogg Vorbis, M4A, MP4 and M4B"],
     ["missing", "missing"],
     ["unreadable", "cannot be read"],
     ["tags_unreadable", "tags cannot be read"],

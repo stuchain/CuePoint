@@ -99,6 +99,7 @@ from cuepoint.data.tag_fields import (
     FIELD_KEY,
     FIELD_LABEL,
     FIELD_YEAR,
+    FORMAT_MP4,
     TAG_FIELDS,
     FieldValue,
     PictureAlreadyPresent,
@@ -106,6 +107,7 @@ from cuepoint.data.tag_fields import (
     TagSnapshot,
     display_value,
     embed_front_cover,
+    mp4_migrated_value,
     picture_hash,
     predicted_value,
     read_tag_fields,
@@ -190,6 +192,11 @@ ARTWORK_ABSENT = "none"
 #: Why a whole file is not written.
 SKIP_WAV = "wav"
 SKIP_UNSUPPORTED_FORMAT = "unsupported_format"
+
+#: The reason on a written row that records a legacy MP4 atom the writer moved to
+#: the standard atom in a field the run did not write: kept so Undo puts the atom
+#: back, and never counted as a field CuePoint wrote.
+REASON_LEGACY_ATOM_MOVED = "legacy_atom_moved"
 SKIP_NOT_CHECKED = FILE_NOT_CHECKED
 SKIP_MISSING = FILE_MISSING
 SKIP_UNREADABLE = FILE_UNREADABLE
@@ -1240,12 +1247,29 @@ class TagWriteService(ITagWriteService):
                     artwork_url = ARTWORK_URL_UNKNOWN
                 else:
                     skip_field(FIELD_ARTWORK, FIELD_NO_BEATPORT_ARTWORK)
+        after = candidate.after
+        if candidate.tag_format == FORMAT_MP4 and FIELD_YEAR in after:
+            # A full date in the same year is kept by the writer: only the file
+            # says whether the year would change.
+            year_text = after[FIELD_YEAR][0]
+            after = {
+                **after,
+                FIELD_YEAR: (
+                    year_text,
+                    predicted_value(
+                        candidate.tag_format,
+                        FIELD_YEAR,
+                        year_text,
+                        snapshot.value(FIELD_YEAR),
+                    ),
+                ),
+            }
         return FileChoices(
             track_id=candidate.target.track_id,
             file_path=candidate.target.file_path,
             tag_format=candidate.tag_format,
             before={name: snapshot.value(name) for name in names},
-            after=candidate.after,
+            after=after,
             after_key=candidate.after_key,
             has_picture=has_picture,
             artwork_url=artwork_url,
@@ -1401,8 +1425,8 @@ class TagWriteService(ITagWriteService):
         changes: Dict[str, Tuple[str, FieldValue, Dict[str, Any]]] = {}
         for name in planned.changes:
             text = planned.values[name]
-            after = predicted_value(planned.tag_format, name, text)
             before = snapshot.value(name)
+            after = predicted_value(planned.tag_format, name, text, before)
             why = _held(before, after, options.keep_existing)
             if why is not None:
                 tally.skip_field(name, why)
@@ -1410,8 +1434,8 @@ class TagWriteService(ITagWriteService):
                 changes[name] = (text, before, after)
         if record_kept:
             for name, text in planned.values.items():
-                after = predicted_value(planned.tag_format, name, text)
                 before = snapshot.value(name)
+                after = predicted_value(planned.tag_format, name, text, before)
                 kept_why = _held(before, after, options.keep_existing)
                 if kept_why is not None:
                     tally.kept.append(
@@ -1444,6 +1468,18 @@ class TagWriteService(ITagWriteService):
             tally.skip(SKIP_NOTHING_TO_WRITE)
             return
 
+        # An MP4 write also moves legacy atoms of the fields it was not asked to
+        # write; recording them is what lets Undo put those atoms back.
+        carried: Dict[str, Tuple[FieldValue, FieldValue]] = {}
+        if changes and planned.tag_format == FORMAT_MP4:
+            for name in TAG_FIELDS:
+                if name in changes:
+                    continue
+                held = snapshot.value(name)
+                moved = mp4_migrated_value(name, held)
+                if moved is not None:
+                    carried[name] = (held, moved)
+
         when = self._clock()
         rows = [
             FileWrite(
@@ -1459,6 +1495,21 @@ class TagWriteService(ITagWriteService):
             )
             for name, (_text_value, before, after) in changes.items()
         ]
+        rows.extend(
+            FileWrite(
+                job_id=job_id,
+                file_path=path,
+                field=name,
+                outcome=WRITE_WRITTEN,
+                written_at=when,
+                track_id=planned.track_id,
+                old_value_json=_dumps(before),
+                new_value_json=_dumps(after),
+                reason=REASON_LEGACY_ATOM_MOVED,
+                pending=True,
+            )
+            for name, (before, after) in carried.items()
+        )
         picture: Optional[Dict[str, Any]] = None
         if image is not None and image.jpeg is not None:
             picture = {
@@ -1518,10 +1569,12 @@ class TagWriteService(ITagWriteService):
             error = error or f"The file could not be read back: {exc}"
 
         confirmed: List[str] = []
+        moved_only: List[str] = []  # carried legacy atoms: recorded, not counted
         failed: List[Tuple[str, str]] = []
 
         def settle() -> None:
             confirmed.clear()
+            moved_only.clear()
             failed.clear()
             for row_id, row in zip(ids, rows):
                 if after_write is None:
@@ -1540,11 +1593,14 @@ class TagWriteService(ITagWriteService):
                 held = after_write.value(row.field)
                 if held == row.new_value:
                     self._writes.confirm(row_id, row.new_value_json)
-                    confirmed.append(row.field)
+                    (confirmed if row.field not in carried else moved_only).append(
+                        row.field
+                    )
                 elif held == row.old_value:
                     reason = error or "The file did not take the value"
                     self._writes.fail(row_id, reason)
-                    failed.append((row.field, reason))
+                    if row.field not in carried:
+                        failed.append((row.field, reason))
                 else:
                     # Written, but not as predicted: record what the file holds,
                     # because that is what a restore must recognise as ours.
@@ -1556,7 +1612,9 @@ class TagWriteService(ITagWriteService):
                         row.new_value,
                     )
                     self._writes.confirm(row_id, _dumps(held))
-                    confirmed.append(row.field)
+                    (confirmed if row.field not in carried else moved_only).append(
+                        row.field
+                    )
             if confirmed:
                 self._after_write(
                     planned.track_id,
@@ -1618,6 +1676,7 @@ class TagWriteService(ITagWriteService):
                 and row.track_id is not None
                 and not row.pending
                 and row.field in WRITE_FIELDS
+                and row.reason != REASON_LEGACY_ATOM_MOVED
             ):
                 names = found.setdefault(int(row.track_id), [])
                 if row.field not in names:
