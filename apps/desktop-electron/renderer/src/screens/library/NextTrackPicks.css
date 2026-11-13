@@ -1,20 +1,22 @@
 /*
  * "Plays well next" in Track details. Every size is a token: 8 between the heading and the rows
- * (--space-xs), 12 inside a row (--space-sm), so the section reads like its siblings.
+ * (--space-md), 12 for the gaps in the heading and in a row (--space-lg), 8 above and below a row
+ * (--space-md, a dense side panel), 4 between marks (--space-xs).
  */
 
 .cp-next-picks {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   min-width: 0;
 }
 
 .cp-next-picks__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-sm);
+  gap: var(--space-lg);
   min-height: var(--control-height);
 }
 
@@ -22,7 +24,7 @@
   margin: 0;
   color: var(--fg-primary);
   font-family: var(--font-control);
-  font-size: var(--control-font-size);
+  font-size: var(--font-size-section);
   font-weight: var(--control-font-weight);
 }
 
@@ -43,10 +45,11 @@
 
 .cp-next-picks__row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-lg);
   min-width: 0;
-  padding-block: var(--space-xs);
+  padding-block: var(--space-md);
   border-block-end: var(--hairline) solid var(--border-muted);
 }
 
@@ -71,9 +74,15 @@
   height: 100%;
 }
 
+/*
+ * The title flexes (min-width: 0, ellipsis) from a basis of 10ch, which scales with the text size.
+ * The button keeps its own text width and is pushed to the end; when a narrow panel at a large text
+ * size cannot give the title 10ch beside it, the row wraps and the button drops under the title
+ * instead of squeezing the title to nothing.
+ */
 .cp-next-picks__text {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 1 10ch;
   flex-direction: column;
   gap: var(--space-2xs);
   min-width: 0;
@@ -99,10 +108,11 @@
 }
 
 .cp-next-picks__row > .cp-btn {
-  flex: none;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 
 /* The height of three rows, so the panel does not jump while the list is read. */
 .cp-next-picks__placeholder {
-  height: calc(var(--row-height) * 1.5 * 3 + var(--space-xs) * 6);
+  height: calc(var(--row-height) * 1.5 * 3 + var(--space-md) * 6);
 }

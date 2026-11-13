@@ -1,37 +1,37 @@
 import { describe, expect, it } from "vitest";
 
 import type { SimilarTrack } from "../../api/cuepointBridge.types";
-import { NEXT_PICKS_COUNT, hasKeyOrBpm, pickNextTracks } from "./nextPicksRule";
+import { NEXT_PICKS_COUNT, hasKeyOrBpm, eligibleNextTracks } from "./nextPicksRule";
 
 const suggestion = (id: number): SimilarTrack => ({ track_id: id, score: 100 - id, reasons: [] });
 const list = (...ids: number[]) => ids.map(suggestion);
 const none = { shownId: 1, queuedIds: [], playingId: null, playedIds: [] };
 
-describe("pickNextTracks", () => {
-  it("keeps the engine's order and takes the first three", () => {
-    const picks = pickNextTracks(list(9, 4, 7, 2, 5), none);
-    expect(picks.map((p) => p.track_id)).toEqual([9, 4, 7]);
+describe("eligibleNextTracks", () => {
+  it("keeps the engine's order and keeps every eligible one for the caller to take three from", () => {
+    const picks = eligibleNextTracks(list(9, 4, 7, 2, 5), none);
+    expect(picks.map((p) => p.track_id)).toEqual([9, 4, 7, 2, 5]);
     expect(NEXT_PICKS_COUNT).toBe(3);
   });
 
   it("drops the shown track, queued tracks, the playing track and tracks played earlier", () => {
-    const picks = pickNextTracks(list(1, 2, 3, 4, 5, 6, 7, 8), {
+    const picks = eligibleNextTracks(list(1, 2, 3, 4, 5, 6, 7, 8), {
       shownId: 1,
       queuedIds: [2],
       playingId: 3,
       playedIds: new Set([4]),
     });
-    expect(picks.map((p) => p.track_id)).toEqual([5, 6, 7]);
+    expect(picks.map((p) => p.track_id)).toEqual([5, 6, 7, 8]);
   });
 
-  it("returns fewer than three when little is left, and none when nothing is", () => {
-    expect(pickNextTracks(list(2, 3), { ...none, queuedIds: [2] }).map((p) => p.track_id)).toEqual([3]);
-    expect(pickNextTracks(list(2), { ...none, playingId: 2 })).toEqual([]);
-    expect(pickNextTracks([], none)).toEqual([]);
+  it("returns what is left, and none when nothing is", () => {
+    expect(eligibleNextTracks(list(2, 3), { ...none, queuedIds: [2] }).map((p) => p.track_id)).toEqual([3]);
+    expect(eligibleNextTracks(list(2), { ...none, playingId: 2 })).toEqual([]);
+    expect(eligibleNextTracks([], none)).toEqual([]);
   });
 
   it("does not repeat a track the engine listed twice", () => {
-    expect(pickNextTracks(list(2, 2, 3, 4), none).map((p) => p.track_id)).toEqual([2, 3, 4]);
+    expect(eligibleNextTracks(list(2, 2, 3, 4), none).map((p) => p.track_id)).toEqual([2, 3, 4]);
   });
 });
 
