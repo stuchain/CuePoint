@@ -105,6 +105,7 @@ const JOB_VERBS: Record<string, string> = {
   discovery: "Discovering on Beatport",
   beatport_playlist: "Making a playlist on Beatport",
   beatport_resolve: "Linking tracks to Beatport",
+  follows_check: "Checking followed artists and labels",
   // WAVE-03's waveform analysis, which starts on its own after every file
   // check and can run for hours on a large library.
   waveform_analysis: "Analyzing waveforms",
@@ -175,6 +176,7 @@ const JOB_DONE_WORDS: Record<string, string> = {
   discovery: "Dig finished",
   beatport_playlist: "Made the playlist on Beatport",
   beatport_resolve: "Linked tracks to Beatport",
+  follows_check: "Checked followed artists and labels",
   waveform_analysis: "Analyzed waveforms",
 };
 
@@ -221,6 +223,8 @@ export const JOB_EXPLAINERS: Record<string, string> = {
   beatport_playlist: "CuePoint is building your playlist on Beatport. You can keep working.",
   beatport_resolve:
     "CuePoint is matching your tracks to their Beatport pages. You can keep working.",
+  follows_check:
+    "CuePoint is checking Beatport for new releases from the artists and labels you follow. You can keep working.",
   waveform_analysis:
     "CuePoint is drawing each track's waveform. You can keep working; it pauses itself for imports.",
 };

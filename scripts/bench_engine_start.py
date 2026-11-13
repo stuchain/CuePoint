@@ -251,10 +251,18 @@ def _downgrade_m0033(connection: sqlite3.Connection) -> None:
         connection.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
 
 
+def _downgrade_m0034(connection: sqlite3.Connection) -> None:
+    """Take m0034 (followed artists and labels) back off a library."""
+    connection.execute("DROP TABLE IF EXISTS follows")
+
+
 #: How to take each migration that may be the newest back off a library, by version. A
 #: migration added after the last one here needs its entry: ``test_bench_engine_start``
 #: fails until it has one, so the pending launch is never silently skipped.
-DOWNGRADES: Dict[int, Callable[[sqlite3.Connection], None]] = {33: _downgrade_m0033}
+DOWNGRADES: Dict[int, Callable[[sqlite3.Connection], None]] = {
+    33: _downgrade_m0033,
+    34: _downgrade_m0034,
+}
 
 
 def head_version() -> int:

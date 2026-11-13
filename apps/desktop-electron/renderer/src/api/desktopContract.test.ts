@@ -1222,6 +1222,9 @@ describe("desktop contract", () => {
       getDiscoveryGroupSummary: "}/groups/summary${",
       getBeatportPlaylists: '"/api/v1/discover/playlists"',
       getWantlist: "`/api/v1/discover/wantlist${",
+      getFollows: '"/api/v1/discover/follows"',
+      getFollowSuggestions: "`/api/v1/discover/follows/suggestions${",
+      getFollowFeed: "`/api/v1/discover/follows/feed${",
       getEntityPage: "`/api/v1/discover/entity${",
       getEntityBeatport: "`/api/v1/discover/entity/beatport${",
       getSimilarTracks: "`/api/v1/discover/similar${",
@@ -1236,6 +1239,10 @@ describe("desktop contract", () => {
       setWantlistBought: '"/api/v1/discover/wantlist/bought"',
       startBeatportPlaylistPush: '"/api/v1/discover/playlist/start"',
       startBeatportResolve: '"/api/v1/discover/resolve/start"',
+      addFollow: '"/api/v1/discover/follows/add"',
+      removeFollow: '"/api/v1/discover/follows/remove"',
+      markFollowsSeen: '"/api/v1/discover/follows/seen"',
+      startFollowsCheck: '"/api/v1/discover/follows/check/start"',
     };
     const methods = [...Object.keys(READS), ...Object.keys(ACTIONS)];
 
@@ -1246,8 +1253,8 @@ describe("desktop contract", () => {
       return engineClient.slice(start, next === -1 ? undefined : next);
     };
 
-    it("has twenty-one of them", () => {
-      expect(new Set(methods).size).toBe(21);
+    it("has twenty-eight of them", () => {
+      expect(new Set(methods).size).toBe(28);
     });
 
     it("carries a card's picture as bytes the preload turns into an object URL, never a URL", () => {
@@ -1350,6 +1357,20 @@ describe("desktop contract", () => {
       "WantlistWindow",
       "WantlistPage",
       "WantlistChange",
+      "FollowRow",
+      "FollowRefusal",
+      "FollowsList",
+      "FollowSuggestion",
+      "FollowSuggestions",
+      "FollowSource",
+      "FollowFeedRow",
+      "FollowFeedState",
+      "FollowFeedWindow",
+      "FollowFeed",
+      "FollowChange",
+      "FollowSeenChange",
+      "FollowCheckFailure",
+      "FollowCheckResult",
       "DiscoveryRunResult",
       "BeatportPlaylistResult",
       "BeatportResolveResult",

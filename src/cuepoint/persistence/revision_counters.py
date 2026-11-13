@@ -75,6 +75,7 @@ DISCOVER_TABLES = frozenset(
         "discover_lists",
         "discover_list_members",
         "wantlist",
+        "follows",
     }
 )
 
@@ -85,6 +86,7 @@ DISCOVER_JOB_TYPES: Tuple[str, ...] = (
     "discovery",
     "beatport_playlist",
     "beatport_resolve",
+    "follows_check",
 )
 
 #: A table split between the domains by one column's value.

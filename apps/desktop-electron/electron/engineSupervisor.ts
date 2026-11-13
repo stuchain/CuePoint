@@ -79,6 +79,11 @@ import {
   type SetPlan,
   type SetSuggestions,
   type SetUnacknowledged,
+  type FollowChange,
+  type FollowFeed,
+  type FollowSeenChange,
+  type FollowSuggestions,
+  type FollowsList,
   type WantlistChange,
   type WantlistPage,
   type DuplicateGroup,
@@ -1850,6 +1855,46 @@ export class EngineSupervisor {
 
   async startBeatportResolve(): Promise<DiscoverAnswer<DiscoverJobStarted>> {
     return (await this.readyClient()).startBeatportResolve();
+  }
+
+  async getFollows(): Promise<DiscoverAnswer<FollowsList>> {
+    return (await this.readyClient()).getFollows();
+  }
+
+  async getFollowSuggestions(
+    params?: Parameters<EngineClient["getFollowSuggestions"]>[0],
+  ): Promise<DiscoverAnswer<FollowSuggestions>> {
+    return (await this.readyClient()).getFollowSuggestions(params);
+  }
+
+  async getFollowFeed(
+    params?: Parameters<EngineClient["getFollowFeed"]>[0],
+  ): Promise<DiscoverAnswer<FollowFeed>> {
+    return (await this.readyClient()).getFollowFeed(params);
+  }
+
+  async addFollow(
+    params: Parameters<EngineClient["addFollow"]>[0],
+  ): Promise<DiscoverAnswer<FollowChange>> {
+    return (await this.readyClient()).addFollow(params);
+  }
+
+  async removeFollow(
+    params: Parameters<EngineClient["removeFollow"]>[0],
+  ): Promise<DiscoverAnswer<FollowChange>> {
+    return (await this.readyClient()).removeFollow(params);
+  }
+
+  async markFollowsSeen(
+    params?: Parameters<EngineClient["markFollowsSeen"]>[0],
+  ): Promise<DiscoverAnswer<FollowSeenChange>> {
+    return (await this.readyClient()).markFollowsSeen(params);
+  }
+
+  async startFollowsCheck(
+    params?: Parameters<EngineClient["startFollowsCheck"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return (await this.readyClient()).startFollowsCheck(params);
   }
 
   async getEntityPage(

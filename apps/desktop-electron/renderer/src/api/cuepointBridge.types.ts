@@ -2344,7 +2344,11 @@ export type DiscoverSortDirection = "asc" | "desc";
 export type DiscoverRunOutcome = "succeeded" | "cancelled" | "failed";
 export type DiscoverSourceType = "chart" | "label_release" | "artist_release";
 export type DiscoverBeatportState = "ok" | "no_token" | "rejected" | "forbidden" | "rate_limited" | "unavailable";
-export type DiscoverJobType = "discovery" | "beatport_playlist" | "beatport_resolve";
+export type DiscoverJobType =
+  | "discovery"
+  | "beatport_playlist"
+  | "beatport_resolve"
+  | "follows_check";
 export type WantlistAction = "added" | "removed" | "noted" | "bought" | "unbought";
 export type EntityKind = "artist" | "label";
 export type EntityIdentity = "beatport" | "name";
@@ -2672,6 +2676,129 @@ export interface WantlistChange {
   message: string;
 }
 
+/** One followed artist or label, with how many of its tracks are new to the user (DEC-317). */
+export interface FollowRow {
+  kind: EntityKind;
+  beatport_id: number;
+  name: string;
+  followed_at: string;
+  /** ISO date; releases after it are new. */
+  seen_through: string;
+  /** New tracks in the cache that the library does not own. */
+  new_count: number;
+  /** When its listing was last read from Beatport; null when never. */
+  checked_at: string | null;
+  /** Why its last check failed, when it did; held for the life of the engine. */
+  state: FollowRefusal | null;
+}
+
+/** Beatport's answer to a follow's last check, when it was a refusal (DEC-098). */
+export interface FollowRefusal {
+  state: EntityBeatportState;
+  message: string;
+}
+
+/** `GET follows`: from the cache only. `new_count` adds the rows' up. */
+export interface FollowsList {
+  follows: FollowRow[];
+  new_count: number;
+}
+
+/** A library artist or label linked to exactly one Beatport id, offered to follow. */
+export interface FollowSuggestion {
+  kind: EntityKind;
+  beatport_id: number;
+  name: string;
+  /** How many of the library's tracks are by or on it. */
+  track_count: number;
+  followed: boolean;
+}
+
+export interface FollowSuggestions {
+  suggestions: FollowSuggestion[];
+}
+
+/** Which follow a feed track came from. */
+export interface FollowSource {
+  kind: EntityKind;
+  beatport_id: number;
+  name: string;
+}
+
+/** A feed track: the shape every Beatport table sends, with the follows it came from. */
+export interface FollowFeedRow extends BeatportTrackRow {
+  follows: FollowSource[];
+}
+
+/** A follow whose last check Beatport refused. */
+export interface FollowFeedState {
+  kind: EntityKind;
+  beatport_id: number;
+  state: EntityBeatportState;
+  message: string;
+}
+
+export interface FollowFeedWindow {
+  kind: EntityKind | null;
+  beatport_id: number | null;
+  owned: DiscoverOwnedFilter;
+  offset: number;
+  limit: number;
+}
+
+/** `GET follows/feed`: new tracks, newest release first, from the cache only. */
+export interface FollowFeed {
+  rows: FollowFeedRow[];
+  /** Rows after the owned filter, across every window. */
+  total: number;
+  /** Owned tracks the default filter hid; 0 unless owned is "hide". */
+  hidden_owned: number;
+  /** When the oldest listing was read; null when any follow has none yet. */
+  checked_at: string | null;
+  /** How many follows have no listing yet. */
+  unchecked: number;
+  states: FollowFeedState[];
+  follow_count: number;
+  window: FollowFeedWindow;
+}
+
+/** What following or unfollowing did. `follow` comes with an add. */
+export interface FollowChange {
+  changed: boolean;
+  followed: boolean;
+  follow?: {
+    kind: EntityKind;
+    beatport_id: number;
+    name: string;
+    followed_at: string;
+    seen_through: string;
+  };
+}
+
+/** What marking seen did: how many follows moved, and to which date. */
+export interface FollowSeenChange {
+  changed: number;
+  seen_through: string;
+}
+
+export interface FollowCheckFailure {
+  kind: EntityKind;
+  beatport_id: number;
+  name: string;
+  state: EntityBeatportState;
+  message: string;
+}
+
+/** A follows check job's result. `no_token` also fails the job with BEATPORT_NO_TOKEN. */
+export interface FollowCheckResult {
+  outcome: "ok" | "no_token" | "cancelled";
+  state: "ok" | "no_token" | "cancelled";
+  checked: number;
+  from_cache: number;
+  failed: FollowCheckFailure[];
+  total: number;
+}
+
 /** A discovery job's result: the run as it ended, without its scope. */
 export interface DiscoveryRunResult {
   id: number;
@@ -2775,6 +2902,9 @@ export interface EntityPage {
   names: EntityLinkedName[];
   rules: FilterRuleSet;
   library: EntityLibrarySummary;
+  /** True for a Beatport id page; a name page (shared or unlinked) cannot be followed. */
+  followable: boolean;
+  followed: boolean;
 }
 
 export interface EntityTracksPage {
@@ -4315,6 +4445,35 @@ export interface CuePointBridge {
   }) => Promise<DiscoverAnswer<DiscoverListDeleted>>;
   /** Resolve the library's accepted matches on Beatport, only when asked. */
   startBeatportResolve?: () => Promise<DiscoverAnswer<DiscoverJobStarted>>;
+  /** Followed artists and labels with their new-track counts; the cache only. */
+  getFollows?: () => Promise<DiscoverAnswer<FollowsList>>;
+  getFollowSuggestions?: (params?: {
+    limit?: number;
+  }) => Promise<DiscoverAnswer<FollowSuggestions>>;
+  getFollowFeed?: (params?: {
+    kind?: EntityKind;
+    beatport_id?: number;
+    owned?: DiscoverOwnedFilter;
+    offset?: number;
+    limit?: number;
+  }) => Promise<DiscoverAnswer<FollowFeed>>;
+  addFollow?: (params: {
+    kind: EntityKind;
+    beatport_id: number;
+    name: string;
+  }) => Promise<DiscoverAnswer<FollowChange>>;
+  removeFollow?: (params: {
+    kind: EntityKind;
+    beatport_id: number;
+  }) => Promise<DiscoverAnswer<FollowChange>>;
+  markFollowsSeen?: (params?: {
+    kind?: EntityKind;
+    beatport_id?: number;
+  }) => Promise<DiscoverAnswer<FollowSeenChange>>;
+  /** Read each follow's releases from Beatport, as a job. */
+  startFollowsCheck?: (params?: {
+    refresh?: boolean;
+  }) => Promise<DiscoverAnswer<DiscoverJobStarted>>;
   getEntityPage?: (params: {
     kind: EntityKind;
     ref: string;

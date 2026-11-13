@@ -198,6 +198,61 @@ describe("reads", () => {
   });
 });
 
+describe("following", () => {
+  it("reads follows, suggestions and the feed with only what is asked", async () => {
+    const calls = engineAnswering(200, {});
+    const c = client();
+
+    await c.getFollows();
+    await c.getFollowSuggestions();
+    await c.getFollowSuggestions({ limit: 5 });
+    await c.getFollowFeed();
+    await c.getFollowFeed({ kind: "label", beatport_id: 900, owned: "all", offset: 20, limit: 50 });
+
+    expect(calls.every((call) => method(call) === "GET")).toBe(true);
+    expect(calls.map((call) => call.url)).toEqual([
+      `${BASE}/api/v1/discover/follows`,
+      `${BASE}/api/v1/discover/follows/suggestions`,
+      `${BASE}/api/v1/discover/follows/suggestions?limit=5`,
+      `${BASE}/api/v1/discover/follows/feed`,
+      `${BASE}/api/v1/discover/follows/feed?kind=label&beatport_id=900&owned=all&offset=20&limit=50`,
+    ]);
+  });
+
+  it("POSTs each change to its own route with its body", async () => {
+    const calls = engineAnswering(200, {});
+    const c = client();
+
+    await c.addFollow({ kind: "artist", beatport_id: 100, name: "Âme" });
+    await c.removeFollow({ kind: "artist", beatport_id: 100 });
+    await c.markFollowsSeen();
+    await c.markFollowsSeen({ kind: "label", beatport_id: 900 });
+    await c.startFollowsCheck();
+    await c.startFollowsCheck({ refresh: true });
+
+    expect(calls.every((call) => method(call) === "POST")).toBe(true);
+    expect(calls.map((call) => [new URL(call.url).pathname, sent(call)])).toEqual([
+      ["/api/v1/discover/follows/add", { kind: "artist", beatport_id: 100, name: "Âme" }],
+      ["/api/v1/discover/follows/remove", { kind: "artist", beatport_id: 100 }],
+      ["/api/v1/discover/follows/seen", {}],
+      ["/api/v1/discover/follows/seen", { kind: "label", beatport_id: 900 }],
+      ["/api/v1/discover/follows/check/start", {}],
+      ["/api/v1/discover/follows/check/start", { refresh: true }],
+    ]);
+  });
+
+  it("answers a refusal as a value, with its code and Beatport class", async () => {
+    engineAnswering(409, {
+      error: { code: "DISCOVER_BUSY", message: "A check is already running" },
+    });
+
+    const answer = await client().startFollowsCheck();
+
+    expect(answer.value).toBeNull();
+    expect(answer.refusal?.code).toBe("DISCOVER_BUSY");
+  });
+});
+
 describe("actions", () => {
   it("POSTs each to its own route with its body", async () => {
     const calls = engineAnswering(200, {});

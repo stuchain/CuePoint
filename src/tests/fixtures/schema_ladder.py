@@ -896,6 +896,22 @@ def seed_rows(track_count: int = 12, seed: int = 7) -> Dict[str, List[Row]]:
                 "added_from_run_id": None,
             },
         ),
+        "follows": rows(
+            {
+                "kind": "artist",
+                "beatport_id": 100,
+                "name": "Âme",
+                "followed_at": NOW,
+                "seen_through": "2026-09-05",
+            },
+            {
+                "kind": "label",
+                "beatport_id": 900,
+                "name": "Ελληνικά Records",
+                "followed_at": EARLIER,
+                "seen_through": "2025-01-01",
+            },
+        ),
         "track_credits": rows(
             {
                 "track_id": ids[0],

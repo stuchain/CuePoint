@@ -64,6 +64,7 @@ const WORK_NOUN: Record<string, string> = {
   discovery: "A Discover run",
   beatport_playlist: "A Beatport playlist",
   beatport_resolve: "A Beatport link",
+  follows_check: "A check of followed artists and labels",
 };
 
 /** The work that is running, as the noun a sentence starts with. */

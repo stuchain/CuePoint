@@ -40,6 +40,12 @@ that changes something is a POST to an action path, as ``server.py`` speaks.
 - ``POST resolve/start`` — DISCOVER-04's resolve job, its one caller.
 - ``GET entity`` and ``GET entity/beatport`` — an Artist or Label page's
   library half and its Beatport half (DISCOVER-07).
+- ``GET follows``, ``GET follows/suggestions`` and ``GET follows/feed`` — the
+  followed artists and labels, the library's names worth following, and what
+  they released since the user last looked; all from the cache. ``POST
+  follows/add``, ``/remove``, ``/seen`` and ``/check/start`` (a job that reads
+  Beatport) change them. ``GET entity`` also says ``followable`` and
+  ``followed``.
 - ``GET similar`` — a seed's suggestions, within the Library's own scope
   parameters (DISCOVER-08).
 
@@ -102,6 +108,13 @@ PLAYLIST_START_PATH = PREFIX + "playlist/start"
 RESOLVE_START_PATH = PREFIX + "resolve/start"
 ENTITY_PATH = PREFIX + "entity"
 ENTITY_BEATPORT_PATH = PREFIX + "entity/beatport"
+FOLLOWS_PATH = PREFIX + "follows"
+FOLLOWS_SUGGESTIONS_PATH = PREFIX + "follows/suggestions"
+FOLLOWS_FEED_PATH = PREFIX + "follows/feed"
+FOLLOWS_ADD_PATH = PREFIX + "follows/add"
+FOLLOWS_REMOVE_PATH = PREFIX + "follows/remove"
+FOLLOWS_SEEN_PATH = PREFIX + "follows/seen"
+FOLLOWS_CHECK_START_PATH = PREFIX + "follows/check/start"
 SIMILAR_PATH = PREFIX + "similar"
 PLAYLISTS_PATH = PREFIX + "playlists"
 
@@ -187,6 +200,19 @@ ENTITY_BEATPORT_PARAMS: Tuple[str, ...] = (
     "offset",
     "limit",
 )
+FOLLOWS_PARAMS: Tuple[str, ...] = ()
+FOLLOWS_SUGGESTIONS_PARAMS: Tuple[str, ...] = ("limit",)
+FOLLOWS_FEED_PARAMS: Tuple[str, ...] = (
+    "kind",
+    "beatport_id",
+    "owned",
+    "offset",
+    "limit",
+)
+FOLLOWS_ADD_FIELDS: Tuple[str, ...] = ("kind", "beatport_id", "name")
+FOLLOWS_REMOVE_FIELDS: Tuple[str, ...] = ("kind", "beatport_id")
+FOLLOWS_SEEN_FIELDS: Tuple[str, ...] = ("kind", "beatport_id")
+FOLLOWS_CHECK_START_FIELDS: Tuple[str, ...] = ("refresh",)
 SIMILAR_PARAMS: Tuple[str, ...] = (
     "track_id",
     "limit",
@@ -1166,6 +1192,13 @@ def entity(params: Dict[str, List[str]]) -> Dict[str, Any]:
     ref = _query_required(query, "ref")
     page = _resolve("IEntityPageService").page(kind, ref)
     result: Dict[str, Any] = page.to_dict()
+    # Only a Beatport id can be followed: a name shared by several Beatport
+    # artists is a name page and offers no Follow.
+    beatport_id = page.resolution.ref.beatport_id
+    result["followable"] = beatport_id is not None
+    result["followed"] = beatport_id is not None and bool(
+        _resolve("IFollowService").is_followed(page.resolution.ref.kind, beatport_id)
+    )
     return result
 
 
@@ -1191,6 +1224,97 @@ def entity_beatport(params: Dict[str, List[str]]) -> Dict[str, Any]:
     )
     result: Dict[str, Any] = half.to_dict()
     return result
+
+
+# ---------------------------------------------------------------------------
+# Following
+# ---------------------------------------------------------------------------
+
+
+def follows(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Every follow with its new-track count, from the cache only."""
+    _params(params, FOLLOWS_PARAMS)
+    result: Dict[str, Any] = _resolve("IFollowService").follows()
+    return result
+
+
+def follows_suggestions(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """The artists and labels the library holds most tracks by, to follow."""
+    from cuepoint.services.follow_service import MAX_SUGGESTIONS
+
+    query = _params(params, FOLLOWS_SUGGESTIONS_PARAMS)
+    result: Dict[str, Any] = _resolve("IFollowService").suggestions(
+        _query_int(query, "limit", 20, 1, MAX_SUGGESTIONS)
+    )
+    return result
+
+
+def follows_feed(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Tracks released since each follow was last seen, from the cache only."""
+    from cuepoint.models.discovery_run import OWNED_FILTERS, OWNED_HIDE
+    from cuepoint.models.entity_page import MAX_ENTITY_WINDOW
+
+    query = _params(params, FOLLOWS_FEED_PARAMS)
+    kind = query.get("kind") or None
+    raw_id = query.get("beatport_id") or None
+    if (kind is None) != (raw_id is None):
+        raise bad_request("kind and beatport_id are given together, or neither")
+    result: Dict[str, Any] = _resolve("IFollowService").feed(
+        kind=kind,
+        beatport_id=None if raw_id is None else _id_in_path(raw_id, "Beatport"),
+        owned=_query_choice(query, "owned", OWNED_FILTERS, OWNED_HIDE),
+        offset=_query_int(query, "offset", 0, 0, 2**63 - 1),
+        limit=_query_int(query, "limit", WINDOW_DEFAULT, 1, MAX_ENTITY_WINDOW),
+    )
+    return result
+
+
+def _follow_ref(data: Dict[str, Any], *, optional: bool) -> Tuple[Any, Any]:
+    """``(kind, beatport_id)`` from a body; both or, when optional, neither."""
+    if optional and "kind" not in data and "beatport_id" not in data:
+        return None, None
+    kind = _required(data, "kind")
+    beatport_id = _required(data, "beatport_id")
+    if not isinstance(kind, str):
+        raise bad_request(f"kind must be text, not {kind!r}")
+    if isinstance(beatport_id, bool) or not isinstance(beatport_id, int):
+        raise bad_request(f"beatport_id must be a whole number, not {beatport_id!r}")
+    return kind, beatport_id
+
+
+def follows_add(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Follow a Beatport artist or label by id."""
+    _only(data, FOLLOWS_ADD_FIELDS)
+    kind, beatport_id = _follow_ref(data, optional=False)
+    name = _required(data, "name")
+    if not isinstance(name, str):
+        raise bad_request(f"name must be text, not {name!r}")
+    return 200, _resolve("IFollowService").add(kind, beatport_id, name)
+
+
+def follows_remove(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Unfollow; not following is reported, not refused."""
+    _only(data, FOLLOWS_REMOVE_FIELDS)
+    kind, beatport_id = _follow_ref(data, optional=False)
+    return 200, _resolve("IFollowService").remove(kind, beatport_id)
+
+
+def follows_seen(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Mark one follow's, or every follow's, new tracks seen through today."""
+    _only(data, FOLLOWS_SEEN_FIELDS)
+    kind, beatport_id = _follow_ref(data, optional=True)
+    return 200, _resolve("IFollowService").mark_seen(kind, beatport_id)
+
+
+def follows_check_start(
+    data: Dict[str, Any], job_store: Any
+) -> Tuple[int, Dict[str, Any]]:
+    """Check each follow's releases on Beatport as a job (``refresh`` rereads all)."""
+    from cuepoint.engine.follow_check_jobs import start_follow_check_job
+
+    _only(data, FOLLOWS_CHECK_START_FIELDS)
+    refresh = _optional_bool(data, "refresh", False)
+    return _job_started(start_follow_check_job(job_store, refresh))
 
 
 def similar(params: Dict[str, List[str]]) -> Dict[str, Any]:
@@ -1246,6 +1370,9 @@ _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
     WANTLIST_PATH: wantlist,
     ENTITY_PATH: entity,
     ENTITY_BEATPORT_PATH: entity_beatport,
+    FOLLOWS_PATH: follows,
+    FOLLOWS_SUGGESTIONS_PATH: follows_suggestions,
+    FOLLOWS_FEED_PATH: follows_feed,
     SIMILAR_PATH: similar,
     PLAYLISTS_PATH: playlists,
 }
@@ -1258,6 +1385,10 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     WANTLIST_BOUGHT_PATH: wantlist_bought,
     PLAYLIST_START_PATH: playlist_start,
     RESOLVE_START_PATH: resolve_start,
+    FOLLOWS_ADD_PATH: follows_add,
+    FOLLOWS_REMOVE_PATH: follows_remove,
+    FOLLOWS_SEEN_PATH: follows_seen,
+    FOLLOWS_CHECK_START_PATH: follows_check_start,
 }
 
 #: Every fixed path this module answers, and the templates of a run's own, for

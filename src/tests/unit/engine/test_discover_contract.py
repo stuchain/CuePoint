@@ -32,6 +32,7 @@ from cuepoint.core import similarity
 from cuepoint.engine import discover_api as api
 from cuepoint.engine.beatport_playlist_jobs import JOB_TYPE_BEATPORT_PLAYLIST
 from cuepoint.engine.beatport_resolve_jobs import JOB_TYPE_BEATPORT_RESOLVE
+from cuepoint.engine.follow_check_jobs import JOB_TYPE_FOLLOWS_CHECK
 from cuepoint.engine.discovery_jobs import JOB_TYPE_DISCOVERY, _result
 from cuepoint.engine.jobs import Job, JobState, JobTypeBusyError
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
@@ -423,6 +424,13 @@ class TestRequests:
             ("removeFromWantlist", api.WANTLIST_REMOVE_FIELDS, set()),
             ("setWantlistNote", api.WANTLIST_NOTE_FIELDS, set()),
             ("setWantlistBought", api.WANTLIST_BOUGHT_FIELDS, set()),
+            ("getFollows", api.FOLLOWS_PARAMS, set()),
+            ("getFollowSuggestions", api.FOLLOWS_SUGGESTIONS_PARAMS, set()),
+            ("getFollowFeed", api.FOLLOWS_FEED_PARAMS, set()),
+            ("addFollow", api.FOLLOWS_ADD_FIELDS, set()),
+            ("removeFollow", api.FOLLOWS_REMOVE_FIELDS, set()),
+            ("markFollowsSeen", api.FOLLOWS_SEEN_FIELDS, set()),
+            ("startFollowsCheck", api.FOLLOWS_CHECK_START_FIELDS, set()),
         ],
     )
     def test_each_methods_parameters(self, method, taken, in_path):
@@ -467,6 +475,7 @@ class TestVocabularies:
             JOB_TYPE_DISCOVERY,
             JOB_TYPE_BEATPORT_PLAYLIST,
             JOB_TYPE_BEATPORT_RESOLVE,
+            JOB_TYPE_FOLLOWS_CHECK,
         }
         assert _field_union("DiscoverJobStarted", "state") == {
             state.value for state in JobState
@@ -505,5 +514,6 @@ class TestRoutes:
             JOB_TYPE_DISCOVERY,
             JOB_TYPE_BEATPORT_PLAYLIST,
             JOB_TYPE_BEATPORT_RESOLVE,
+            JOB_TYPE_FOLLOWS_CHECK,
         ):
             assert re.search(rf"^\s+{job_type}: \"", verbs, re.M), job_type

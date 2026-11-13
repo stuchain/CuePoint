@@ -114,6 +114,7 @@ if TYPE_CHECKING:
         GroupSelection,
         RunTracksPage,
     )
+    from cuepoint.models.follow import Follow
     from cuepoint.models.wantlist import WantlistEntry, WantlistPage
     from cuepoint.services.wantlist_service import WantlistChange
     from cuepoint.services.beatport_playlist_service import (
@@ -1427,6 +1428,11 @@ class ITrackCreditRepository(ABC):
         ...
 
     @abstractmethod
+    def follow_candidates(self, kind: str, limit: int) -> List[Tuple[int, str, int]]:
+        """Library names linked to exactly one Beatport id, as (id, name, tracks)."""
+        ...
+
+    @abstractmethod
     def track_count(self) -> int:
         """How many tracks a rebuild will read."""
         ...
@@ -2050,6 +2056,99 @@ class IEntityPageService(ABC):
         limit: int = 100,
     ) -> "EntityBeatportHalf":
         """A page's recent Beatport tracks, or the state that stands in for them."""
+        ...
+
+
+class IFollowRepository(ABC):
+    """Interface for the followed artists and labels (migration 0034)."""
+
+    @abstractmethod
+    def list(self) -> List["Follow"]:
+        """Every follow, artists first, each by name."""
+        ...
+
+    @abstractmethod
+    def get(self, kind: str, beatport_id: int) -> Optional["Follow"]:
+        """One follow, or None."""
+        ...
+
+    @abstractmethod
+    def add(self, follow: "Follow") -> bool:
+        """Follow; True when new, False when it already was."""
+        ...
+
+    @abstractmethod
+    def remove(self, kind: str, beatport_id: int) -> bool:
+        """Unfollow; True when it was followed."""
+        ...
+
+    @abstractmethod
+    def mark_seen(
+        self,
+        seen_through: str,
+        kind: Optional[str] = None,
+        beatport_id: Optional[int] = None,
+    ) -> List["Follow"]:
+        """Move seen_through forward for one follow or all; the follows moved."""
+        ...
+
+
+class IFollowService(ABC):
+    """Interface for following Beatport artists and labels (Discover)."""
+
+    @abstractmethod
+    def follows(self) -> Dict[str, Any]:
+        """Every follow with its new-track count, from the cache only."""
+        ...
+
+    @abstractmethod
+    def suggestions(self, limit: int = 20) -> Dict[str, Any]:
+        """Library artists and labels worth following, by owned track count."""
+        ...
+
+    @abstractmethod
+    def feed(
+        self,
+        kind: Optional[str] = None,
+        beatport_id: Optional[int] = None,
+        owned: str = "hide",
+        offset: int = 0,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """Cached tracks released since each follow was last seen, newest first."""
+        ...
+
+    @abstractmethod
+    def add(self, kind: str, beatport_id: int, name: str) -> Dict[str, Any]:
+        """Follow an artist or label."""
+        ...
+
+    @abstractmethod
+    def remove(self, kind: str, beatport_id: int) -> Dict[str, Any]:
+        """Unfollow an artist or label."""
+        ...
+
+    @abstractmethod
+    def mark_seen(
+        self, kind: Optional[str] = None, beatport_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Mark one follow's, or every follow's, new tracks as seen."""
+        ...
+
+    @abstractmethod
+    def is_followed(self, kind: str, beatport_id: int) -> bool:
+        """Whether an artist or label is followed."""
+        ...
+
+    @abstractmethod
+    def check(
+        self,
+        refresh: bool = False,
+        *,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> Dict[str, Any]:
+        """Read each follow's releases from Beatport where the cache is stale."""
         ...
 
 

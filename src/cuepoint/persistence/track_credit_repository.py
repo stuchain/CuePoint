@@ -687,6 +687,44 @@ class TrackCreditRepository(ITrackCreditRepository):
         row = self._db.connect().execute(sql, params).fetchone()
         return int(row["n"]) if row is not None else 0
 
+    def follow_candidates(self, kind: str, limit: int) -> List[Tuple[int, str, int]]:
+        """The library names resolution linked to exactly one Beatport id.
+
+        As ``(beatport_id, name, tracks)``, most library tracks first, then by
+        id, leaving out ids already in ``follows``. A name linked to several
+        ids names none of them (DEC-095), so it is not offered. An id two
+        library spellings link counts once, with both spellings' tracks.
+        """
+        if kind == ENTITY_ARTIST:
+            links = _ARTIST_LINKS
+        elif kind == ENTITY_LABEL:
+            links = _LABEL_LINKS
+        else:
+            raise ValueError(f"No candidates of kind {kind!r}")
+        rows = (
+            self._db.connect()
+            .execute(
+                f"WITH links AS ({links}),"
+                " single AS (SELECT name_key, max(beatport_id) AS beatport_id,"
+                " sum(tracks) AS tracks FROM links GROUP BY name_key"
+                " HAVING count(*) = 1)"
+                " SELECT beatport_id, min(name_key) AS name_key, sum(tracks) AS tracks"
+                " FROM single WHERE beatport_id NOT IN"
+                " (SELECT beatport_id FROM follows WHERE kind = ?)"
+                " GROUP BY beatport_id ORDER BY tracks DESC, beatport_id LIMIT ?",
+                (kind, int(limit)),
+            )
+            .fetchall()
+        )
+        return [
+            (
+                int(r["beatport_id"]),
+                self.library_name(kind, str(r["name_key"])) or str(r["name_key"]),
+                int(r["tracks"]),
+            )
+            for r in rows
+        ]
+
     def track_count(self) -> int:
         """How many tracks a rebuild will read."""
         row = self._db.connect().execute("SELECT count(*) AS n FROM tracks").fetchone()

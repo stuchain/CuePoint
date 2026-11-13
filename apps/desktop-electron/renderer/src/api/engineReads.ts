@@ -44,6 +44,7 @@ export const JOB_TYPE_DOMAINS: Readonly<Record<string, readonly ReadDomain[]>> =
   discovery: ["discover"],
   beatport_playlist: ["discover"],
   beatport_resolve: ["discover"],
+  follows_check: ["discover"],
 };
 
 /** Entries kept, least recently used first out. */

@@ -8836,3 +8836,15 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 **Reason**: 1.0.3 only fixes three problems users reported through Sentry (ELECTRON-9: the app giving up on a slow engine start; ELECTRON-C, ELECTRON-5 and PYTHON-1E: the Windows player failing without the Vulkan loader; ELECTRON-8, ELECTRON-A and ELECTRON-B: waveform status polling overloading the engine). CI covers the packaged app on all four systems.
 
 **Decided with**: User (decision card, 12 Nov 2026, 11:07 Athens: "Ship now, defer them to 1.0.4") · **Date**: 2026-11-12
+
+## DEC-317 — Following Beatport Artists and Labels in Discover
+
+**Status**: Accepted · **Related**: DEC-094, DEC-095, DEC-098, DEC-093, `src/cuepoint/services/follow_service.py`
+
+**Decision**: Discover gets a Following tab. A `follows` table (migration 0034: `kind`, `beatport_id`, `name`, `followed_at`, `seen_through`, keyed by kind and Beatport id, without a rowid) holds the artists and labels a user follows. Reading never asks Beatport: the follow list, its "N new" counts and the feed come from the `beatport_listings` cache, which a `follows_check` job fills by going through the entity page service's own listing path, one follow at a time (a listing older than 12 hours, or all with `refresh`). A Beatport refusal for one follow is that follow's state and the job goes on; no token ends the job with `no_token`. `seen_through` starts 30 days before the follow, so a first look is not empty, and "mark seen" moves it to today and never back. Only a Beatport id can be followed: a name linked to several Beatport ids, or to none, is a name page and offers no Follow, and the first-use suggestions list only library names linked to exactly one id, ranked by owned tracks. Every write records an activity event.
+
+**Reason**: The check spends requests on the user's token, so it is a job started on purpose, and the tab stays instant and offline-safe. Reusing the entity page's listing path keeps one freshness rule and one set of refusal states.
+
+**Notes**: A follow's last refusal is held in memory for the life of the engine, not stored. A feed covers what the listing window holds (a quarter for a label, a year for an artist), so a label not looked at for over 90 days can miss its oldest releases.
+
+**Decided with**: User (mockups f2-a and f2-c approved) · **Date**: 2026-11-13

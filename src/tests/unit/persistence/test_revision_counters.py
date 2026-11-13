@@ -16,6 +16,7 @@ import pytest
 from cuepoint.engine.beatport_playlist_jobs import JOB_TYPE_BEATPORT_PLAYLIST
 from cuepoint.engine.beatport_resolve_jobs import JOB_TYPE_BEATPORT_RESOLVE
 from cuepoint.engine.discovery_jobs import JOB_TYPE_DISCOVERY
+from cuepoint.engine.follow_check_jobs import JOB_TYPE_FOLLOWS_CHECK
 from cuepoint.persistence import revision_counters
 from cuepoint.persistence.revision_counters import (
     COUNTER_TABLE,
@@ -75,6 +76,7 @@ def test_the_discover_job_types_are_the_engines():
         JOB_TYPE_DISCOVERY,
         JOB_TYPE_BEATPORT_PLAYLIST,
         JOB_TYPE_BEATPORT_RESOLVE,
+        JOB_TYPE_FOLLOWS_CHECK,
     }
 
 

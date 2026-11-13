@@ -51,6 +51,8 @@ from cuepoint.services.interfaces import (
     IDiscoveryService,
     IBeatportPlaylistService,
     IEntityPageService,
+    IFollowRepository,
+    IFollowService,
     ISetRepository,
     ISetAnalysisService,
     ISetListService,
@@ -118,6 +120,8 @@ from cuepoint.services.discovery_service import DiscoveryService
 from cuepoint.services.beatport_playlist_service import BeatportPlaylistService
 from cuepoint.services.wantlist_service import WantlistService
 from cuepoint.services.entity_page_service import EntityPageService
+from cuepoint.services.follow_service import FollowService
+from cuepoint.persistence.follow_repository import FollowRepository
 from cuepoint.services.similarity_service import SimilarityService
 from cuepoint.persistence.similarity_repository import SimilarityRepository
 from cuepoint.services.credit_index_service import CreditIndexService
@@ -997,6 +1001,27 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IEntityPageService, create_entity_page_service)
+
+    # Followed artists and labels (Discover's Following tab). Per request and
+    # per job: a check asks Beatport with the token configured then.
+    def create_follow_repository() -> IFollowRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return FollowRepository(database_service=container.resolve(IDatabaseService))
+
+    container.register_factory(IFollowRepository, create_follow_repository)
+
+    def create_follow_service() -> IFollowService:
+        return FollowService(
+            database_service=container.resolve(IDatabaseService),
+            follows=container.resolve(IFollowRepository),
+            catalog=container.resolve(IBeatportCatalogRepository),
+            credits=container.resolve(ITrackCreditRepository),
+            wantlist=container.resolve(IWantlistRepository),
+            entity_pages=container.resolve(IEntityPageService),
+            activity_service=container.resolve(IActivityService),
+        )
+
+    container.register_factory(IFollowService, create_follow_service)
 
     # Similar Tracks (DISCOVER-08). Local and offline (DEC-096): no Beatport
     # client, no token, and nothing written.

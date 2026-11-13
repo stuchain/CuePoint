@@ -1230,6 +1230,8 @@
     "value": {
       "beatport_id": 301001,
       "display_name": "Mara Veil",
+      "followable": true,
+      "followed": false,
       "identity": "beatport",
       "kind": "artist",
       "library": {
@@ -1291,6 +1293,8 @@
     "value": {
       "beatport_id": null,
       "display_name": "Kiko",
+      "followable": false,
+      "followed": false,
       "identity": "name",
       "kind": "artist",
       "library": {
@@ -1358,6 +1362,8 @@
     "value": {
       "beatport_id": 301001,
       "display_name": "Mara Veil",
+      "followable": true,
+      "followed": false,
       "identity": "beatport",
       "kind": "artist",
       "library": {
@@ -1419,6 +1425,8 @@
     "value": {
       "beatport_id": null,
       "display_name": "Someone",
+      "followable": false,
+      "followed": false,
       "identity": "name",
       "kind": "artist",
       "library": {
@@ -1491,6 +1499,8 @@
     "value": {
       "beatport_id": 40211,
       "display_name": "Nightfall Audio",
+      "followable": true,
+      "followed": false,
       "identity": "beatport",
       "kind": "label",
       "library": {
@@ -1564,6 +1574,8 @@
     "value": {
       "beatport_id": null,
       "display_name": "Cold Room",
+      "followable": false,
+      "followed": false,
       "identity": "name",
       "kind": "label",
       "library": {
