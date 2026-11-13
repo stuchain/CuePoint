@@ -38,7 +38,7 @@ export function fileSkipText(reason: string): string {
     case "wav":
       return "WAV files, whose tags Rekordbox does not read back";
     case "unsupported_format":
-      return "formats CuePoint does not write (only MP3, AIFF, FLAC and Ogg Vorbis)";
+      return "formats CuePoint does not write (only MP3, AIFF, FLAC, Ogg Vorbis, M4A, MP4 and M4B)";
     case "not_checked":
       return "files not checked at their current path - check files first";
     case "missing":

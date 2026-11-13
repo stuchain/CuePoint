@@ -455,7 +455,10 @@ class TestThePreviewPredictsTheWrite:
             assert row.new_value == planned.changes[row.field][1], row.field
         assert result.written == 1 and result.fields == {name: 1 for name in TAG_FIELDS}
         assert display_value(after.value("key")) == "Am"
-        assert display_value(after.value("bpm")) == "124.5"
+        # An M4A's tmpo is a whole number.
+        assert display_value(after.value("bpm")) == (
+            "125" if kind == "m4a" else "124.5"
+        )
         assert display_value(after.value("comment")) == "ok"
 
     def test_a_preview_after_the_write_finds_nothing_left_to_change(self, world):
@@ -481,7 +484,7 @@ class TestThePreviewPredictsTheWrite:
 
         preview = world.preview(tracks, embed_missing_artwork=True, **ALL_FIELDS)
 
-        assert len(preview.files) == 4
+        assert len(preview.files) == len(SUPPORTED)
         assert [path.read_bytes() for path in paths] == before
         assert (
             world.db.connect().execute("SELECT count(*) FROM file_writes").fetchone()[0]
@@ -536,7 +539,7 @@ class TestSkippedWithReasons:
         never = world.add(world.file("mp3"), checked=None, key="Am")
         moved = world.add(world.file("mp3"), checked=None, key="Am")
         world.check(moved, path=world.root / "old" / "moved.mp3")
-        m4a = world.add(world.file("m4a"), key="Am")
+        protected = world.add(world.file("m4a", "bought.m4p"), key="Am")
         no_path = world.add("", checked=None, key="Am")
         noise = world.music / "noise.flac"
         noise.write_bytes(b"not a flac" * 100)
@@ -552,7 +555,7 @@ class TestSkippedWithReasons:
                 unreadable,
                 never,
                 moved,
-                m4a,
+                protected,
                 no_path,
                 broken,
                 nothing,
@@ -567,7 +570,7 @@ class TestSkippedWithReasons:
             SKIP_MISSING: [missing],
             SKIP_UNREADABLE: [unreadable],
             SKIP_NOT_CHECKED: sorted([never, moved, no_path]),
-            SKIP_UNSUPPORTED_FORMAT: [m4a],
+            SKIP_UNSUPPORTED_FORMAT: [protected],
             SKIP_TAGS_UNREADABLE: [broken],
             SKIP_NOTHING_TO_WRITE: [nothing],
             SKIP_VANISHED: [777_777],
@@ -618,6 +621,38 @@ class TestWriteThenRestore:
         assert world.writes.restorable(job_id="job-1") == []
         with pytest.raises(ValueError, match=NOTHING_TO_RESTORE):
             world.service().restore("restore-2", job_id="job-1")
+
+    @pytest.mark.parametrize("suffix", [".m4a", ".mp4", ".m4b"])
+    def test_the_mp4_family_is_not_skipped_and_undo_restores_it(self, world, suffix):
+        from mutagen.mp4 import MP4
+
+        path = world.file("m4a", f"tone{suffix}")
+        audio = MP4(str(path))
+        audio.tags["KEY\x00"] = ["5A"]
+        audio.tags["COMM"] = ["old comment"]
+        audio.tags["GENR"] = ["Techno"]
+        audio.save()
+        track = world.add(path, **VALUES)
+        dumped = tag_dump(path)
+        preview = world.preview([track], **ALL_FIELDS)
+
+        assert SKIP_UNSUPPORTED_FORMAT not in preview.skipped
+        assert [planned.track_id for planned in preview.files] == [track]
+        result = world.service().write(preview, "job-1")
+        assert (result.written, result.failed) == (1, 0)
+        written = tag_dump(path)
+        assert written != dumped
+        assert "KEY\x00" not in written and "COMM" not in written
+        assert written["\xa9gen"] == ["Tech House"]
+
+        restored = world.service().restore("restore-1", job_id="job-1")
+
+        assert (restored.restored, restored.skipped, restored.failed) == (
+            len(world.writes.for_job("job-1")),
+            0,
+            0,
+        )
+        assert tag_dump(path) == dumped
 
     def test_a_stale_field_is_skipped_and_reported_and_the_rest_restored(self, world):
         path = world.file("flac")
@@ -2124,3 +2159,106 @@ class TestKeptRowsOfFilesNotVisited:
         assert result.cancelled
         recorded_tracks = {r.track_id for r in skipped_rows(world, "job-1")}
         assert len(recorded_tracks) == 2 < len(tracks)
+
+
+@pytest.mark.unit
+class TestMp4LegacyAndDates:
+    def mp4(self, world, **atoms):
+        from mutagen.mp4 import MP4
+
+        path = world.file("m4a")
+        audio = MP4(str(path))
+        for atom, value in atoms.items():
+            audio.tags[atom.replace("_x_", "\x00").replace("_c_", "\xa9")] = value
+        audio.save()
+        return path
+
+    @pytest.mark.parametrize("held", ["2019-05-04", "2019-05-04T07:00:00Z"])
+    def test_a_full_date_in_the_same_year_is_unchanged_not_failed(self, world, held):
+        path = self.mp4(world, _c_day=[held])
+        track = world.add(path, year=2019)
+        dumped = tag_dump(path)
+
+        preview = world.preview(
+            [track], write_key=False, write_comment=False, write_label=False
+        )
+
+        assert preview.files == ()
+        assert preview.field_skipped == {"year": {FIELD_UNCHANGED: 1}}
+        result = world.service().write(preview, "job-1")
+        assert (result.written, result.failed, result.failed_fields) == (0, 0, 0)
+        assert tag_dump(path) == dumped
+
+    def test_a_full_date_with_a_legacy_year_is_a_change_that_lands(self, world):
+        path = self.mp4(world, _c_day=["2019-05-04"], DATE=["2001"])
+        track = world.add(path, year=2019)
+        dumped = tag_dump(path)
+
+        preview = world.preview([track], write_key=False, write_comment=False)
+        result = world.service().write(preview, "job-1")
+
+        assert (result.written, result.failed_fields) == (1, 0)
+        assert tag_dump(path)["\xa9day"] == ["2019-05-04"]
+        assert "DATE" not in tag_dump(path)
+        world.service().restore("restore-1", job_id="job-1")
+        assert tag_dump(path) == dumped
+
+    def test_legacy_atoms_of_fields_not_written_are_put_back_by_undo(self, world):
+        path = self.mp4(world, COMM=["old"], DATE=["2001"], _x_KEY=["5A"])
+        # (KEY is written; COMM and DATE are not.)
+        track = world.add(path, key="Am", year=2001)
+        dumped = tag_dump(path)
+
+        preview = world.preview(
+            [track], write_year=False, write_comment=False, write_label=False
+        )
+        result = world.service().write(preview, "job-1")
+
+        assert result.written == 1 and result.fields == {"key": 1}
+        written = tag_dump(path)
+        assert written["\xa9cmt"] == ["old"] and "COMM" not in written
+        assert written["\xa9day"] == ["2001"] and "DATE" not in written
+        restored = world.service().restore("restore-1", job_id="job-1")
+        assert restored.failed == 0 and restored.skipped == 0
+        assert tag_dump(path) == dumped
+
+    def test_a_file_with_an_unparsable_atom_is_skipped_as_unreadable(self, world):
+        from tests.unit.data.test_tag_fields import patch_atom_flags
+
+        path = self.mp4(world, tmpo=[120])
+        patch_atom_flags(path, b"tmpo", 1)
+        track = world.add(path, key="Am")
+        before = path.read_bytes()
+
+        preview = world.preview([track])
+        world.service().write(preview, "job-1")
+
+        assert skipped_ids(preview) == {SKIP_TAGS_UNREADABLE: [track]}
+        assert path.read_bytes() == before
+
+
+@pytest.mark.unit
+class TestMigratedAtomsAreNotWrittenFields:
+    def test_a_key_only_save_over_legacy_atoms_reports_only_the_key(self, world):
+        from mutagen.mp4 import MP4
+
+        path = world.file("m4a")
+        audio = MP4(str(path))
+        audio.tags["COMM"] = ["old"]
+        audio.tags["DATE"] = ["2001"]
+        audio.save()
+        track = world.add(path, key="Am", year=2001)
+        dumped = tag_dump(path)
+
+        preview = world.preview(
+            [track], write_year=False, write_comment=False, write_label=False
+        )
+        world.service().write(preview, "job-1")
+
+        rows = world.writes.for_job("job-1")
+        assert {row.field for row in rows} == {"key", "comment", "year"}
+        assert world.service().written_fields("job-1") == {track: ["key"]}
+        assert tag_dump(path) != dumped
+        restored = world.service().restore("restore-1", job_id="job-1")
+        assert restored.failed == 0 and restored.restored == len(rows)
+        assert tag_dump(path) == dumped

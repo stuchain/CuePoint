@@ -659,7 +659,7 @@ Rekordbox's otherwise. A field a file already holds is not saved again.
 | Skipped | Why |
 | --- | --- |
 | WAV files | CuePoint does not sync to WAV files |
-| Other formats | CuePoint writes MP3, AIFF, FLAC and Ogg Vorbis only |
+| Other formats | CuePoint writes MP3, AIFF, FLAC, Ogg Vorbis, M4A, MP4 and M4B only (not protected .m4p purchases) |
 | Missing or unreadable files | The last file check did not find them |
 | Files never checked | CuePoint writes only to a file it checked where it is now — run **Check every file** on Clean ▸ Missing files first |
 | Files that already hold these values | Nothing would change |

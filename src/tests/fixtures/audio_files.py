@@ -24,8 +24,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 FIXTURES = Path(__file__).resolve().parent / "audio"
 
-#: The formats CLEAN-10 writes, by extension.
-SUPPORTED = ("mp3", "aiff", "flac", "ogg")
+#: The formats CLEAN-10 writes, by extension (M4A stands for the MP4 family).
+SUPPORTED = ("mp3", "aiff", "flac", "ogg", "m4a")
 
 
 def build_ogg_vorbis(path: Path) -> Path:
@@ -136,4 +136,18 @@ def tag_dump(path: Path) -> Dict[str, Any]:
             for picture in getattr(audio, "pictures", [])
         ]
         return {"comments": sorted(comments), "pictures": pictures}
+    if suffix in (".m4a", ".mp4", ".m4b"):
+        from mutagen.mp4 import MP4
+
+        atoms = MP4(str(path)).tags
+        mp4: Dict[str, Any] = {}
+        for key in sorted(atoms.keys() if atoms is not None else []):
+            mp4[key] = [
+                _sha(bytes(item))
+                + f":{getattr(item, 'imageformat', getattr(item, 'dataformat', ''))}"
+                if isinstance(item, bytes)
+                else item
+                for item in atoms[key]
+            ]
+        return mp4
     raise ValueError(f"No dump for {suffix}")
