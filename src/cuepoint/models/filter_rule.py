@@ -594,7 +594,16 @@ KEY_WHEEL_SQL = f"cp_wheel({KEY_RAW_SQL})"
 UNSAVED_FIELDS: Tuple[str, ...] = ("key", "genre", "label", "year", "bpm")
 #: The extensions of the files CuePoint writes tags into; ``data/tag_fields.py``
 #: owns the list and a test holds the two to each other.
-UNSAVED_FILE_SUFFIXES: Tuple[str, ...] = (".mp3", ".aiff", ".aif", ".flac", ".ogg")
+UNSAVED_FILE_SUFFIXES: Tuple[str, ...] = (
+    ".mp3",
+    ".aiff",
+    ".aif",
+    ".flac",
+    ".ogg",
+    ".m4a",
+    ".mp4",
+    ".m4b",
+)
 #: Two BPMs closer than this are one BPM: the writer rounds to two decimals.
 UNSAVED_BPM_TOLERANCE = 0.005
 #: The years a tag is written with (``tag_writer._normalize_year``).

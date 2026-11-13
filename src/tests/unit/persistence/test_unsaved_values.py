@@ -200,7 +200,7 @@ class TestEachRule:
         write_row(db, track, "genre", value="Techno")
         assert unsaved_fields(db, track) == {"label"}
 
-    @pytest.mark.parametrize("path", ["/m/a.wav", "/m/a.WAV", "/m/a.m4a", ""])
+    @pytest.mark.parametrize("path", ["/m/a.wav", "/m/a.WAV", "/m/a.m4p", ""])
     def test_a_file_that_is_not_written_is_excluded(self, db, meta, path):
         track = add_track(db, path)
         meta.set_override(track, "genre", "Techno")
