@@ -939,6 +939,29 @@ describe("a process incident (REPORT-05)", () => {
     expect(attachments[0]!.text).toContain("== stderr (last 2 lines) ==");
   });
 
+  it("sends an engine stall dump as a second scrubbed attachment, with the stall_dump tag", async () => {
+    setup();
+    reportProcessIncident(
+      incident({
+        outcome: "recovered",
+        tags: { stall_dump: "yes" },
+        extraAttachments: [
+          {
+            filename: "engine-stall.txt",
+            text: 'Timeout (0:01:00)!\nThread 0x1 (most recent call first):\n  File "/Users/anna/Music/x.py", line 3 in f',
+          },
+        ],
+      }),
+    );
+    await flush();
+    const { event, attachments } = sent[0]!;
+    expect(event.tags).toMatchObject({ stall_dump: "yes" });
+    expect(attachments.map((a) => a.filename)).toEqual(["engine-output.txt", "engine-stall.txt"]);
+    expect(attachments[1]!.text).toContain("Timeout (0:01:00)!");
+    expect(attachments[1]!.text).not.toContain("anna");
+    expect(attachments[1]!.text).not.toContain("/Users/anna");
+  });
+
   it("tags the DLLs a player could not load, and leaves the tag off when none are known", async () => {
     setup();
     const data = { exit_code: 3221225781, signal: null, restarts: 0, uptime_ms: 8, exits: 1 };

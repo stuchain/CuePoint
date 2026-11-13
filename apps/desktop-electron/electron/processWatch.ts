@@ -48,7 +48,7 @@ export interface OutputTail {
 
 /** The attachment an event carries: a name `reportScrub.ts` allows, and its text, not yet scrubbed. */
 export interface IncidentAttachment {
-  filename: "engine-output.txt" | "player-output.txt";
+  filename: "engine-output.txt" | "player-output.txt" | "engine-stall.txt";
   text: string;
 }
 
@@ -94,6 +94,27 @@ export interface ProcessIncident {
     last_phase?: string | null;
   };
   attachment: IncidentAttachment | null;
+  /** More attachments, each scrubbed like the first (the engine's stall dump, ELECTRON-3). */
+  extraAttachments?: IncidentAttachment[];
+  /** Tags added to the event, e.g. `stall_dump`. */
+  tags?: Record<string, string>;
+}
+
+/**
+ * What was found when a stopped engine was killed (ELECTRON-3): the text of its stall dump
+ * (`engine-stall.txt`, tail, unscrubbed) or null when there was none. Both say the check was made.
+ */
+export interface StallEvidence {
+  dump: string | null;
+}
+
+/** The extra attachment and the `stall_dump` tag for `stall`; nothing when no check was made. */
+function stallParts(stall: StallEvidence | undefined): Pick<ProcessIncident, "extraAttachments" | "tags"> {
+  if (stall === undefined) return {};
+  return {
+    tags: { stall_dump: stall.dump === null ? "no" : "yes" },
+    ...(stall.dump !== null ? { extraAttachments: [{ filename: "engine-stall.txt" as const, text: stall.dump }] } : {}),
+  };
 }
 
 export interface ProcessReporter {
@@ -127,7 +148,7 @@ export function outputText(tail: OutputTail): string {
  * speaks to the reporter. Never throws: a reporter that fails is no reason to stop a supervisor.
  */
 export class IncidentTracker {
-  private open: { last: ProcessExit; exits: number; restarts: number; allClean: boolean } | null = null;
+  private open: { last: ProcessExit; exits: number; restarts: number; allClean: boolean; stall?: StallEvidence } | null = null;
   private readonly startFailures = new Set<string>();
 
   constructor(
@@ -141,7 +162,7 @@ export class IncidentTracker {
   }
 
   /** The process exited and nobody asked it to. Opens an incident, or adds an exit to the open one. */
-  exited(exit: ProcessExit): void {
+  exited(exit: ProcessExit, stall?: StallEvidence): void {
     const clean = exit.code === 0 && exit.signal === null;
     if (this.open === null) this.open = { last: exit, exits: 1, restarts: 0, allClean: clean };
     else {
@@ -149,6 +170,7 @@ export class IncidentTracker {
       this.open.exits += 1;
       this.open.allClean = this.open.allClean && clean;
     }
+    if (stall !== undefined) this.open.stall = stall;
     this.crumb(`${this.process} exited unexpectedly`, {
       exit_code: exit.code,
       signal: exit.signal,
@@ -196,10 +218,10 @@ export class IncidentTracker {
    * missing bundled engine). Once per `key` for as long as this tracker lives, which is the
    * launch of the app. Nothing while an incident is open: that one carries the story.
    */
-  startFailed(key: string, message: string, reason: string, output: OutputTail): void {
+  startFailed(key: string, message: string, reason: string, output: OutputTail, stall?: StallEvidence): void {
     if (this.open !== null || this.startFailures.has(key)) return;
     this.startFailures.add(key);
-    this.send("start-failed", message, reason, output);
+    this.send("start-failed", message, reason, output, undefined, stall);
   }
 
   /**
@@ -235,8 +257,10 @@ export class IncidentTracker {
     reason: string | undefined,
     output: OutputTail,
     missing: { missing: readonly string[]; missingDelay: readonly string[] } = { missing: [], missingDelay: [] },
+    stallFound?: StallEvidence,
   ): void {
     const open = this.open;
+    const stall = stallFound ?? open?.stall;
     this.open = null;
     // mpv exiting 0 with no signal means something told it to quit (ELECTRON-7), not that it crashed.
     const asked = this.process === "player" && outcome === "recovered" && open?.allClean === true;
@@ -259,6 +283,7 @@ export class IncidentTracker {
         filename: this.process === "engine" ? "engine-output.txt" : "player-output.txt",
         text: outputText(output),
       },
+      ...stallParts(this.process === "engine" ? stall : undefined),
     };
     try {
       this.reporter?.incident(incident);

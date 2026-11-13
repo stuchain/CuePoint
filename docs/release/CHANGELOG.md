@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Prepare no longer fails with "database is locked" while the app is saving matches.** Opening a set, its checks or its set list read the library with a write lock, so on a slow PC it could wait on a running match job and then fail (Sentry PYTHON-1M, PYTHON-1K). These reads now take a read-only snapshot and never wait on a writer. If the library is still busy, Prepare tries again once and then says "The library is busy. Try again in a moment." with a Try again button, instead of reporting an error.
+
+### Added
+- **The engine records what it was doing when it stops answering.** When the engine is stuck for 40 seconds, it writes the stack of every thread to `engine-stall.txt` in the logs folder, and the error report sent when the app restarts the engine includes that file (Sentry ELECTRON-3). This does not fix the freeze; it shows where it happens.
+
 ## [1.0.3] - 2026-11-12
 
 **CuePoint 1.0.3 fixes three problems people hit in 1.0.2.** The app no longer stays on "Starting" when its engine is slow to start, the Windows player starts on a PC without a Vulkan graphics driver, and the app no longer overloads its own engine while waveforms are being made. Installed copies of 1.0.0, 1.0.1 and 1.0.2 on Windows and Mac offer the update on their own.

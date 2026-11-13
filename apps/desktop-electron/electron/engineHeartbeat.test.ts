@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -378,5 +381,93 @@ describe("the engine's heartbeat", () => {
     }
     expect(spawned).toHaveLength(5);
     expect(supervisor.getStatus().connected).toBe(true);
+  });
+});
+
+describe("the engine's stall dump (ELECTRON-3)", () => {
+  let dir: string;
+  let file: string;
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(os.tmpdir(), "cp-stall-"));
+    file = path.join(dir, "engine-stall.txt");
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const DUMP =
+    "armed 2026-11-13T10:00:00+00:00\nTimeout (0:01:00)!\n\nThread 0x00007f (most recent call first):\n" +
+    '  File "/opt/CuePoint/engine/match_jobs.py", line 12 in run\n';
+
+  const freeze = async (supervisor: EngineSupervisor): Promise<void> => {
+    await supervisor.start();
+    health = "hang";
+    await run(HEARTBEAT * 3 + TIMEOUT * 3 + 10);
+    health = "answer";
+    await run(1000 + 50);
+  };
+
+  it("tells the engine where to write it, and removes what an earlier engine left", async () => {
+    const { spawn } = await import("node:child_process");
+    writeFileSync(file, DUMP);
+    const supervisor = make({ stallFile: () => file });
+    await supervisor.start();
+    const env = vi.mocked(spawn).mock.calls.at(-1)![2]!.env!;
+    expect(env.CUEPOINT_STALL_FILE).toBe(file);
+    expect(env.CUEPOINT_STALL_TOKEN).toMatch(/^[0-9a-f]{32}$/);
+    const { existsSync } = await import("node:fs");
+    expect(existsSync(file)).toBe(false);
+  });
+
+  it("ignores a dump from another launch that shares the file", async () => {
+    const supervisor = make({ stallFile: () => file });
+    await supervisor.start();
+    writeFileSync(file, "armed 2026-11-13T10:00:00+00:00 someoneelse\n" + DUMP.replace(/^armed[^\n]*\n/, ""));
+    health = "hang";
+    await run(HEARTBEAT * 3 + TIMEOUT * 3 + 10);
+    health = "answer";
+    await run(1000 + 50);
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0].tags).toEqual({ stall_dump: "no" });
+    expect(incidents[0].extraAttachments).toBeUndefined();
+  });
+
+  it("goes with the incident when the heartbeat kills the engine, tagged stall_dump=yes", async () => {
+    const supervisor = make({ stallFile: () => file });
+    await supervisor.start();
+    writeFileSync(file, DUMP); // what the frozen engine's watchdog wrote
+    health = "hang";
+    await run(HEARTBEAT * 3 + TIMEOUT * 3 + 10);
+    health = "answer";
+    await run(1000 + 50);
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0].attachment?.filename).toBe("engine-output.txt");
+    expect(incidents[0].extraAttachments).toEqual([{ filename: "engine-stall.txt", text: DUMP }]);
+    expect(incidents[0].tags).toEqual({ stall_dump: "yes" });
+  });
+
+  it("is tagged stall_dump=no, with no attachment, when the engine left no file", async () => {
+    const supervisor = make({ stallFile: () => file });
+    await freeze(supervisor);
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0].extraAttachments).toBeUndefined();
+    expect(incidents[0].tags).toEqual({ stall_dump: "no" });
+  });
+
+  it("is tagged stall_dump=no when the file holds only the armed line", async () => {
+    const supervisor = make({ stallFile: () => file });
+    await supervisor.start();
+    writeFileSync(file, "armed 2026-11-13T10:00:00+00:00\n");
+    health = "hang";
+    await run(HEARTBEAT * 3 + TIMEOUT * 3 + 10);
+    health = "answer";
+    await run(1000 + 50);
+    expect(incidents[0].extraAttachments).toBeUndefined();
+    expect(incidents[0].tags).toEqual({ stall_dump: "no" });
+  });
+
+  it("tags stall_dump no and attaches nothing when no file was configured", async () => {
+    await freeze(make());
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0].tags).toEqual({ stall_dump: "no" });
+    expect(incidents[0].extraAttachments).toBeUndefined();
   });
 });

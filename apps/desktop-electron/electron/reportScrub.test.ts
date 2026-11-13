@@ -66,7 +66,7 @@ describe("scrub helpers", () => {
   });
 
   it("keeps only the output tails, line by line", () => {
-    expect([...OUTPUT_TAIL_ATTACHMENTS]).toEqual(["engine-output.txt", "player-output.txt"]);
+    expect([...OUTPUT_TAIL_ATTACHMENTS]).toEqual(["engine-output.txt", "player-output.txt", "engine-stall.txt"]);
     const text = "start /Users/anna/Music/a.flac\nBearer abc.def\r\nplayed 'Strobe'";
     for (const name of OUTPUT_TAIL_ATTACHMENTS) {
       expect(scrubAttachment(name, text, ctx)).toBe(

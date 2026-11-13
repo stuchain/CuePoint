@@ -68,7 +68,11 @@ def test_scrub_text_matches_the_message_rule() -> None:
 
 def test_scrub_attachment_keeps_only_the_output_tails() -> None:
     ctx = ScrubContext(home="/Users/anna", user_name="anna")
-    assert OUTPUT_TAIL_ATTACHMENTS == ("engine-output.txt", "player-output.txt")
+    assert OUTPUT_TAIL_ATTACHMENTS == (
+        "engine-output.txt",
+        "player-output.txt",
+        "engine-stall.txt",
+    )
     text = "start /Users/anna/Music/a.flac\nBearer abc.def\r\nplayed 'Strobe'"
     for name in OUTPUT_TAIL_ATTACHMENTS:
         assert scrub_attachment(name, text, ctx) == (

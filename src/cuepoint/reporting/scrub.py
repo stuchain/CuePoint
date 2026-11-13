@@ -61,7 +61,7 @@ __all__ = [
 ]
 
 #: Attachments the reporter adds on purpose (REPORT-05); every other attachment is dropped.
-OUTPUT_TAIL_ATTACHMENTS = ("engine-output.txt", "player-output.txt")
+OUTPUT_TAIL_ATTACHMENTS = ("engine-output.txt", "player-output.txt", "engine-stall.txt")
 
 #: A key in ``extra``, a non-standard context or breadcrumb ``data`` whose lower-cased form, with
 #: ``_`` and ``-`` removed, ends with one of these has its value replaced. Plurals are included so

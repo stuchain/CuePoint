@@ -338,6 +338,7 @@ export const EXPECTED_ENGINE_CODES: readonly string[] = [
   "DB_MIGRATION_BLOCKED",
   "BACKUP_NEEDS_SPACE",
   "DB_UPGRADING",
+  "LIBRARY_BUSY",
 ];
 
 /**
@@ -413,7 +414,11 @@ export function reportProcessIncident(incident: ProcessIncident): string | null 
   if (on === null) return null;
   try {
     const { attachment } = incident;
-    const text = attachment === null ? null : scrubAttachment(attachment.filename, attachment.text, on.ctx);
+    const attachments = [...(attachment === null ? [] : [attachment]), ...(incident.extraAttachments ?? [])]
+      .map((item) => ({ item, text: scrubAttachment(item.filename, item.text, on.ctx) }))
+      .flatMap(({ item, text }) =>
+        text === null ? [] : [{ filename: item.filename, data: text, contentType: "text/plain" }],
+      );
     return on.sdk.captureEvent(
       {
         message: incident.message,
@@ -425,15 +430,12 @@ export function reportProcessIncident(incident: ProcessIncident): string | null 
           // Which DLLs a player that could not load was missing (ELECTRON-C), when that is known.
           // Capped for the tag; the full list stays in `extra`.
           ...(incident.data.missing_dlls ? { missing_dlls: incident.data.missing_dlls.slice(0, 200) } : {}),
+          // Whether a stopped engine left a stall dump (ELECTRON-3), when that was looked for.
+          ...incident.tags,
         },
         extra: { ...incident.data },
       },
-      {
-        attachments:
-          attachment !== null && text !== null
-            ? [{ filename: attachment.filename, data: text, contentType: "text/plain" }]
-            : [],
-      },
+      { attachments },
     );
   } catch {
     return null;

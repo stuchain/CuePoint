@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -299,6 +302,41 @@ describe("a slow engine start", () => {
     expect(after.starting).toBeFalsy();
     expect(after.error).not.toBe("Starting");
     expect(after.connected).toBe(false);
+  });
+
+  it("sends the engine's stall dump with the start-failed report when the silent engine is given up on", async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "cp-stall-start-"));
+    const file = path.join(dir, "engine-stall.txt");
+    try {
+      const supervisor = make({ stallFile: () => file });
+      const start = supervisor.start();
+      await run(TOTAL + 100); // the first try is killed; the second is under way (the launch cleared the file)
+      expect(spawned).toHaveLength(2);
+      const dump = "armed 2026-11-13T10:00:00+00:00\nTimeout (0:01:00)!\n\nThread 0x1 (most recent call first):\n";
+      writeFileSync(file, dump);
+      await run(TOTAL + 1000);
+      await start;
+      expect(failed()).toHaveLength(1);
+      expect(failed()[0].extraAttachments).toEqual([{ filename: "engine-stall.txt", text: dump }]);
+      expect(failed()[0].tags).toEqual({ stall_dump: "yes" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("tags the start-failed report stall_dump=no when the silent engine left no dump", async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "cp-stall-start-"));
+    try {
+      const supervisor = make({ stallFile: () => path.join(dir, "engine-stall.txt") });
+      const start = supervisor.start();
+      await run(TOTAL * 2 + 1000);
+      await start;
+      expect(failed()).toHaveLength(1);
+      expect(failed()[0].extraAttachments).toBeUndefined();
+      expect(failed()[0].tags).toEqual({ stall_dump: "no" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("keeps an exit during the extended wait an exit: reported, and no kill of its own", async () => {

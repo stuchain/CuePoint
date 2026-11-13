@@ -120,7 +120,15 @@ import { getBundledEnginePath, shouldUseBundledEngine } from "./engineLaunch";
 import { HEARTBEAT_TIMEOUT_MS, Heartbeat } from "./heartbeat";
 import { withDecoderPath } from "./playerLaunch";
 import { stopProcessTree } from "./processTree";
-import { IncidentTracker, OUTPUT_TAIL_LINES, capLine, type OutputTail, type ProcessReporter } from "./processWatch";
+import {
+  IncidentTracker,
+  OUTPUT_TAIL_LINES,
+  capLine,
+  type OutputTail,
+  type ProcessReporter,
+  type StallEvidence,
+} from "./processWatch";
+import { clearStallDump, readStallDump } from "./stallDump";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Repo root: works from source (`electron/`) and bundle (`electron-dist/`). */
@@ -282,6 +290,13 @@ interface EngineSupervisorOptions {
    * launch. `main.ts` says yes only when its own `CUEPOINT_E2E` is set (HARDEN-05).
    */
   testHooks?: () => boolean;
+  /**
+   * The file the engine writes its stall dump to (`engine-stall.txt`, ELECTRON-3), told to it at
+   * each launch as `CUEPOINT_STALL_FILE`. When the heartbeat kills the engine, or a start gives up,
+   * its tail goes out with the incident. Absent: the engine uses its own logs folder and nothing
+   * is read.
+   */
+  stallFile?: () => string | null;
   /** Replaces the heartbeat's 15 s, 10 s and three misses; for tests. */
   heartbeat?: { intervalMs?: number; timeoutMs?: number; maxMisses?: number };
   /** Replaces `RESTART_BACKOFF_MS`; for tests. */
@@ -315,6 +330,10 @@ interface EngineEnvironmentInput {
   uncleanExit?: boolean;
   /** The engine honours its test-only routes (`CUEPOINT_TEST_HOOKS=1`, HARDEN-05). */
   testHooks?: boolean;
+  /** Where the engine writes its stall dump (`CUEPOINT_STALL_FILE`); null leaves it to the engine. */
+  stallFile?: string | null;
+  /** This launch's mark on the stall file's `armed` line (`CUEPOINT_STALL_TOKEN`). */
+  stallToken?: string | null;
   build?: Pick<BuildInfo, "release" | "dist" | "environment">;
   env?: NodeJS.ProcessEnv;
 }
@@ -358,6 +377,10 @@ export function engineEnvironment(input: EngineEnvironmentInput): NodeJS.Process
   else delete env.CUEPOINT_UNCLEAN_EXIT;
   if (input.testHooks) env.CUEPOINT_TEST_HOOKS = "1";
   else delete env.CUEPOINT_TEST_HOOKS;
+  if (input.stallFile) env.CUEPOINT_STALL_FILE = input.stallFile;
+  else delete env.CUEPOINT_STALL_FILE;
+  if (input.stallFile && input.stallToken) env.CUEPOINT_STALL_TOKEN = input.stallToken;
+  else delete env.CUEPOINT_STALL_TOKEN;
   if (dsn.toLowerCase() === "off") env.CUEPOINT_SENTRY_DSN = "off";
   else if (dsn === "") delete env.CUEPOINT_SENTRY_DSN;
   return withDecoderPath(env, input.decoderPath);
@@ -478,6 +501,9 @@ export class EngineSupervisor {
   private stallRepeat = false;
   /** When the heartbeat last killed the engine, within the give-up window. */
   private heartbeatKills: number[] = [];
+  /** What the engine's stall file held when the heartbeat killed it (ELECTRON-3), for the incident. */
+  private stallEvidence: StallEvidence | undefined;
+  private stallToken: string | null = null;
   /** The stall now being handled is one too many: no restart follows it. */
   private stallGiveUp = false;
   /**
@@ -804,8 +830,12 @@ export class EngineSupervisor {
       // follows the session marker), but it never served its test-only routes.
       uncleanExit: this.options.uncleanExit?.() ?? false,
       testHooks: this.options.testHooks?.() ?? false,
+      stallFile: this.stallFilePath(),
+      stallToken: this.newStallToken(),
       build: this.options.build,
     });
+    // What an earlier engine left is not this one's (the engine truncates it at its own start too).
+    clearStallDump(this.stallFilePath());
 
     const spec = this.spawnSpec(baseEnv, []);
     if ("error" in spec) {
@@ -910,6 +940,8 @@ export class EngineSupervisor {
           elapsed_ms: Date.now() - this.spawnedAt,
           retry: retryAllowed,
         });
+        // Read before the kill: a hung engine's watchdog has dumped its stacks by now (ELECTRON-3).
+        const stall = this.readStall();
         await this.killChild();
         stale = superseded();
         if (stale) {
@@ -932,6 +964,7 @@ export class EngineSupervisor {
           "engine did not answer its health check",
           "the engine started but did not answer /health in time",
           this.outputTail(),
+          stall,
         );
         this.changed();
         return { connected: false, error: "Engine health check failed or timed out" };
@@ -991,6 +1024,13 @@ export class EngineSupervisor {
     // the open incident, though the restart already running will do the restarting.
     const stalled = this.stalledChild === child;
     if (stalled) this.stalledChild = null;
+    // Read again once it is gone: the dump can land just after the heartbeat's read before the kill.
+    const stallEvidence =
+      stalled && this.stallEvidence !== undefined && this.stallEvidence.dump === null
+        ? this.readStall()
+        : stalled
+          ? this.stallEvidence
+          : undefined;
     const uptimeMs = Date.now() - this.spawnedAt;
     if (stalled && this.stallRepeat) {
       // Already reported this session: a step on the trail, not another event.
@@ -1001,7 +1041,7 @@ export class EngineSupervisor {
       }
     } else {
       // What it was: a process that stopped answering, killed by us, not one that crashed.
-      this.incidents.exited({ code, signal: stalled ? "heartbeat" : signal, uptimeMs });
+      this.incidents.exited({ code, signal: stalled ? "heartbeat" : signal, uptimeMs }, stallEvidence);
     }
     if (stalled && this.stallGiveUp) {
       // Wedged again and again: stop restarting. The strip says so and offers Restart engine
@@ -1061,6 +1101,8 @@ export class EngineSupervisor {
     this.heartbeat = null;
     this.healthy = false;
     this.stalledChild = child;
+    // Before the kill, so the file is what the frozen engine wrote (ELECTRON-3).
+    this.stallEvidence = this.readStall();
     // Reported once per session: the first stop is an incident like a crash (its one event); a
     // later one is only a breadcrumb, so a machine that keeps suspending it is not a flood.
     this.stallRepeat = this.stallReported;
@@ -1190,6 +1232,25 @@ export class EngineSupervisor {
   }
 
   /** What an incident's attachment is made from. */
+  private stallFilePath(): string | null {
+    try {
+      return this.options.stallFile?.() ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** What the engine's stall file holds now; `dump` null when there is no dump in it. Never throws. */
+  private readStall(): StallEvidence {
+    return { dump: readStallDump(this.stallFilePath(), this.stallToken) };
+  }
+
+  /** A fresh mark for the next launch, so a dump an older engine writes is never read as its own. */
+  private newStallToken(): string {
+    this.stallToken = crypto.randomUUID().replace(/-/g, "");
+    return this.stallToken;
+  }
+
   private outputTail(): OutputTail {
     return this.recentOutput();
   }

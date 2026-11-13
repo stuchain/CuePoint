@@ -86,6 +86,19 @@ def _run_engine() -> int:
         return 1
 
 
+def _arm_stall_watchdog() -> None:
+    """Leave a stack in ``engine-stall.txt`` if the whole process stops answering (ELECTRON-3).
+
+    Never raises: an engine that cannot write its logs folder runs without it.
+    """
+    try:
+        from cuepoint.engine.stall_watchdog import arm_stall_watchdog
+
+        arm_stall_watchdog()
+    except Exception:
+        pass
+
+
 def _run_selftest(arguments: list) -> int:
     """Run the self-test; the same promise as :func:`_run_worker`."""
     if len(arguments) != 2:
@@ -116,4 +129,5 @@ if __name__ == "__main__":
         _rt = sys.argv.index("--restore")
         raise SystemExit(_restore_main(sys.argv[_rt + 1 :]))
 
+    _arm_stall_watchdog()
     raise SystemExit(_run_engine())

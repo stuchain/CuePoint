@@ -51,7 +51,7 @@ export interface ScrubContext {
 type Json = Record<string, unknown>;
 
 /** Attachments the reporter adds on purpose (REPORT-05); every other attachment is dropped. */
-export const OUTPUT_TAIL_ATTACHMENTS = ["engine-output.txt", "player-output.txt"] as const;
+export const OUTPUT_TAIL_ATTACHMENTS = ["engine-output.txt", "player-output.txt", "engine-stall.txt"] as const;
 
 /**
  * A key in `extra`, a non-standard context or breadcrumb `data` whose lower-cased form, with `_`

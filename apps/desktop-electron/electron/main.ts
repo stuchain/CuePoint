@@ -65,6 +65,7 @@ import { fetchReleases } from "./releaseList";
 import { scrubText } from "./reportScrub";
 import { enforceSingleInstance, onlyIfFirst } from "./singleInstance";
 import { startSession } from "./sessionLock";
+import { STALL_DUMP_FILE } from "./stallDump";
 import { testHooksEnabled } from "./testHooks";
 import { EngineEvidenceWriter } from "./engineEvidenceForTest";
 import { IntegrityChecker, settledLibrary } from "./integrityCheck";
@@ -201,6 +202,14 @@ const engine: EngineSupervisor = new EngineSupervisor({
   uncleanExit: (): boolean => sessionMarker.uncleanExit,
   // The test-only stall route exists only in an end-to-end run (HARDEN-05).
   testHooks: (): boolean => testHooksEnabled(),
+  // Where a frozen engine writes its stacks; read when the heartbeat kills it (ELECTRON-3).
+  stallFile: (): string | null => {
+    try {
+      return path.join(app.getPath("logs"), STALL_DUMP_FILE);
+    } catch {
+      return null;
+    }
+  },
   // The engine's exits, restarts and give-ups, once per incident (REPORT-05).
   reporter: processReporter,
   // The window re-reads the status at once on each change, rather than at its next poll: a
