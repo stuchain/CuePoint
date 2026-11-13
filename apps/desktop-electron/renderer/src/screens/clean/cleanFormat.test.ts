@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { TrackMatchState } from "../../api/cuepointBridge.types";
 import {
+  folderName,
+  foundStatus,
+  foundToast,
   clampLabel,
   decisionLine,
   differingParts,
@@ -157,5 +160,28 @@ describe("duplicates, by track (D18)", () => {
     expect(matchStartedLine({ planned: 5, excluded: 0, queued: true })).toBe(
       "Queued: 5 tracks will be matched on Beatport after the running match.",
     );
+  });
+});
+
+describe("Find in a folder's words (DEC-073)", () => {
+  it("names the folder by its last segment, with either separator and a trailing one", () => {
+    expect(folderName("/Users/dj/Moved")).toBe("Moved");
+    expect(folderName("/Users/dj/Moved/")).toBe("Moved");
+    expect(folderName("E:\\Music\\Moved")).toBe("Moved");
+  });
+
+  it("says how many were found, or that none were, and what it could not settle", () => {
+    const none = { ambiguous: 0, truncated: false };
+    expect(foundToast(6, 4, "/x/Moved", none)).toBe("Found 4 of 6 in Moved");
+    expect(foundToast(6, 0, "/x/Moved", none)).toBe("None of the 6 in Moved");
+    expect(foundToast(6, 4, "/x/Moved", { ambiguous: 2, truncated: false })).toBe(
+      "Found 4 of 6 in Moved. 2 files had the same name more than once",
+    );
+    expect(foundToast(6, 4, "/x/Moved", { ambiguous: 0, truncated: true })).toContain("too big");
+  });
+
+  it("says where in the toolbar, or just how many when they came from several folders", () => {
+    expect(foundStatus(4, ["/a/Moved", "/b/Moved"])).toBe("4 found in Moved");
+    expect(foundStatus(4, ["/a/Moved", "/b/Other"])).toBe("4 found");
   });
 });

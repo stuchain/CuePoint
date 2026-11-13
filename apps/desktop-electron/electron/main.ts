@@ -184,6 +184,9 @@ function safely(read: () => string): string | null {
   }
 }
 
+/** What the renderer sends to pick tracks; the engine validates it. */
+type FileFindSelection = Parameters<EngineSupervisor["startFileFind"]>[0]["selection"];
+
 /**
  * The engine, told where the player's mpv is so it can analyse audio with it
  * (WAVE-01, DEC-123). The same resolution the player uses, so the two can never
@@ -1026,6 +1029,21 @@ function registerIpcHandlers(): void {
   handle("engine:startFileCheck", (_event, params) =>
     engine.startFileCheck(params),
   );
+  // Find in a folder (DEC-073): the renderer sends only the selection. The folder comes from the
+  // native picker opened here, so the renderer never names a path.
+  handle("engine:startFileFind", async (_event, params: { selection: FileFindSelection }) => {
+    const win = BrowserWindow.getFocusedWindow();
+    const pick = await showOpenDialogFor(win, {
+      properties: ["openDirectory"],
+      title: "Choose a folder to look in",
+    });
+    if (pick.canceled || pick.filePaths.length === 0) {
+      return { canceled: true as const };
+    }
+    const folder = pick.filePaths[0];
+    const started = await engine.startFileFind({ folder, selection: params?.selection });
+    return { canceled: false as const, ...started, folder };
+  });
   handle("engine:startDuplicateScan", (_event, params) =>
     engine.startDuplicateScan(params),
   );

@@ -72,6 +72,8 @@ const JOB_VERBS: Record<string, string> = {
   // it appears here whether or not anyone asked for it, and has to say what it
   // is doing: "Checking" alone is already the refresh preview's verb.
   file_check: "Checking files",
+  // Find in a folder (DEC-073): reads a folder, writes nothing.
+  file_find: "Looking for files",
   // CLEAN-08's duplicate scan, which follows every import, refresh and
   // match job on its own.
   duplicate_scan: "Finding duplicates",
@@ -164,6 +166,7 @@ const JOB_DONE_WORDS: Record<string, string> = {
   library_refresh_apply: "Refreshed your library",
   library_batch: "Updated tracks",
   file_check: "Checked files",
+  file_find: "Looked for files",
   duplicate_scan: "Looked for duplicates",
   artwork_scan: "Read artwork",
   clean_match: "Matched on Beatport",
@@ -204,6 +207,8 @@ export const JOB_EXPLAINERS: Record<string, string> = {
     "CuePoint is changing the tracks you chose. Work already done stays done if you stop, and you can keep working.",
   file_check:
     "CuePoint is checking that each track's file is still where your library says. You can keep working.",
+  file_find:
+    "CuePoint is looking through the folder you chose for the missing files. Nothing is changed, and you can keep working.",
   duplicate_scan: "CuePoint is looking for tracks you have twice. You can keep working.",
   artwork_scan: "CuePoint is reading the artwork in your tracks. You can keep working.",
   clean_match:

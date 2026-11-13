@@ -315,6 +315,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   revertBatch: (params) => ipcRenderer.invoke("engine:revertBatch", params),
   searchMatch: (params) => ipcRenderer.invoke("engine:searchMatch", params),
   startFileCheck: (params) => ipcRenderer.invoke("engine:startFileCheck", params),
+  startFileFind: (params) => ipcRenderer.invoke("engine:startFileFind", params),
   startDuplicateScan: (params) => ipcRenderer.invoke("engine:startDuplicateScan", params),
   getDuplicateGroups: (params) => ipcRenderer.invoke("engine:getDuplicateGroups", params),
   dismissDuplicateGroup: (params) =>

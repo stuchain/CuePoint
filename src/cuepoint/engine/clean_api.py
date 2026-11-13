@@ -1280,6 +1280,22 @@ def check_files(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, An
     return _started(started.job, started.to_dict())
 
 
+def find_missing_files(
+    data: Dict[str, Any], job_store: Any
+) -> Tuple[int, Dict[str, Any]]:
+    """Start looking in a folder for the missing files of a selection (DEC-073).
+
+    Finds and reports; never changes a track's path (Rekordbox's Relocate does).
+    """
+    from cuepoint.engine.file_find_jobs import start_file_find_job
+
+    _only(data, ("folder", "selection"))
+    # Not stripped: a folder's name may end in a space. Only an empty one is refused.
+    _require_str(data, "folder")
+    started = start_file_find_job(job_store, _selection(data), data["folder"])
+    return _started(started.job, started.to_dict())
+
+
 def scan_duplicates(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
     """Start a duplicate scan for some signals, or all of them (DEC-074)."""
     from cuepoint.engine.duplicate_jobs import start_duplicate_scan_job
@@ -1775,6 +1791,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     "/api/v1/library/revert": revert_change,
     "/api/v1/library/revert/batch": revert_batch,
     "/api/v1/clean/files/check": check_files,
+    "/api/v1/clean/files/find": find_missing_files,
     "/api/v1/clean/duplicates/scan": scan_duplicates,
     "/api/v1/clean/duplicates/dismiss": dismiss_duplicates,
     "/api/v1/clean/duplicates/keep": keep_duplicate,

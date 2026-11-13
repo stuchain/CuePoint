@@ -239,3 +239,35 @@ export const MIXES_DIFFER_LINE = "Different mixes matched to one Beatport track:
 export function trackCount(number: number): string {
   return count(number, "track");
 }
+
+/** The last folder name of a path, spelled with either separator ("/Users/dj/Moved/" is "Moved"). */
+export function folderName(path: string): string {
+  const parts = path.split(/[\\/]+/).filter((part) => part !== "");
+  return parts.length > 0 ? parts[parts.length - 1] : path;
+}
+
+/** What a finished find says in a toast (DEC-073). Nothing was relinked; this is where files are now. */
+export function foundToast(
+  wanted: number,
+  found: number,
+  folder: string,
+  extra: { ambiguous: number; truncated: boolean; skipped?: number },
+): string {
+  const where = folderName(folder);
+  let line =
+    found === 0
+      ? `None of the ${formatCount(wanted)} in ${where}`
+      : `Found ${formatCount(found)} of ${formatCount(wanted)} in ${where}`;
+  if (extra.ambiguous > 0) {
+    line += `. ${plural(extra.ambiguous, "file")} had the same name more than once`;
+  }
+  if (extra.skipped) line += `. ${plural(extra.skipped, "unreadable file")} not looked for`;
+  if (extra.truncated) line += ". The folder was too big to look through all of it";
+  return line;
+}
+
+/** The toolbar's "4 found in Moved", or "4 found" when they came from more than one folder. */
+export function foundStatus(found: number, folders: readonly string[]): string {
+  const names = [...new Set(folders.map(folderName))];
+  return names.length === 1 ? `${formatCount(found)} found in ${names[0]}` : `${formatCount(found)} found`;
+}

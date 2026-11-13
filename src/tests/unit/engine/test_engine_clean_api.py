@@ -1292,6 +1292,144 @@ class TestFileChecks:
 
 
 @pytest.mark.unit
+class TestFindingFiles:
+    """Find in a folder: where a missing file is now, and nothing written (DEC-073)."""
+
+    def checked(self, engine, store, *tracks):
+        ids = add_tracks(*tracks)
+        started = ok(
+            post(
+                engine, "/api/v1/clean/files/check", {"selection": ids_selection(*ids)}
+            ),
+            202,
+        )
+        finished(store, started["job_id"])
+        return ids
+
+    def test_a_missing_track_is_found_in_a_folder_and_nothing_changes(
+        self, engine, store, tmp_path
+    ):
+        ids = self.checked(engine, store, track("Gone1"), track("Gone2"))
+        (tmp_path / "sub").mkdir()
+        (tmp_path / "sub" / "Gone1.mp3").write_bytes(b"x")
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/files/find",
+                {"folder": str(tmp_path), "selection": ids_selection(*ids)},
+            ),
+            202,
+        )
+
+        assert payload["tracks"] == 2
+        job = finished(store, payload["job_id"])
+        assert job.state == JobState.SUCCEEDED
+        assert job.result["found"] == [
+            {"track_id": ids[0], "path": str(tmp_path / "sub" / "Gone1.mp3")}
+        ]
+        assert job.result["not_found"] == [ids[1]]
+        row = ok(get(engine, f"/api/v1/library/tracks/{ids[0]}"))["track"]
+        assert row["file_path"] == "/music/Gone1.mp3"
+        assert row["file_status"] == "missing"
+
+    def test_only_missing_tracks_are_looked_for(self, engine, store, tmp_path):
+        present = tmp_path / "Here.mp3"
+        present.write_bytes(b"x")
+        ids = self.checked(
+            engine, store, track("Here", file_path=str(present)), track("Gone")
+        )
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/files/find",
+                {"folder": str(tmp_path), "selection": ids_selection(*ids)},
+            ),
+            202,
+        )
+
+        assert payload["tracks"] == 1
+        finished(store, payload["job_id"])
+
+    def test_a_folder_that_is_not_a_folder(self, engine, store, tmp_path):
+        ids = self.checked(engine, store, track("Gone"))
+        a_file = tmp_path / "f.txt"
+        a_file.write_text("x")
+
+        for folder in (str(a_file), str(tmp_path / "nope"), "relative/dir", ""):
+            refused(
+                post(
+                    engine,
+                    "/api/v1/clean/files/find",
+                    {"folder": folder, "selection": ids_selection(*ids)},
+                ),
+                400,
+                "INVALID_REQUEST",
+            )
+
+    def test_a_folder_name_ending_in_a_space_is_kept_as_written(
+        self, engine, store, tmp_path
+    ):
+        ids = self.checked(engine, store, track("Gone"))
+        spaced = tmp_path / "Moved "
+        spaced.mkdir()
+        (spaced / "Gone.mp3").write_bytes(b"x")
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/files/find",
+                {"folder": str(spaced), "selection": ids_selection(*ids)},
+            ),
+            202,
+        )
+
+        job = finished(store, payload["job_id"])
+        assert job.result["folder"] == str(spaced)
+        assert len(job.result["found"]) == 1
+
+    def test_nothing_missing_is_a_refusal(self, engine, store, tmp_path):
+        present = tmp_path / "Here.mp3"
+        present.write_bytes(b"x")
+        ids = self.checked(engine, store, track("Here", file_path=str(present)))
+
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/files/find",
+                {"folder": str(tmp_path), "selection": ids_selection(*ids)},
+            ),
+            400,
+            "INVALID_REQUEST",
+            "nothing to look for",
+        )
+
+    def test_a_field_no_route_takes_is_named(self, engine):
+        refused(
+            post(engine, "/api/v1/clean/files/find", {"folder": "/", "path": "/x"}),
+            400,
+            "INVALID_REQUEST",
+            "path",
+        )
+
+    def test_it_refuses_beside_an_import(self, engine, store, tmp_path):
+        ids = self.checked(engine, store, track("Gone"))
+        released = hold(store, "library_import")
+
+        try:
+            result = post(
+                engine,
+                "/api/v1/clean/files/find",
+                {"folder": str(tmp_path), "selection": ids_selection(*ids)},
+            )
+        finally:
+            released.set()
+
+        assert result[0] == 409, result
+
+
+@pytest.mark.unit
 class TestPending:
     """M511 (WO-3): what CuePoint holds that is not in the files or the export."""
 

@@ -4716,6 +4716,14 @@ export class EngineClient {
     return this.postJson("/api/v1/clean/files/check", params);
   }
 
+  /** Look for the missing files of a selection in a folder the main process chose (DEC-073). */
+  async startFileFind(params: {
+    folder: string;
+    selection: BatchSelection;
+  }): Promise<FileCheckStarted> {
+    return this.postJson("/api/v1/clean/files/find", params);
+  }
+
   /** Scan for duplicates by some signals, or all of them (DEC-074). */
   async startDuplicateScan(params?: {
     signals?: Array<"path" | "beatport" | "text">;

@@ -324,6 +324,20 @@ Rekordbox, choose File, then Export Collection in xml format; then here, choose
 starts it. See [CuePoint checks that your files are still
 there](library.md#cuepoint-checks-that-your-files-are-still-there--and-never-moves-them).
 
+**Find in a folder…** (beside the check) looks for the missing files in a folder
+you choose, in that folder and everything inside it. It looks for the same file
+name; when two files have it, it uses the track's length to pick the right one,
+and says so when it cannot tell. With rows selected it looks for those only
+(**Find it…** on the selection bar, **Find it in a folder…** when you right-click
+a row, or double-click a row). Found rows say **Found in** the folder's name, and
+**Show found file** and **Copy found path** (selection bar and right-click menu)
+take you to where the file is now. The row's **Expected at** does not change:
+CuePoint never changes a track's path. Pointing Rekordbox at the file is still
+**Relocate** in Rekordbox, followed by the export and **Check for changes** as in
+the steps. Right-clicking a row also offers **Show expected folder**, **Copy
+expected path**, **Check again** and **Show details**; each is also a button.
+What was found is forgotten when you check again.
+
 ## Duplicates
 
 Groups of tracks that may be the same recording, each saying why: the same

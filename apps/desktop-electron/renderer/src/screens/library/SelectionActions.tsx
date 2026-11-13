@@ -11,6 +11,8 @@
  * same menu, built from the same array, and "one vocabulary for both surfaces"
  * is a fact rather than a promise.
  */
+import type { ReactNode } from "react";
+
 import { Button } from "../../components/Button";
 import "./SelectionActions.css";
 import { countNoun } from "../../format/counts";
@@ -28,6 +30,10 @@ interface SelectionActionsProps {
   /** Tracks the query matches, for "select all". */
   total: number;
   busy?: boolean;
+  /** Buttons drawn before Copy (Missing files' "Find it…"). */
+  leadingActions?: ReactNode;
+  /** Buttons drawn between Copy and the reveal button (Missing files' "Show found file"). */
+  extraActions?: ReactNode;
 }
 
 export function SelectionActions({
@@ -40,6 +46,8 @@ export function SelectionActions({
   onSelectAll,
   total,
   busy = false,
+  leadingActions,
+  extraActions,
 }: SelectionActionsProps) {
   if (count === 0) {
     return (
@@ -63,9 +71,13 @@ export function SelectionActions({
         {describedByQuery && count > 1 ? " (everything matching)" : ""}
       </span>
 
+      {leadingActions}
+
       <Button variant="secondary" onClick={onCopy} loading={busy}>
         Copy
       </Button>
+
+      {extraActions}
 
       {/* One track, one file: revealing five folders at once is not a thing
           anyone asked for, so the action is offered only when it means one. */}

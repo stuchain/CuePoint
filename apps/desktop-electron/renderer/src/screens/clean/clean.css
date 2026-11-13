@@ -73,6 +73,18 @@
   font-size: var(--text-body);
 }
 
+/* "4 found in Moved" after "6 files missing" (DEC-073's Find in a folder): the one green part. */
+/* The chip for a file a find located: the success tone in colour, as approved in the mockup. The
+   shared chip is left alone; this only sets its own two tone variables. */
+.cp-badge.clean-found-chip {
+  --chip-tone: var(--accent-success);
+  --chip-text: var(--success-text);
+}
+
+.clean-found-status {
+  color: var(--success-text);
+}
+
 /* Tab toolbar lines are laid out one way (area 67): the count, its options, the actions at the right. */
 .clean-toolbar__check {
   margin-inline-end: auto;

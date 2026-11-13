@@ -78,6 +78,13 @@ export function useCleanJob(
         return false;
       }
 
+      // A start that opened a picker the person closed (Find in a folder…): nothing started, and
+      // nothing to say.
+      if ((answer as { canceled?: boolean }).canceled === true) {
+        if (alive.current) setRunning(null);
+        return false;
+      }
+
       const jobId = answer.job_id ?? answer.id;
       if (!jobId) {
         if (alive.current) setRunning(null);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
-import { MISSING_COLUMNS, matchCell } from "./cleanColumns";
+import { MISSING_COLUMNS, matchCell, missingColumns } from "./cleanColumns";
 
 function row(overrides: Partial<LibraryTrackRow>): LibraryTrackRow {
   return {
@@ -56,5 +56,16 @@ describe("the missing files columns", () => {
     const hint = MISSING_COLUMNS.find((column) => column.id === "file_status")!.hint;
     expect(hint).toMatch(/Missing: nothing is at that path/);
     expect(hint).toMatch(/Unreadable: the file is there but CuePoint cannot open it/);
+  });
+});
+
+describe("a found file's File cell (DEC-073)", () => {
+  it("says Found in the folder that was looked in, with the path, and leaves other rows as they were", () => {
+    const columns = missingColumns(new Map([[7, { path: "/Users/dj/Moved/a/x.mp3", folder: "/Users/dj/Moved" }]]));
+    const found = cell(columns, "file_status", row({ id: 7, file_status: "missing" }));
+    expect(found).toMatchObject({ props: { tone: "success", title: "/Users/dj/Moved/a/x.mp3" } });
+    expect(cell(columns, "file_status", row({ id: 8, file_status: "missing" }))).toBe("Missing");
+    // Where it was expected stays what the library says.
+    expect(cell(columns, "file_path", row({ id: 7 }))).toBe("E:\\music\\strobe.mp3");
   });
 });

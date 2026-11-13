@@ -7,6 +7,11 @@ type ViewState = { inspector: boolean; sidebar: boolean };
 let current: ViewState = { inspector: false, sidebar: true };
 let sent: string | null = null;
 
+/** Whether the Track details panel is showing now, as it last reported. */
+export function inspectorShown(): boolean {
+  return current.inspector;
+}
+
 export function reportViewState(part: Partial<ViewState>): void {
   current = { ...current, ...part };
   const key = `${current.inspector}/${current.sidebar}`;

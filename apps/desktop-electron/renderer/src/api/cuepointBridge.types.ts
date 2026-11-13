@@ -1637,6 +1637,21 @@ export interface FileCheckStarted extends CleanJobStarted {
   tracks: number;
 }
 
+/** A find in a folder that started; `folder` is the one the person chose in the native picker. */
+export type FileFindStarted =
+  | { canceled: true }
+  | ({ canceled: false; folder: string } & FileCheckStarted);
+
+/** What a finished find says (DEC-073): where each missing file is now. Nothing is relinked. */
+export interface FileFindResult {
+  folder: string;
+  looked: number;
+  truncated: boolean;
+  found: Array<{ track_id: number; path: string }>;
+  ambiguous: Array<{ track_id: number; count: number }>;
+  not_found: number[];
+}
+
 /** Tracks one signal put together, as it is now (DEC-074). */
 export interface DuplicateGroup {
   id: number;
@@ -4261,6 +4276,8 @@ export interface CuePointBridge {
   /** Search Beatport for a track with words of one's own; the results are scored and stored as an attempt. */
   searchMatch?: (params: { track_id: number; query: string }) => Promise<MatchSearchAnswer>;
   startFileCheck?: (params: { selection: BatchSelection }) => Promise<FileCheckStarted>;
+  /** Opens the native folder picker, then looks there for the selection's missing files. The renderer names no path. */
+  startFileFind?: (params: { selection: BatchSelection }) => Promise<FileFindStarted>;
   startDuplicateScan?: (params?: {
     signals?: DuplicateSignal[];
   }) => Promise<DuplicateScanStarted>;

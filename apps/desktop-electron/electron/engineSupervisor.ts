@@ -1600,6 +1600,13 @@ export class EngineSupervisor {
     return (await this.readyClient()).startFileCheck(params);
   }
 
+  async startFileFind(params: {
+    folder: string;
+    selection: BatchSelection;
+  }): Promise<FileCheckStarted> {
+    return (await this.readyClient()).startFileFind(params);
+  }
+
   async startDuplicateScan(
     params?: Parameters<EngineClient["startDuplicateScan"]>[0],
   ): Promise<DuplicateScanStarted> {
