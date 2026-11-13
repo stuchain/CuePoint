@@ -109,6 +109,10 @@ _ALLOWED = {
     # list's history (DEC-008). The SQL is the wantlist, catalog and activity
     # repositories'; no SQL is run there.
     "services/wantlist_service.py",
+    # DEC-317's follows: each follow, unfollow or mark-seen and the activity
+    # event recording it are one transaction, as the wantlist's are. The SQL is
+    # the follow and activity repositories'; no SQL is run there.
+    "services/follow_service.py",
     # PREP-03's Set editing: each edit's check and its write are one
     # transaction, so a refusal ("the only chapter", "already starts here", "past
     # the track's end") is judged against the rows it would write over, and the
