@@ -4359,6 +4359,15 @@ export class EngineClient {
     return this.getJson(`/api/v1/clean/match/jobs${suffix}`);
   }
 
+  /**
+   * Forget past matches: each run's rows and review list, with the resumes that finished it. No
+   * track loses its match, its corrections or what was decided. A run still going is refused
+   * (409 MATCH_RUNNING). `deleted` counts the ids that named a run.
+   */
+  async deleteMatchJobs(params: { job_ids: string[] }): Promise<{ deleted: number }> {
+    return this.postJson("/api/v1/clean/match/jobs/delete", params);
+  }
+
   /** Every track of a run (or a playlist), where each stands and whether it is ticked, for the Review table. */
   async getMatchReview(params?: {
     jobId?: string;

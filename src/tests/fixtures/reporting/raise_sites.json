@@ -539,6 +539,11 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/engine/clean_api.py::delete_past_matches::job_ids must be a list of 1 to {MATCH_JOBS_DELETE_MAX} job ids": {
+    "holds": "a number or count, our own constant",
+    "reason": "our own constants",
+    "verdict": "exempt"
+  },
   "cuepoint/engine/clean_api.py::export_review::A {file_format} export is written to a {suffix} file": {
     "holds": "exception text",
     "reason": "values are our own constants, numbers and names",

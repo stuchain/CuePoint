@@ -1549,6 +1549,10 @@ export class EngineSupervisor {
     return (await this.readyClient()).getMatchJobs(params);
   }
 
+  async deleteMatchJobs(params: Parameters<EngineClient["deleteMatchJobs"]>[0]) {
+    return (await this.readyClient()).deleteMatchJobs(params);
+  }
+
   async getMatchReview(params?: Parameters<EngineClient["getMatchReview"]>[0]) {
     return (await this.readyClient()).getMatchReview(params);
   }

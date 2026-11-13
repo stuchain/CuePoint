@@ -246,6 +246,12 @@ name or date.
 - **Save review list as a file…** saves that search's tracks with their match
   state and Beatport link, as a spreadsheet (CSV or Excel) or JSON that you can
   share or check by hand.
+- **Delete…** removes searches from this list. Tick one or more (the box above the
+  list ticks them all, and a folded line ticks the searches in it), then choose
+  **Delete…** in the bar under the table, or choose it in a line's **More** menu.
+  CuePoint asks first. Only the record of the search goes: its line here and its
+  review list. Every track keeps its match, its corrections and what you
+  decided, and a search that is still running cannot be deleted.
 
 ## Saving values into your files
 

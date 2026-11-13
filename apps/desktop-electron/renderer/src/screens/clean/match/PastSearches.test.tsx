@@ -23,6 +23,7 @@ import {
 import { reviewTrack, run } from "../../../test/matchFixtures";
 import type { CleanMatch } from "../useCleanMatch";
 import { MatchArea } from "./MatchArea";
+import { PastSearches } from "./PastSearches";
 import { groupRuns } from "./pastSearchWords";
 import { MATCH_TAB_STORAGE_KEY } from "./matchTab";
 import { quoted } from "../../../format/words";
@@ -129,8 +130,17 @@ describe("the list", () => {
     const [head, first] = screen.getAllByRole("row");
     const cells = [...first!.querySelectorAll("td")];
     // When, Results and Status fit their words; What was matched takes what is left (no Tracks column).
-    expect(cells.map((cell) => cell.classList.contains("match-past__fit"))).toEqual([true, false, true, true, false]);
+    // The tick column is its own width (I3), so it is not one that "fits its words".
+    expect(cells.map((cell) => cell.classList.contains("match-past__fit"))).toEqual([
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+    ]);
     expect([...head!.querySelectorAll("th")].map((cell) => cell.classList.contains("match-past__fit"))).toEqual([
+      false,
       true,
       false,
       true,
@@ -452,5 +462,262 @@ describe("Save review list (K12)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Choose where to save…" }));
     await waitFor(() => expect(bridge.saveExportFileDialog).toHaveBeenCalled());
     expect(bridge.exportReviewList).not.toHaveBeenCalled();
+  });
+});
+
+describe("Deleting past matches (I3)", () => {
+  // A box is named for its run and its date, so two runs of one source differ.
+  const boxName = (name: string) => new RegExp(`^Select ${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}, `);
+  const tick = (name: string) => fireEvent.click(screen.getByRole("checkbox", { name: boxName(name) }));
+
+  async function listed() {
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+  }
+
+  it("starts with a tick column, whose header box ticks every run that can go", async () => {
+    renderPast();
+    await listed();
+    const [head] = screen.getAllByRole("row");
+    expect(within(head!).getAllByRole("columnheader")[0]).toContainElement(
+      screen.getByRole("checkbox", { name: "Select every past match" }),
+    );
+    // Nothing is ticked, so no bar is drawn.
+    expect(screen.queryByText(/past matches? selected/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select every past match" }));
+    // The run that is still going cannot be deleted, so it is neither ticked nor tickable.
+    expect(screen.getByRole("checkbox", { name: boxName(ALL) })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: boxName(WHOLE) })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: boxName("1 track") })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: boxName("1 track") })).not.toBeChecked();
+    expect(screen.getByText("2 past matches selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select every past match" }));
+    expect(screen.queryByText(/past matches? selected/)).toBeNull();
+  });
+
+  it("shows a selection bar under the table with Delete… and Clear, and says how many", async () => {
+    renderPast();
+    await listed();
+    tick(ALL);
+    expect(screen.getByText("1 past match selected")).toBeInTheDocument();
+    tick(WHOLE);
+    const bar = screen.getByText("2 past matches selected").closest(".cp-selection-actions")!;
+    expect(bar.closest(".cp-toolbar")).toHaveClass("clean-review__selection");
+    expect(within(bar as HTMLElement).getByRole("button", { name: "Delete…" })).toHaveClass("cp-btn--danger");
+    fireEvent.click(within(bar as HTMLElement).getByRole("button", { name: "Clear" }));
+    expect(screen.queryByText(/past matches? selected/)).toBeNull();
+    expect(screen.getByRole("checkbox", { name: boxName(ALL) })).not.toBeChecked();
+  });
+
+  it("deletes the ticked runs after a confirmation, then reads the list again", async () => {
+    const { container } = renderPast();
+    await listed();
+    tick(ALL);
+    tick(WHOLE);
+    const reads = bridge.getMatchJobs!.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Delete 2 past matches?" });
+    expect(dialog).toHaveTextContent(
+      "Only the record of these searches goes: the rows here and their review lists. Every track keeps its match, its corrections and what you decided.",
+    );
+    // Asking changes nothing yet.
+    expect(bridge.deleteMatchJobs).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete 2" }));
+
+    await waitFor(() => expect(bridge.deleteMatchJobs).toHaveBeenCalledTimes(1), LOADED);
+    expect(bridge.deleteMatchJobs).toHaveBeenCalledWith({ job_ids: ["job-1", "job-2"] });
+    expect(await screen.findByText("Deleted 2 past matches", undefined, LOADED)).toBeInTheDocument();
+    await waitFor(() => expect(bridge.getMatchJobs!.mock.calls.length).toBeGreaterThan(reads), LOADED);
+    await waitFor(() => expect(screen.getAllByRole("row").slice(1)).toHaveLength(1), LOADED);
+    expect(screen.queryByText(/past matches? selected/)).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(container.querySelector('input[type="checkbox"]:checked')).toBeNull();
+  });
+
+  it("deletes one run from its More menu, danger-styled after a separator", async () => {
+    renderPast();
+    await listed();
+    fireEvent.click(screen.getByRole("button", { name: `More for ${ALL}` }));
+    const items = screen.getAllByRole("menuitem").map((item) => item.textContent);
+    expect(items.slice(-3)).toEqual(["Save review list…", "Match again", "Delete…"]);
+    const del = screen.getByRole("menuitem", { name: "Delete…" });
+    expect(del.className).toContain("cp-track-menu__item--danger");
+    fireEvent.click(del);
+
+    const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(bridge.deleteMatchJobs).toHaveBeenCalledWith({ job_ids: ["job-1"] }), LOADED);
+    expect(await screen.findByText("Deleted 1 past match", undefined, LOADED)).toBeInTheDocument();
+  });
+
+  it("will not delete a run that is still going, and says why", async () => {
+    renderPast();
+    await listed();
+    fireEvent.click(screen.getByRole("button", { name: "More for 1 track" }));
+    const del = screen.getByRole("menuitem", { name: "Delete…" });
+    expect(del).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(del);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(bridge.deleteMatchJobs).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the question is cancelled, and keeps the ticks", async () => {
+    renderPast();
+    await listed();
+    tick(ALL);
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(bridge.deleteMatchJobs).not.toHaveBeenCalled();
+    expect(screen.getByText("1 past match selected")).toBeInTheDocument();
+    expect(screen.getAllByRole("row").slice(1)).toHaveLength(3);
+  });
+
+  it("ticks a whole folded group from its one row, and each earlier run once shown", async () => {
+    world.runs = [
+      run({ job_id: "a1", label: "Peak", created_at: "2026-10-12T13:42:00" }),
+      run({ job_id: "a2", label: "Peak", created_at: "2026-10-11T13:42:00" }),
+      run({ job_id: "a3", label: "Peak", created_at: "2026-10-10T13:42:00" }),
+      run({ job_id: "b1", label: "Warm", created_at: "2026-10-09T13:42:00" }),
+    ];
+    renderPast();
+    await listed();
+    tick(quoted("Peak"));
+    expect(screen.getByText("3 past matches selected")).toBeInTheDocument();
+
+    // Shown, the earlier runs carry their own boxes, ticked with the group; one can be left out.
+    fireEvent.click(screen.getByRole("button", { name: `Show 2 earlier runs of ${quoted("Peak")}` }));
+    const boxes = screen.getAllByRole("checkbox", { name: boxName(quoted("Peak")) });
+    expect(boxes).toHaveLength(3);
+    for (const box of boxes) expect(box).toBeChecked();
+    fireEvent.click(boxes[2]!);
+    expect(screen.getByText("2 past matches selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete 2 past matches?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete 2" }));
+    await waitFor(() => expect(bridge.deleteMatchJobs).toHaveBeenCalledWith({ job_ids: ["a1", "a2"] }), LOADED);
+  });
+
+  it("deletes a whole folded group from its More menu, as its tick would", async () => {
+    world.runs = [
+      run({ job_id: "a1", label: "Peak", created_at: "2026-10-12T13:42:00" }),
+      run({ job_id: "a2", label: "Peak", created_at: "2026-10-11T13:42:00" }),
+      run({ job_id: "a3", label: "Peak", created_at: "2026-10-10T13:42:00" }),
+    ];
+    renderPast();
+    await listed();
+    pickMore(quoted("Peak"), "Delete…");
+    const dialog = await screen.findByRole("dialog", { name: "Delete 3 past matches?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete 3" }));
+    await waitFor(() => expect(bridge.deleteMatchJobs).toHaveBeenCalledWith({ job_ids: ["a1", "a2", "a3"] }), LOADED);
+  });
+
+  it("names each box for its run and date, so runs of one source differ", async () => {
+    world.runs = [
+      run({ job_id: "a1", label: "Peak", created_at: "2026-10-12T13:42:00" }),
+      run({ job_id: "a2", label: "Peak", created_at: "2026-10-11T13:42:00" }),
+    ];
+    renderPast();
+    await listed();
+    fireEvent.click(screen.getByRole("button", { name: `Show 1 earlier run of ${quoted("Peak")}` }));
+    const names = screen.getAllByRole("checkbox", { name: boxName(quoted("Peak")) }).map((box) => box.getAttribute("aria-label"));
+    expect(new Set(names).size).toBe(2);
+  });
+
+  it("does not open the review on a click in the tick cell", async () => {
+    renderPast();
+    await listed();
+    fireEvent.click(screen.getAllByRole("checkbox")[1]!.closest("td")!);
+    expect(screen.queryByRole("region", { name: /^Review/ })).toBeNull();
+  });
+
+  it("says nothing was deleted by not saying it, when they were already gone", async () => {
+    bridge.deleteMatchJobs!.mockResolvedValue({ deleted: 0 });
+    renderPast();
+    await listed();
+    tick(ALL);
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
+    const reads = bridge.getMatchJobs!.mock.calls.length;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(bridge.getMatchJobs!.mock.calls.length).toBeGreaterThan(reads), LOADED);
+    expect(screen.queryByText(/Deleted 0/)).toBeNull();
+  });
+
+  it("reads the list again after a refusal, so the run shows as running and loses its tick", async () => {
+    bridge.deleteMatchJobs!.mockRejectedValue(new Error("A match is still running: wait for it to end."));
+    renderPast();
+    await listed();
+    tick(ALL);
+    const reads = bridge.getMatchJobs!.mock.calls.length;
+    world.runs = [{ ...RUNS[0]!, status: "running" }, RUNS[1]!, RUNS[2]!];
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(bridge.getMatchJobs!.mock.calls.length).toBeGreaterThan(reads), LOADED);
+    await waitFor(() => expect(screen.queryByText(/past matches? selected/)).toBeNull(), LOADED);
+  });
+
+  it("clears the ticks when the search changes", async () => {
+    renderPast();
+    await listed();
+    tick(ALL);
+    expect(screen.getByText("1 past match selected")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Search past matches"), { target: { value: "all" } });
+    await waitFor(() => expect(bridge.getMatchJobs).toHaveBeenLastCalledWith({ limit: 20, q: "all" }), LOADED);
+    await waitFor(() => expect(screen.queryByText(/past matches? selected/)).toBeNull());
+  });
+
+  it("says which runs went, so the area can close a review of one of them", async () => {
+    const onDeleted = vi.fn();
+    render(
+      <ScaleProvider>
+        <ToastProvider>
+          <PastSearches
+            search=""
+            version={0}
+            matching={false}
+            openId="job-1"
+            onOpen={vi.fn()}
+            onResume={vi.fn()}
+            onMatchAgain={vi.fn()}
+            onGoToPlaylists={vi.fn()}
+            onDeleted={onDeleted}
+          />
+        </ToastProvider>
+      </ScaleProvider>,
+    );
+    await listed();
+    pickMore(ALL, "Delete…");
+    const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(["job-1"]), LOADED);
+  });
+
+  it("says why when the engine refuses", async () => {
+    bridge.deleteMatchJobs!.mockRejectedValue(new Error("A match is still running: wait for it to end."));
+    renderPast();
+    await listed();
+    tick(ALL);
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByText(/A match is still running/, undefined, LOADED)).toBeInTheDocument();
+    expect(screen.getAllByRole("row").slice(1)).toHaveLength(3);
+  });
+
+  it("offers no deleting in a build that cannot", async () => {
+    delete bridge.deleteMatchJobs;
+    renderPast();
+    await listed();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: `More for ${ALL}` }));
+    expect(screen.queryByRole("menuitem", { name: "Delete…" })).toBeNull();
   });
 });

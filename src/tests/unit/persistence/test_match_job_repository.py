@@ -40,7 +40,10 @@ from cuepoint.models.match_attempt import (
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.persistence.job_repository import JobRecord, JobRepository
-from cuepoint.persistence.match_job_repository import MatchJobRepository
+from cuepoint.persistence.match_job_repository import (
+    MatchJobRepository,
+    MatchRunActiveError,
+)
 from cuepoint.persistence.match_repository import MatchRepository
 from cuepoint.persistence.track_repository import TrackRepository
 from cuepoint.services.database_service import DatabaseService
@@ -794,3 +797,153 @@ class TestHistory:
 
         assert total == 1
         assert [r.job_id for r in jobs] == ["second"]
+
+
+# ------------------------------------------------------------------- deleting
+
+
+class TestDeleteRuns:
+    """Forgetting a past match forgets the run only, never what it found."""
+
+    def chain(self, repo, db, ids):
+        """A run of two jobs (a stop and its resume) and an unrelated run."""
+        repo.create("first", ids[:6], rematch=False, selected=6, created_at=NOW)
+        for position in range(3):
+            repo.mark_done("first", position)
+        repo.take_over("first", "second", LATER)
+        repo.create("other", ids[6:], rematch=False, selected=2, created_at=NOW)
+        job_record(db, "first", "cancelled")
+        job_record(db, "second", "succeeded")
+        job_record(db, "other", "succeeded")
+
+    def plan_ids(self, db) -> List[str]:
+        return [
+            r["job_id"]
+            for r in db.connect().execute(
+                "SELECT job_id FROM match_jobs ORDER BY job_id"
+            )
+        ]
+
+    def test_a_run_goes_with_every_resume_of_it_and_nothing_else(self, repo, db, ids):
+        self.chain(repo, db, ids)
+
+        assert repo.delete_runs(["first"]) == 1
+
+        assert self.plan_ids(db) == ["other"]
+        assert rows(db, "first") == [] and rows(db, "second") == []
+        assert len(rows(db, "other")) == 2
+        assert [run.job_id for run in repo.history(None, 20, 0)[0]] == ["other"]
+
+    def test_the_resume_named_alone_takes_only_itself_and_what_followed(
+        self, repo, db, ids
+    ):
+        self.chain(repo, db, ids)
+
+        repo.delete_runs(["second"])
+
+        assert self.plan_ids(db) == ["first", "other"]
+
+    def test_several_runs_in_one_call_are_counted_once_each(self, repo, db, ids):
+        self.chain(repo, db, ids)
+
+        assert repo.delete_runs(["first", "other", "first"]) == 2
+
+        assert self.plan_ids(db) == []
+        assert count(db, "match_job_tracks") == 0
+
+    def test_an_unknown_id_is_ignored_and_counts_for_nothing(self, repo, db, ids):
+        self.chain(repo, db, ids)
+
+        assert repo.delete_runs(["nope", "first"]) == 1
+        assert repo.delete_runs(["nope"]) == 0
+        assert repo.delete_runs([]) == 0
+
+        assert self.plan_ids(db) == ["other"]
+
+    def test_the_chain_is_the_job_and_every_resume_below_it(self, repo, db, ids):
+        self.chain(repo, db, ids)
+
+        assert repo.run_chain(["first"]) == {"first", "second"}
+        assert repo.run_chain(["second"]) == {"second"}
+        assert repo.run_chain(["nope"]) == set()
+        assert self.plan_ids(db) == ["first", "other", "second"]
+
+    def test_more_ids_than_one_statement_can_carry(self, repo, db, ids):
+        from cuepoint.persistence.id_chunks import CHUNK_SIZE
+
+        self.chain(repo, db, ids)
+        names = [f"none-{n}" for n in range(CHUNK_SIZE + 5)] + ["first"]
+
+        assert repo.delete_runs(names) == 1
+
+        assert self.plan_ids(db) == ["other"]
+
+    def test_no_track_loses_its_match_its_attempts_or_its_decision(
+        self, repo, db, matches, ids
+    ):
+        self.chain(repo, db, ids)
+        settle(matches, ids[0], STATE_ACCEPTED)
+        settle(matches, ids[1], STATE_NEEDS_REVIEW, "auto")
+        settle(matches, ids[2], STATE_REJECTED)
+        before = {
+            table: count(db, table)
+            for table in (
+                "track_match",
+                "match_attempts",
+                "match_candidates",
+                "tracks",
+                "jobs",
+            )
+        }
+        decided = [
+            tuple(r)
+            for r in db.connect().execute(
+                "SELECT track_id, state, decided_by, attempt_id, candidate_id"
+                " FROM track_match ORDER BY track_id"
+            )
+        ]
+
+        repo.delete_runs(["first", "other"])
+
+        after = {table: count(db, table) for table in before}
+        assert after == before
+        assert before["track_match"] == 3 and before["match_attempts"] == 3
+        assert decided == [
+            tuple(r)
+            for r in db.connect().execute(
+                "SELECT track_id, state, decided_by, attempt_id, candidate_id"
+                " FROM track_match ORDER BY track_id"
+            )
+        ]
+
+    @pytest.mark.parametrize("state", ["queued", "running"])
+    def test_a_run_with_a_live_job_is_refused_and_nothing_goes(
+        self, repo, db, ids, state
+    ):
+        self.chain(repo, db, ids)
+        job_record(db, "second", state)
+
+        with pytest.raises(MatchRunActiveError) as raised:
+            # The unrelated run is in the same call: it must not go either.
+            repo.delete_runs(["other", "first"])
+
+        assert raised.value.job_id == "second"
+        assert self.plan_ids(db) == ["first", "other", "second"]
+        assert len(rows(db, "second")) == 3
+
+    def test_a_job_that_has_ended_does_not_hold_its_run(self, repo, db, ids):
+        self.chain(repo, db, ids)
+        job_record(db, "first", "failed")
+
+        assert repo.delete_runs(["first"]) == 1
+
+    def test_it_joins_a_callers_transaction_and_goes_with_it(self, repo, db, ids):
+        self.chain(repo, db, ids)
+
+        with pytest.raises(RuntimeError):
+            with db.transaction():
+                assert repo.delete_runs(["first"]) == 1
+                assert self.plan_ids(db) == ["other"]
+                raise RuntimeError("roll back")
+
+        assert self.plan_ids(db) == ["first", "other", "second"]

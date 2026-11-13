@@ -117,6 +117,26 @@ describe("past searches", () => {
     expect(url.searchParams.get("offset")).toBe("40");
   });
 
+  it("POSTs the ids to /clean/match/jobs/delete and returns how many went", async () => {
+    const calls = engineAnswering(json(200, { deleted: 2 }));
+
+    expect(await client().deleteMatchJobs({ job_ids: ["a", "b"] })).toEqual({ deleted: 2 });
+
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/clean/match/jobs/delete`);
+    expect(calls[0]!.init?.method).toBe("POST");
+    expect(sent(calls[0]!)).toEqual({ job_ids: ["a", "b"] });
+  });
+
+  it("maps a run still going to an EngineError with its code", async () => {
+    engineAnswering(
+      json(409, { error: { code: "MATCH_RUNNING", message: "A match is still running", report_id: "r2" } }),
+    );
+
+    const error = await thrown(client().deleteMatchJobs({ job_ids: ["a"] }));
+
+    expect(error).toMatchObject({ status: 409, code: "MATCH_RUNNING" });
+  });
+
   it("sends a label when a search is started", async () => {
     const calls = engineAnswering(json(202, { job_id: "j", id: "j", state: "queued" }));
 

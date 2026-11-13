@@ -3567,6 +3567,149 @@ class TestPastSearches:
         )
 
 
+@pytest.mark.unit
+class TestDeletingPastSearches:
+    """Forgetting a run removes its record, never a track's match (I3)."""
+
+    URL = "/api/v1/clean/match/jobs/delete"
+
+    def plan(self, ids: List[int], job_id: str) -> str:
+        resolve("IMatchJobRepository").create(
+            job_id, ids, rematch=False, selected=len(ids), created_at=NOW
+        )
+        return job_id
+
+    def listed(self, engine) -> List[str]:
+        return [
+            j["job_id"] for j in ok(get(engine, "/api/v1/clean/match/jobs"))["jobs"]
+        ]
+
+    def test_the_runs_named_go_and_the_count_comes_back(self, engine):
+        ids = add_tracks(track("DelA"), track("DelB"))
+        for name in ("del-1", "del-2", "del-3"):
+            self.plan(ids, name)
+
+        assert ok(post(engine, self.URL, {"job_ids": ["del-1", "del-3", "nope"]})) == {
+            "deleted": 2
+        }
+
+        assert self.listed(engine) == ["del-2"]
+
+    def test_what_a_track_was_matched_to_stays(self, engine):
+        [one] = add_tracks(track("DelKeep"))
+        attempt(one, candidate(610, score=99.0))
+        self.plan([one], "del-keep")
+        before = resolve("IMatchRepository").get_match(one)
+
+        ok(post(engine, self.URL, {"job_ids": ["del-keep"]}))
+
+        assert self.listed(engine) == []
+        assert resolve("IMatchRepository").get_match(one) == before
+        assert resolve("IMatchRepository").latest_attempt(one) is not None
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {},
+            {"job_ids": []},
+            {"job_ids": "run-1"},
+            {"job_ids": [7]},
+            {"job_ids": [""]},
+            {"job_ids": [f"run-{n}" for n in range(201)]},
+            {"job_ids": ["run-1"], "extra": 1},
+        ],
+    )
+    def test_a_list_that_cannot_be_honoured(self, engine, body):
+        refused(post(engine, self.URL, body), 400, "INVALID_REQUEST")
+
+    def test_the_most_it_takes_is_two_hundred(self, engine):
+        ok(post(engine, self.URL, {"job_ids": [f"none-{n}" for n in range(200)]}))
+
+    def test_a_running_run_is_refused_and_nothing_goes(self, engine):
+        from cuepoint.persistence.job_repository import JobRecord
+
+        ids = add_tracks(track("DelBusy"))
+        self.plan(ids, "del-done")
+        self.plan(ids, "del-busy")
+        resolve("IJobRepository").save(
+            JobRecord(
+                id="del-busy",
+                type="clean_match",
+                state="running",
+                demo=False,
+                progress=None,
+                error=None,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+
+        error = refused(
+            post(engine, self.URL, {"job_ids": ["del-done", "del-busy"]}),
+            409,
+            "MATCH_RUNNING",
+        )
+
+        assert error["job_id"] == "del-busy"
+        assert sorted(self.listed(engine)) == ["del-busy", "del-done"]
+
+    def test_a_run_a_queued_resume_will_take_over_is_refused(self, engine, store):
+        """The resume's plan row is written only when it starts: until then the run is its."""
+        ids = add_tracks(track("DelQueued"), track("DelQueued2"))
+        self.plan(ids, "del-a")
+        resolve("IMatchJobRepository").mark_done("del-a", 0)
+        released = hold(store, "clean_match")
+        try:
+            queued = ok(
+                post(engine, "/api/v1/clean/match/resume", {"job_id": "del-a"}), 202
+            )
+            assert queued["job_id"] != "del-a"
+
+            error = refused(
+                post(engine, self.URL, {"job_ids": ["del-a"]}), 409, "MATCH_RUNNING"
+            )
+
+            assert error["job_id"] == queued["job_id"]
+            assert self.listed(engine) == ["del-a"]
+        finally:
+            released.set()
+
+    def test_a_run_a_queued_match_again_selects_is_refused(self, engine, store):
+        ids = add_tracks(track("DelAgain"))
+        self.plan(ids, "del-b")
+        released = hold(store, "clean_match")
+        try:
+            rule = {"field": "match_run", "operator": "is", "value": "del-b"}
+            ok(
+                post(
+                    engine,
+                    "/api/v1/clean/match",
+                    {
+                        "selection": {
+                            "query": {"filters": {"match": "all", "rules": [rule]}}
+                        },
+                        "rematch": True,
+                    },
+                ),
+                202,
+            )
+
+            refused(
+                post(engine, self.URL, {"job_ids": ["del-b"]}), 409, "MATCH_RUNNING"
+            )
+
+            assert self.listed(engine) == ["del-b"]
+        finally:
+            released.set()
+
+    def test_it_needs_the_token(self, engine):
+        refused(
+            call(engine, "POST", self.URL, {"job_ids": ["x"]}, token=None),
+            401,
+            "UNAUTHORIZED",
+        )
+
+
 # ------------------------------ the review of one run (the Review tab)
 
 

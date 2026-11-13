@@ -986,6 +986,9 @@ function registerIpcHandlers(): void {
   handle("engine:getMatchJobs", (_event, params) =>
     engine.getMatchJobs(params),
   );
+  handle("engine:deleteMatchJobs", (_event, params) =>
+    engine.deleteMatchJobs(params),
+  );
   handle("engine:getMatchReview", (_event, params) =>
     engine.getMatchReview(params),
   );

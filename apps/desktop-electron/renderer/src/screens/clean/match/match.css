@@ -102,6 +102,27 @@
   text-overflow: clip;
 }
 
+/* The tick column is the same as the playlists' (M139): the cell's padding and the global box. */
+.cp-data-table .match-past__tick {
+  box-sizing: border-box;
+  width: calc(32px * var(--scale));
+  min-width: calc(32px * var(--scale));
+  padding-inline: var(--space-sm);
+  text-align: center;
+}
+
+.match-past__tick input[type="checkbox"] {
+  margin: 0;
+  vertical-align: middle;
+}
+
+/* The bar for the ticked runs stays under the table, in view however long the list is. */
+.match-past__selection {
+  position: sticky;
+  bottom: 0;
+  justify-content: flex-start;
+}
+
 /* The row opens its review on a click; the arrow stays an arrow (M339). The keyboard reaches it
    through the "Open …" link in its What cell (M475). */
 .match-past__row {
