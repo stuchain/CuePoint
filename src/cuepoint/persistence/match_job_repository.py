@@ -35,6 +35,15 @@ plan's watermark — and, unless the job was a re-match, a track a user decided
 since. The original keeps the rows it finished, which is its record, and loses
 the ones it did not, so it is not offered for resumption twice.
 
+Deleting a past match
+---------------------
+:meth:`MatchJobRepository.delete_runs` forgets a run: its plan rows and the
+review list they make up, the whole chain of resumes as one. It touches nothing
+else. A track's match, its attempts and their candidates, a person's decisions
+and the ``jobs`` record all stay: they are what the library knows, and the run
+was only the record of one search for them. A run whose job is still queued or
+running is refused, because its worker is writing those rows.
+
 Transactions join a caller's, as everywhere here: a track's attempt and its
 ``done`` flag commit together or not at all.
 """
@@ -145,6 +154,28 @@ _HISTORY_ROOTS = (
 
 #: A search matches a run's label or its date, with LIKE's wildcards escaped.
 _HISTORY_SEARCH = " AND (label LIKE :q ESCAPE '\\' OR created_at LIKE :q ESCAPE '\\')"
+
+
+class MatchRunActiveError(RuntimeError):
+    """A run cannot be deleted while one of its jobs is queued or running."""
+
+    def __init__(self, job_id: str) -> None:
+        super().__init__(f"Match job {job_id} is still running")
+        self.job_id = job_id
+
+
+#: A job and every resume below it, as ``history()`` folds them into one run.
+_CHAIN = (
+    "WITH RECURSIVE chain(job_id) AS (SELECT job_id FROM match_jobs"
+    " WHERE job_id IN ({marks})"
+    " UNION SELECT m.job_id FROM match_jobs m JOIN chain c"
+    " ON m.resumed_from = c.job_id)"
+)
+
+
+def _text_chunks(values: Sequence[str]) -> List[Sequence[str]]:
+    """Split ids into slices one statement can carry (``chunked`` is for integers)."""
+    return [values[i : i + CHUNK_SIZE] for i in range(0, len(values), CHUNK_SIZE)]
 
 
 class MatchJobRepository(IMatchJobRepository):
@@ -351,6 +382,59 @@ class MatchJobRepository(IMatchJobRepository):
                 )
                 moved += int(cursor.rowcount)
         return moved
+
+    def delete_runs(self, job_ids: Iterable[str]) -> int:
+        """Delete past matches: each run's plan rows, its whole chain of resumes.
+
+        Only ``match_job_tracks`` and ``match_jobs`` are written. Every track
+        keeps its match, its attempts and what the person decided.
+
+        Args:
+            job_ids: The runs to delete, by the id each is listed under.
+
+        Returns:
+            How many of the given ids named a run. An id with no plan is
+            ignored.
+
+        Raises:
+            MatchRunActiveError: If any job of any chain is queued or running.
+                Nothing is deleted.
+        """
+        wanted = list(dict.fromkeys(str(job_id) for job_id in job_ids))
+        if not wanted:
+            return 0
+        deleted = 0
+        with self._db.transaction(join_existing=True) as conn:
+            for chunk in _text_chunks(wanted):
+                marks = ", ".join("?" for _ in chunk)
+                chain = _CHAIN.format(marks=marks)
+                deleted += int(
+                    conn.execute(
+                        f"SELECT COUNT(*) FROM match_jobs WHERE job_id IN ({marks})",
+                        chunk,
+                    ).fetchone()[0]
+                )
+                active = conn.execute(
+                    f"{chain} SELECT j.id FROM jobs j JOIN chain c ON c.job_id = j.id"
+                    " WHERE j.state IN ('queued', 'running') LIMIT 1",
+                    chunk,
+                ).fetchone()
+                if active is not None:
+                    raise MatchRunActiveError(str(active["id"]))
+            for chunk in _text_chunks(wanted):
+                marks = ", ".join("?" for _ in chunk)
+                chain = _CHAIN.format(marks=marks)
+                conn.execute(
+                    f"{chain} DELETE FROM match_job_tracks"
+                    " WHERE job_id IN (SELECT job_id FROM chain)",
+                    chunk,
+                )
+                conn.execute(
+                    f"{chain} DELETE FROM match_jobs"
+                    " WHERE job_id IN (SELECT job_id FROM chain)",
+                    chunk,
+                )
+        return deleted
 
     # -------------------------------------------------------------- reading
 
@@ -618,4 +702,4 @@ def _resumable(row: sqlite3.Row) -> ResumableMatch:
     return ResumableMatch(plan=MatchPlan.from_row(row), remaining=int(row["remaining"]))
 
 
-__all__: Sequence[str] = ("MatchJobRepository",)
+__all__: Sequence[str] = ("MatchJobRepository", "MatchRunActiveError")

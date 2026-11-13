@@ -189,6 +189,11 @@ export function installMatchBridge(
       state: stateFor(track_id),
     })),
     getMatchJobs: vi.fn(async () => ({ jobs: world.runs, total: world.runs.length })),
+    deleteMatchJobs: vi.fn(async ({ job_ids }: { job_ids: string[] }) => {
+      const gone = world.runs.filter((one) => job_ids.includes(one.job_id));
+      world.runs = world.runs.filter((one) => !job_ids.includes(one.job_id));
+      return { deleted: gone.length };
+    }),
     getMatchReview: vi.fn(async (params?: { after?: string; limit?: number; tickedIds?: boolean }) =>
       reviewAnswer(world.review, params),
     ),

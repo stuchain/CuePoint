@@ -8,7 +8,7 @@ import { STRIP_MAX_SCALE, useStripPage } from "../waveform/stripPlaces";
 import { useWaveformPrefetch } from "../waveform/useWaveformPrefetch";
 import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
 import { markPlayed, selectCurrentTrackId } from "./playedTracks";
-import { usePlayerValue } from "./playerStore";
+import { usePlayedLatch, usePlayerValue } from "./playerStore";
 import { toggleQueue, useQueueOpen } from "./queuePanelState";
 import { useCompactBar } from "./useCompactBar";
 import { usePlayerNotices } from "./usePlayerNotices";
@@ -16,9 +16,15 @@ import { usePlayerShortcuts } from "./usePlayerShortcuts";
 import "./PlayerSlot.css";
 
 /**
- * The player bar is always there (area 83, amending DEC-053: it used to wait for the first play
- * and the page jumped by its height). Before anything has played it reads "Nothing playing" with
- * its controls greyed.
+ * The player bar waits for the first play, then stays (DEC-053). History: area 83 made it
+ * always present, reading "Nothing playing"; Stelios went back to DEC-053 (I6 B, 13 Nov 2026)
+ * so the table gets those rows until there is something to play. The page jumping by the bar's
+ * height at the first play is the accepted cost.
+ *
+ * Before the first play the region renders nothing that takes height, only the screen reader
+ * announcer (it is clipped to 1px and positioned out of flow). The latch lives in
+ * `usePlayedLatch`: it flips when a file is loaded or the queue is non-empty and never flips
+ * back, so ending a queue leaves the bar showing; quitting resets it.
  *
  * Earlier text, kept for the history: when the player bar exists, and what the bar's queue button shows (PLAYER-06,
  * PLAYER-08, DEC-053).
@@ -72,6 +78,7 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   const stripOn = detailOn && !compact && onStripPage && !collapsed;
   useWaveformPrefetch({ enabled: stripOn });
   const trackId = usePlayerValue(selectCurrentTrackId);
+  const barShown = usePlayedLatch();
 
   // Above the early return, like the rest: a track that is played is played whether or not the
   // bar has been drawn yet (R4-6).
@@ -79,20 +86,25 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
     if (trackId !== null) markPlayed(trackId);
   }, [trackId]);
 
-  // Always drawn (area 83): before the first play the bar says "Nothing playing", so the page
-  // never jumps by the bar's height when something starts.
+  // Not drawn until the first play (I6, DEC-053).
+  // The announcer sits at the same place in the tree either way, so it is not remounted at the
+  // first play and says that first track.
   return (
-    <PlayerRegion>
-      <div className="cp-player-slot">
-        <PlayerAnnouncer />
-        {stripOn && trackId !== null ? <WaveformDetailStrip key={trackId} trackId={trackId} /> : null}
-        <PlayerBar
-          queueOpen={queueOpen}
-          onToggleQueue={toggleQueue}
-          onOpenTrack={onOpenTrack}
-          onOpenArtist={onOpenArtist}
-        />
-      </div>
-    </PlayerRegion>
+    <>
+      <PlayerAnnouncer />
+      {barShown ? (
+        <PlayerRegion>
+          <div className="cp-player-slot">
+            {stripOn && trackId !== null ? <WaveformDetailStrip key={trackId} trackId={trackId} /> : null}
+            <PlayerBar
+              queueOpen={queueOpen}
+              onToggleQueue={toggleQueue}
+              onOpenTrack={onOpenTrack}
+              onOpenArtist={onOpenArtist}
+            />
+          </div>
+        </PlayerRegion>
+      ) : null}
+    </>
   );
 }

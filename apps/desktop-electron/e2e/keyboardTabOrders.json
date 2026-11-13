@@ -28,12 +28,6 @@
     "main | grid | Library tracks",
     "main | button | Title",
     "main | button | Columns",
-    "region \"Player\" | button | Shuffle: off",
-    "region \"Player\" | button | Repeat: off",
-    "region \"Player\" | button | Show the queue (N tracks)",
-    "region \"Player\" | button | Hide the zoomed waveform",
-    "region \"Player\" | button | Mute",
-    "region \"Player\" | slider | Volume",
     "contentinfo | button | Activity"
   ],
   "Clean": [
@@ -53,12 +47,6 @@
     "main | checkbox | Tick every playlist",
     "main | checkbox | Match All tracks",
     "main | checkbox | Match Warmup",
-    "region \"Player\" | button | Shuffle: off",
-    "region \"Player\" | button | Repeat: off",
-    "region \"Player\" | button | Show the queue (N tracks)",
-    "region \"Player\" | button | Hide the zoomed waveform",
-    "region \"Player\" | button | Mute",
-    "region \"Player\" | slider | Volume",
     "contentinfo | button | Activity"
   ],
   "Keys": [
@@ -79,12 +67,6 @@
     "main | button | Playlists",
     "main | checkbox | Warmup",
     "main | button | Match on Beatport",
-    "region \"Player\" | button | Shuffle: off",
-    "region \"Player\" | button | Repeat: off",
-    "region \"Player\" | button | Show the queue (N tracks)",
-    "region \"Player\" | button | Hide the zoomed waveform",
-    "region \"Player\" | button | Mute",
-    "region \"Player\" | slider | Volume",
     "contentinfo | button | Activity"
   ],
   "Discover": [
@@ -106,12 +88,6 @@
     "region \"Labels\" | button | New list of labels",
     "region \"When\" | textbox | From",
     "region \"When\" | textbox | To",
-    "region \"Player\" | button | Shuffle: off",
-    "region \"Player\" | button | Repeat: off",
-    "region \"Player\" | button | Show the queue (N tracks)",
-    "region \"Player\" | button | Hide the zoomed waveform",
-    "region \"Player\" | button | Mute",
-    "region \"Player\" | slider | Volume",
     "contentinfo | button | Activity"
   ],
   "Prepare": [
@@ -128,12 +104,6 @@
     "banner | button | Track details",
     "main | button | New Set from a list…",
     "main | button | New Set…",
-    "region \"Player\" | button | Shuffle: off",
-    "region \"Player\" | button | Repeat: off",
-    "region \"Player\" | button | Show the queue (N tracks)",
-    "region \"Player\" | button | Hide the zoomed waveform",
-    "region \"Player\" | button | Mute",
-    "region \"Player\" | slider | Volume",
     "contentinfo | button | Activity"
   ],
   "Statistics": [
@@ -161,12 +131,6 @@
     "main | button | Open in Keys",
     "main | button | N BPM, N tracksN",
     "main | button | N, N tracksN",
-    "region \"Player\" | button | Shuffle: off",
-    "region \"Player\" | button | Repeat: off",
-    "region \"Player\" | button | Show the queue (N tracks)",
-    "region \"Player\" | button | Hide the zoomed waveform",
-    "region \"Player\" | button | Mute",
-    "region \"Player\" | slider | Volume",
     "contentinfo | button | Activity"
   ],
   "Settings": [
@@ -216,12 +180,6 @@
     "region \"About & updates\" | button | Keyboard shortcuts",
     "region \"About & updates\" | button | About CuePoint",
     "region \"About & updates\" | button | Getting started",
-    "region \"Player\" | button | Shuffle: off",
-    "region \"Player\" | button | Repeat: off",
-    "region \"Player\" | button | Show the queue (N tracks)",
-    "region \"Player\" | button | Hide the zoomed waveform",
-    "region \"Player\" | button | Mute",
-    "region \"Player\" | slider | Volume",
     "contentinfo | button | Activity"
   ]
 }

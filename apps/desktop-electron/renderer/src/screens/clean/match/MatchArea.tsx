@@ -307,6 +307,10 @@ export function MatchArea({
               onResume={resumeRun}
               onMatchAgain={matchAgain}
               onGoToPlaylists={() => chooseTab("playlists")}
+              onDeleted={(ids) => {
+                // A review of a run that no longer exists has nothing to read.
+                if (review?.source.jobId && ids.includes(review.source.jobId)) closeReview();
+              }}
               onCount={setPastCount}
             />
           </Activity>

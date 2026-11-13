@@ -172,6 +172,8 @@ Clean page (ReviewView) / Library actions
        -> ProcessorService.process_track (the shared matcher, unchanged)
        -> MatchRepository.add_attempt   (every candidate, DEC-066)
        -> MatchStateService.apply_attempt (accepted / needs review, DEC-067)
+  -> past matches: GET /clean/match/jobs, POST /clean/match/jobs/delete (the run's
+     plan rows only, never a track's match; MATCH_RUNNING 409 while it runs)
   -> review: /clean/decide, /clean/apply                         decisions and overrides
   -> export: /clean/export                                     the review list
   -> files:  /clean/tags/preview, /write, /restore               CLEAN-10's recorded writes

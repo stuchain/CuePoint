@@ -184,12 +184,29 @@ describe("App shell", () => {
     await waitFor(() => expect(document.title).toBe("Settings - CuePoint"));
   });
 
-  it("shows the player bar before anything has played, as Nothing playing (area 83)", () => {
-    const { container } = render(<App />);
+  it("draws no player bar before anything has played (I6, DEC-053)", async () => {
+    const idle = {
+      status: { available: true, running: true, reconnecting: false, restartAttempts: 0 },
+      playback: { filePath: null, playing: false, paused: false, positionSeconds: null, durationSeconds: null, volume: 80, muted: false },
+      queue: { length: 0, currentId: null, currentIndex: 0, currentItem: null, shuffle: false, repeat: "off" },
+    };
+    const previous = window.cuepoint;
+    const getState = vi.fn().mockResolvedValue(idle);
+    window.cuepoint = {
+      ...(previous ?? {}),
+      player: { getState, subscribeState: vi.fn((cb: (s: unknown) => void) => { cb(idle); return vi.fn(); }) },
+    } as unknown as typeof window.cuepoint;
+    try {
+      const { container } = render(<App />);
+      await waitFor(() => expect(getState).toHaveBeenCalled());
 
-    const player = container.querySelector(".app-shell__player");
-    expect(player).not.toBeNull();
-    expect(player).toHaveTextContent("Nothing playing");
+      const player = container.querySelector(".app-shell__player");
+      expect(player).not.toBeNull();
+      expect(container.querySelector(".cp-player-bar")).toBeNull();
+      expect(player).not.toHaveTextContent("Nothing playing");
+    } finally {
+      window.cuepoint = previous as typeof window.cuepoint;
+    }
   });
 
   it("offers no Details toggle on a page with nothing to inspect (M490)", async () => {

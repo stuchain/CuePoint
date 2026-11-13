@@ -4081,6 +4081,12 @@ export interface CuePointBridge {
     limit?: number;
     offset?: number;
   }) => Promise<MatchJobs>;
+  /**
+   * Forget past matches (I3): each run's rows and review list, with the resumes that finished it.
+   * No track loses its match, its corrections or what was decided. Refused with MATCH_RUNNING while
+   * a run is still going. `deleted` counts the ids that named a run.
+   */
+  deleteMatchJobs?: (params: { job_ids: string[] }) => Promise<{ deleted: number }>;
   /** Every track of a run, or of a playlist, with where each stands and whether it is ticked (the Review table). */
   getMatchReview?: (params?: {
     jobId?: string;

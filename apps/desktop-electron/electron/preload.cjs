@@ -282,6 +282,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   correctMatch: (params) => ipcRenderer.invoke("engine:correctMatch", params),
   correctMatches: (params) => ipcRenderer.invoke("engine:correctMatches", params),
   getMatchJobs: (params) => ipcRenderer.invoke("engine:getMatchJobs", params),
+  deleteMatchJobs: (params) => ipcRenderer.invoke("engine:deleteMatchJobs", params),
   getMatchReview: (params) => ipcRenderer.invoke("engine:getMatchReview", params),
   setMatchTicks: (params) => ipcRenderer.invoke("engine:setMatchTicks", params),
   // A candidate's Beatport artwork and audio preview (C14), as object URLs like

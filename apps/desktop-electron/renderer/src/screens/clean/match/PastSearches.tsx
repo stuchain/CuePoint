@@ -12,21 +12,32 @@
  * list as a file, K12) and **Match again** (M150, M151).
  *
  * The search is the Match area's one search, on its row; this list reads what it holds.
+ *
+ * Deleting (I3): a tick column first, and **Delete…** under the table for the ticked runs or in a
+ * row's More menu for one. It asks first, in the shared danger confirmation, and says what goes:
+ * only the record of the search (its rows here and its review list). Every track keeps its match,
+ * its corrections and what the person decided, because the engine deletes nothing but the run's
+ * plan rows (`delete_runs`). A run still going cannot be deleted. A folded group's box ticks the
+ * runs in it, and ticks clear when the search changes.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import "../../library/SelectionActions.css";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
-import { needsDesktopApp } from "../../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../../api/userMessage";
 import { Badge, type BadgeVariant } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { useToast } from "../../../components/Toast";
 import { DisclosureArrow } from "../../../components/DisclosureArrow";
 import { EmptyState } from "../../../components/EmptyState";
 import { SkeletonTable } from "../SkeletonTable";
 import { Notice } from "../../../components/Notice";
 import { TrackContextMenu } from "../../../components/TrackContextMenu";
-import { formatCount } from "../../../format/counts";
+import { formatCount, plural } from "../../../format/counts";
 import { formatDayTime } from "../../../format/dates";
 import { RETRY, nothingMatches, quoted } from "../../../format/words";
+import { reportUnexpected } from "../../../reporting/reporting";
 import {
   canResume,
   groupRuns,
@@ -62,6 +73,8 @@ interface PastSearchesProps {
   onMatchAgain: (run: MatchRun) => void;
   /** The empty state's button: back to the Playlists sub-tab, where a match is started. */
   onGoToPlaylists: () => void;
+  /** Runs were deleted, by their job ids, so the area can close a review of one of them. */
+  onDeleted?: (jobIds: readonly string[]) => void;
   /** How many runs are listed, so the area can hide its search until there is something to search (M150). */
   onCount?: (count: number) => void;
 }
@@ -75,8 +88,10 @@ export function PastSearches({
   onResume,
   onMatchAgain,
   onGoToPlaylists,
+  onDeleted,
   onCount,
 }: PastSearchesProps) {
+  const { push } = useToast();
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState<{ run: MatchRun; open: boolean } | null>(null);
   // The engine does the searching: wait for a pause in typing before asking.
@@ -91,6 +106,22 @@ export function PastSearches({
   useEffect(() => {
     if (query.trim() === "" && jobs.answered && !jobs.loading) onCount?.(listed);
   }, [jobs.answered, jobs.loading, listed, onCount, query]);
+  // Which runs are ticked, by job id; a run still going is never ticked (it cannot be deleted).
+  const canDelete = Boolean(window.cuepoint?.deleteMatchJobs);
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set());
+  // Asked to delete these runs (job ids): the dialog is open while this holds some.
+  const [deleting, setDeleting] = useState<readonly string[] | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  // A different search lists different runs: what was ticked in the last one is not what is shown.
+  useEffect(() => setTicked(new Set()), [query]);
+  // A run that is gone from the list (deleted, or paged out) is no longer ticked.
+  useEffect(() => {
+    setTicked((current) => {
+      const present = new Set(jobs.runs.filter((one) => one.status !== "running").map((one) => one.job_id));
+      const kept = [...current].filter((id) => present.has(id));
+      return kept.length === current.size ? current : new Set(kept);
+    });
+  }, [jobs.runs]);
   const [menu, setMenu] = useState<{ run: MatchRun; x: number; y: number } | null>(null);
   const menuAnchor = useRef<HTMLElement | null>(null);
   const canResumeHere = Boolean(window.cuepoint?.resumeCleanMatch);
@@ -107,6 +138,48 @@ export function PastSearches({
       return next;
     });
 
+  const deletable = (one: MatchRun) => one.status !== "running";
+  /** The runs one row stands for: a folded group's row, all of its runs; any other row, itself. */
+  const idsOf = (run: MatchRun, group: RunGroup | null): string[] =>
+    (group && !unfolded.has(run.job_id) ? [group.newest, ...group.earlier] : [run]).filter(deletable).map((one) => one.job_id);
+  const setMany = (ids: readonly string[], on: boolean) =>
+    setTicked((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  const allIds = useMemo(() => jobs.runs.filter((one) => one.status !== "running").map((one) => one.job_id), [jobs.runs]);
+  const allTicked = allIds.length > 0 && allIds.every((id) => ticked.has(id));
+  const someTicked = allIds.some((id) => ticked.has(id));
+  const headerTick = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (headerTick.current) headerTick.current.indeterminate = someTicked && !allTicked;
+  }, [allTicked, someTicked, jobs.runs.length]);
+
+  const confirmDelete = async () => {
+    const ids = deleting;
+    const remove = window.cuepoint?.deleteMatchJobs;
+    if (!ids || !remove) return;
+    setDeleteBusy(true);
+    try {
+      const { deleted } = await remove({ job_ids: [...ids] });
+      push(`Deleted ${plural(deleted, "past match", "past matches")}`, "success");
+      setTicked(new Set());
+      setDeleting(null);
+      onDeleted?.(ids);
+      jobs.reload();
+    } catch (cause) {
+      reportUnexpected(cause);
+      push(userMessage(cause), "warning");
+      setDeleting(null);
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const row = (run: MatchRun, group: RunGroup | null) => {
     const status = statusOf(run);
     const what = whatLine(run);
@@ -116,6 +189,8 @@ export function PastSearches({
     const count = group ? group.earlier.length + 1 : 1;
     const unfoldedHere = group !== null && unfolded.has(run.job_id);
     const earlier = count - 1;
+    const rowIds = idsOf(run, group);
+    const rowTicked = rowIds.filter((id) => ticked.has(id)).length;
     return (
       <tr
         key={run.job_id}
@@ -124,10 +199,24 @@ export function PastSearches({
         aria-selected={isOpen}
         onClick={(event) => {
           // A click on a button inside the row is that button's own.
-          if ((event.target as HTMLElement).closest("button")) return;
+          if ((event.target as HTMLElement).closest("button, input")) return;
           onOpen(run);
         }}
       >
+        {canDelete && (
+          <td className="match-past__tick">
+            <input
+              type="checkbox"
+              aria-label={`Select ${named}`}
+              checked={rowIds.length > 0 && rowTicked === rowIds.length}
+              ref={(box) => {
+                if (box) box.indeterminate = rowTicked > 0 && rowTicked < rowIds.length;
+              }}
+              disabled={rowIds.length === 0}
+              onChange={() => setMany(rowIds, rowTicked < rowIds.length)}
+            />
+          </td>
+        )}
         <td className="match-past__when match-past__fit">{formatDayTime(run.created_at, { now }) || run.created_at || ""}</td>
         <td className="match-past__what">
           <div className="match-past__what-line">
@@ -212,7 +301,10 @@ export function PastSearches({
       {!jobs.available && <EmptyState compact headline={needsDesktopApp()} />}
       {jobs.available && jobs.loading && jobs.runs.length === 0 && (
         // The table's shape while it loads, not a spinner (M373).
-        <SkeletonTable what="past matches" columns={["When", "What was matched", "Results", "Status", ""]} />
+        <SkeletonTable
+          what="past matches"
+          columns={[...(canDelete ? [""] : []), "When", "What was matched", "Results", "Status", ""]}
+        />
       )}
       {jobs.available && !jobs.error && jobs.runs.length === 0 && !jobs.loading && (
         // The whole view is empty, so the full empty state with its icon, as on the other tabs (C140).
@@ -230,6 +322,18 @@ export function PastSearches({
             <caption className="cp-visually-hidden">Every match run, newest first</caption>
             <thead>
               <tr>
+                {canDelete && (
+                  <th scope="col" className="match-past__tick">
+                    <input
+                      ref={headerTick}
+                      type="checkbox"
+                      aria-label="Select every past match"
+                      checked={allTicked}
+                      disabled={allIds.length === 0}
+                      onChange={() => setMany(allIds, !allTicked)}
+                    />
+                  </th>
+                )}
                 {/* When, Results and Status fit their words; What was matched gives way (new H). The
                     rows are named for their source, so there is no Tracks column (M151). */}
                 <th scope="col" className="match-past__fit">When</th>
@@ -256,6 +360,36 @@ export function PastSearches({
           )}
         </div>
       )}
+
+      {canDelete && ticked.size > 0 && (
+        // The shared selection bar's look, under the table (the Missing files bar's form).
+        <div className="cp-toolbar clean-review__selection match-past__selection">
+          <div className="cp-selection-actions" role="toolbar" aria-label="Selection">
+            <span className="cp-selection-actions__count" role="status">
+              {plural(ticked.size, "past match", "past matches")} selected
+            </span>
+            <Button variant="danger" onClick={() => setDeleting([...ticked])}>
+              Delete…
+            </Button>
+            <Button variant="secondary" onClick={() => setTicked(new Set())}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        danger
+        loading={deleteBusy}
+        title={deleting && deleting.length > 1 ? `Delete ${formatCount(deleting.length)} past matches?` : "Delete this past match?"}
+        confirmLabel={deleting && deleting.length > 1 ? `Delete ${formatCount(deleting.length)}` : "Delete"}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeleting(null)}
+      >
+        Only the record of these searches goes: the rows here and their review lists. Every track keeps its match,
+        its corrections and what you decided.
+      </ConfirmDialog>
 
       {menu && (
         <TrackContextMenu
@@ -291,6 +425,19 @@ export function PastSearches({
               reason: "This match is still running",
               onSelect: () => onMatchAgain(menu.run),
             },
+            ...(canDelete
+              ? [
+                  {
+                    id: "delete",
+                    label: "Delete…",
+                    danger: true,
+                    // Its worker is still writing the run's rows.
+                    disabled: !deletable(menu.run),
+                    reason: "This match is still running",
+                    onSelect: () => setDeleting([menu.run.job_id]),
+                  },
+                ]
+              : []),
           ]}
         />
       )}

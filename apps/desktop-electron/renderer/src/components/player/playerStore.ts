@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PlayerSnapshot } from "../../api/cuepointBridge.types";
+import { selectHasPlayed } from "./playerFormat";
 
 /**
  * One subscription to playback state, read through selectors (PLAYER-06).
@@ -98,8 +99,52 @@ export function usePlayerValue<T>(
   return value;
 }
 
+/**
+ * Has anything been loaded or queued this session? A latch: once true it stays true, even
+ * after the queue empties, so the bar that appeared at the first play never retracts
+ * (DEC-053). Module-level because it is session state; nothing is persisted (DEC-014).
+ */
+const LATCH_KEY = "cuepoint.player.hasPlayed";
+let playedLatch = false;
+
+/**
+ * Also kept in sessionStorage: a renderer reload after a crash leaves main's player running, so
+ * the bar must not vanish; quitting ends the session and so clears it.
+ */
+function readLatch(): boolean {
+  try {
+    return window.sessionStorage.getItem(LATCH_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeLatch(): void {
+  try {
+    window.sessionStorage.setItem(LATCH_KEY, "1");
+  } catch {
+    /* Without storage the latch lasts as long as this page. */
+  }
+}
+
+export function usePlayedLatch(): boolean {
+  const hasPlayed = usePlayerValue(selectHasPlayed);
+  if (!playedLatch && readLatch()) playedLatch = true;
+  if (hasPlayed && !playedLatch) {
+    playedLatch = true;
+    writeLatch();
+  }
+  return playedLatch;
+}
+
 /** Reset between tests; not used by the app. */
 export function resetPlayerStore(): void {
+  playedLatch = false;
+  try {
+    window.sessionStorage.removeItem(LATCH_KEY);
+  } catch {
+    /* Nothing stored. */
+  }
   unsubscribeBridge?.();
   unsubscribeBridge = null;
   listeners.clear();

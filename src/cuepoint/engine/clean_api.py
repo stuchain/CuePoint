@@ -28,7 +28,8 @@ Statuses, stated once (:func:`status_for`)
 - **409** when the request was fine and the library was not: a job holding the
   files or the library (``LIBRARY_BUSY``, with its id and type so the renderer
   can follow it), or a revert of a field that has changed since
-  (``REVERT_STALE``).
+  (``REVERT_STALE``), or deleting a past match that is still running
+  (``MATCH_RUNNING``).
 - **503** when a service cannot be resolved; **500** for anything unrecognized.
 
 Mutations are POSTs to action paths, reads are GETs, as Phase 6 kept them. Work
@@ -528,6 +529,43 @@ def past_matches(params: Dict[str, List[str]]) -> Dict[str, Any]:
         _query_value(params, "q"), limit, offset
     )
     return {"jobs": [match_run_to_dict(run) for run in runs], "total": total}
+
+
+#: The most past matches one delete names.
+MATCH_JOBS_DELETE_MAX = 200
+
+
+def delete_past_matches(
+    data: Dict[str, Any], job_store: Any
+) -> Tuple[int, Dict[str, Any]]:
+    """Delete past matches: the record of each search, never what it found.
+
+    Each run goes with the resumes that finished it. Tracks keep their matches,
+    attempts and decisions. A run that is still going is refused (409
+    ``MATCH_RUNNING``) and nothing is deleted; an id with no run is ignored.
+    """
+    from cuepoint.persistence.match_job_repository import MatchRunActiveError
+
+    _only(data, ("job_ids",))
+    job_ids = data.get("job_ids")
+    if (
+        not isinstance(job_ids, list)
+        or not 1 <= len(job_ids) <= MATCH_JOBS_DELETE_MAX
+        or not all(isinstance(job_id, str) and job_id.strip() for job_id in job_ids)
+    ):
+        raise bad_request(
+            f"job_ids must be a list of 1 to {MATCH_JOBS_DELETE_MAX} job ids"
+        )
+    try:
+        deleted = _service("IMatchJobRepository").delete_runs(job_ids)
+    except MatchRunActiveError as exc:
+        raise ApiError(
+            409,
+            "MATCH_RUNNING",
+            "A match is still running: wait for it to end, or stop it, then delete it.",
+            job_id=exc.job_id,
+        ) from exc
+    return 200, {"deleted": deleted}
 
 
 #: The most rows one read of a review answers: a bigger run is read in pages.
@@ -1672,6 +1710,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     "/api/v1/clean/match/resume": resume_match,
     "/api/v1/clean/match/search": search_match,
     "/api/v1/clean/match/ticks": set_match_ticks,
+    "/api/v1/clean/match/jobs/delete": delete_past_matches,
     "/api/v1/clean/decide": decide,
     "/api/v1/clean/apply": apply_match,
     "/api/v1/clean/apply-preview": preview_apply,

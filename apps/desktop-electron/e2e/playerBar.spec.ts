@@ -34,21 +34,18 @@ test("the player bar fits the shell at every scale", async () => {
     const win: Page = await app.firstWindow({ timeout: 60_000 });
     await expect(win).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
 
-    // Before any play the bar is drawn all the same and says "Nothing playing" (area 83), so the
-    // page does not jump by its height when something starts.
+    // Before any play there is no bar and the player region takes no height (I6, DEC-053).
     await win.waitForSelector(".app-shell", { timeout: 20_000 });
     const empty = await win.evaluate(() => {
-      const shell = document.querySelector(".app-shell");
       const el = document.querySelector(".app-shell__player");
-      return { shell: !!shell, exists: !!el,
+      return { exists: !!el,
                height: el ? (el as HTMLElement).getBoundingClientRect().height : -1,
-               children: el ? el.children.length : -1,
-               bar: !!document.querySelector(".cp-player-bar") };
+               bar: !!document.querySelector(".cp-player-bar"),
+               strip: !!document.querySelector('[data-testid="waveform-detail-strip"]') };
     });
-    expect(empty.exists, "the region exists").toBe(true);
-    expect(empty.height, "and holds the bar before the first play").toBeGreaterThan(0);
-    expect(empty.bar, "so the bar is there, idle").toBe(true);
-    await expect(win.locator(".cp-player-bar")).toContainText("Nothing playing");
+    expect(empty.height, "the region takes no height before the first play").toBe(0);
+    expect(empty.bar, "and there is no bar").toBe(false);
+    expect(empty.strip, "and no zoomed waveform").toBe(false);
 
     // Play something so the bar appears.
     await win.evaluate(async (files) => {
@@ -62,6 +59,17 @@ test("the player bar fits the shell at every scale", async () => {
     await app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 800);
     });
+    await expect(win.locator(".cp-player-bar")).toContainText("Some Long Track Title 0", { timeout: 10_000 });
+    // It stays once the queue is cleared again (the latch, DEC-053), then is refilled for the rest.
+    await win.evaluate(async () => (window as never as Record<string, any>).cuepoint.player.clearQueue());
+    await expect(win.locator(".cp-player-bar")).toContainText("Nothing playing", { timeout: 10_000 });
+    await win.evaluate(async (files) => {
+      const w = window as never as Record<string, any>;
+      await w.cuepoint.player.playQueue(
+        files.map((f: string, i: number) => ({ filePath: f, title: `Some Long Track Title ${i}`,
+          artist: "An Artist With A Fairly Long Name", key: "8A", bpm: 128, durationSeconds: 600 })), 0);
+      await w.cuepoint.player.pause();
+    }, [path.join(AUDIO, "tone.flac"), path.join(AUDIO, "tone.wav")]);
     await expect(win.locator(".cp-player-bar")).toContainText("Some Long Track Title 0", { timeout: 10_000 });
     // The first-run guide sits over the bar and takes the point the click-area check lands on.
     // D24: no Skip button; the × (Close) skips the guide.

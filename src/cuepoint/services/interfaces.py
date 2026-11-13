@@ -2454,6 +2454,15 @@ class IMatchJobRepository(ABC):
         ...
 
     @abstractmethod
+    def delete_runs(self, job_ids: Iterable[str]) -> int:
+        """Delete past matches, each with its whole chain of resumes; return how many.
+
+        Only the run's plan rows go; no track's match, attempt or decision does.
+        Raises if any job of a chain is still running.
+        """
+        ...
+
+    @abstractmethod
     def history(
         self, query: Optional[str], limit: int, offset: int
     ) -> Tuple[List["MatchRunSummary"], int]:
