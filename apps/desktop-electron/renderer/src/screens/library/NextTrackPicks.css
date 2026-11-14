@@ -130,11 +130,4 @@
   visibility: hidden;
 }
 
-.cp-next-picks__row:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(var(--space-xs) * -1);
-}
-
-.cp-next-picks__heading:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-}
+/* The focus ring on a row or the heading is the one in index.css. */
