@@ -12,7 +12,7 @@ DEC-002 identity lookups a Rekordbox refresh depends on.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 from cuepoint.core.text_processing import search_fold
 from cuepoint.models.library_track import (
@@ -472,6 +472,29 @@ class TrackRepository(ITrackRepository):
             .fetchone()
         )
         return LibraryTrack.from_row(row) if row is not None else None
+
+    def track_ids_by_normalized_path(
+        self, normalized: Sequence[str]
+    ) -> Dict[str, List[int]]:
+        """The ids of the tracks that hold each of these normalized paths.
+
+        A path no track holds is left out. The path index answers it, a chunk
+        at a time.
+        """
+        wanted = sorted({path for path in normalized if path})
+        found: Dict[str, List[int]] = {}
+        conn = self._db.connect()
+        for start in range(0, len(wanted), CHUNK_SIZE):
+            chunk = wanted[start : start + CHUNK_SIZE]
+            marks = ", ".join("?" for _ in chunk)
+            rows = conn.execute(
+                "SELECT id, normalized_path FROM tracks"
+                f" WHERE normalized_path IN ({marks}) ORDER BY id",
+                tuple(chunk),
+            )
+            for row in rows:
+                found.setdefault(str(row[1]), []).append(int(row[0]))
+        return found
 
     def find_by_path(self, file_path: str) -> Optional[LibraryTrack]:
         """Return a track matching this path, normalizing it first."""

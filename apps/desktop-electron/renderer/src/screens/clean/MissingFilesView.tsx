@@ -101,6 +101,9 @@ async function followUpCheck(): Promise<void> {
   }
 }
 
+/** What a stopped find says: it looked and changed nothing, and keeps the files it had found. */
+const STOPPED_FIND = "Stopped looking. Nothing was changed.";
+
 /** What the find's start gives back, whether or not the person chose a folder. */
 interface FindAnswer {
   canceled: boolean;
@@ -218,17 +221,23 @@ export function MissingFilesView({
     [push],
   );
 
+  // The page names the find and the track; the desktop shell reads the path from that find's
+  // own result, so no path goes from here to the shell.
   const showFoundFile = useCallback(
-    (path: string) => {
-      const show = window.cuepoint?.showItemInFolder;
+    (trackId: number, hit: FoundFile) => {
+      const show = window.cuepoint?.showFoundFile;
       if (!show) {
         push(needsDesktopApp("Showing a file"), "warning");
         return;
       }
-      void Promise.resolve(show(path)).catch((cause: unknown) => {
-        reportUnexpected(cause);
-        push(userMessage(cause), "warning");
-      });
+      void Promise.resolve(show(hit.jobId, trackId))
+        .then((shown) => {
+          if (!shown) push("That file is not in the last search's results any more", "warning");
+        })
+        .catch((cause: unknown) => {
+          reportUnexpected(cause);
+          push(userMessage(cause), "warning");
+        });
     },
     [push],
   );
@@ -267,20 +276,22 @@ export function MissingFilesView({
 
   // Read what a finished find says and show it on the rows.
   const applyFind = useCallback(
-    async (jobId: string, wanted: number, skipped = 0) => {
+    async (jobId: string, wanted: number, skipped = 0, stopped = false) => {
       const results = window.cuepoint?.getJobResults;
       if (!results) return;
       try {
         const result = (await results(jobId)).result as FileFindResult | undefined;
         if (!result) {
-          push("The search finished without a result.", "warning");
+          if (!stopped) push("The search finished without a result.", "warning");
           return;
         }
         setFound((previous) => {
           const next = new Map(previous);
-          for (const hit of result.found) next.set(hit.track_id, { path: hit.path, folder: result.folder });
+          for (const hit of result.found) next.set(hit.track_id, { path: hit.path, folder: result.folder, jobId });
           return next;
         });
+        // A stopped find has already said so; what it had found stays on the rows.
+        if (stopped) return;
         push(
           foundToast(wanted, result.found.length, result.folder, {
             ambiguous: result.ambiguous.length,
@@ -313,14 +324,24 @@ export function MissingFilesView({
         return;
       }
       void (async () => {
-        const done = await jobs.run<FindAnswer>("find", async () => {
-          const answer = await bridge({ selection: target });
-          if (!answer.canceled) {
-            pendingFind.current = { jobId: answer.job_id as string, wanted: answer.tracks as number };
-            setFinding(true);
-          }
-          return answer as FindAnswer;
-        });
+        let endedStopped = false;
+        const done = await jobs.run<FindAnswer>(
+          "find",
+          async () => {
+            const answer = await bridge({ selection: target });
+            if (!answer.canceled) {
+              pendingFind.current = { jobId: answer.job_id as string, wanted: answer.tracks as number };
+              setFinding(true);
+            }
+            return answer as FindAnswer;
+          },
+          {
+            stopped: STOPPED_FIND,
+            onEnded: (outcome) => {
+              endedStopped = outcome.state === "cancelled";
+            },
+          },
+        );
         // Only reached while this view is showing: a hidden view's follower is stopped, and the
         // effect below picks the job up when the view is back.
         const pending = pendingFind.current;
@@ -328,6 +349,9 @@ export function MissingFilesView({
         setFinding(false);
         if (done && pending) {
           await applyFind(pending.jobId, pending.wanted, Math.max(0, targeted - pending.wanted));
+        } else if (endedStopped && pending) {
+          // The job kept what it had settled before it was stopped; show those rows.
+          await applyFind(pending.jobId, pending.wanted, 0, true);
         }
       })();
     },
@@ -352,7 +376,8 @@ export function MissingFilesView({
         if (outcome.state === "succeeded") {
           await latest.current.applyFind(pending.jobId, pending.wanted);
         } else if (outcome.state === "cancelled") {
-          latest.current.push("Stopped. What it had already done stays done.", "info");
+          latest.current.push(STOPPED_FIND, "info");
+          await latest.current.applyFind(pending.jobId, pending.wanted, 0, true);
         } else {
           latest.current.push(jobErrorMessage(outcome.error), "warning");
         }
@@ -557,7 +582,7 @@ export function MissingFilesView({
           label: "Show found file",
           disabled: group,
           reason: one,
-          onSelect: () => showFoundFile(here.path),
+          onSelect: () => showFoundFile(row.id as number, here),
         },
         {
           id: "copy-found",
@@ -736,7 +761,7 @@ export function MissingFilesView({
             {sourcePath ? (
               <>
                 , saving over <strong>{displayPathNameFirst(sourcePath)}</strong>{" "}
-                <Button variant="quiet" size="sm" onClick={() => void copySourcePath()}>
+                <Button variant="quiet" size="sm" className="clean-note__copy" onClick={() => void copySourcePath()}>
                   Copy path
                 </Button>
               </>
@@ -832,14 +857,14 @@ export function MissingFilesView({
               title={findBlocked ? unreadableReason : undefined}
               onClick={() => find(batchSelection(selection.selection, query), selection.count)}
             >
-              Find it…
+              {selection.count > 1 ? "Find them…" : "Find it…"}
             </Button>
           }
           extraActions={
             <>
               {onlyFound && (
                 <>
-                  <Button variant="secondary" onClick={() => showFoundFile(onlyFound.path)}>
+                  <Button variant="secondary" onClick={() => showFoundFile(onlyId as number, onlyFound)}>
                     Show found file
                   </Button>
                   <Button variant="secondary" onClick={() => void copyText(onlyFound.path, "the path")}>

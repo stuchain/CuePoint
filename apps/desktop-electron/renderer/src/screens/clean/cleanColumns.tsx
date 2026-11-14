@@ -45,6 +45,8 @@ export interface FoundFile {
   path: string;
   /** The folder that was looked in. */
   folder: string;
+  /** The find job that located it: "Show found file" names this and the track, never the path. */
+  jobId: string;
 }
 
 /**

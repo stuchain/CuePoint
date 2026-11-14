@@ -409,6 +409,7 @@ describe("Find in a folder (DEC-073)", () => {
         not_found: MISSING.map((row) => row.id).filter((id) => !hits.some((hit) => hit.track_id === id)),
       },
     });
+    bridge.showFoundFile = vi.fn().mockResolvedValue(true);
     bridge.showItemInFolder = vi.fn().mockResolvedValue(undefined);
   }
 
@@ -435,6 +436,16 @@ describe("Find in a folder (DEC-073)", () => {
     expect(bridge.startFileFind!.mock.calls[0]![0].selection).toEqual({ track_ids: [1, 2, 3] });
   });
 
+  it("calls the selection bar's button Find them… for several rows and Find it… for one", async () => {
+    installFind();
+    renderView(CHECKED);
+    fireEvent.click(await screen.findByText("Track 1"));
+    expect(await screen.findByRole("button", { name: "Find it…" })).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+    expect(await screen.findByRole("button", { name: "Find them…" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Find it…" })).toBeNull();
+  });
+
   it("marks found rows 'Found in Moved', says so in the toolbar and a toast, and adds to step 1", async () => {
     installFind();
     renderView(CHECKED);
@@ -458,8 +469,40 @@ describe("Find in a folder (DEC-073)", () => {
     renderView(CHECKED);
     await screen.findByText("Track 1");
     fireEvent.click(screen.getByRole("button", { name: "Find in a folder…" }));
-    expect(await screen.findByText("None of the 12 in Moved")).toBeInTheDocument();
+    expect(await screen.findByText("Found none of the 12 files in Moved")).toBeInTheDocument();
     expect(screen.queryByText("Found in Moved")).toBeNull();
+  });
+
+  it("says 'Not found' for a single file that was not found", async () => {
+    installFind([]);
+    bridge.startFileFind!.mockResolvedValue({ ...PICKED, tracks: 1 });
+    renderView(CHECKED);
+    fireEvent.click(await screen.findByText("Track 1"));
+    fireEvent.click(await screen.findByRole("button", { name: "Find it…" }));
+    expect(await screen.findByText("Not found in Moved")).toBeInTheDocument();
+  });
+
+  it("keeps what a stopped find had found and says nothing was changed", async () => {
+    installFind();
+    bridge.getJob!.mockResolvedValue({ id: "job-find", state: "cancelled" });
+    bridge.getJobResults!.mockResolvedValue({
+      id: "job-find",
+      state: "cancelled",
+      result: {
+        folder: "/Users/dj/Moved",
+        looked: 10,
+        truncated: false,
+        found: [{ track_id: 1, path: "/Users/dj/Moved/sub/1.mp3" }],
+        ambiguous: [],
+        not_found: [2, 3],
+      },
+    });
+    renderView(CHECKED);
+    await screen.findByText("Track 1");
+    fireEvent.click(screen.getByRole("button", { name: "Find in a folder…" }));
+    expect(await screen.findByText("Stopped looking. Nothing was changed.")).toBeInTheDocument();
+    expect(await screen.findByText("Found in Moved")).toBeInTheDocument();
+    expect(screen.queryByText(/What it had already done/)).toBeNull();
   });
 
   it("does nothing, and says nothing, when the picker was closed", async () => {
@@ -517,7 +560,8 @@ describe("Find in a folder (DEC-073)", () => {
     const bar = await screen.findByRole("toolbar", { name: "Selection" });
     expect(bar).toHaveTextContent("Find it…");
     fireEvent.click(screen.getByRole("button", { name: "Show found file" }));
-    expect(bridge.showItemInFolder).toHaveBeenCalledWith("/Users/dj/Moved/sub/1.mp3");
+    // The page names the find and the track; it sends no path.
+    expect(bridge.showFoundFile).toHaveBeenCalledWith("job-find", 1);
     expect(screen.getByRole("button", { name: "Copy found path" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show in folder" })).toBeInTheDocument();
 
@@ -578,7 +622,7 @@ describe("Find in a folder (DEC-073)", () => {
       bridge.startFileFind!.mockClear();
 
       fireEvent.click(within(await menuOn("Track 1")).getByRole("menuitem", { name: "Show found file" }));
-      expect(bridge.showItemInFolder).toHaveBeenCalledWith("/Users/dj/Moved/sub/1.mp3");
+      expect(bridge.showFoundFile).toHaveBeenCalledWith("job-find", 1);
 
       fireEvent.click(within(await menuOn("Track 4")).getByRole("menuitem", { name: "Find it in a folder…" }));
       await waitFor(() => expect(bridge.startFileFind).toHaveBeenCalledWith({ selection: { track_ids: [4] } }));
@@ -729,7 +773,7 @@ describe("Find in a folder (DEC-073)", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Find in a folder…" }));
 
-      expect(await screen.findByText("None of the 11 in Moved. 1 unreadable file not looked for")).toBeInTheDocument();
+      expect(await screen.findByText("Found none of the 11 files in Moved. 1 unreadable file not looked for")).toBeInTheDocument();
     });
   });
 

@@ -317,6 +317,16 @@
   margin: var(--space-xs) 0;
 }
 
+/* The Copy path button reads as part of its sentence: inline, and with no padding after it, so the
+   full stop that ends the step follows it directly. */
+.clean-note__steps .clean-note__copy {
+  display: inline;
+  min-height: 0;
+  min-width: 0;
+  padding-inline-end: 0;
+  vertical-align: baseline;
+}
+
 /* ----------------------------------------------------- places, fix, match */
 
 .clean-places {

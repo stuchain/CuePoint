@@ -2120,6 +2120,36 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("Show found file (DEC-073)", () => {
+    const handlerOf = (channel: string) => {
+      const start = main.indexOf(`  handle("${channel}"`);
+      expect(start, channel).toBeGreaterThan(-1);
+      return main.slice(start, main.indexOf("\n  });", start));
+    };
+
+    it("reveals a found file through one narrow method that sends no path", () => {
+      expect(invokedChannels(preload)).toContain("shell:showFoundFile");
+      expect(handledChannels(main)).toContain("shell:showFoundFile");
+      expect(preload).toMatch(
+        /showFoundFile: \(jobId, trackId\) => ipcRenderer\.invoke\("shell:showFoundFile", jobId, trackId\)/,
+      );
+      expect(bridgeTypes).toContain("showFoundFile?: (jobId: string, trackId: number) => Promise<boolean>;");
+    });
+
+    it("takes the path from the find job's result in the main process", () => {
+      const handler = handlerOf("shell:showFoundFile");
+      expect(handler).toContain("engine.getJobResults(jobId)");
+      expect(handler).toContain("foundFilePath(");
+      expect(handler.indexOf("foundFilePath(")).toBeLessThan(handler.indexOf("shell.showItemInFolder(path)"));
+    });
+
+    it("never hands the generic reveal a path from the Missing files page", async () => {
+      const view = (await import("../screens/clean/MissingFilesView.tsx?raw")).default;
+      expect(view).not.toContain("showItemInFolder");
+      expect(view).toContain("showFoundFile");
+    });
+  });
+
   describe("Statistics (STATS-04)", () => {
     // Three reads, one scope each. The Python contract test holds the client's types to the
     // engine's answers; this holds the renderer's copy to the client's.

@@ -4529,6 +4529,12 @@ export interface CuePointBridge {
   }) => Promise<SupportBundleExportResult>;
   showItemInFolder?: (filePath: string) => Promise<void>;
   /**
+   * Show the file a "Find in a folder" job located for one track (DEC-073). The page names the
+   * find job and the track, never a path: the shell reads the path from that job's result.
+   * Answers false when the job holds no file for that track.
+   */
+  showFoundFile?: (jobId: string, trackId: number) => Promise<boolean>;
+  /**
    * Open a Beatport page in the system browser (DISCOVER-10). Only an https
    * page on beatport.com opens; anything else answers false, unopened.
    */

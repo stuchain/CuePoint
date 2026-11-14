@@ -1189,6 +1189,13 @@ class ITrackRepository(ABC):
         ...
 
     @abstractmethod
+    def track_ids_by_normalized_path(
+        self, normalized: Sequence[str]
+    ) -> Dict[str, List[int]]:
+        """The ids of the tracks holding each normalized path; a path none holds is left out."""
+        ...
+
+    @abstractmethod
     def find_by_path(self, file_path: str) -> Optional["LibraryTrack"]:
         """Return a track matching this path, normalizing it first."""
         ...

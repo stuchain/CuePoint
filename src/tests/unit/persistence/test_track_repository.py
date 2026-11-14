@@ -190,6 +190,16 @@ class TestIdentityLookups:
         for _ in range(3):
             assert repo.find_by_normalized_path("/music/same.mp3").id == first.id
 
+    def test_track_ids_by_normalized_path_says_who_holds_each_path(self, repo):
+        a = repo.add(_track("1", "/music/a.mp3"))
+        b = repo.add(_track("2", "/music/b.mp3"))
+        c = repo.add(_track("3", "/music/b.mp3"))
+        found = repo.track_ids_by_normalized_path(
+            ["/music/a.mp3", "/music/b.mp3", "/music/none.mp3", ""]
+        )
+        assert found == {"/music/a.mp3": [a.id], "/music/b.mp3": [b.id, c.id]}
+        assert repo.track_ids_by_normalized_path([]) == {}
+
 
 @pytest.mark.unit
 class TestResolveIdentity:

@@ -21,6 +21,7 @@ import { resolveAppIconPath } from "./appIcon";
 import { installAppMenu, type MenuPlatform } from "./appMenu";
 import { saveLogText } from "./logTextDialog";
 import { beatportPageUrl } from "./externalLinks";
+import { foundFilePath } from "./foundFile";
 import { MediaKeyBinding } from "./mediaKeys";
 import type { PlayerNotice } from "./playbackFailures";
 import { PlaybackController } from "./playbackController";
@@ -1371,6 +1372,18 @@ function registerIpcHandlers(): void {
   );
   handle("shell:showItemInFolder", (_event, filePath: string) => {
     shell.showItemInFolder(filePath);
+  });
+  /**
+   * "Show found file" (DEC-073): the renderer names a find job and a track, never a path. The
+   * path is read here from that job's result, which the engine made, so the renderer cannot
+   * reveal anything the find did not locate. Answers whether a file was shown.
+   */
+  handle("shell:showFoundFile", async (_event, jobId: unknown, trackId: unknown) => {
+    if (typeof jobId !== "string" || jobId === "") return false;
+    const path = foundFilePath(await engine.getJobResults(jobId), trackId);
+    if (path === null) return false;
+    shell.showItemInFolder(path);
+    return true;
   });
   /**
    * "Open on Beatport" (DISCOVER-10): a Beatport page in the system browser.

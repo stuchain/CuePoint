@@ -9,8 +9,7 @@ the database or to disk. Relinking stays Rekordbox's Relocate; this only says
 where the file is now, so the person can point Rekordbox at it.
 
 Matching is by file name (Unicode NFC, casefolded), over audio files only. A name
-found once, for one wanted track, is the answer unless the file's length is known
-and differs from the track's. A name found several times, or wanted by several
+found once, for one wanted track, is the answer whatever the file's length. A name found several times, or wanted by several
 tracks, is settled by length: the one candidate whose duration is within
 :data:`DURATION_TOLERANCE_SECONDS` of the track's, read only for those candidates.
 Anything still undecided is reported as ambiguous with how many files had the
@@ -28,6 +27,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from cuepoint.data.audio_decode import AUDIO_EXTENSIONS
+from cuepoint.models.library_track import normalize_path
 from cuepoint.utils.long_path import os_path
 
 #: The most files a walk looks at before it stops and says it was cut short.
@@ -49,6 +49,9 @@ _FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 
 #: Reads a file's length in seconds, or None when it cannot be read.
 DurationReader = Callable[[str], Optional[float]]
+
+#: Says which library tracks hold each normalized path (the repository's answer).
+PathOwners = Callable[[Sequence[str]], Dict[str, List[int]]]
 
 
 @dataclass(frozen=True)
@@ -152,6 +155,7 @@ def find_files(
     on_progress: Optional[Callable[[int, int], None]] = None,
     should_cancel: Optional[Callable[[], bool]] = None,
     duration_of: DurationReader = read_duration,
+    path_owners: Optional[PathOwners] = None,
     max_files: int = MAX_FILES_LOOKED_AT,
 ) -> FileFindResult:
     """Walk ``folder`` and say where each wanted file is.
@@ -166,6 +170,9 @@ def find_files(
             it had not reached is listed as not found, which then means "not
             looked for yet", and ``cancelled`` says so.
         duration_of: How a candidate's length is read; a test replaces it.
+        path_owners: Which library tracks hold a path (normalized as the library
+            does). A file that is another track's file is not this track's: it is
+            left out of the candidates, so it is never reported as found.
         max_files: The file count at which the walk stops.
     """
     result = FileFindResult(folder=folder)
@@ -221,20 +228,35 @@ def find_files(
             lengths[path] = duration_of(path)
         return lengths[path]
 
+    owners: Dict[str, List[int]] = {}
+    if path_owners is not None:
+        every = [normalize_path(path) for paths in index.values() for path in paths]
+        owners = path_owners(every)
+
+    def candidates_of(item: WantedFile) -> List[str]:
+        """The files with the track's name that no other library track holds."""
+        return [
+            path
+            for path in index.get(file_name_key(item.path), [])
+            if all(
+                owner == item.track_id for owner in owners.get(normalize_path(path), [])
+            )
+        ]
+
     chosen: Dict[int, str] = {}
     for item in wanted:
         if should_cancel is not None and should_cancel():
             result.cancelled = True
             break
         key = file_name_key(item.path)
-        picked = _choose(item, index.get(key, []), sharing[key] > 1, length_of)
+        picked = _choose(item, candidates_of(item), sharing[key] > 1, length_of)
         if picked is not None:
             chosen[item.track_id] = picked
     claims: Dict[str, int] = {}
     for path in chosen.values():
         claims[path] = claims.get(path, 0) + 1
     for item in wanted:
-        candidates = index.get(file_name_key(item.path), [])
+        candidates = candidates_of(item)
         path = chosen.get(item.track_id)
         if path is not None and claims[path] == 1:
             result.found.append({"track_id": item.track_id, "path": path})
@@ -269,6 +291,8 @@ def _choose(
         return abs(length - float(wanted)) <= DURATION_TOLERANCE_SECONDS
 
     if len(candidates) == 1 and not shared:
-        return None if matches(candidates[0]) is False else candidates[0]
+        # The only file with the name, wanted by the only track with it: the answer,
+        # whatever its length; a length only decides between several.
+        return candidates[0]
     close = [path for path in candidates if matches(path) is True]
     return close[0] if len(close) == 1 else None

@@ -27,6 +27,8 @@ interface CleanJobOptions<Answer> {
   startedKey?: string;
   /** What to say when it succeeds. */
   succeeded?: string;
+  /** What to say when it is stopped, where "What it had already done stays done." is not true. */
+  stopped?: string;
   /** Called however it ended, once it has. */
   onEnded?: (outcome: FinishedJob) => void;
 }
@@ -107,7 +109,7 @@ export function useCleanJob(
         return true;
       }
       if (outcome.state === "cancelled") {
-        onMessage("Stopped. What it had already done stays done.", "info");
+        onMessage(options.stopped ?? "Stopped. What it had already done stays done.", "info");
         return false;
       }
       onMessage(jobErrorMessage(outcome.error), "warning");

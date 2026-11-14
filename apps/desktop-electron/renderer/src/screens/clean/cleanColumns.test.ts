@@ -61,7 +61,7 @@ describe("the missing files columns", () => {
 
 describe("a found file's File cell (DEC-073)", () => {
   it("says Found in the folder that was looked in, with the path, and leaves other rows as they were", () => {
-    const columns = missingColumns(new Map([[7, { path: "/Users/dj/Moved/a/x.mp3", folder: "/Users/dj/Moved" }]]));
+    const columns = missingColumns(new Map([[7, { path: "/Users/dj/Moved/a/x.mp3", folder: "/Users/dj/Moved", jobId: "job-find" }]]));
     const found = cell(columns, "file_status", row({ id: 7, file_status: "missing" }));
     expect(found).toMatchObject({ props: { tone: "success", title: "/Users/dj/Moved/a/x.mp3" } });
     expect(cell(columns, "file_status", row({ id: 8, file_status: "missing" }))).toBe("Missing");

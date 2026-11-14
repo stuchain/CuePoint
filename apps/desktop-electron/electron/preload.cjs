@@ -469,6 +469,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   },
   exportSupportBundle: (options) => ipcRenderer.invoke("support:exportBundle", options ?? {}),
   showItemInFolder: (filePath) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
+  showFoundFile: (jobId, trackId) => ipcRenderer.invoke("shell:showFoundFile", jobId, trackId),
   openBeatportPage: (url) => ipcRenderer.invoke("shell:openBeatportPage", url),
   getLogsDir: () => ipcRenderer.invoke("engine:getLogsDir"),
   getCuepointLog: (options) => ipcRenderer.invoke("engine:getCuepointLog", options ?? {}),

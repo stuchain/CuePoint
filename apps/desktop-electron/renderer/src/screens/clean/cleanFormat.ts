@@ -256,10 +256,12 @@ export function foundToast(
   const where = folderName(folder);
   let line =
     found === 0
-      ? `None of the ${formatCount(wanted)} in ${where}`
+      ? wanted === 1
+        ? `Not found in ${where}`
+        : `Found none of the ${formatCount(wanted)} files in ${where}`
       : `Found ${formatCount(found)} of ${formatCount(wanted)} in ${where}`;
   if (extra.ambiguous > 0) {
-    line += `. ${plural(extra.ambiguous, "file")} had the same name more than once`;
+    line += `. ${plural(extra.ambiguous, "track")} matched more than one file`;
   }
   if (extra.skipped) line += `. ${plural(extra.skipped, "unreadable file")} not looked for`;
   if (extra.truncated) line += ". The folder was too big to look through all of it";

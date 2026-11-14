@@ -173,9 +173,10 @@ describe("Find in a folder's words (DEC-073)", () => {
   it("says how many were found, or that none were, and what it could not settle", () => {
     const none = { ambiguous: 0, truncated: false };
     expect(foundToast(6, 4, "/x/Moved", none)).toBe("Found 4 of 6 in Moved");
-    expect(foundToast(6, 0, "/x/Moved", none)).toBe("None of the 6 in Moved");
+    expect(foundToast(6, 0, "/x/Moved", none)).toBe("Found none of the 6 files in Moved");
+    expect(foundToast(1, 0, "/x/Moved", none)).toBe("Not found in Moved");
     expect(foundToast(6, 4, "/x/Moved", { ambiguous: 2, truncated: false })).toBe(
-      "Found 4 of 6 in Moved. 2 files had the same name more than once",
+      "Found 4 of 6 in Moved. 2 tracks matched more than one file",
     );
     expect(foundToast(6, 4, "/x/Moved", { ambiguous: 0, truncated: true })).toContain("too big");
   });

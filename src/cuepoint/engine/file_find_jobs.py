@@ -133,6 +133,7 @@ def run_file_find_job(
             wanted,
             on_progress=on_progress,
             should_cancel=lambda: bool(job.cancel_requested),
+            path_owners=_resolve("ITrackRepository").track_ids_by_normalized_path,
         )
     except Exception as exc:  # noqa: BLE001 — surfaced to the API client
         _logger.warning("[files] find failed: %s", exc, exc_info=True)

@@ -17,6 +17,7 @@ from typing import List
 
 import pytest
 
+from cuepoint.models.library_track import normalize_path
 from cuepoint.services import file_find_service
 from cuepoint.services.file_find_service import (
     FileFindResult,
@@ -63,6 +64,44 @@ class TestFindingFiles:
         result = find(tmp_path, WantedFile(1, "E:\\Music\\Old\\A.mp3"))
 
         assert result.found[0]["path"] == str(target)
+
+    def test_a_file_that_is_another_library_tracks_is_not_found(self, tmp_path):
+        taken = touch(tmp_path / "x" / "Low Lagoon.wav")
+        owners = {normalize_path(str(taken)): [99]}
+
+        result = find(
+            tmp_path,
+            WantedFile(7, "/m/Low Lagoon.wav", None),
+            path_owners=lambda paths: {p: owners[p] for p in paths if p in owners},
+        )
+
+        assert result.found == []
+        assert result.not_found == [7]
+
+    def test_a_taken_file_leaves_the_free_one_as_the_only_candidate(self, tmp_path):
+        taken = touch(tmp_path / "x" / "Low Lagoon.wav")
+        free = touch(tmp_path / "y" / "Low Lagoon.wav")
+        owners = {normalize_path(str(taken)): [99]}
+
+        result = find(
+            tmp_path,
+            WantedFile(7, "/m/Low Lagoon.wav", None),
+            path_owners=lambda paths: {p: owners[p] for p in paths if p in owners},
+        )
+
+        assert result.found == [{"track_id": 7, "path": str(free)}]
+
+    def test_a_file_the_wanted_track_holds_itself_is_still_found(self, tmp_path):
+        own = touch(tmp_path / "x" / "Low Lagoon.wav")
+        owners = {normalize_path(str(own)): [7]}
+
+        result = find(
+            tmp_path,
+            WantedFile(7, "/m/Low Lagoon.wav", None),
+            path_owners=lambda paths: {p: owners[p] for p in paths if p in owners},
+        )
+
+        assert result.found == [{"track_id": 7, "path": str(own)}]
 
     def test_same_name_twice_is_settled_by_length(self, tmp_path):
         wav(tmp_path / "x" / "Low Lagoon.wav", 5)
@@ -227,12 +266,25 @@ class TestSharedAndLookAlikeNames:
 
         assert result.found == [] and len(result.ambiguous) == 2
 
-    def test_a_lone_file_of_the_wrong_length_is_not_the_track(self, tmp_path):
-        wav(tmp_path / "Same.wav", 5)
+    def test_a_lone_file_is_found_whatever_its_length(self, tmp_path):
+        target = wav(tmp_path / "Same.wav", 5)
 
         result = find(tmp_path, WantedFile(1, "/a/Same.wav", 300))
 
-        assert result.not_found == [1] and result.found == []
+        assert result.found == [{"track_id": 1, "path": str(target)}]
+        assert result.not_found == [] and result.ambiguous == []
+
+    def test_a_lone_file_wanted_by_two_tracks_is_settled_by_length(self, tmp_path):
+        target = wav(tmp_path / "Same.wav", 5)
+
+        result = find(
+            tmp_path,
+            WantedFile(1, "/a/Same.wav", 300),
+            WantedFile(2, "/b/Same.wav", 5),
+        )
+
+        assert result.found == [{"track_id": 2, "path": str(target)}]
+        assert [entry["track_id"] for entry in result.ambiguous] == [1]
 
     def test_a_lone_file_of_the_right_length_is_found(self, tmp_path):
         target = wav(tmp_path / "Same.wav", 5)
