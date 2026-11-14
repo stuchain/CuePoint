@@ -13,7 +13,8 @@
 
 .cp-next-picks__head {
   display: flex;
-  flex-wrap: wrap;
+  /* One line: the heading, then the meta at the end, smaller and muted. */
+  flex-wrap: nowrap;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-lg);
@@ -21,6 +22,7 @@
 }
 
 .cp-next-picks__heading {
+  min-width: 0;
   margin: 0;
   color: var(--fg-primary);
   font-family: var(--font-control);
@@ -43,11 +45,20 @@
   list-style: none;
 }
 
+/*
+ * A pick is two lines beside a small cover: the title with Play next at its end, then the key, BPM
+ * and marks. The text wrapper takes no box of its own, so the title and the facts sit in the row's
+ * grid; the title shrinks to an ellipsis before the button ever drops to a line of its own.
+ */
 .cp-next-picks__row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "cover title button"
+    "cover facts facts";
   align-items: center;
-  gap: var(--space-lg);
+  column-gap: var(--space-lg);
+  row-gap: var(--space-2xs);
   min-width: 0;
   padding-block: var(--space-md);
   border-block-end: var(--hairline) solid var(--border-muted);
@@ -57,14 +68,14 @@
   border-block-end: 0;
 }
 
-/* Two lines tall: the title, then the key, BPM and marks. */
+/* About one row tall (two text lines at most); a track with no art is a small quiet square. */
 .cp-next-picks__cover {
   display: flex;
-  flex: none;
+  grid-area: cover;
   align-items: center;
   justify-content: center;
-  width: calc(var(--row-height) * 1.5);
-  height: calc(var(--row-height) * 1.5);
+  width: calc(var(--row-height) * 1.25);
+  height: calc(var(--row-height) * 1.25);
   overflow: hidden;
   background: var(--bg-panel);
 }
@@ -74,27 +85,26 @@
   height: 100%;
 }
 
-/*
- * The title flexes (min-width: 0, ellipsis) from a basis of 10ch, which scales with the text size.
- * The button keeps its own text width and is pushed to the end; when a narrow panel at a large text
- * size cannot give the title 10ch beside it, the row wraps and the button drops under the title
- * instead of squeezing the title to nothing.
- */
+/* No dash or word in the square: the absence of art is not worth a mark here. */
+.cp-next-picks__cover .library-cell__artwork-none {
+  font-size: 0;
+}
+
 .cp-next-picks__text {
-  display: flex;
-  flex: 1 1 10ch;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  min-width: 0;
+  display: contents;
 }
 
 .cp-next-picks__title {
+  grid-area: title;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cp-next-picks__facts {
+  grid-area: facts;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -108,8 +118,8 @@
 }
 
 .cp-next-picks__row > .cp-btn {
-  flex: 0 0 auto;
-  margin-inline-start: auto;
+  grid-area: button;
+  justify-self: end;
 }
 
 /*
