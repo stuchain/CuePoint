@@ -166,10 +166,10 @@
 }
 
 /*
- * Narrow (under 20 em wide: a 300 px panel at 200% text): the cover goes first, then Play next
+ * Narrow (under 16 em wide: a 300 px panel at 200% text): the cover goes first, then Play next
  * drops under the facts, so the title has the whole width and never shrinks to nothing.
  */
-@container (max-width: 20em) {
+@container (max-width: 16em) {
   .cp-next-picks__row {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
