@@ -20,20 +20,17 @@ no token ends it, since every follow would be refused the same way.
 
 What is new
 -----------
-Releases dated after the follow's ``seen_through``, and releases dated ON it
-that were read after the follow was last marked seen (``seen_at``). A new
-follow starts ``seen_through`` 30 days back so its first look is not empty.
-Marking seen sets ``seen_through`` to today and ``seen_at`` to now, so it means
-exactly what was on screen: everything cached up to this moment is seen, and a
-track Beatport lists later today is new again.
-
-The catalog keeps no first-stored time per track (a re-read overwrites
-``fetched_at``), so "read after the look" is approximated by the follow's
-listing: a track dated ``seen_through`` counts as new when that follow's
-listing was fetched after ``seen_at``, and only while ``seen_through`` is
-today. A re-check after the look can therefore show that day's tracks as new
-again until the next look; from tomorrow on, a day's tracks are never new
-again. A track by two follows appears once, naming both.
+A track is new when it is dated after the follow's ``seen_through`` and its
+Beatport id is not among the ids recorded when the follow was last marked seen.
+A new follow starts ``seen_through`` 30 days back so its first look is not
+empty. Marking seen sets ``seen_through`` to yesterday (a day of slack for
+releases that land late or across timezones) and, at the same moment, records
+the ids of the follow's cached tracks dated after that: exactly the tracks the
+user has now seen. A re-check never brings those back, and a track Beatport
+lists later is new even when it is dated today or yesterday, because its id was
+not recorded. A later mark that moves ``seen_through`` forward drops the ids
+dated on or before the new day, so the store stays small. A track by two
+follows appears once, naming both.
 
 What is not stored
 ------------------
@@ -175,9 +172,7 @@ class FollowService(IFollowService):
             (f.kind, f.beatport_id): self._catalog.listing(f.kind, f.beatport_id)
             for f in every
         }
-        live = [
-            (f, _new_since(f, listings[(f.kind, f.beatport_id)], today)) for f in every
-        ]
+        live = [(f, _day_after(f.seen_through)) for f in every]
         live = [(f, since) for f, since in live if since <= today]
         counts: Dict[Tuple[str, int], int] = {}
         total = 0
@@ -299,7 +294,7 @@ class FollowService(IFollowService):
                 states.append(
                     {"kind": follow.kind, "beatport_id": follow.beatport_id, **failed}
                 )
-            since = _new_since(follow, listing, today)
+            since = _day_after(follow.seen_through)
             if since <= today:
                 live.append((follow, since))
         rows: List[Dict[str, Any]] = []
@@ -410,17 +405,17 @@ class FollowService(IFollowService):
     ) -> Dict[str, Any]:
         """Mark one follow's, or every follow's, cached tracks seen as of now.
 
-        Sets ``seen_through`` to today and ``seen_at`` to this moment: what the
-        cache holds now is seen, and a track dated today that is read later
-        (after ``seen_at``) is new again. The module docstring says how that is
-        decided.
+        Sets ``seen_through`` to yesterday and records the ids of the cached
+        tracks dated after it (up to today): those are the tracks seen. A track
+        read later is new, whatever its date. The module docstring has the
+        rule. ``changed`` counts the follows whose day or stored ids changed.
         """
         which = _check_which(kind, beatport_id)
-        now = self._clock()
-        through = local_date(now).isoformat()
+        today = local_date(self._clock())
+        through = (today - timedelta(days=1)).isoformat()
         with self._db.transaction():
             moved = self._follows.mark_seen(
-                through, which[0], which[1], seen_at=now.isoformat()
+                through, which[0], which[1], until=today.isoformat()
             )
             if moved:
                 names = ", ".join(f.name for f in moved[:3])
@@ -542,24 +537,6 @@ class FollowService(IFollowService):
 def _day_after(day: str) -> str:
     """The ISO date after ``day``: releases from then on are new."""
     return (date.fromisoformat(day) + timedelta(days=1)).isoformat()
-
-
-def _new_since(follow: Follow, listing: Optional[Any], today: str) -> str:
-    """The first release day that is new for a follow.
-
-    The day after ``seen_through``, or ``seen_through`` itself while it is
-    today and the follow's listing was fetched after the follow was marked
-    seen: tracks dated today that were read after the look are not yet seen.
-    ISO-8601 UTC timestamps compare as text.
-    """
-    if (
-        follow.seen_at is not None
-        and follow.seen_through == today
-        and listing is not None
-        and listing.fetched_at > follow.seen_at
-    ):
-        return follow.seen_through
-    return _day_after(follow.seen_through)
 
 
 __all__: Sequence[str] = (

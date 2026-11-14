@@ -9,7 +9,7 @@ One row per followed Beatport artist or label, keyed by the Beatport id (a name
 is never a key: only a name already linked to exactly one id can be followed).
 ``seen_through`` is an ISO date: releases after it are "new". A follow starts it
 30 days back so a first look is not empty, and "mark seen" moves it to the day
-it was marked (m0036 adds the moment, ``seen_at``).
+one day before it was marked (m0036 adds the track ids that mark saw).
 
 Nothing is backfilled and nothing references the table. The rows are the
 user's own data, so the table is ``WITHOUT ROWID`` with a composite key and no

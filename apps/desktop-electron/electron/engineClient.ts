@@ -2293,10 +2293,8 @@ export interface FollowRow {
   beatport_id: number;
   name: string;
   followed_at: string;
-  /** ISO date; releases after it are new, and so are those on it read after `seen_at`. */
+  /** ISO date; releases after it are new unless their ids were recorded as seen at the last mark. */
   seen_through: string;
-  /** When it was last marked seen (ISO-8601 UTC); null for a follow never marked. */
-  seen_at: string | null;
   /** New tracks in the cache that the library does not own. */
   new_count: number;
   /** When its listing was last read from Beatport; null when never. */

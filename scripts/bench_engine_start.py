@@ -263,8 +263,8 @@ def _downgrade_m0035(connection: sqlite3.Connection) -> None:
 
 
 def _downgrade_m0036(connection: sqlite3.Connection) -> None:
-    """Take m0036 (when a follow was last marked seen) back off a library."""
-    connection.execute("ALTER TABLE follows DROP COLUMN seen_at")
+    """Take m0036 (the track ids a follow's mark-seen saw) back off a library."""
+    connection.execute("DROP TABLE IF EXISTS follow_seen_tracks")
 
 
 #: How to take each migration that may be the newest back off a library, by version. A

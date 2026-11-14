@@ -215,13 +215,13 @@ each name, one request each, so the list updates by itself when the check ends; 
 asks Beatport again right away. **All** shows everything, and choosing a name shows only theirs;
 with a name chosen, **Unfollow** appears under the list, and focus returns to **All**. A group
 shows its first eight names, then **+ N more**. "New" means released after the day you last saw
-that name ("14 new tracks since Nov 7"), or released on that day but found by a check after you
-last looked. Leaving the tab marks what you were looking at as seen: all the names when **All**
+that name ("14 new tracks since Nov 7") and not one you already saw. Leaving the tab marks what you were looking at as seen: all the names when **All**
 was chosen, only that name when you had chosen one, and nothing when the new tracks never loaded
-or showed an error. A track that came out today and was on screen when you left is no longer new;
-one found later today is. A check run after you looked can show that day's tracks as new again,
-because the app cannot tell which of them it already had; looking again clears them, and from
-tomorrow on a day's tracks do not come back. The count after **Following** in the tab strip is
+or showed an error. When you leave, the app remembers exactly which tracks were on screen
+for that name, and sets its seen day back to yesterday. A track you saw never comes back as new,
+however often it is checked again, and a track Beatport lists after you left is new, even one dated
+today or yesterday (so a track listed just after midnight is not missed). The app drops what it
+remembers once the seen day passes those tracks' dates. The count after **Following** in the tab strip is
 read again from the engine after the mark. If a check is still running when you
 leave, nothing is marked, and those tracks stay new until a later visit. The counts are tracks you
 do not own, the same number in the status line and the list. Tracks you own are hidden by default,

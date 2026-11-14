@@ -48,7 +48,7 @@ import { FOLLOW_COLUMNS, FOLLOW_TABLE_LAYOUT_KEY } from "./beatportColumns";
 import { beatportUsable, refusalState, unusableReason } from "./beatportState";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
-import { followKey, followStatusParts, newCountWords, oldestLook } from "./followFormat";
+import { followKey, followStatusParts, newCountWords, oldestSeenThrough } from "./followFormat";
 import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
@@ -599,8 +599,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
         page,
         {
           newCount: selectedFollow ? selectedFollow.new_count : (follows?.new_count ?? 0),
-          seenThrough: selectedFollow ? selectedFollow.seen_through : (oldestLook(rows)?.seenThrough ?? null),
-          seenAt: selectedFollow ? selectedFollow.seen_at : (oldestLook(rows)?.seenAt ?? null),
+          seenThrough: selectedFollow ? selectedFollow.seen_through : oldestSeenThrough(rows),
           hiding: owned === "hide",
         },
       )

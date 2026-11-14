@@ -561,7 +561,8 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
         """Cached tracks of several artists and labels, each track once.
 
         ``sources`` are ``(kind, beatport_id, since)``: a source's tracks are
-        those released from ``since`` to ``until``. Newest release first, then
+        those released from ``since`` to ``until`` that the follow's mark-seen
+        has not recorded as seen (``follow_seen_tracks``). Newest release first, then
         the higher id (as :meth:`entity_tracks` orders), however many sources
         there are and whatever the window: nothing is cut before the window is
         taken. Ownership is read once for every track (DEC-092).
@@ -584,8 +585,15 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
             for row in conn.execute(
                 "SELECT b.beatport_track_id AS id, b.release_date AS day"
                 " FROM beatport_tracks AS b WHERE b.beatport_track_id IN"
-                f" ({_ENTITY_TRACK_IDS[kind]})",
-                {"id": int(beatport_id), "since": str(since), "until": str(until)},
+                f" ({_ENTITY_TRACK_IDS[kind]})"
+                " AND b.beatport_track_id NOT IN (SELECT track_id"
+                " FROM follow_seen_tracks WHERE kind = :kind AND beatport_id = :id)",
+                {
+                    "kind": kind,
+                    "id": int(beatport_id),
+                    "since": str(since),
+                    "until": str(until),
+                },
             ):
                 found = by_track.setdefault(int(row["id"]), (row["day"] or "", []))
                 found[1].append(position)

@@ -23,20 +23,6 @@ export function checkedAgo(value: string | null, now: Date = new Date()): string
   return formatDayInSentence(then, { now });
 }
 
-/**
- * The oldest follow's last look: the day it was seen through, and the moment (`seen_at`, null for a
- * follow never marked seen) that decides how the status line words the start of what is new.
- */
-export function oldestLook(
-  follows: readonly FollowRow[],
-): { seenThrough: string; seenAt: string | null } | null {
-  let oldest: FollowRow | null = null;
-  for (const follow of follows) {
-    if (oldest === null || follow.seen_through < oldest.seen_through) oldest = follow;
-  }
-  return oldest ? { seenThrough: oldest.seen_through, seenAt: oldest.seen_at ?? null } : null;
-}
-
 /** The oldest day any follow was last seen through: the start of what is new. */
 export function oldestSeenThrough(follows: readonly FollowRow[]): string | null {
   let oldest: string | null = null;
@@ -58,11 +44,6 @@ export interface FollowStatusInput {
   newCount: number;
   /** The day the follow (or the oldest of them) was seen through. */
   seenThrough: string | null;
-  /**
-   * When it was marked seen, if ever. A follow that was looked at is new "since you last looked":
-   * the look's day is not a day whose releases are all new, only those found after it.
-   */
-  seenAt?: string | null;
   /** Whether Hide owned is on. */
   hiding: boolean;
 }
@@ -78,11 +59,7 @@ export function followStatusParts(
   now: Date = new Date(),
 ): { count: string; rest: string } {
   const first = firstNewDay(input.seenThrough);
-  const since = input.seenAt
-    ? " since you last looked"
-    : first
-      ? ` since ${formatDayInSentence(first, { now })}`
-      : "";
+  const since = first ? ` since ${formatDayInSentence(first, { now })}` : "";
   const ago = checkedAgo(feed.checked_at, now);
   const parts = [ago === "not checked yet" ? ago : `checked ${ago}`];
   if (input.hiding) {

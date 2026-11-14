@@ -2125,9 +2125,13 @@ class IFollowRepository(ABC):
         kind: Optional[str] = None,
         beatport_id: Optional[int] = None,
         *,
-        seen_at: Optional[str] = None,
+        until: Optional[str] = None,
     ) -> List["Follow"]:
-        """Move seen_through forward (and set seen_at) for one follow or all."""
+        """Move seen_through forward and record the track ids seen, for one follow or all.
+
+        Returns the follows the mark changed: ``seen_through`` moved or the
+        stored ids changed.
+        """
         ...
 
 

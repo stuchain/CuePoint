@@ -30,10 +30,8 @@ class Follow:
         beatport_id: The Beatport id followed.
         name: The name shown, as it was when followed.
         followed_at: When it was followed, ISO-8601 UTC.
-        seen_through: ISO date; releases after it are new, and so are
-            releases on it that were read after ``seen_at``.
-        seen_at: When the follow was last marked seen, ISO-8601 UTC; None
-            before it ever was.
+        seen_through: ISO date; releases after it are new unless the track
+            id was recorded as seen when the follow was last marked seen.
     """
 
     kind: str
@@ -41,7 +39,6 @@ class Follow:
     name: str
     followed_at: str
     seen_through: str
-    seen_at: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Validate the row."""
@@ -54,8 +51,6 @@ class Follow:
         required_text(self.followed_at, "followed_at")
         required_text(self.seen_through, "seen_through")
         optional_iso_date(self.seen_through, "seen_through")
-        if self.seen_at is not None:
-            required_text(self.seen_at, "seen_at")
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API."""
@@ -65,7 +60,6 @@ class Follow:
             "name": self.name,
             "followed_at": self.followed_at,
             "seen_through": self.seen_through,
-            "seen_at": self.seen_at,
         }
 
 

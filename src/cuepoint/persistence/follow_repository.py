@@ -11,12 +11,15 @@ wantlist's do.
 
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import date, timedelta
 from typing import List, Optional
 
 from cuepoint.models.follow import Follow
+from cuepoint.persistence.beatport_catalog_repository import _ENTITY_TRACK_IDS
 from cuepoint.services.interfaces import IDatabaseService, IFollowRepository
 
-_COLUMNS = "kind, beatport_id, name, followed_at, seen_through, seen_at"
+_COLUMNS = "kind, beatport_id, name, followed_at, seen_through"
 
 
 class FollowRepository(IFollowRepository):
@@ -50,14 +53,13 @@ class FollowRepository(IFollowRepository):
         """Follow; True when new. Following again changes nothing."""
         with self._db.transaction(join_existing=True) as conn:
             cursor = conn.execute(
-                f"INSERT OR IGNORE INTO follows ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?)",
+                f"INSERT OR IGNORE INTO follows ({_COLUMNS}) VALUES (?, ?, ?, ?, ?)",
                 (
                     follow.kind,
                     follow.beatport_id,
                     follow.name,
                     follow.followed_at,
                     follow.seen_through,
-                    follow.seen_at,
                 ),
             )
             return cursor.rowcount > 0
@@ -65,6 +67,10 @@ class FollowRepository(IFollowRepository):
     def remove(self, kind: str, beatport_id: int) -> bool:
         """Unfollow; True when it was followed."""
         with self._db.transaction(join_existing=True) as conn:
+            conn.execute(
+                "DELETE FROM follow_seen_tracks WHERE kind = ? AND beatport_id = ?",
+                (str(kind), int(beatport_id)),
+            )
             cursor = conn.execute(
                 "DELETE FROM follows WHERE kind = ? AND beatport_id = ?",
                 (str(kind), int(beatport_id)),
@@ -77,15 +83,19 @@ class FollowRepository(IFollowRepository):
         kind: Optional[str] = None,
         beatport_id: Optional[int] = None,
         *,
-        seen_at: Optional[str] = None,
+        until: Optional[str] = None,
     ) -> List[Follow]:
-        """Move ``seen_through`` to a date, for one follow or all.
+        """Move ``seen_through`` to a date and record the tracks seen, for one follow or all.
 
-        Returns the follows whose ``seen_through`` it moved. It only ever moves
-        forward: a date before the one stored changes nothing. ``seen_at``, when
-        given, is stored on every follow whose date is not after
-        ``seen_through``, moved or already there, so looking again the same day
-        moves the moment without moving the day.
+        ``seen_through`` only ever moves forward: a date before the one stored
+        changes nothing. For every follow whose date is not after
+        ``seen_through``, moved or already there, the ids of its cached tracks
+        dated after ``seen_through`` and up to ``until`` are recorded as seen
+        (nothing is recorded without ``until``), and the ids dated on or
+        before ``seen_through`` are dropped.
+
+        Returns the follows it changed: ``seen_through`` moved, or the stored
+        ids did.
 
         Raises:
             ValueError: If only one of ``kind`` and ``beatport_id`` is given.
@@ -99,23 +109,48 @@ class FollowRepository(IFollowRepository):
         if kind is not None and beatport_id is not None:
             which = " AND kind = ? AND beatport_id = ?"
             values = [str(kind), int(beatport_id)]
+        changed: List[Follow] = []
         with self._db.transaction(join_existing=True) as conn:
             rows = conn.execute(
-                f"SELECT {_COLUMNS} FROM follows WHERE seen_through < ?{which}",
+                f"SELECT {_COLUMNS} FROM follows WHERE seen_through <= ?{which}"
+                " ORDER BY kind, name COLLATE NOCASE, beatport_id",
                 [str(seen_through), *values],
             ).fetchall()
-            conn.execute(
-                "UPDATE follows SET seen_through = ?,"
-                f" seen_at = coalesce(?, seen_at) WHERE seen_through <= ?{which}",
-                [str(seen_through), seen_at, str(seen_through), *values],
-            )
-        return [
-            Follow(
-                **{
-                    **{c: r[c] for c in r.keys()},
-                    "seen_through": seen_through,
-                    "seen_at": seen_at if seen_at is not None else r["seen_at"],
-                }
-            )
-            for r in rows
-        ]
+            for row in rows:
+                follow = Follow(**{c: row[c] for c in row.keys()})
+                moved = follow.seen_through < seen_through
+                pruned = conn.execute(
+                    "DELETE FROM follow_seen_tracks WHERE kind = ? AND beatport_id = ?"
+                    " AND track_id NOT IN (SELECT beatport_track_id"
+                    " FROM beatport_tracks WHERE release_date > ?)",
+                    (follow.kind, follow.beatport_id, str(seen_through)),
+                ).rowcount
+                added = 0
+                if until is not None:
+                    added = conn.execute(
+                        "INSERT OR IGNORE INTO follow_seen_tracks"
+                        " (kind, beatport_id, track_id)"
+                        " SELECT :kind, :id, b.beatport_track_id"
+                        " FROM beatport_tracks AS b WHERE b.beatport_track_id IN"
+                        f" ({_ENTITY_TRACK_IDS[follow.kind]})",
+                        {
+                            "kind": follow.kind,
+                            "id": follow.beatport_id,
+                            # `>= since` in the shared query: the day after.
+                            "since": _day_after(str(seen_through)),
+                            "until": str(until),
+                        },
+                    ).rowcount
+                if moved:
+                    conn.execute(
+                        "UPDATE follows SET seen_through = ?"
+                        " WHERE kind = ? AND beatport_id = ?",
+                        (str(seen_through), follow.kind, follow.beatport_id),
+                    )
+                if moved or pruned > 0 or added > 0:
+                    changed.append(replace(follow, seen_through=str(seen_through)))
+        return changed
+
+
+def _day_after(day: str) -> str:
+    return (date.fromisoformat(day) + timedelta(days=1)).isoformat()

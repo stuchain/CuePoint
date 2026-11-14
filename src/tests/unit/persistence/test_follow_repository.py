@@ -47,7 +47,7 @@ class TestMigration:
     def test_it_is_discovered_at_its_number(self):
         by_version = {m.version: m for m in discover_migrations()}
         assert by_version[34].module_name == "m0034_follows"
-        assert by_version[36].module_name == "m0036_follow_seen_at"
+        assert by_version[36].module_name == "m0036_follow_seen_tracks"
 
     def test_the_table_is_keyed_by_kind_and_id_without_a_rowid(self, db):
         conn = db.connect()
@@ -61,12 +61,31 @@ class TestMigration:
             "name": ("TEXT", 1, 0),
             "followed_at": ("TEXT", 1, 0),
             "seen_through": ("TEXT", 1, 0),
-            "seen_at": ("TEXT", 0, 0),
         }
         sql = conn.execute(
             "SELECT sql FROM sqlite_master WHERE name = 'follows'"
         ).fetchone()["sql"]
         assert "WITHOUT ROWID" in sql
+
+    def test_seen_tracks_are_keyed_by_follow_and_track_and_go_with_the_follow(
+        self, db, follows
+    ):
+        follows.add(follow("artist", 1, "A"))
+        with db.transaction() as conn:
+            conn.execute("INSERT INTO follow_seen_tracks VALUES ('artist', 1, 7)")
+        with pytest.raises(sqlite3.IntegrityError):
+            with db.transaction() as conn:
+                conn.execute("INSERT INTO follow_seen_tracks VALUES ('artist', 1, 7)")
+        with pytest.raises(sqlite3.IntegrityError):
+            with db.transaction() as conn:
+                conn.execute("INSERT INTO follow_seen_tracks VALUES ('artist', 2, 7)")
+        assert follows.remove("artist", 1)
+        assert (
+            db.connect()
+            .execute("SELECT count(*) FROM follow_seen_tracks")
+            .fetchone()[0]
+            == 0
+        )
 
     def test_a_kind_that_is_neither_is_refused(self, db):
         with pytest.raises(sqlite3.IntegrityError):
@@ -138,26 +157,6 @@ class TestRepository:
         follows.add(follow(seen="2026-11-20"))
         assert follows.mark_seen("2026-11-13") == []
         assert follows.get("artist", 100).seen_through == "2026-11-20"
-
-    def test_mark_seen_keeps_when_it_was_seen_and_moves_it_on_the_same_day(
-        self, follows
-    ):
-        follows.add(follow("artist", 1, "A", seen="2026-10-01"))
-        moved = follows.mark_seen(
-            "2026-11-13", "artist", 1, seen_at="2026-11-13T09:00:00+00:00"
-        )
-        assert [f.beatport_id for f in moved] == [1]
-        assert follows.get("artist", 1).seen_at == "2026-11-13T09:00:00+00:00"
-        # Looking again the same day moves seen_at, not seen_through, and says
-        # nothing moved.
-        assert (
-            follows.mark_seen(
-                "2026-11-13", "artist", 1, seen_at="2026-11-13T15:00:00+00:00"
-            )
-            == []
-        )
-        assert follows.get("artist", 1).seen_through == "2026-11-13"
-        assert follows.get("artist", 1).seen_at == "2026-11-13T15:00:00+00:00"
 
     @pytest.mark.parametrize("which", [{"kind": "artist"}, {"beatport_id": 1}])
     def test_mark_seen_with_only_half_a_follow_named_raises_and_marks_nothing(

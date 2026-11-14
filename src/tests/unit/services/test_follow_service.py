@@ -533,11 +533,11 @@ class TestTheFeed:
         assert titles(service.feed("artist", 100)) == []
         assert titles(service.feed("artist", 8)) == ["Track 15"]
         moved = service.mark_seen()
-        assert moved["changed"] == 2 and moved["seen_through"] == TODAY.isoformat()
+        assert moved["changed"] == 2 and moved["seen_through"] == days(1).isoformat()
         assert service.feed()["rows"] == []
         assert service.mark_seen() == {
             "changed": 0,
-            "seen_through": TODAY.isoformat(),
+            "seen_through": days(1).isoformat(),
         }
 
     def test_a_release_after_the_day_marked_seen_is_new(self, service, world, clock):
@@ -637,15 +637,31 @@ class TestTheFeed:
 
 
 class TestSeenMeansWhatWasShown:
-    """Marking seen is through today; same-day tracks are new only if read later."""
+    """A mark records the track ids it saw; a re-check never brings them back."""
 
-    def test_marking_seen_is_through_today_and_records_when(self, service):
+    def seen_ids(self, db, kind="artist", beatport_id=100):
+        return {
+            r["track_id"]
+            for r in db.connect().execute(
+                "SELECT track_id FROM follow_seen_tracks"
+                " WHERE kind = ? AND beatport_id = ?",
+                (kind, beatport_id),
+            )
+        }
+
+    def test_marking_seen_is_through_yesterday_and_records_the_ids(
+        self, service, world, db
+    ):
+        world.add_track(40, TODAY, (900, "Innervisions"), (9, "Today"), [(100, "Âme")])
         service.add("artist", 100, "Âme")
+        service.check()
         moved = service.mark_seen()
-        assert moved["seen_through"] == TODAY.isoformat()
+        assert moved["seen_through"] == days(1).isoformat()
+        assert moved["changed"] == 1
         follow = service.follows()["follows"][0]
-        assert follow["seen_through"] == TODAY.isoformat()
-        assert follow["seen_at"] == NOW.isoformat()
+        assert follow["seen_through"] == days(1).isoformat()
+        assert "seen_at" not in follow
+        assert self.seen_ids(db) == {40}
 
     def test_a_track_released_today_that_was_shown_is_not_new_afterwards(
         self, service, world
@@ -660,7 +676,25 @@ class TestSeenMeansWhatWasShown:
         assert listed["new_count"] == 0
         assert listed["follows"][0]["new_count"] == 0
 
-    def test_a_track_released_today_and_read_after_the_look_is_new(
+    def test_a_refresh_after_the_look_does_not_bring_back_what_was_seen(
+        self, service, world, clock
+    ):
+        world.add_track(40, TODAY, (900, "Innervisions"), (9, "Today"), [(100, "Âme")])
+        service.add("artist", 100, "Âme")
+        service.check()
+        service.mark_seen()
+        clock.now = NOW + timedelta(hours=3)
+        service.check(refresh=True)
+        assert service.feed()["rows"] == []
+        listed = service.follows()
+        assert listed["new_count"] == 0
+        assert listed["follows"][0]["new_count"] == 0
+        # The automatic check, once the listing is older than 12 hours.
+        clock.now = NOW + timedelta(hours=13)
+        service.check()
+        assert service.feed()["rows"] == []
+
+    def test_a_track_dated_today_found_after_the_look_is_new(
         self, service, world, clock
     ):
         service.add("artist", 100, "Âme")
@@ -677,6 +711,25 @@ class TestSeenMeansWhatWasShown:
         # The feed and the counts say the same thing.
         assert listed["new_count"] == service.feed()["total"] == 1
 
+    def test_a_track_first_listed_after_a_late_look_is_still_new_tomorrow(
+        self, service, world, clock
+    ):
+        service.add("artist", 100, "Âme")
+        service.check()
+        clock.now = datetime(NOW.year, NOW.month, NOW.day, 23, 50, tzinfo=timezone.utc)
+        service.mark_seen()
+        # Beatport lists a track dated today only after the 23:50 look.
+        clock.now = clock.now + timedelta(minutes=30)
+        world.add_track(
+            40, TODAY, (900, "Innervisions"), (9, "Late Today"), [(100, "Âme")]
+        )
+        service.check(refresh=True)
+        assert titles(service.feed()) == ["Track 40"]
+        clock.now = clock.now + timedelta(hours=12)
+        assert local_date(clock.now) == TODAY + timedelta(days=1)
+        assert titles(service.feed()) == ["Track 40"]
+        assert service.follows()["new_count"] == 1
+
     def test_looking_again_buries_what_was_read_since(self, service, world, clock):
         service.add("artist", 100, "Âme")
         service.check()
@@ -686,9 +739,37 @@ class TestSeenMeansWhatWasShown:
             40, TODAY, (900, "Innervisions"), (9, "Later Today"), [(100, "Âme")]
         )
         service.check(refresh=True)
-        service.mark_seen()
+        assert service.mark_seen()["changed"] == 1
         assert service.feed()["rows"] == []
         assert service.follows()["new_count"] == 0
+        # Nothing more to see: the mark changes nothing and says so.
+        assert service.mark_seen()["changed"] == 0
+
+    def test_a_later_mark_prunes_ids_dated_on_or_before_its_day(
+        self, service, world, clock, db
+    ):
+        world.add_track(40, TODAY, (900, "Innervisions"), (9, "Today"), [(100, "Âme")])
+        service.add("artist", 100, "Âme")
+        service.check()
+        service.mark_seen()
+        assert self.seen_ids(db) == {40}
+        clock.now = NOW + timedelta(days=1)
+        # The mark moves seen_through to today, which is the track's date.
+        assert service.mark_seen()["changed"] == 1
+        assert self.seen_ids(db) == set()
+        assert service.feed()["rows"] == []
+
+    def test_unfollowing_removes_the_seen_ids(self, service, world, db):
+        world.add_track(40, TODAY, (900, "Innervisions"), (9, "Today"), [(100, "Âme")])
+        service.add("artist", 100, "Âme")
+        service.check()
+        service.mark_seen()
+        assert self.seen_ids(db) == {40}
+        service.remove("artist", 100)
+        assert self.seen_ids(db) == set()
+        # Following again starts afresh, so the track is new again.
+        service.add("artist", 100, "Âme")
+        assert "Track 40" in titles(service.feed())
 
     def test_tomorrows_release_is_new_and_yesterdays_look_does_not_return(
         self, service, world, clock
@@ -705,7 +786,6 @@ class TestSeenMeansWhatWasShown:
             [(100, "Âme")],
         )
         service.check(refresh=True)
-        # Listed again after the look, but dated before today: not new.
         assert titles(service.feed()) == ["Track 41"]
         assert service.follows()["new_count"] == 1
 

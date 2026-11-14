@@ -39,7 +39,6 @@ function follow(over: Partial<FollowRow>): FollowRow {
     name: "Amsel",
     followed_at: "2026-11-01T00:00:00Z",
     seen_through: "2026-11-06",
-    seen_at: null,
     new_count: 0,
     checked_at: null,
     state: null,
@@ -788,15 +787,6 @@ describe("the sentences", () => {
       now,
     );
     expect(line).toMatch(/^1 new track since today/);
-  });
-
-  it("says since you last looked for a follow that was marked seen", () => {
-    const line = followStatusLine(
-      { total: 1, hidden_owned: 0, checked_at: null },
-      { newCount: 1, seenThrough: "2026-11-13", seenAt: "2026-11-13T09:00:00+00:00", hiding: true },
-      now,
-    );
-    expect(line).toBe("1 new track since you last looked · not checked yet");
   });
 
   it("takes the oldest day any follow was seen through", () => {

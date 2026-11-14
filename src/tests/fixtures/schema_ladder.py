@@ -903,7 +903,6 @@ def seed_rows(track_count: int = 12, seed: int = 7) -> Dict[str, List[Row]]:
                 "name": "Âme",
                 "followed_at": NOW,
                 "seen_through": "2026-09-05",
-                "seen_at": NOW,
             },
             {
                 "kind": "label",
@@ -912,6 +911,10 @@ def seed_rows(track_count: int = 12, seed: int = 7) -> Dict[str, List[Row]]:
                 "followed_at": EARLIER,
                 "seen_through": "2025-01-01",
             },
+        ),
+        "follow_seen_tracks": rows(
+            {"kind": "artist", "beatport_id": 100, "track_id": 9001},
+            {"kind": "artist", "beatport_id": 100, "track_id": 9002},
         ),
         "track_credits": rows(
             {
