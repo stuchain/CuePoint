@@ -11,7 +11,13 @@ import type {
 import { EMPTY_AUDIO_STATE } from "../../components/player/playerFormat";
 import { markPlayed, resetPlayedTracksForTests } from "../../components/player/playedTracks";
 import { resetPlayerStore } from "../../components/player/playerStore";
+import { reportUnexpected } from "../../reporting/reporting";
 import { NextTrackPicks } from "./NextTrackPicks";
+
+vi.mock("../../reporting/reporting", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../reporting/reporting")>()),
+  reportUnexpected: vi.fn(() => null),
+}));
 
 function row(id: number, over: Partial<LibraryTrackRow> = {}): LibraryTrackRow {
   return {
@@ -48,7 +54,7 @@ const genre: SimilarReason = { component: "genre", detail: "same", points: 1, na
 
 const suggestion = (id: number): SimilarTrack => ({ track_id: id, score: 90, reasons: [keyStep, tempo, genre] });
 
-function snapshot(currentTrackId: number | null, length = 1, currentIndex = 0): PlayerSnapshot {
+function snapshot(currentTrackId: number | null, length = 1, currentIndex = 0, repeat: "off" | "all" = "off"): PlayerSnapshot {
   return {
     status: { available: true, running: true, reconnecting: false, restartAttempts: 0 },
     playback: {
@@ -79,7 +85,7 @@ function snapshot(currentTrackId: number | null, length = 1, currentIndex = 0): 
               status: "playing",
             },
       shuffle: false,
-      repeat: "off",
+      repeat,
     },
     audio: EMPTY_AUDIO_STATE,
   };
@@ -92,6 +98,7 @@ interface Setup {
   /** Tracks before the playing one, already behind it in the queue. */
   before?: number[];
   playing?: number | null;
+  repeat?: "off" | "all";
   /** Gate for the first getSimilarTracks answer. */
   holdFirstAnswer?: Promise<void>;
   /** Fail reading these library rows. */
@@ -105,6 +112,7 @@ function install({
   queued = [],
   before = [],
   playing = null,
+  repeat = "off",
   refusal,
   fail,
   holdFirstAnswer,
@@ -145,7 +153,7 @@ function install({
   });
   const lay = (upcoming: number[]) => (playing === null ? upcoming : [...before, playing, ...upcoming]);
   const indexOfPlaying = before.length;
-  const state = snapshot(playing, lay(queued).length, indexOfPlaying);
+  const state = snapshot(playing, lay(queued).length, indexOfPlaying, repeat);
   let queue = lay(queued);
   let push: ((next: PlayerSnapshot) => void) | null = null;
   const queueWindow = vi.fn(async (offset: number, limit: number) => ({
@@ -181,12 +189,17 @@ function install({
   };
   const setQueue = (ids: number[]) => {
     queue = lay(ids);
-    push?.(snapshot(playing, queue.length, indexOfPlaying));
+    push?.(snapshot(playing, queue.length, indexOfPlaying, repeat));
   };
-  return { playNext, skipNext, playQueue, getSimilarTracks, getLibraryTrack, queueWindow, setQueue };
+  /** Reorder with no change to the length, the playing track or its place, and no push: what a drag in the queue panel does. */
+  const reorder = (ids: number[]) => {
+    queue = lay(ids);
+  };
+  return { playNext, skipNext, playQueue, getSimilarTracks, getLibraryTrack, queueWindow, setQueue, reorder };
 }
 
 afterEach(() => {
+  vi.mocked(reportUnexpected).mockClear();
   resetPlayedTracksForTests();
   resetPlayerStore();
   delete (window as { cuepoint?: unknown }).cuepoint;
@@ -435,6 +448,7 @@ describe("Plays well next", () => {
     });
     install({ suggestions: [2, 3, 4].map(suggestion), holdFirstAnswer: gate });
     const { rerender } = render(<NextTrackPicks track={row(1)} />);
+    await waitFor(() => expect(window.cuepoint!.getSimilarTracks).toHaveBeenCalledTimes(1));
     rerender(<NextTrackPicks track={row(9)} />);
     expect(await screen.findByText("Track 2")).toBeInTheDocument();
     await act(async () => {
@@ -543,5 +557,76 @@ describe("Plays well next", () => {
     await waitFor(() => expect(screen.queryByText("Track 2")).not.toBeInTheDocument());
     expect(screen.getByText("Track 5")).toBeInTheDocument();
     expect(getSimilarTracks).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-reads the upcoming tracks when the pointer or focus comes to the section after a reorder", async () => {
+    const { reorder } = install({ suggestions: [2, 3, 4, 5].map(suggestion), queued: [6, 7] });
+    const { container } = render(<NextTrackPicks track={row(1)} />);
+    expect(await screen.findByText("Track 2")).toBeInTheDocument();
+    // A drag in the queue panel keeps the length and the playing track: the player pushes nothing new.
+    reorder([2, 7]);
+    fireEvent.pointerEnter(container.querySelector("section")!);
+    await waitFor(() => expect(screen.queryByText("Track 2")).not.toBeInTheDocument());
+    expect(screen.getByText("Track 3")).toBeInTheDocument();
+  });
+
+  it("counts the tracks a repeat-all queue wraps to as upcoming", async () => {
+    // Playing the last track (9) of [2, 3, 9] with repeat all: 2 and 3 come next.
+    install({ suggestions: [2, 3, 4, 5, 6].map(suggestion), before: [2, 3], playing: 9, repeat: "all" });
+    render(<NextTrackPicks track={row(1)} />);
+    expect(await screen.findByText("Track 4")).toBeInTheDocument();
+    expect(screen.queryByText("Track 2")).not.toBeInTheDocument();
+    expect(screen.queryByText("Track 3")).not.toBeInTheDocument();
+  });
+
+  it("does not count tracks behind the playing one as upcoming without repeat-all", async () => {
+    install({ suggestions: [2, 3, 4].map(suggestion), before: [2, 3], playing: 9 });
+    render(<NextTrackPicks track={row(1)} />);
+    expect(await screen.findByText("Track 2")).toBeInTheDocument();
+    expect(screen.getByText("Track 3")).toBeInTheDocument();
+  });
+
+  it("waits for the shown track to settle before asking, so a quick pass over tracks asks once", async () => {
+    const { getSimilarTracks } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    const { rerender } = render(<NextTrackPicks track={row(1)} />);
+    rerender(<NextTrackPicks track={row(8)} />);
+    rerender(<NextTrackPicks track={row(9)} />);
+    expect(await screen.findByText("Track 2")).toBeInTheDocument();
+    expect(getSimilarTracks).toHaveBeenCalledTimes(1);
+    expect(getSimilarTracks).toHaveBeenCalledWith({ track_id: 9, limit: 50 });
+  });
+
+  it("does not ask while its tab is hidden, and asks once when it is shown", async () => {
+    const { getSimilarTracks } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    const { rerender } = render(<NextTrackPicks track={row(1)} active={false} />);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(getSimilarTracks).not.toHaveBeenCalled();
+    rerender(<NextTrackPicks track={row(1)} active />);
+    expect(await screen.findByText("Track 2")).toBeInTheDocument();
+    expect(getSimilarTracks).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not ask again for the same seed when the tab is shown again", async () => {
+    const { getSimilarTracks } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    const { rerender } = render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    rerender(<NextTrackPicks track={row(1)} active={false} />);
+    rerender(<NextTrackPicks track={row(1)} active />);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(screen.getByText("Track 2")).toBeInTheDocument();
+    expect(getSimilarTracks).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not report an engine outage or refusal as unexpected, but reports a real failure", async () => {
+    const { getSimilarTracks } = install({ fail: true });
+    getSimilarTracks.mockRejectedValue(new Error("Engine not running"));
+    const first = render(<NextTrackPicks track={row(1)} />);
+    expect(await screen.findByText(/Could not load/)).toBeInTheDocument();
+    expect(reportUnexpected).not.toHaveBeenCalled();
+    first.unmount();
+    getSimilarTracks.mockRejectedValue(new Error("boom"));
+    render(<NextTrackPicks track={row(1)} />);
+    expect(await screen.findByText(/Could not load/)).toBeInTheDocument();
+    expect(reportUnexpected).toHaveBeenCalledTimes(1);
   });
 });

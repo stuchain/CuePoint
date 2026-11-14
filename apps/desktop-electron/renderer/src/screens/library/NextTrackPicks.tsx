@@ -20,6 +20,8 @@ import { selectQueueRevision } from "../../components/player/playerFormat";
 import { usePlayerValue } from "../../components/player/playerStore";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatBpm } from "../../components/format/bpm";
+import { isEngineRefusal } from "../../api/bridgeError";
+import { isOutage } from "../../api/userMessage";
 import { couldNot } from "../../format/words";
 import { reportUnexpected } from "../../reporting/reporting";
 import { reasonTokens, tempoDeltaText } from "../discover/reasonTokens";
@@ -39,6 +41,10 @@ import "./NextTrackPicks.css";
 /** Where the playing track sits in play order, -1 for none. */
 function selectCurrentIndex(state: PlayerSnapshot | null): number {
   return state?.queue.currentIndex ?? -1;
+}
+
+function selectRepeatsAll(state: PlayerSnapshot | null): boolean {
+  return state?.queue.repeat === "all";
 }
 
 /** Clicks inside these belong to them, not to the row's double-click. */
@@ -77,6 +83,15 @@ async function readRow(id: number): Promise<RowRead> {
   }
 }
 
+/** How long the shown track must stay shown before the engine is asked about it. */
+const SUGGEST_DELAY_MS = 200;
+
+/** The engine being down, or saying no, is the user's situation and not a bug; only the rest is reported. */
+function reportIfUnexpected(cause: unknown): void {
+  if (isOutage(cause) || isEngineRefusal(cause)) return;
+  reportUnexpected(cause);
+}
+
 const NO_IDS: readonly number[] = [];
 const NO_MARKS: Readonly<Record<number, "pending" | "queued">> = {};
 
@@ -84,33 +99,42 @@ const NO_MARKS: Readonly<Record<number, "pending" | "queued">> = {};
  * The library ids of the next tracks in play order after the current one, or null while they are
  * being read. A small slice, re-read only when the queue changes shape.
  */
-function useUpcomingIds(): readonly number[] | null {
+function useUpcomingIds(active: boolean): { ids: readonly number[] | null; refresh: () => void } {
   const revision = usePlayerValue(selectQueueRevision);
   const currentIndex = usePlayerValue(selectCurrentIndex);
+  const repeatsAll = usePlayerValue(selectRepeatsAll);
   const [read, setRead] = useState<readonly number[] | null>(null);
+  const [rereads, setRereads] = useState(0);
+  const refresh = useCallback(() => setRereads((n) => n + 1), []);
 
   useEffect(() => {
-    if (revision === null) return;
+    if (revision === null || !active) return;
     let current = true;
     const queueWindow = window.cuepoint?.player?.queueWindow;
     if (!queueWindow) {
       setRead(NO_IDS);
       return;
     }
-    queueWindow(currentIndex + 1, NEXT_PICKS_UPCOMING)
-      .then((page) => {
-        if (current) setRead(page.items.map((item) => item.trackId).filter((id): id is number => id != null));
-      })
-      .catch(() => {
-        if (current) setRead(NO_IDS);
-      });
+    const idsOf = (page: { items: Array<{ trackId?: number | null }> }) =>
+      page.items.map((item) => item.trackId).filter((id): id is number => id != null);
+    void (async () => {
+      const after = idsOf(await queueWindow(currentIndex + 1, NEXT_PICKS_UPCOMING));
+      // With repeat-all the queue wraps: once the end is near, the tracks from its start come next.
+      const wrapped =
+        repeatsAll && currentIndex > 0 && after.length < NEXT_PICKS_UPCOMING
+          ? idsOf(await queueWindow(0, Math.min(currentIndex, NEXT_PICKS_UPCOMING - after.length)))
+          : [];
+      if (current) setRead([...after, ...wrapped]);
+    })().catch(() => {
+      if (current) setRead(NO_IDS);
+    });
     return () => {
       current = false;
     };
-  }, [revision, currentIndex]);
+  }, [revision, currentIndex, repeatsAll, active, rereads]);
 
   // No player state yet: there is no queue to be in.
-  return revision === null ? NO_IDS : read;
+  return { ids: revision === null ? NO_IDS : read, refresh };
 }
 
 /** The marks of one suggestion, each with its sentence for a screen reader and the hover. */
@@ -144,10 +168,13 @@ function Marks({ suggestion }: { suggestion: SimilarTrack }) {
 
 export function NextTrackPicks({
   track,
+  active = true,
   onMessage,
 }: {
   /** The track Details shows. */
   track: LibraryTrackRow;
+  /** False while the Overview tab is hidden (its panel stays mounted): nothing is asked then. */
+  active?: boolean;
   onMessage?: (message: string) => void;
 }) {
   const trackId = track.id;
@@ -171,27 +198,39 @@ export function NextTrackPicks({
   // before any re-render.
   const asked = useRef({ trackId, ids: new Set<number>() });
   if (asked.current.trackId !== trackId) asked.current = { trackId, ids: new Set<number>() };
-  const upcomingIds = useUpcomingIds();
+  const { ids: upcomingIds, refresh: rereadUpcoming } = useUpcomingIds(active);
   const playingId = usePlayingTrackId();
   const played = usePlayedTracks();
   // Rows read so far, by track id, for the life of this mount.
   const rows = useRef(new Map<number, Promise<RowRead>>());
+  // The last seed's answer, so a seed asked about once is not asked about again in this mount.
+  const answered = useRef<Extract<Suggested, { status: "ready" }> | null>(null);
 
   useEffect(() => {
-    if (trackId == null || !canRank || !available) return;
+    if (trackId == null || !canRank || !available || !active) return;
+    // The same seed again (the tab shown again, a kept page): its answer is already here.
+    if (answered.current?.trackId === trackId) {
+      setSuggested(answered.current);
+      return;
+    }
     let current = true;
-    void suggest(trackId)
-      .then((answer) => {
-        if (current) setSuggested(answer);
-      })
-      .catch((cause: unknown) => {
-        reportUnexpected(cause);
-        if (current) setSuggested({ trackId, status: "error" });
-      });
+    // A track passed over on the way to another is never asked about.
+    const timer = setTimeout(() => {
+      void suggest(trackId)
+        .then((answer) => {
+          if (answer.status === "ready") answered.current = answer;
+          if (current) setSuggested(answer);
+        })
+        .catch((cause: unknown) => {
+          reportIfUnexpected(cause);
+          if (current) setSuggested({ trackId, status: "error" });
+        });
+    }, SUGGEST_DELAY_MS);
     return () => {
       current = false;
+      clearTimeout(timer);
     };
-  }, [trackId, canRank, available]);
+  }, [trackId, canRank, available, active]);
 
   const suggestions = suggested && suggested.trackId === trackId && suggested.status === "ready" ? suggested.suggestions : null;
 
@@ -242,7 +281,7 @@ export function NextTrackPicks({
         allExcluded: suggestions.length > 0 && eligible.length === 0,
       });
     })().catch((cause: unknown) => {
-      reportUnexpected(cause);
+      reportIfUnexpected(cause);
       if (current) setResolved({ trackId, status: "error", candidates: [], allExcluded: false });
     });
     return () => {
@@ -408,7 +447,15 @@ export function NextTrackPicks({
   }
 
   return (
-    <section ref={sectionRef} className="cp-next-picks" aria-labelledby={titleId}>
+    <section
+      ref={sectionRef}
+      className="cp-next-picks"
+      aria-labelledby={titleId}
+      // The queue panel can reorder what is upcoming without the player pushing anything new, so
+      // the upcoming tracks are read again as the person comes to the section to use it.
+      onPointerEnter={rereadUpcoming}
+      onFocus={rereadUpcoming}
+    >
       <div className="cp-next-picks__head">
         <h3 id={titleId} ref={headingRef} tabIndex={-1} className="cp-next-picks__heading">
           Plays well next

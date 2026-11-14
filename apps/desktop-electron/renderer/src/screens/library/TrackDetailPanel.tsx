@@ -644,7 +644,14 @@ export function TrackDetailPanel({
           )}
 
           {/* The tracks that mix best out of this one, each with a visible Play next. */}
-          {track.id != null && <NextTrackPicks key={`next-${track.id}`} track={track} onMessage={onMessage} />}
+          {track.id != null && (
+            <NextTrackPicks
+              key={`next-${track.id}`}
+              track={track}
+              active={activeTab === "overview"}
+              onMessage={onMessage}
+            />
+          )}
 
           {/* The rest of Rekordbox's record: its cues and grid (WAVE-04). */}
           {detail.marks && (
