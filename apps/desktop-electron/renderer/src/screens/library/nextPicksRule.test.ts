@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { SimilarTrack } from "../../api/cuepointBridge.types";
-import { NEXT_PICKS_COUNT, hasKeyOrBpm, eligibleNextTracks } from "./nextPicksRule";
+import { NEXT_PICKS_ASK, NEXT_PICKS_COUNT, NEXT_PICKS_UPCOMING, hasKeyOrBpm, eligibleNextTracks } from "./nextPicksRule";
 
 const suggestion = (id: number): SimilarTrack => ({ track_id: id, score: 100 - id, reasons: [] });
 const list = (...ids: number[]) => ids.map(suggestion);
@@ -41,5 +41,20 @@ describe("hasKeyOrBpm", () => {
     expect(hasKeyOrBpm({ effective_key: " ", bpm: 0 })).toBe(false);
     expect(hasKeyOrBpm({ effective_key: "8A", bpm: null })).toBe(true);
     expect(hasKeyOrBpm({ effective_key: null, bpm: 128 })).toBe(true);
+  });
+});
+
+describe("the effective BPM", () => {
+  it("counts an effective BPM when the Rekordbox BPM is missing", () => {
+    expect(hasKeyOrBpm({ effective_key: null, bpm: null, effective_bpm: 126 })).toBe(true);
+    expect(hasKeyOrBpm({ effective_key: null, bpm: 128, effective_bpm: null })).toBe(true);
+    expect(hasKeyOrBpm({ effective_key: null, bpm: null, effective_bpm: null })).toBe(false);
+  });
+});
+
+describe("how many are asked for and excluded", () => {
+  it("asks for 50 and treats only the next 10 as queued", () => {
+    expect(NEXT_PICKS_ASK).toBe(50);
+    expect(NEXT_PICKS_UPCOMING).toBe(10);
   });
 });

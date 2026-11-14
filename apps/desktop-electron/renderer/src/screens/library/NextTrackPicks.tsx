@@ -6,7 +6,7 @@
  * next track. Asked once per shown track. Rows are read with `getLibraryTrack` lazily: only for the
  * suggestions that pass the filter (`eligibleNextTracks`) and only until three are shown, cached by
  * id for the life of the mount, so a queue change re-filters without re-reading. Only the
- * upcoming tracks (the next 50 after the current one) count as queued. Nothing here is
+ * upcoming tracks (the next 10 after the current one) count as queued. Nothing here is
  * hover-only: Play next is a button and a double-click plays the row now (inserted next, then
  * skipped to, so the queue is kept).
  */
@@ -26,12 +26,16 @@ import { reasonTokens, tempoDeltaText } from "../discover/reasonTokens";
 import { describeSimilarReason } from "../discover/similarReasons";
 import { RowArtwork } from "./libraryCells";
 import { DEFAULT_LIBRARY_QUERY } from "./libraryQuery";
-import { NEXT_PICKS_ASK, NEXT_PICKS_COUNT, eligibleNextTracks, hasKeyOrBpm } from "./nextPicksRule";
+import {
+  NEXT_PICKS_ASK,
+  NEXT_PICKS_COUNT,
+  NEXT_PICKS_UPCOMING,
+  effectiveBpm,
+  eligibleNextTracks,
+  hasKeyOrBpm,
+} from "./nextPicksRule";
 import { toQueueItem, useLibraryPlayback } from "./useLibraryPlayback";
 import "./NextTrackPicks.css";
-
-/** How many tracks after the current one count as "already queued". */
-const UPCOMING_COUNT = 50;
 
 /** Where the playing track sits in play order, -1 for none. */
 function selectCurrentIndex(state: PlayerSnapshot | null): number {
@@ -50,7 +54,8 @@ type Suggested =
   | { trackId: number; status: "ready"; suggestions: SimilarTrack[] }
   | { trackId: number; status: "error" };
 
-type Resolved = { trackId: number; status: "ready" | "error"; candidates: Candidate[] };
+/** `allExcluded`: the engine had matches and every one was queued, playing or played. */
+type Resolved = { trackId: number; status: "ready" | "error"; candidates: Candidate[]; allExcluded: boolean };
 
 type RowRead = { status: "row"; row: LibraryTrackRow } | { status: "gone" } | { status: "failed" };
 
@@ -92,7 +97,7 @@ function useUpcomingIds(): readonly number[] | null {
       setRead(NO_IDS);
       return;
     }
-    queueWindow(currentIndex + 1, UPCOMING_COUNT)
+    queueWindow(currentIndex + 1, NEXT_PICKS_UPCOMING)
       .then((page) => {
         if (current) setRead(page.items.map((item) => item.trackId).filter((id): id is number => id != null));
       })
@@ -115,7 +120,7 @@ function Marks({ suggestion }: { suggestion: SimilarTrack }) {
     suggestion.reasons
       .filter((reason) => reason.component === component)
       .map(describeSimilarReason)
-      .join(" ");
+      .join(" · ");
   const tempo = tempoDeltaText(tokens.tempo);
   const marks: Array<{ id: string; text: string; words: string }> = [];
   if (tokens.key) marks.push({ id: "key", text: tokens.key, words: sentence("key") });
@@ -209,10 +214,15 @@ export function NextTrackPicks({
         });
       }
       const everyReadFailed = candidates.length === 0 && attempted > 0 && failed === attempted;
-      setResolved({ trackId, status: everyReadFailed ? "error" : "ready", candidates });
+      setResolved({
+        trackId,
+        status: everyReadFailed ? "error" : "ready",
+        candidates,
+        allExcluded: suggestions.length > 0 && eligible.length === 0,
+      });
     })().catch((cause: unknown) => {
       reportUnexpected(cause);
-      if (current) setResolved({ trackId, status: "error", candidates: [] });
+      if (current) setResolved({ trackId, status: "error", candidates: [], allExcluded: false });
     });
     return () => {
       current = false;
@@ -253,7 +263,11 @@ export function NextTrackPicks({
     // Quiet and the height of the list, so the panel does not jump when the rows arrive.
     body = <div className="cp-next-picks__placeholder" aria-hidden />;
   } else if (shown.candidates.length === 0) {
-    body = <p className="cp-track-detail__none">No close matches in your library.</p>;
+    body = (
+      <p className="cp-track-detail__none">
+        {shown.allExcluded ? "Every close match is already queued or played." : "No close matches in your library."}
+      </p>
+    );
   } else {
     body = (
       <ul className="cp-next-picks__list">
@@ -270,7 +284,7 @@ export function NextTrackPicks({
               <span className="cp-next-picks__title">{row.title}</span>
               <span className="cp-next-picks__facts">
                 <KeyChip value={row.effective_key} />
-                <span className="cp-data">{formatBpm(row.bpm)}</span>
+                <span className="cp-data">{formatBpm(effectiveBpm(row))}</span>
                 <Marks suggestion={suggestion} />
               </span>
             </span>

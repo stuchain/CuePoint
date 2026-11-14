@@ -10,8 +10,11 @@ import type { LibraryTrackRow, SimilarTrack } from "../../api/cuepointBridge.typ
 /** How many suggestions the section shows. */
 export const NEXT_PICKS_COUNT = 3;
 
-/** How many the engine is asked for, so dropping a few still leaves three. */
-export const NEXT_PICKS_ASK = 12;
+/** How many the engine is asked for (it allows 200), so dropping some still leaves three. */
+export const NEXT_PICKS_ASK = 50;
+
+/** How many tracks after the current one count as "already queued": the next ten, not the whole queue. */
+export const NEXT_PICKS_UPCOMING = 10;
 
 export interface NextPickExclusions {
   shownId: number | null;
@@ -38,8 +41,17 @@ export function eligibleNextTracks(suggestions: readonly SimilarTrack[], exclusi
   return eligible;
 }
 
-/** The engine can rank a track only by its key or its tempo; with neither it has nothing to go on. */
-export function hasKeyOrBpm(track: Pick<LibraryTrackRow, "effective_key" | "bpm">): boolean {
+/** The BPM to show and to rank by: the effective one (a typed or tag value), else Rekordbox's. */
+export function effectiveBpm(track: Pick<LibraryTrackRow, "bpm" | "effective_bpm">): number | null {
+  return track.effective_bpm ?? track.bpm ?? null;
+}
+
+/**
+ * The section needs a key or a BPM: its picks are about mixing, and a track with neither has
+ * nothing to mix by.
+ */
+export function hasKeyOrBpm(track: Pick<LibraryTrackRow, "effective_key" | "bpm" | "effective_bpm">): boolean {
   const key = (track.effective_key ?? "").trim();
-  return key !== "" || (track.bpm != null && track.bpm > 0);
+  const bpm = effectiveBpm(track);
+  return key !== "" || (bpm != null && bpm > 0);
 }

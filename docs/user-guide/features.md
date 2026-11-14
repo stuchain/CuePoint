@@ -102,8 +102,9 @@ looking at: the key close on the wheel, a near tempo, then genre and label. Each
 row shows its key, BPM and short marks for why it was suggested, and a **Play
 next** button that puts it after the current track without interrupting it.
 Double-click a row to play it now; the rest of the queue stays. Tracks coming up
-in the queue (the next 50), the one playing and any played this session are left
-out. A track with neither a key nor a BPM has nothing to go on.
+in the queue (the next 10), the one playing and any played this session are left
+out. The section needs a key or a BPM on the track you are looking at, because
+its picks are about mixing.
 
 ## What CuePoint never does
 

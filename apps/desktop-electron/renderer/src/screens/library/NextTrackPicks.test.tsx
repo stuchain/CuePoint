@@ -197,11 +197,11 @@ beforeEach(() => {
 });
 
 describe("Plays well next", () => {
-  it("shows three rows with the key, BPM and reason marks, asking the engine for 12", async () => {
+  it("shows three rows with the key, BPM and reason marks, asking the engine for 50", async () => {
     const { getSimilarTracks } = install({ suggestions: [2, 3, 4, 5, 6].map(suggestion) });
     render(<NextTrackPicks track={row(1)} />);
     expect(await screen.findByText("Track 2")).toBeInTheDocument();
-    expect(getSimilarTracks).toHaveBeenCalledWith({ track_id: 1, limit: 12 });
+    expect(getSimilarTracks).toHaveBeenCalledWith({ track_id: 1, limit: 50 });
     expect(screen.getByRole("heading", { name: "Plays well next" })).toBeInTheDocument();
     expect(screen.getByText("from your library")).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
@@ -223,9 +223,9 @@ describe("Plays well next", () => {
     expect(screen.getByText("Track 6")).toBeInTheDocument();
   });
 
-  it("excludes only the upcoming 50 of a queue larger than the pick list", async () => {
-    // Behind the playing track: 2. Upcoming: 100..149. Past the 50: 3. A view queued by a double-click.
-    const upcoming = Array.from({ length: 50 }, (_, i) => 100 + i);
+  it("excludes only the upcoming 10 of a queue larger than the pick list", async () => {
+    // Behind the playing track: 2. Upcoming: 100..109. Past the 10: 3. A view queued by a double-click.
+    const upcoming = Array.from({ length: 10 }, (_, i) => 100 + i);
     const { queueWindow } = install({
       suggestions: [2, 3, 100, 4, 5, 6].map(suggestion),
       before: [2],
@@ -234,12 +234,12 @@ describe("Plays well next", () => {
     });
     render(<NextTrackPicks track={row(1)} />);
     expect(await screen.findByText("Track 2")).toBeInTheDocument();
-    // 100 is upcoming and excluded; 2 (already played through) and 3, 4 (beyond 50) are offered.
+    // 100 is upcoming and excluded; 2 (already played through) and 3, 4 (beyond 10) are offered.
     expect(screen.getByText("Track 3")).toBeInTheDocument();
     expect(screen.getByText("Track 4")).toBeInTheDocument();
     expect(screen.queryByText("Track 100")).not.toBeInTheDocument();
-    expect(queueWindow).toHaveBeenCalledWith(2, 50);
-    expect(queueWindow.mock.calls.every(([, limit]) => limit <= 50)).toBe(true);
+    expect(queueWindow).toHaveBeenCalledWith(2, 10);
+    expect(queueWindow.mock.calls.every(([, limit]) => limit <= 10)).toBe(true);
   });
 
   it("skips tracks played this session", async () => {
@@ -345,7 +345,7 @@ describe("Plays well next", () => {
     await screen.findByText("Track 2");
     rerender(<NextTrackPicks track={row(9)} />);
     await waitFor(() => expect(getSimilarTracks).toHaveBeenCalledTimes(2));
-    expect(getSimilarTracks).toHaveBeenLastCalledWith({ track_id: 9, limit: 12 });
+    expect(getSimilarTracks).toHaveBeenLastCalledWith({ track_id: 9, limit: 50 });
   });
 
   it("says so when the track has neither a key nor a BPM, and does not ask", () => {
@@ -355,11 +355,44 @@ describe("Plays well next", () => {
     expect(getSimilarTracks).not.toHaveBeenCalled();
   });
 
-  it("says so when no close matches remain", async () => {
+  it("says every match is queued or played when the only one is queued", async () => {
     install({ suggestions: [2].map(suggestion), queued: [2] });
     render(<NextTrackPicks track={row(1)} />);
-    expect(await screen.findByText("No close matches in your library.")).toBeInTheDocument();
+    expect(await screen.findByText("Every close match is already queued or played.")).toBeInTheDocument();
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("says every match is queued or played, not that nothing matches, when all candidates were excluded", async () => {
+    markPlayed(2);
+    install({ suggestions: [2, 3].map(suggestion), queued: [3] });
+    render(<NextTrackPicks track={row(1)} />);
+    expect(await screen.findByText("Every close match is already queued or played.")).toBeInTheDocument();
+    expect(screen.queryByText("No close matches in your library.")).not.toBeInTheDocument();
+  });
+
+  it("says no close matches when the engine had none", async () => {
+    install({ suggestions: [] });
+    render(<NextTrackPicks track={row(1)} />);
+    expect(await screen.findByText("No close matches in your library.")).toBeInTheDocument();
+  });
+
+  it("uses the effective BPM for the gate and for the BPM shown", async () => {
+    const { getLibraryTrack } = install({ suggestions: [2].map(suggestion) });
+    getLibraryTrack.mockImplementation(async ({ trackId }: { trackId: number }) => ({
+      track: row(trackId, { bpm: 128, effective_bpm: 130 }),
+    }) as LibraryTrackDetail);
+    render(<NextTrackPicks track={row(1, { effective_key: null, bpm: null, effective_bpm: 126 })} />);
+    expect(await screen.findByText("Track 2")).toBeInTheDocument();
+    expect(within(screen.getAllByRole("listitem")[0]).getByText("130")).toBeInTheDocument();
+    expect(screen.queryByText("Needs a key or BPM to suggest a next track.")).not.toBeInTheDocument();
+  });
+
+  it("joins the sentences of one mark with a middle dot", async () => {
+    install({ suggestions: [{ track_id: 2, score: 9, reasons: [keyStep, { ...keyStep, detail: "same" } as SimilarReason] }] });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const mark = within(screen.getAllByRole("listitem")[0]).getAllByRole("img")[0];
+    expect(mark.getAttribute("aria-label")).toContain(" · ");
   });
 
   it("says it could not load when every row read fails, not that nothing matches", async () => {
