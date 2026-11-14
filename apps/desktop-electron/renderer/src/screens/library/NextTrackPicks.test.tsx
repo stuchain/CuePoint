@@ -315,7 +315,7 @@ describe("Plays well next", () => {
     await screen.findByText("Track 2");
     const button = screen.getAllByRole("button", { name: /Play next/ })[0];
     fireEvent.click(button);
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(button);
     await act(async () => release());
     expect(playNext).toHaveBeenCalledTimes(1);
@@ -332,7 +332,7 @@ describe("Plays well next", () => {
     await act(async () => {});
     const items = screen.getAllByRole("listitem");
     expect(items.map((item) => within(item).getByText(/^Track \d$/).textContent)).toEqual(["Track 2", "Track 3", "Track 4"]);
-    expect(within(items[0]).getByRole("button", { name: /Queued/ })).toBeDisabled();
+    expect(within(items[0]).getByRole("button", { name: /Queued/ })).toHaveAttribute("aria-disabled", "true");
     expect(within(items[1]).getByRole("button", { name: /Play next/ })).toBeEnabled();
   });
 
@@ -351,7 +351,7 @@ describe("Plays well next", () => {
     expect(skipNext).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps keyboard focus in the section after Play next", async () => {
+  it("keeps keyboard focus on the pressed button after Play next, now Queued", async () => {
     const { playNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
     render(<NextTrackPicks track={row(1)} />);
     await screen.findByText("Track 2");
@@ -360,10 +360,10 @@ describe("Plays well next", () => {
     fireEvent.click(buttons[0]);
     await waitFor(() => expect(playNext).toHaveBeenCalledTimes(1));
     await act(async () => {});
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Play next: Track 3" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Queued: Track 2" }));
   });
 
-  it("moves focus to the heading when no pick is left to press", async () => {
+  it("keeps focus on the only pick's button after Play next", async () => {
     install({ suggestions: [2].map(suggestion) });
     render(<NextTrackPicks track={row(1)} />);
     await screen.findByText("Track 2");
@@ -371,16 +371,16 @@ describe("Plays well next", () => {
     button.focus();
     fireEvent.click(button);
     await act(async () => {});
-    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Plays well next" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Queued: Track 2" }));
   });
 
-  it("plays a focused row now with Enter", async () => {
+  it("plays a row now from its title button", async () => {
     const { playNext, skipNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
     render(<NextTrackPicks track={row(1)} />);
     await screen.findByText("Track 2");
-    const item = screen.getAllByRole("listitem")[1];
-    expect(item).toHaveAttribute("tabindex", "0");
-    fireEvent.keyDown(item, { key: "Enter" });
+    const play = screen.getByRole("button", { name: "Play Track 3 now" });
+    expect(screen.getAllByRole("listitem")[1]).not.toHaveAttribute("tabindex");
+    await userEvent.setup().click(play);
     await waitFor(() => expect(skipNext).toHaveBeenCalledTimes(1));
     expect((playNext.mock.calls[0][0] as Array<{ trackId: number }>)[0].trackId).toBe(3);
   });

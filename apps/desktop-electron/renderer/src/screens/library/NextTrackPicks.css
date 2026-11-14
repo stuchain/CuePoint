@@ -9,6 +9,8 @@
   flex-direction: column;
   gap: var(--space-md);
   min-width: 0;
+  /* The rows lay out by the section's own width (in em, so by text size too), not the window's. */
+  container-type: inline-size;
 }
 
 .cp-next-picks__head {
@@ -28,12 +30,18 @@
   font-family: var(--font-control);
   font-size: var(--font-size-section);
   font-weight: var(--control-font-weight);
+  white-space: nowrap;
+  flex: none;
 }
 
+/* The meta gives way first: it ends in an ellipsis rather than wrapping inside the heading. */
 .cp-next-picks__meta {
+  min-width: 0;
+  overflow: hidden;
   color: var(--fg-muted);
   font-family: var(--font-meta);
   font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -52,7 +60,8 @@
  */
 .cp-next-picks__row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  /* The title keeps room for at least 12 characters: past that the layout below takes over. */
+  grid-template-columns: auto minmax(12ch, 1fr) auto;
   grid-template-areas:
     "cover title button"
     "cover facts facts";
@@ -94,12 +103,38 @@
   display: contents;
 }
 
+/* The title is the row's "Play now" button: plain text to look at, a real button to reach. */
 .cp-next-picks__title {
   grid-area: title;
   min-width: 0;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.cp-next-picks__title:hover {
+  text-decoration: underline;
+}
+
+/* Both words sit in one cell, so the button is as wide as the wider whichever shows. */
+.cp-next-picks__label {
+  display: inline-grid;
+}
+
+.cp-next-picks__label > * {
+  grid-area: 1 / 1;
+}
+
+.cp-next-picks__label > [data-shown="false"] {
+  visibility: hidden;
 }
 
 .cp-next-picks__facts {
@@ -128,6 +163,28 @@
  */
 .cp-next-picks__row--ghost > :not(.cp-next-picks__cover) {
   visibility: hidden;
+}
+
+/*
+ * Narrow (under 20 em wide: a 300 px panel at 200% text): the cover goes first, then Play next
+ * drops under the facts, so the title has the whole width and never shrinks to nothing.
+ */
+@container (max-width: 20em) {
+  .cp-next-picks__row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "title"
+      "facts"
+      "button";
+  }
+
+  .cp-next-picks__cover {
+    display: none;
+  }
+
+  .cp-next-picks__row > .cp-btn {
+    justify-self: start;
+  }
 }
 
 /* The focus ring on a row or the heading is the one in index.css. */

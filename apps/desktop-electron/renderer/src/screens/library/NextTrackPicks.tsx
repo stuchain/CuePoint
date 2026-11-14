@@ -10,7 +10,7 @@
  * hover-only: Play next is a button and a double-click plays the row now (inserted next, then
  * skipped to, so the queue is kept).
  */
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
 
 import type { LibraryTrackRow, PlayerSnapshot, SimilarTrack } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
@@ -56,20 +56,39 @@ interface Candidate {
 }
 
 type Suggested =
-  | { trackId: number; status: "ready"; suggestions: SimilarTrack[] }
-  | { trackId: number; status: "error" };
+  | { trackId: number; seed: string; status: "ready"; suggestions: SimilarTrack[] }
+  | { trackId: number; seed: string; status: "error" };
+
+/**
+ * Everything the similarity request depends on for the shown track: its id and the values the
+ * engine ranks by (key, BPM, effective ones, genre, label, artist). An edit to any of them
+ * is a new seed, so a cached answer for the old values is never used.
+ */
+function seedKey(track: LibraryTrackRow): string {
+  return [
+    track.id,
+    track.key,
+    track.effective_key,
+    track.bpm,
+    track.effective_bpm,
+    track.genre,
+    track.label,
+    track.artist,
+    NEXT_PICKS_ASK,
+  ].join("|");
+}
 
 /** `allExcluded`: the engine had matches and every one was queued, playing or played. */
 type Resolved = { trackId: number; status: "ready" | "error"; candidates: Candidate[]; allExcluded: boolean };
 
 type RowRead = { status: "row"; row: LibraryTrackRow } | { status: "gone" } | { status: "failed" };
 
-async function suggest(trackId: number): Promise<Suggested> {
+async function suggest(trackId: number, seed: string): Promise<Suggested> {
   const bridge = window.cuepoint;
-  if (!bridge?.getSimilarTracks || !bridge.getLibraryTrack) return { trackId, status: "error" };
+  if (!bridge?.getSimilarTracks || !bridge.getLibraryTrack) return { trackId, seed, status: "error" };
   const answer = await bridge.getSimilarTracks({ track_id: trackId, limit: NEXT_PICKS_ASK });
-  if (answer.refusal) return { trackId, status: "error" };
-  return { trackId, status: "ready", suggestions: answer.value.suggestions };
+  if (answer.refusal) return { trackId, seed, status: "error" };
+  return { trackId, seed, status: "ready", suggestions: answer.value.suggestions };
 }
 
 async function readRow(id: number): Promise<RowRead> {
@@ -85,6 +104,12 @@ async function readRow(id: number): Promise<RowRead> {
 
 /** How long the shown track must stay shown before the engine is asked about it. */
 const SUGGEST_DELAY_MS = 200;
+
+/** Pointer entry re-reads the queue at most this often. */
+const POINTER_REREAD_MS = 1000;
+
+/** A second press of Play now on the same pick inside this window is the same gesture, not a new skip. */
+const PLAY_NOW_COOLDOWN_MS = 800;
 
 /** The engine being down, or saying no, is the user's situation and not a bug; only the rest is reported. */
 function reportIfUnexpected(cause: unknown): void {
@@ -180,6 +205,7 @@ export function NextTrackPicks({
   const trackId = track.id;
   const titleId = useId();
   const canRank = hasKeyOrBpm(track);
+  const seed = seedKey(track);
   const available = Boolean(window.cuepoint?.getSimilarTracks && window.cuepoint?.getLibraryTrack);
   const [suggested, setSuggested] = useState<Suggested | null>(null);
   const [resolved, setResolved] = useState<Resolved | null>(null);
@@ -196,43 +222,71 @@ export function NextTrackPicks({
   const keptIds = useMemo(() => Object.keys(marks).map(Number), [marks]);
   // Ids with a request made, held synchronously: a second click of the same gesture arrives
   // before any re-render.
-  const asked = useRef({ trackId, ids: new Set<number>() });
-  if (asked.current.trackId !== trackId) asked.current = { trackId, ids: new Set<number>() };
+  const asked = useRef({ trackId, ids: new Set<number>(), queued: new Set<number>(), playedAt: new Map<number, number>() });
+  if (asked.current.trackId !== trackId) {
+    asked.current = { trackId, ids: new Set<number>(), queued: new Set<number>(), playedAt: new Map<number, number>() };
+  }
   const { ids: upcomingIds, refresh: rereadUpcoming } = useUpcomingIds(active);
+  const upcomingRef = useRef(upcomingIds);
+  upcomingRef.current = upcomingIds;
   const playingId = usePlayingTrackId();
   const played = usePlayedTracks();
   // Rows read so far, by track id, for the life of this mount.
   const rows = useRef(new Map<number, Promise<RowRead>>());
   // The last seed's answer, so a seed asked about once is not asked about again in this mount.
   const answered = useRef<Extract<Suggested, { status: "ready" }> | null>(null);
+  // The request in flight, so hiding and showing the tab before its answer does not send another.
+  const inflight = useRef<{ seed: string; promise: Promise<Suggested> } | null>(null);
 
   useEffect(() => {
     if (trackId == null || !canRank || !available || !active) return;
     // The same seed again (the tab shown again, a kept page): its answer is already here.
-    if (answered.current?.trackId === trackId) {
+    if (answered.current?.seed === seed) {
       setSuggested(answered.current);
       return;
     }
     let current = true;
     // A track passed over on the way to another is never asked about.
     const timer = setTimeout(() => {
-      void suggest(trackId)
+      let flight = inflight.current;
+      if (flight?.seed !== seed) {
+        const promise = suggest(trackId, seed);
+        const made = { seed, promise };
+        flight = made;
+        inflight.current = made;
+        const done = () => {
+          if (inflight.current === made) inflight.current = null;
+        };
+        promise.then(
+          (answer) => {
+            if (answer.status === "ready") answered.current = answer;
+            done();
+          },
+          done,
+        );
+      }
+      flight.promise
         .then((answer) => {
-          if (answer.status === "ready") answered.current = answer;
           if (current) setSuggested(answer);
         })
         .catch((cause: unknown) => {
           reportIfUnexpected(cause);
-          if (current) setSuggested({ trackId, status: "error" });
+          if (current) setSuggested({ trackId, seed, status: "error" });
         });
     }, SUGGEST_DELAY_MS);
     return () => {
       current = false;
       clearTimeout(timer);
     };
-  }, [trackId, canRank, available, active]);
+  }, [trackId, seed, canRank, available, active]);
 
-  const suggestions = suggested && suggested.trackId === trackId && suggested.status === "ready" ? suggested.suggestions : null;
+  // Rows are read again when the tab is shown again or the seed changes, so a track deleted or
+  // edited meanwhile is not kept playable from here.
+  useEffect(() => {
+    if (active) rows.current.clear();
+  }, [active, seed]);
+
+  const suggestions = suggested && suggested.seed === seed && suggested.status === "ready" ? suggested.suggestions : null;
 
   useEffect(() => {
     if (trackId == null || suggestions === null || upcomingIds === null) return;
@@ -252,7 +306,8 @@ export function NextTrackPicks({
         rows.current.set(id, read);
         // A failed read is tried again next time rather than remembered.
         void read.then((answer) => {
-          if (answer.status === "failed") rows.current.delete(id);
+          // Only a row that was read is remembered: a failed or missing one is read again.
+          if (answer.status !== "row" && rows.current.get(id) === read) rows.current.delete(id);
         });
       }
       return read;
@@ -290,7 +345,7 @@ export function NextTrackPicks({
   }, [trackId, suggestions, upcomingIds, playingId, played, keptIds]);
 
   const shown = resolved && resolved.trackId === trackId ? resolved : null;
-  const failedToSuggest = suggested?.trackId === trackId && suggested.status === "error";
+  const failedToSuggest = suggested?.seed === seed && suggested.status === "error";
 
   const mark = useCallback(
     (id: number, status: "pending" | "queued" | null) => {
@@ -319,6 +374,7 @@ export function NextTrackPicks({
         onMessage?.(couldNot("queue that track to play next"));
         return;
       }
+      asked.current.queued.add(id);
       mark(id, "queued");
       onMessage?.(queuedMessage(1, "next"));
     },
@@ -331,35 +387,112 @@ export function NextTrackPicks({
       // calls: the player has no single "insert and jump" action to use.
       const player = window.cuepoint?.player;
       const id = row.id;
-      if (!player?.playNext || !player.next || id == null || asked.current.ids.has(id)) return;
-      asked.current.ids.add(id);
+      if (!player?.playNext || !player.next || id == null) return;
+      const state = asked.current;
+      // One gesture (two clicks, a held key) is one skip, however long the calls take.
+      const last = state.playedAt.get(id);
+      if (last === Infinity || (last !== undefined && Date.now() - last < PLAY_NOW_COOLDOWN_MS)) return;
+      const skip = async () => {
+        state.playedAt.set(id, Infinity);
+        try {
+          await player.next!();
+        } catch {
+          onMessage?.(couldNot("play that track"));
+        } finally {
+          state.playedAt.set(id, Date.now());
+        }
+      };
+      if (state.queued.has(id)) {
+        // Already queued from here: when it is the very next track, skipping to it is all that is left.
+        if (upcomingRef.current?.[0] === id) {
+          await skip();
+          return;
+        }
+        // It has moved or gone since: put it next again.
+        state.queued.delete(id);
+        state.ids.delete(id);
+      }
+      if (state.ids.has(id)) return;
+      state.ids.add(id);
+      state.playedAt.set(id, Infinity);
       mark(id, "pending");
       try {
         await player.playNext([toQueueItem(row)]);
       } catch {
-        asked.current.ids.delete(id);
+        state.ids.delete(id);
+        state.playedAt.delete(id);
         mark(id, null);
         onMessage?.(couldNot("play that track"));
         return;
       }
+      state.queued.add(id);
       mark(id, "queued");
-      try {
-        await player.next();
-      } catch {
-        onMessage?.(couldNot("play that track"));
-      }
+      await skip();
     },
     [mark, onMessage],
   );
 
-  /** Keep keyboard focus in the section when the pressed button is about to be disabled. */
-  const keepFocus = (pressed: HTMLElement) => {
-    if (document.activeElement !== pressed) return;
-    const buttons = Array.from(sectionRef.current?.querySelectorAll<HTMLButtonElement>(".cp-next-picks__row > .cp-btn") ?? []);
-    const at = buttons.indexOf(pressed as HTMLButtonElement);
-    const open = (button: HTMLButtonElement) => button !== pressed && !button.disabled;
-    const target = buttons.slice(at + 1).find(open) ?? buttons.slice(0, at).reverse().find(open);
-    (target ?? headingRef.current)?.focus();
+  // The row that has focus, so that when a re-read drops it the focus can go to its neighbour.
+  const lastFocus = useRef<{ el: HTMLElement; index: number; kind: string } | null>(null);
+  const restoring = useRef(false);
+  const lastPointerRead = useRef(0);
+
+  useLayoutEffect(() => {
+    const last = lastFocus.current;
+    if (!last || last.el.isConnected) return;
+    lastFocus.current = null;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    const section = sectionRef.current;
+    if (!section) return;
+    const rowsNow = Array.from(section.querySelectorAll<HTMLElement>("li[data-pick-id]"));
+    const near = rowsNow[Math.min(last.index, rowsNow.length - 1)];
+    const target = near?.querySelector<HTMLElement>(`[data-kind="${last.kind}"]`) ?? near?.querySelector<HTMLElement>("[data-kind]");
+    restoring.current = true;
+    try {
+      (target ?? headingRef.current)?.focus();
+    } finally {
+      restoring.current = false;
+    }
+  });
+
+  const onSectionFocus = (event: FocusEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    const item = target.closest<HTMLElement>("li[data-pick-id]");
+    if (item && target.dataset.kind) {
+      const index = Array.from(item.parentElement?.children ?? []).indexOf(item);
+      lastFocus.current = { el: target, index, kind: target.dataset.kind };
+    } else {
+      lastFocus.current = null;
+    }
+    // The queue is read again only as focus comes in from outside, not on every move within.
+    if (restoring.current || sectionRef.current?.contains(event.relatedTarget as Node | null)) return;
+    rereadUpcoming();
+  };
+
+  const onSectionBlur = (event: FocusEvent<HTMLElement>) => {
+    const el = event.target as HTMLElement;
+    if (event.relatedTarget) {
+      lastFocus.current = null;
+      return;
+    }
+    // Focus went nowhere: either the element was removed (keep it, to restore) or the person clicked away.
+    window.setTimeout(() => {
+      if (lastFocus.current?.el === el && el.isConnected) lastFocus.current = null;
+    }, 0);
+  };
+
+  const onSectionPointerEnter = () => {
+    const now = Date.now();
+    if (now - lastPointerRead.current < POINTER_REREAD_MS) return;
+    lastPointerRead.current = now;
+    rereadUpcoming();
+  };
+
+  /** A held Enter or Space repeats keydown; on a button each repeat would press it again. */
+  const onSectionKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (!event.repeat || (event.key !== "Enter" && event.key !== " ")) return;
+    if ((event.target as Element).closest("button")) event.preventDefault();
   };
 
   const onRowDoubleClick = (event: MouseEvent<HTMLElement>, row: LibraryTrackRow) => {
@@ -368,15 +501,10 @@ export function NextTrackPicks({
     void playNow(row);
   };
 
-  const onRowKeyDown = (event: KeyboardEvent<HTMLElement>, row: LibraryTrackRow) => {
-    if (event.key !== "Enter" || event.target !== event.currentTarget) return;
-    event.preventDefault();
-    void playNow(row);
-  };
-
   if (trackId == null || !available) return null;
 
   let body;
+  const loading = canRank && !(failedToSuggest || shown?.status === "error") && shown === null;
   if (!canRank) {
     body = <p className="cp-track-detail__none">Needs a key or BPM to suggest a next track.</p>;
   } else if (failedToSuggest || shown?.status === "error") {
@@ -412,16 +540,22 @@ export function NextTrackPicks({
           <li
             key={suggestion.track_id}
             className="cp-next-picks__row"
-            tabIndex={0}
-            aria-keyshortcuts="Enter"
+            data-pick-id={suggestion.track_id}
             onDoubleClick={(event) => onRowDoubleClick(event, row)}
-            onKeyDown={(event) => onRowKeyDown(event, row)}
           >
             <span className="cp-next-picks__cover">
               <RowArtwork row={row} />
             </span>
             <span className="cp-next-picks__text">
-              <span className="cp-next-picks__title">{row.title}</span>
+              <button
+                type="button"
+                className="cp-next-picks__title"
+                data-kind="play"
+                aria-label={`Play ${row.title} now`}
+                onClick={() => void playNow(row)}
+              >
+                {row.title}
+              </button>
               <span className="cp-next-picks__facts">
                 <KeyChip value={row.effective_key} />
                 <span className="cp-data">{formatBpm(effectiveBpm(row))}</span>
@@ -431,14 +565,19 @@ export function NextTrackPicks({
             <Button
               variant="secondary"
               size="sm"
-              disabled={!canQueue || marks[suggestion.track_id] !== undefined}
+              data-kind="queue"
+              disabled={!canQueue}
+              // Not `disabled` once pressed: a disabled button drops keyboard focus, and a held or
+              // doubled key would land on the next row. A second press does nothing (`asked`).
+              aria-disabled={marks[suggestion.track_id] !== undefined ? true : undefined}
               aria-label={`${marks[suggestion.track_id] === "queued" ? "Queued" : "Play next"}: ${row.title}`}
-              onClick={(event) => {
-                keepFocus(event.currentTarget);
-                void queueNext(row);
-              }}
+              onClick={() => void queueNext(row)}
             >
-              {marks[suggestion.track_id] === "queued" ? "Queued" : "Play next"}
+              {/* Both words take up space, so the title's width does not change as the word flips. */}
+              <span className="cp-next-picks__label">
+                <span aria-hidden data-shown={marks[suggestion.track_id] !== "queued"}>Play next</span>
+                <span aria-hidden data-shown={marks[suggestion.track_id] === "queued"}>Queued</span>
+              </span>
             </Button>
           </li>
         ))}
@@ -453,8 +592,11 @@ export function NextTrackPicks({
       aria-labelledby={titleId}
       // The queue panel can reorder what is upcoming without the player pushing anything new, so
       // the upcoming tracks are read again as the person comes to the section to use it.
-      onPointerEnter={rereadUpcoming}
-      onFocus={rereadUpcoming}
+      aria-busy={loading || undefined}
+      onPointerEnter={onSectionPointerEnter}
+      onFocus={onSectionFocus}
+      onBlur={onSectionBlur}
+      onKeyDown={onSectionKeyDown}
     >
       <div className="cp-next-picks__head">
         <h3 id={titleId} ref={headingRef} tabIndex={-1} className="cp-next-picks__heading">
@@ -462,6 +604,9 @@ export function NextTrackPicks({
         </h3>
         <span className="cp-next-picks__meta">from your library</span>
       </div>
+      <span role="status" className="cp-visually-hidden">
+        {loading ? "Finding picks…" : ""}
+      </span>
       {body}
     </section>
   );
