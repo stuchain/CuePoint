@@ -126,6 +126,8 @@
 /* Both words sit in one cell, so the button is as wide as the wider whichever shows. */
 .cp-next-picks__label {
   display: inline-grid;
+  /* "Play next" stays one line; a wrapped label doubled the row's height in the real panel. */
+  white-space: nowrap;
 }
 
 .cp-next-picks__label > * {

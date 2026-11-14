@@ -42,6 +42,7 @@ describe("Plays well next layout", () => {
 
   it("reserves the wider button label and ellipsizes the heading meta", () => {
     expect(rule(".cp-next-picks__label").get("display")).toBe("inline-grid");
+    expect(rule(".cp-next-picks__label").get("white-space")).toBe("nowrap");
     expect(rule(".cp-next-picks__label > *").get("grid-area")).toBe("1 / 1");
     expect(rule(".cp-next-picks__label > [data-shown=\"false\"]").get("visibility")).toBe("hidden");
     const meta = rule(".cp-next-picks__meta");
