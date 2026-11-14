@@ -645,3 +645,148 @@ class TestThePicturesBeatportRecorded:
         )
         assert parse_catalog_label(self.load("label.json")).image_url == host + "l.jpg"
         assert parse_catalog_chart(self.load("chart.json")).image_url == host + "c.jpg"
+
+
+class TestOnViewPictureLimits:
+    """The lookups made when somebody looks at a card or a track (no run asks for them)."""
+
+    @pytest.fixture(autouse=True)
+    def fresh_process_state(self, monkeypatch):
+        from cuepoint.services import discovery_service
+
+        monkeypatch.setattr(discovery_service, "_ART_MISSES", set())
+        monkeypatch.setattr(discovery_service, "_COVER_MISSES", set())
+        monkeypatch.setattr(discovery_service, "_RATE_LIMITED_UNTIL", [0.0])
+
+    @pytest.fixture
+    def run_of(self, db, library, world):
+        world.images[("artist", MARA[0])] = ART % "mara"
+        world.images[("label", NIGHTFALL[0])] = ART % "label"
+        world.no_credit_images = {("artist", MARA[0]), ("label", NIGHTFALL[0])}
+
+        def start(**kwargs):
+            service = make(db, world, **kwargs)
+            run = service.run(
+                request(service, artists=["Mara Veil"], labels=["Nightfall Audio"])
+            )
+            return service, run
+
+        return start
+
+    @staticmethod
+    def answer_429(world, retry_after=None):
+        world.failures.append(
+            lambda path, params, n: (429, retry_after) if "catalog/" in path else None
+        )
+
+    def test_a_card_is_asked_for_with_the_same_budget_as_a_cover(
+        self, world, run_of, monkeypatch
+    ):
+        service, run = run_of()
+        seen = []
+        original = world.get
+
+        def spy(path, params=None, **options):
+            seen.append((path.strip("/"), options))
+            return original(path, params, **options)
+
+        monkeypatch.setattr(world, "get", spy)
+        service.group_art_url(run.id, GROUP_ARTIST, "mara veil")
+        service.group_art_url(run.id, GROUP_LABEL, "nightfall audio")
+
+        expected = {
+            "timeout": 8.0,
+            "retry_on_timeout": False,
+            "wait_on_rate_limit": False,
+        }
+        assert [path for path, _ in seen] == [
+            f"catalog/artists/{MARA[0]}",
+            f"catalog/labels/{NIGHTFALL[0]}",
+        ]
+        assert all(options == expected for _, options in seen)
+
+    def test_a_rate_limit_pauses_every_lookup_until_it_says_and_nothing_is_missed(
+        self, db, world, run_of
+    ):
+        now = [1000.0]
+        service, run = run_of(monotonic=lambda: now[0])
+        track = TestTrackCovers().rows(db, run.id)[0].track.beatport_track_id
+        TestTrackCovers().forget_covers(db)
+        self.answer_429(world, retry_after=30)
+
+        assert service.group_art_url(run.id, GROUP_ARTIST, "mara veil") is None
+        asked = len(world.requests)
+        # Paused: neither a card nor a track's cover is asked for.
+        assert service.group_art_url(run.id, GROUP_LABEL, "nightfall audio") is None
+        assert service.cached_track_art_url(track) is None
+        assert len(world.requests) == asked
+
+        # Past the Retry-After the same card is asked again, and is answered.
+        now[0] += 31
+        world.failures.clear()
+        assert service.group_art_url(run.id, GROUP_ARTIST, "mara veil") == ART % "mara"
+
+    def test_a_rate_limit_that_names_no_wait_pauses_for_a_minute(self, world, run_of):
+        now = [0.0]
+        service, run = run_of(monotonic=lambda: now[0])
+        self.answer_429(world)
+        service.group_art_url(run.id, GROUP_ARTIST, "mara veil")
+        world.failures.clear()
+        now[0] = 59
+        assert service.group_art_url(run.id, GROUP_LABEL, "nightfall audio") is None
+        now[0] = 61
+        assert (
+            service.group_art_url(run.id, GROUP_LABEL, "nightfall audio")
+            == ART % "label"
+        )
+
+    def test_a_cover_rate_limit_pauses_the_cards_too(self, db, world, run_of):
+        now = [0.0]
+        service, run = run_of(monotonic=lambda: now[0])
+        track = TestTrackCovers().rows(db, run.id)[0].track.beatport_track_id
+        TestTrackCovers().forget_covers(db)
+        self.answer_429(world, retry_after=20)
+        assert service.cached_track_art_url(track) is None
+        world.failures.clear()
+        asked = len(world.requests)
+        assert service.group_art_url(run.id, GROUP_ARTIST, "mara veil") is None
+        assert len(world.requests) == asked
+        # The track was not recorded as a miss either: it is asked again once the pause ends.
+        now[0] = 21
+        before = len(world.paths(f"catalog/tracks/{track}"))
+        service.cached_track_art_url(track)
+        assert len(world.paths(f"catalog/tracks/{track}")) == before + 1
+
+    def test_a_card_with_no_picture_is_not_asked_again_after_a_restart(
+        self, db, world, run_of, monkeypatch
+    ):
+        from cuepoint.services import discovery_service
+
+        world.images.pop(("label", NIGHTFALL[0]))
+        service, run = run_of()
+        assert service.group_art_url(run.id, GROUP_LABEL, "nightfall audio") is None
+        assert DiscoveryRepository(db).groups_art_read(run.id) == {
+            (GROUP_LABEL, "nightfall audio")
+        }
+        asked = len(world.paths(f"catalog/labels/{NIGHTFALL[0]}"))
+        assert asked == 1
+
+        # A new process: nothing remembered in memory, a new service over the same library.
+        monkeypatch.setattr(discovery_service, "_ART_MISSES", set())
+        restarted = make(db, world)
+        assert restarted.group_art_url(run.id, GROUP_LABEL, "nightfall audio") is None
+        assert len(world.paths(f"catalog/labels/{NIGHTFALL[0]}")) == asked
+        sent = {
+            (c.group.kind, c.group.key): c.art_pending
+            for c in restarted.run_groups(run.id)
+        }
+        assert sent[(GROUP_LABEL, "nightfall audio")] is False
+        assert sent[(GROUP_ARTIST, "mara veil")] is True
+
+    def test_a_failed_lookup_is_not_recorded_as_asked(self, db, world, run_of):
+        service, run = run_of()
+        world.failures.append(
+            lambda path, params, n: 500 if "catalog/labels/" in path else None
+        )
+        assert service.group_art_url(run.id, GROUP_LABEL, "nightfall audio") is None
+        assert DiscoveryRepository(db).groups_art_read(run.id) == set()

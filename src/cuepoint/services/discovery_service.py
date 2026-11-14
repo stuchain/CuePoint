@@ -237,11 +237,23 @@ class DiscoverySource(Protocol):
         """One catalog track by id, or None."""
         ...
 
-    def get_artist(self, artist_id: int) -> Optional[CatalogArtist]:
+    def get_artist(
+        self,
+        artist_id: int,
+        timeout: Optional[float] = None,
+        retry_on_timeout: bool = True,
+        wait_on_rate_limit: bool = True,
+    ) -> Optional[CatalogArtist]:
         """An artist by id (with its picture, when Beatport names one)."""
         ...
 
-    def get_label(self, label_id: int) -> Optional[CatalogLabel]:
+    def get_label(
+        self,
+        label_id: int,
+        timeout: Optional[float] = None,
+        retry_on_timeout: bool = True,
+        wait_on_rate_limit: bool = True,
+    ) -> Optional[CatalogLabel]:
         """A label by id (with its picture, when Beatport names one)."""
         ...
 
@@ -1439,12 +1451,14 @@ class DiscoveryService(IDiscoveryService):
             LookupError: If there is no such run.
         """
         self._require_run(run_id)
+        asked = self._runs.groups_art_read(run_id)
         return [
             replace(card, art_pending=True)
             if card.group.art_url is None
             and card.group.kind in (GROUP_ARTIST, GROUP_LABEL)
             and card.group.beatport_id is not None
             and (run_id, card.group.kind, card.group.key) not in _ART_MISSES
+            and (card.group.kind, card.group.key) not in asked
             else card
             for card in self._runs.run_groups(run_id)
         ]
@@ -1504,8 +1518,13 @@ class DiscoveryService(IDiscoveryService):
         A run asks Beatport for no picture of its own: a chart's came with its
         listing, an artist's with their tracks' credits, a label's with its
         releases. A card none of those named is asked for here, when somebody
-        looks at it, by its Beatport id; the answer is kept on the card, and a
-        miss is not asked again until the engine restarts.
+        looks at it, by its Beatport id, with a short timeout, no retry and no
+        wait on a rate limit; the answer is kept on the card, a card Beatport
+        named no picture for included, so it is not asked again after a restart.
+        A failure is not asked again until the engine restarts. A rate limit is
+        no answer about the card: every on-view lookup waits out its
+        ``Retry-After`` (a minute when it gave none) and the card is asked for
+        again after it.
         """
         self._require_run(run_id)
         art = self._runs.group_art(run_id, kind, key)
@@ -1515,22 +1534,50 @@ class DiscoveryService(IDiscoveryService):
         group = self._runs.group_ref(run_id, kind, key)
         if group is None or group.beatport_id is None or asked in _ART_MISSES:
             return None
+        if (kind, key) in self._runs.groups_art_read(run_id) or self._rate_limited():
+            return None
+        options: Dict[str, Any] = {
+            "timeout": _COVER_TIMEOUT_SECONDS,
+            "retry_on_timeout": False,
+            "wait_on_rate_limit": False,
+        }
         try:
             found = (
-                self._beatport.get_artist(group.beatport_id)
+                self._beatport.get_artist(group.beatport_id, **options)
                 if kind == GROUP_ARTIST
-                else self._beatport.get_label(group.beatport_id)
+                else self._beatport.get_label(group.beatport_id, **options)
             )
         except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
             _logger.debug("[discover] no picture for %s %s: %s", kind, key, exc)
-            _ART_MISSES.add(asked)
+            # A rate limit says nothing about the card: it is asked again later.
+            if not self._note_rate_limit(exc):
+                _ART_MISSES.add(asked)
             return None
         art = found.image_url if found is not None else None
         if art is None:
-            _ART_MISSES.add(asked)
+            self._runs.mark_group_art_read(run_id, kind, key)
         else:
             self._runs.set_group_art(run_id, kind, key, art)
         return art
+
+    def _rate_limited(self) -> bool:
+        """Whether Beatport said to wait and the time has not yet passed."""
+        return self._monotonic() < _RATE_LIMITED_UNTIL[0]
+
+    def _note_rate_limit(self, error: BaseException) -> bool:
+        """Record a 429 for every on-view lookup; True when ``error`` was one."""
+        if classify_beatport_error(error) != ERROR_RATE_LIMITED:
+            return False
+        wait = getattr(error, "retry_after", None)
+        seconds = (
+            float(wait)
+            if isinstance(wait, (int, float)) and wait > 0
+            else _RATE_LIMIT_PAUSE_SECONDS
+        )
+        _RATE_LIMITED_UNTIL[0] = max(
+            _RATE_LIMITED_UNTIL[0], self._monotonic() + seconds
+        )
+        return True
 
     def track_art_url(self, run_id: int, track_id: int) -> Optional[str]:
         """The release cover of a track a run found, or None.
@@ -1565,6 +1612,8 @@ class DiscoveryService(IDiscoveryService):
             self._beatport.require_token()
         except Exception:  # noqa: BLE001 — signed out: no picture, and no memory of it
             return None
+        if self._rate_limited():
+            return None
         try:
             track = self._beatport.get_track(
                 track_id,
@@ -1574,7 +1623,9 @@ class DiscoveryService(IDiscoveryService):
             )
         except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
             _logger.debug("[discover] no cover for track %s: %s", track_id, exc)
-            _COVER_MISSES.add(track_id)
+            # A rate limit says nothing about the track: it is asked again later.
+            if not self._note_rate_limit(exc):
+                _COVER_MISSES.add(track_id)
             return None
         url = track.release_image_url if track is not None else None
         self._catalog.set_release_cover(track_id, url)
@@ -1610,6 +1661,13 @@ _COVER_TIMEOUT_SECONDS = 8.0
 
 #: Cards whose picture Beatport could not give when asked, per process.
 _ART_MISSES: Set[Tuple[int, str, str]] = set()
+
+#: Until when (on the monotonic clock) Beatport asked every on-view picture lookup to wait, per
+#: process: a 429 to any of them, a track's cover or a card's picture, pauses them all.
+_RATE_LIMITED_UNTIL: List[float] = [0.0]
+
+#: How long a 429 that gave no ``Retry-After`` pauses the lookups.
+_RATE_LIMIT_PAUSE_SECONDS = 60.0
 
 
 def _artist_art(tracks: Any, artist_id: int) -> Optional[str]:

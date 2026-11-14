@@ -119,6 +119,13 @@ class BeatportWorld:
         self.requests.append((route, params))
         for failure in self.failures:
             status = failure(route, params, len(self.requests))
+            if isinstance(status, tuple):
+                # (status, Retry-After seconds): a 429 that says how long to wait.
+                raise BeatportAPIError(
+                    f"Beatport answered {status[0]}",
+                    status_code=status[0],
+                    retry_after=status[1],
+                )
             if status is not None:
                 raise BeatportAPIError(
                     f"Beatport answered {status}", status_code=status

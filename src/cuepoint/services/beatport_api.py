@@ -477,16 +477,29 @@ class BeatportApi:
         tid = positive_id(track_id)
         if tid is None:
             return None
-        path = f"/catalog/tracks/{tid}/"
+        return parse_catalog_track(
+            self._read(
+                f"/catalog/tracks/{tid}/", timeout, retry_on_timeout, wait_on_rate_limit
+            )
+        )
+
+    def _read(
+        self,
+        path: str,
+        timeout: Optional[float],
+        retry_on_timeout: bool,
+        wait_on_rate_limit: bool,
+    ) -> Any:
+        """One GET with this read's own budget; the client's own when none is given."""
         if timeout is None and retry_on_timeout and wait_on_rate_limit:
-            return parse_catalog_track(self._client.get(path))
+            return self._client.get(path)
         options: Dict[str, Any] = {
             "timeout": timeout,
             "retry_on_timeout": retry_on_timeout,
         }
         if not wait_on_rate_limit:
             options["wait_on_rate_limit"] = False
-        return parse_catalog_track(self._client.get(path, **options))
+        return self._client.get(path, **options)
 
     def get_tracks(self, track_ids: Iterable[int]) -> List[CatalogTrack]:
         """Catalog tracks by id, in the order asked, leaving out any not found.
@@ -558,19 +571,48 @@ class BeatportApi:
         )
         self._batch_lookup = False
 
-    def get_artist(self, artist_id: int) -> Optional[CatalogArtist]:
-        """One artist by id, or None when Beatport has no such artist."""
+    def get_artist(
+        self,
+        artist_id: int,
+        timeout: Optional[float] = None,
+        retry_on_timeout: bool = True,
+        wait_on_rate_limit: bool = True,
+    ) -> Optional[CatalogArtist]:
+        """One artist by id, or None when Beatport has no such artist.
+
+        The options are those of :meth:`get_track`.
+        """
         aid = positive_id(artist_id)
         if aid is None:
             return None
-        return parse_catalog_artist(self._client.get(f"/catalog/artists/{aid}/"))
+        return parse_catalog_artist(
+            self._read(
+                f"/catalog/artists/{aid}/",
+                timeout,
+                retry_on_timeout,
+                wait_on_rate_limit,
+            )
+        )
 
-    def get_label(self, label_id: int) -> Optional[CatalogLabel]:
-        """One label by id, or None when Beatport has no such label."""
+    def get_label(
+        self,
+        label_id: int,
+        timeout: Optional[float] = None,
+        retry_on_timeout: bool = True,
+        wait_on_rate_limit: bool = True,
+    ) -> Optional[CatalogLabel]:
+        """One label by id, or None when Beatport has no such label.
+
+        The options are those of :meth:`get_track`.
+        """
         lid = positive_id(label_id)
         if lid is None:
             return None
-        return parse_catalog_label(self._client.get(f"/catalog/labels/{lid}/"))
+        return parse_catalog_label(
+            self._read(
+                f"/catalog/labels/{lid}/", timeout, retry_on_timeout, wait_on_rate_limit
+            )
+        )
 
     def playlist_track_ids(
         self, playlist_id: str, max_pages: int = MAX_LISTING_PAGES

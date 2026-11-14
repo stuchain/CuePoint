@@ -1716,6 +1716,16 @@ class IDiscoveryRepository(ABC):
         ...
 
     @abstractmethod
+    def mark_group_art_read(self, run_id: int, kind: str, key: str) -> None:
+        """Remember that a card's picture was asked for and none was named."""
+        ...
+
+    @abstractmethod
+    def groups_art_read(self, run_id: int) -> Set[Tuple[str, str]]:
+        """The cards of a run, as ``(kind, key)``, whose picture was asked for."""
+        ...
+
+    @abstractmethod
     def run_sources(self, run_id: int) -> List["DiscoveryRunSource"]:
         """Every reason a run found each track."""
         ...

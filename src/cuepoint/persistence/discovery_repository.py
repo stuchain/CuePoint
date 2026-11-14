@@ -695,10 +695,30 @@ class DiscoveryRepository(IDiscoveryRepository):
         """Keep the picture Beatport named for a card, asked for later."""
         with self._db.transaction() as conn:
             conn.execute(
-                "UPDATE discovery_run_groups SET art_url = ?"
+                "UPDATE discovery_run_groups SET art_url = ?, art_read = 1"
                 " WHERE run_id = ? AND kind = ? AND key = ? AND art_url IS NULL",
                 (art_url, int(run_id), kind, key),
             )
+
+    def mark_group_art_read(self, run_id: int, kind: str, key: str) -> None:
+        """Remember that Beatport was asked for a card's picture and named none."""
+        with self._db.transaction() as conn:
+            conn.execute(
+                "UPDATE discovery_run_groups SET art_read = 1"
+                " WHERE run_id = ? AND kind = ? AND key = ?",
+                (int(run_id), kind, key),
+            )
+
+    def groups_art_read(self, run_id: int) -> Set[Tuple[str, str]]:
+        """The cards of a run (``(kind, key)``) whose picture was asked for."""
+        return {
+            (str(row[0]), str(row[1]))
+            for row in self._db.connect().execute(
+                "SELECT kind, key FROM discovery_run_groups"
+                " WHERE run_id = ? AND art_read = 1",
+                (int(run_id),),
+            )
+        }
 
     def group_art(self, run_id: int, kind: str, key: str) -> Optional[str]:
         """The image URL Beatport named for a card, or None."""
