@@ -409,6 +409,14 @@ test.describe("Plays well next and Following", () => {
         await expect(feedTable.getByText("Nothing new from the names you follow")).toBeVisible({ timeout: 30_000 });
       });
 
+      await test.step("Check again after looking: tracks already seen stay seen", async () => {
+        await following.getByRole("button", { name: "Check again" }).click();
+        await expect(following.getByRole("button", { name: "Check again" })).toBeEnabled({ timeout: 60_000 });
+        await idle(window);
+        await expect(list.getByRole("button", { name: /^All/ })).toContainText("nothing new", { timeout: 30_000 });
+        await expect(feedTable.getByText("Nothing new from the names you follow")).toBeVisible({ timeout: 30_000 });
+      });
+
       await test.step("unfollow one", async () => {
         await list.getByRole("button", { name: /^Mara Veil/ }).click();
         await list.getByRole("button", { name: "Unfollow Mara Veil" }).click();
