@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 from cuepoint.models.beatport_cache import ENTITY_KINDS, MAX_BEATPORT_ID
 from cuepoint.models.entity_page import EntityTrackRow
