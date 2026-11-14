@@ -903,6 +903,7 @@ def seed_rows(track_count: int = 12, seed: int = 7) -> Dict[str, List[Row]]:
                 "name": "Âme",
                 "followed_at": NOW,
                 "seen_through": "2026-09-05",
+                "seen_at": NOW,
             },
             {
                 "kind": "label",

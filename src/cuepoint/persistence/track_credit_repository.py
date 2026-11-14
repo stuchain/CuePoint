@@ -695,7 +695,8 @@ class TrackCreditRepository(ITrackCreditRepository):
         """The library names resolution linked to exactly one Beatport id.
 
         As ``(beatport_id, name, tracks)``, most library tracks first, then by
-        id, leaving out ids already in ``follows``. A name linked to several
+        id. Ids already followed are kept: the caller marks them, so a longer
+        list never loses a name a shorter one had. A name linked to several
         ids names none of them (DEC-095), so it is not offered. An id two
         library spellings link counts once, with both spellings' tracks.
         """
@@ -707,13 +708,7 @@ class TrackCreditRepository(ITrackCreditRepository):
             raise ValueError(f"No candidates of kind {kind!r}")
         conn = self._db.connect()
         ranked = self._ranked_candidates(conn, kind, links)
-        followed = {
-            int(r["beatport_id"])
-            for r in conn.execute(
-                "SELECT beatport_id FROM follows WHERE kind = ?", (kind,)
-            )
-        }
-        offered = [c for c in ranked if c[0] not in followed][: int(limit)]
+        offered = ranked[: int(limit)]
         return [
             (
                 beatport_id,
@@ -730,7 +725,7 @@ class TrackCreditRepository(ITrackCreditRepository):
 
         The full-library group-by is kept while the library's and the catalog
         cache's change counters stand still (the links read both), so reopening the tab asks the database nothing; follows
-        are taken out by the caller, since they change on their own.
+        are marked by the caller, since they change on their own.
         """
         revision = revision_counters.read(
             conn, (revision_counters.LIBRARY, revision_counters.DISCOVER)

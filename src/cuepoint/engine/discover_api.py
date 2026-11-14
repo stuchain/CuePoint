@@ -1337,7 +1337,7 @@ def follows_remove(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str,
 
 
 def follows_seen(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
-    """Mark one follow's, or every follow's, new tracks seen through today."""
+    """Mark one follow's, or every follow's, cached tracks seen as of now (see the follow service)."""
     _only(data, FOLLOWS_SEEN_FIELDS)
     kind, beatport_id = _follow_ref(data, optional=True)
     return 200, _resolve("IFollowService").mark_seen(kind, beatport_id)

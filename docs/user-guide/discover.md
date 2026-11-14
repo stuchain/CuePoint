@@ -206,7 +206,7 @@ An empty wantlist shows its icon and a short note on how to fill it (use **Add t
 The **Following** tab keeps up with the artists and labels you choose. The first time you open it,
 it lists the names you own the most tracks by, each with its own **Follow** button; only names
 already linked to one Beatport artist or label are offered. Follow some, then choose **Show what's
-new**. After that, **Follow** sits on every artist and label page, and the same button there says
+new**; **Show 10 more** (up to 100 names) keeps the names you followed in the list as **Following**. After that, **Follow** sits on every artist and label page, and the same button there says
 **Following** and unfollows.
 
 Once you follow someone, the tab is a list of them at the left and their new tracks at the right,
@@ -215,8 +215,14 @@ each name, one request each, so the list updates by itself when the check ends; 
 asks Beatport again right away. **All** shows everything, and choosing a name shows only theirs;
 with a name chosen, **Unfollow** appears under the list, and focus returns to **All**. A group
 shows its first eight names, then **+ N more**. "New" means released after the day you last saw
-that name ("14 new tracks since Nov 7"): leaving the tab marks what was shown as seen, so the count
-after **Following** in the tab strip goes back to nothing. If a check is still running when you
+that name ("14 new tracks since Nov 7"), or released on that day but found by a check after you
+last looked. Leaving the tab marks what you were looking at as seen: all the names when **All**
+was chosen, only that name when you had chosen one, and nothing when the new tracks never loaded
+or showed an error. A track that came out today and was on screen when you left is no longer new;
+one found later today is. A check run after you looked can show that day's tracks as new again,
+because the app cannot tell which of them it already had; looking again clears them, and from
+tomorrow on a day's tracks do not come back. The count after **Following** in the tab strip is
+read again from the engine after the mark. If a check is still running when you
 leave, nothing is marked, and those tracks stay new until a later visit. The counts are tracks you
 do not own, the same number in the status line and the list. Tracks you own are hidden by default,
 with the same switch the other tables have, and the status line says how many are hidden (or, with

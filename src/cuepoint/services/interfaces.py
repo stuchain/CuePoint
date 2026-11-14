@@ -1429,7 +1429,10 @@ class ITrackCreditRepository(ABC):
 
     @abstractmethod
     def follow_candidates(self, kind: str, limit: int) -> List[Tuple[int, str, int]]:
-        """Library names linked to exactly one Beatport id, as (id, name, tracks)."""
+        """Library names linked to exactly one Beatport id, as (id, name, tracks).
+
+        Followed ones are included; the caller marks them.
+        """
         ...
 
     @abstractmethod
@@ -2093,7 +2096,7 @@ class IEntityPageService(ABC):
 
 
 class IFollowRepository(ABC):
-    """Interface for the followed artists and labels (migration 0034)."""
+    """Interface for the followed artists and labels (migrations 0034, 0036)."""
 
     @abstractmethod
     def list(self) -> List["Follow"]:
@@ -2121,8 +2124,10 @@ class IFollowRepository(ABC):
         seen_through: str,
         kind: Optional[str] = None,
         beatport_id: Optional[int] = None,
+        *,
+        seen_at: Optional[str] = None,
     ) -> List["Follow"]:
-        """Move seen_through forward for one follow or all; the follows moved."""
+        """Move seen_through forward (and set seen_at) for one follow or all."""
         ...
 
 

@@ -313,13 +313,28 @@ class TestSuggestions:
             for s in service.suggestions()["suggestions"]
         )
 
-    def test_what_is_followed_is_left_out(self, service, filled):
+    def test_what_is_followed_stays_in_rank_marked_followed(self, service, filled):
+        before = [
+            (s["kind"], s["beatport_id"]) for s in service.suggestions()["suggestions"]
+        ]
         service.add("artist", 100, "Âme")
         found = service.suggestions()["suggestions"]
-        assert ("artist", 100) not in {(s["kind"], s["beatport_id"]) for s in found}
+        # Same names in the same order: a longer list never drops a followed one.
+        assert [(s["kind"], s["beatport_id"]) for s in found] == before
+        assert {(s["kind"], s["beatport_id"]): s["followed"] for s in found}[
+            ("artist", 100)
+        ] is True
         # A label with the same id is a different follow.
         service.add("label", 100, "Elsewhere")
-        assert ("label", 900) in {(s["kind"], s["beatport_id"]) for s in found}
+        marked = {(s["kind"], s["beatport_id"]): s["followed"] for s in found}
+        assert marked[("label", 900)] is False
+
+    def test_a_longer_list_keeps_every_name_a_shorter_one_had(self, service, filled):
+        service.add("artist", 100, "Âme")
+        short = service.suggestions(limit=2)["suggestions"]
+        long = service.suggestions(limit=10)["suggestions"]
+        assert long[: len(short)] == short
+        assert short[0]["followed"] is True
 
     def test_the_limit_applies_after_ranking(self, service, filled):
         found = service.suggestions(limit=1)["suggestions"]
@@ -518,11 +533,11 @@ class TestTheFeed:
         assert titles(service.feed("artist", 100)) == []
         assert titles(service.feed("artist", 8)) == ["Track 15"]
         moved = service.mark_seen()
-        assert moved["changed"] == 2 and moved["seen_through"] == days(1).isoformat()
+        assert moved["changed"] == 2 and moved["seen_through"] == TODAY.isoformat()
         assert service.feed()["rows"] == []
         assert service.mark_seen() == {
             "changed": 0,
-            "seen_through": days(1).isoformat(),
+            "seen_through": TODAY.isoformat(),
         }
 
     def test_a_release_after_the_day_marked_seen_is_new(self, service, world, clock):
@@ -621,18 +636,92 @@ class TestTheFeed:
 # ------------------------------------------------------------------ review fixes
 
 
-class TestMarkSeenKeepsTodayVisible:
-    def test_a_release_published_later_today_is_still_new(self, service, world):
+class TestSeenMeansWhatWasShown:
+    """Marking seen is through today; same-day tracks are new only if read later."""
+
+    def test_marking_seen_is_through_today_and_records_when(self, service):
+        service.add("artist", 100, "Âme")
+        moved = service.mark_seen()
+        assert moved["seen_through"] == TODAY.isoformat()
+        follow = service.follows()["follows"][0]
+        assert follow["seen_through"] == TODAY.isoformat()
+        assert follow["seen_at"] == NOW.isoformat()
+
+    def test_a_track_released_today_that_was_shown_is_not_new_afterwards(
+        self, service, world
+    ):
+        world.add_track(40, TODAY, (900, "Innervisions"), (9, "Today"), [(100, "Âme")])
         service.add("artist", 100, "Âme")
         service.check()
-        moved = service.mark_seen()
-        assert moved["seen_through"] == days(1).isoformat()
+        assert titles(service.feed()) == ["Track 40", "Track 16", "Track 11"]
+        service.mark_seen()
+        assert service.feed()["rows"] == []
+        listed = service.follows()
+        assert listed["new_count"] == 0
+        assert listed["follows"][0]["new_count"] == 0
+
+    def test_a_track_released_today_and_read_after_the_look_is_new(
+        self, service, world, clock
+    ):
+        service.add("artist", 100, "Âme")
+        service.check()
+        service.mark_seen()
+        clock.now = NOW + timedelta(hours=3)
         world.add_track(
             40, TODAY, (900, "Innervisions"), (9, "Later Today"), [(100, "Âme")]
         )
         service.check(refresh=True)
         assert titles(service.feed()) == ["Track 40"]
-        assert service.follows()["follows"][0]["new_count"] == 1
+        listed = service.follows()
+        assert listed["follows"][0]["new_count"] == 1
+        # The feed and the counts say the same thing.
+        assert listed["new_count"] == service.feed()["total"] == 1
+
+    def test_looking_again_buries_what_was_read_since(self, service, world, clock):
+        service.add("artist", 100, "Âme")
+        service.check()
+        service.mark_seen()
+        clock.now = NOW + timedelta(hours=3)
+        world.add_track(
+            40, TODAY, (900, "Innervisions"), (9, "Later Today"), [(100, "Âme")]
+        )
+        service.check(refresh=True)
+        service.mark_seen()
+        assert service.feed()["rows"] == []
+        assert service.follows()["new_count"] == 0
+
+    def test_tomorrows_release_is_new_and_yesterdays_look_does_not_return(
+        self, service, world, clock
+    ):
+        service.add("artist", 100, "Âme")
+        service.check()
+        service.mark_seen()
+        clock.now = NOW + timedelta(days=1)
+        world.add_track(
+            41,
+            TODAY + timedelta(days=1),
+            (900, "Innervisions"),
+            (9, "Tomorrow"),
+            [(100, "Âme")],
+        )
+        service.check(refresh=True)
+        # Listed again after the look, but dated before today: not new.
+        assert titles(service.feed()) == ["Track 41"]
+        assert service.follows()["new_count"] == 1
+
+    def test_marking_one_follow_leaves_the_others_new(self, service, world):
+        world.add_track(
+            40, TODAY, (900, "Innervisions"), (9, "Today"), [(100, "Âme"), (8, "Dixon")]
+        )
+        service.add("artist", 100, "Âme")
+        service.add("artist", 8, "Dixon")
+        service.check()
+        service.mark_seen("artist", 100)
+        counts = {
+            f["beatport_id"]: f["new_count"] for f in service.follows()["follows"]
+        }
+        assert counts[100] == 0 and counts[8] >= 1
+        assert "Track 40" in titles(service.feed("artist", 8))
 
 
 class TestManyCachedTracks:
@@ -736,13 +825,13 @@ class TestSuggestionsCache:
         }
         assert self.aggregates(statements) > ran
 
-    def test_a_follow_still_leaves_a_cached_candidate_out(self, service, lib):
+    def test_a_follow_still_marks_a_cached_candidate_followed(self, service, lib):
         lib.add("a1", "Âme", beatport=[(100, "Âme")])
-        assert len(service.suggestions()["suggestions"]) == 1
+        assert [s["followed"] for s in service.suggestions()["suggestions"]] == [False]
         service.add("artist", 100, "Âme")
-        assert service.suggestions() == {"suggestions": []}
+        assert [s["followed"] for s in service.suggestions()["suggestions"]] == [True]
         service.remove("artist", 100)
-        assert len(service.suggestions()["suggestions"]) == 1
+        assert [s["followed"] for s in service.suggestions()["suggestions"]] == [False]
 
 
 class _Pages:
