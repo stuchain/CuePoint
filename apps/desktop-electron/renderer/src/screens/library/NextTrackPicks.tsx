@@ -61,13 +61,12 @@ type Suggested =
 
 /**
  * Everything the similarity request depends on for the shown track: its id and the values the
- * engine ranks by (key, BPM, effective ones, genre, label, artist). An edit to any of them
+ * engine ranks by (effective key and BPM, Rekordbox BPM, genre, label, artist). An edit to any of them
  * is a new seed, so a cached answer for the old values is never used.
  */
 function seedKey(track: LibraryTrackRow): string {
   return [
     track.id,
-    track.key,
     track.effective_key,
     track.bpm,
     track.effective_bpm,
