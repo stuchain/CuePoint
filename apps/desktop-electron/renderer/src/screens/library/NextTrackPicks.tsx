@@ -10,7 +10,7 @@
  * hover-only: Play next is a button and a double-click plays the row now (inserted next, then
  * skipped to, so the queue is kept).
  */
-import { useCallback, useEffect, useId, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 
 import type { LibraryTrackRow, PlayerSnapshot, SimilarTrack } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
@@ -25,7 +25,6 @@ import { reportUnexpected } from "../../reporting/reporting";
 import { reasonTokens, tempoDeltaText } from "../discover/reasonTokens";
 import { describeSimilarReason } from "../discover/similarReasons";
 import { RowArtwork } from "./libraryCells";
-import { DEFAULT_LIBRARY_QUERY } from "./libraryQuery";
 import {
   NEXT_PICKS_ASK,
   NEXT_PICKS_COUNT,
@@ -34,7 +33,7 @@ import {
   eligibleNextTracks,
   hasKeyOrBpm,
 } from "./nextPicksRule";
-import { toQueueItem, useLibraryPlayback } from "./useLibraryPlayback";
+import { queuedMessage, toQueueItem } from "./useLibraryPlayback";
 import "./NextTrackPicks.css";
 
 /** Where the playing track sits in play order, -1 for none. */
@@ -79,6 +78,7 @@ async function readRow(id: number): Promise<RowRead> {
 }
 
 const NO_IDS: readonly number[] = [];
+const NO_MARKS: Readonly<Record<number, "pending" | "queued">> = {};
 
 /**
  * The library ids of the next tracks in play order after the current one, or null while they are
@@ -156,7 +156,21 @@ export function NextTrackPicks({
   const available = Boolean(window.cuepoint?.getSimilarTracks && window.cuepoint?.getLibraryTrack);
   const [suggested, setSuggested] = useState<Suggested | null>(null);
   const [resolved, setResolved] = useState<Resolved | null>(null);
-  const playback = useLibraryPlayback({ query: DEFAULT_LIBRARY_QUERY, onMessage });
+  const canQueue = Boolean(window.cuepoint?.player?.playNext);
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // Picks queued from here, kept in place as "Queued" until the shown track changes, so a row never
+  // moves under the pointer between the clicks of a double-click. "pending" is a request in flight.
+  const [marked, setMarked] = useState<{ trackId: number | null; byId: Readonly<Record<number, "pending" | "queued">> }>({
+    trackId: null,
+    byId: {},
+  });
+  const marks = marked.trackId === trackId ? marked.byId : NO_MARKS;
+  const keptIds = useMemo(() => Object.keys(marks).map(Number), [marks]);
+  // Ids with a request made, held synchronously: a second click of the same gesture arrives
+  // before any re-render.
+  const asked = useRef({ trackId, ids: new Set<number>() });
+  if (asked.current.trackId !== trackId) asked.current = { trackId, ids: new Set<number>() };
   const upcomingIds = useUpcomingIds();
   const playingId = usePlayingTrackId();
   const played = usePlayedTracks();
@@ -184,7 +198,14 @@ export function NextTrackPicks({
   useEffect(() => {
     if (trackId == null || suggestions === null || upcomingIds === null) return;
     let current = true;
-    const eligible = eligibleNextTracks(suggestions, { shownId: trackId, queuedIds: upcomingIds, playingId, playedIds: played });
+    // A pick queued from here stays in its place, however the queue reads.
+    const kept = new Set(keptIds);
+    const eligible = eligibleNextTracks(suggestions, {
+      shownId: trackId,
+      queuedIds: upcomingIds.filter((id) => !kept.has(id)),
+      playingId,
+      playedIds: played,
+    });
     const cached = (id: number) => {
       let read = rows.current.get(id);
       if (!read) {
@@ -227,28 +248,90 @@ export function NextTrackPicks({
     return () => {
       current = false;
     };
-  }, [trackId, suggestions, upcomingIds, playingId, played]);
+  }, [trackId, suggestions, upcomingIds, playingId, played, keptIds]);
 
   const shown = resolved && resolved.trackId === trackId ? resolved : null;
   const failedToSuggest = suggested?.trackId === trackId && suggested.status === "error";
 
-  const playNow = useCallback(
+  const mark = useCallback(
+    (id: number, status: "pending" | "queued" | null) => {
+      setMarked((previous) => {
+        const byId = { ...(previous.trackId === trackId ? previous.byId : NO_MARKS) };
+        if (status === null) delete byId[id];
+        else byId[id] = status;
+        return { trackId, byId };
+      });
+    },
+    [trackId],
+  );
+
+  const queueNext = useCallback(
     async (row: LibraryTrackRow) => {
-      // Insert after the current track and skip to it: the rest of the queue stays.
       const player = window.cuepoint?.player;
-      if (!player?.playNext || !player.next) return;
+      const id = row.id;
+      if (!player?.playNext || id == null || asked.current.ids.has(id)) return;
+      asked.current.ids.add(id);
+      mark(id, "pending");
       try {
         await player.playNext([toQueueItem(row)]);
+      } catch {
+        asked.current.ids.delete(id);
+        mark(id, null);
+        onMessage?.(couldNot("queue that track to play next"));
+        return;
+      }
+      mark(id, "queued");
+      onMessage?.(queuedMessage(1, "next"));
+    },
+    [mark, onMessage],
+  );
+
+  const playNow = useCallback(
+    async (row: LibraryTrackRow) => {
+      // Insert after the current track and skip to it: the rest of the queue stays. These are two
+      // calls: the player has no single "insert and jump" action to use.
+      const player = window.cuepoint?.player;
+      const id = row.id;
+      if (!player?.playNext || !player.next || id == null || asked.current.ids.has(id)) return;
+      asked.current.ids.add(id);
+      mark(id, "pending");
+      try {
+        await player.playNext([toQueueItem(row)]);
+      } catch {
+        asked.current.ids.delete(id);
+        mark(id, null);
+        onMessage?.(couldNot("play that track"));
+        return;
+      }
+      mark(id, "queued");
+      try {
         await player.next();
       } catch {
         onMessage?.(couldNot("play that track"));
       }
     },
-    [onMessage],
+    [mark, onMessage],
   );
 
+  /** Keep keyboard focus in the section when the pressed button is about to be disabled. */
+  const keepFocus = (pressed: HTMLElement) => {
+    if (document.activeElement !== pressed) return;
+    const buttons = Array.from(sectionRef.current?.querySelectorAll<HTMLButtonElement>(".cp-next-picks__row > .cp-btn") ?? []);
+    const at = buttons.indexOf(pressed as HTMLButtonElement);
+    const open = (button: HTMLButtonElement) => button !== pressed && !button.disabled;
+    const target = buttons.slice(at + 1).find(open) ?? buttons.slice(0, at).reverse().find(open);
+    (target ?? headingRef.current)?.focus();
+  };
+
   const onRowDoubleClick = (event: MouseEvent<HTMLElement>, row: LibraryTrackRow) => {
-    if ((event.target as Element).closest(INTERACTIVE)) return;
+    const hit = (event.target as Element).closest(INTERACTIVE);
+    if (hit && hit !== event.currentTarget) return;
+    void playNow(row);
+  };
+
+  const onRowKeyDown = (event: KeyboardEvent<HTMLElement>, row: LibraryTrackRow) => {
+    if (event.key !== "Enter" || event.target !== event.currentTarget) return;
+    event.preventDefault();
     void playNow(row);
   };
 
@@ -261,7 +344,22 @@ export function NextTrackPicks({
     body = <p className="cp-track-detail__none">{couldNot("load next track suggestions")}</p>;
   } else if (shown === null) {
     // Quiet and the height of the list, so the panel does not jump when the rows arrive.
-    body = <div className="cp-next-picks__placeholder" aria-hidden />;
+    body = (
+      <ul className="cp-next-picks__list" aria-hidden>
+        {Array.from({ length: NEXT_PICKS_COUNT }, (_, i) => (
+          <li key={i} className="cp-next-picks__row cp-next-picks__row--ghost">
+            <span className="cp-next-picks__cover" />
+            <span className="cp-next-picks__text">
+              <span className="cp-next-picks__title">&nbsp;</span>
+              <span className="cp-next-picks__facts">&nbsp;</span>
+            </span>
+            <Button variant="secondary" size="sm" disabled tabIndex={-1}>
+              Play next
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
   } else if (shown.candidates.length === 0) {
     body = (
       <p className="cp-track-detail__none">
@@ -275,7 +373,10 @@ export function NextTrackPicks({
           <li
             key={suggestion.track_id}
             className="cp-next-picks__row"
+            tabIndex={0}
+            aria-keyshortcuts="Enter"
             onDoubleClick={(event) => onRowDoubleClick(event, row)}
+            onKeyDown={(event) => onRowKeyDown(event, row)}
           >
             <span className="cp-next-picks__cover">
               <RowArtwork row={row} />
@@ -291,11 +392,14 @@ export function NextTrackPicks({
             <Button
               variant="secondary"
               size="sm"
-              disabled={!playback.available}
-              aria-label={`Play next: ${row.title}`}
-              onClick={() => void playback.playNext([row])}
+              disabled={!canQueue || marks[suggestion.track_id] !== undefined}
+              aria-label={`${marks[suggestion.track_id] === "queued" ? "Queued" : "Play next"}: ${row.title}`}
+              onClick={(event) => {
+                keepFocus(event.currentTarget);
+                void queueNext(row);
+              }}
             >
-              Play next
+              {marks[suggestion.track_id] === "queued" ? "Queued" : "Play next"}
             </Button>
           </li>
         ))}
@@ -304,9 +408,9 @@ export function NextTrackPicks({
   }
 
   return (
-    <section className="cp-next-picks" aria-labelledby={titleId}>
+    <section ref={sectionRef} className="cp-next-picks" aria-labelledby={titleId}>
       <div className="cp-next-picks__head">
-        <h3 id={titleId} className="cp-next-picks__heading">
+        <h3 id={titleId} ref={headingRef} tabIndex={-1} className="cp-next-picks__heading">
           Plays well next
         </h3>
         <span className="cp-next-picks__meta">from your library</span>

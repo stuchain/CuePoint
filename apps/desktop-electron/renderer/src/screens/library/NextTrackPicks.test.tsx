@@ -278,15 +278,123 @@ describe("Plays well next", () => {
     expect(playQueue).not.toHaveBeenCalled();
   });
 
-  it("double-clicking the Play next button runs Play next once and does not play now", async () => {
+  it("a real double-click on Play next (click, click, dblclick) queues once and plays nothing now", async () => {
     const { playQueue, playNext, skipNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
     render(<NextTrackPicks track={row(1)} />);
     await screen.findByText("Track 2");
-    fireEvent.doubleClick(screen.getAllByRole("button", { name: /Play next/ })[0]);
-    fireEvent.click(screen.getAllByRole("button", { name: /Play next/ })[0]);
+    const button = screen.getAllByRole("button", { name: /Play next/ })[0];
+    fireEvent.click(button);
+    fireEvent.click(button);
+    fireEvent.doubleClick(button);
     await waitFor(() => expect(playNext).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(playNext).toHaveBeenCalledTimes(1);
     expect(skipNext).not.toHaveBeenCalled();
     expect(playQueue).not.toHaveBeenCalled();
+  });
+
+  it("ignores a second click while the first request is pending", async () => {
+    const { playNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    let release: () => void = () => {};
+    playNext.mockImplementation(() => new Promise<void>((resolve) => { release = resolve; }));
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const button = screen.getAllByRole("button", { name: /Play next/ })[0];
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    await act(async () => release());
+    expect(playNext).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a queued pick in its place as Queued, so the next row does not move under the pointer", async () => {
+    const { setQueue, playNext } = install({ suggestions: [2, 3, 4, 5].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    fireEvent.click(screen.getAllByRole("button", { name: /Play next/ })[0]);
+    await waitFor(() => expect(playNext).toHaveBeenCalledTimes(1));
+    act(() => setQueue([2]));
+    await act(async () => {});
+    await act(async () => {});
+    const items = screen.getAllByRole("listitem");
+    expect(items.map((item) => within(item).getByText(/^Track \d$/).textContent)).toEqual(["Track 2", "Track 3", "Track 4"]);
+    expect(within(items[0]).getByRole("button", { name: /Queued/ })).toBeDisabled();
+    expect(within(items[1]).getByRole("button", { name: /Play next/ })).toBeEnabled();
+  });
+
+  it("a real double-click on a row (click, click, dblclick) plays it now once", async () => {
+    const { playNext, skipNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const title = screen.getByText("Track 2");
+    fireEvent.click(title);
+    fireEvent.click(title);
+    fireEvent.doubleClick(title);
+    fireEvent.doubleClick(title);
+    await waitFor(() => expect(skipNext).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(playNext).toHaveBeenCalledTimes(1);
+    expect(skipNext).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps keyboard focus in the section after Play next", async () => {
+    const { playNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const buttons = screen.getAllByRole("button", { name: /Play next/ });
+    buttons[0].focus();
+    fireEvent.click(buttons[0]);
+    await waitFor(() => expect(playNext).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Play next: Track 3" }));
+  });
+
+  it("moves focus to the heading when no pick is left to press", async () => {
+    install({ suggestions: [2].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const button = screen.getByRole("button", { name: /Play next/ });
+    button.focus();
+    fireEvent.click(button);
+    await act(async () => {});
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Plays well next" }));
+  });
+
+  it("plays a focused row now with Enter", async () => {
+    const { playNext, skipNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const item = screen.getAllByRole("listitem")[1];
+    expect(item).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(item, { key: "Enter" });
+    await waitFor(() => expect(skipNext).toHaveBeenCalledTimes(1));
+    expect((playNext.mock.calls[0][0] as Array<{ trackId: number }>)[0].trackId).toBe(3);
+  });
+
+  it("does not play the row when Enter is pressed on its Play next button", async () => {
+    const { skipNext, playNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    fireEvent.keyDown(screen.getAllByRole("button", { name: /Play next/ })[0], { key: "Enter" });
+    await act(async () => {});
+    expect(skipNext).not.toHaveBeenCalled();
+    expect(playNext).not.toHaveBeenCalled();
+  });
+
+  it("holds the height of three rows while loading, with the same row layout", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const { getSimilarTracks } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    getSimilarTracks.mockImplementationOnce(async () => {
+      await gate;
+      return { value: { seed_id: 1, notation: "camelot", unused: [], considered: 3, duplicates_excluded: 0, index_current: true, suggestions: [2, 3, 4].map(suggestion) }, refusal: null };
+    });
+    const { container } = render(<NextTrackPicks track={row(1)} />);
+    expect(container.querySelectorAll(".cp-next-picks__row--ghost")).toHaveLength(3);
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+    await act(async () => release());
+    expect(await screen.findByText("Track 2")).toBeInTheDocument();
+    expect(container.querySelectorAll(".cp-next-picks__row--ghost")).toHaveLength(0);
   });
 
   it("double-clicking a reason mark or the cover does not play the row", async () => {

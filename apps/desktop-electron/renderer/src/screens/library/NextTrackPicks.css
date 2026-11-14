@@ -112,7 +112,19 @@
   margin-inline-start: auto;
 }
 
-/* The height of three rows, so the panel does not jump while the list is read. */
-.cp-next-picks__placeholder {
-  height: calc(var(--row-height) * 1.5 * 3 + var(--space-md) * 6);
+/*
+ * While the rows load: three rows of the same layout with nothing visible in them but the cover's
+ * quiet block, so the list is as tall as the real one at any text size.
+ */
+.cp-next-picks__row--ghost > :not(.cp-next-picks__cover) {
+  visibility: hidden;
+}
+
+.cp-next-picks__row:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(var(--space-xs) * -1);
+}
+
+.cp-next-picks__heading:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
 }
