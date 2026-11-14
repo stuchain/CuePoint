@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -628,5 +629,181 @@ describe("Plays well next", () => {
     render(<NextTrackPicks track={row(1)} />);
     expect(await screen.findByText(/Could not load/)).toBeInTheDocument();
     expect(reportUnexpected).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Plays well next: review fixes", () => {
+  it("holding Enter on Play next queues only that pick, and focus stays on it", async () => {
+    const { playNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    const user = userEvent.setup();
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const first = screen.getByRole("button", { name: "Play next: Track 2" });
+    first.focus();
+    await user.keyboard("{Enter>3/}");
+    await act(async () => {});
+    await user.keyboard("{Enter}");
+    await act(async () => {});
+    expect(playNext).toHaveBeenCalledTimes(1);
+    expect((playNext.mock.calls[0][0] as Array<{ trackId: number }>)[0].trackId).toBe(2);
+    expect(screen.getByRole("button", { name: "Queued: Track 2" })).toHaveFocus();
+  });
+
+  it("ignores auto-repeated Enter keydown on a Play next button", async () => {
+    const { playNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const first = screen.getByRole("button", { name: "Play next: Track 2" });
+    const notPrevented = fireEvent.keyDown(first, { key: "Enter", repeat: true });
+    expect(notPrevented).toBe(false);
+    await act(async () => {});
+    expect(playNext).not.toHaveBeenCalled();
+  });
+
+  it("each row has one named Play now button and no unnamed tab stop", async () => {
+    const { playNext, skipNext } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    const user = userEvent.setup();
+    const { container } = render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    expect(container.querySelectorAll("li[tabindex]")).toHaveLength(0);
+    const stops = Array.from(container.querySelectorAll<HTMLElement>("[tabindex]:not([tabindex='-1']), button:not([disabled])"));
+    stops.forEach((stop) => expect(stop).toHaveAccessibleName());
+    const play = screen.getByRole("button", { name: "Play Track 3 now" });
+    await user.tab();
+    await user.tab();
+    play.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(skipNext).toHaveBeenCalledTimes(1));
+    expect((playNext.mock.calls[0][0] as Array<{ trackId: number }>)[0].trackId).toBe(3);
+  });
+
+  it("moves focus to the nearest remaining row when the focused row goes away", async () => {
+    const { setQueue } = install({ suggestions: [2, 3, 4, 5].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 3");
+    screen.getByRole("button", { name: "Play Track 3 now" }).focus();
+    act(() => setQueue([3]));
+    await waitFor(() => expect(screen.queryByText("Track 3")).not.toBeInTheDocument());
+    expect(document.activeElement).not.toBe(document.body);
+    expect(screen.getByRole("region", { name: "Plays well next" }).contains(document.activeElement)).toBe(true);
+  });
+
+  it("moves focus to the heading when the focused row goes away and none is left", async () => {
+    const { setQueue } = install({ suggestions: [2].map(suggestion) });
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    screen.getByRole("button", { name: "Play Track 2 now" }).focus();
+    act(() => setQueue([2]));
+    await waitFor(() => expect(screen.queryByText("Track 2")).not.toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Plays well next" })).toHaveFocus();
+  });
+
+  it("Play now on a pick already queued next only skips to it", async () => {
+    const { playNext, skipNext, setQueue } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    const user = userEvent.setup();
+    render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    await user.click(screen.getByRole("button", { name: "Play next: Track 2" }));
+    await waitFor(() => expect(playNext).toHaveBeenCalledTimes(1));
+    act(() => setQueue([2]));
+    await act(async () => {});
+    await user.click(screen.getByRole("button", { name: "Play Track 2 now" }));
+    await waitFor(() => expect(skipNext).toHaveBeenCalledTimes(1));
+    expect(playNext).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks again when the key or BPM of the shown track is edited, and not for an unchanged track", async () => {
+    const { getSimilarTracks } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    const { rerender } = render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    rerender(<NextTrackPicks track={row(1)} active={false} />);
+    rerender(<NextTrackPicks track={row(1, { effective_key: "9A", effective_bpm: 130 })} active />);
+    await waitFor(() => expect(getSimilarTracks).toHaveBeenCalledTimes(2));
+  });
+
+  it("reads the rows again when the tab is shown again, so a deleted track is not kept", async () => {
+    const { getLibraryTrack, getSimilarTracks } = install({ suggestions: [2, 3, 4, 5].map(suggestion) });
+    const { rerender } = render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    getLibraryTrack.mockImplementation(async ({ trackId }: { trackId: number }) =>
+      (trackId === 2 ? { track: null } : { track: row(trackId) }) as unknown as LibraryTrackDetail,
+    );
+    rerender(<NextTrackPicks track={row(1)} active={false} />);
+    rerender(<NextTrackPicks track={row(1)} active />);
+    await waitFor(() => expect(screen.queryByText("Track 2")).not.toBeInTheDocument());
+    expect(screen.getByText("Track 5")).toBeInTheDocument();
+    expect(getSimilarTracks).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-reads the queue only when focus enters from outside, and throttles pointer entry", async () => {
+    const { queueWindow } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    const { container } = render(
+      <div>
+        <button type="button">outside</button>
+        <NextTrackPicks track={row(1)} />
+      </div>,
+    );
+    await screen.findByText("Track 2");
+    await act(async () => {});
+    const section = container.querySelector("section")!;
+    const before = queueWindow.mock.calls.length;
+    const a = screen.getByRole("button", { name: "Play Track 2 now" });
+    const b = screen.getByRole("button", { name: "Play Track 3 now" });
+    a.focus();
+    await act(async () => {});
+    const afterEnter = queueWindow.mock.calls.length;
+    expect(afterEnter).toBeGreaterThan(before);
+    b.focus();
+    a.focus();
+    await act(async () => {});
+    expect(queueWindow.mock.calls.length).toBe(afterEnter);
+    fireEvent.pointerEnter(section);
+    fireEvent.pointerEnter(section);
+    fireEvent.pointerEnter(section);
+    await act(async () => {});
+    expect(queueWindow.mock.calls.length - afterEnter).toBeLessThanOrEqual(1);
+  });
+
+  it("reuses the in-flight request when the tab is hidden and shown before the first answer", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const { getSimilarTracks } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    getSimilarTracks.mockImplementationOnce(async () => {
+      await gate;
+      return { value: { seed_id: 1, notation: "camelot", unused: [], considered: 3, duplicates_excluded: 0, index_current: true, suggestions: [2, 3, 4].map(suggestion) }, refusal: null };
+    });
+    const { rerender } = render(<NextTrackPicks track={row(1)} />);
+    await waitFor(() => expect(getSimilarTracks).toHaveBeenCalledTimes(1));
+    rerender(<NextTrackPicks track={row(1)} active={false} />);
+    rerender(<NextTrackPicks track={row(1)} active />);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await act(async () => release());
+    expect(await screen.findByText("Track 2")).toBeInTheDocument();
+    expect(getSimilarTracks).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces that it is finding picks while it loads", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const { getSimilarTracks } = install({ suggestions: [2, 3, 4].map(suggestion) });
+    getSimilarTracks.mockImplementationOnce(async () => {
+      await gate;
+      return { value: { seed_id: 1, notation: "camelot", unused: [], considered: 3, duplicates_excluded: 0, index_current: true, suggestions: [2, 3, 4].map(suggestion) }, refusal: null };
+    });
+    const { container } = render(<NextTrackPicks track={row(1)} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Finding picks…");
+    expect(container.querySelector("section")).toHaveAttribute("aria-busy", "true");
+    await act(async () => release());
+    await screen.findByText("Track 2");
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("gives both labels of Play next the same width by reserving the wider one", async () => {
+    install({ suggestions: [2].map(suggestion) });
+    const { container } = render(<NextTrackPicks track={row(1)} />);
+    await screen.findByText("Track 2");
+    const label = container.querySelector(".cp-next-picks__label")!;
+    expect(label.textContent).toContain("Play next");
+    expect(label.textContent).toContain("Queued");
   });
 });
