@@ -41,4 +41,10 @@ describe("the dig card's ⋯ menu (B9)", () => {
     }
     expect(winner?.value).toBe("absolute");
   });
+
+  it("keeps the title's own box short of the button with a margin, not a padding", () => {
+    const rule = parseRules(stripComments(discoverCss)).find((r) => r.selector.trim() === ".discover-runs__when");
+    expect(rule?.body).toMatch(/margin-right:\s*calc\(24px \* var\(--scale\)\)/);
+    expect(rule?.body).not.toMatch(/padding-right/);
+  });
 });

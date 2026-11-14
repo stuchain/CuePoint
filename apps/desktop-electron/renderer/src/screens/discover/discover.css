@@ -196,8 +196,10 @@
   font-family: var(--font-voice);
   grid-column: 1 / -1;
   min-width: 0;
-  /* Room for the ⋯ button; the lines under it use the card's full width (M178). */
-  padding-right: calc(24px * var(--scale));
+  /* Room for the ⋯ button; the lines under it use the card's full width (M178). A margin, not a
+     padding: the title's own box stops short of the button too, now the button sits at the card's top
+     right (B9) instead of under it. */
+  margin-right: calc(24px * var(--scale));
   font-size: var(--font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
