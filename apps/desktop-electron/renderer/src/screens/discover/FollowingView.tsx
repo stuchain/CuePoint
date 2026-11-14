@@ -105,8 +105,12 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
   const allButton = useRef<HTMLButtonElement>(null);
 
   // What the feed shows as new, for the one mark when the tab is left: the follow picked (or all),
-  // and how many new tracks it has; null while the feed has not loaded, or showed an error.
+  // and how many rows the feed answered with (owned ones too when Hide owned is off); null while the
+  // feed has not loaded, or showed an error.
   const shown = useRef<{ picked: Picked; count: number } | null>(null);
+  // The mark posted when the tab was last left, until the engine has answered it. A read of the
+  // follows waits for it, so coming back quickly never reads counts from before the mark.
+  const pendingMark = useRef<Promise<unknown> | null>(null);
   const modeRef = useRef<Mode>("loading");
   modeRef.current = mode;
   // Whether the check running was asked for with "Check again", which says how it went.
@@ -130,6 +134,9 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
       return null;
     }
     try {
+      // A mark still in flight changes what this read answers: let it land first.
+      const marking = pendingMark.current;
+      if (marking) await marking;
       const answer = await bridge();
       if (answer.refusal) {
         setProblem(refusalText(answer.refusal));
@@ -279,9 +286,15 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
         return;
       }
       // The count is read again from the engine once the mark has been answered, never set here.
-      void mark(was.picked ? { kind: was.picked.kind, beatport_id: was.picked.beatport_id } : {})
+      const marking: Promise<unknown> = mark(
+        was.picked ? { kind: was.picked.kind, beatport_id: was.picked.beatport_id } : {},
+      )
         .catch(reportUnexpected)
-        .finally(() => latest.current.onLeft());
+        .finally(() => {
+          if (pendingMark.current === marking) pendingMark.current = null;
+          latest.current.onLeft();
+        });
+      pendingMark.current = marking;
     };
   }, [active]);
 
@@ -461,12 +474,9 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     !feed.loading &&
     feedPage !== null &&
     answersWindow(feedPage);
-  const pickedFollow = picked
-    ? (follows?.follows.find((row) => row.kind === picked.kind && row.beatport_id === picked.beatport_id) ?? null)
-    : null;
-  shown.current = feedShown
-    ? { picked, count: picked ? (pickedFollow?.new_count ?? 0) : (follows?.new_count ?? 0) }
-    : null;
+  // The rows the feed answered with, owned ones included when they are shown: with Hide owned off
+  // and only owned new tracks, the feed still showed something and leaving marks it seen.
+  shown.current = feedShown && feedPage ? { picked, count: feedPage.total } : null;
 
   // --- drawing
 

@@ -2129,6 +2129,9 @@ class TestOneModuleRunsEachTablesSQL:
         "beatport_tracks": {
             "persistence/discovery_repository.py",
             "persistence/wantlist_repository.py",
+            # DEC-317: a follow's mark-seen records the ids of the cached tracks it
+            # saw, selecting them with the catalog module's own entity query.
+            "persistence/follow_repository.py",
         },
     }
 

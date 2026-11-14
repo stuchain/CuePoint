@@ -1779,7 +1779,7 @@ describe("the Following tab", () => {
       getFollowFeed: vi.fn(async () =>
         value({
           rows: [],
-          total: 0,
+          total: 2,
           hidden_owned: 0,
           checked_at: null,
           unchecked: 0,
@@ -1824,7 +1824,7 @@ describe("the Following tab", () => {
       getFollowFeed: vi.fn(async () =>
         value({
           rows: [],
-          total: 0,
+          total: 2,
           hidden_owned: 0,
           checked_at: null,
           unchecked: 0,

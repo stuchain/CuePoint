@@ -131,6 +131,11 @@ function install(overrides: Record<string, Fn> = {}) {
   (window as unknown as { cuepoint: unknown }).cuepoint = bridge;
 }
 
+function emptyFeedPage(params: Record<string, unknown> = {}): DiscoverAnswer<FollowFeed> {
+  const page = feedPage(params);
+  return value({ ...page.value!, rows: [], total: 0, hidden_owned: 0 });
+}
+
 function emptyFollows() {
   return { getFollows: vi.fn(async () => value({ follows: [], new_count: 0 })) };
 }
@@ -381,6 +386,7 @@ describe("leaving the tab", () => {
 
     // Shown again and left again with nothing new: no second mark.
     bridge.getFollows!.mockResolvedValue(value({ follows: FOLLOWS.map((row) => ({ ...row, new_count: 0 })), new_count: 0 }));
+    bridge.getFollowFeed!.mockImplementation(async (params: Record<string, unknown>) => emptyFeedPage(params ?? {}));
     await act(async () => view.setActive(true));
     await waitFor(() => expect(bridge.getFollows!.mock.calls.length).toBeGreaterThan(2), LOADED);
     view.setActive(false);
@@ -389,7 +395,10 @@ describe("leaving the tab", () => {
   });
 
   it("marks nothing when nothing was new", async () => {
-    install({ getFollows: vi.fn(async () => value({ follows: [{ ...AMSEL, new_count: 0 }], new_count: 0 })) });
+    install({
+      getFollows: vi.fn(async () => value({ follows: [{ ...AMSEL, new_count: 0 }], new_count: 0 })),
+      getFollowFeed: vi.fn(async (params: Record<string, unknown>) => emptyFeedPage(params ?? {})),
+    });
     const view = renderView();
     await screen.findByRole("navigation", { name: "Followed artists and labels" });
     view.setActive(false);
@@ -699,6 +708,36 @@ describe("leaving marks only what was shown", () => {
     expect(onLeft).not.toHaveBeenCalled();
     answer(value({ changed: 3, seen_through: "2026-11-13" }));
     await waitFor(() => expect(onLeft).toHaveBeenCalledTimes(1));
+  });
+
+  it("marks what the feed showed even when every count, which hides owned tracks, is 0", async () => {
+    // Hide owned is off and only owned tracks are new: the follows say 0 new, the feed shows rows.
+    install({
+      getFollows: vi.fn(async () =>
+        value({ follows: FOLLOWS.map((row) => ({ ...row, new_count: 0 })), new_count: 0 }),
+      ),
+    });
+    const view = renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    view.setActive(false);
+    await waitFor(() => expect(bridge.markFollowsSeen).toHaveBeenCalledTimes(1));
+    expect(bridge.markFollowsSeen).toHaveBeenCalledWith({});
+  });
+
+  it("reads the follows again only after a mark still in flight has been answered", async () => {
+    let answer: (value: unknown) => void = () => {};
+    install({ markFollowsSeen: vi.fn(() => new Promise((resolve) => (answer = resolve))) });
+    const view = renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    view.setActive(false);
+    await waitFor(() => expect(bridge.markFollowsSeen).toHaveBeenCalled());
+    const before = bridge.getFollows!.mock.calls.length;
+    // Back while the mark is in flight: its read must not be answered with pre-mark counts.
+    view.setActive(true);
+    await act(async () => {});
+    expect(bridge.getFollows!.mock.calls.length).toBe(before);
+    answer(value({ changed: 3, seen_through: "2026-11-13" }));
+    await waitFor(() => expect(bridge.getFollows!.mock.calls.length).toBeGreaterThan(before));
   });
 
   it("marks nothing in the gap between starting a check and its job arriving", async () => {
