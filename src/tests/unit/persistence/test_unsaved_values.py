@@ -206,6 +206,27 @@ class TestEachRule:
         meta.set_override(track, "genre", "Techno")
         assert unsaved_fields(db, track) == set()
 
+    @pytest.mark.parametrize("suffix", [".m4a", ".mp4", ".m4b", ".M4A"])
+    def test_a_rounded_mp4_tempo_is_saved(self, db, meta, suffix):
+        # tmpo holds a whole number: 126.5 is written as 127 and read back as 127.
+        track = add_track(db, f"/m/a{suffix}", bpm=124.0)
+        meta.set_override(track, "bpm", 126.5)
+        assert unsaved_fields(db, track) == {"bpm"}
+        write_row(db, track, "bpm", new_value_json='{"tmpo": [127]}')
+        assert unsaved_fields(db, track) == set()
+
+    def test_a_tempo_that_is_not_the_rounded_one_is_still_unsaved(self, db, meta):
+        track = add_track(db, "/m/a.m4a", bpm=124.0)
+        meta.set_override(track, "bpm", 126.5)
+        write_row(db, track, "bpm", new_value_json='{"tmpo": [126]}')
+        assert unsaved_fields(db, track) == {"bpm"}
+
+    def test_a_fractional_tempo_in_an_mp3_is_not_rounded(self, db, meta):
+        track = add_track(db, "/m/a.mp3", bpm=124.0)
+        meta.set_override(track, "bpm", 126.5)
+        write_row(db, track, "bpm", new_value_json='{"TBPM": ["127"]}')
+        assert unsaved_fields(db, track) == {"bpm"}
+
     @pytest.mark.parametrize(
         "path",
         ["/m/a.mp3", "/m/a.MP3", "/m/a.flac", "/m/a.ogg", "/m/a.aif", "/m/a.aiff"],

@@ -604,6 +604,8 @@ UNSAVED_FILE_SUFFIXES: Tuple[str, ...] = (
     ".mp4",
     ".m4b",
 )
+#: The suffixes that are MP4 files, whose tempo atom holds a whole number.
+MP4_UNSAVED_SUFFIXES: Tuple[str, ...] = (".m4a", ".mp4", ".m4b")
 #: Two BPMs closer than this are one BPM: the writer rounds to two decimals.
 UNSAVED_BPM_TOLERANCE = 0.005
 #: The years a tag is written with (``tag_writer._normalize_year``).
@@ -692,7 +694,16 @@ def _unsaved_select(field: str, scope: str = "") -> str:
             f"FROM track_metadata AS {METADATA_ALIAS}"
             f" CROSS JOIN tracks ON tracks.id = {METADATA_ALIAS}.track_id"
         )
-    saved = _unsaved_same(field, _unsaved_written(field, first_text), mine)
+    written = _unsaved_written(field, first_text)
+    saved = _unsaved_same(field, written, mine)
+    if field == "bpm":
+        # An MP4 ``tmpo`` holds a whole number (``tag_writer._mp4_bpm`` rounds
+        # half up), so its record is the rounded BPM, not the one asked for.
+        mp4 = " OR ".join(
+            f"tracks.file_path LIKE '%{suffix}'" for suffix in MP4_UNSAVED_SUFFIXES
+        )
+        rounded = _unsaved_same(field, written, f"CAST({mine} + 0.5 AS INTEGER)")
+        saved = f"({saved} OR (({mp4}) AND {rounded}))"
     return (
         f"SELECT tracks.id AS track_id, '{field}' AS field {source}"
         f" WHERE {mine} IS NOT NULL"

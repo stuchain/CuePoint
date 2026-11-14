@@ -294,6 +294,20 @@ def mp4_migrated_value(field: str, before: FieldValue) -> FieldValue:
     return {standard: carried} if carried else None
 
 
+def _binary_display(item: Dict[str, Any]) -> str:
+    """A freeform atom stored with a non-text data type, as text when it is text.
+
+    The library scan reads such an atom as UTF-8 (``tag_writer._mp4_text``), so a
+    value that decodes cleanly is shown as that text; anything else stays
+    "(binary)". Only the display changes: the record keeps the exact bytes.
+    """
+    try:
+        decoded = base64.b64decode(item["data"], validate=True).decode("utf-8")
+    except (KeyError, TypeError, ValueError):
+        return "(binary)"
+    return decoded if decoded.strip() else "(binary)"
+
+
 def display_value(value: FieldValue) -> Optional[str]:
     """A value as a person reads it: the texts it holds, joined; None for none.
 
@@ -310,7 +324,7 @@ def display_value(value: FieldValue) -> Optional[str]:
                     texts.extend(str(text) for text in comment_texts)
             continue
         for text in contents:
-            shown = "(binary)" if isinstance(text, dict) else str(text)
+            shown = _binary_display(text) if isinstance(text, dict) else str(text)
             if shown not in texts:
                 texts.append(shown)
     shown = "; ".join(text for text in texts if text)

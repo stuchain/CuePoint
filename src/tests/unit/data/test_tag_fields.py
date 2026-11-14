@@ -813,6 +813,23 @@ class TestMp4Details:
             "8A; (binary)"
         )
 
+    def test_an_implicit_text_freeform_value_is_shown_as_its_text(self, tmp_path):
+        from mutagen.mp4 import MP4, AtomDataType, MP4FreeForm
+
+        path = audio_copy(tmp_path, "m4a")
+        audio = MP4(str(path))
+        audio.tags[KEY_ATOM] = [MP4FreeForm(b"8A", dataformat=AtomDataType.IMPLICIT)]
+        audio.save()
+
+        value = read_tag_fields(path).value("key")
+        assert display_value(value) == "8A"
+        # The record still holds the exact bytes and the data type, for an undo.
+        assert value == {KEY_ATOM: [{"dataformat": 0, "data": "OEE="}]}
+
+    def test_a_non_utf8_freeform_value_stays_binary(self):
+        value = {KEY_ATOM: [{"dataformat": 0, "data": "/w=="}]}
+        assert display_value(value) == "(binary)"
+
     def test_a_file_with_no_ilst_reads_as_nothing_and_comes_back(self, tmp_path):
         path = audio_copy(tmp_path, "m4a")
         without_ilst(path)
