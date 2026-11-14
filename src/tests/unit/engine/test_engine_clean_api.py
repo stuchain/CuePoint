@@ -29,6 +29,7 @@ from __future__ import annotations
 import csv
 import json
 import socket
+import sys
 import threading
 import time
 import urllib.error
@@ -1368,6 +1369,10 @@ class TestFindingFiles:
                 "INVALID_REQUEST",
             )
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="Windows drops a trailing space when the test makes the folder",
+    )
     def test_a_folder_name_ending_in_a_space_is_kept_as_written(
         self, engine, store, tmp_path
     ):

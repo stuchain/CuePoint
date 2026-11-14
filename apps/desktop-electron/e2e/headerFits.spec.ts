@@ -21,6 +21,10 @@ test("every header holds its tabs at 1024 x 700 with the queue open", async () =
     const window = await ready(app);
     await importCollection(window, writeExport(ws.workspace));
     await setInnerSize(app, window, { width: 1024, height: 700 });
+    // The player bar, and with it the queue button, appears once a track is first queued (DEC-053).
+    await openDestination(window, DESTINATIONS[0]);
+    await window.getByRole("grid", { name: "Library tracks" }).locator('[role="row"][data-index]').first().click({ button: "right" });
+    await window.getByRole("menu").getByRole("menuitem", { name: "Add to queue" }).click();
     await window.getByRole("button", { name: /show the queue/i }).click();
     await expect(window.getByRole("button", { name: /hide the queue/i })).toBeVisible();
     for (const destination of DESTINATIONS) {
