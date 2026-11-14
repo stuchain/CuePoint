@@ -39,6 +39,7 @@ function follow(over: Partial<FollowRow>): FollowRow {
     name: "Amsel",
     followed_at: "2026-11-01T00:00:00Z",
     seen_through: "2026-11-06",
+    seen_at: null,
     new_count: 0,
     checked_at: null,
     state: null,
@@ -146,15 +147,18 @@ function tools(over: Partial<DiscoverTools> = {}): DiscoverTools {
   };
 }
 
-function renderView(props: { active?: boolean; tools?: DiscoverTools; onNewCount?: (n: number) => void } = {}) {
+function renderView(
+  props: { active?: boolean; tools?: DiscoverTools; onNewCount?: (n: number) => void; onLeft?: () => void } = {},
+) {
   const onNewCount = props.onNewCount ?? vi.fn();
+  const onLeft = props.onLeft ?? vi.fn();
   let current = props.tools ?? tools();
   let shown = props.active ?? true;
   const ui = () => (
     <ScaleProvider>
       <ToastProvider>
         <MemoryRouter>
-          <FollowingView tools={current} onNewCount={onNewCount} active={shown} />
+          <FollowingView tools={current} onNewCount={onNewCount} onLeft={onLeft} active={shown} />
         </MemoryRouter>
       </ToastProvider>
     </ScaleProvider>
@@ -364,14 +368,17 @@ describe("with follows", () => {
 describe("leaving the tab", () => {
   it("marks what was shown as seen, once", async () => {
     const onNewCount = vi.fn();
-    const view = renderView({ onNewCount });
+    const onLeft = vi.fn();
+    const view = renderView({ onNewCount, onLeft });
     await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
     expect(bridge.markFollowsSeen).not.toHaveBeenCalled();
 
     view.setActive(false);
     await waitFor(() => expect(bridge.markFollowsSeen).toHaveBeenCalledTimes(1));
     expect(bridge.markFollowsSeen).toHaveBeenCalledWith({});
-    await waitFor(() => expect(onNewCount).toHaveBeenLastCalledWith(0));
+    // The count is read again by the page once the mark is answered, never set to 0 here.
+    await waitFor(() => expect(onLeft).toHaveBeenCalledTimes(1));
+    expect(onNewCount).not.toHaveBeenCalledWith(0);
 
     // Shown again and left again with nothing new: no second mark.
     bridge.getFollows!.mockResolvedValue(value({ follows: FOLLOWS.map((row) => ({ ...row, new_count: 0 })), new_count: 0 }));
@@ -563,6 +570,180 @@ describe("review fixes", () => {
   });
 });
 
+describe("suggestions keep who was followed", () => {
+  beforeEach(() => install(emptyFollows()));
+
+  it("keeps a followed name, and the count, when Show 10 more answers", async () => {
+    const first = Array.from({ length: 10 }, (_, at) => ({
+      ...SUGGESTIONS[0]!,
+      beatport_id: 100 + at,
+      name: `Name ${at}`,
+    }));
+    // The engine keeps a followed name in its place, marked followed.
+    const getFollowSuggestions = vi.fn(async (params?: { limit?: number }) => {
+      const followed = bridge.addFollow!.mock.calls.length > 0;
+      const rows = first.map((row, at) => ({ ...row, followed: followed && at === 0 }));
+      return value({ suggestions: (params?.limit ?? 10) > 10 ? [...rows, ...rows.slice(0, 0)] : rows });
+    });
+    install({ ...emptyFollows(), getFollowSuggestions });
+    renderView();
+    fireEvent.click(await screen.findByRole("button", { name: "Follow Name 0" }));
+    await screen.findByRole("button", { name: "Following Name 0" });
+    fireEvent.click(screen.getByRole("button", { name: "Show 10 more" }));
+    await waitFor(() => expect(getFollowSuggestions).toHaveBeenLastCalledWith({ limit: 20 }));
+    expect(await screen.findByRole("button", { name: "Following Name 0" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show what's new (1 followed)" })).toBeEnabled();
+  });
+
+  it("keeps a followed name through Retry", async () => {
+    const names = Array.from({ length: 10 }, (_, at) => ({
+      ...SUGGESTIONS[0]!,
+      beatport_id: 100 + at,
+      name: `Name ${at}`,
+    }));
+    let fail = false;
+    const getFollowSuggestions = vi.fn(async () => {
+      if (fail) {
+        fail = false;
+        throw new Error("offline");
+      }
+      const followed = bridge.addFollow!.mock.calls.length > 0;
+      return value({ suggestions: names.map((row, at) => ({ ...row, followed: followed && at === 0 })) });
+    });
+    install({ ...emptyFollows(), getFollowSuggestions });
+    renderView();
+    fireEvent.click(await screen.findByRole("button", { name: "Follow Name 0" }));
+    await screen.findByRole("button", { name: "Following Name 0" });
+    fail = true;
+    fireEvent.click(screen.getByRole("button", { name: "Show 10 more" }));
+    fireEvent.click(await screen.findByRole("button", { name: RETRY }, LOADED));
+    expect(await screen.findByRole("button", { name: "Following Name 0" }, LOADED)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show what's new (1 followed)" })).toBeEnabled();
+  });
+
+  it("stops asking for more at the engine's cap of 100", async () => {
+    const getFollowSuggestions = vi.fn(async (params?: { limit?: number }) =>
+      value({
+        suggestions: Array.from({ length: params?.limit ?? 10 }, (_, at) => ({
+          ...SUGGESTIONS[0]!,
+          beatport_id: 100 + at,
+          name: `Name ${at}`,
+        })),
+      }),
+    );
+    install({ ...emptyFollows(), getFollowSuggestions });
+    renderView();
+    for (let limit = 20; limit <= 100; limit += 10) {
+      fireEvent.click(await screen.findByRole("button", { name: "Show 10 more" }));
+      await waitFor(() => expect(getFollowSuggestions).toHaveBeenLastCalledWith({ limit }));
+      await screen.findByRole("button", { name: `Follow Name ${limit - 1}` });
+    }
+    expect(screen.queryByRole("button", { name: "Show 10 more" })).toBeNull();
+    expect(getFollowSuggestions).not.toHaveBeenCalledWith({ limit: 110 });
+  });
+
+  it("hides Show 10 more when fewer names came back than were asked for", async () => {
+    renderView();
+    await screen.findByRole("button", { name: "Follow Amsel" });
+    expect(screen.queryByRole("button", { name: "Show 10 more" })).toBeNull();
+  });
+
+  it("draws a neutral picture beside each name: round for an artist, square for a label", async () => {
+    renderView();
+    const amsel = (await screen.findByRole("button", { name: "Follow Amsel" })).closest("li")!;
+    expect(amsel.querySelector(".discover-following__avatar--artist")).not.toBeNull();
+    const label = screen.getByRole("button", { name: "Follow Monochrome Hours" }).closest("li")!;
+    expect(label.querySelector(".discover-following__avatar--label")).not.toBeNull();
+  });
+});
+
+describe("leaving marks only what was shown", () => {
+  it("marks only the follow that was picked", async () => {
+    const view = renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    fireEvent.click(screen.getByRole("button", { name: /^Anouk Dreyer/ }));
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(1), LOADED);
+    view.setActive(false);
+    await waitFor(() => expect(bridge.markFollowsSeen).toHaveBeenCalledTimes(1));
+    expect(bridge.markFollowsSeen).toHaveBeenCalledWith({ kind: "artist", beatport_id: 2 });
+  });
+
+  it("marks nothing when the feed shows an error", async () => {
+    install({ getFollowFeed: vi.fn(async () => { throw new Error("offline"); }) });
+    const onLeft = vi.fn();
+    const view = renderView({ onLeft });
+    await screen.findByText("What is new could not be read", {}, LOADED);
+    view.setActive(false);
+    await waitFor(() => expect(onLeft).toHaveBeenCalled());
+    expect(bridge.markFollowsSeen).not.toHaveBeenCalled();
+  });
+
+  it("marks nothing when the feed never loaded", async () => {
+    install({ getFollowFeed: vi.fn(() => new Promise(() => {})) });
+    const onLeft = vi.fn();
+    const view = renderView({ onLeft });
+    await screen.findByRole("navigation", { name: "Followed artists and labels" });
+    view.setActive(false);
+    await waitFor(() => expect(onLeft).toHaveBeenCalled());
+    expect(bridge.markFollowsSeen).not.toHaveBeenCalled();
+  });
+
+  it("asks the page to read the count only after the mark has been answered", async () => {
+    let answer: (value: unknown) => void = () => {};
+    install({ markFollowsSeen: vi.fn(() => new Promise((resolve) => (answer = resolve))) });
+    const onLeft = vi.fn();
+    const view = renderView({ onLeft });
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    view.setActive(false);
+    await waitFor(() => expect(bridge.markFollowsSeen).toHaveBeenCalled());
+    await act(async () => {});
+    expect(onLeft).not.toHaveBeenCalled();
+    answer(value({ changed: 3, seen_through: "2026-11-13" }));
+    await waitFor(() => expect(onLeft).toHaveBeenCalledTimes(1));
+  });
+
+  it("marks nothing in the gap between starting a check and its job arriving", async () => {
+    let started: (value: unknown) => void = () => {};
+    install({ startFollowsCheck: vi.fn(() => new Promise((resolve) => (started = resolve))) });
+    const view = renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalled());
+    view.setActive(false);
+    await act(async () => {});
+    expect(bridge.markFollowsSeen).not.toHaveBeenCalled();
+    started(value({ id: "job-follows", type: "follows_check", state: "queued" }));
+  });
+});
+
+describe("a failed check and a failed read", () => {
+  it("lets the automatic check run again when the one that ended failed", async () => {
+    install({
+      getJob: vi.fn(async (id: string) => ({ id, state: "failed", error: { message: "engine restarted" } })),
+      getJobResults: vi.fn(async (id: string) => ({ id, state: "failed", result: null })),
+    });
+    const view = renderView({ tools: tools({ beatportState: "ok" }) });
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalledTimes(1), LOADED);
+    await waitFor(() => expect(bridge.getJobResults).toHaveBeenCalled(), LOADED);
+    // Beatport usable again after the restart: the next ready starts the check once more.
+    view.setTools(tools({ beatportState: "no_token" }));
+    await act(async () => {});
+    view.setTools(tools({ beatportState: "ok" }));
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalledTimes(2), LOADED);
+  });
+
+  it("says so when the list cannot be read again while follows are showing", async () => {
+    let ended = false;
+    install({ getJob: vi.fn(async (id: string) => ({ id, state: ended ? "succeeded" : "running" })) });
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    bridge.getFollows!.mockRejectedValue(new Error("engine is gone"));
+    ended = true;
+    expect(await screen.findByRole("alert", {}, LOADED)).toHaveTextContent(/could not be read/);
+    // The follows already read stay on screen.
+    expect(screen.getByRole("button", { name: /^Amsel/ })).toBeInTheDocument();
+  });
+});
+
 describe("the sentences", () => {
   const now = new Date(2026, 10, 13, 12, 0, 0);
   it("says how long ago it checked", () => {
@@ -607,6 +788,15 @@ describe("the sentences", () => {
       now,
     );
     expect(line).toMatch(/^1 new track since today/);
+  });
+
+  it("says since you last looked for a follow that was marked seen", () => {
+    const line = followStatusLine(
+      { total: 1, hidden_owned: 0, checked_at: null },
+      { newCount: 1, seenThrough: "2026-11-13", seenAt: "2026-11-13T09:00:00+00:00", hiding: true },
+      now,
+    );
+    expect(line).toBe("1 new track since you last looked · not checked yet");
   });
 
   it("takes the oldest day any follow was seen through", () => {

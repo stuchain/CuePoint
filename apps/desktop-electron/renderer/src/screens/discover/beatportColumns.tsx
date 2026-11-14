@@ -259,10 +259,23 @@ export const ENTITY_COLUMNS: readonly TrackColumnDef<BeatportTrackRow>[] = [
  */
 const FOLLOW_ORDER = ["title", "artists", "label", "release_date", "key", "bpm", "genre", "release"];
 const FOLLOW_SHOWN = new Set(["label", "release_date"]);
+const FOLLOW_WIDTHS: Record<string, { defaultWidthPx: number; minWidthPx?: number }> = {
+  title: { defaultWidthPx: 280 },
+  artists: { defaultWidthPx: 140 },
+  label: { defaultWidthPx: 120 },
+  release_date: { defaultWidthPx: 90, minWidthPx: 80 },
+};
 export const FOLLOW_COLUMNS: readonly TrackColumnDef<FollowFeedRow>[] = [
   ...FOLLOW_ORDER.map((id) => sharedColumns<FollowFeedRow>().find((column) => column.id === id)!).map(
-    ({ sortKey: _engineOrder, hiddenByDefault, ...column }) =>
-      FOLLOW_SHOWN.has(column.id) ? column : { ...column, ...(hiddenByDefault ? { hiddenByDefault } : {}) },
+    ({ sortKey: _engineOrder, hiddenByDefault, ...column }) => {
+      // Genre stays in the column picker but is off by default, so the default set fits at 1440 wide
+      // beside the list: a wide Title, then Artist, Label, Released, Key and BPM.
+      if (column.id === "genre") return { ...column, hiddenByDefault: true };
+      if (FOLLOW_WIDTHS[column.id]) return { ...column, ...FOLLOW_WIDTHS[column.id] };
+      return FOLLOW_SHOWN.has(column.id)
+        ? column
+        : { ...column, ...(hiddenByDefault ? { hiddenByDefault } : {}) };
+    },
   ),
   ownedColumn<FollowFeedRow>(),
   wantedColumn<FollowFeedRow>(),

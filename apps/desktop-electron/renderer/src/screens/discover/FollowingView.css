@@ -59,6 +59,32 @@
   white-space: nowrap;
 }
 
+/* A name with its small picture: round for an artist, square for a label, neutral until Beatport's
+   picture is kept for the name. */
+.discover-following__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.discover-following__avatar {
+  flex: none;
+  width: calc(20px * var(--scale));
+  height: calc(20px * var(--scale));
+  background: var(--bg-panel-alt);
+}
+
+.discover-following__avatar--artist {
+  border-radius: 50%;
+}
+
+.discover-following__error {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
 .discover-following__more,
 .discover-following__go {
   display: flex;
@@ -185,7 +211,9 @@
 }
 
 .discover-following__status {
-  flex: 1 1 auto;
+  /* Takes what is left of the row, so the toggle and Check again stay beside it and the line wraps
+     inside its own box; the bar only wraps when even the narrow status has no room. */
+  flex: 1 1 calc(220px * var(--scale));
   min-width: 0;
   margin: 0;
   font-size: var(--font-size-sm);

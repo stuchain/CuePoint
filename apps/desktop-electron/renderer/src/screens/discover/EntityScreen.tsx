@@ -58,6 +58,7 @@ import {
   identityDetail,
   entityFacts,
   INDEX_BUILDING,
+  followableName,
   kindTitle,
   pageTitle,
   redirectedLine,
@@ -284,11 +285,11 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
             >
               {goTo("Library")}
             </LinkButton>
-            {shown.followable && shown.beatport_id !== null && (
+            {shown.followable && shown.beatport_id !== null && followableName(shown) !== null && (
               <FollowButton
                 kind={shown.kind}
                 beatportId={shown.beatport_id}
-                name={pageTitle(shown)}
+                name={followableName(shown) ?? ""}
                 followed={shown.followed}
               />
             )}

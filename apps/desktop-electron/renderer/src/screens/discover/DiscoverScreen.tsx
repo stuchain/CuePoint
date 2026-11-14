@@ -117,26 +117,33 @@ export function DiscoverScreen() {
   const [runsVersion, setRunsVersion] = useState(0);
   const [pushNotice, setPushNotice] = useState<PlaylistOutcome | null>(null);
   // New tracks from the artists and labels followed: the Following tab's count. The tab tells it
-  // while it is the one on screen; otherwise it is read from the cache when the page is shown and
-  // when the tab is left (a follow made on an artist or label page counts then too).
+  // while it is the one on screen; otherwise it is read from the engine when the page is shown (a
+  // follow made on an artist or label page counts then too) and when the tab has been left, after
+  // its mark was answered: the count is always the engine's answer, never a number set here.
   const [followsNew, setFollowsNew] = useState(0);
   // A tab on a page that is hidden is not on screen, so it counts as left (usePageActive).
   const pageActive = usePageActive();
   const followingShown = section === "following";
-  useEffect(() => {
-    if (!pageActive || followingShown) return;
+  // The latest read wins: an answer that is not the newest read is dropped.
+  const countRead = useRef(0);
+  const readFollowsNew = useCallback(() => {
     const bridge = window.cuepoint?.getFollows;
     if (!bridge) return;
-    let live = true;
+    const mine = ++countRead.current;
     void bridge()
       .then((answer) => {
-        if (live && !answer.refusal) setFollowsNew(answer.value.new_count);
+        if (mine === countRead.current && !answer.refusal) setFollowsNew(answer.value.new_count);
       })
       .catch(reportUnexpected);
-    return () => {
-      live = false;
-    };
-  }, [pageActive, followingShown]);
+  }, []);
+  const followingShownRef = useRef(followingShown);
+  followingShownRef.current = followingShown;
+  // Reading when the page is shown. Not when the tab is chosen or left: the tab reads its own
+  // count while shown, and when it is left it asks for this read once its mark has been answered.
+  useEffect(() => {
+    if (!pageActive || followingShownRef.current) return;
+    readFollowsNew();
+  }, [pageActive, readFollowsNew]);
 
   // Which tabs show rows of tracks (M490): the Details slot is filled only while one is showing, so
   // an empty Results, New dig or an empty Wantlist has no Details button for nothing.
@@ -614,6 +621,7 @@ export function DiscoverScreen() {
               tools={tools}
               active={section === "following" && pageActive}
               onNewCount={setFollowsNew}
+              onLeft={readFollowsNew}
             />
           </div>
         )}

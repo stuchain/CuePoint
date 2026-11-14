@@ -1029,6 +1029,49 @@ describe("Follow (DEC-317)", () => {
     expect(await screen.findByRole("button", { name: "Follow" })).toBeInTheDocument();
   });
 
+  it("offers no Follow on a page that has no real name, never a placeholder one", async () => {
+    install({
+      getEntityPage: vi.fn(async () => {
+        const page = pages.page_artist_id as unknown as DiscoverAnswer<EntityPage>;
+        return {
+          ...page,
+          value: { ...page.value!, name: null, names: [], display_name: "Unknown artist" },
+        };
+      }),
+    });
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Unknown artist");
+    expect(screen.queryByRole("button", { name: /^Follow/ })).toBeNull();
+  });
+
+  it("follows under the library's commonest spelling when Beatport gave no name", async () => {
+    install({
+      getEntityPage: vi.fn(async () => {
+        const page = pages.page_artist_id as unknown as DiscoverAnswer<EntityPage>;
+        return {
+          ...page,
+          value: {
+            ...page.value!,
+            name: null,
+            names: [
+              { name_key: "a", name: "Mara V", tracks: 1 },
+              { name_key: "b", name: "Mara Veil", tracks: 4 },
+            ],
+            display_name: "Mara Veil",
+          },
+        };
+      }),
+      addFollow: vi.fn(async () => value({ changed: true, followed: true })),
+      removeFollow: vi.fn(async () => value({ changed: true, followed: false })),
+    });
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Mara Veil");
+    fireEvent.click(await screen.findByRole("button", { name: "Follow" }));
+    await waitFor(() =>
+      expect(mock("addFollow")).toHaveBeenCalledWith({ kind: "artist", beatport_id: 301001, name: "Mara Veil" }),
+    );
+  });
+
   it("starts as Following when the page says it is", async () => {
     install({
       getEntityPage: vi.fn(async () => {

@@ -64,6 +64,22 @@ export function pageTitle(page: Pick<EntityPage, "display_name">): string {
   return page.display_name;
 }
 
+/**
+ * The name to store when following the page: a name Beatport or the library really spells it with,
+ * else the commonest spelling among the names an id page gathers, else null. Never the
+ * "Unknown artist" a page is titled with when it has nothing: a follow kept under a placeholder
+ * would be listed under it for good, so such a page offers no Follow.
+ */
+export function followableName(page: Pick<EntityPage, "name" | "names">): string | null {
+  const named = page.name?.trim();
+  if (named) return named;
+  let best: { name: string; tracks: number } | null = null;
+  for (const entry of page.names) {
+    if (entry.name.trim() && (best === null || entry.tracks > best.tracks)) best = entry;
+  }
+  return best ? best.name.trim() : null;
+}
+
 /** "2014–2024", "2019", or null when no track has a year. */
 export function yearsText(years: EntityYears): string | null {
   const { first, last } = years;

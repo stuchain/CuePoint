@@ -1767,6 +1767,7 @@ describe("the Following tab", () => {
       name: "Amsel",
       followed_at: "2026-11-01T00:00:00Z",
       seen_through: "2026-11-06",
+      seen_at: null,
       new_count: 2,
       checked_at: null,
       state: null,
@@ -1804,5 +1805,59 @@ describe("the Following tab", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Results" }));
     expect(bridge.markFollowsSeen).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the count from the engine only after the mark is answered, never sets 0 itself", async () => {
+    const amsel = {
+      kind: "artist",
+      beatport_id: 1,
+      name: "Amsel",
+      followed_at: "2026-11-01T00:00:00Z",
+      seen_through: "2026-11-06",
+      seen_at: null,
+      new_count: 2,
+      checked_at: null,
+      state: null,
+    };
+    let answer: (value: unknown) => void = () => {};
+    let marked = false;
+    install({
+      getFollows: vi.fn(async () => value({ follows: [amsel], new_count: marked ? 1 : 2 })),
+      getFollowFeed: vi.fn(async () =>
+        value({
+          rows: [],
+          total: 0,
+          hidden_owned: 0,
+          checked_at: null,
+          unchecked: 0,
+          states: [],
+          follow_count: 1,
+          window: { kind: null, beatport_id: null, owned: "hide", offset: 0, limit: 100 },
+        }),
+      ),
+      startFollowsCheck: vi.fn(async () => value({ id: "job-follows", type: "follows_check", state: "queued" })),
+      markFollowsSeen: vi.fn(
+        () =>
+          new Promise((resolve) => {
+            answer = resolve;
+          }),
+      ),
+    });
+    renderDiscover();
+    fireEvent.click(await screen.findByRole("tab", { name: /^Following/ }));
+    await screen.findByRole("navigation", { name: "Followed artists and labels" }, LOADED);
+    const reads = (bridge.getFollows as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    fireEvent.click(screen.getByRole("tab", { name: "Wantlist" }));
+    await waitFor(() => expect(bridge.markFollowsSeen).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    // No racing read while the mark is out, and no local 0.
+    expect((bridge.getFollows as ReturnType<typeof vi.fn>).mock.calls.length).toBe(reads);
+    expect(screen.getByRole("tab", { name: /^Following/ })).toHaveTextContent("2");
+
+    // Only the engine's answer after the mark says what is still new (here, a track found since).
+    marked = true;
+    answer(value({ changed: 1, seen_through: "2026-11-13" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: /^Following/ })).toHaveTextContent("1"), LOADED);
   });
 });

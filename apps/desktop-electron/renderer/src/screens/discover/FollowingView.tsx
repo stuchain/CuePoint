@@ -8,10 +8,13 @@
  *
  * **Opening the tab reads the cache at once and asks Beatport after.** The follows and the feed come
  * from what the engine already holds; a check then reads each follow's releases, and when it ends
- * both are read again. **Leaving the tab marks what was shown as seen**, once, unless a check is
- * still running (the mark is by date and would bury tracks the check is still storing; they stay new
- * until a later visit). Pages stay alive when hidden, so "leaving" is the tab not being the one
- * on screen (`active`), not the view unmounting.
+ * both are read again. **Leaving the tab marks what was shown as seen**, once, and only what was
+ * shown: the follow that was picked (all of them under All), and nothing when the feed never loaded
+ * or showed an error. Not while a check is running or starting (the mark would bury tracks the
+ * check is still storing; they stay new until a later visit). When the mark has been answered the
+ * page is told (`onLeft`) to read the tab's count again from the engine; the view never sets it to
+ * 0 itself. Pages stay alive when hidden, so "leaving" is the tab not being the one on screen
+ * (`active`), not the view unmounting.
  *
  * Beatport's state is the page's (no token: the sign-in notice above the tabs), so a check is not
  * started without a token, and a follow Beatport refused says so as a muted line in the list.
@@ -45,7 +48,7 @@ import { FOLLOW_COLUMNS, FOLLOW_TABLE_LAYOUT_KEY } from "./beatportColumns";
 import { beatportUsable, refusalState, unusableReason } from "./beatportState";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
-import { followKey, followStatusParts, newCountWords, oldestSeenThrough } from "./followFormat";
+import { followKey, followStatusParts, newCountWords, oldestLook } from "./followFormat";
 import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
@@ -60,10 +63,14 @@ interface FollowingViewProps {
   active: boolean;
   /** Told how many new tracks the follows have, for the tab's count. */
   onNewCount: (count: number) => void;
+  /** Told when the tab was left and its mark (if any) has been answered: read the count again. */
+  onLeft: () => void;
 }
 
 /** How many suggestions are asked for, and how many more "Show 10 more" adds. */
 const SUGGESTION_STEP = 10;
+/** The most the engine answers (`follows/suggestions` refuses more): "Show 10 more" stops here. */
+const SUGGESTION_MAX = 100;
 
 const idOf = (row: FollowFeedRow) => row.beatport_track_id;
 
@@ -75,7 +82,16 @@ const GROUP_LIMIT = 8;
 
 const KIND_WORD: Record<EntityKind, string> = { artist: "Artist", label: "Label" };
 
-export function FollowingView({ tools, active, onNewCount }: FollowingViewProps) {
+/**
+ * The small picture beside a name: round for an artist, square for a label. Beatport's artist and
+ * label pictures are not kept for a follow (reading one is a request per name), so this is the
+ * neutral placeholder the mockups show for a name with no picture.
+ */
+function Avatar({ kind }: { kind: EntityKind }) {
+  return <span className={`discover-following__avatar discover-following__avatar--${kind}`} aria-hidden="true" />;
+}
+
+export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingViewProps) {
   const { notify } = tools;
   const openPage = useOpenPage();
   const [owned, setHiding] = useHideOwned();
@@ -88,14 +104,17 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
   const [expanded, setExpanded] = useState<ReadonlySet<EntityKind>>(new Set());
   const allButton = useRef<HTMLButtonElement>(null);
 
-  // What was shown as new, for the one mark when the tab is left.
-  const shownNew = useRef(0);
+  // What the feed shows as new, for the one mark when the tab is left: the follow picked (or all),
+  // and how many new tracks it has; null while the feed has not loaded, or showed an error.
+  const shown = useRef<{ picked: Picked; count: number } | null>(null);
   const modeRef = useRef<Mode>("loading");
   modeRef.current = mode;
   // Whether the check running was asked for with "Check again", which says how it went.
   const manual = useRef(false);
-  // Whether a check is in flight, and whether the tab is on screen, for the callbacks below.
+  // Whether a check is in flight or being started (the start's answer has not named a job yet), and
+  // whether the tab is on screen, for the callbacks below.
   const checkingRef = useRef(false);
+  const startingRef = useRef(false);
   const activeRef = useRef(active);
   activeRef.current = active;
   // Whether the automatic check was started for this visit.
@@ -118,7 +137,6 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
       }
       setProblem(null);
       setFollows(answer.value);
-      shownNew.current = answer.value.new_count;
       onNewCount(answer.value.new_count);
       return answer.value;
     } catch (cause) {
@@ -172,7 +190,11 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
   const check = useDiscoverJob<FollowCheckResult>((result, finished) => {
     const asked = manual.current;
     manual.current = false;
+    startingRef.current = false;
     checkingRef.current = false;
+    // A check that failed (an engine restart ends its job as failed) lets the next activation, or
+    // Beatport becoming usable again, start the automatic check once more.
+    if (!result && finished.state !== "succeeded") autoChecked.current = false;
     // A tab that is not on screen reads nothing: it reads again when it is shown.
     if (activeRef.current) {
       void readFollows();
@@ -191,7 +213,7 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
       );
     }
   });
-  checkingRef.current = check.jobId !== null;
+  checkingRef.current = check.jobId !== null || startingRef.current;
   const startCheckJob = check.start;
   const followCheck = check.follow;
 
@@ -201,6 +223,10 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
       if (!bridge) return;
       // Only a check asked for sets the flag; an automatic start must not clear it.
       if (refresh) manual.current = true;
+      // Starting counts as checking until the job ends: leaving in the gap before its id arrives
+      // must not mark (the check will store tracks).
+      startingRef.current = true;
+      checkingRef.current = true;
       try {
         const refusal = await startCheckJob(() => bridge({ refresh }));
         if (!refusal) return;
@@ -208,10 +234,12 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
           followCheck(refusal.job_id);
           return;
         }
+        startingRef.current = false;
         if (refresh) manual.current = false;
         // No token and the like are the page's notice; only a check asked for says more.
         if (refresh && !refusalState(refusal)) notify(refusalText(refusal), "warning");
       } catch (cause) {
+        startingRef.current = false;
         if (refresh) manual.current = false;
         reportUnexpected(cause);
         if (refresh) notify(userMessage(cause), "warning");
@@ -222,8 +250,8 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
 
   // --- opening and leaving the tab
 
-  const latest = useRef({ readFollows, startCheck, reloadFeed, usable, onNewCount });
-  latest.current = { readFollows, startCheck, reloadFeed, usable, onNewCount };
+  const latest = useRef({ readFollows, startCheck, reloadFeed, usable, onLeft });
+  latest.current = { readFollows, startCheck, reloadFeed, usable, onLeft };
   useEffect(() => {
     if (!active) return;
     let live = true;
@@ -240,18 +268,20 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
     return () => {
       live = false;
       autoChecked.current = false;
-      // Left: what was shown as new is seen now, once. Not while a check is still storing tracks:
-      // the mark is by date and would bury them; they stay new until a later visit.
-      if (checkingRef.current) return;
-      if (shownNew.current <= 0) return;
-      shownNew.current = 0;
+      // Left: what the feed showed as new is seen now, once, and only that. Not while a check is
+      // running or starting: the mark is by date and would bury tracks it is still storing; they
+      // stay new until a later visit. Nothing shown (never loaded, an error) marks nothing.
+      const was = shown.current;
+      shown.current = null;
       const mark = window.cuepoint?.markFollowsSeen;
-      if (!mark) return;
-      void mark({})
-        .then((answer) => {
-          if (!answer.refusal) latest.current.onNewCount(0);
-        })
-        .catch(reportUnexpected);
+      if (checkingRef.current || !was || was.count <= 0 || !mark) {
+        latest.current.onLeft();
+        return;
+      }
+      // The count is read again from the engine once the mark has been answered, never set here.
+      void mark(was.picked ? { kind: was.picked.kind, beatport_id: was.picked.beatport_id } : {})
+        .catch(reportUnexpected)
+        .finally(() => latest.current.onLeft());
     };
   }, [active]);
 
@@ -422,6 +452,22 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
     return refused;
   };
 
+  // --- what the feed shows, for the mark when the tab is left
+
+  const feedPage = feed.page;
+  const feedShown =
+    mode === "feed" &&
+    feed.status === "ready" &&
+    !feed.loading &&
+    feedPage !== null &&
+    answersWindow(feedPage);
+  const pickedFollow = picked
+    ? (follows?.follows.find((row) => row.kind === picked.kind && row.beatport_id === picked.beatport_id) ?? null)
+    : null;
+  shown.current = feedShown
+    ? { picked, count: picked ? (pickedFollow?.new_count ?? 0) : (follows?.new_count ?? 0) }
+    : null;
+
   // --- drawing
 
   if (problem && !follows) {
@@ -454,7 +500,7 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
   }
 
   if (mode === "suggest") {
-    const more = suggestions !== null && suggestions.length >= limit;
+    const more = suggestions !== null && suggestions.length >= limit && limit < SUGGESTION_MAX;
     return (
       <section className="discover-following discover-following--first" aria-label="Following">
         <h2 className="discover-section__title">Follow artists and labels</h2>
@@ -494,8 +540,11 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
                 const key = followKey(row);
                 return (
                   <li key={key} className="discover-following__suggestion">
-                    <span className="discover-following__name" data-cut-hint="">
-                      {row.name}
+                    <span className="discover-following__who">
+                      <Avatar kind={row.kind} />
+                      <span className="discover-following__name" data-cut-hint="">
+                        {row.name}
+                      </span>
                     </span>
                     <span className="discover-following__kind">{KIND_WORD[row.kind]}</span>
                     <span className="discover-following__tracks">
@@ -516,7 +565,7 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
             </ul>
             {more && (
               <div className="discover-following__more">
-                <Button variant="quiet" onClick={() => setLimit((was) => was + SUGGESTION_STEP)}>
+                <Button variant="quiet" onClick={() => setLimit((was) => Math.min(SUGGESTION_MAX, was + SUGGESTION_STEP))}>
                   Show {SUGGESTION_STEP} more
                 </Button>
               </div>
@@ -550,7 +599,8 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
         page,
         {
           newCount: selectedFollow ? selectedFollow.new_count : (follows?.new_count ?? 0),
-          seenThrough: selectedFollow ? selectedFollow.seen_through : oldestSeenThrough(rows),
+          seenThrough: selectedFollow ? selectedFollow.seen_through : (oldestLook(rows)?.seenThrough ?? null),
+          seenAt: selectedFollow ? selectedFollow.seen_at : (oldestLook(rows)?.seenAt ?? null),
           hiding: owned === "hide",
         },
       )
@@ -567,8 +617,11 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
           aria-current={here ? "true" : undefined}
           onClick={() => setPicked({ kind: row.kind, beatport_id: row.beatport_id })}
         >
-          <span className="discover-following__name" data-cut-hint="">
-            {row.name}
+          <span className="discover-following__who">
+            <Avatar kind={row.kind} />
+            <span className="discover-following__name" data-cut-hint="">
+              {row.name}
+            </span>
           </span>
           {row.new_count > 0 ? (
             <Badge variant="accent">
@@ -666,6 +719,11 @@ export function FollowingView({ tools, active, onNewCount }: FollowingViewProps)
       </nav>
 
       <div className="discover-following__feed">
+        {problem && (
+          <p className="discover-following__error" role="alert">
+            {`The list of who you follow could not be read: ${problem}`}
+          </p>
+        )}
         <div className="discover-following__bar">
           <p className="discover-following__status" role="status">
             {status ? (
