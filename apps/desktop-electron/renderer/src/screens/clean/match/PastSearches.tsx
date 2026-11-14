@@ -40,6 +40,7 @@ import { RETRY, nothingMatches, quoted } from "../../../format/words";
 import { reportUnexpected } from "../../../reporting/reporting";
 import {
   canResume,
+  deleteWords,
   groupRuns,
   resultParts,
   statusOf,
@@ -73,8 +74,11 @@ interface PastSearchesProps {
   onMatchAgain: (run: MatchRun) => void;
   /** The empty state's button: back to the Playlists sub-tab, where a match is started. */
   onGoToPlaylists: () => void;
-  /** Runs were deleted, by their job ids, so the area can close a review of one of them. */
-  onDeleted?: (jobIds: readonly string[]) => void;
+  /**
+   * Runs were deleted, by their job ids and as they were listed, so the area can close a review of
+   * one of them whatever job of the run it was opened by.
+   */
+  onDeleted?: (jobIds: readonly string[], runs: readonly MatchRun[]) => void;
   /** How many runs are listed, so the area can hide its search until there is something to search (M150). */
   onCount?: (count: number) => void;
 }
@@ -159,6 +163,11 @@ export function PastSearches({
     if (headerTick.current) headerTick.current.indeterminate = someTicked && !allTicked;
   }, [allTicked, someTicked, jobs.runs.length]);
 
+  const deletingRuns = useMemo(
+    () => (deleting ? jobs.runs.filter((one) => deleting.includes(one.job_id)) : []),
+    [deleting, jobs.runs],
+  );
+
   const confirmDelete = async () => {
     const ids = deleting;
     const remove = window.cuepoint?.deleteMatchJobs;
@@ -170,7 +179,10 @@ export function PastSearches({
       if (deleted > 0) push(`Deleted ${plural(deleted, "past match", "past matches")}`, "success");
       setTicked(new Set());
       setDeleting(null);
-      onDeleted?.(ids);
+      onDeleted?.(
+        ids,
+        jobs.runs.filter((one) => ids.includes(one.job_id)),
+      );
       jobs.reload();
     } catch (cause) {
       reportUnexpected(cause);
@@ -390,8 +402,7 @@ export function PastSearches({
         onConfirm={() => void confirmDelete()}
         onCancel={() => setDeleting(null)}
       >
-        Only the record of these searches goes: the rows here and their review lists. Every track keeps its match,
-        its corrections and what you decided.
+        {deleteWords(deletingRuns, deleting?.length ?? 0)}
       </ConfirmDialog>
 
       {menu && (

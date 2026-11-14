@@ -102,6 +102,31 @@ export function stopLine(run: Pick<MatchRun, "status" | "stop_reason">): string 
 }
 
 /** A run can be resumed when it stopped and the engine says which job to resume. */
+/**
+ * Whether a job belongs to one of these runs: a run is its first (root) job and the resumes after
+ * it, which the engine deletes together. A review is opened by the root's id, but a resume's own
+ * id names the same run, so a review of either is a review of a run that went.
+ */
+export function runsOwnJob(runs: readonly MatchRun[], jobId: string): boolean {
+  return runs.some((run) => run.job_id === jobId || run.latest_job_id === jobId || run.resume_job_id === jobId);
+}
+
 export function canResume(run: Pick<MatchRun, "status" | "resume_job_id">): boolean {
   return run.status === "stopped" && run.resume_job_id !== null;
+}
+
+/**
+ * What the delete dialog says goes and what stays. Only the record is deleted; a stopped run that
+ * could have been resumed cannot be after it, which is said only when one of these is that.
+ */
+export function deleteWords(runs: readonly MatchRun[], count: number = runs.length): string {
+  const several = count > 1;
+  const resumable = runs.filter(canResume).length;
+  const goes = several
+    ? "Only the record of these searches goes: their rows here and their review lists."
+    : "Only the record of this search goes: its row here and its review list.";
+  const stays = "Every track keeps its match, its corrections and what you decided.";
+  if (resumable === 0) return `${goes} ${stays}`;
+  const cannot = resumable > 1 ? "Stopped matches cannot be resumed after this." : "A stopped match cannot be resumed after this.";
+  return `${goes} ${stays} ${cannot}`;
 }

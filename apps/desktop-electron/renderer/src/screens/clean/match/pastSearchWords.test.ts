@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
 import { runSelection } from "./matchScope";
-import { canResume, resultParts, statusOf, stopLine, whatLine } from "./pastSearchWords";
+import { canResume, deleteWords, resultParts, runsOwnJob, statusOf, stopLine, whatLine } from "./pastSearchWords";
 
 function run(overrides: Partial<MatchRun> = {}): MatchRun {
   return {
@@ -120,5 +120,37 @@ describe("why a run stopped", () => {
     expect(
       canResume(run({ status: "stopped", stop_reason: "Beatport did not answer", resume_job_id: "j" })),
     ).toBe(true);
+  });
+});
+
+describe("a review of a run that was deleted", () => {
+  const chain = run({ job_id: "root", latest_job_id: "resume-2", resume_job_id: "resume-2", status: "stopped" });
+
+  it("is a review opened by the run's root, or by a resume of it", () => {
+    expect(runsOwnJob([chain], "root")).toBe(true);
+    expect(runsOwnJob([chain], "resume-2")).toBe(true);
+  });
+
+  it("is not a review of another run", () => {
+    expect(runsOwnJob([chain], "other")).toBe(false);
+    expect(runsOwnJob([], "root")).toBe(false);
+  });
+});
+
+describe("what the delete dialog says", () => {
+  const done = run({ job_id: "a", status: "done", resume_job_id: null });
+  const stopped = run({ job_id: "b", status: "stopped", resume_job_id: "b2" });
+
+  it("is in the singular for one run and the plural for several", () => {
+    expect(deleteWords([done])).toBe(
+      "Only the record of this search goes: its row here and its review list. Every track keeps its match, its corrections and what you decided.",
+    );
+    expect(deleteWords([done, done])).toContain("Only the record of these searches goes: their rows here and their review lists.");
+  });
+
+  it("says a stopped match cannot be resumed only when one of them could have been", () => {
+    expect(deleteWords([done])).not.toContain("resumed");
+    expect(deleteWords([stopped])).toMatch(/A stopped match cannot be resumed after this\.$/);
+    expect(deleteWords([stopped, stopped])).toMatch(/Stopped matches cannot be resumed after this\.$/);
   });
 });

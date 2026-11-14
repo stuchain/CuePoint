@@ -520,7 +520,7 @@ describe("Deleting past matches (I3)", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Delete 2 past matches?" });
     expect(dialog).toHaveTextContent(
-      "Only the record of these searches goes: the rows here and their review lists. Every track keeps its match, its corrections and what you decided.",
+      "Only the record of these searches goes: their rows here and their review lists. Every track keeps its match, its corrections and what you decided. A stopped match cannot be resumed after this.",
     );
     // Asking changes nothing yet.
     expect(bridge.deleteMatchJobs).not.toHaveBeenCalled();
@@ -696,7 +696,30 @@ describe("Deleting past matches (I3)", () => {
     pickMore(ALL, "Delete…");
     const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
-    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(["job-1"]), LOADED);
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(["job-1"], [expect.objectContaining({ job_id: "job-1" })]), LOADED);
+  });
+
+  it("says the delete of one finished run in the singular, with nothing about resuming", async () => {
+    renderPast();
+    await listed();
+    tick(ALL);
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
+    expect(dialog).toHaveTextContent(
+      "Only the record of this search goes: its row here and its review list. Every track keeps its match, its corrections and what you decided.",
+    );
+    expect(dialog).not.toHaveTextContent(/resumed/);
+  });
+
+  it("says a stopped match cannot be resumed after its record is deleted", async () => {
+    renderPast();
+    await listed();
+    tick(WHOLE);
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this past match?" });
+    expect(dialog).toHaveTextContent(
+      "Only the record of this search goes: its row here and its review list. Every track keeps its match, its corrections and what you decided. A stopped match cannot be resumed after this.",
+    );
   });
 
   it("says why when the engine refuses", async () => {

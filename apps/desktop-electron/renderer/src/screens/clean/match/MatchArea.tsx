@@ -28,7 +28,7 @@ import { PlaylistsView } from "./PlaylistsView";
 import { ReviewTab } from "./ReviewTab";
 import type { MatchChoice } from "./matchPlaylists";
 import { runSelection } from "./matchScope";
-import { whatLine } from "./pastSearchWords";
+import { runsOwnJob, whatLine } from "./pastSearchWords";
 import type { CleanPlaylistsState } from "./useCleanPlaylists";
 import { WHOLE_LIBRARY_NAME } from "./useCleanPlaylists";
 import type { ReviewSource } from "./useMatchReview";
@@ -307,9 +307,11 @@ export function MatchArea({
               onResume={resumeRun}
               onMatchAgain={matchAgain}
               onGoToPlaylists={() => chooseTab("playlists")}
-              onDeleted={(ids) => {
-                // A review of a run that no longer exists has nothing to read.
-                if (review?.source.jobId && ids.includes(review.source.jobId)) closeReview();
+              onDeleted={(ids, runs) => {
+                // A review of a run that no longer exists has nothing to read. The run is its root
+                // job and its resumes, so a review is matched to the runs, not only to the ids sent.
+                const opened = review?.source.jobId;
+                if (opened && (ids.includes(opened) || runsOwnJob(runs, opened))) closeReview();
               }}
               onCount={setPastCount}
             />
