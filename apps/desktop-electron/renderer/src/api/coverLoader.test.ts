@@ -169,4 +169,27 @@ describe("the cover loader", () => {
     expect(release).toHaveBeenCalledWith("blob:late");
     expect(loader.stats()).toEqual({ kept: 0, inFlight: 0, waiting: 0 });
   });
+
+  it("with a minimum interval, sends one request per interval and drops a cancelled one unsent", async () => {
+    vi.useFakeTimers();
+    try {
+      const loader = createCoverLoader({ minIntervalMs: 60, maxInFlight: 6, release: vi.fn() });
+      const fetch = vi.fn(async () => "blob:x");
+      const cancels = ["a", "b", "c", "d"].map((key) => loader.request(key, fetch, vi.fn()));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      cancels[2]!();
+      await vi.advanceTimersByTimeAsync(59);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(60);
+      expect(fetch).toHaveBeenCalledTimes(3);
+      await vi.advanceTimersByTimeAsync(600);
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(loader.stats().waiting).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

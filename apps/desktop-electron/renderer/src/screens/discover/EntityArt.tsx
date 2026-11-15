@@ -20,7 +20,7 @@ import { useCallback, useRef } from "react";
 
 import { Art } from "../../components/Art";
 import type { ArtworkSize, EntityKind } from "../../api/cuepointBridge.types";
-import { covers } from "../../api/coverLoader";
+import { entityCovers } from "../../api/coverLoader";
 import { useCover } from "../../api/useCover";
 import "./entityArt.css";
 
@@ -49,7 +49,7 @@ export function EntityArt({ kind, beatportId, hasArt, ask = true, size = "row", 
     () => window.cuepoint?.getDiscoveryEntityArt?.({ kind, beatport_id: beatportId, size }) ?? Promise.resolve(null),
     [beatportId, kind, size],
   );
-  const { ref, url } = useCover(key, fetch);
+  const { ref, url } = useCover(key, fetch, entityCovers);
 
   return (
     <span ref={ref} className={`discover-entity-art ${className} ${className}--${kind}`} aria-hidden="true">
@@ -60,8 +60,8 @@ export function EntityArt({ kind, beatportId, hasArt, ask = true, size = "row", 
 
 /** Whether the shared loader already keeps an answer for `id` (a picture or "none"). */
 function keptAnswer(id: string): boolean {
-  const hit = covers.hold(id);
+  const hit = entityCovers.hold(id);
   if (hit === undefined) return false;
-  covers.letGo(id);
+  entityCovers.letGo(id);
   return true;
 }

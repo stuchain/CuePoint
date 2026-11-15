@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { busiestSecond, engineCalls, recordEngineCalls } from "./support/engineCalls";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 import { clickRowAt } from "./rowClick";
 import { launchElectron } from "./support/launchApp";
@@ -488,6 +489,52 @@ test.describe("Plays well next and Following", () => {
         await toggle.click();
         await expect(toggle).toHaveText("Follow", { timeout: 15_000 });
       });
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("Following: a fast scroll through a long follow list asks for pictures at no more than 20 a second", async () => {
+    test.setTimeout(240_000);
+    const fixture = writeFixture(path.join(workspace, "beatport"));
+    const app = await launch(userDataDir, cuepointHome, fixture);
+    try {
+      const window = await ready(app);
+      await importLibrary(window, writeExport(workspace, "To match"));
+      const MORE = 120;
+      await window.evaluate(async (more) => {
+        const c = window.cuepoint!;
+        await c.saveBeatportPastedToken("e2e-not-a-real-token");
+        await c.addFollow!({ kind: "artist", beatport_id: 301001, name: "Mara Veil" });
+        await c.addFollow!({ kind: "label", beatport_id: 40211, name: "Nightfall Audio" });
+        // Names the fixture has no page for: each answers at once, the fastest a request can be.
+        for (let index = 0; index < more; index += 1) {
+          await c.addFollow!({ kind: index % 2 ? "label" : "artist", beatport_id: 900_000 + index, name: `Name ${index}` });
+        }
+      }, MORE);
+      await window.reload();
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
+      await window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", { name: "Discover" }).click();
+      await window.getByRole("tab", { name: /^Following/ }).click();
+      const following = window.getByRole("region", { name: "Following", exact: true });
+      await expect(following.getByRole("button", { name: "Check again" })).toBeEnabled({ timeout: 120_000 });
+      const moreNames = following.locator(".discover-following__more-names");
+      while ((await moreNames.count()) > 0) await moreNames.first().click();
+      await expect(following.locator(".discover-following__item")).toHaveCount(MORE + 3);
+      await recordEngineCalls(app);
+      // The scrollbar dragged from top to bottom in a second: every row passes through the view.
+      await window.evaluate(async () => {
+        const body = document.querySelector(".discover-screen__body")!;
+        for (let step = 1; step <= 20; step += 1) {
+          body.scrollTop = (body.scrollHeight * step) / 20;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      });
+      await window.waitForTimeout(4_000);
+      const calls = await engineCalls(app);
+      const art = busiestSecond({ art: calls["engine:getDiscoveryEntityArt"] ?? [] })[0]!;
+      expect(art.count, "pictures were asked for while scrolling, so the check is not vacuous").toBeGreaterThan(0);
+      expect(art.count, `${art.count} picture requests in one second`).toBeLessThanOrEqual(20);
     } finally {
       await app.close();
     }

@@ -27,6 +27,11 @@ export interface CoverLoaderOptions {
   maxEntries?: number;
   /** Requests sent at once. */
   maxInFlight?: number;
+  /**
+   * The least time between two requests being sent, in milliseconds (0: none). Keeps a fast scroll
+   * through a long list from sending a request per row at once: every request is one engine call.
+   */
+  minIntervalMs?: number;
   /** Lets an object URL go; the default is the bridge's `releaseTrackArtwork`. */
   release?: (url: string) => void;
 }
@@ -77,6 +82,9 @@ export function createCoverLoader(options: CoverLoaderOptions = {}): CoverLoader
   const maxEntries = Math.max(1, options.maxEntries ?? COVER_CACHE_ENTRIES);
   const maxInFlight = Math.max(1, options.maxInFlight ?? COVER_MAX_IN_FLIGHT);
   const release = options.release ?? bridgeRelease;
+  const minInterval = Math.max(0, options.minIntervalMs ?? 0);
+  let lastSent = Number.NEGATIVE_INFINITY;
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
   // A Map keeps insertion order: the first entry is the least recently used.
   const kept = new Map<string, Kept>();
@@ -118,6 +126,18 @@ export function createCoverLoader(options: CoverLoaderOptions = {}): CoverLoader
 
   function pump(): void {
     while (inFlight < maxInFlight && waiting.length > 0) {
+      if (minInterval > 0) {
+        const wait = lastSent + minInterval - Date.now();
+        if (wait > 0) {
+          // Too soon after the last one: the next waits its turn, then pumps again.
+          timer ??= setTimeout(() => {
+            timer = null;
+            pump();
+          }, wait);
+          return;
+        }
+        lastSent = Date.now();
+      }
       const job = waiting.shift()!;
       job.sent = true;
       inFlight += 1;
@@ -199,6 +219,9 @@ export function createCoverLoader(options: CoverLoaderOptions = {}): CoverLoader
       jobs.clear();
       waiting.length = 0;
       inFlight = 0;
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      lastSent = Number.NEGATIVE_INFINITY;
     },
   };
 }
@@ -206,7 +229,18 @@ export function createCoverLoader(options: CoverLoaderOptions = {}): CoverLoader
 /** The renderer's one cover loader: Discover's cards and Clean's candidates share its cap. */
 export const covers: CoverLoader = createCoverLoader();
 
+/**
+ * The least time between two artist or label picture requests (DEC-318): a fast scroll through a
+ * long Following list would otherwise send one engine call per row in a burst (136 a second was
+ * measured), and `engineCallRate.spec.ts` allows 20 a second per channel. 60 ms is at most 17.
+ */
+export const ENTITY_ART_MIN_INTERVAL_MS = 60;
+
+/** The loader for artist and label pictures: the cover loader's cache and cap, and a request pace. */
+export const entityCovers: CoverLoader = createCoverLoader({ minIntervalMs: ENTITY_ART_MIN_INTERVAL_MS });
+
 /** Test isolation: one test's kept covers must not serve the next. */
 export function resetCoversForTests(): void {
   covers.clear();
+  entityCovers.clear();
 }

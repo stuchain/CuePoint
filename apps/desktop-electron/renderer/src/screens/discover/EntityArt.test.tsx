@@ -119,4 +119,31 @@ describe("EntityArt", () => {
     expect(second.container.querySelector("img")).toHaveAttribute("src", "blob:cached");
     expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(1);
   });
+
+  it("sends its requests at no more than 20 a second, however many names come into view at once", async () => {
+    vi.useFakeTimers();
+    try {
+      const times: number[] = [];
+      const getDiscoveryEntityArt = vi.fn(async () => {
+        times.push(Date.now());
+        return null;
+      });
+      install({ getDiscoveryEntityArt });
+      render(
+        <>
+          {Array.from({ length: 40 }, (_, index) => (
+            <EntityArt key={index} kind="artist" beatportId={500 + index} hasArt className="box" />
+          ))}
+        </>,
+      );
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(times).toHaveLength(40);
+      for (let at = 0; at + 20 < times.length; at += 1) {
+        // Any 21 requests span at least a second: never more than 20 in one second.
+        expect(times[at + 20]! - times[at]!).toBeGreaterThanOrEqual(1_000);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
