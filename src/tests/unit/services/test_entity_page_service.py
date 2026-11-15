@@ -743,3 +743,66 @@ class TestTheContainer:
         finally:
             get_container().resolve(IDatabaseService).close_all()
             reset_container()
+
+
+class TestThePictureAListingCarries:
+    """A fresh listing keeps the entity's picture (DEC-318); a cached read costs and writes nothing."""
+
+    ART = "https://geo-media.beatport.com/image_size/{w}x{h}/%s.jpg"
+
+    def art(self, db, kind, beatport_id):
+        return (
+            BeatportCatalogRepository(db)
+            .entity_art([(kind, beatport_id)])
+            .get((kind, beatport_id))
+        )
+
+    def test_a_fresh_artist_listing_stores_the_picture(self, service, world, db):
+        world.images[("artist", 100)] = self.ART % "ame"
+        service.beatport("artist", "bp:100")
+        row = self.art(db, "artist", 100)
+        assert row is not None and row.image_url == self.ART % "ame"
+        assert row.read_at == NOW.isoformat()
+
+    def test_a_fresh_label_listing_stores_the_picture(self, service, world, db):
+        world.images[("label", 900)] = self.ART % "inner"
+        service.beatport("label", "bp:900")
+        row = self.art(db, "label", 900)
+        assert row is not None and row.image_url == self.ART % "inner"
+
+    def test_a_read_from_the_cache_writes_nothing_and_asks_nothing(
+        self, service, world, db, clock
+    ):
+        service.beatport("artist", "bp:100")
+        world.images[("artist", 100)] = self.ART % "late"
+        asked = len(world.requests)
+        again = service.beatport("artist", "bp:100")
+        assert again.from_cache and len(world.requests) == asked
+        assert self.art(db, "artist", 100) is None
+
+    def test_a_listing_with_no_picture_writes_no_row(self, service, db):
+        service.beatport("artist", "bp:100")
+        assert self.art(db, "artist", 100) is None
+
+    def test_a_picture_the_listing_names_replaces_a_known_none(
+        self, service, world, db
+    ):
+        BeatportCatalogRepository(db).set_entity_art(
+            "artist", 100, None, NOW.isoformat()
+        )
+        world.images[("artist", 100)] = self.ART % "ame"
+        service.beatport("artist", "bp:100")
+        row = self.art(db, "artist", 100)
+        assert row is not None and row.image_url == self.ART % "ame"
+
+    def test_page_says_has_art_for_an_id_and_never_for_a_name(self, service, lib, db):
+        lib.add("a1", "Âme", beatport=[(100, "Âme")])
+        lib.add("n1", "Nobody")
+        page = service.page("artist", "bp:100")
+        assert page.has_art is True and page.to_dict()["has_art"] is True
+        BeatportCatalogRepository(db).set_entity_art(
+            "artist", 100, None, NOW.isoformat()
+        )
+        assert service.page("artist", "bp:100").has_art is False
+        assert service.page("artist", "name:nobody").has_art is False
+        assert service.page("artist", "name:nobody").to_dict()["has_art"] is False

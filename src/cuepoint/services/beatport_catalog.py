@@ -14,8 +14,9 @@ it in DISCOVER-12. Nothing here guesses a nesting.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from cuepoint.models.beatport_cache import ENTITY_ARTIST, ENTITY_LABEL
 from cuepoint.services.beatport_api_models import (
     CatalogArtist,
     CatalogChart,
@@ -120,6 +121,28 @@ def catalog_image(value: Any) -> Optional[str]:
         if isinstance(text, str) and text.strip() and is_beatport_artwork_url(text):
             return text.strip()
     return None
+
+
+def entity_image(kind: str, beatport_id: int, tracks: Iterable[Any]) -> Optional[str]:
+    """The picture an artist or a label carries on tracks that name them, or None.
+
+    An artist's is the first credit (artists, then remixers) whose id matches and
+    that has one. A label's is the first track whose ``label_id`` matches and
+    whose release carried the label's picture. Beatport's listings carry these
+    for free, so a page that already read a listing keeps them without a request.
+    """
+    if kind == ENTITY_ARTIST:
+        for track in tracks:
+            for credit in (*track.artists, *track.remixers):
+                if credit.id == beatport_id and credit.image_url:
+                    return str(credit.image_url)
+        return None
+    if kind == ENTITY_LABEL:
+        for track in tracks:
+            if track.label_id == beatport_id and track.label_image_url:
+                return str(track.label_image_url)
+        return None
+    raise ValueError("kind is artist or label")
 
 
 def parse_catalog_artist(obj: Any) -> Optional[CatalogArtist]:

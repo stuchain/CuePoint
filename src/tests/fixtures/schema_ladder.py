@@ -916,6 +916,20 @@ def seed_rows(track_count: int = 12, seed: int = 7) -> Dict[str, List[Row]]:
             {"kind": "artist", "beatport_id": 100, "track_id": 9001},
             {"kind": "artist", "beatport_id": 100, "track_id": 9002},
         ),
+        "beatport_entity_art": rows(
+            {
+                "kind": "artist",
+                "beatport_id": 100,
+                "image_url": "https://geo-media.beatport.com/image_size/{w}x{h}/ame.jpg",
+                "read_at": NOW,
+            },
+            {
+                "kind": "label",
+                "beatport_id": 900,
+                "image_url": None,
+                "read_at": EARLIER,
+            },
+        ),
         "track_credits": rows(
             {
                 "track_id": ids[0],

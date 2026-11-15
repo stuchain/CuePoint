@@ -90,6 +90,18 @@
   min-height: var(--toolbar-height);
 }
 
+/* A picture before the title (ScreenHeader's `lead`): the row centres on it, with 12 before the title. */
+.cp-screen-header__title-row--lead {
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.cp-screen-header__lead {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
 .cp-screen-header__title:where(:not(.cp-visually-hidden)),
 .cp-screen-header__display {
   margin: 0;

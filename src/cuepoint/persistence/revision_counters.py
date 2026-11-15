@@ -76,6 +76,8 @@ DISCOVER_TABLES = frozenset(
         "discover_list_members",
         "wantlist",
         "follows",
+        # DEC-318: a picture arriving is a Discover change, never a library one.
+        "beatport_entity_art",
     }
 )
 

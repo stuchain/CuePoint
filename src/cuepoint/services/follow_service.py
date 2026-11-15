@@ -46,7 +46,11 @@ from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
-from cuepoint.models.beatport_cache import ENTITY_KINDS, MAX_BEATPORT_ID
+from cuepoint.models.beatport_cache import (
+    ENTITY_KINDS,
+    MAX_BEATPORT_ID,
+    entity_art_asks,
+)
 from cuepoint.models.discovery_run import (
     OWNED_FILTERS,
     OWNED_HIDE,
@@ -187,24 +191,28 @@ class FollowService(IFollowService):
             total = page.total
             for (f, _), count in zip(live, page.per_source):
                 counts[(f.kind, f.beatport_id)] = count
+        art = self._catalog.entity_art([(f.kind, f.beatport_id) for f in every])
+        now = self._clock()
         rows = [
             self._row(
                 f,
                 counts.get((f.kind, f.beatport_id), 0),
                 listings[(f.kind, f.beatport_id)],
+                entity_art_asks(art.get((f.kind, f.beatport_id)), now),
             )
             for f in every
         ]
         return {"follows": rows, "new_count": total}
 
     def _row(
-        self, follow: Follow, new_count: int, listing: Optional[Any]
+        self, follow: Follow, new_count: int, listing: Optional[Any], has_art: bool
     ) -> Dict[str, Any]:
         return {
             **follow.to_dict(),
             "new_count": new_count,
             "checked_at": None if listing is None else listing.fetched_at,
             "state": _state_of(follow.kind, follow.beatport_id),
+            "has_art": has_art,
         }
 
     def suggestions(self, limit: int = 20) -> Dict[str, Any]:
@@ -237,7 +245,14 @@ class FollowService(IFollowService):
                     }
                 )
         found.sort(key=lambda s: (-s["track_count"], s["name"].casefold(), s["kind"]))
-        return {"suggestions": found[:limit]}
+        kept = found[:limit]
+        art = self._catalog.entity_art([(s["kind"], s["beatport_id"]) for s in kept])
+        now = self._clock()
+        for row in kept:
+            row["has_art"] = entity_art_asks(
+                art.get((row["kind"], row["beatport_id"])), now
+            )
+        return {"suggestions": kept}
 
     def feed(
         self,

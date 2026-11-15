@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import copy
 import json
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -831,3 +832,70 @@ class TestPlaylists:
         api = BeatportApi(client, cache_service=None)  # type: ignore[arg-type]
         with pytest.raises(BeatportAPIError):
             api.create_playlist("Discover")
+
+
+# --- The picture an artist or a label has on a listing ---------------------------
+
+
+def _recorded_tracks(name: str) -> List[CatalogTrack]:
+    body = json.loads((FIXTURES / "recorded" / name).read_text(encoding="utf-8"))
+    found = [parse_catalog_track(item) for item in body["results"]]
+    return [t for t in found if t is not None]
+
+
+class TestEntityImage:
+    def test_an_artist_gets_the_picture_their_own_credit_carries(self) -> None:
+        from cuepoint.services.beatport_catalog import entity_image
+
+        tracks = _recorded_tracks("artist_tracks_page1.json")
+        credit = next(a for t in tracks for a in t.artists if a.id == 413759)
+        assert credit.image_url
+        assert entity_image("artist", 413759, tracks) == credit.image_url
+
+    def test_a_remixer_s_credit_counts_after_the_artists(self) -> None:
+        from cuepoint.services.beatport_catalog import entity_image
+
+        remixer = CatalogArtist(
+            id=5, name="R", image_url="https://geo-media.beatport.com/r.jpg"
+        )
+        track = _recorded_tracks("artist_tracks_page1.json")[0]
+        track = replace(track, artists=(), remixers=(remixer,))
+        assert entity_image("artist", 5, [track]) == remixer.image_url
+
+    def test_a_label_gets_the_picture_its_tracks_release_carries(self) -> None:
+        from cuepoint.services.beatport_catalog import entity_image
+
+        tracks = _recorded_tracks("chart_tracks.json")
+        track = next(t for t in tracks if t.label_image_url)
+        assert track.label_id is not None
+        assert entity_image("label", track.label_id, tracks) == track.label_image_url
+
+    def test_an_id_no_credit_names_has_no_picture(self) -> None:
+        from cuepoint.services.beatport_catalog import entity_image
+
+        tracks = _recorded_tracks("artist_tracks_page1.json")
+        assert entity_image("artist", 999_999_999, tracks) is None
+        assert entity_image("label", 999_999_999, tracks) is None
+
+    def test_credits_with_no_picture_give_none(self) -> None:
+        from cuepoint.services.beatport_catalog import entity_image
+
+        tracks = [
+            replace(
+                t,
+                artists=tuple(CatalogArtist(id=a.id, name=a.name) for a in t.artists),
+                remixers=(),
+                label_image_url=None,
+            )
+            for t in _recorded_tracks("artist_tracks_page1.json")
+        ]
+        assert entity_image("artist", 413759, tracks) is None
+        assert all(
+            entity_image("label", t.label_id or 0, tracks) is None for t in tracks
+        )
+
+    def test_an_unknown_kind_is_refused_without_echoing_it(self) -> None:
+        from cuepoint.services.beatport_catalog import entity_image
+
+        with pytest.raises(ValueError):
+            entity_image("chart", 1, [])

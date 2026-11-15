@@ -420,6 +420,7 @@ class TestRequests:
             ("getWantlist", api.WANTLIST_PARAMS, set()),
             ("getEntityPage", api.ENTITY_PARAMS, set()),
             ("getEntityBeatport", api.ENTITY_BEATPORT_PARAMS, set()),
+            ("getDiscoveryEntityArt", api.ENTITY_ART_PARAMS, set()),
             ("addToWantlist", api.WANTLIST_ADD_FIELDS, set()),
             ("removeFromWantlist", api.WANTLIST_REMOVE_FIELDS, set()),
             ("setWantlistNote", api.WANTLIST_NOTE_FIELDS, set()),

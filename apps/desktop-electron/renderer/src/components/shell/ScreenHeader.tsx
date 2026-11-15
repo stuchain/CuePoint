@@ -27,6 +27,12 @@ export interface ScreenHeaderProps {
   /** Where this is inside the page, drawn above the title. */
   crumb?: ReactNode;
   /**
+   * A picture before the title, centred on the title row (an Artist's or Label's, DEC-318). The
+   * row is centred rather than baseline-aligned while it holds one, so a picture taller than a
+   * control sits level with the title.
+   */
+  lead?: ReactNode;
+  /**
    * Beside the title, aligned to the title row (Prepare's Set picker, Statistics' scope picker):
    * whatever its height, it never moves the title, which sits at the same place on every page.
    * `beside` is the older name for the same slot.
@@ -109,6 +115,7 @@ export function ScreenHeader({
   titleControl,
   dataTitle = false,
   crumb,
+  lead,
   extras,
   beside,
   summary,
@@ -178,7 +185,8 @@ export function ScreenHeader({
     >
       {crumb && <div className="cp-screen-header__crumb">{crumb}</div>}
       <div className="cp-screen-header__main">
-        <div className="cp-screen-header__title-row">
+        <div className={`cp-screen-header__title-row${lead ? " cp-screen-header__title-row--lead" : ""}`}>
+          {lead && <div className="cp-screen-header__lead">{lead}</div>}
           <h1
             className={`cp-screen-header__title ${hasDisplay ? "cp-screen-header__title--hidden cp-visually-hidden" : ""}${dataTitle && !hasDisplay ? " cp-screen-header__title--data" : ""}${hasControl ? " cp-screen-header__title--control" : ""}`.trim()}
             data-cut-hint={dataTitle && !hasDisplay && !hasControl ? "" : undefined}

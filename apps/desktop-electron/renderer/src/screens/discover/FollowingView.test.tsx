@@ -15,6 +15,7 @@ import type {
   FollowSuggestion,
 } from "../../api/cuepointBridge.types";
 import { ToastProvider } from "../../components";
+import { resetCoversForTests } from "../../api/coverLoader";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import fixture from "./discoverPage.fixture.json";
 import { FollowingView } from "./FollowingView";
@@ -42,6 +43,7 @@ function follow(over: Partial<FollowRow>): FollowRow {
     new_count: 0,
     checked_at: null,
     state: null,
+    has_art: true,
     ...over,
   };
 }
@@ -104,8 +106,8 @@ function feedPage(params: Record<string, unknown> = {}): DiscoverAnswer<FollowFe
 }
 
 const SUGGESTIONS: FollowSuggestion[] = [
-  { kind: "artist", beatport_id: 1, name: "Amsel", track_count: 42, followed: false },
-  { kind: "label", beatport_id: 10, name: "Monochrome Hours", track_count: 28, followed: false },
+  { kind: "artist", beatport_id: 1, name: "Amsel", track_count: 42, followed: false, has_art: true },
+  { kind: "label", beatport_id: 10, name: "Monochrome Hours", track_count: 28, followed: false, has_art: true },
 ];
 
 function install(overrides: Record<string, Fn> = {}) {
@@ -199,6 +201,7 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  resetCoversForTests();
   install();
 });
 
@@ -662,6 +665,65 @@ describe("suggestions keep who was followed", () => {
     expect(amsel.querySelector(".discover-following__avatar--artist")).not.toBeNull();
     const label = screen.getByRole("button", { name: "Follow Monochrome Hours" }).closest("li")!;
     expect(label.querySelector(".discover-following__avatar--label")).not.toBeNull();
+  });
+
+  it("asks for the picture of each suggestion that has one, at the row size", async () => {
+    const getDiscoveryEntityArt = vi.fn(async () => "blob:picture");
+    install({
+      ...emptyFollows(),
+      getDiscoveryEntityArt,
+      getFollowSuggestions: vi.fn(async () =>
+        value({ suggestions: [SUGGESTIONS[0]!, { ...SUGGESTIONS[1]!, has_art: false }] }),
+      ),
+    });
+    renderView();
+    const amsel = (await screen.findByRole("button", { name: "Follow Amsel" })).closest("li")!;
+    await waitFor(() => expect(amsel.querySelector(".discover-following__avatar img")).toHaveAttribute("src", "blob:picture"));
+    expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(1);
+    expect(getDiscoveryEntityArt).toHaveBeenCalledWith({ kind: "artist", beatport_id: 1, size: "row" });
+    const label = screen.getByRole("button", { name: "Follow Monochrome Hours" }).closest("li")!;
+    expect(label.querySelector("img")).toBeNull();
+  });
+});
+
+describe("the pictures of the follow list", () => {
+  const picture = () => vi.fn(async () => "blob:picture");
+
+  it("does not ask while a check is running, and asks once it has ended", async () => {
+    let ended = false;
+    const getDiscoveryEntityArt = picture();
+    install({
+      getDiscoveryEntityArt,
+      getJob: vi.fn(async (id: string) => ({ id, state: ended ? "succeeded" : "running" })),
+    });
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalled());
+    const nav = screen.getByRole("navigation", { name: "Followed artists and labels" });
+    expect(nav.querySelector("img")).toBeNull();
+    expect(getDiscoveryEntityArt).not.toHaveBeenCalled();
+
+    ended = true;
+    await waitFor(() => expect(nav.querySelectorAll(".discover-following__avatar img")).toHaveLength(3), LOADED);
+    expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(3);
+    expect(getDiscoveryEntityArt).toHaveBeenCalledWith({ kind: "label", beatport_id: 10, size: "row" });
+  });
+
+  it("keeps the neutral shape for a follow that has no picture", async () => {
+    const getDiscoveryEntityArt = picture();
+    install({
+      getDiscoveryEntityArt,
+      getFollows: vi.fn(async () =>
+        value({ follows: [AMSEL, { ...DREYER, has_art: false }, MONO], new_count: 3 }),
+      ),
+    });
+    renderView();
+    const nav = await screen.findByRole("navigation", { name: "Followed artists and labels" });
+    await waitFor(() => expect(nav.querySelectorAll("img")).toHaveLength(2), LOADED);
+    expect(getDiscoveryEntityArt).not.toHaveBeenCalledWith({ kind: "artist", beatport_id: 2, size: "row" });
+    const dreyer = within(nav).getByRole("button", { name: /^Anouk Dreyer/ });
+    expect(dreyer.querySelector(".discover-following__avatar--artist")).not.toBeNull();
+    expect(dreyer.querySelector("img")).toBeNull();
   });
 });
 

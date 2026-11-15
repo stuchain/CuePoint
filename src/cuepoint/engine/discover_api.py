@@ -40,6 +40,10 @@ that changes something is a POST to an action path, as ``server.py`` speaks.
 - ``POST resolve/start`` — DISCOVER-04's resolve job, its one caller.
 - ``GET entity`` and ``GET entity/beatport`` — an Artist or Label page's
   library half and its Beatport half (DISCOVER-07).
+- ``GET entity/art`` — an artist's or label's picture by Beatport id, as a guarded
+  thumbnail, base64, or null (DEC-318; the renderer never receives Beatport's URL,
+  DEC-076). It may ask Beatport once for a name nothing has named a picture for;
+  the lists that carry ``has_art`` never do.
 - ``GET follows``, ``GET follows/suggestions`` and ``GET follows/feed`` — the
   followed artists and labels, the library's names worth following, and what
   they released since the user last looked; all from the cache. ``POST
@@ -108,6 +112,7 @@ PLAYLIST_START_PATH = PREFIX + "playlist/start"
 RESOLVE_START_PATH = PREFIX + "resolve/start"
 ENTITY_PATH = PREFIX + "entity"
 ENTITY_BEATPORT_PATH = PREFIX + "entity/beatport"
+ENTITY_ART_PATH = PREFIX + "entity/art"
 FOLLOWS_PATH = PREFIX + "follows"
 FOLLOWS_SUGGESTIONS_PATH = PREFIX + "follows/suggestions"
 FOLLOWS_FEED_PATH = PREFIX + "follows/feed"
@@ -197,6 +202,7 @@ WANTLIST_PARAMS: Tuple[str, ...] = (
     "limit",
 )
 ENTITY_PARAMS: Tuple[str, ...] = ("kind", "ref")
+ENTITY_ART_PARAMS: Tuple[str, ...] = ("kind", "beatport_id", "size")
 ENTITY_BEATPORT_PARAMS: Tuple[str, ...] = (
     "kind",
     "ref",
@@ -1000,6 +1006,34 @@ def track_art(track_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
     }
 
 
+def entity_art(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """An artist's or label's picture as a JPEG thumbnail, base64, or null (DEC-318).
+
+    As :func:`track_art` answers a track: fetched, checked and re-encoded by the
+    artwork service, so the renderer is sent bytes and never a URL. Not tied to
+    a run; it is for Following's lists and the Artist and Label pages.
+    """
+    import base64
+
+    from cuepoint.models.beatport_cache import ENTITY_KINDS
+
+    query = _params(params, ENTITY_ART_PARAMS)
+    kind = _query_choice(query, "kind", ENTITY_KINDS, "")
+    if kind == "":
+        raise bad_request("kind is required")
+    beatport_id = _id_in_path(_query_required(query, "beatport_id"), "Beatport")
+    size = _query_choice(query, "size", ("row", "inspector"), "row")
+    url = _resolve("IDiscoveryService").entity_art_url(kind, beatport_id)
+    body = (
+        _resolve("IArtworkService").beatport_image_thumbnail(url, size) if url else None
+    )
+    return {
+        "kind": kind,
+        "beatport_id": beatport_id,
+        "jpeg_base64": base64.b64encode(body).decode("ascii") if body else None,
+    }
+
+
 def playlists(params: Dict[str, List[str]]) -> Dict[str, Any]:
     """The user's own Beatport playlists, so tracks can be added to one."""
     _params(params, ())
@@ -1407,6 +1441,7 @@ _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
     WANTLIST_PATH: wantlist,
     ENTITY_PATH: entity,
     ENTITY_BEATPORT_PATH: entity_beatport,
+    ENTITY_ART_PATH: entity_art,
     FOLLOWS_PATH: follows,
     FOLLOWS_SUGGESTIONS_PATH: follows_suggestions,
     FOLLOWS_FEED_PATH: follows_feed,

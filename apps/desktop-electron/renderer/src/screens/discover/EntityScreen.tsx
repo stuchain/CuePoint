@@ -47,6 +47,7 @@ import { useCollectionTree } from "../library/useCollectionTree";
 import { useFilterVocabulary } from "../library/useFilterVocabulary";
 import { useTrackDetail } from "../library/useTrackDetail";
 import { BeatportHalf } from "./BeatportHalf";
+import { EntityArt } from "./EntityArt";
 import { FollowButton } from "./FollowButton";
 import { LibraryHalf } from "./LibraryHalf";
 import { entityPath, nameRef, originState, pageOrigin, similarPath } from "./discoverLinks";
@@ -115,6 +116,9 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
     count: 0,
   });
   const [libraryReload, setLibraryReload] = useState(0);
+  // The Beatport half's read keeps the page's picture: the header asks for it once the half has
+  // answered, whatever the answer, so it is not asked for twice (DEC-318).
+  const [settledFor, setSettledFor] = useState<string | null>(null);
   const [saving, setSaving] = useState<"closed" | "open" | "busy">("closed");
   const [saveError, setSaveError] = useState<string | null>(null);
   // The page last answered, and for which asking, so the address it replaces
@@ -276,6 +280,18 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
         // M190: a long name is data: it shrinks and cuts before the status and actions.
         dataTitle
         crumb={<PageCrumb current={kindTitle(kind)} />}
+        // A name page has no Beatport id to ask by, so it draws no picture.
+        lead={
+          shown.beatport_id !== null ? (
+            <EntityArt
+              kind={shown.kind}
+              beatportId={shown.beatport_id}
+              hasArt={shown.has_art}
+              ask={settledFor === `${kind}|${shown.ref}`}
+              className="discover-page__picture"
+            />
+          ) : undefined
+        }
         facts={entityFacts(shown)}
         pageActions={
           <>
@@ -368,6 +384,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
             active={focus === "beatport"}
             onActivate={() => setFocus("beatport")}
             onResolved={() => setVersion((value) => value + 1)}
+            onSettled={setSettledFor}
             origin={origin}
           />
         )}

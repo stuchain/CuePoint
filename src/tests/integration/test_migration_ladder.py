@@ -498,6 +498,7 @@ MIGRATION_ASSERTIONS: Dict[str, Callable[[sqlite3.Connection, Crossing], None]] 
     ),
     "m0036_follow_seen_tracks": table_check("follow_seen_tracks"),
     "m0037_group_art_read": column_check("discovery_run_groups", "art_read"),
+    "m0038_entity_art": table_check("beatport_entity_art"),
 }
 
 

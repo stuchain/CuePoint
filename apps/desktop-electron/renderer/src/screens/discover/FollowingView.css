@@ -60,7 +60,7 @@
 }
 
 /* A name with its small picture: round for an artist, square for a label, neutral until Beatport's
-   picture is kept for the name. */
+   picture arrives and for a name with none (EntityArt.tsx draws the picture into this box). */
 .discover-following__who {
   display: flex;
   align-items: center;

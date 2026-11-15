@@ -67,6 +67,7 @@ from cuepoint.models.beatport_cache import (
     ENTITY_ARTIST,
     ENTITY_LABEL,
     BeatportNameLookup,
+    entity_art_asks,
 )
 from cuepoint.models.beatport_listing import BeatportListing
 from cuepoint.models.discovery_run import OWNED_ALL, OWNED_FILTERS
@@ -100,7 +101,7 @@ from cuepoint.services.beatport_api_client import (
     BeatportAPIError,
     classify_beatport_error,
 )
-from cuepoint.services.beatport_catalog import positive_id
+from cuepoint.services.beatport_catalog import entity_image, positive_id
 from cuepoint.services.discovery_service import local_date, lookup_is_current
 from cuepoint.services.interfaces import (
     IBeatportCatalogRepository,
@@ -312,7 +313,14 @@ class EntityPageService(IEntityPageService):
             ),
             index_current=self._credits.is_current(ENTITY_NAMES_VERSION),
         )
-        return EntityPage(resolution=resolution, library=summary)
+        ref = resolution.ref
+        has_art = False
+        if ref.beatport_id is not None:
+            key = (kind, ref.beatport_id)
+            has_art = entity_art_asks(
+                self._catalog.entity_art([key]).get(key), self._clock()
+            )
+        return EntityPage(resolution=resolution, library=summary, has_art=has_art)
 
     # --------------------------------------------------------- Beatport half
 
@@ -436,6 +444,10 @@ class EntityPageService(IEntityPageService):
                 ),
                 tracks,
             )
+            # The listing carried the picture: keep it, for no request (DEC-318).
+            image = entity_image(kind, beatport_id, tracks)
+            if image is not None:
+                self._catalog.set_entity_art(kind, beatport_id, image, fetched_at)
         if listing_only:
             page = EntityTracksPage(rows=(), total=0, tracks=listed_tracks, owned=0)
         else:

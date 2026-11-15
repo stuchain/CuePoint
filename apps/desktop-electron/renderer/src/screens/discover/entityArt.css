@@ -1,0 +1,17 @@
+/* An artist's or label's picture (EntityArt.tsx): a box that keeps the alt tone until the picture
+   arrives and for a name with none. Its size and shape come from the block that names it
+   (`discover-following__avatar`, `discover-page__picture`); the picture fills it, cropped, so a
+   landscape artist picture fills a round box. */
+.discover-entity-art {
+  flex: none;
+  display: block;
+  overflow: hidden;
+  background: var(--bg-panel-alt);
+}
+
+.discover-entity-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

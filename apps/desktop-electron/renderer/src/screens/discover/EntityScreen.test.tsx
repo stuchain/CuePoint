@@ -25,6 +25,7 @@ import type {
   LibraryTrackDetail,
   LibraryTrackRow,
 } from "../../api/cuepointBridge.types";
+import { resetCoversForTests } from "../../api/coverLoader";
 import { invalidateReads } from "../../api/engineReads";
 import { DISCOVER_OPTIONS, useSharedRead } from "../../api/sharedReads";
 import { ToastProvider } from "../../components";
@@ -268,6 +269,7 @@ afterAll(() => {
 beforeEach(() => {
   localStorage.clear();
   setSelectedTrack(null);
+  resetCoversForTests();
   install();
 });
 
@@ -861,6 +863,77 @@ describe("the library half: library rows", () => {
       "Harbour Lights",
       "Low Tide",
     ]);
+  });
+});
+
+describe("the header picture (DEC-318)", () => {
+  it("is asked for only after the Beatport half has answered", async () => {
+    let answer: (value: unknown) => void = () => {};
+    const getDiscoveryEntityArt = vi.fn(async () => "blob:mara");
+    install({
+      getDiscoveryEntityArt,
+      getEntityBeatport: vi.fn(() => new Promise((resolve) => (answer = resolve))),
+    });
+    renderAt(entityPath("artist", "bp:301001"));
+    const title = await opened("Mara Veil");
+    const header = title.closest("header") as HTMLElement;
+    // The page is shown and its half is still being read: the picture is not asked for yet.
+    expect(getDiscoveryEntityArt).not.toHaveBeenCalled();
+    expect(header.querySelector(".discover-page__picture")).not.toBeNull();
+    expect(header.querySelector("img")).toBeNull();
+
+    await act(async () => answer(pages.half_artist_ok));
+    await waitFor(() => expect(header.querySelector(".discover-page__picture img")).toHaveAttribute("src", "blob:mara"));
+    expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(1);
+    expect(getDiscoveryEntityArt).toHaveBeenCalledWith({ kind: "artist", beatport_id: 301001, size: "row" });
+  });
+
+  it("is asked for after the half answered with a state that has no rows too", async () => {
+    const getDiscoveryEntityArt = vi.fn(async () => "blob:mara");
+    install({
+      getDiscoveryEntityArt,
+      getEntityBeatport: vi.fn(async () => pages.half_not_resolved),
+    });
+    renderAt(entityPath("artist", "bp:301001"));
+    const title = await opened("Mara Veil");
+    const header = title.closest("header") as HTMLElement;
+    await waitFor(() => expect(header.querySelector("img")).not.toBeNull(), LOADED);
+  });
+
+  it("is round for an artist and square for a label, beside the title", async () => {
+    const view = renderAt(entityPath("artist", "bp:301001"));
+    const artist = (await opened("Mara Veil")).closest("header") as HTMLElement;
+    expect(artist.querySelector(".discover-page__picture--artist")).not.toBeNull();
+    expect(artist.querySelector(".cp-screen-header__title-row")?.firstElementChild).toHaveClass("cp-screen-header__lead");
+    view.unmount();
+    renderAt(entityPath("label", "bp:40211"));
+    const label = (await opened("Nightfall Audio")).closest("header") as HTMLElement;
+    expect(label.querySelector(".discover-page__picture--label")).not.toBeNull();
+  });
+
+  it("is not drawn for a name page, nor asked for", async () => {
+    const getDiscoveryEntityArt = vi.fn(async () => "blob:never");
+    install({ getDiscoveryEntityArt });
+    renderAt(entityPath("artist", "name:Kiko"));
+    const title = await opened("Kiko");
+    const header = title.closest("header") as HTMLElement;
+    await act(async () => {});
+    expect(header.querySelector(".discover-page__picture")).toBeNull();
+    expect(getDiscoveryEntityArt).not.toHaveBeenCalled();
+  });
+
+  it("is not asked for when the page says it has none", async () => {
+    const getDiscoveryEntityArt = vi.fn(async () => "blob:never");
+    const page = answerOf<EntityPage>("page_artist_id");
+    install({
+      getDiscoveryEntityArt,
+      getEntityPage: vi.fn(async () => ({ ...page, value: { ...page.value!, has_art: false } })),
+    });
+    renderAt(entityPath("artist", "bp:301001"));
+    const header = (await opened("Mara Veil")).closest("header") as HTMLElement;
+    await beatportRows(/Beatport's releases by this artist/);
+    expect(getDiscoveryEntityArt).not.toHaveBeenCalled();
+    expect(header.querySelector("img")).toBeNull();
   });
 });
 

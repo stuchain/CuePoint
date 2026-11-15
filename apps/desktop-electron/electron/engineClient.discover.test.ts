@@ -135,6 +135,16 @@ describe("reads", () => {
     expect(await client().getDiscoveryTrackArt({ track_id: 55 })).toBeNull();
   });
 
+  it("answers an artist's or label's picture by kind and id, as bytes or null", async () => {
+    const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    const calls = engineAnswering(200, { kind: "artist", beatport_id: 301001, jpeg_base64: bytes.toString("base64") });
+    const picture = await client().getDiscoveryEntityArt({ kind: "artist", beatport_id: 301001, size: "row" });
+    expect(Array.from(picture!)).toEqual([0xff, 0xd8, 0xff, 0xd9]);
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/discover/entity/art?kind=artist&beatport_id=301001&size=row`);
+    engineAnswering(200, { kind: "label", beatport_id: 40211, jpeg_base64: null });
+    expect(await client().getDiscoveryEntityArt({ kind: "label", beatport_id: 40211 })).toBeNull();
+  });
+
   it("adds ticked cards to the wantlist and to a playlist by the run and the cards", async () => {
     const calls = engineAnswering(200, {});
     const groups = [{ kind: "label" as const, key: "afterlife" }];

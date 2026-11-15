@@ -361,10 +361,17 @@ class EntityPage:
 
     resolution: EntityResolution
     library: EntityLibrarySummary
+    #: Whether a picture is known or can still be asked for: always false for a
+    #: name page, which has no Beatport id to ask by (DEC-318). The URL is never sent.
+    has_art: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API."""
-        return {**self.resolution.to_dict(), "library": self.library.to_dict()}
+        return {
+            **self.resolution.to_dict(),
+            "library": self.library.to_dict(),
+            "has_art": self.has_art,
+        }
 
 
 @dataclass(frozen=True)

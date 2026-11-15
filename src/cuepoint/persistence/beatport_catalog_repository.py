@@ -85,7 +85,7 @@ from cuepoint.models.beatport_cache import (
     CachedBeatportTrack,
     LibraryBeatportCredit,
 )
-from cuepoint.models.beatport_cache import ENTITY_ARTIST, ENTITY_LABEL
+from cuepoint.models.beatport_cache import ENTITY_ARTIST, ENTITY_LABEL, EntityArt
 from cuepoint.models.beatport_listing import BeatportListing
 from cuepoint.models.discovery_run import (
     OWNED_ALL,
@@ -655,6 +655,51 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
                 " SET release_image_url = coalesce(?, release_image_url),"
                 " release_cover_read = 1 WHERE beatport_track_id = ?",
                 (url, int(track_id)),
+            )
+
+    def entity_art(
+        self, keys: Iterable[Tuple[str, int]]
+    ) -> Dict[Tuple[str, int], EntityArt]:
+        """The kept pictures of artists and labels, keyed by ``(kind, id)``.
+
+        A key with no row was not asked yet. The read is chunked by id, so a
+        long list stays under SQLite's parameter limit.
+        """
+        wanted: Dict[str, List[int]] = {}
+        for kind, beatport_id in keys:
+            wanted.setdefault(kind, []).append(int(beatport_id))
+        found: Dict[Tuple[str, int], EntityArt] = {}
+        conn = self._db.connect()
+        for kind, ids in wanted.items():
+            for chunk in chunked(unique_ids(ids)):
+                for row in conn.execute(
+                    "SELECT kind, beatport_id, image_url, read_at"
+                    " FROM beatport_entity_art WHERE kind = ?"
+                    f" AND beatport_id IN ({', '.join('?' for _ in chunk)})",
+                    (kind, *chunk),
+                ):
+                    art = EntityArt.from_row(row)
+                    found[(art.kind, art.beatport_id)] = art
+        return found
+
+    def set_entity_art(
+        self, kind: str, beatport_id: int, image_url: Optional[str], read_at: str
+    ) -> None:
+        """Keep what Beatport answered for a picture.
+
+        A picture always overwrites. None never erases a known picture; over
+        another None it only moves the time Beatport was asked.
+        """
+        art = EntityArt(kind, beatport_id, image_url, read_at)
+        with self._db.transaction() as conn:
+            conn.execute(
+                "INSERT INTO beatport_entity_art (kind, beatport_id, image_url,"
+                " read_at) VALUES (?, ?, ?, ?)"
+                " ON CONFLICT (kind, beatport_id) DO UPDATE SET"
+                " image_url = coalesce(excluded.image_url, image_url),"
+                " read_at = CASE WHEN excluded.image_url IS NULL"
+                " AND image_url IS NOT NULL THEN read_at ELSE excluded.read_at END",
+                (art.kind, art.beatport_id, art.image_url, art.read_at),
             )
 
     def get_tracks(self, ids: Iterable[int]) -> Dict[int, CachedBeatportTrack]:

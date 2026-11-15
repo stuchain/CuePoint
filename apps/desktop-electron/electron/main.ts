@@ -1142,6 +1142,9 @@ function registerIpcHandlers(): void {
   handle("engine:getDiscoveryTrackArt", (_event, params) =>
     engine.getDiscoveryTrackArt(params),
   );
+  handle("engine:getDiscoveryEntityArt", (_event, params) =>
+    engine.getDiscoveryEntityArt(params),
+  );
   handle("engine:getBeatportPlaylists", () => engine.getBeatportPlaylists());
   handle("engine:startDiscoveryRun", (_event, params) =>
     engine.startDiscoveryRun(params),

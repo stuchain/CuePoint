@@ -226,6 +226,16 @@ describe("desktop contract", () => {
       "getKeysPopulation",
     ];
 
+    it("carries an artist's or label's picture the same way, by kind and Beatport id (DEC-318)", () => {
+      expect(invokedChannels(preload)).toContain("engine:getDiscoveryEntityArt");
+      expect(handledChannels(main)).toContain("engine:getDiscoveryEntityArt");
+      expect(supervisor).toContain("(await this.readyClient()).getDiscoveryEntityArt(");
+      expect(preload).toMatch(/getDiscoveryEntityArt: async[\s\S]{0,260}URL\.createObjectURL/);
+      expect(bridgeTypes).toContain("getDiscoveryEntityArt?: (params: {");
+      expect(clientMethod("getDiscoveryEntityArt")).toContain("Promise<Uint8Array | null>");
+      expect(clientMethod("getDiscoveryEntityArt")).toContain("/api/v1/discover/entity/art");
+    });
+
     it.each(methods)("exposes %s on the preload", (method) => {
       expect(invokedChannels(preload)).toContain(`engine:${method}`);
     });

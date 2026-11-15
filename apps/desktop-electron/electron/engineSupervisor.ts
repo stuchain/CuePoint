@@ -1784,6 +1784,12 @@ export class EngineSupervisor {
     return (await this.readyClient()).getDiscoveryTrackArt(params);
   }
 
+  async getDiscoveryEntityArt(
+    params: Parameters<EngineClient["getDiscoveryEntityArt"]>[0],
+  ): Promise<Uint8Array | null> {
+    return (await this.readyClient()).getDiscoveryEntityArt(params);
+  }
+
   async getBeatportPlaylists(): Promise<DiscoverAnswer<BeatportPlaylists>> {
     return (await this.readyClient()).getBeatportPlaylists();
   }

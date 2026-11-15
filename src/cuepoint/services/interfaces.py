@@ -98,6 +98,7 @@ if TYPE_CHECKING:
     from cuepoint.models.beatport_cache import (
         CachedBeatportCredit,
         CachedBeatportTrack,
+        EntityArt,
         LibraryBeatportCredit,
     )
     from cuepoint.services.beatport_resolve_service import (
@@ -1501,6 +1502,26 @@ class IBeatportCatalogRepository(ABC):
         ...
 
     @abstractmethod
+    def entity_art(
+        self, keys: Iterable[Tuple[str, int]]
+    ) -> Dict[Tuple[str, int], "EntityArt"]:
+        """The kept pictures of artists and labels, keyed by ``(kind, id)``.
+
+        A key with no row was not asked yet.
+        """
+        ...
+
+    @abstractmethod
+    def set_entity_art(
+        self, kind: str, beatport_id: int, image_url: Optional[str], read_at: str
+    ) -> None:
+        """Keep what Beatport answered for an artist's or label's picture.
+
+        A picture always overwrites; None never erases a known picture.
+        """
+        ...
+
+    @abstractmethod
     def get_tracks(self, ids: Iterable[int]) -> Dict[int, "CachedBeatportTrack"]:
         """The cached tracks among ``ids``, keyed by Beatport track id."""
         ...
@@ -1899,6 +1920,11 @@ class IDiscoveryService(ABC):
     @abstractmethod
     def track_art_url(self, run_id: int, track_id: int) -> Optional[str]:
         """The release cover Beatport named for a track a run found (thumbnailer only)."""
+        ...
+
+    @abstractmethod
+    def entity_art_url(self, kind: str, beatport_id: int) -> Optional[str]:
+        """The picture of a Beatport artist or label, asked for once (thumbnailer only)."""
         ...
 
     @abstractmethod

@@ -135,7 +135,8 @@ Following, starts each title with a small square: the cover of the release the
 track is on, or a plain grey square when Beatport named none. A track read before
 covers were kept asks Beatport for its cover once, when you scroll to it (not
 when signed out), and keeps the answer. Artist and label cards ask for their
-picture the same way. Chart cards show the chart's own picture when Beatport gave one.
+picture the same way, and keep the picture for the name, so Following and the
+Artist and Label pages show it too (see [Following](#following)). Chart cards show the chart's own picture when Beatport gave one.
 
 **Tick** cards to act on several at once. A bar appears at the foot: "Ticked:
 Argy, Afterlife · 20 tracks · 3 already in your library", in the same plain bar. A track on two ticked
@@ -208,6 +209,16 @@ it lists the names you own the most tracks by, each with its own **Follow** butt
 already linked to one Beatport artist or label are offered. Follow some, then choose **Show what's
 new**; **Show 10 more** (up to 100 names) keeps the names you followed in the list as **Following**. After that, **Follow** sits on every artist and label page, and the same button there says
 **Following** and unfollows.
+
+**Pictures.** Each name in the suggestions and in the list of names has a small picture before it,
+round for an artist and square for a label; the Artist and Label pages show a larger one before
+the title. The pictures come from Beatport and are kept for the name, so one name has one picture
+wherever it shows. Most come free with the tracks Beatport lists for a name, or from a dig you ran.
+A name nothing has given a picture for is asked about once, when you scroll to it (not when signed
+out, and never while Beatport asks the app to wait), and the answer is kept; a name Beatport has no
+picture for shows a plain shape and is asked about again after 30 days. A name page, which is not
+one Beatport artist or label, has no picture. Reading the list still never asks Beatport for the
+tracks: only its pictures are asked for.
 
 Once you follow someone, the tab is a list of them at the left and their new tracks at the right,
 newest release first. Opening the tab shows what is already saved at once and checks Beatport for

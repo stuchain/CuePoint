@@ -298,9 +298,14 @@ class TestSuggestions:
             ("label", 900, 2),
         ]
         assert all(s["followed"] is False for s in found)
-        assert {"kind", "beatport_id", "name", "track_count", "followed"} == set(
-            found[0]
-        )
+        assert {
+            "kind",
+            "beatport_id",
+            "name",
+            "track_count",
+            "followed",
+            "has_art",
+        } == set(found[0])
         assert found[0]["name"] == "Âme"
 
     def test_a_name_linked_to_several_ids_or_none_is_not_offered(self, service, filled):
@@ -970,3 +975,56 @@ class TestCheckEdges:
         listed = {f["beatport_id"]: f for f in service.follows()["follows"]}
         assert listed[8]["state"]["state"] == "unavailable"
         assert listed[100]["state"] is None
+
+
+class TestHasArt:
+    """``has_art``: whether a picture is known or can still be asked for (DEC-318).
+
+    The four states of the shared row: no row (not asked yet), a picture, a
+    "none" asked less than 30 days ago, and a "none" older than that. A read
+    asks Beatport nothing.
+    """
+
+    URL = "https://geo-media.beatport.com/image_size/{w}x{h}/a.jpg"
+
+    @pytest.fixture
+    def filled(self, lib):
+        for i in range(3):
+            lib.add(f"a{i}", "Âme", "Innervisions", beatport=[(100, "Âme")])
+        lib.add("s1", "Solo", beatport=[(200, "Solo")])
+        lib.add("t1", "Third", beatport=[(300, "Third")])
+        lib.add("f1", "Fourth", beatport=[(400, "Fourth")])
+
+    def keep(self, db, beatport_id, url, when):
+        BeatportCatalogRepository(db).set_entity_art(
+            "artist", beatport_id, url, when.isoformat()
+        )
+
+    def states(self, service):
+        return {
+            s["beatport_id"]: s["has_art"]
+            for s in service.suggestions(50)["suggestions"]
+        }
+
+    def test_each_of_the_four_states_in_the_suggestions(self, db, service, filled):
+        self.keep(db, 100, self.URL, NOW)
+        self.keep(db, 200, None, NOW - timedelta(days=29))
+        self.keep(db, 300, None, NOW - timedelta(days=31))
+        assert self.states(service) == {100: True, 200: False, 300: True, 400: True}
+
+    def test_each_of_the_four_states_in_the_follows(self, db, world, service, filled):
+        for i in (100, 200, 300, 400):
+            service.add("artist", i, f"A{i}")
+        self.keep(db, 100, self.URL, NOW)
+        self.keep(db, 200, None, NOW - timedelta(days=29))
+        self.keep(db, 300, None, NOW - timedelta(days=31))
+        asked_before = len(world.requests)
+        found = {f["beatport_id"]: f["has_art"] for f in service.follows()["follows"]}
+        assert found == {100: True, 200: False, 300: True, 400: True}
+        assert len(world.requests) == asked_before
+
+    def test_the_url_is_never_in_a_row(self, db, service, filled):
+        self.keep(db, 100, self.URL, NOW)
+        service.add("artist", 100, "Âme")
+        assert "geo-media" not in repr(service.follows())
+        assert "geo-media" not in repr(service.suggestions())

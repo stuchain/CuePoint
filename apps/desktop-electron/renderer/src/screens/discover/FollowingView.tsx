@@ -41,6 +41,7 @@ import { quoted, RETRY } from "../../format/words";
 import { userMessage } from "../../api/userMessage";
 import { reportUnexpected } from "../../reporting/reporting";
 import { BeatportTable } from "./BeatportTable";
+import { EntityArt } from "./EntityArt";
 import { HideOwnedSwitch } from "./HideOwnedSwitch";
 import { PushDialog } from "./PushDialog";
 import { runActions, type BeatportActionId } from "./beatportActions";
@@ -82,15 +83,6 @@ const GROUP_LIMIT = 8;
 
 const KIND_WORD: Record<EntityKind, string> = { artist: "Artist", label: "Label" };
 
-/**
- * The small picture beside a name: round for an artist, square for a label. Beatport's artist and
- * label pictures are not kept for a follow (reading one is a request per name), so this is the
- * neutral placeholder the mockups show for a name with no picture.
- */
-function Avatar({ kind }: { kind: EntityKind }) {
-  return <span className={`discover-following__avatar discover-following__avatar--${kind}`} aria-hidden="true" />;
-}
-
 export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingViewProps) {
   const { notify } = tools;
   const openPage = useOpenPage();
@@ -123,6 +115,9 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
   activeRef.current = active;
   // Whether the automatic check was started for this visit.
   const autoChecked = useRef(false);
+  // Whether this visit's check has ended or none is coming. The check keeps the pictures of the
+  // names it reads, so the follow list asks for them only after it (DEC-318).
+  const [checkSettled, setCheckSettled] = useState(false);
   const usable = beatportUsable(tools.beatportState);
 
   // --- the follows: from the cache only
@@ -199,6 +194,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     manual.current = false;
     startingRef.current = false;
     checkingRef.current = false;
+    setCheckSettled(true);
     // A check that failed (an engine restart ends its job as failed) lets the next activation, or
     // Beatport becoming usable again, start the automatic check once more.
     if (!result && finished.state !== "succeeded") autoChecked.current = false;
@@ -227,7 +223,10 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
   const startCheck = useCallback(
     async (refresh: boolean) => {
       const bridge = window.cuepoint?.startFollowsCheck;
-      if (!bridge) return;
+      if (!bridge) {
+        setCheckSettled(true);
+        return;
+      }
       // Only a check asked for sets the flag; an automatic start must not clear it.
       if (refresh) manual.current = true;
       // Starting counts as checking until the job ends: leaving in the gap before its id arrives
@@ -242,11 +241,13 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
           return;
         }
         startingRef.current = false;
+        setCheckSettled(true);
         if (refresh) manual.current = false;
         // No token and the like are the page's notice; only a check asked for says more.
         if (refresh && !refusalState(refusal)) notify(refusalText(refusal), "warning");
       } catch (cause) {
         startingRef.current = false;
+        setCheckSettled(true);
         if (refresh) manual.current = false;
         reportUnexpected(cause);
         if (refresh) notify(userMessage(cause), "warning");
@@ -275,6 +276,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     return () => {
       live = false;
       autoChecked.current = false;
+      setCheckSettled(false);
       // Left: what the feed showed as new is seen now, once, and only that. Not while a check is
       // running or starting: the mark is by date and would bury tracks it is still storing; they
       // stay new until a later visit. Nothing shown (never loaded, an error) marks nothing.
@@ -551,7 +553,13 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
                 return (
                   <li key={key} className="discover-following__suggestion">
                     <span className="discover-following__who">
-                      <Avatar kind={row.kind} />
+                      {/* The suggestions ask at once: nothing is harvesting their pictures (DEC-318). */}
+                      <EntityArt
+                        kind={row.kind}
+                        beatportId={row.beatport_id}
+                        hasArt={row.has_art}
+                        className="discover-following__avatar"
+                      />
                       <span className="discover-following__name" data-cut-hint="">
                         {row.name}
                       </span>
@@ -627,7 +635,15 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
           onClick={() => setPicked({ kind: row.kind, beatport_id: row.beatport_id })}
         >
           <span className="discover-following__who">
-            <Avatar kind={row.kind} />
+            {/* A check is reading these names' listings, which keep their pictures: it is asked
+                for them once the check has ended, so none is asked for twice. */}
+            <EntityArt
+              kind={row.kind}
+              beatportId={row.beatport_id}
+              hasArt={row.has_art}
+              ask={!checking && (checkSettled || !usable)}
+              className="discover-following__avatar"
+            />
             <span className="discover-following__name" data-cut-hint="">
               {row.name}
             </span>

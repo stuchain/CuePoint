@@ -2301,6 +2301,8 @@ export interface FollowRow {
   checked_at: string | null;
   /** Why its last check failed, when it did; held for the life of the engine. */
   state: FollowRefusal | null;
+  /** Whether a picture is known or can still be asked for; the picture itself comes by `getDiscoveryEntityArt`. */
+  has_art: boolean;
 }
 
 /** Beatport's answer to a follow's last check, when it was a refusal (DEC-098). */
@@ -2323,6 +2325,8 @@ export interface FollowSuggestion {
   /** How many of the library's tracks are by or on it. */
   track_count: number;
   followed: boolean;
+  /** Whether a picture is known or can still be asked for (DEC-318). */
+  has_art: boolean;
 }
 
 export interface FollowSuggestions {
@@ -2516,6 +2520,8 @@ export interface EntityPage {
   /** True for a Beatport id page; a name page (shared or unlinked) cannot be followed. */
   followable: boolean;
   followed: boolean;
+  /** Whether a picture is known or can still be asked for; false for a name page (DEC-318). */
+  has_art: boolean;
 }
 
 export interface EntityTracksPage {
@@ -3788,6 +3794,23 @@ export class EngineClient {
     const { track_id, ...rest } = params;
     const answer = await this.getJson<{ jpeg_base64: string | null }>(
       `/api/v1/discover/tracks/${encodeURIComponent(String(track_id))}/art${discoverQuery({ ...rest })}`,
+    );
+    if (!answer.jpeg_base64) return null;
+    return new Uint8Array(Buffer.from(answer.jpeg_base64, "base64"));
+  }
+
+  /**
+   * A Beatport artist's or label's picture as JPEG bytes, or null when it has none (DEC-318).
+   * The engine may ask Beatport once for a name nothing has named a picture for; it fetches,
+   * checks and re-encodes it (DEC-076): no URL reaches the renderer.
+   */
+  async getDiscoveryEntityArt(params: {
+    kind: EntityKind;
+    beatport_id: number;
+    size?: ArtworkSize;
+  }): Promise<Uint8Array | null> {
+    const answer = await this.getJson<{ jpeg_base64: string | null }>(
+      `/api/v1/discover/entity/art${discoverQuery({ ...params })}`,
     );
     if (!answer.jpeg_base64) return null;
     return new Uint8Array(Buffer.from(answer.jpeg_base64, "base64"));

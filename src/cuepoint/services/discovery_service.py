@@ -125,7 +125,7 @@ from cuepoint.services.beatport_api_client import (
     REPEATING_ERROR_CLASSES,
     classify_beatport_error,
 )
-from cuepoint.services.beatport_catalog import positive_id
+from cuepoint.services.beatport_catalog import entity_image, positive_id
 from cuepoint.services.interfaces import (
     IActivityService,
     IBeatportCatalogRepository,
@@ -1226,13 +1226,19 @@ class DiscoveryService(IDiscoveryService):
                     since,
                     until,
                 )
+                art = (
+                    None
+                    if tracks is _FAILED
+                    else entity_image(ENTITY_ARTIST, beatport_id, tracks)
+                )
+                self._keep_entity_art(ENTITY_ARTIST, beatport_id, art)
                 self._group(
                     state,
                     GROUP_ARTIST,
                     key,
                     name,
                     beatport_id=beatport_id,
-                    art_url=_artist_art(tracks, beatport_id),
+                    art_url=art,
                 )
                 asked_ok = tracks is not _FAILED
                 if tracks is not _FAILED:
@@ -1339,6 +1345,8 @@ class DiscoveryService(IDiscoveryService):
                 )
                 state.releases.update(t.release_id for t in released if t.release_id)
                 state.counts["releases_read"] = len(state.releases)
+                art = entity_image(ENTITY_LABEL, label_id, tracks)
+                self._keep_entity_art(ENTITY_LABEL, label_id, art)
                 if released or (GROUP_LABEL, key) in state.groups:
                     self._group(
                         state,
@@ -1346,10 +1354,7 @@ class DiscoveryService(IDiscoveryService):
                         key,
                         name,
                         beatport_id=label_id,
-                        art_url=next(
-                            (t.label_image_url for t in tracks if t.label_image_url),
-                            None,
-                        ),
+                        art_url=art,
                     )
                 self._store(
                     state,
@@ -1534,19 +1539,23 @@ class DiscoveryService(IDiscoveryService):
         group = self._runs.group_ref(run_id, kind, key)
         if group is None or group.beatport_id is None or asked in _ART_MISSES:
             return None
-        if (kind, key) in self._runs.groups_art_read(run_id) or self._rate_limited():
+        if (kind, key) in self._runs.groups_art_read(run_id):
             return None
-        options: Dict[str, Any] = {
-            "timeout": _COVER_TIMEOUT_SECONDS,
-            "retry_on_timeout": False,
-            "wait_on_rate_limit": False,
-        }
+        # The picture of the same artist or label may already be known: a
+        # follow, a page or another dig asked for it (DEC-318).
+        shared = self._catalog.entity_art([(kind, group.beatport_id)]).get(
+            (kind, group.beatport_id)
+        )
+        if shared is not None and shared.image_url is not None:
+            self._runs.set_group_art(run_id, kind, key, shared.image_url)
+            return shared.image_url
+        if shared is not None and not shared.asks(self._clock()):
+            self._runs.mark_group_art_read(run_id, kind, key)
+            return None
+        if self._rate_limited():
+            return None
         try:
-            found = (
-                self._beatport.get_artist(group.beatport_id, **options)
-                if kind == GROUP_ARTIST
-                else self._beatport.get_label(group.beatport_id, **options)
-            )
+            found = self._read_entity(kind, group.beatport_id)
         except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
             _logger.debug("[discover] no picture for %s %s: %s", kind, key, exc)
             # A rate limit says nothing about the card: it is asked again later.
@@ -1554,11 +1563,73 @@ class DiscoveryService(IDiscoveryService):
                 _ART_MISSES.add(asked)
             return None
         art = found.image_url if found is not None else None
+        self._catalog.set_entity_art(
+            kind, group.beatport_id, art, self._clock().isoformat()
+        )
         if art is None:
             self._runs.mark_group_art_read(run_id, kind, key)
         else:
             self._runs.set_group_art(run_id, kind, key, art)
         return art
+
+    def entity_art_url(self, kind: str, beatport_id: int) -> Optional[str]:
+        """The picture of a Beatport artist or label, for the engine's thumbnailer only.
+
+        Following's lists, the suggestions and the Artist and Label pages show
+        it (DEC-318). It was kept when a listing, a dig or an earlier look
+        named it. Otherwise it is asked for here, once, when somebody looks, by
+        id, with the budget of a card's: a short timeout, no retry, no wait on
+        a rate limit. The answer, "none" included, is kept; a "none" is asked
+        again after 30 days. Signed out, nothing is asked and nothing is kept. A
+        failure is not asked again until the engine restarts. A rate limit is
+        no answer: it pauses every on-view picture lookup and is not recorded.
+
+        Raises:
+            ValueError: If ``kind`` is not an artist or a label.
+        """
+        if kind not in (ENTITY_ARTIST, ENTITY_LABEL):
+            raise ValueError("kind is artist or label")
+        known = self._catalog.entity_art([(kind, beatport_id)]).get((kind, beatport_id))
+        if known is not None and known.image_url is not None:
+            return known.image_url
+        if known is not None and not known.asks(self._clock()):
+            return None
+        if (kind, beatport_id) in _ENTITY_ART_MISSES:
+            return None
+        try:
+            self._beatport.require_token()
+        except Exception:  # noqa: BLE001 — signed out: no picture, and no memory of it
+            return None
+        if self._rate_limited():
+            return None
+        try:
+            found = self._read_entity(kind, beatport_id)
+        except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
+            _logger.debug("[discover] no picture for %s %s: %s", kind, beatport_id, exc)
+            if not self._note_rate_limit(exc):
+                _ENTITY_ART_MISSES.add((kind, beatport_id))
+            return None
+        art = found.image_url if found is not None else None
+        self._catalog.set_entity_art(kind, beatport_id, art, self._clock().isoformat())
+        return art
+
+    def _read_entity(self, kind: str, beatport_id: int) -> Any:
+        """One artist or label by id, with the budget of an on-view picture."""
+        options: Dict[str, Any] = {
+            "timeout": _COVER_TIMEOUT_SECONDS,
+            "retry_on_timeout": False,
+            "wait_on_rate_limit": False,
+        }
+        if kind == ENTITY_ARTIST:
+            return self._beatport.get_artist(beatport_id, **options)
+        return self._beatport.get_label(beatport_id, **options)
+
+    def _keep_entity_art(self, kind: str, beatport_id: int, art: Optional[str]) -> None:
+        """Keep a picture a listing carried as the entity's own; no picture is no row."""
+        if art is not None:
+            self._catalog.set_entity_art(
+                kind, beatport_id, art, self._clock().isoformat()
+            )
 
     def _rate_limited(self) -> bool:
         """Whether Beatport said to wait and the time has not yet passed."""
@@ -1662,23 +1733,16 @@ _COVER_TIMEOUT_SECONDS = 8.0
 #: Cards whose picture Beatport could not give when asked, per process.
 _ART_MISSES: Set[Tuple[int, str, str]] = set()
 
+#: Artists and labels (``(kind, id)``) whose picture Beatport could not give when
+#: asked by id, per process.
+_ENTITY_ART_MISSES: Set[Tuple[str, int]] = set()
+
 #: Until when (on the monotonic clock) Beatport asked every on-view picture lookup to wait, per
 #: process: a 429 to any of them, a track's cover or a card's picture, pauses them all.
 _RATE_LIMITED_UNTIL: List[float] = [0.0]
 
 #: How long a 429 that gave no ``Retry-After`` pauses the lookups.
 _RATE_LIMIT_PAUSE_SECONDS = 60.0
-
-
-def _artist_art(tracks: Any, artist_id: int) -> Optional[str]:
-    """The picture an artist's own credits carry, from tracks that credit them."""
-    if tracks is _FAILED:
-        return None
-    for track in tracks:
-        for credit in (*track.artists, *track.remixers):
-            if credit.id == artist_id and credit.image_url:
-                return str(credit.image_url)
-    return None
 
 
 def _in_genres(

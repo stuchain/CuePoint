@@ -45,6 +45,7 @@ not exist would be a guess.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from cuepoint.models.row_values import (
@@ -75,6 +76,9 @@ ENTITY_KINDS = (ENTITY_ARTIST, ENTITY_LABEL)
 #: wrong row. Declared here, with the models, so the rule vocabulary and the
 #: services check ids against one number (DISCOVER-07).
 MAX_BEATPORT_ID = 2**63 - 1
+
+#: How long a "Beatport named no picture" answer stands before it is asked again.
+ENTITY_ART_MISS_DAYS = 30
 
 
 @dataclass(frozen=True)
@@ -408,3 +412,68 @@ class BeatportNameLookup:
             beatport_id=data.get("beatport_id"),
             beatport_name=data.get("beatport_name"),
         )
+
+
+@dataclass(frozen=True)
+class EntityArt:
+    """What Beatport answered about an artist's or a label's picture (DEC-318).
+
+    Attributes:
+        kind: ``artist`` or ``label``.
+        beatport_id: Beatport's id.
+        image_url: The picture Beatport named, on its own artwork hosts, or None
+            when it was asked and named none. Never sent to the renderer.
+        read_at: When it answered, ISO-8601 UTC.
+    """
+
+    kind: str
+    beatport_id: int
+    image_url: Optional[str]
+    read_at: str
+
+    def __post_init__(self) -> None:
+        """Validate the row; no message echoes the URL."""
+        from cuepoint.data.beatport import is_beatport_artwork_url
+
+        if self.kind not in ENTITY_KINDS:
+            raise ValueError("kind is artist or label")
+        object.__setattr__(
+            self, "beatport_id", required_id(self.beatport_id, "beatport_id")
+        )
+        required_text(self.read_at, "read_at")
+        if self.image_url is not None and not (
+            isinstance(self.image_url, str) and is_beatport_artwork_url(self.image_url)
+        ):
+            raise ValueError("image_url must be on Beatport's artwork hosts")
+
+    def asks(self, now: datetime) -> bool:
+        """Whether a page should ask for this picture at ``now``.
+
+        True for a picture, and for a "none" older than
+        :data:`ENTITY_ART_MISS_DAYS`; false for a recent "none".
+        """
+        if self.image_url is not None:
+            return True
+        try:
+            read = datetime.fromisoformat(self.read_at)
+        except ValueError:
+            return True
+        if read.tzinfo is None:
+            read = read.replace(tzinfo=timezone.utc)
+        return now - read >= timedelta(days=ENTITY_ART_MISS_DAYS)
+
+    @classmethod
+    def from_row(cls, row: Any) -> "EntityArt":
+        """Build the row from a database row (``sqlite3.Row`` or mapping)."""
+        data = dict(row)
+        return cls(
+            kind=data["kind"],
+            beatport_id=data["beatport_id"],
+            image_url=data.get("image_url"),
+            read_at=data["read_at"],
+        )
+
+
+def entity_art_asks(art: Optional[EntityArt], now: datetime) -> bool:
+    """:meth:`EntityArt.asks` for a possibly missing row: no row is not asked yet."""
+    return True if art is None else art.asks(now)

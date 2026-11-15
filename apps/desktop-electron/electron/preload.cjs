@@ -370,6 +370,12 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     if (!bytes) return null;
     return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
   },
+  // An artist's or label's picture (DEC-318), the same road again.
+  getDiscoveryEntityArt: async (params) => {
+    const bytes = await ipcRenderer.invoke("engine:getDiscoveryEntityArt", params);
+    if (!bytes) return null;
+    return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+  },
   getBeatportPlaylists: () => ipcRenderer.invoke("engine:getBeatportPlaylists"),
   startDiscoveryRun: (params) => ipcRenderer.invoke("engine:startDiscoveryRun", params),
   continueDiscoveryRun: (params) => ipcRenderer.invoke("engine:continueDiscoveryRun", params),

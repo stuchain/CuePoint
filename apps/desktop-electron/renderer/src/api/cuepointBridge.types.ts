@@ -2707,6 +2707,8 @@ export interface FollowRow {
   checked_at: string | null;
   /** Why its last check failed, when it did; held for the life of the engine. */
   state: FollowRefusal | null;
+  /** Whether a picture is known or can still be asked for; the picture itself comes by `getDiscoveryEntityArt`. */
+  has_art: boolean;
 }
 
 /** Beatport's answer to a follow's last check, when it was a refusal (DEC-098). */
@@ -2729,6 +2731,8 @@ export interface FollowSuggestion {
   /** How many of the library's tracks are by or on it. */
   track_count: number;
   followed: boolean;
+  /** Whether a picture is known or can still be asked for (DEC-318). */
+  has_art: boolean;
 }
 
 export interface FollowSuggestions {
@@ -2922,6 +2926,8 @@ export interface EntityPage {
   /** True for a Beatport id page; a name page (shared or unlinked) cannot be followed. */
   followable: boolean;
   followed: boolean;
+  /** Whether a picture is known or can still be asked for; false for a name page (DEC-318). */
+  has_art: boolean;
 }
 
 export interface EntityTracksPage {
@@ -4403,6 +4409,8 @@ export interface CuePointBridge {
   }) => Promise<string | null>;
   /** A cached Beatport track's release cover as an object URL, or null; release with `releaseTrackArtwork`. */
   getDiscoveryTrackArt?: (params: { track_id: number; size?: ArtworkSize }) => Promise<string | null>;
+  /** An artist's or label's picture as an object URL, or null (DEC-318); release with `releaseTrackArtwork`. */
+  getDiscoveryEntityArt?: (params: { kind: EntityKind; beatport_id: number; size?: ArtworkSize }) => Promise<string | null>;
   /** The user's own Beatport playlists, to add tracks to one. */
   getBeatportPlaylists?: () => Promise<DiscoverAnswer<BeatportPlaylists>>;
   /** Start a discovery run; a refusal is an answer, and nothing starts. */

@@ -86,6 +86,12 @@ interface BeatportHalfProps {
   onActivate: () => void;
   /** A resolve finished: the page may now be known by an id. */
   onResolved: () => void;
+  /**
+   * Which page (`kind|pageRef`) the half has answered for, or null while it has not (whatever the
+   * answer: rows, a refusal or an error). The read keeps the page's picture, so the header asks
+   * for it only after this (DEC-318).
+   */
+  onSettled?: (settledFor: string | null) => void;
   /** Where the page was opened from; the pages this one opens keep it (C221). */
   origin?: PageOrigin;
 }
@@ -97,6 +103,7 @@ export function BeatportHalf({
   active,
   onActivate,
   onResolved,
+  onSettled,
   origin = "discover",
 }: BeatportHalfProps) {
   const openPage = useOpenPage(origin);
@@ -151,10 +158,14 @@ export function BeatportHalf({
     answers: answersHalf,
   });
   const { reload } = tracks;
+  const settled = !tracks.loading || tracks.refusal !== null || tracks.error !== null;
   // The last answer for this page, kept while a new filter is asked for, so
   // the toolbar — the checkbox just clicked — does not vanish under the
   // pointer. Another page's answer is never kept.
   const pageKey = `${kind}|${pageRef}`;
+  useEffect(() => {
+    onSettled?.(settled ? pageKey : null);
+  }, [onSettled, pageKey, settled]);
   const [lastHalf, setLastHalf] = useState<{ key: string; half: EntityBeatportHalf } | null>(
     null,
   );

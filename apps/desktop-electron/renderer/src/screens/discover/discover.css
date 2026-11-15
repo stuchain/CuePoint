@@ -693,6 +693,17 @@
   border-bottom: var(--divider);
 }
 
+/* An artist's or label's picture before the title (EntityArt.tsx in the header's `lead`): 48 at
+   any scale, round for an artist and square for a label, the alt tone until it arrives. */
+.discover-page__picture {
+  width: calc(48px * var(--scale));
+  height: calc(48px * var(--scale));
+}
+
+.discover-page__picture--artist {
+  border-radius: 50%;
+}
+
 /* The crumb over a page opened from another (C221): the origin as a link, then what this is. */
 .discover-crumb {
   display: flex;

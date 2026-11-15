@@ -189,7 +189,15 @@ class TestFollowing:
         found = ok(get(engine, api.FOLLOWS_SUGGESTIONS_PATH))["suggestions"]
         assert isinstance(found, list)
         assert all(
-            set(s) == {"kind", "beatport_id", "name", "track_count", "followed"}
+            set(s)
+            == {
+                "kind",
+                "beatport_id",
+                "name",
+                "track_count",
+                "followed",
+                "has_art",
+            }
             for s in found
         )
 
@@ -214,6 +222,87 @@ class TestTheEntityAnswer:
         assert {"kind", "ref", "identity", "beatport_id", "library", "rules"} <= set(
             page
         )
+
+
+class TestPictures:
+    """``has_art`` on the rows and ``GET entity/art`` (DEC-318)."""
+
+    @staticmethod
+    def jpeg(monkeypatch):
+        import io
+
+        from PIL import Image
+
+        from cuepoint.services import artwork_service
+
+        buffer = io.BytesIO()
+        Image.new("RGB", (600, 600), (30, 30, 200)).save(buffer, "JPEG")
+        monkeypatch.setattr(
+            artwork_service, "fetch_image", lambda url: buffer.getvalue()
+        )
+
+    def test_the_entity_answer_and_the_follows_carry_has_art(self, engine, world):
+        page = ok(get(engine, api.ENTITY_PATH, kind="label", ref=f"bp:{LABEL}"))
+        assert page["has_art"] is True
+        follow_label(engine)
+        rows = ok(get(engine, api.FOLLOWS_PATH))["follows"]
+        assert [r["has_art"] for r in rows] == [True]
+        name = ok(get(engine, api.ENTITY_PATH, kind="artist", ref="name:Kiko"))
+        assert name["has_art"] is False
+
+    def test_the_route_answers_a_thumbnail_and_never_a_url(
+        self, engine, world, monkeypatch
+    ):
+        import base64
+        import json
+
+        world.images[("label", LABEL)] = (
+            "https://geo-media.beatport.com/image_size/{w}x{h}/n.jpg"
+        )
+        self.jpeg(monkeypatch)
+        answer = ok(get(engine, api.ENTITY_ART_PATH, kind="label", beatport_id=LABEL))
+        assert answer["kind"] == "label" and answer["beatport_id"] == LABEL
+        assert base64.b64decode(answer["jpeg_base64"])[:2] == b"\xff\xd8"
+        assert "geo-media" not in json.dumps(answer)
+        row = ok(
+            get(
+                engine,
+                api.ENTITY_ART_PATH,
+                kind="label",
+                beatport_id=LABEL,
+                size="inspector",
+            )
+        )
+        assert row["jpeg_base64"]
+
+    def test_a_name_with_no_picture_is_an_empty_answer_not_an_error(
+        self, engine, world
+    ):
+        answer = ok(get(engine, api.ENTITY_ART_PATH, kind="label", beatport_id=LABEL))
+        assert answer["jpeg_base64"] is None
+
+    @pytest.mark.parametrize(
+        "params, words",
+        [
+            ({"kind": "chart", "beatport_id": 5}, "kind must be one of"),
+            ({"beatport_id": 5}, "kind is required"),
+            ({"kind": "artist"}, "beatport_id is required"),
+            ({"kind": "artist", "beatport_id": 0}, "positive"),
+            ({"kind": "artist", "beatport_id": -3}, "positive"),
+            ({"kind": "artist", "beatport_id": "x"}, "positive"),
+            ({"kind": "artist", "beatport_id": 5, "size": "big"}, "size must be"),
+            ({"kind": "artist", "beatport_id": 5, "key": "x"}, "Unknown parameter"),
+        ],
+    )
+    def test_a_bad_request_is_a_400(self, engine, params, words):
+        refused(
+            get(engine, api.ENTITY_ART_PATH, **params), 400, "INVALID_REQUEST", words
+        )
+
+    def test_a_picture_arriving_is_a_discover_change_and_not_a_library_one(self):
+        from cuepoint.persistence.revision_counters import DISCOVER, domain_of
+
+        assert domain_of("beatport_entity_art") == DISCOVER
 
 
 class TestRefusals:
