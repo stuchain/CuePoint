@@ -577,6 +577,12 @@ test.describe("Plays well next and Following", () => {
         await expect(details).toContainText(/Genre\s*House/);
       });
 
+      // Rest on the BPM line again, so the shot shows "126 · yours" and its hint, not the Rekordbox fold.
+      await inspector.evaluate((el) => {
+        const scroller = el.closest(".cp-inspector__body");
+        if (scroller) scroller.scrollTop = 0;
+      });
+      await inspector.getByTestId("track-fact-bpm").locator(".cp-data").hover();
       await shoot(app, window, "details-your-bpm");
     } finally {
       await app.close();
