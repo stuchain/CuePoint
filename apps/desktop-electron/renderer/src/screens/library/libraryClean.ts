@@ -100,6 +100,28 @@ export function overrideMark(
   };
 }
 
+/**
+ * One fact of the Details panel's Overview that an override can change: the value CuePoint uses
+ * (the effective one, DEC-068), the word for where it came from when it differs from Rekordbox's,
+ * and the hint a pointer resting on it shows (the Library table's own words: what it is and what
+ * Rekordbox has). A value Rekordbox sent has no word and no hint.
+ */
+export interface OverriddenFact {
+  text: string;
+  word: "yours" | "Beatport" | null;
+  hint: string | null;
+}
+
+export function overriddenFact(row: LibraryTrackRow, field: "bpm" | "genre"): OverriddenFact {
+  const overridden = row.overridden?.includes(field) ?? false;
+  const source = row.override_sources?.[field] ?? null;
+  return {
+    text: effectiveText(row, field),
+    word: !overridden ? null : source === "beatport" ? "Beatport" : "yours",
+    hint: overrideMark(row, field)?.title ?? null,
+  };
+}
+
 /** What a row with no picture to show says instead. */
 export function artworkText(state: ArtworkState | null | undefined): string {
   switch (state) {

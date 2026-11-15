@@ -27,6 +27,7 @@ import {
   fieldSourceText,
   formatScore,
   importedText,
+  overriddenFact,
   overrideMark,
   overrideSourceText,
 } from "./libraryClean";
@@ -104,6 +105,87 @@ function candidate(overrides: Partial<MatchCandidate> = {}): MatchCandidate {
     ...overrides,
   };
 }
+
+describe("overriddenFact (the Details panel's BPM and Genre, B-A)", () => {
+  it("says a BPM typed by you is yours, and what Rekordbox has", () => {
+    const typed = row({ overridden: ["bpm"], bpm: 124, effective_bpm: 126, override_sources: { bpm: "cuepoint" } });
+    expect(overriddenFact(typed, "bpm")).toEqual({
+      text: "126",
+      word: "yours",
+      hint: "BPM typed by you. In Rekordbox it is 124.",
+    });
+  });
+
+  it("says a BPM applied from a match is Beatport's", () => {
+    const applied = row({ overridden: ["bpm"], bpm: 124, effective_bpm: 126, override_sources: { bpm: "beatport" } });
+    expect(overriddenFact(applied, "bpm")).toEqual({
+      text: "126",
+      word: "Beatport",
+      hint: "BPM applied from Beatport. In Rekordbox it is 124.",
+    });
+  });
+
+  it("says yours, with CuePoint as the source, when no source was recorded", () => {
+    const set = row({ overridden: ["bpm"], bpm: 124, effective_bpm: 126, override_sources: {} });
+    expect(overriddenFact(set, "bpm")).toEqual({
+      text: "126",
+      word: "yours",
+      hint: "BPM set in CuePoint. In Rekordbox it is 124.",
+    });
+  });
+
+  it("says Rekordbox had none when it had none", () => {
+    const none = row({ overridden: ["bpm"], bpm: null, effective_bpm: 126, override_sources: { bpm: "cuepoint" } });
+    expect(overriddenFact(none, "bpm").hint).toBe("BPM typed by you. In Rekordbox it is not set.");
+  });
+
+  it("gives the value alone when it is not overridden", () => {
+    expect(overriddenFact(row({ bpm: 128, effective_bpm: 128 }), "bpm")).toEqual({
+      text: "128",
+      word: null,
+      hint: null,
+    });
+  });
+
+  it("reads Genre the same way", () => {
+    const typed = row({
+      overridden: ["genre"],
+      genre: "House",
+      effective_genre: "Deep House",
+      override_sources: { genre: "cuepoint" },
+    });
+    expect(overriddenFact(typed, "genre")).toEqual({
+      text: "Deep House",
+      word: "yours",
+      hint: "Genre typed by you. In Rekordbox it is House.",
+    });
+    const applied = row({
+      overridden: ["genre"],
+      genre: "House",
+      effective_genre: "Deep House",
+      override_sources: { genre: "beatport" },
+    });
+    expect(overriddenFact(applied, "genre")).toEqual({
+      text: "Deep House",
+      word: "Beatport",
+      hint: "Genre applied from Beatport. In Rekordbox it is House.",
+    });
+  });
+
+  it("falls back to the imported value when the effective one is absent", () => {
+    const bare = row({ bpm: 128, genre: "House" });
+    delete (bare as Partial<LibraryTrackRow>).effective_bpm;
+    delete (bare as Partial<LibraryTrackRow>).effective_genre;
+    expect(overriddenFact(bare, "bpm").text).toBe("128");
+    expect(overriddenFact(bare, "genre").text).toBe("House");
+  });
+
+  it("is empty when the effective value is null", () => {
+    const cleared = row({ bpm: 128, effective_bpm: null, genre: "House", effective_genre: null });
+    expect(overriddenFact(cleared, "bpm").text).toBe("");
+    expect(overriddenFact(cleared, "genre").text).toBe("");
+  });
+});
 
 describe("overridden values", () => {
   it("are marked, and the mark names the source and what is underneath", () => {

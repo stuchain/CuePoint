@@ -288,7 +288,10 @@ describe("the facts grid", () => {
   });
 
   it("leaves out a fact the track does not have", () => {
-    show({}, detailOf({ ...TRACK, genre: null, bpm: null }));
+    show(
+      {},
+      detailOf({ ...TRACK, genre: null, bpm: null, effective_genre: null, effective_bpm: null }),
+    );
     expect(screen.queryByTestId("track-fact-genre")).toBeNull();
     expect(screen.queryByTestId("track-fact-bpm")).toBeNull();
     expect(screen.getByTestId("track-key")).toBeInTheDocument();
@@ -502,6 +505,58 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     show({ selectionCount: 4, onEditValues: vi.fn() });
     expect(screen.getByRole("status")).toHaveTextContent(/4 selected/);
     expect(screen.queryByRole("button", { name: /Change all/ })).toBeNull();
+  });
+});
+
+describe("BPM and Genre are what CuePoint uses, with their source (B-A)", () => {
+  const OVERRIDDEN: LibraryTrackRow = {
+    ...TRACK,
+    bpm: 128,
+    effective_bpm: 126,
+    genre: "House",
+    effective_genre: "Deep House",
+    overridden: ["bpm", "genre"],
+    override_sources: { bpm: "cuepoint", genre: "beatport" },
+  };
+
+  it("reads the effective BPM and Genre, each with the word for where it came from", () => {
+    show({}, detailOf(OVERRIDDEN));
+    expect(screen.getByTestId("track-fact-bpm")).toHaveTextContent("BPM126 · yours");
+    expect(screen.getByTestId("track-fact-genre")).toHaveTextContent("GenreDeep House · Beatport");
+  });
+
+  it("keeps the value in the data face and the word apart from it", () => {
+    show({}, detailOf(OVERRIDDEN));
+    const bpm = screen.getByTestId("track-fact-bpm");
+    expect(bpm.querySelector(".cp-data")).toHaveTextContent(/^126$/);
+    expect(bpm.querySelector(".cp-track-detail__factsource")).toHaveTextContent("· yours");
+  });
+
+  it("says on hover what it is and what Rekordbox has", () => {
+    show({}, detailOf(OVERRIDDEN));
+    expect(
+      within(screen.getByTestId("track-fact-bpm")).getByTitle("BPM typed by you. In Rekordbox it is 128."),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("track-fact-genre")).getByTitle("Genre applied from Beatport. In Rekordbox it is House."),
+    ).toBeInTheDocument();
+  });
+
+  it("still lists Rekordbox's own BPM and Genre under From your Rekordbox file", () => {
+    show({}, detailOf(OVERRIDDEN));
+    fireEvent.click(section("From your Rekordbox file"));
+    const details = bodyOf("From your Rekordbox file");
+    expect(within(details).getByText("128")).toBeInTheDocument();
+    expect(within(details).getByText("House")).toBeInTheDocument();
+    expect(within(details).queryByText("126")).toBeNull();
+  });
+
+  it("shows a value that is not overridden alone, with no word and no hint", () => {
+    show();
+    const bpm = screen.getByTestId("track-fact-bpm");
+    expect(bpm).toHaveTextContent(/^BPM128$/);
+    expect(bpm.querySelector(".cp-track-detail__factsource")).toBeNull();
+    expect(bpm.querySelector("[title]")).toBeNull();
   });
 });
 

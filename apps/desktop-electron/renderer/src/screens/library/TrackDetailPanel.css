@@ -127,6 +127,18 @@
   overflow-wrap: anywhere;
 }
 
+/* BPM and Genre say where an override came from after the value, as the Key does: muted, with the
+   dot drawn here (the screen reader has it as text in the hidden span). */
+.cp-track-detail__factsource {
+  margin-left: var(--space-xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.cp-track-detail__factsource::before {
+  content: "\00b7\00a0";
+}
+
 /* M131: every fact row is at least a chip tall, so the Key row (a chip and the wheel's button) is
    no taller than BPM or Genre; a value that wraps simply grows. */
 .cp-track-detail__facts {

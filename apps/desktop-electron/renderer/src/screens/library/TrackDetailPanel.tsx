@@ -56,6 +56,7 @@ import { CreditLinks } from "./CreditLinks";
 import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { DisclosureSection } from "./DisclosureSection";
 import { followJob } from "./followJob";
+import { overriddenFact, type OverriddenFact } from "./libraryClean";
 import { jobErrorMessage } from "./libraryFormat";
 import { TrackArtwork } from "./TrackArtwork";
 import { NextTrackPicks } from "./NextTrackPicks";
@@ -184,6 +185,27 @@ function credited(
  * `valueClassName` is `cp-data` for a number, time or date (R4-3, DEC-048): the data face with
  * figures that line up. Words (genre, label, comment, path) keep the text face.
  */
+/**
+ * A BPM or Genre fact: the value CuePoint uses, then "· yours" or "· Beatport" when it differs from
+ * Rekordbox's, the Key's pattern. The hint says what it is and what Rekordbox has. The dot is drawn
+ * by CSS and the screen reader gets it as text, so "BPM 126 · yours" is read once.
+ */
+function OverriddenValue({ fact, data = false }: { fact: OverriddenFact; data?: boolean }) {
+  return (
+    <Hint text={fact.hint ?? undefined} inline>
+      <span className="cp-track-detail__factline">
+        <span className={data ? "cp-data" : undefined}>{fact.text}</span>
+        {fact.word !== null && (
+          <span className="cp-track-detail__factsource">
+            <span className="cp-visually-hidden">{" \u00b7 "}</span>
+            {fact.word}
+          </span>
+        )}
+      </span>
+    </Hint>
+  );
+}
+
 function Row({
   label,
   value,
@@ -386,8 +408,10 @@ export function TrackDetailPanel({
   const loudnessTrack = reading.trackId !== null && reading.trackId === track.id ? reading.track : null;
   const lufs = loudnessShort(loudnessTrack);
   const peak = peakShort(loudnessTrack);
-  const bpm = formatBpm(track.bpm);
-  const genre = track.genre ? track.genre : null;
+  // BPM and Genre are what CuePoint uses (DEC-068), with the word for where an override came from;
+  // Rekordbox's own values stay under "From your Rekordbox file".
+  const bpmFact = overriddenFact(track, "bpm");
+  const genreFact = overriddenFact(track, "genre");
 
   const sourceWords =
     track.key_source === "yours" ? "yours" : track.key_source === "beatport" ? "Beatport" : null;
@@ -514,16 +538,20 @@ export function TrackDetailPanel({
                 )}
               </dd>
             </div>
-            {bpm && (
+            {bpmFact.text !== "" && (
               <div className="cp-track-detail__fact" data-testid="track-fact-bpm">
                 <dt className="cp-track-detail__factlabel">BPM</dt>
-                <dd className="cp-track-detail__factvalue cp-data">{bpm}</dd>
+                <dd className="cp-track-detail__factvalue">
+                  <OverriddenValue fact={bpmFact} data />
+                </dd>
               </div>
             )}
-            {genre && (
+            {genreFact.text !== "" && (
               <div className="cp-track-detail__fact" data-testid="track-fact-genre">
                 <dt className="cp-track-detail__factlabel">Genre</dt>
-                <dd className="cp-track-detail__factvalue">{genre}</dd>
+                <dd className="cp-track-detail__factvalue">
+                  <OverriddenValue fact={genreFact} />
+                </dd>
               </div>
             )}
             {lufs && (

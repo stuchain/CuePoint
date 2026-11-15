@@ -381,6 +381,12 @@ describe("the imported record", () => {
     expect(within(imported).queryByText("Key (not used)")).toBeNull();
   });
 
+  it("shows the BPM CuePoint uses on Overview, not Rekordbox's, and says it is yours", () => {
+    render(<TrackDetailPanel detail={detailOf()} />);
+    expect(screen.getByTestId("track-fact-bpm")).toHaveTextContent("BPM126 · yours");
+    expect(screen.getByTestId("track-fact-bpm")).not.toHaveTextContent("128");
+  });
+
   it("says the track's own key with its name, or that it has none", async () => {
     const detail = detailOf();
     const { rerender } = render(
