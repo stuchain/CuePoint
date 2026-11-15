@@ -262,3 +262,59 @@ class TestADigKeepsWhatItsListingsCarry:
         service = make(db, world)
         service.run(request(service, artists=["Mara Veil"], labels=[]))
         assert catalog.entity_art([("artist", MARA[0])]) == {}
+
+
+class TestOneRequestForTwoConcurrentMisses:
+    """Two threads missing the same kind and id share one Beatport request."""
+
+    @pytest.mark.parametrize(
+        "first, second",
+        [
+            ("entity", "entity"),
+            ("entity", "group"),
+            ("group", "entity"),
+            ("group", "group"),
+        ],
+    )
+    def test_the_second_waits_for_the_first_and_reads_its_answer(
+        self, db, library, world, monkeypatch, first, second
+    ):
+        import threading
+        import time
+
+        service = make(db, world)
+        run = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        # A dig asks for no picture of its own: start from nothing asked.
+        with db.transaction() as conn:
+            conn.execute("DELETE FROM beatport_entity_art")
+            conn.execute("UPDATE discovery_run_groups SET art_url = NULL")
+        before = len(asked(world, "artist", MARA[0]))
+        entered = threading.Event()
+        release = threading.Event()
+        original = world.get
+
+        def slow(path, params=None, **options):
+            if "catalog/artists/" in path:
+                entered.set()
+                release.wait(5)
+            return original(path, params, **options)
+
+        monkeypatch.setattr(world, "get", slow)
+        calls = {
+            "entity": lambda: service.entity_art_url("artist", MARA[0]),
+            "group": lambda: service.group_art_url(run.id, GROUP_ARTIST, "mara veil"),
+        }
+        answers = []
+        threads = [
+            threading.Thread(target=lambda c=calls[k]: answers.append(c()))
+            for k in (first, second)
+        ]
+        threads[0].start()
+        assert entered.wait(5)
+        threads[1].start()
+        time.sleep(0.3)
+        release.set()
+        for thread in threads:
+            thread.join(10)
+        assert answers == [ART % "mara", ART % "mara"]
+        assert len(asked(world, "artist", MARA[0])) == before + 1

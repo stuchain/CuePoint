@@ -65,7 +65,9 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from typing import (
@@ -73,6 +75,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
     Optional,
     Protocol,
@@ -1541,10 +1544,24 @@ class DiscoveryService(IDiscoveryService):
             return None
         if (kind, key) in self._runs.groups_art_read(run_id):
             return None
+        with _one_read_per_entity(kind, group.beatport_id):
+            return self._group_art_from_entity(
+                run_id, kind, key, group.beatport_id, asked
+            )
+
+    def _group_art_from_entity(
+        self,
+        run_id: int,
+        kind: str,
+        key: str,
+        beatport_id: int,
+        asked: Tuple[int, str, str],
+    ) -> Optional[str]:
+        """A card's picture from the entity's shared row, or asked by id (under its lock)."""
         # The picture of the same artist or label may already be known: a
         # follow, a page or another dig asked for it (DEC-318).
-        shared = self._catalog.entity_art([(kind, group.beatport_id)]).get(
-            (kind, group.beatport_id)
+        shared = self._catalog.entity_art([(kind, beatport_id)]).get(
+            (kind, beatport_id)
         )
         if shared is not None and shared.image_url is not None:
             self._runs.set_group_art(run_id, kind, key, shared.image_url)
@@ -1555,7 +1572,7 @@ class DiscoveryService(IDiscoveryService):
         if self._rate_limited():
             return None
         try:
-            found = self._read_entity(kind, group.beatport_id)
+            found = self._read_entity(kind, beatport_id)
         except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
             _logger.debug("[discover] no picture for %s %s: %s", kind, key, exc)
             # A rate limit says nothing about the card: it is asked again later.
@@ -1563,9 +1580,7 @@ class DiscoveryService(IDiscoveryService):
                 _ART_MISSES.add(asked)
             return None
         art = found.image_url if found is not None else None
-        self._catalog.set_entity_art(
-            kind, group.beatport_id, art, self._clock().isoformat()
-        )
+        self._catalog.set_entity_art(kind, beatport_id, art, self._clock().isoformat())
         if art is None:
             self._runs.mark_group_art_read(run_id, kind, key)
         else:
@@ -1589,29 +1604,36 @@ class DiscoveryService(IDiscoveryService):
         """
         if kind not in (ENTITY_ARTIST, ENTITY_LABEL):
             raise ValueError("kind is artist or label")
-        known = self._catalog.entity_art([(kind, beatport_id)]).get((kind, beatport_id))
-        if known is not None and known.image_url is not None:
-            return known.image_url
-        if known is not None and not known.asks(self._clock()):
-            return None
-        if (kind, beatport_id) in _ENTITY_ART_MISSES:
-            return None
-        try:
-            self._beatport.require_token()
-        except Exception:  # noqa: BLE001 — signed out: no picture, and no memory of it
-            return None
-        if self._rate_limited():
-            return None
-        try:
-            found = self._read_entity(kind, beatport_id)
-        except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
-            _logger.debug("[discover] no picture for %s %s: %s", kind, beatport_id, exc)
-            if not self._note_rate_limit(exc):
-                _ENTITY_ART_MISSES.add((kind, beatport_id))
-            return None
-        art = found.image_url if found is not None else None
-        self._catalog.set_entity_art(kind, beatport_id, art, self._clock().isoformat())
-        return art
+        with _one_read_per_entity(kind, beatport_id):
+            known = self._catalog.entity_art([(kind, beatport_id)]).get(
+                (kind, beatport_id)
+            )
+            if known is not None and known.image_url is not None:
+                return known.image_url
+            if known is not None and not known.asks(self._clock()):
+                return None
+            if (kind, beatport_id) in _ENTITY_ART_MISSES:
+                return None
+            try:
+                self._beatport.require_token()
+            except Exception:  # noqa: BLE001 — signed out: no picture, and no memory of it
+                return None
+            if self._rate_limited():
+                return None
+            try:
+                found = self._read_entity(kind, beatport_id)
+            except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
+                _logger.debug(
+                    "[discover] no picture for %s %s: %s", kind, beatport_id, exc
+                )
+                if not self._note_rate_limit(exc):
+                    _ENTITY_ART_MISSES.add((kind, beatport_id))
+                return None
+            art = found.image_url if found is not None else None
+            self._catalog.set_entity_art(
+                kind, beatport_id, art, self._clock().isoformat()
+            )
+            return art
 
     def _read_entity(self, kind: str, beatport_id: int) -> Any:
         """One artist or label by id, with the budget of an on-view picture."""
@@ -1736,6 +1758,35 @@ _ART_MISSES: Set[Tuple[int, str, str]] = set()
 #: Artists and labels (``(kind, id)``) whose picture Beatport could not give when
 #: asked by id, per process.
 _ENTITY_ART_MISSES: Set[Tuple[str, int]] = set()
+
+#: The artists and labels (``(kind, id)``) a picture is being asked for right now, each with
+#: its lock and the threads holding or waiting on it, per process.
+_ENTITY_ART_READS: Dict[Tuple[str, int], List[Any]] = {}
+_ENTITY_ART_READS_GUARD = threading.Lock()
+
+
+@contextmanager
+def _one_read_per_entity(kind: str, beatport_id: int) -> Iterator[None]:
+    """Lets one thread at a time look up and ask for an entity's picture.
+
+    A second thread missing the same artist or label (a card and a follow, or two
+    of either) waits, then finds the row the first kept and asks Beatport nothing.
+    Other entities are not held up. The lock is dropped from the table when nobody
+    holds or waits on it.
+    """
+    key = (kind, int(beatport_id))
+    with _ENTITY_ART_READS_GUARD:
+        entry = _ENTITY_ART_READS.setdefault(key, [threading.Lock(), 0])
+        entry[1] += 1
+    try:
+        with entry[0]:
+            yield
+    finally:
+        with _ENTITY_ART_READS_GUARD:
+            entry[1] -= 1
+            if entry[1] == 0:
+                _ENTITY_ART_READS.pop(key, None)
+
 
 #: Until when (on the monotonic clock) Beatport asked every on-view picture lookup to wait, per
 #: process: a 429 to any of them, a track's cover or a card's picture, pauses them all.
