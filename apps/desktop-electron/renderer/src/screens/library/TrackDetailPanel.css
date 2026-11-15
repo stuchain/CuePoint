@@ -43,6 +43,12 @@
      the tabs (the sticky head's own margin plus the column's gap), with no margin of its own on top. */
   padding-bottom: var(--space-lg);
   margin-bottom: calc(var(--space-lg) - var(--space-md));
+  /* The Inspector body is inset by --space-lg, and a sticky top of 0 sticks below that inset, so
+     rows scrolled up showed through the band above the title. The head sticks into the inset and
+     covers it with its own padding; the negative margin keeps the resting layout as it was. */
+  top: calc(-1 * var(--space-lg));
+  padding-top: var(--space-lg);
+  margin-top: calc(-1 * var(--space-lg));
 }
 
 .cp-track-detail__art {

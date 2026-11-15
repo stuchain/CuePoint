@@ -104,3 +104,12 @@ describe("Track details round 3 gap fixes (P3)", () => {
     expect(tsx).toMatch(/displayPath\(track\.file_path, \{ keepHome: true \}\)/);
   });
 });
+
+describe("Track details sticky head", () => {
+  it("sticks into the Inspector's inset and covers it, so scrolled rows never show above the title", () => {
+    const head = rule(".cp-track-detail .cp-track-detail__head");
+    expect(head).toMatch(/top:\s*calc\(-1 \* var\(--space-lg\)\)/);
+    expect(head).toMatch(/padding-top:\s*var\(--space-lg\)/);
+    expect(head).toMatch(/margin-top:\s*calc\(-1 \* var\(--space-lg\)\)/);
+  });
+});
