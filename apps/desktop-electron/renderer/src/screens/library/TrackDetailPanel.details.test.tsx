@@ -8,8 +8,6 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import type {
@@ -19,6 +17,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { cleanMatchOpening } from "../clean/cleanLink";
 import { TRACK_DETAILS_TAB_KEY, TrackDetailPanel } from "./TrackDetailPanel";
+import panelCss from "./TrackDetailPanel.css?raw";
 
 const TRACK: LibraryTrackRow = {
   id: 12,
@@ -558,8 +557,7 @@ describe("BPM and Genre are what CuePoint uses, with their source (B-A)", () => 
     const source = screen.getByTestId("track-fact-bpm").querySelector(".cp-track-detail__factsource")!;
     expect(source.textContent?.replace(/\u00a0/g, " ").trim()).toBe("\u00b7 yours");
     expect(source.querySelector(".cp-visually-hidden")).toBeNull();
-    const css = readFileSync(resolve(__dirname, "TrackDetailPanel.css"), "utf8");
-    expect(css).not.toMatch(/factsource::before/);
+    expect(panelCss).not.toMatch(/factsource::before/);
   });
 
   it("shows the value alone when the override leaves what Rekordbox has", () => {
