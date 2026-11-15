@@ -112,3 +112,15 @@ def test_it_skips_charts_cards_with_no_id_and_cards_with_no_picture(old):
 def test_an_empty_library_gets_an_empty_table(old):
     MigrationRunner(old).migrate()
     assert rows(old) == {}
+
+
+def test_it_copies_only_urls_on_beatport_s_artwork_hosts_over_https(old):
+    with old.transaction() as conn:
+        run(conn, 1, OLD)
+        group(conn, 1, "artist", "other host", 5, "https://example.com/a.jpg")
+        group(conn, 1, "label", "plain http", 6, "http://geo-media.beatport.com/a.jpg", 1)
+        group(conn, 1, "artist", "userinfo", 7, "https://x@geo-media.beatport.com/a.jpg", 2)
+        group(conn, 1, "artist", "lookalike", 8, "https://beatport.com.evil.test/a.jpg", 3)
+        group(conn, 1, "artist", "mara veil", 301001, HOST % "mara", 4)
+    MigrationRunner(old).migrate()
+    assert rows(old) == {("artist", 301001): (HOST % "mara", OLD)}

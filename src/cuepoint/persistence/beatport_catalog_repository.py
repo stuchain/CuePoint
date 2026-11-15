@@ -678,7 +678,18 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
                     f" AND beatport_id IN ({', '.join('?' for _ in chunk)})",
                     (kind, *chunk),
                 ):
-                    art = EntityArt.from_row(row)
+                    try:
+                        art = EntityArt.from_row(row)
+                    except (ValueError, TypeError):
+                        # One bad row (a URL off Beatport's hosts) must not break a
+                        # whole list or page: it reads as never asked, so it is
+                        # asked again and the answer replaces it. No URL is logged.
+                        _logger.warning(
+                            "Skipping an unreadable %s picture row for id %s",
+                            row["kind"],
+                            row["beatport_id"],
+                        )
+                        continue
                     found[(art.kind, art.beatport_id)] = art
         return found
 

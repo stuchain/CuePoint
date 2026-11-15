@@ -135,3 +135,33 @@ class TestOwnership:
             and statement.search(path.read_text(encoding="utf-8"))
         ]
         assert offenders == ["persistence/beatport_catalog_repository.py"]
+
+
+class TestARowThatFailsValidation:
+    """One bad row must not break the whole read (the lists, cards and pages)."""
+
+    def _bad(self, db, kind, beatport_id, url):
+        with db.transaction() as conn:
+            conn.execute(
+                "INSERT INTO beatport_entity_art (kind, beatport_id, image_url,"
+                " read_at) VALUES (?, ?, ?, ?)",
+                (kind, beatport_id, url, NOW.isoformat()),
+            )
+
+    def test_it_is_skipped_and_logged_and_the_good_rows_are_kept(
+        self, db, catalog, caplog
+    ):
+        catalog.set_entity_art("artist", 1, URL, NOW.isoformat())
+        self._bad(db, "artist", 2, "https://example.com/a.jpg")
+        self._bad(db, "label", 3, "http://geo-media.beatport.com/a.jpg")
+        with caplog.at_level("WARNING"):
+            found = catalog.entity_art([("artist", 1), ("artist", 2), ("label", 3)])
+        assert set(found) == {("artist", 1)}
+        assert "example.com" not in caplog.text
+        assert "artist" in caplog.text
+
+    def test_it_reads_as_never_asked_so_it_can_be_asked_again(self, db, catalog):
+        self._bad(db, "artist", 2, "https://example.com/a.jpg")
+        assert catalog.entity_art([("artist", 2)]) == {}
+        catalog.set_entity_art("artist", 2, URL, NOW.isoformat())
+        assert catalog.entity_art([("artist", 2)])[("artist", 2)].image_url == URL

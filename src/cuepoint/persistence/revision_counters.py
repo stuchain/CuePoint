@@ -61,7 +61,7 @@ DISCOVER = "discover"
 COUNTED_DOMAINS: Tuple[str, ...] = (LIBRARY, DISCOVER)
 
 #: Discover's own tables and the Beatport catalog cache a dig, a resolve or an
-#: Artist or Label page writes (migrations 0021, 0024, 0029 and 0030).
+#: Artist or Label page writes (migrations 0021, 0024, 0029, 0030 and 0038).
 DISCOVER_TABLES = frozenset(
     {
         "beatport_tracks",
