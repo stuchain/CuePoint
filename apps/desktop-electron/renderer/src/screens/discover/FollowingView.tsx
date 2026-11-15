@@ -117,6 +117,9 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
   const autoChecked = useRef(false);
   // Whether this visit's check has ended or none is coming. The check keeps the pictures of the
   // names it reads, so the follow list asks for them only after it (DEC-318).
+  // Set by a check's end as a ref, not state: a render there would read the job as still running
+  // and undo `checkingRef`, which the mark on leaving depends on. The job clearing renders anyway.
+  const checkEnded = useRef(false);
   const [checkSettled, setCheckSettled] = useState(false);
   const usable = beatportUsable(tools.beatportState);
 
@@ -194,7 +197,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     manual.current = false;
     startingRef.current = false;
     checkingRef.current = false;
-    setCheckSettled(true);
+    checkEnded.current = true;
     // A check that failed (an engine restart ends its job as failed) lets the next activation, or
     // Beatport becoming usable again, start the automatic check once more.
     if (!result && finished.state !== "succeeded") autoChecked.current = false;
@@ -276,6 +279,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     return () => {
       live = false;
       autoChecked.current = false;
+      checkEnded.current = false;
       setCheckSettled(false);
       // Left: what the feed showed as new is seen now, once, and only that. Not while a check is
       // running or starting: the mark is by date and would bury tracks it is still storing; they
@@ -641,7 +645,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
               kind={row.kind}
               beatportId={row.beatport_id}
               hasArt={row.has_art}
-              ask={!checking && (checkSettled || !usable)}
+              ask={!checking && (checkSettled || checkEnded.current || !usable)}
               className="discover-following__avatar"
             />
             <span className="discover-following__name" data-cut-hint="">

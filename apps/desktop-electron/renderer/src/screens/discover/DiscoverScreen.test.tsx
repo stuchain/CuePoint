@@ -1795,6 +1795,9 @@ describe("the Following tab", () => {
     fireEvent.click(await screen.findByRole("tab", { name: /^Following/ }));
     await screen.findByRole("navigation", { name: "Followed artists and labels" }, LOADED);
     expect(bridge.markFollowsSeen).not.toHaveBeenCalled();
+    // The automatic check has ended: leaving while it runs marks nothing, by design.
+    await waitFor(() => expect(bridge.getJobResults).toHaveBeenCalled(), LOADED);
+    await act(async () => {});
 
     fireEvent.click(screen.getByRole("tab", { name: "Wantlist" }));
     await waitFor(() => expect(bridge.markFollowsSeen).toHaveBeenCalledTimes(1));
@@ -1844,6 +1847,9 @@ describe("the Following tab", () => {
     renderDiscover();
     fireEvent.click(await screen.findByRole("tab", { name: /^Following/ }));
     await screen.findByRole("navigation", { name: "Followed artists and labels" }, LOADED);
+    // The automatic check has ended: leaving while it runs marks nothing, by design.
+    await waitFor(() => expect(bridge.getJobResults).toHaveBeenCalled(), LOADED);
+    await act(async () => {});
     const reads = (bridge.getFollows as ReturnType<typeof vi.fn>).mock.calls.length;
 
     fireEvent.click(screen.getByRole("tab", { name: "Wantlist" }));

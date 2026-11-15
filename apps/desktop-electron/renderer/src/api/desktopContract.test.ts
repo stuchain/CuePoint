@@ -226,16 +226,6 @@ describe("desktop contract", () => {
       "getKeysPopulation",
     ];
 
-    it("carries an artist's or label's picture the same way, by kind and Beatport id (DEC-318)", () => {
-      expect(invokedChannels(preload)).toContain("engine:getDiscoveryEntityArt");
-      expect(handledChannels(main)).toContain("engine:getDiscoveryEntityArt");
-      expect(supervisor).toContain("(await this.readyClient()).getDiscoveryEntityArt(");
-      expect(preload).toMatch(/getDiscoveryEntityArt: async[\s\S]{0,260}URL\.createObjectURL/);
-      expect(bridgeTypes).toContain("getDiscoveryEntityArt?: (params: {");
-      expect(clientMethod("getDiscoveryEntityArt")).toContain("Promise<Uint8Array | null>");
-      expect(clientMethod("getDiscoveryEntityArt")).toContain("/api/v1/discover/entity/art");
-    });
-
     it.each(methods)("exposes %s on the preload", (method) => {
       expect(invokedChannels(preload)).toContain(`engine:${method}`);
     });
@@ -1287,6 +1277,16 @@ describe("desktop contract", () => {
       expect(bridgeTypes).toContain("getDiscoveryTrackArt?: (params: {");
       expect(clientMethod("getDiscoveryTrackArt")).toContain("Promise<Uint8Array | null>");
       expect(clientMethod("getDiscoveryTrackArt")).toContain("/api/v1/discover/tracks/");
+    });
+
+    it("carries an artist's or label's picture the same way, by kind and Beatport id (DEC-318)", () => {
+      expect(invokedChannels(preload)).toContain("engine:getDiscoveryEntityArt");
+      expect(handledChannels(main)).toContain("engine:getDiscoveryEntityArt");
+      expect(supervisor).toContain("(await this.readyClient()).getDiscoveryEntityArt(");
+      expect(preload).toMatch(/getDiscoveryEntityArt: async[\s\S]{0,260}URL\.createObjectURL/);
+      expect(bridgeTypes).toContain("getDiscoveryEntityArt?: (params: {");
+      expect(clientMethod("getDiscoveryEntityArt")).toContain("Promise<Uint8Array | null>");
+      expect(clientMethod("getDiscoveryEntityArt")).toContain("/api/v1/discover/entity/art");
     });
 
     it.each(methods)("exposes %s on the preload", (method) => {
