@@ -287,6 +287,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
               kind={shown.kind}
               beatportId={shown.beatport_id}
               hasArt={shown.has_art}
+              size="inspector"
               ask={settledFor === `${kind}|${shown.ref}`}
               className="discover-page__picture"
             />

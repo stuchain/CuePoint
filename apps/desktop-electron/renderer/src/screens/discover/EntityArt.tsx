@@ -16,10 +16,11 @@
  * `className` names the box (its size, and its `--artist` and `--label` shapes: round for an
  * artist, square for a label); the picture fills it, cropped.
  */
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 import { Art } from "../../components/Art";
 import type { ArtworkSize, EntityKind } from "../../api/cuepointBridge.types";
+import { covers } from "../../api/coverLoader";
 import { useCover } from "../../api/useCover";
 import "./entityArt.css";
 
@@ -35,9 +36,15 @@ interface EntityArtProps {
 }
 
 export function EntityArt({ kind, beatportId, hasArt, ask = true, size = "row", className }: EntityArtProps) {
-  const asks =
-    hasArt && ask && typeof window !== "undefined" && typeof window.cuepoint?.getDiscoveryEntityArt === "function";
-  const key = asks ? `discover-entity:${kind}:${beatportId}:${size}` : null;
+  const id = `discover-entity:${kind}:${beatportId}:${size}`;
+  const usable = hasArt && typeof window !== "undefined" && typeof window.cuepoint?.getDiscoveryEntityArt === "function";
+  // `ask` gates only the request, never what is drawn: once a name's picture has been asked for
+  // (or is already kept by the loader), it stays on screen when the caller holds `ask` back
+  // again, as a check restarts or a page reads its rows again.
+  const latched = useRef<string | null>(null);
+  if (usable && ask) latched.current = id;
+  if (usable && latched.current !== id && keptAnswer(id)) latched.current = id;
+  const key = usable && latched.current === id ? id : null;
   const fetch = useCallback(
     () => window.cuepoint?.getDiscoveryEntityArt?.({ kind, beatport_id: beatportId, size }) ?? Promise.resolve(null),
     [beatportId, kind, size],
@@ -49,4 +56,12 @@ export function EntityArt({ kind, beatportId, hasArt, ask = true, size = "row", 
       {url ? <Art src={url} alt="" draggable={false} /> : null}
     </span>
   );
+}
+
+/** Whether the shared loader already keeps an answer for `id` (a picture or "none"). */
+function keptAnswer(id: string): boolean {
+  const hit = covers.hold(id);
+  if (hit === undefined) return false;
+  covers.letGo(id);
+  return true;
 }

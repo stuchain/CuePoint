@@ -885,7 +885,25 @@ describe("the header picture (DEC-318)", () => {
     await act(async () => answer(pages.half_artist_ok));
     await waitFor(() => expect(header.querySelector(".discover-page__picture img")).toHaveAttribute("src", "blob:mara"));
     expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(1);
-    expect(getDiscoveryEntityArt).toHaveBeenCalledWith({ kind: "artist", beatport_id: 301001, size: "row" });
+    expect(getDiscoveryEntityArt).toHaveBeenCalledWith({ kind: "artist", beatport_id: 301001, size: "inspector" });
+  });
+
+  it("stays drawn while Hide owned is toggled and the half is read again", async () => {
+    const getDiscoveryEntityArt = vi.fn(async () => "blob:nightfall");
+    install({ getDiscoveryEntityArt });
+    renderAt(entityPath("label", "bp:40211"));
+    const header = (await opened("Nightfall Audio")).closest("header") as HTMLElement;
+    await beatportRows(/Beatport's releases/);
+    await waitFor(() => expect(header.querySelector(".discover-page__picture img")).not.toBeNull(), LOADED);
+    let release: (value: unknown) => void = () => {};
+    const before = mock("getEntityBeatport").mock.calls.length;
+    mock("getEntityBeatport").mockImplementationOnce(() => new Promise((resolve) => (release = resolve)));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Hide tracks already in your library" }));
+    await waitFor(() => expect(mock("getEntityBeatport").mock.calls.length).toBe(before + 1));
+    expect(header.querySelector(".discover-page__picture img")).not.toBeNull();
+    await act(async () => release(pages.half_label_ok));
+    expect(header.querySelector(".discover-page__picture img")).not.toBeNull();
+    expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(1);
   });
 
   it("is asked for after the half answered with a state that has no rows too", async () => {

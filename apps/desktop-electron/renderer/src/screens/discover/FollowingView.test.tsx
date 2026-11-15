@@ -709,6 +709,42 @@ describe("the pictures of the follow list", () => {
     expect(getDiscoveryEntityArt).toHaveBeenCalledWith({ kind: "label", beatport_id: 10, size: "row" });
   });
 
+  it("keeps the pictures drawn when the tab is left and shown again while a check runs", async () => {
+    let running = false;
+    const getDiscoveryEntityArt = picture();
+    install({
+      getDiscoveryEntityArt,
+      getJob: vi.fn(async (id: string) => ({ id, state: running ? "running" : "succeeded" })),
+    });
+    const view = renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    const nav = screen.getByRole("navigation", { name: "Followed artists and labels" });
+    await waitFor(() => expect(nav.querySelectorAll("img")).toHaveLength(3), LOADED);
+    running = true;
+    view.setActive(false);
+    view.setActive(true);
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalledTimes(2), LOADED);
+    expect(nav.querySelectorAll("img")).toHaveLength(3);
+    expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps the pictures drawn while Check again runs", async () => {
+    let running = false;
+    install({
+      getDiscoveryEntityArt: picture(),
+      getJob: vi.fn(async (id: string) => ({ id, state: running ? "running" : "succeeded" })),
+    });
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    const nav = screen.getByRole("navigation", { name: "Followed artists and labels" });
+    await waitFor(() => expect(nav.querySelectorAll("img")).toHaveLength(3), LOADED);
+    running = true;
+    fireEvent.click(await screen.findByRole("button", { name: "Check again" }));
+    await waitFor(() => expect(bridge.startFollowsCheck).toHaveBeenCalledTimes(2), LOADED);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Check again" })).toBeDisabled(), LOADED);
+    expect(nav.querySelectorAll("img")).toHaveLength(3);
+  });
+
   it("keeps the neutral shape for a follow that has no picture", async () => {
     const getDiscoveryEntityArt = picture();
     install({

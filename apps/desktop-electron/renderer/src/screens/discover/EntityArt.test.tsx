@@ -96,4 +96,27 @@ describe("EntityArt", () => {
     await waitFor(() => expect(artist.container.querySelector("img")).not.toBeNull());
     expect(artist.container.querySelector("img")).toHaveAttribute("alt", "");
   });
+
+  it("keeps a picture it has drawn when asking is held back again, and lets go for another name", async () => {
+    const getDiscoveryEntityArt = vi.fn(async () => "blob:kept");
+    install({ getDiscoveryEntityArt });
+    const view = render(<EntityArt kind="artist" beatportId={21} hasArt ask className="box" />);
+    await waitFor(() => expect(view.container.querySelector("img")).toHaveAttribute("src", "blob:kept"));
+    view.rerender(<EntityArt kind="artist" beatportId={21} hasArt ask={false} className="box" />);
+    expect(view.container.querySelector("img")).toHaveAttribute("src", "blob:kept");
+    // Another name that is held back draws nothing.
+    view.rerender(<EntityArt kind="artist" beatportId={22} hasArt ask={false} className="box" />);
+    expect(view.container.querySelector("img")).toBeNull();
+    expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(1);
+  });
+
+  it("draws a kept answer on a new mount even while asking is held back", async () => {
+    const getDiscoveryEntityArt = vi.fn(async () => "blob:cached");
+    install({ getDiscoveryEntityArt });
+    const first = render(<EntityArt kind="label" beatportId={23} hasArt ask className="box" />);
+    await waitFor(() => expect(first.container.querySelector("img")).not.toBeNull());
+    const second = render(<EntityArt kind="label" beatportId={23} hasArt ask={false} className="box" />);
+    expect(second.container.querySelector("img")).toHaveAttribute("src", "blob:cached");
+    expect(getDiscoveryEntityArt).toHaveBeenCalledTimes(1);
+  });
 });
