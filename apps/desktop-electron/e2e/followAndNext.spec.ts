@@ -24,6 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
 const AUDIO = path.resolve(DESKTOP_ROOT, "../../src/tests/fixtures/audio");
 const PHASE_DIR = path.resolve(DESKTOP_ROOT, "../../src/tests/fixtures/beatport/phase");
+const COVER = path.resolve(DESKTOP_ROOT, "../../src/tests/fixtures/beatport/journey/cover.jpg");
 const SHOTS = process.env.CUEPOINT_SHOT_DIR;
 
 interface TrackSpec {
@@ -79,6 +80,18 @@ ${entries}
   return target;
 }
 
+/**
+ * The pictures of Mara Veil (artist 301001) and Nightfall Audio (label 40211): v4's `image` object,
+ * on Beatport's artwork host. The fixture's `images` map serves `cover.jpg` for each, at the size
+ * the engine asks for (500x500), so a real picture reaches the renderer through the real route.
+ */
+const MARA_IMAGE = "https://geo-media.beatport.com/image_size/{w}x{h}/e2e-mara.jpg";
+const NIGHTFALL_IMAGE = "https://geo-media.beatport.com/image_size/{w}x{h}/e2e-nightfall.jpg";
+
+function image(id: number, template: string) {
+  return { id, uri: template.replace("{w}x{h}", "500x500"), dynamic_uri: template };
+}
+
 /** A Beatport track as the v4 API lists it. */
 function apiTrack(id: number, name: string, daysAgo: number, artists: Array<[number, string]>, owned = false) {
   return {
@@ -97,7 +110,8 @@ function apiTrack(id: number, name: string, daysAgo: number, artists: Array<[num
       id: 4600000 + id,
       name: name,
       slug: name.toLowerCase().replace(/ /g, "-"),
-      label: { id: 40211, name: "Nightfall Audio", slug: "nightfall-audio" },
+      // The label's picture comes with its releases, so a label listing keeps it for free.
+      label: { id: 40211, name: "Nightfall Audio", slug: "nightfall-audio", image: image(7002, NIGHTFALL_IMAGE) },
     },
     owned,
   };
@@ -111,7 +125,7 @@ function apiTrack(id: number, name: string, daysAgo: number, artists: Array<[num
 function writeFixture(dir: string): string {
   cpSync(PHASE_DIR, dir, { recursive: true });
   const file = path.join(dir, "fixture.json");
-  const fixture = JSON.parse(readFileSync(file, "utf-8")) as { api: unknown[] };
+  const fixture = JSON.parse(readFileSync(file, "utf-8")) as { api: unknown[]; images?: Record<string, string> };
   const mara: [number, string] = [301001, "Mara Veil"];
   const kiko: [number, string] = [301002, "Kiko"];
   const label = {
@@ -127,6 +141,17 @@ function writeFixture(dir: string): string {
     ].map(({ owned: _owned, ...track }) => track),
   };
   fixture.api.unshift({ path: "catalog/tracks", params: { label_id: 40211 }, body: label });
+  // The pictures asked for by id: Mara Veil and Nightfall Audio have one, Kiko has none.
+  cpSync(COVER, path.join(dir, "cover.jpg"));
+  fixture.images = {
+    "https://geo-media.beatport.com/image_size/500x500/e2e-mara.jpg": "cover.jpg",
+    "https://geo-media.beatport.com/image_size/500x500/e2e-nightfall.jpg": "cover.jpg",
+  };
+  fixture.api.unshift(
+    { path: "catalog/artists/301001", body: { id: 301001, name: "Mara Veil", slug: "mara-veil", image: image(7001, MARA_IMAGE) } },
+    { path: "catalog/labels/40211", body: { id: 40211, name: "Nightfall Audio", slug: "nightfall-audio", image: image(7002, NIGHTFALL_IMAGE) } },
+    { path: "catalog/artists/301002", body: { id: 301002, name: "Kiko", slug: "kiko" } },
+  );
   writeFileSync(file, JSON.stringify(fixture), "utf-8");
   return file;
 }
@@ -355,6 +380,19 @@ test.describe("Plays well next and Following", () => {
         await expect(suggestions).toContainText("Nightfall Audio");
         await expect(suggestions).toContainText("Kiko");
         await expect(following.getByRole("button", { name: /^Show what's new \(0 followed\)/ })).toBeDisabled();
+        // Real pictures, drawn from real bytes: Mara Veil's and Nightfall Audio's, not Kiko's (Beatport has none).
+        const pictureOf = (name: string) => suggestions.getByRole("listitem").filter({ hasText: name }).locator(".discover-following__avatar");
+        await expect(pictureOf("Mara Veil").locator("img[data-loaded]")).toHaveCount(1, { timeout: 30_000 });
+        await expect(pictureOf("Nightfall Audio").locator("img[data-loaded]")).toHaveCount(1, { timeout: 30_000 });
+        for (const name of ["Mara Veil", "Nightfall Audio"]) {
+          const loaded = await pictureOf(name).locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth);
+          expect(loaded, `${name}'s picture decoded`).toBeGreaterThan(0);
+        }
+        await expect(pictureOf("Mara Veil")).toHaveClass(/discover-following__avatar--artist/);
+        await expect(pictureOf("Nightfall Audio")).toHaveClass(/discover-following__avatar--label/);
+        // Kiko stays a plain shape: asked, answered with no picture.
+        await expect(pictureOf("Kiko")).toHaveClass(/discover-following__avatar--artist/);
+        await expect.poll(() => pictureOf("Kiko").locator("img").count(), { timeout: 5_000 }).toBe(0);
         await shoot(app, window, "following-suggestions");
       });
 
@@ -384,6 +422,13 @@ test.describe("Plays well next and Following", () => {
         await expect(list.getByRole("button", { name: /^All/ })).toContainText("4 new");
         await expect(list.getByRole("button", { name: /^Nightfall Audio/ })).toContainText("4");
         await expect(list.getByRole("button", { name: /^Mara Veil/ })).toContainText("2");
+        // Once the check has ended ("Check again" is enabled), both follows show a loaded picture.
+        await expect(following.getByRole("button", { name: "Check again" })).toBeEnabled({ timeout: 60_000 });
+        for (const name of [/^Mara Veil/, /^Nightfall Audio/]) {
+          const picture = list.getByRole("button", { name }).locator(".discover-following__avatar img[data-loaded]");
+          await expect(picture).toHaveCount(1, { timeout: 30_000 });
+          expect(await picture.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+        }
         await shoot(app, window, "following-feed");
       });
 
@@ -430,6 +475,11 @@ test.describe("Plays well next and Following", () => {
         });
         await expect(window.getByRole("heading", { name: "Mara Veil", level: 1 })).toBeVisible({ timeout: 30_000 });
         const page = window.locator("main.app-main .screen:visible");
+        // A picture beside the title, once the page's Beatport half has answered.
+        const headerPicture = page.locator(".discover-page__picture img[data-loaded]");
+        await expect(headerPicture).toBeVisible({ timeout: 30_000 });
+        expect(await headerPicture.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+        await expect(page.locator(".discover-page__picture")).toHaveClass(/discover-page__picture--artist/);
         const toggle = page.getByRole("button", { name: /^(Follow|Following)$/ });
         await expect(toggle).toHaveText("Follow", { timeout: 30_000 });
         await toggle.click();
@@ -438,6 +488,49 @@ test.describe("Plays well next and Following", () => {
         await toggle.click();
         await expect(toggle).toHaveText("Follow", { timeout: 15_000 });
       });
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("Details: your BPM and genre, and Rekordbox's below", async () => {
+    test.setTimeout(180_000);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importLibrary(window, writeExport(workspace));
+      await window.evaluate(async () => {
+        const c = window.cuepoint!;
+        const found = await c.browseLibrary!({ limit: 50 });
+        const track = found.tracks.find((t: { title: string }) => t.title === "Low Tide")!;
+        await c.setTrackOverrides!({ trackId: track.id, bpm: 126, genre: "Deep House" });
+      });
+      await window.reload();
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
+      await window.getByRole("link", { name: "Library" }).click();
+
+      const inspector = window.locator(".cp-track-detail:visible");
+      await row(window, "Library tracks", "Low Tide").click();
+      await expect(inspector.getByRole("heading", { name: "Low Tide" })).toBeVisible({ timeout: 30_000 });
+
+      await test.step("Overview says what CuePoint uses, and that it is yours", async () => {
+        await expect(inspector.getByTestId("track-fact-bpm")).toHaveText(/126\s*·\s*yours/);
+        await expect(inspector.getByTestId("track-fact-genre")).toHaveText(/Deep House\s*·\s*yours/);
+      });
+
+      await test.step("resting on the BPM says what Rekordbox has", async () => {
+        await inspector.getByTestId("track-fact-bpm").locator(".cp-data").hover();
+        await expect(window.getByText("BPM typed by you. In Rekordbox it is 124.")).toBeVisible({ timeout: 5_000 });
+      });
+
+      await test.step("From your Rekordbox file still has Rekordbox's own", async () => {
+        await inspector.getByRole("button", { name: /^From your Rekordbox file/ }).click();
+        const details = inspector.locator(".cp-track-detail__fields");
+        await expect(details).toContainText(/BPM\s*124/);
+        await expect(details).toContainText(/Genre\s*House/);
+      });
+
+      await shoot(app, window, "details-your-bpm");
     } finally {
       await app.close();
     }
