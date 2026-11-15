@@ -187,17 +187,18 @@ function credited(
  */
 /**
  * A BPM or Genre fact: the value CuePoint uses, then "· yours" or "· Beatport" when it differs from
- * Rekordbox's, the Key's pattern. The hint says what it is and what Rekordbox has. The dot is drawn
- * by CSS and the screen reader gets it as text, so "BPM 126 · yours" is read once.
+ * Rekordbox's, the Key's pattern. The hint says what it is and what Rekordbox has. The dot is real
+ * text, muted with the word, so a screen reader reads "126 · yours" once. With a hint the value
+ * is a keyboard stop, which shows the hint on focus (only here: Key and Loudness are as they were).
  */
 function OverriddenValue({ fact, data = false }: { fact: OverriddenFact; data?: boolean }) {
   return (
     <Hint text={fact.hint ?? undefined} inline>
-      <span className="cp-track-detail__factline">
+      <span className="cp-track-detail__factline" tabIndex={fact.hint ? 0 : undefined}>
         <span className={data ? "cp-data" : undefined}>{fact.text}</span>
         {fact.word !== null && (
           <span className="cp-track-detail__factsource">
-            <span className="cp-visually-hidden">{" \u00b7 "}</span>
+            {" \u00b7\u00a0"}
             {fact.word}
           </span>
         )}

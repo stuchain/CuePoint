@@ -127,16 +127,12 @@
   overflow-wrap: anywhere;
 }
 
-/* BPM and Genre say where an override came from after the value, as the Key does: muted, with the
-   dot drawn here (the screen reader has it as text in the hidden span). */
+/* BPM and Genre say where an override came from after the value, as the Key does: muted; the dot
+   is real text in the span, so a screen reader reads it once. */
 .cp-track-detail__factsource {
-  margin-left: var(--space-xs);
+  /* The gap is the space the span's text starts with, so the text reads "126 · yours". */
   color: var(--fg-muted);
   font-size: var(--font-size-sm);
-}
-
-.cp-track-detail__factsource::before {
-  content: "\00b7\00a0";
 }
 
 /* M131: every fact row is at least a chip tall, so the Key row (a chip and the wheel's button) is

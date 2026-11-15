@@ -297,8 +297,8 @@ The panel remembers the tab you last chose and opens on **Overview** the first t
   Beatport**, which opens Clean to match this one track), **BPM**,
   **Genre** (both are the values CuePoint uses: when one differs from Rekordbox's it
   says **· yours** if you typed or set it, or **· Beatport** if you applied it from a
-  match, and resting the pointer on it says what Rekordbox has; a value Rekordbox sent
-  shows alone, and Rekordbox's own stays under **From your Rekordbox file**), **Loudness** ("−8.4 LUFS"), **Peak** ("−0.3 dBFS") and **Beatport** (how
+  match, and resting the pointer on it, or tabbing to it, says what Rekordbox has; a
+  value Rekordbox sent, or an override that leaves the same value, shows alone, and Rekordbox's own stays under **From your Rekordbox file**), **Loudness** ("−8.4 LUFS"), **Peak** ("−0.3 dBFS") and **Beatport** (how
   the match stands, a link to the Beatport tab), then **In playlists**, **In Collections** and **In Sets**: where the track
   is, each a link that opens it (a Set opens in Prepare), with **Add to…** after the
   Collections to add the track to one. Then **its waveform**, a short strip with its cue points, loops and

@@ -7,7 +7,9 @@
  * fold and the panel remembers how.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import type {
@@ -549,6 +551,37 @@ describe("BPM and Genre are what CuePoint uses, with their source (B-A)", () => 
     expect(within(details).getByText("128")).toBeInTheDocument();
     expect(within(details).getByText("House")).toBeInTheDocument();
     expect(within(details).queryByText("126")).toBeNull();
+  });
+
+  it("has the dot once as real text, with no hidden twin and none drawn by CSS", () => {
+    show({}, detailOf(OVERRIDDEN));
+    const source = screen.getByTestId("track-fact-bpm").querySelector(".cp-track-detail__factsource")!;
+    expect(source.textContent?.replace(/\u00a0/g, " ").trim()).toBe("\u00b7 yours");
+    expect(source.querySelector(".cp-visually-hidden")).toBeNull();
+    const css = readFileSync(resolve(__dirname, "TrackDetailPanel.css"), "utf8");
+    expect(css).not.toMatch(/factsource::before/);
+  });
+
+  it("shows the value alone when the override leaves what Rekordbox has", () => {
+    show({}, detailOf({ ...TRACK, bpm: 128, effective_bpm: 128, overridden: ["bpm"], override_sources: { bpm: "cuepoint" } }));
+    const bpm = screen.getByTestId("track-fact-bpm");
+    expect(bpm).toHaveTextContent(/^BPM128$/);
+    expect(bpm.querySelector(".cp-track-detail__factsource")).toBeNull();
+    expect(bpm.querySelector("[title]")).toBeNull();
+  });
+
+  it("can be reached with the keyboard, which shows the hint", () => {
+    show({}, detailOf(OVERRIDDEN));
+    const stop = within(screen.getByTestId("track-fact-bpm")).getByTitle("BPM typed by you. In Rekordbox it is 128.");
+    expect(stop).toHaveAttribute("tabindex", "0");
+    act(() => stop.focus());
+    expect(screen.getByRole("tooltip")).toHaveTextContent("BPM typed by you. In Rekordbox it is 128.");
+    expect(stop).toHaveAttribute("aria-describedby", screen.getByRole("tooltip").id);
+  });
+
+  it("is not a keyboard stop when there is no hint", () => {
+    show();
+    expect(screen.getByTestId("track-fact-bpm").querySelector("[tabindex]")).toBeNull();
   });
 
   it("shows a value that is not overridden alone, with no word and no hint", () => {

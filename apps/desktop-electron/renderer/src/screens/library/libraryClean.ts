@@ -113,12 +113,15 @@ export interface OverriddenFact {
 }
 
 export function overriddenFact(row: LibraryTrackRow, field: "bpm" | "genre"): OverriddenFact {
-  const overridden = row.overridden?.includes(field) ?? false;
+  const text = effectiveText(row, field);
   const source = row.override_sources?.[field] ?? null;
+  // Said only when what is shown differs from what Rekordbox shows: an override that leaves the
+  // same text is just the value.
+  const differs = (row.overridden?.includes(field) ?? false) && text !== importedText(row, field);
   return {
-    text: effectiveText(row, field),
-    word: !overridden ? null : source === "beatport" ? "Beatport" : "yours",
-    hint: overrideMark(row, field)?.title ?? null,
+    text,
+    word: !differs ? null : source === "beatport" ? "Beatport" : "yours",
+    hint: differs ? (overrideMark(row, field)?.title ?? null) : null,
   };
 }
 

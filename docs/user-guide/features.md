@@ -42,8 +42,9 @@ values stay underneath, every change is in the track's history, and any change
 can be taken back. See [Your own values](library.md#your-own-values).
 
 Track details shows the BPM and Genre CuePoint uses. When one differs from
-Rekordbox's it says **· yours** or **· Beatport** after the value, and resting the
-pointer on it says what Rekordbox has; Rekordbox's own value is still listed under
+Rekordbox's it says **· yours** or **· Beatport** after the value (an override that
+leaves the same value shows it alone), and resting the pointer on it, or tabbing to
+it, says what Rekordbox has; Rekordbox's own value is still listed under
 **From your Rekordbox file**.
 
 ### Keep the library clean

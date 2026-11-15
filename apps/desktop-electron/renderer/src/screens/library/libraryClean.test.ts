@@ -147,6 +147,18 @@ describe("overriddenFact (the Details panel's BPM and Genre, B-A)", () => {
     });
   });
 
+  it("gives the value alone when the override leaves the same text as Rekordbox's", () => {
+    const same = row({ overridden: ["bpm"], bpm: 128, effective_bpm: 128, override_sources: { bpm: "cuepoint" } });
+    expect(overriddenFact(same, "bpm")).toEqual({ text: "128", word: null, hint: null });
+    const sameGenre = row({
+      overridden: ["genre"],
+      genre: "House",
+      effective_genre: "House",
+      override_sources: { genre: "beatport" },
+    });
+    expect(overriddenFact(sameGenre, "genre")).toEqual({ text: "House", word: null, hint: null });
+  });
+
   it("reads Genre the same way", () => {
     const typed = row({
       overridden: ["genre"],
