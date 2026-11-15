@@ -35,6 +35,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from cuepoint.engine import tag_write_jobs as jobs
 from cuepoint.engine.jobs import Job, JobState, JobStore
+from cuepoint.services import busy_wait
 from cuepoint.services.override_values import NOTATION_CLASSIC, candidate_value
 from cuepoint.services.tag_write_options import TagWriteOptions
 
@@ -42,6 +43,11 @@ _logger = logging.getLogger(__name__)
 
 #: The values a match brings that Sync copies into CuePoint's own values.
 COPIED_FIELDS = ("bpm", "genre", "label", "year")
+
+#: How long a tick job waits for a busy library before it fails, as the other
+#: library jobs wait: its one transaction wrote nothing while the lock was taken.
+TICKS_BUSY_PATIENCE_SECONDS = 120.0
+
 #: What the preview lays over a track: the copied fields and the key it would show.
 OVERLAY_FIELDS = (*COPIED_FIELDS, "key")
 
@@ -99,8 +105,12 @@ def start_ticks_job(
 
     def runner(job: Job) -> None:
         try:
-            changed = _service("IMatchStateService").decide_many(
-                pairs, refused, batch_id
+            states = _service("IMatchStateService")
+            # One transaction: a busy answer wrote nothing, so it waits and tries again.
+            changed = busy_wait.retry_while_busy(
+                lambda: states.decide_many(pairs, refused, batch_id),
+                patience_seconds=TICKS_BUSY_PATIENCE_SECONDS,
+                interval_seconds=busy_wait.REQUEST_INTERVAL_SECONDS,
             )
         except Exception as exc:  # noqa: BLE001 — surfaced to the API client
             _logger.warning("[ticks] could not tick: %s", exc, exc_info=True)

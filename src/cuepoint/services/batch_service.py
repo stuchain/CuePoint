@@ -67,9 +67,10 @@ import sqlite3
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 from cuepoint.models.track_metadata import normalize_rating
+from cuepoint.services import busy_wait
 from cuepoint.services.match_apply import chosen_fields
 from cuepoint.services.match_correct import correct_fields
 from cuepoint.services.override_values import (
@@ -93,6 +94,8 @@ from cuepoint.services.interfaces import (
 )
 
 _logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
 
 #: The things a batch can do. One vocabulary, so ORG-11's context menu and its
 #: selection toolbar do not each invent their own verbs — and CLEAN-04's match
@@ -542,10 +545,13 @@ class BatchService(IBatchService):
         because one of them was.
         """
         try:
-            with self._db.transaction():
-                applied = applier.apply(chunk, batch_id)
+            applied = _waiting(lambda: self._apply_together(applier, chunk, batch_id))
             return applied, len(chunk) - applied, 0
         except (ValueError, sqlite3.Error) as exc:
+            if busy_wait.database_busy(exc):
+                # Still busy after waiting: the chunk wrote nothing, and one
+                # track at a time would only find the same lock again.
+                raise
             _logger.warning(
                 "[batch] %s: a chunk of %d could not be applied together (%s); "
                 "retrying one track at a time",
@@ -556,6 +562,7 @@ class BatchService(IBatchService):
 
         changed = unchanged = failed = 0
         with self._db.transaction():
+            # The lock is held from here on, so a savepoint below cannot be busy.
             for track_id in chunk:
                 try:
                     # A savepoint per track: one that fails after some of its
@@ -570,6 +577,13 @@ class BatchService(IBatchService):
                     changed += applied
                     unchanged += 1 - applied
         return changed, unchanged, failed
+
+    def _apply_together(
+        self, applier: "_Applier", chunk: Sequence[int], batch_id: str
+    ) -> int:
+        """Apply one chunk in one transaction: a busy answer wrote none of it."""
+        with self._db.transaction():
+            return applier.apply(chunk, batch_id)
 
     def _matching_ids(self, query: BrowseQuery) -> List[int]:
         """Read every id a query matches, a page at a time."""
@@ -616,13 +630,28 @@ class BatchService(IBatchService):
 
         Written after the chunks rather than inside one, because it describes
         all of them — including a cancelled run, where saying how far it got is
-        the whole point.
+        the whole point. It waits while the library is busy, since the chunks
+        it describes are already committed.
         """
-        self._activity.record_event(
-            EVENT_BATCH_APPLIED,
-            _summarize(applier.describe(result), result),
-            result.to_dict(),
+        summary = _summarize(applier.describe(result), result)
+        detail = result.to_dict()
+        _waiting(
+            lambda: self._activity.record_event(EVENT_BATCH_APPLIED, summary, detail)
         )
+
+
+def _waiting(work: Callable[[], _T]) -> _T:
+    """Run one transaction's work, trying it again while the library is busy.
+
+    A batch is several transactions, so it is never run again whole: each one
+    waits on its own (Sentry PYTHON-1N), and a busy answer from one of them
+    wrote nothing of it.
+    """
+    return busy_wait.retry_while_busy(
+        work,
+        patience_seconds=busy_wait.REQUEST_PATIENCE_SECONDS,
+        interval_seconds=busy_wait.REQUEST_INTERVAL_SECONDS,
+    )
 
 
 # ---------------------------------------------------------------------------

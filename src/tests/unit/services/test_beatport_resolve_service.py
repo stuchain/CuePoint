@@ -522,6 +522,53 @@ class TestTheActivityFeed:
         )
 
 
+class TestABusyLibrary:
+    """A batch's store waits for the lock; Beatport is not asked again (PYTHON-1N)."""
+
+    def test_a_busy_store_waits_and_is_written_once(
+        self, db, catalog, clock, monkeypatch
+    ):
+        import sqlite3
+
+        from cuepoint.services import beatport_resolve_service as resolve_module
+
+        monkeypatch.setattr(resolve_module, "_BUSY_RETRY_INTERVAL_SECONDS", 0.0)
+        [wanted] = own(db, 1)
+        beatport = FakeBeatport({wanted})
+        real = catalog.upsert_tracks
+        tries: List[int] = []
+
+        def busy_twice(tracks, fetched_at):
+            tries.append(1)
+            if len(tries) < 3:
+                raise sqlite3.OperationalError("database is locked")
+            return real(tracks, fetched_at)
+
+        monkeypatch.setattr(catalog, "upsert_tracks", busy_twice)
+
+        result = service(catalog, beatport, clock=clock).resolve()
+
+        assert (result.resolved, result.failed) == (1, 0)
+        assert cached(db) == 1
+        assert len(beatport.requests) == 1
+        assert len(tries) == 3
+
+    def test_another_database_error_is_still_raised(
+        self, db, catalog, clock, monkeypatch
+    ):
+        import sqlite3
+
+        [wanted] = own(db, 1)
+
+        def broken(tracks, fetched_at):
+            raise sqlite3.OperationalError("disk I/O error")
+
+        monkeypatch.setattr(catalog, "upsert_tracks", broken)
+
+        with pytest.raises(sqlite3.OperationalError, match="disk"):
+            service(catalog, FakeBeatport({wanted}), clock=clock).resolve()
+
+
 class TestTheResult:
     @pytest.mark.parametrize(
         "result, line",

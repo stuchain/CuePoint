@@ -7,6 +7,9 @@
  *
  * A tick shows at once and is sent after: the row is patched first, and put back with a warning in
  * words if the engine refuses it, so a silent failure never leaves the table saying what is not so.
+ * A busy library makes the engine wait for it (up to about half a minute) before it answers, so a
+ * row can be clicked again while its tick is still on its way. That click is ignored: two saves of
+ * one row would race for the library in no set order, and the row could end up as neither click.
  * The header tick names the whole review by its scope, so it holds for every track and not only the
  * rows read; a long one runs as a job and is followed to its end, the table is read again after it,
  * and the batch it was recorded under comes back so it can be taken back (`undo`).
@@ -30,7 +33,10 @@ export interface TickedAll {
 interface ReviewTicks {
   /** A tick is being sent: the header tick waits for it. */
   busy: boolean;
-  /** Tick or untick these rows. Resolves to how many changed, or null when the engine refused. */
+  /**
+   * Tick or untick these rows. Resolves to how many changed, or null when the engine refused or
+   * every row still had a tick on its way (those rows are left alone).
+   */
   setTicked: (rows: readonly ReviewTrack[], ticked: boolean) => Promise<number | null>;
   /** Tick or untick every track of the review that has a match, whatever has been read. Null when refused. */
   setAll: (ticked: boolean) => Promise<TickedAll | null>;
@@ -46,6 +52,10 @@ export function useReviewTicks(
 ): ReviewTicks {
   const { push } = useToast();
   const [pending, setPending] = useState(0);
+  /** The rows whose tick is still on its way to the engine. */
+  const sending = useRef(new Set<number>());
+  /** A whole-scope tick or an undo is on its way: a row tick now would race it. */
+  const sendingAll = useRef(0);
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -72,15 +82,24 @@ export function useReviewTicks(
 
   const setTicked = useCallback(
     async (rows: readonly ReviewTrack[], ticked: boolean) => {
-      const changing = rows.filter((row) => row.tickable && row.ticked !== ticked);
-      if (changing.length === 0) return 0;
+      const wanted = rows.filter((row) => row.tickable && row.ticked !== ticked);
+      if (wanted.length === 0) return 0;
       const bridge = window.cuepoint?.setMatchTicks;
       if (!bridge) {
         push(needsDesktopApp(), "warning");
         return null;
       }
-      for (const row of changing) patchTrack(row.track_id, { ticked });
+      // A tick of the whole review or an undo is still being saved: this click would race it.
+      if (sendingAll.current > 0) return null;
+      // A row whose last tick is still being saved keeps it: this click would race it.
+      const changing = wanted.filter((row) => !sending.current.has(row.track_id));
+      if (changing.length === 0) return null;
+      for (const row of changing) {
+        sending.current.add(row.track_id);
+        patchTrack(row.track_id, { ticked });
+      }
       const answer = await send(() => bridge({ ticked, track_ids: changing.map((row) => row.track_id) }));
+      for (const row of changing) sending.current.delete(row.track_id);
       if (!answer) {
         // Put back what the table said before: the engine did not take it.
         for (const row of changing) patchTrack(row.track_id, { ticked: row.ticked });
@@ -102,6 +121,7 @@ export function useReviewTicks(
         ...(source.jobId ? { job_id: source.jobId } : {}),
         ...(source.playlistId !== undefined ? { playlist_id: source.playlistId } : {}),
       };
+      sendingAll.current += 1;
       const done = await send(async (): Promise<TickedAll> => {
         const answer = await bridge({ ticked, scope });
         const jobId = answer.job_id ?? answer.id;
@@ -118,6 +138,8 @@ export function useReviewTicks(
           | null
           | undefined;
         return { changed: result?.changed ?? 0, batchId: result?.batch_id ?? answer.batch_id };
+      }).finally(() => {
+        sendingAll.current -= 1;
       });
       onReread();
       return done;
@@ -132,6 +154,7 @@ export function useReviewTicks(
         push(needsDesktopApp(), "warning");
         return false;
       }
+      sendingAll.current += 1;
       const back = await send(async () => {
         const outcome = await bridge({ batch_id: batchId });
         const jobId = outcome.job_id ?? outcome.id;
@@ -140,6 +163,8 @@ export function useReviewTicks(
           if (ended.state !== "succeeded") throw new Error(jobErrorMessage(ended.error));
         }
         return true;
+      }).finally(() => {
+        sendingAll.current -= 1;
       });
       onReread();
       return back === true;

@@ -85,6 +85,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.models.tag import Tag
+from cuepoint.services import busy_wait
 from cuepoint.persistence.activity_repository import SOURCE_CUEPOINT, TrackFieldChange
 from cuepoint.persistence.id_chunks import chunked
 from cuepoint.services.activity_service import (
@@ -369,6 +370,7 @@ class RevertService(IRevertService):
         on_progress: Optional[BatchProgressCallback] = None,
         should_cancel: Optional[BatchCancelCallback] = None,
         track_id: Optional[int] = None,
+        raise_busy: bool = False,
     ) -> BatchRevert:
         """Revert every change a batch recorded, newest first, as a new batch.
 
@@ -382,6 +384,10 @@ class RevertService(IRevertService):
                 chunk, and once with (0, total) before the first.
             should_cancel: Asked before each chunk. What was reverted stays
                 reverted, and the result says how far it got.
+            raise_busy: For a request that can say "try again": a first chunk
+                the library is still too busy for after waiting is raised, with
+                nothing reverted, rather than counted as failed changes. A job
+                leaves it off and counts them, as it always has.
 
         Raises:
             ValueError: Whatever :meth:`check_batch` refuses, before anything
@@ -411,7 +417,14 @@ class RevertService(IRevertService):
             if should_cancel is not None and should_cancel():
                 cancelled = True
                 break
-            for key, value in self._revert_chunk(chunk, new_batch, notation).items():
+            # Nothing of this revert is committed before its first chunk, so a
+            # chunk still busy after waiting can be raised there and the request
+            # can say "try again". After that, a busy chunk is counted as it
+            # always was, so a revert is never left half done without its event.
+            reverted = self._revert_chunk(
+                chunk, new_batch, notation, raise_busy=raise_busy and completed == 0
+            )
+            for key, value in reverted.items():
                 counts[key] += value
             completed += len(chunk)
             _report(on_progress, completed, total)
@@ -433,35 +446,44 @@ class RevertService(IRevertService):
             detail["track_id"] = int(track_id)
             first = self._history.get_field_change(change_ids[0])
             track_name = self._track_name(first) if first is not None else None
-        self._activity.record_event(
-            EVENT_BATCH_REVERTED,
-            self._summarize(result, track_name),
-            detail,
+        summary = self._summarize(result, track_name)
+        # The chunks are committed: the event that names them waits for the lock.
+        busy_wait.retry_while_busy(
+            lambda: self._activity.record_event(EVENT_BATCH_REVERTED, summary, detail),
+            patience_seconds=busy_wait.REQUEST_PATIENCE_SECONDS,
+            interval_seconds=busy_wait.REQUEST_INTERVAL_SECONDS,
         )
         return result
 
     # ---------------------------------------------------------------- helpers
 
     def _revert_chunk(
-        self, change_ids: Sequence[int], batch_id: str, notation: "_Notation"
+        self,
+        change_ids: Sequence[int],
+        batch_id: str,
+        notation: "_Notation",
+        *,
+        raise_busy: bool = False,
     ) -> Dict[str, int]:
         """Revert one chunk in one transaction, returning its counts.
 
         A stale row is an answer, not an error, so it never aborts the chunk.
-        Anything else that raises rolls the chunk back, and it is reverted again
-        one row per transaction, so one bad row costs one row: in that path a
-        row that fails part way is rolled back alone rather than committed half
-        written with the rows around it.
+        A busy library is waited for (Sentry PYTHON-1N): a busy answer wrote
+        nothing of the chunk. With ``raise_busy``, a chunk still busy after
+        waiting is raised rather than counted. Anything else that raises rolls
+        the chunk back, and it is reverted again one row per transaction, so one
+        bad row costs one row: in that path a row that fails part way is rolled
+        back alone rather than committed half written with the rows around it.
         """
-        counts = {_REVERTED: 0, _SKIPPED: 0, _UNCHANGED: 0, "failed": 0}
         try:
-            with self._db.transaction():
-                changes = self._history.get_field_changes(change_ids)
-                for change in changes:
-                    counts[self._revert_row(change, batch_id, notation)] += 1
-            counts["failed"] += len(change_ids) - len(changes)
-            return counts
+            return busy_wait.retry_while_busy(
+                lambda: self._revert_together(change_ids, batch_id, notation),
+                patience_seconds=busy_wait.REQUEST_PATIENCE_SECONDS,
+                interval_seconds=busy_wait.REQUEST_INTERVAL_SECONDS,
+            )
         except (ValueError, sqlite3.Error) as exc:
+            if raise_busy and busy_wait.database_busy(exc):
+                raise
             _logger.warning(
                 "[revert] a chunk of %d changes could not be undone together"
                 " (%s); retrying one change at a time",
@@ -481,6 +503,18 @@ class RevertService(IRevertService):
                 counts["failed"] += 1
             else:
                 counts[outcome] += 1
+        return counts
+
+    def _revert_together(
+        self, change_ids: Sequence[int], batch_id: str, notation: "_Notation"
+    ) -> Dict[str, int]:
+        """Revert one chunk in one transaction; counted afresh on every try."""
+        counts = {_REVERTED: 0, _SKIPPED: 0, _UNCHANGED: 0, "failed": 0}
+        with self._db.transaction():
+            changes = self._history.get_field_changes(change_ids)
+            for change in changes:
+                counts[self._revert_row(change, batch_id, notation)] += 1
+        counts["failed"] += len(change_ids) - len(changes)
         return counts
 
     def _revert_row(

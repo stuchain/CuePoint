@@ -382,5 +382,7 @@ def revert_or_start(
     service = _revert_service()
     total = service.check_batch(batch_id)
     if total <= BATCH_JOB_THRESHOLD:
-        return service.revert_batch(batch_id), None
+        # Inline, a library still busy after waiting is a 503 "try again"
+        # with nothing reverted, not an answer that every change failed.
+        return service.revert_batch(batch_id, raise_busy=True), None
     return None, start_revert_job(store, batch_id)

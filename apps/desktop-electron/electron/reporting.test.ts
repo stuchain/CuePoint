@@ -671,6 +671,19 @@ describe("the IPC wrapper", () => {
     expect(crumbs().at(-1)!.data).toEqual({ outcome: "refused" });
   });
 
+  it("records nothing for a busy library's 503, and its code crosses the bridge", async () => {
+    setup();
+    const handler = wrapIpcHandler("engine:setMatchTicks", async () => {
+      throw new EngineError("The library is busy. Try again in a moment.", { status: 503, code: "LIBRARY_BUSY" });
+    });
+
+    const thrown = (await handler(event).catch((e: unknown) => e)) as Error;
+    await flush();
+
+    expect(sent).toEqual([]);
+    expect(thrown.message).toContain(JSON.stringify({ status: 503, code: "LIBRARY_BUSY", reportId: null }));
+  });
+
   it("a 500 with a report id is a breadcrumb, not an event, and its id crosses the bridge", async () => {
     setup();
     const handler = wrapIpcHandler("engine:getTags", async () => {

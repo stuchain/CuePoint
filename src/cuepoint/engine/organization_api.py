@@ -38,6 +38,7 @@ routing of one feature in two files and the shape of it in neither.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -55,6 +56,9 @@ from cuepoint.models.track_metadata import (
     rating_source,
 )
 from cuepoint.persistence.track_query import BrowseQuery, BrowseQueryError
+from cuepoint.services import busy_wait
+
+_logger = logging.getLogger(__name__)
 
 #: Newest first, and a page rather than a life story: the History tab shows
 #: what changed recently, and a track edited a thousand times has a thousand
@@ -1074,6 +1078,8 @@ def status_for(exc: BaseException) -> Tuple[int, Dict[str, Any]]:
       it as readily as "that rating is not a rating".
     * A service that cannot be resolved is **503**: the database is
       unreachable, which is not the caller's fault and not their fix.
+    * A library still locked by another writer after the wait is **503**
+      ``LIBRARY_BUSY``: try again in a moment.
     * Anything else is **500**, unchanged and unclassified, because pretending
       to recognize it is how a bug becomes a confusing message.
     """
@@ -1083,6 +1089,14 @@ def status_for(exc: BaseException) -> Tuple[int, Dict[str, Any]]:
         return 400, error_payload("INVALID_REQUEST", str(exc))
     if isinstance(exc, OrganizationUnavailableError):
         return 503, error_payload("LIBRARY_UNAVAILABLE", str(exc))
+    if busy_wait.database_busy(exc):
+        from cuepoint.engine.sets_api import LIBRARY_BUSY, LIBRARY_BUSY_MESSAGE
+
+        # A batch waited for another writer (a job's commits, an import) and the
+        # lock was still held (PYTHON-1N): a 503 to try again, not a reported bug.
+        # A warning, because "locked" also covers a few real bugs.
+        _logger.warning("[organization] library busy: %s", exc)
+        return 503, error_payload(LIBRARY_BUSY, LIBRARY_BUSY_MESSAGE)
     return 500, error_payload("ORGANIZATION_FAILED", str(exc))
 
 

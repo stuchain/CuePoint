@@ -108,6 +108,21 @@ describe("readJson", () => {
   });
 });
 
+describe("a busy library on a Review tick (Sentry PYTHON-1N)", () => {
+  it("is an EngineError with the 503, its code and the engine's words", async () => {
+    envelope(503, { code: "LIBRARY_BUSY", message: "The library is busy. Try again in a moment." });
+
+    const error = await thrown(client().setMatchTicks({ ticked: true, track_ids: [1] }));
+
+    expect(error).toMatchObject({
+      status: 503,
+      code: "LIBRARY_BUSY",
+      reportId: null,
+      message: "The library is busy. Try again in a moment.",
+    });
+  });
+});
+
 describe("readRefusable", () => {
   it("throws an EngineError for a failure that is not an export refusal", async () => {
     envelope(500, { code: "EXPORT_FAILED", message: "boom", report_id: "r1" });

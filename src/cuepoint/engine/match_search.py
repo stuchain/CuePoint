@@ -40,6 +40,7 @@ from cuepoint.core.text_processing import sanitize_title_for_search
 from cuepoint.data import catalog_search, search_health
 from cuepoint.data.rekordbox import extract_artists_from_title
 from cuepoint.models.result import TrackResult
+from cuepoint.services import busy_wait
 
 #: The longest search words kept: a pasted paragraph is not a title.
 QUERY_LIMIT = 200
@@ -114,8 +115,13 @@ def search_track(
         processing_time=time.perf_counter() - started,
         file_path=track.file_path,
     )
-    # The attempt and the proposal commit together, inside the repository.
-    attempt = matches.add_hand_search(track_id, result, track)
+    # The attempt and the proposal commit together, inside the repository. Only
+    # the store waits while the library is busy: Beatport is never asked again.
+    attempt = busy_wait.retry_while_busy(
+        lambda: matches.add_hand_search(track_id, result, track),
+        patience_seconds=busy_wait.REQUEST_PATIENCE_SECONDS,
+        interval_seconds=busy_wait.REQUEST_INTERVAL_SECONDS,
+    )
     return {"attempt_id": attempt.id, "failure": failure}
 
 

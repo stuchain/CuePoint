@@ -30,7 +30,26 @@ Statuses, stated once (:func:`status_for`)
   can follow it), or a revert of a field that has changed since
   (``REVERT_STALE``), or deleting a past match that is still running
   (``MATCH_RUNNING``).
-- **503** when a service cannot be resolved; **500** for anything unrecognized.
+- **503** when a service cannot be resolved (``LIBRARY_UNAVAILABLE``), or when
+  another writer held the library's lock for longer than a request waits
+  (``LIBRARY_BUSY``, with no job id: try again; for a one-transaction save
+  nothing was written, and a batch never applies a chunk twice). Not the
+  same as the 409 above, which names the job that holds the library.
+- **500** for anything unrecognized.
+
+A person's own save waits for a busy library
+--------------------------------------------
+A tick, a decision for one track, a hand edit, an undo of one change, deleting
+past matches and a duplicates answer each write one transaction after nothing
+but reads, so a busy answer means nothing was written and the whole handler can
+simply run again (:data:`_WAITING_ROUTES`, the one-track form of
+:data:`_ONE_TRACK_WAITING_ROUTES`, and a track's overrides). It does, for up to
+:data:`cuepoint.services.busy_wait.REQUEST_PATIENCE_SECONDS`, rather than fail
+after SQLite's busy timeout while a background job commits (Sentry PYTHON-1N).
+Running the handler again re-reads everything and re-checks a match that may
+have started meanwhile. A selection (a batch), an undo of a batch and a hand
+search are several transactions or call Beatport first, so they are never run
+again here: they wait inside their services, around one transaction at a time.
 
 Mutations are POSTs to action paths, reads are GETs, as Phase 6 kept them. Work
 that runs as a job answers **202** with the job's identity — ``job_id``, ``id``
@@ -40,6 +59,7 @@ Work small enough to do on the request's thread answers **200** with its result.
 
 from __future__ import annotations
 
+import logging
 import re
 import threading
 from pathlib import Path
@@ -49,7 +69,10 @@ from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not
 from cuepoint.engine.revisions import LIBRARY, revision_cache
 from cuepoint.models.filter_rule import FilterRuleError
 from cuepoint.persistence.track_query import BrowseQueryError
+from cuepoint.services import busy_wait
 from cuepoint.utils.quoting import quoted
+
+_logger = logging.getLogger(__name__)
 
 #: A page of the file-write record. A write over a whole library records a row
 #: per field per file, and nobody reads three hundred thousand of them at once.
@@ -1256,7 +1279,7 @@ def revert_batch(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, A
         # One track out of a batch that covered many (Undo on a row after Accept all):
         # always inline, since it is the changes of one track.
         reverted = _service("IRevertService").revert_batch(
-            _require_str(data, "batch_id"), track_id=track_id
+            _require_str(data, "batch_id"), track_id=track_id, raise_busy=True
         )
         return 200, {"reverted": reverted.to_dict()}
     result, job = revert_or_start(job_store, _require_str(data, "batch_id"))
@@ -1849,16 +1872,61 @@ def handle_get(
     return 200, handler(params)
 
 
+#: POST routes whose whole write is one transaction preceded only by reads, so
+#: a busy answer wrote nothing and the handler is run again while the library
+#: is busy. A tick of more than the batch threshold starts a job, which writes
+#: nothing on the request's thread, so running it again is safe too.
+_WAITING_ROUTES = frozenset(
+    {
+        "/api/v1/clean/match/ticks",
+        "/api/v1/clean/match/jobs/delete",
+        "/api/v1/library/revert",
+        "/api/v1/clean/duplicates/dismiss",
+        "/api/v1/clean/duplicates/keep",
+        "/api/v1/clean/duplicates/restore",
+    }
+)
+
+#: POST routes that take one track or a selection. Only the one-track form is
+#: run again: a selection is a batch of several transactions, which waits
+#: inside :class:`~cuepoint.services.batch_service.BatchService` instead, so a
+#: committed chunk is never applied twice under two batch ids.
+_ONE_TRACK_WAITING_ROUTES = frozenset(
+    {
+        "/api/v1/clean/decide",
+        "/api/v1/clean/apply",
+        "/api/v1/clean/correct",
+    }
+)
+
+
+def _waiting(
+    work: Callable[[], Tuple[int, Dict[str, Any]]],
+) -> Tuple[int, Dict[str, Any]]:
+    """Run a handler, and run it again while the library is busy."""
+    return busy_wait.retry_while_busy(
+        work,
+        patience_seconds=busy_wait.REQUEST_PATIENCE_SECONDS,
+        interval_seconds=busy_wait.REQUEST_INTERVAL_SECONDS,
+    )
+
+
 def handle_post(path: str, raw: bytes, *, job_store: Any) -> Tuple[int, Dict[str, Any]]:
     """Answer a POST, or raise."""
     match = _OVERRIDES_ROUTE.match(path)
     if match:
         track_id = _path_int(match.group(1), "track id")
-        return 200, set_overrides(track_id, _body(raw))
+        data = _body(raw)
+        return _waiting(lambda: (200, set_overrides(track_id, dict(data))))
     handler = _POST_ROUTES.get(path)
     if handler is None:
         raise not_found("NOT_FOUND", "Unknown path")
-    return handler(_body(raw), job_store)
+    data = _body(raw)
+    if path in _WAITING_ROUTES or (
+        path in _ONE_TRACK_WAITING_ROUTES and data.get("selection") is None
+    ):
+        return _waiting(lambda: handler(dict(data), job_store))
+    return handler(data, job_store)
 
 
 def status_for(exc: BaseException) -> Tuple[int, Dict[str, Any]]:
@@ -1888,6 +1956,15 @@ def status_for(exc: BaseException) -> Tuple[int, Dict[str, Any]]:
         return 503, error_payload("LIBRARY_UNAVAILABLE", str(exc))
     if isinstance(exc, ExportError):
         return 500, error_payload(exc.error_code or "EXPORT_FAILED", exc.message)
+    if busy_wait.database_busy(exc):
+        from cuepoint.engine.sets_api import LIBRARY_BUSY, LIBRARY_BUSY_MESSAGE
+
+        # Another writer (a background job's commits, an import) held the lock
+        # for longer than the request waited. Expected, so a 503 to try again,
+        # not a reported bug. A warning: "locked" also covers a few real bugs
+        # (a table lock, a read that tried to write), which should stay findable.
+        _logger.warning("[clean] library busy: %s", exc)
+        return 503, error_payload(LIBRARY_BUSY, LIBRARY_BUSY_MESSAGE)
     return 500, error_payload("CLEAN_FAILED", str(exc))
 
 

@@ -2727,8 +2727,13 @@ class IRevertService(ABC):
         on_progress: Optional[Callable[[int, int], None]] = None,
         should_cancel: Optional[Callable[[], bool]] = None,
         track_id: Optional[int] = None,
+        raise_busy: bool = False,
     ) -> "BatchRevert":
-        """Revert every change in a batch (or one track's), newest first, under a new batch id."""
+        """Revert every change in a batch (or one track's), newest first, under a new batch id.
+
+        With ``raise_busy``, a library still busy after waiting, before anything
+        was reverted, is raised rather than counted as failed changes.
+        """
         ...
 
 

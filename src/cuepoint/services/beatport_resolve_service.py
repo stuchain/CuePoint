@@ -52,6 +52,7 @@ from cuepoint.services.beatport_api_client import (
     REPEATING_ERROR_CLASSES,
     classify_beatport_error,
 )
+from cuepoint.services import busy_wait
 from cuepoint.services.interfaces import (
     IActivityService,
     IBeatportCatalogRepository,
@@ -63,6 +64,11 @@ _logger = logging.getLogger(__name__)
 #: Tracks asked for per request: DISCOVER-01's ``TRACK_BATCH_SIZE``, the most
 #: one page of ``catalog/tracks/`` answers.
 RESOLVE_BATCH_SIZE = 100
+
+#: How long one batch's store waits for a busy library before the resolve
+#: fails, as the other library jobs wait (CLEAN-07).
+DATABASE_BUSY_PATIENCE_SECONDS = 120.0
+_BUSY_RETRY_INTERVAL_SECONDS = 0.05
 
 #: How long a catalog row is trusted before a resolve reads it again. A track's
 #: artists and label change rarely — a relabel, a corrected credit — and a
@@ -330,7 +336,14 @@ class BeatportResolveService(IBeatportResolveService):
             in_a_row = 0
             asked = set(batch)
             answered = [track for track in tracks if track.id in asked]
-            stored = self._catalog.upsert_tracks(answered, self._clock().isoformat())
+            fetched_at = self._clock().isoformat()
+            # One transaction after the request: a busy library is waited for,
+            # and Beatport is not asked again.
+            stored = busy_wait.retry_while_busy(
+                lambda: self._catalog.upsert_tracks(answered, fetched_at),
+                patience_seconds=DATABASE_BUSY_PATIENCE_SECONDS,
+                interval_seconds=_BUSY_RETRY_INTERVAL_SECONDS,
+            )
             counts["resolved"] += stored
             counts["unreadable"] += len(answered) - stored
             counts["not_found"] += len(asked) - len({t.id for t in answered})
