@@ -223,6 +223,11 @@ describe("the queue item a row becomes", () => {
     });
   });
 
+  it("carries the BPM CuePoint uses, so the player bar shows your corrected BPM, not Rekordbox's", () => {
+    expect(toQueueItem(row(7, { bpm: 62, effective_bpm: 124 })).bpm).toBe(124);
+    expect(toQueueItem(row(8, { bpm: 62, effective_bpm: null })).bpm).toBe(62);
+  });
+
   it("turns missing fields into nulls rather than undefined", () => {
     // They cross an IPC boundary: `undefined` disappears on the way and the
     // difference between "no key" and "field absent" is lost.
