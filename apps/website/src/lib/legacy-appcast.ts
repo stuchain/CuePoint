@@ -35,10 +35,21 @@ const OFFERED: Record<"windows" | "macos", { system: System; chip: ReleaseFile["
   macos: { system: "macos", chip: "x64" },
 };
 
-const NOTES =
-  "CuePoint 1.0 is a new app that replaces this one. Installing it does not change your Rekordbox " +
-  "collection. When it is installed, open your Rekordbox collection.xml in it, then remove the old CuePoint " +
-  "0.0 from your computer's list of apps.";
+/**
+ * What the old app shows with the offer. On Windows the old copy stays installed beside 1.0 (checked
+ * in Windows Sandbox, 2026-11-16): its launcher asks whether to reopen CuePoint and reopens the OLD
+ * app, and its uninstaller deletes the desktop shortcut named "CuePoint", which by then is 1.0's.
+ */
+const NOTES: Record<"windows" | "macos", string> = {
+  windows:
+    "CuePoint 1.0 is a new app that replaces this one. Installing it does not change your Rekordbox collection. " +
+    "If the setup says CuePoint is running, click OK. If asked whether to reopen CuePoint, answer N: CuePoint 1.0 opens " +
+    "on its own. Then open your Rekordbox collection.xml in CuePoint 1.0. You can remove the old CuePoint 0.0 from " +
+    "Settings > Apps afterwards; that also removes the desktop shortcut, so open CuePoint 1.0 from the Start menu.",
+  macos:
+    "CuePoint 1.0 is a new app that replaces this one and needs macOS 15 or newer. Installing it does not change your " +
+    "Rekordbox collection. When it opens, open your Rekordbox collection.xml in it.",
+};
 
 function escape(text: string): string {
   return text
@@ -82,7 +93,7 @@ export function legacyAppcast(data: ReleaseData, system: "windows" | "macos"): s
       `      <sparkle:version>${version}</sparkle:version>`,
       `      <sparkle:shortVersionString>${version}</sparkle:shortVersionString>`,
       `      <sparkle:releaseNotesLink>${escape(data.release.notesUrl)}</sparkle:releaseNotesLink>`,
-      `      <description>${escape(NOTES)}</description>`,
+      `      <description>${escape(NOTES[system])}</description>`,
       `      <enclosure url="${escape(file.url)}" length="${file.size}" type="application/octet-stream" ` +
         `sparkle:version="${version}" sparkle:shortVersionString="${version}" sparkle:sha256="${file.sha256}" />`,
       `    </item>`,

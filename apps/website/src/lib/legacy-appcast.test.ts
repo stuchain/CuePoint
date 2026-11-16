@@ -59,6 +59,17 @@ describe("the retired app's update feed", () => {
     expect(enclosure["@sparkle:sha256"]).toBe("c".repeat(64));
   });
 
+  it("tells Windows users how to get past the old updater's prompts", () => {
+    const [item] = items(legacyAppcast(RELEASE, "windows"));
+    expect(String(item?.["description"])).toMatch(/click OK/);
+    expect(String(item?.["description"])).toMatch(/answer N/);
+  });
+
+  it("tells Mac users 1.0 needs macOS 15", () => {
+    const [item] = items(legacyAppcast(RELEASE, "macos"));
+    expect(String(item?.["description"])).toMatch(/macOS 15/);
+  });
+
   it("uses the sparkle namespace the old app looks names up in", () => {
     expect(legacyAppcast(RELEASE, "windows")).toContain('xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"');
   });
