@@ -83,7 +83,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
           cache: pip
 
       - name: Install Python dependencies
@@ -92,20 +92,52 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      - name: Run pytest
+      # B3 (scratch branch only): the full Mac suite, as test.yml runs it, with the
+      # machine's TCP state logged every second, to catch the 1-in-1,500 slow browse
+      # request in test_match_jobs and see whether ephemeral ports run out then.
+      - name: Run the full suite with port use logged
         if: needs.plan.outputs.pytest != ''
         shell: bash
         env:
-          PYTHONPATH: src
-          PYTEST_PATHS: ${{ needs.plan.outputs.pytest }}
           REPEAT: ${{ needs.plan.outputs.repeat }}
         run: |
+          sysctl net.inet.ip.portrange.first net.inet.ip.portrange.last net.inet.tcp.msl || true
+          (
+            while true; do
+              tw=$(netstat -an -p tcp 2>/dev/null | awk '/TIME_WAIT/{t++} END{print t+0}')
+              all=$(netstat -an -p tcp 2>/dev/null | awk '/^tcp/{t++} END{print t+0}')
+              load=$(sysctl -n vm.loadavg 2>/dev/null)
+              echo "$(date -u +%H:%M:%S) time_wait=$tw tcp=$all load=$load"
+              sleep 1
+            done
+          ) > ports.log 2>&1 &
+          logger=$!
+          fail=0
           for i in $(seq 1 "$REPEAT"); do
-            echo "::group::pytest pass $i of $REPEAT"
-            # shellcheck disable=SC2086
-            python -m pytest $PYTEST_PATHS -q --tb=short
+            echo "::group::full suite pass $i of $REPEAT"
+            echo "PASS $i START $(date -u +%H:%M:%S)" >> marks.log
+            python scripts/run_tests.py --all --coverage --no-slow 2>&1 | tee "pass$i.log" || fail=1
+            [ "${PIPESTATUS[0]}" -ne 0 ] && fail=1
+            echo "PASS $i END $(date -u +%H:%M:%S)" >> marks.log
             echo "::endgroup::"
           done
+          kill $logger || true
+          echo "::group::port summary"
+          cat marks.log
+          sort -t= -k2 -n ports.log | awk -F'time_wait=' '{split($2,a," "); if (a[1]+0>m) {m=a[1]+0; l=$0}} END{print "peak:", l}'
+          grep -n "took .* s to answer a browse request\|Errno 49\|Can't assign requested address\|slowest" pass*.log || true
+          echo "::endgroup::"
+          exit $fail
+
+      - name: Keep the logs
+        if: always() && needs.plan.outputs.pytest != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: b3-mac-stall-logs
+          path: |
+            ports.log
+            marks.log
+            pass*.log
 
       - uses: actions/setup-node@v4
         if: needs.plan.outputs.e2e != ''
