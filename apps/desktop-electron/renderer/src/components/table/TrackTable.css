@@ -38,6 +38,10 @@
   /* Page-edges B: room before the first column, so a table that runs out to the sidebar's edge keeps
      its words on the title's edge. 0 unless the page sets it (Prepare's Set, Missing files). */
   --track-table-edge: 0px;
+  /* What a selected row's first pinned cell is filled with: the gradient that draws the accent bar,
+     because with no edge that cell starts at the row's left. A table with an edge sets the flat fill,
+     since the row draws its bar in the edge already and the cell would draw a second one. */
+  --track-table-first-selected: var(--selected-row-background);
 }
 
 /* M91: the scroll bar's track starts under the header, so the header ends where the track begins
@@ -468,7 +472,7 @@
 /* `first-of-type`, not `first-child`: a row's grip is a span before the cells, so the pinned cell
    was never the first child and Prepare lost its selected bar (M202). */
 .track-table__row--selected .track-table__cell--sticky:first-of-type {
-  background: var(--selected-row-background);
+  background: var(--track-table-first-selected);
 }
 
 /* A caller's cell at the row's right end (rowEnd, DEC-249): over every column, as the sticky

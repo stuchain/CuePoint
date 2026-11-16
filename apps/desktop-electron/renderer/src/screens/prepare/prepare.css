@@ -289,6 +289,8 @@ body.prepare-resizing {
 
 .prepare-set__rows > .track-table {
   --track-table-edge: var(--safe-left);
+  /* One accent bar, at the row's edge: the first pinned cell takes the flat selected fill. */
+  --track-table-first-selected: var(--bg-selected);
   flex: 1;
 }
 

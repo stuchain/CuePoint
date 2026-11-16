@@ -54,6 +54,8 @@
 
 .clean-missing__table > .track-table {
   --track-table-edge: var(--safe-left);
+  /* One accent bar, at the row's edge: the first pinned cell takes the flat selected fill. */
+  --track-table-first-selected: var(--bg-selected);
 }
 
 /* A table's first cell holds its words (or its tick) on the title's edge. */
