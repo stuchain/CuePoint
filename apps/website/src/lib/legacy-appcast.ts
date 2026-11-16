@@ -18,21 +18,21 @@ import type { ReleaseData, ReleaseFile, System } from "./releases";
  * shows. A Mac copy mounts the disk image and replaces `/Applications/CuePoint.app`; a Windows copy
  * runs the setup.
  *
- * The Mac feed has no item for now (2026-11-14): the old Mac updater deletes
- * `/Applications/CuePoint.app` before it copies the new one in, and it cannot read a minimum macOS
- * version, so a Mac below macOS 15 (which 1.0 needs) would be left with no app that opens. With no
- * item, an old Mac copy says it is up to date instead of showing the error. Should the Mac ever be
- * offered one, it must be the Intel (x64) image: the old app was one build for every Mac, the Intel
- * build opens on both chips, and 1.0's own updater moves a copy running under Rosetta to the Apple
- * Silicon build at its next update.
+ * The Mac item is the Intel (x64) disk image (his pick, 2026-11-16): the old app was one build for
+ * every Mac and can be offered only one image. The Intel build opens on both chips (under Rosetta on
+ * Apple Silicon), and 1.0's own updater replaces a copy running under Rosetta with the Apple Silicon
+ * build at its next update. The Apple Silicon image would leave an Intel Mac with an app that cannot
+ * open. The known cost: the old Mac updater deletes `/Applications/CuePoint.app` before it copies
+ * the new one in and cannot read a minimum macOS version, so a Mac below macOS 15 (which 1.0 needs)
+ * is left with an app that does not open, and its owner downloads 1.0 or an older build by hand.
  */
 
 export const SPARKLE_NS = "http://www.andymatuschak.org/xml-namespaces/sparkle";
 
 /** The file each system's old copy is offered. */
-const OFFERED: Record<"windows" | "macos", { system: System; chip: ReleaseFile["chip"] } | null> = {
+const OFFERED: Record<"windows" | "macos", { system: System; chip: ReleaseFile["chip"] }> = {
   windows: { system: "windows", chip: "x64" },
-  macos: null,
+  macos: { system: "macos", chip: "x64" },
 };
 
 const NOTES =
@@ -62,8 +62,7 @@ function rfc822(iso: string | null): string | null {
  */
 export function legacyAppcast(data: ReleaseData, system: "windows" | "macos"): string {
   const wanted = OFFERED[system];
-  const file =
-    data.release && wanted ? data.files.find((f) => f.system === wanted.system && f.chip === wanted.chip) : undefined;
+  const file = data.release ? data.files.find((f) => f.system === wanted.system && f.chip === wanted.chip) : undefined;
   const lines = [
     `<?xml version="1.0" encoding="utf-8"?>`,
     `<rss version="2.0" xmlns:sparkle="${SPARKLE_NS}">`,

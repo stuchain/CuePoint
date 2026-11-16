@@ -51,9 +51,12 @@ describe("the retired app's update feed", () => {
     expect(item["sparkle:releaseNotesLink"]).toBe("https://github.com/stuchain/CuePoint/releases/tag/v1.0.3");
   });
 
-  it("offers old Mac copies nothing, so they stop showing the error but keep their app", () => {
-    expect(items(legacyAppcast(RELEASE, "macos"))).toEqual([]);
-    expect(parser.parse(legacyAppcast(RELEASE, "macos")).rss.channel.title).toBe("CuePoint Updates");
+  it("offers every Mac the Intel disk image, which opens on both chips", () => {
+    const [item] = items(legacyAppcast(RELEASE, "macos"));
+    if (!item) throw new Error("no item");
+    const enclosure = item["enclosure"] as Record<string, string>;
+    expect(enclosure["@url"]).toMatch(/CuePoint-1\.0\.3-mac-x64\.dmg$/);
+    expect(enclosure["@sparkle:sha256"]).toBe("c".repeat(64));
   });
 
   it("uses the sparkle namespace the old app looks names up in", () => {
@@ -70,9 +73,11 @@ describe("the retired app's update feed", () => {
     expect(items(legacyAppcast(none, "macos"))).toEqual([]);
   });
 
-  it("has no item when the release has no Windows setup", () => {
+  it("has no item when the release has no file for that system", () => {
     const noWindows = { ...RELEASE, files: RELEASE.files.filter((f) => f.system !== "windows") };
     expect(items(legacyAppcast(noWindows, "windows"))).toEqual([]);
+    const noIntelMac = { ...RELEASE, files: RELEASE.files.filter((f) => !(f.system === "macos" && f.chip === "x64")) };
+    expect(items(legacyAppcast(noIntelMac, "macos"))).toEqual([]);
   });
 
   it("escapes text that would break the XML", () => {
