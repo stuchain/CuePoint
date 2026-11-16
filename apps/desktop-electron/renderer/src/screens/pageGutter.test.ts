@@ -78,7 +78,8 @@ describe("the shared page margin", () => {
 
   it("is not added a second time by the unboxed blocks inside a page", () => {
     const blocks: [string, string, string][] = [
-      ["discover page header", discover, ".discover-page > .cp-screen-header"],
+      // "discover page header" moved out: it is the shared ScreenHeader, which steps out over the page
+      // margin and must pad back in by it, or its words sit a margin left of the page; see the next test.
       ["discover page header block", discover, ".discover-page__header"],
       ["discover half", discover, ".discover-page__half"],
       ["discover run header", discover, ".discover-run__header"],
@@ -99,6 +100,14 @@ describe("the shared page margin", () => {
       const sides = parts.length === 1 ? [parts[0]] : parts.length === 4 ? [parts[1], parts[3]] : [parts[1]];
       for (const side of sides) expect(side, `${name} side padding`).toBe("0");
     }
+  });
+
+  it("pads the Artist, Label and Similar header back in by the margin it steps out over, and no more", () => {
+    const padding = decls(discover, ".discover-page > .cp-screen-header")["padding"];
+    const parts = padding.trim().split(/\s+(?![^(]*\))/);
+    expect(parts).toHaveLength(4);
+    expect(parts[1], "right").toBe("0");
+    expect(parts[3], "left").toBe(decls(header, ".cp-screen-header")["padding-inline-start"]);
   });
 
   it("pads New dig's pane inside its own tone, never at the bottom where the sticky bar sits (P14)", () => {
