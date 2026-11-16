@@ -33,6 +33,16 @@ a stale answer). ``jobs`` is shared: a row of one of Discover's job types
 ``activity_events`` stays library: a dig records one event when it ends, and
 Health reads the feed.
 
+A ``jobs`` row that changes only its progress (``progress_json`` and
+``updated_at``) counts nowhere (:data:`_QUIET_UPDATE_COLUMNS`). Every running
+job saves its progress every couple of seconds, and with each save counting as
+a library change every library page read again that often for as long as an
+import, a match or an analysis ran, which kept the engine busy on slow machines
+(Sentry ELECTRON-3). Nothing reads a job's saved progress through a revision:
+``GET /api/v1/jobs`` is read fresh each time and prefers the live job, and
+progress reaches the app through the job's own events. A change of state, error
+or anything else still counts.
+
 Keeping the triggers in step
 ----------------------------
 :func:`sync` compares the triggers the file has with the ones the tables now
@@ -96,6 +106,12 @@ _ROUTED: Dict[str, Tuple[str, Tuple[str, ...]]] = {
     "jobs": ("type", DISCOVER_JOB_TYPES),
 }
 
+#: Columns whose change alone, in an UPDATE, counts in no domain: a row whose
+#: other columns all keep their values fires no counting trigger.
+_QUIET_UPDATE_COLUMNS: Dict[str, Tuple[str, ...]] = {
+    "jobs": ("progress_json", "updated_at"),
+}
+
 TRIGGER_PREFIX = "cuepoint_rev_"
 
 _OPERATIONS = (
@@ -131,8 +147,23 @@ def _trigger(
     return name, sql
 
 
-def desired_triggers(tables: Iterable[str]) -> Dict[str, str]:
-    """Every counting trigger ``tables`` need, by name, with its SQL."""
+def _changed(columns: Sequence[str]) -> str:
+    """A WHEN condition true when an UPDATE changed any of ``columns``."""
+    return " OR ".join(
+        f"OLD.{_quote(column)} IS NOT NEW.{_quote(column)}" for column in columns
+    )
+
+
+def desired_triggers(
+    tables: Iterable[str],
+    columns: Optional[Dict[str, Sequence[str]]] = None,
+) -> Dict[str, str]:
+    """Every counting trigger ``tables`` need, by name, with its SQL.
+
+    ``columns`` maps a table to its column names; a table in
+    :data:`_QUIET_UPDATE_COLUMNS` needs them for its UPDATE triggers to skip a
+    quiet update, and counts every update without them.
+    """
     wanted: Dict[str, str] = {}
     for table in sorted(set(tables)):
         if table == COUNTER_TABLE or table.startswith("sqlite_"):
@@ -149,6 +180,20 @@ def desired_triggers(tables: Iterable[str]) -> Dict[str, str]:
                     (DISCOVER, f"{ref} IN ({listed})"),
                     (LIBRARY, f"{ref} IS NULL OR {ref} NOT IN ({listed})"),
                 ]
+            quiet = _QUIET_UPDATE_COLUMNS.get(table)
+            known = (columns or {}).get(table)
+            if op == "update" and quiet and known:
+                loud = [c for c in known if c not in quiet]
+                if loud:
+                    pairs = [
+                        (
+                            domain,
+                            f"({when}) AND ({_changed(loud)})"
+                            if when
+                            else _changed(loud),
+                        )
+                        for domain, when in pairs
+                    ]
             for domain, when in pairs:
                 name, sql = _trigger(table, op, event, domain, when)
                 wanted[name] = sql
@@ -163,6 +208,19 @@ def _ordinary_tables(conn: sqlite3.Connection) -> list[str]:
         ).fetchall()
         if not str(row[1] or "").lstrip().upper().startswith("CREATE VIRTUAL")
     ]
+
+
+def _columns(conn: sqlite3.Connection) -> Dict[str, Sequence[str]]:
+    """Column names of the tables :data:`_QUIET_UPDATE_COLUMNS` names."""
+    found: Dict[str, Sequence[str]] = {}
+    for table in _QUIET_UPDATE_COLUMNS:
+        names = [
+            str(row[1])
+            for row in conn.execute(f"PRAGMA table_info({_quote(table)})").fetchall()
+        ]
+        if names:
+            found[table] = names
+    return found
 
 
 def _existing_triggers(conn: sqlite3.Connection) -> Dict[str, str]:
@@ -190,7 +248,9 @@ def _counters_present(conn: sqlite3.Connection) -> bool:
 def _in_step(conn: sqlite3.Connection) -> bool:
     if not _counters_present(conn):
         return False
-    return _existing_triggers(conn) == desired_triggers(_ordinary_tables(conn))
+    return _existing_triggers(conn) == desired_triggers(
+        _ordinary_tables(conn), _columns(conn)
+    )
 
 
 def sync(database: IDatabaseService) -> bool:
@@ -215,7 +275,7 @@ def sync(database: IDatabaseService) -> bool:
                 (domain,),
             )
         existing = _existing_triggers(conn)
-        wanted = desired_triggers(_ordinary_tables(conn))
+        wanted = desired_triggers(_ordinary_tables(conn), _columns(conn))
         for name, sql in existing.items():
             if wanted.get(name) != sql:
                 conn.execute(f"DROP TRIGGER IF EXISTS {_quote(name)}")
