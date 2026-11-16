@@ -13,19 +13,19 @@
           "recordedAt": "2026-11-08"
         },
         "src/data/compare.ts": {
-          "hash": "9b5f51831027640a5cd289c6609f65dd0892fba93eb4fd14b5c181bbffbbc02b",
-          "commit": "0c10c9758fbebb652e7a76b800f6800896742c65",
-          "recordedAt": "2026-11-08"
+          "hash": "6ce87cd1b6b5cda84f753e0f977b53657b14b3db7ca920f8abbf73fd7e358ddb",
+          "commit": "33c0cff0e3d27fcef1c06089a75140cc37d19de5",
+          "recordedAt": "2026-11-16"
         },
         "src/content/faq.yaml": {
-          "hash": "24bbed0cdc965ee4689bcc483cbe390d4838e3d34e7d7e99a5ab57fa6d49a7fe",
-          "commit": "0c10c9758fbebb652e7a76b800f6800896742c65",
-          "recordedAt": "2026-11-08"
+          "hash": "a6e25b0227f3106d59d4ca7fa27e5e03fefa6242936a563306cfaf5f1c20eeba",
+          "commit": "33c0cff0e3d27fcef1c06089a75140cc37d19de5",
+          "recordedAt": "2026-11-16"
         },
         "src/i18n/ui/en.ts": {
-          "hash": "7a023dc290400884047af2a1ea85cb5a64eaecd1d87b389b79d7bab70bce4b4a",
-          "commit": "4eff0ef52e35f18a0084e2fec2da93ea14a9f013",
-          "recordedAt": "2026-11-08"
+          "hash": "f8929da4b17e5880711622929911914c577a7b9819349216d3d6748491d28d94",
+          "commit": "33c0cff0e3d27fcef1c06089a75140cc37d19de5",
+          "recordedAt": "2026-11-16"
         }
       }
     },
