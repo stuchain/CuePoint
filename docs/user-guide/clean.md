@@ -316,8 +316,8 @@ the pictures stored inside your audio files, for the whole library, and tells yo
 when it has finished. Statistics' Health tab says when it last ran.
 
 **Missing** means nothing is at that path; **Unreadable** means the file is there
-but CuePoint cannot open it. To fix a missing file, use **Show in folder** to
-find where it was, then follow the three steps on the page: in Rekordbox,
+but CuePoint cannot open it. To fix a missing file, select it and use
+**Show** › **Expected folder** to find where it was, then follow the three steps on the page: in Rekordbox,
 right-click the track, choose **Relocate** and point it at the file; in
 Rekordbox, choose File, then Export Collection in xml format; then here, choose
 **Check for changes**, a button that takes you to the Library and
@@ -330,12 +330,14 @@ name; when two files have it, it uses the track's length to pick the right one,
 and says so when it cannot tell. With rows selected it looks for those only
 (**Find it…** on the selection bar, **Find it in a folder…** when you right-click
 a row, or double-click a row). Found rows say **Found in** the folder's name, and
-**Show found file** and **Copy found path** (selection bar and right-click menu)
-take you to where the file is now. The row's **Expected at** does not change:
+the selection bar's **Show** › **Found file** and **Copy** › **Found path** (and
+the right-click menu) take you to where the file is now. The row's **Expected at** does not change:
 CuePoint never changes a track's path. Pointing Rekordbox at the file is still
 **Relocate** in Rekordbox, followed by the export and **Check for changes** as in
-the steps. Right-clicking a row also offers **Show expected folder**, **Copy
-expected path**, **Check again** and **Show details**; each is also a button.
+the steps. The selection bar keeps four buttons: **Find it…**, **Show** (Found file,
+Expected folder), **Copy** (Found path, Expected path, Rows as shown) and
+**Clear**. Right-clicking a row offers the same, plus **Check again** and **Show
+details**.
 What was found is forgotten when you check again.
 
 ## Duplicates

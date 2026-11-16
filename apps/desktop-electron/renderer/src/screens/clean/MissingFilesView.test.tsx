@@ -549,7 +549,18 @@ describe("Find in a folder (DEC-073)", () => {
     await waitFor(() => expect(bridge.startFileFind).toHaveBeenCalledWith({ selection: { track_ids: [3] } }));
   });
 
-  it("puts Find it…, Show found file and Copy found path on the selection bar for one found row", async () => {
+  it("keeps the selection bar to Find it…, Show, Copy and Clear", async () => {
+    installFind();
+    renderView(CHECKED);
+    fireEvent.click(await screen.findByText("Track 2"));
+    const bar = await screen.findByRole("toolbar", { name: "Selection" });
+    const names = within(bar)
+      .getAllByRole("button")
+      .map((button) => button.textContent?.trim());
+    expect(names).toEqual(["Find it…", "Show", "Copy", "Clear"]);
+  });
+
+  it("shows the found file from the Show menu for one found row, and finds it again", async () => {
     installFind();
     renderView(CHECKED);
     await screen.findByText("Track 1");
@@ -557,24 +568,25 @@ describe("Find in a folder (DEC-073)", () => {
     await screen.findByText("Found in Moved");
 
     fireEvent.click(screen.getByText("Track 1"));
-    const bar = await screen.findByRole("toolbar", { name: "Selection" });
-    expect(bar).toHaveTextContent("Find it…");
-    fireEvent.click(screen.getByRole("button", { name: "Show found file" }));
+    await screen.findByRole("toolbar", { name: "Selection" });
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Found file" }));
     // The page names the find and the track; it sends no path.
     expect(bridge.showFoundFile).toHaveBeenCalledWith("job-find", 1);
-    expect(screen.getByRole("button", { name: "Copy found path" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show in folder" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Find it…" }));
     await waitFor(() => expect(bridge.startFileFind).toHaveBeenLastCalledWith({ selection: { track_ids: [1] } }));
   });
 
-  it("offers no found-file buttons for a row that was not found", async () => {
+  it("turns the found-file items off for a row that was not found", async () => {
     installFind();
     renderView(CHECKED);
     fireEvent.click(await screen.findByText("Track 2"));
     await screen.findByRole("toolbar", { name: "Selection" });
-    expect(screen.queryByRole("button", { name: "Show found file" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    const showMenu = await screen.findByRole("menu");
+    expect(within(showMenu).getByRole("menuitem", { name: /Found file/ })).toHaveAttribute("aria-disabled", "true");
+    expect(within(showMenu).getByRole("menuitem", { name: /Expected folder/ })).not.toHaveAttribute("aria-disabled", "true");
   });
 
   describe("the right-click menu", () => {
@@ -690,14 +702,39 @@ describe("Find in a folder (DEC-073)", () => {
       await waitFor(() => expect(bridge.showItemInFolder).toHaveBeenCalledWith("E:\\gone"));
     });
 
-    it("has Copy expected path on the selection bar too, so nothing is right-click only", async () => {
+    it("has every copy in the selection bar's Copy menu too, so nothing is right-click only", async () => {
       installFind();
       renderView(CHECKED);
+      await screen.findByText("Track 1");
+      fireEvent.click(screen.getByRole("button", { name: "Find in a folder…" }));
+      await screen.findByText("Found in Moved");
+      fireEvent.click(screen.getByText("Track 1"));
+      await screen.findByRole("toolbar", { name: "Selection" });
+
+      const copyMenu = async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+        return screen.findByRole("menu");
+      };
+      fireEvent.click(within(await copyMenu()).getByRole("menuitem", { name: "Found path" }));
+      await waitFor(() => expect(written).toEqual(["/Users/dj/Moved/sub/1.mp3"]));
+      fireEvent.click(within(await copyMenu()).getByRole("menuitem", { name: "Expected path" }));
+      await waitFor(() => expect(written).toEqual(["/Users/dj/Moved/sub/1.mp3", "E:\\gone\\1.mp3"]));
+      fireEvent.click(within(await copyMenu()).getByRole("menuitem", { name: "Rows as shown" }));
+      await waitFor(() => expect(written).toHaveLength(3));
+      expect(written[2]).toContain("Track 1");
+    });
+
+    it("shows the expected folder from the selection bar's Show menu", async () => {
+      installFind();
+      bridge.getTrackFolder!.mockResolvedValue({ track_id: 2, file_path: "E:\\gone\\2.mp3", file_exists: false, folder: "E:\\gone" });
+      renderView(CHECKED);
       fireEvent.click(await screen.findByText("Track 2"));
+      await screen.findByRole("toolbar", { name: "Selection" });
 
-      fireEvent.click(await screen.findByRole("button", { name: "Copy expected path" }));
+      fireEvent.click(screen.getByRole("button", { name: "Show" }));
+      fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Expected folder" }));
 
-      await waitFor(() => expect(written).toEqual(["E:\\gone\\2.mp3"]));
+      await waitFor(() => expect(bridge.showItemInFolder).toHaveBeenCalledWith("E:\\gone"));
     });
   });
 

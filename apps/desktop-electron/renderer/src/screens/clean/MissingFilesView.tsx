@@ -113,6 +113,14 @@ interface FindAnswer {
 }
 
 /** A right-click on a row: where, which row, and whether it was a group the row belongs to. */
+/** One of the selection bar's two menus, at its button's bottom-left, opening above the bar. */
+interface BarMenu {
+  id: "show" | "copy";
+  x: number;
+  y: number;
+  above: number;
+}
+
 interface RowMenu {
   x: number;
   y: number;
@@ -150,6 +158,8 @@ export function MissingFilesView({
   const pendingFind = useRef<{ jobId: string; wanted: number } | null>(null);
   const orphaned = useRef(false);
   const [menu, setMenu] = useState<RowMenu | null>(null);
+  // The selection bar's Show and Copy menus, opened above their buttons.
+  const [barMenu, setBarMenu] = useState<BarMenu | null>(null);
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
   const trackId = selection.selection.lastId;
@@ -558,6 +568,67 @@ export function MissingFilesView({
     setMenu({ ...anchor, row, group: inSelection && selection.count > 1 });
   };
 
+  const openBarMenu = (id: BarMenu["id"], button: HTMLElement) => {
+    if (barMenu?.id === id) {
+      setBarMenu(null);
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    const barTop = button.closest(".clean-review__selection")?.getBoundingClientRect().top ?? rect.top;
+    setBarMenu({ id, x: rect.left, y: rect.bottom, above: barTop });
+  };
+
+  /** The selection bar's menus: every action stays on a visible button (no right-click only). */
+  const barMenuItems = (id: BarMenu["id"]): TrackContextMenuItem[] => {
+    const one = "Select one track";
+    const notFound = onlyId == null ? one : "Not found yet: use Find it… first";
+    if (id === "show") {
+      return [
+        {
+          id: "show-found",
+          label: "Found file",
+          disabled: !onlyFound,
+          reason: notFound,
+          onSelect: () => {
+            if (onlyFound) showFoundFile(onlyId as number, onlyFound);
+          },
+        },
+        {
+          id: "show-expected",
+          label: "Expected folder",
+          disabled: onlyId == null,
+          reason: one,
+          onSelect: () => reveal(onlyId),
+        },
+      ];
+    }
+    return [
+      {
+        id: "copy-found",
+        label: "Found path",
+        disabled: !onlyFound,
+        reason: notFound,
+        onSelect: () => {
+          if (onlyFound) void copyText(onlyFound.path, "the path");
+        },
+      },
+      {
+        id: "copy-expected",
+        label: "Expected path",
+        disabled: !onlyRow?.file_path,
+        reason: one,
+        onSelect: () => void copyText(onlyRow?.file_path ?? "", "the path"),
+      },
+      {
+        id: "copy-tracks",
+        label: "Rows as shown",
+        title: "The selected rows, with the columns this table shows",
+        separatorBefore: true,
+        onSelect: () => void copy(),
+      },
+    ];
+  };
+
   const rowMenuItems = (open: RowMenu): TrackContextMenuItem[] => {
     const { row, group } = open;
     const here = row.id != null ? found.get(row.id) : undefined;
@@ -842,45 +913,51 @@ export function MissingFilesView({
         <SelectionActions
           count={selection.count}
           describedByQuery={selection.selection.all}
-          revealPath={onlyRow?.file_path ?? null}
           total={window_.total}
-          busy={copying}
-          onCopy={() => void copy()}
-          onReveal={() => reveal(onlyId)}
           onClear={selection.clear}
           onSelectAll={selection.selectAllMatching}
-          leadingActions={
-            <Button
-              variant="secondary"
-              disabled={running || findBlocked}
-              loading={jobs.running === "find" || finding}
-              title={findBlocked ? unreadableReason : undefined}
-              onClick={() => find(batchSelection(selection.selection, query), selection.count)}
-            >
-              {selection.count > 1 ? "Find them…" : "Find it…"}
-            </Button>
-          }
-          extraActions={
-            <>
-              {onlyFound && (
-                <>
-                  <Button variant="secondary" onClick={() => showFoundFile(onlyId as number, onlyFound)}>
-                    Show found file
-                  </Button>
-                  <Button variant="secondary" onClick={() => void copyText(onlyFound.path, "the path")}>
-                    Copy found path
-                  </Button>
-                </>
-              )}
-              {onlyRow?.file_path && (
-                <Button variant="secondary" onClick={() => void copyText(onlyRow.file_path ?? "", "the path")}>
-                  Copy expected path
-                </Button>
-              )}
-            </>
-          }
-        />
+        >
+          <Button
+            variant="secondary"
+            disabled={running || findBlocked}
+            loading={jobs.running === "find" || finding}
+            title={findBlocked ? unreadableReason : undefined}
+            onClick={() => find(batchSelection(selection.selection, query), selection.count)}
+          >
+            {selection.count > 1 ? "Find them…" : "Find it…"}
+          </Button>
+          <Button
+            variant="secondary"
+            menu
+            aria-haspopup="menu"
+            aria-expanded={barMenu?.id === "show"}
+            onClick={(event) => openBarMenu("show", event.currentTarget)}
+          >
+            Show
+          </Button>
+          <Button
+            variant="secondary"
+            menu
+            aria-haspopup="menu"
+            aria-expanded={barMenu?.id === "copy"}
+            loading={copying}
+            onClick={(event) => openBarMenu("copy", event.currentTarget)}
+          >
+            Copy
+          </Button>
+        </SelectionActions>
       </div>
+
+      {barMenu && (
+        <TrackContextMenu
+          x={barMenu.x}
+          y={barMenu.y}
+          above={barMenu.above}
+          label={barMenu.id === "show" ? "Show" : "Copy"}
+          items={barMenuItems(barMenu.id)}
+          onClose={() => setBarMenu(null)}
+        />
+      )}
 
       {menu && (
         <TrackContextMenu

@@ -598,21 +598,10 @@ describe("with several tracks selected", () => {
 describe("the actions", () => {
   function actions(props: Partial<React.ComponentProps<typeof SelectionActions>> = {}) {
     const handlers = {
-      onCopy: vi.fn(),
-      onReveal: vi.fn(),
       onClear: vi.fn(),
       onSelectAll: vi.fn(),
     };
-    render(
-      <SelectionActions
-        count={2}
-        describedByQuery={false}
-        revealPath={null}
-        total={50_000}
-        {...handlers}
-        {...props}
-      />,
-    );
+    render(<SelectionActions count={2} describedByQuery={false} total={50_000} {...handlers} {...props} />);
     return handlers;
   }
 
@@ -639,36 +628,21 @@ describe("the actions", () => {
     expect(handlers.onSelectAll).toHaveBeenCalled();
   });
 
-  it("copies", () => {
-    const handlers = actions();
-    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
-    expect(handlers.onCopy).toHaveBeenCalled();
-  });
-
   it("clears", () => {
     const handlers = actions();
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(handlers.onClear).toHaveBeenCalled();
   });
 
-  it("reveals one file", () => {
-    const handlers = actions({ count: 1, revealPath: "/music/strobe.mp3" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
-
-    expect(handlers.onReveal).toHaveBeenCalledWith("/music/strobe.mp3");
+  it("draws the page's own buttons between the count and Clear", () => {
+    actions({ children: <button type="button">Find it…</button> });
+    const names = screen.getAllByRole("button").map((button) => button.textContent);
+    expect(names).toEqual(["Find it…", "Clear"]);
   });
 
   it("has no Actions… button: the groups are the Library's selection bar (FLW-8)", () => {
     actions();
     expect(screen.queryByRole("button", { name: "Actions…" })).not.toBeInTheDocument();
-  });
-
-  it("offers no reveal for several tracks", () => {
-    // One track, one file: revealing five folders at once is not a thing
-    // anyone asked for.
-    actions({ count: 5, revealPath: null });
-    expect(screen.getByRole("button", { name: "Show in folder" })).toBeDisabled();
   });
 });
 

@@ -697,7 +697,8 @@ describe("missing files", () => {
   it("shows the nearest folder that still exists", async () => {
     renderClean("missing");
     fireEvent.click(await screen.findByText("Track 9"));
-    fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Expected folder" }));
     await waitFor(() => expect(bridge.getTrackFolder).toHaveBeenCalledWith({ trackId: 9 }));
     await waitFor(() => expect(bridge.showItemInFolder).toHaveBeenCalledWith("E:\\"));
     expect(await screen.findByText(/nearest folder that is: E:\\/)).toBeInTheDocument();
@@ -712,7 +713,8 @@ describe("missing files", () => {
     });
     renderClean("missing");
     fireEvent.click(await screen.findByText("Track 9"));
-    fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Expected folder" }));
     expect(await screen.findByText(/The drive may not be connected/)).toBeInTheDocument();
     expect(bridge.showItemInFolder).not.toHaveBeenCalled();
   });

@@ -1,15 +1,7 @@
 /**
- * What can be done with a selection (LIBUI-09, DEC-045, then ORG-11).
- *
- * LIBUI-09 built this with two actions, because two was what the build had:
- * copy the tracks, and show one in the file manager. It said tagging, rating
- * and collecting would arrive in Phase 6, and this is Phase 6.
- *
- * They arrive as **one button**, not five. The context menu already offers
- * every organization operation, and a toolbar with its own set of buttons
- * would be a second list to keep in step with it — so the toolbar opens the
- * same menu, built from the same array, and "one vocabulary for both surfaces"
- * is a fact rather than a promise.
+ * The selection bar of Missing files (LIBUI-09, DEC-045): the count, the page's own buttons, and
+ * Clear. The page draws its buttons as children, so it decides which actions show and how they
+ * fold into menus (Find it…, then the Show and Copy menus).
  */
 import type { ReactNode } from "react";
 
@@ -21,34 +13,15 @@ interface SelectionActionsProps {
   count: number;
   /** True when the selection is "everything matching", not a list of tracks. */
   describedByQuery: boolean;
-  /** Whether exactly one track is selected and its path is known. */
-  revealPath: string | null;
-  onCopy: () => void;
-  onReveal: (path: string) => void;
   onClear: () => void;
   onSelectAll: () => void;
   /** Tracks the query matches, for "select all". */
   total: number;
-  busy?: boolean;
-  /** Buttons drawn before Copy (Missing files' "Find it…"). */
-  leadingActions?: ReactNode;
-  /** Buttons drawn between Copy and the reveal button (Missing files' "Show found file"). */
-  extraActions?: ReactNode;
+  /** The page's own buttons, drawn between the count and Clear (Missing files: Find it…, Show, Copy). */
+  children?: ReactNode;
 }
 
-export function SelectionActions({
-  count,
-  describedByQuery,
-  revealPath,
-  onCopy,
-  onReveal,
-  onClear,
-  onSelectAll,
-  total,
-  busy = false,
-  leadingActions,
-  extraActions,
-}: SelectionActionsProps) {
+export function SelectionActions({ count, describedByQuery, onClear, onSelectAll, total, children }: SelectionActionsProps) {
   if (count === 0) {
     return (
       <div className="cp-selection-actions cp-selection-actions--idle">
@@ -71,23 +44,7 @@ export function SelectionActions({
         {describedByQuery && count > 1 ? " (everything matching)" : ""}
       </span>
 
-      {leadingActions}
-
-      <Button variant="secondary" onClick={onCopy} loading={busy}>
-        Copy
-      </Button>
-
-      {extraActions}
-
-      {/* One track, one file: revealing five folders at once is not a thing
-          anyone asked for, so the action is offered only when it means one. */}
-      <Button
-        variant="secondary"
-        disabled={revealPath === null}
-        onClick={() => revealPath && onReveal(revealPath)}
-      >
-        Show in folder
-      </Button>
+      {children}
 
       <Button variant="secondary" onClick={onClear}>
         Clear
