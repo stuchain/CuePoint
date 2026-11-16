@@ -92,3 +92,11 @@ describe("the sounding row (N1, M99)", () => {
     expect(stripComments(css)).not.toMatch(/cp-play-btn--playing/);
   });
 });
+
+describe("Artist, Label and Similar page header", () => {
+  it("pads back in by the page margin it steps out over, so its words sit on the page's content edge", () => {
+    expect(body(".discover-page > .cp-screen-header")).toMatch(
+      /padding:\s*var\(--space-sm\) 0 var\(--space-xs\) var\(--safe-left\)/,
+    );
+  });
+});

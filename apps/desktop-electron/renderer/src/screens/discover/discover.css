@@ -942,7 +942,9 @@
 /* The shared header on a Discover page (Artist, Label, Similar): one divider, the inset of the
    details block under it. */
 .discover-page > .cp-screen-header {
-  padding: var(--space-sm) 0 var(--space-xs);
+  /* The left padding is the shared header's own (it steps out over the page margin and pads back
+     in): without it the crumb, picture and title sat one page margin left of the page's content. */
+  padding: var(--space-sm) 0 var(--space-xs) var(--safe-left);
   border-bottom: 0;
 }
 
