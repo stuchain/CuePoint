@@ -45,6 +45,21 @@
   border-bottom: 0;
 }
 
+/* Follow and Following share one cell, the word not shown still holding its width: the button is
+   one width on every row, so the rows' Artist/Label and track-count columns line up. */
+.discover-following__follow-label {
+  display: inline-grid;
+  white-space: nowrap;
+}
+
+.discover-following__follow-label > * {
+  grid-area: 1 / 1;
+}
+
+.discover-following__follow-label > [data-shown="false"] {
+  visibility: hidden;
+}
+
 .discover-following__kind,
 .discover-following__tracks,
 .discover-following__quiet {

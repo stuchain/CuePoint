@@ -243,7 +243,9 @@ describe("with nobody followed", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Follow Amsel" }));
     expect(bridge.addFollow).toHaveBeenCalledWith({ kind: "artist", beatport_id: 1, name: "Amsel" });
     const following = await screen.findByRole("button", { name: "Following Amsel" });
-    expect(following).toHaveTextContent("Following");
+    // Both words sit in the button so it keeps one width; only the one that fits is shown.
+    expect(following.querySelector('[data-shown="true"]')).toHaveTextContent(/^Following$/);
+    expect(following.querySelector('[data-shown="false"]')).toHaveTextContent(/^Follow$/);
     expect(screen.getByRole("button", { name: "Show what's new (1 followed)" })).toBeEnabled();
 
     fireEvent.click(following);

@@ -579,7 +579,16 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
                       aria-label={`${row.followed ? "Following" : "Follow"} ${row.name}`}
                       onClick={() => void toggleSuggestion(row)}
                     >
-                      {row.followed ? "Following" : "Follow"}
+                      {/* Both words take up space, so Follow is as wide as Following and the
+                          row's columns line up with the rows above and below it. */}
+                      <span className="discover-following__follow-label">
+                        <span aria-hidden data-shown={row.followed}>
+                          Following
+                        </span>
+                        <span aria-hidden data-shown={!row.followed}>
+                          Follow
+                        </span>
+                      </span>
                     </Button>
                   </li>
                 );
