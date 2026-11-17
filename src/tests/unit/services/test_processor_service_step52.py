@@ -114,7 +114,9 @@ class TestProcessorServiceProcessPlaylistFromXML:
             # Verify
             assert len(results) == 2
             assert all(isinstance(r, TrackResult) for r in results)
-            assert mock_matcher_service.find_best_match.call_count == 2
+            # Tracks can run on worker threads, and Mock's call_count += 1 is not atomic, so two
+            # calls at once can count as one. The calls list grows by an atomic append.
+            assert len(mock_matcher_service.find_best_match.call_args_list) == 2
             mock_logging_service.info.assert_called()
 
         finally:
@@ -646,7 +648,9 @@ class TestProcessorServiceProcessPlaylistFromXML:
             # Verify
             assert len(results) == 1
             # Should have been called twice (initial + auto-research)
-            assert mock_matcher_service.find_best_match.call_count == 2
+            # Tracks can run on worker threads, and Mock's call_count += 1 is not atomic, so two
+            # calls at once can count as one. The calls list grows by an atomic append.
+            assert len(mock_matcher_service.find_best_match.call_args_list) == 2
             # Result should now be matched after auto-research
             assert results[0].matched is True
 
