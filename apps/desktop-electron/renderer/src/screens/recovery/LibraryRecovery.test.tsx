@@ -256,14 +256,14 @@ describe("the gate", () => {
     expect(screen.getByText("The app")).toBeInTheDocument();
   });
 
-  it("shows the app before there is an answer, and while the library is upgrading", async () => {
+  it("shows the app before there is an answer, and the wait screen once the library says it is upgrading", async () => {
     getState.mockRejectedValue(new Error("Engine not running"));
     gate();
     expect(screen.getByText("The app")).toBeInTheDocument();
     getState.mockResolvedValue(status({ state: "upgrading" }));
     await vi.advanceTimersByTimeAsync(1600);
-    expect(screen.getByText("The app")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByText("The app")).not.toBeInTheDocument();
   });
 
   it.each(["damaged", "too_new", "upgrade_failed", "needs_space"] as const)("takes the whole window for %s", async (state) => {
