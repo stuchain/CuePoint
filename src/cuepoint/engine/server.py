@@ -501,6 +501,14 @@ def make_handler(
                 payload["error"]["report_id"] = event_id
             self._send_json(500, payload)
 
+        def _send_library_unavailable(self, exc: BaseException) -> None:
+            """Answer a library that could not be resolved: its state's words, else 503."""
+            library = library_state.status_for(exc)
+            if library is not None:
+                self._send_json(*library)
+                return
+            self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+
         def _send_mapped(self, exc: BaseException, status_for) -> None:
             """Answer a routed module's mapping of ``exc``, reporting it if it is a failure.
 
@@ -1027,7 +1035,7 @@ def make_handler(
                 try:
                     payload = library_summary()
                 except LibraryUnavailableError as exc:
-                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    self._send_library_unavailable(exc)
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_unexpected(
@@ -1104,7 +1112,7 @@ def make_handler(
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except LibraryUnavailableError as exc:
-                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    self._send_library_unavailable(exc)
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_unexpected(exc, error_payload("SEARCH_FAILED", str(exc)))
@@ -1120,7 +1128,7 @@ def make_handler(
                 try:
                     payload = library_playlists()
                 except LibraryUnavailableError as exc:
-                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    self._send_library_unavailable(exc)
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_unexpected(
@@ -1193,7 +1201,7 @@ def make_handler(
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except LibraryUnavailableError as exc:
-                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    self._send_library_unavailable(exc)
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_unexpected(exc, error_payload("FACET_FAILED", str(exc)))
@@ -1299,7 +1307,7 @@ def make_handler(
                     self._send_json(404, error_payload("TRACK_NOT_FOUND", str(exc)))
                     return
                 except LibraryUnavailableError as exc:
-                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    self._send_library_unavailable(exc)
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_unexpected(
@@ -1543,7 +1551,7 @@ def make_handler(
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
                 except LibraryUnavailableError as exc:
-                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    self._send_library_unavailable(exc)
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_unexpected(exc, error_payload("FACET_FAILED", str(exc)))
@@ -1565,7 +1573,7 @@ def make_handler(
                     self._send_json(404, error_payload("SOURCE_NOT_FOUND", str(exc)))
                     return
                 except LibraryUnavailableError as exc:
-                    self._send_json(503, error_payload("LIBRARY_UNAVAILABLE", str(exc)))
+                    self._send_library_unavailable(exc)
                     return
                 except Exception as exc:  # noqa: BLE001 — surface to API client
                     self._send_unexpected(

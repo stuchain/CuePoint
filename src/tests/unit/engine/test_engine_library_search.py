@@ -356,3 +356,31 @@ class TestErrors:
         body = json.loads(excinfo.value.read().decode("utf-8"))
         assert set(body) == {"error"}
         assert set(body["error"]) == {"code", "message"}
+
+
+@pytest.mark.unit
+class TestReadableUnavailableMessage:
+    """``LibraryUnavailableError`` carries words, not the ``[CODE]`` prefix."""
+
+    def test_a_cuepoint_exception_gives_its_message_without_the_code(self):
+        from cuepoint.engine.library_api import _readable
+        from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
+
+        exc = DatabaseError(
+            message="CuePoint is still getting your library ready.",
+            error_code="DB_UPGRADING",
+        )
+        assert str(exc).startswith("[DB_UPGRADING]")
+        assert _readable(exc) == "CuePoint is still getting your library ready."
+
+    def test_anything_else_keeps_its_text(self):
+        from cuepoint.engine.library_api import _readable
+
+        assert _readable(RuntimeError("no service")) == "no service"
+
+    def test_an_empty_message_never_brings_the_code_prefix_back(self):
+        from cuepoint.engine.library_api import _readable
+        from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
+
+        assert _readable(DatabaseError(message="", error_code="DB_X")) == "DB_X"
+        assert _readable(DatabaseError(message="", error_code="")) == "DatabaseError"

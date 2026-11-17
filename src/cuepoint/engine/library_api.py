@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from cuepoint.engine.revisions import LIBRARY, revision_cache
+from cuepoint.exceptions.cuepoint_exceptions import CuePointException
 from cuepoint.models.filter_rule import (
     FACETABLE_FIELDS,
     KEY_SOURCE_YOURS,
@@ -72,6 +73,13 @@ class LibraryUnavailableError(RuntimeError):
     """
 
 
+def _readable(exc: BaseException) -> str:
+    """The words of ``exc`` without the ``[CODE]`` prefix a CuePoint exception adds."""
+    if isinstance(exc, CuePointException):
+        return str(exc.message or exc.error_code or type(exc).__name__)
+    return str(exc)
+
+
 def _resolve_library_service() -> Any:
     """Resolve ``ILibraryService`` from the DI container.
 
@@ -85,7 +93,7 @@ def _resolve_library_service() -> Any:
 
         return get_container().resolve(ILibraryService)
     except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
-        raise LibraryUnavailableError(str(exc)) from exc
+        raise LibraryUnavailableError(_readable(exc)) from exc
 
 
 def add_tag_counts(rows: List[Dict[str, Any]]) -> None:
@@ -497,7 +505,7 @@ def _resolve_collection_service() -> Any:
 
         return get_container().resolve(ICollectionService)
     except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
-        raise LibraryUnavailableError(str(exc)) from exc
+        raise LibraryUnavailableError(_readable(exc)) from exc
 
 
 def resolve_scope(scope: Optional[str], collection_id: Optional[int]) -> BrowseScope:
@@ -1178,7 +1186,7 @@ def _resolve_import_service() -> Any:
 
         return get_container().resolve(ILibraryImportService)
     except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
-        raise LibraryUnavailableError(str(exc)) from exc
+        raise LibraryUnavailableError(_readable(exc)) from exc
 
 
 def _resolve_track_credit_repository() -> Any:
@@ -1189,7 +1197,7 @@ def _resolve_track_credit_repository() -> Any:
 
         return get_container().resolve(ITrackCreditRepository)
     except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
-        raise LibraryUnavailableError(str(exc)) from exc
+        raise LibraryUnavailableError(_readable(exc)) from exc
 
 
 def _resolve_track_marks_repository() -> Any:
@@ -1200,7 +1208,7 @@ def _resolve_track_marks_repository() -> Any:
 
         return get_container().resolve(ITrackMarksRepository)  # type: ignore[type-abstract]
     except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
-        raise LibraryUnavailableError(str(exc)) from exc
+        raise LibraryUnavailableError(_readable(exc)) from exc
 
 
 def _resolve_playlist_repository() -> Any:
@@ -1211,7 +1219,7 @@ def _resolve_playlist_repository() -> Any:
 
         return get_container().resolve(IPlaylistRepository)
     except Exception as exc:  # noqa: BLE001 — surfaced as a 503 to the caller
-        raise LibraryUnavailableError(str(exc)) from exc
+        raise LibraryUnavailableError(_readable(exc)) from exc
 
 
 def source_to_dict(source: Any) -> Dict[str, Any]:
