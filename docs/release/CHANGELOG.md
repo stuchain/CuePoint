@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-17
+
+**CuePoint 1.0.4 adds Following to Discover and fixes the problems people reported in 1.0.3.** Follow artists and labels and see what they released over a period you pick, with their pictures; Track details suggests three tracks that play well next; Clean finds missing files in a folder and deletes past matches; Save to files now writes M4A files with a full undo; and the first start after an update waits for the library instead of showing an error. "Database is locked" errors in Prepare and Clean, pages reloading every couple of seconds during a long job, and the old CuePoint 0.0 app's update check are fixed. Installed copies of 1.0.0 to 1.0.3 on Windows and Mac offer the update on their own.
+
+**Known issues.** What 1.0.4 ships with, and what to do about each, is in [Known issues](https://github.com/stuchain/CuePoint/blob/main/docs/release/known-issues.md).
+
 ### Changed
 - **The player bar appears when you first play or queue a track.** Before that, the window has no player bar, so the pages get about two more rows. Once it appears it stays until you quit.
 
@@ -22,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Windows no longer fills the temp folder with old copies of the engine.** The engine unpacks itself into the temp folder (about 70 MB) at every start, and that copy stayed behind after each quit. The app now deletes CuePoint's own leftover copies when it starts, and only the ones nothing is using.
 - **Settings' dropdowns and the Keys search box show their box again.** In Neo dark, Classic, Club neon and Muted they were drawn in the colour behind them and read as plain text.
 - **A page header no longer draws its tabs over the page.** With the queue open on a small window, Statistics' header buttons moved to a second line and the tabs sat on top of the first lines below.
-- **Smaller fixes.** A dig card's ⋯ button sits at the card's top right again instead of under the card; the player bar reads "Ninefold · 136 BPM" for a track without a key, not "Ninefold ·136 BPM"; Export to Rekordbox says once that there are no Collections or Sets; Settings > About & updates uses the same text size as the other sections.
+- **Smaller fixes.** A selected row in Clean's Missing files and Prepare's Set shows one accent bar at its left, not two; the Library's rows no longer show above the Track details title when you scroll its panel; a dig card's ⋯ button sits at the card's top right again instead of under the card; the player bar reads "Ninefold · 136 BPM" for a track without a key, not "Ninefold ·136 BPM"; Export to Rekordbox says once that there are no Collections or Sets; Settings > About & updates uses the same text size as the other sections.
 - **Small windows keep their pages whole.** Under 1,200 wide the queue and Track details float over the page instead of squeezing it to one column. Under 1,100 wide Prepare folds its Suggestions panel behind a button at the right edge so the Set keeps its columns. Discover's dig summary wraps instead of being cut. The Library's selection bar folds its buttons into More instead of drawing them over each other.
 - **Keys fits the window.** The wheel can draw down to 6 px per cell at Medium, so the whole wheel and its legend show at 1,280 x 800. Sources, the wheel and the tracks stay side by side from 1,024 wide up, and the tracks no longer drop under the wheel and leave the right third empty at 1,280.
 - **Smaller layout fixes.** The Library header says only the time it read the file when that was today ("read 12:05 PM"), so it no longer wraps from 10:00 to 12:59. Statistics' four summary cards sit in one row or two by two, never three and one. The sidebar's entries get a little shorter instead of scrolling when the zoomed waveform takes its room. Prepare's Suggestions panel starts at 470 px at Medium so titles and the BPM change column show. Track details puts "Match on Beatport" on its own line instead of one letter per line. Check the match shows your track as one compact row and its keyboard keys behind a "?" button, so the Beatport candidates show without scrolling.

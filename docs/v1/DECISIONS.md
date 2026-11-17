@@ -8874,3 +8874,13 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 **Notes**: The custom range is a row under the bar rather than a panel floating from the menu, because the app's only dropdown is the native Select. The `catalog/search` answer's shape was read defensively (lists under `artists` and `labels`, or under `results`) and was not checked against the live API from the cloud. Labels keep 90 days of listings, so a longer period shows fewer label releases.
 
 **Decided with**: User (round-2 mockups wB2, fA2, fA3, "all recommended") · **Date**: 2026-11-17
+
+## DEC-320 — 1.0.4 Ships Without the by-Hand Acceptance Checks (Amends DEC-316)
+
+**Status**: Accepted · **Related**: DEC-309, DEC-313, DEC-314, DEC-316, `docs/release/v1-acceptance.md`, `docs/release/known-issues.md`
+
+**Decision**: `v1.0.4` is tagged without running the by-hand and Remote Control rows that DEC-316 deferred to 1.0.4. They are run before 1.0.5. The rows keep their recorded result; `v1-acceptance.md` says the deferral now runs to 1.0.5, and the known-issues page says the checks were not run by a person before 1.0.0 to 1.0.4. Rows whose How is `CI` still need a green run.
+
+**Reason**: CI runs the end-to-end suite against the packaged app on all four systems, and 1.0.1 to 1.0.3 shipped the same way. 1.0.4 carries fixes for problems users reported through Sentry (PYTHON-1M, PYTHON-1K, PYTHON-1N, PYTHON-1G, and the progress-save reloads behind ELECTRON-3) and the Following, Plays well next and Missing files features.
+
+**Decided with**: User (decision card, 17 Nov 2026, 12:06 Athens: "Ship now, defer to 1.0.5") · **Date**: 2026-11-17

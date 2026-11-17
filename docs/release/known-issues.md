@@ -1,26 +1,8 @@
-# Known Issues in 1.0.3
+# Known Issues in 1.0.4
 
-What is known not to work as well as it should in CuePoint 1.0.3, and what to do meanwhile. None of these loses data or stops the app being used. Each was checked against the code of this release before it was listed. If you find something that is not here, [open an issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) or use **Help > Get help** in the app.
+What is known not to work as well as it should in CuePoint 1.0.4, and what to do meanwhile. None of these loses data or stops the app being used. Each was checked against the code of this release before it was listed. If you find something that is not here, [open an issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) or use **Help > Get help** in the app.
 
 ## In the app
-
-### M4A, MP4 and M4B files are not written by Save to files or Sync
-
-**What happens.** When you save to files or sync, a track in an M4A, MP4 or M4B file is skipped and counted under "formats CuePoint does not write (only MP3, AIFF, FLAC and Ogg Vorbis)". Its Key, Comment, Year, Label, BPM and Genre are not written, and there is no undo for it because nothing changed. MP3, FLAC, AIFF and OGG files are written as usual. CuePoint's writer for the standard M4A tags is in the app but is not switched on in this release.
-
-**What to do.** Keep the values in CuePoint, or edit an M4A's comment in Rekordbox itself.
-
-### The Missing files list has no right-click menu and no double-click to play
-
-**What happens.** On **Clean > Missing files** a row can be selected, but right-clicking it opens no menu and double-clicking it does nothing, unlike the Library's table. A missing file has nothing to play, so the double-click matters less; the missing piece is a menu with the choices the buttons carry.
-
-**What to do.** Select the row and use the buttons under the list, for example to copy the file's path or show it in its folder.
-
-### Past matches cannot be deleted
-
-**What happens.** **Clean > Past matches** lists every match you ran. A past match can be opened, resumed, matched again and its review list saved, but it cannot be deleted. (A Discover dig can be deleted from Discover.) The list only grows.
-
-**What to do.** Nothing is needed to keep using Clean; a past match you no longer want simply stays in the list.
 
 ### The seek slider's tooltip does not say its name
 
@@ -50,7 +32,7 @@ Both are listed under `above_spec` in `scripts/budgets.json`. Neither is somethi
 
 ### Some checks were not run by hand on this release
 
-Everything the automated builds test passed on Windows, both Macs and Linux. The checks that need a person at the machine (a screen reader walk-through, unplugging a sound interface, opening an export in Rekordbox, installing over an older copy) were not run by hand before 1.0.0, 1.0.1, 1.0.2 or 1.0.3, all fix releases, and are done before 1.0.4 (DEC-309, DEC-313, DEC-314, DEC-316). If something in those areas does not work for you, please tell us.
+Everything the automated builds test passed on Windows, both Macs and Linux. The checks that need a person at the machine (a screen reader walk-through, unplugging a sound interface, opening an export in Rekordbox, installing over an older copy) were not run by hand before 1.0.0, 1.0.1, 1.0.2, 1.0.3 or 1.0.4, and are done before 1.0.5 (DEC-309, DEC-313, DEC-314, DEC-316, DEC-320). If something in those areas does not work for you, please tell us.
 
 ### The Intel Mac is covered by CI, not by hand
 
