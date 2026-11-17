@@ -12420,5 +12420,92 @@
         ]
       }
     }
+  },
+  {
+    "name": "cuepoint/persistence/track_credit_repository.py::TrackCreditRepository.follow_counts::No candidates of kind {kind!r}",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "No candidates of kind \"Lovin' You (Ol' Skool Mix)\""
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "No candidates of kind \"<value>\""
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "cuepoint/services/follow_service.py::FollowService.search::limit is 1 to {MAX_SEARCH_RESULTS}, got {limit!r}",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "limit is 1 to 50, got \"Lovin' You (Ol' Skool Mix)\""
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "limit is 1 to 50, got \"<value>\""
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "cuepoint/services/follow_service.py::_check_period::since and until are dates like 2026-11-17, got {since!r} and {until!r}",
+    "ctx": {
+      "home": "/Users/anna",
+      "user_name": "anna",
+      "app_roots": [],
+      "tokens": []
+    },
+    "input": {
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "since and until are dates like 2026-11-17, got \"Lovin' You (Ol' Skool Mix)\" and \"Lovin' You (Ol' Skool Mix)\""
+          }
+        ]
+      }
+    },
+    "expected": {
+      "exception": {
+        "values": [
+          {
+            "type": "ValueError",
+            "value": "since and until are dates like 2026-11-17, got \"<value>\" and \"<value>\""
+          }
+        ]
+      }
+    }
   }
 ]

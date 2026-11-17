@@ -718,6 +718,28 @@ class TrackCreditRepository(ITrackCreditRepository):
             for beatport_id, key, tracks in offered
         ]
 
+    def follow_counts(self, kind: str, ids: Iterable[int]) -> Dict[int, int]:
+        """Library tracks by each of ``ids``, as :meth:`follow_candidates` counts them.
+
+        Only ids a library name is linked to alone have a count (DEC-095);
+        the others are left out.
+        """
+        if kind == ENTITY_ARTIST:
+            links = _ARTIST_LINKS
+        elif kind == ENTITY_LABEL:
+            links = _LABEL_LINKS
+        else:
+            raise ValueError(f"No candidates of kind {kind!r}")
+        wanted = {int(i) for i in ids}
+        if not wanted:
+            return {}
+        ranked = self._ranked_candidates(self._db.connect(), kind, links)
+        return {
+            beatport_id: tracks
+            for beatport_id, _, tracks in ranked
+            if beatport_id in wanted
+        }
+
     def _ranked_candidates(
         self, conn: sqlite3.Connection, kind: str, links: str
     ) -> List[Tuple[int, str, int]]:

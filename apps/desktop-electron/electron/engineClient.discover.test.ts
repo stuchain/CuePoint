@@ -228,6 +228,9 @@ describe("following", () => {
     await c.getFollowSuggestions({ limit: 5 });
     await c.getFollowFeed();
     await c.getFollowFeed({ kind: "label", beatport_id: 900, owned: "all", offset: 20, limit: 50 });
+    await c.getFollows({ since: "2026-10-01", until: "2026-11-17" });
+    await c.getFollowFeed({ since: "2026-11-10" });
+    await c.searchFollows({ q: "Âme & co", limit: 10 });
 
     expect(calls.every((call) => method(call) === "GET")).toBe(true);
     expect(calls.map((call) => call.url)).toEqual([
@@ -236,6 +239,9 @@ describe("following", () => {
       `${BASE}/api/v1/discover/follows/suggestions?limit=5`,
       `${BASE}/api/v1/discover/follows/feed`,
       `${BASE}/api/v1/discover/follows/feed?kind=label&beatport_id=900&owned=all&offset=20&limit=50`,
+      `${BASE}/api/v1/discover/follows?since=2026-10-01&until=2026-11-17`,
+      `${BASE}/api/v1/discover/follows/feed?since=2026-11-10`,
+      `${BASE}/api/v1/discover/follows/search?q=%C3%82me+%26+co&limit=10`,
     ]);
   });
 

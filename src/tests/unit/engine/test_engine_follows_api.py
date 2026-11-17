@@ -74,7 +74,12 @@ def check(engine: str, store: Any, **body: Any) -> Any:
 
 class TestFollowing:
     def test_it_starts_empty(self, engine, world):
-        assert ok(get(engine, api.FOLLOWS_PATH)) == {"follows": [], "new_count": 0}
+        assert ok(get(engine, api.FOLLOWS_PATH)) == {
+            "follows": [],
+            "new_count": 0,
+            "count": 0,
+            "period": {"since": None, "until": None},
+        }
         feed = ok(get(engine, api.FOLLOWS_FEED_PATH))
         assert feed["rows"] == [] and feed["total"] == 0
 
@@ -202,6 +207,38 @@ class TestFollowing:
         )
 
 
+class TestPeriodAndSearch:
+    def test_a_period_lists_seen_tracks_marked_not_new(self, engine, store, world):
+        follow_label(engine)
+        check(engine, store)
+        ok(post(engine, api.FOLLOWS_SEEN_PATH, {}))
+        assert ok(get(engine, api.FOLLOWS_FEED_PATH))["total"] == 0
+        feed = ok(get(engine, api.FOLLOWS_FEED_PATH, since=_days_ago(30)))
+        assert sorted(r["beatport_track_id"] for r in feed["rows"]) == [2, 7, 8]
+        assert {r["new"] for r in feed["rows"]} == {False}
+        assert feed["new_total"] == 0 and feed["window"]["since"] == _days_ago(30)
+        listed = ok(get(engine, api.FOLLOWS_PATH, since=_days_ago(30)))
+        assert listed["count"] == 3 and listed["new_count"] == 0
+        assert listed["follows"][0]["count"] == 3
+
+    def test_search_asks_beatport_once_and_marks_what_is_followed(self, engine, world):
+        follow_label(engine)
+        found = ok(get(engine, api.FOLLOWS_SEARCH_PATH, q="nightfall audio"))
+        assert found["state"] == "ok"
+        assert [
+            (r["kind"], r["beatport_id"], r["followed"]) for r in found["results"]
+        ] == [("label", LABEL, True)]
+        assert len(world.paths("catalog/search")) == 1
+
+
+def _days_ago(n: int) -> str:
+    from datetime import datetime, timedelta, timezone
+
+    from cuepoint.services.discovery_service import local_date
+
+    return (local_date(datetime.now(timezone.utc)) - timedelta(days=n)).isoformat()
+
+
 class TestTheEntityAnswer:
     def test_an_id_page_says_whether_it_is_followed(self, engine, world):
         page = ok(get(engine, api.ENTITY_PATH, kind="label", ref=f"bp:{LABEL}"))
@@ -310,6 +347,17 @@ class TestRefusals:
         "path, params, words",
         [
             (api.FOLLOWS_PATH, {"limit": 1}, "Unknown parameter 'limit'"),
+            (api.FOLLOWS_PATH, {"since": "soon"}, "dates like"),
+            (api.FOLLOWS_PATH, {"until": "2026-01-01"}, "needs since"),
+            (api.FOLLOWS_FEED_PATH, {"since": "1990-01-01"}, "days back"),
+            (
+                api.FOLLOWS_FEED_PATH,
+                {"since": "2026-01-02", "until": "2026-01-01"},
+                "on or before",
+            ),
+            (api.FOLLOWS_SEARCH_PATH, {}, "Type a name"),
+            (api.FOLLOWS_SEARCH_PATH, {"q": "a", "limit": 51}, "limit must be from"),
+            (api.FOLLOWS_SEARCH_PATH, {"q": "a", "kind": "x"}, "Unknown parameter"),
             (api.FOLLOWS_SUGGESTIONS_PATH, {"limit": 0}, "limit must be from"),
             (api.FOLLOWS_SUGGESTIONS_PATH, {"limit": 101}, "limit must be from"),
             (api.FOLLOWS_SUGGESTIONS_PATH, {"limit": "x"}, "whole number"),

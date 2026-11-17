@@ -1028,3 +1028,177 @@ class TestHasArt:
         service.add("artist", 100, "Âme")
         assert "geo-media" not in repr(service.follows())
         assert "geo-media" not in repr(service.suggestions())
+
+
+# ------------------------------------------------------------------ periods
+
+
+class TestAPeriod:
+    """The feed over a period of release dates: seen tracks too, each marked new or not."""
+
+    @pytest.fixture
+    def following(self, service):
+        service.add("artist", 100, "Âme")
+        service.add("artist", 8, "Dixon")
+        service.add("label", 900, "Innervisions")
+        service.check()
+
+    def news(self, feed: Dict[str, Any]) -> Dict[str, bool]:
+        return {row["title"]: row["new"] for row in feed["rows"]}
+
+    def test_without_a_period_every_row_is_new_and_the_window_says_none(
+        self, service, following
+    ):
+        feed = service.feed()
+        assert set(self.news(feed).values()) == {True}
+        assert feed["new_total"] == feed["total"] == 3
+        assert feed["window"]["since"] is None and feed["window"]["until"] is None
+
+    def test_a_period_lists_what_was_seen_too_and_marks_only_the_unseen_new(
+        self, service, following
+    ):
+        service.mark_seen()
+        assert service.feed()["rows"] == []
+        feed = service.feed(since=days(30).isoformat())
+        assert self.news(feed) == {
+            "Track 16": False,
+            "Track 15": False,
+            "Track 11": False,
+        }
+        assert feed["total"] == 3 and feed["new_total"] == 0
+        assert feed["window"]["since"] == days(30).isoformat()
+        assert feed["window"]["until"] == TODAY.isoformat()
+
+    def test_a_period_reaches_before_a_follows_first_look(self, service, following):
+        # Track 12 is 40 days old: before the 30-day start of "new", inside a
+        # 90-day period, and not new.
+        feed = service.feed(since=days(90).isoformat())
+        assert self.news(feed) == {
+            "Track 16": True,
+            "Track 15": True,
+            "Track 11": True,
+            "Track 12": False,
+        }
+        assert feed["new_total"] == 3
+
+    def test_a_release_after_the_mark_is_new_inside_the_period(
+        self, service, world, clock
+    ):
+        service.add("artist", 100, "Âme")
+        service.check()
+        service.mark_seen()
+        world.add_track(31, TODAY, (900, "Innervisions"), (9, "Now"), [(100, "Âme")])
+        service.check(refresh=True)
+        feed = service.feed(since=days(7).isoformat())
+        assert self.news(feed) == {"Track 31": True, "Track 16": False}
+        assert feed["new_total"] == 1
+
+    def test_a_custom_period_ends_on_its_until(self, service, following):
+        feed = service.feed(since=days(45).isoformat(), until=days(8).isoformat())
+        assert self.news(feed) == {"Track 11": True, "Track 12": False}
+
+    def test_a_period_follows_the_owned_filter(self, service, following, lib):
+        lib.add("own15", "Dixon", owns=15)
+        assert "Track 15" not in self.news(service.feed(since=days(30).isoformat()))
+        mine = service.feed(owned="all", since=days(30).isoformat())
+        assert "Track 15" in self.news(mine)
+
+    def test_a_period_for_one_follow(self, service, following):
+        feed = service.feed("artist", 100, since=days(90).isoformat())
+        assert list(self.news(feed)) == ["Track 16", "Track 11", "Track 12"]
+
+    def test_the_follows_count_a_period_beside_what_is_new(self, service, following):
+        service.mark_seen("artist", 100)
+        listed = service.follows(since=days(90).isoformat())
+        rows = {(r["kind"], r["beatport_id"]): r for r in listed["follows"]}
+        assert rows[("artist", 100)]["count"] == 3
+        assert rows[("artist", 100)]["new_count"] == 0
+        assert rows[("artist", 8)]["count"] == 2
+        assert rows[("artist", 8)]["new_count"] == 1
+        assert listed["count"] == 4 and listed["new_count"] == 2
+        assert listed["period"] == {
+            "since": days(90).isoformat(),
+            "until": TODAY.isoformat(),
+        }
+
+    def test_without_a_period_the_count_is_what_is_new(self, service, following):
+        listed = service.follows()
+        assert listed["count"] == listed["new_count"] == 3
+        assert all(r["count"] == r["new_count"] for r in listed["follows"])
+        assert listed["period"] == {"since": None, "until": None}
+
+    def test_a_period_asks_beatport_nothing(self, service, world, following):
+        before = list(world.requests)
+        service.follows(since=days(90).isoformat())
+        service.feed(since=days(7).isoformat())
+        assert world.requests == before
+
+    @pytest.mark.parametrize(
+        "since, until",
+        [
+            (None, "2026-09-01"),
+            ("not a day", None),
+            ("2026-09-20", "2026-09-10"),
+            ("2026-09-20", "2026-09-30"),
+            ("2025-01-01", None),
+        ],
+    )
+    def test_a_period_it_cannot_answer_is_refused(
+        self, service, following, since, until
+    ):
+        with pytest.raises(ValueError):
+            service.feed(since=since, until=until)
+        with pytest.raises(ValueError):
+            service.follows(since=since, until=until)
+
+    def test_a_period_may_start_a_year_back(self, service, following):
+        service.feed(since=days(366).isoformat())
+
+
+class TestSearch:
+    """Beatport artists and labels by name: one request, followed ones marked."""
+
+    URL = "https://geo-media.beatport.com/image_size/{w}x{h}/a.jpg"
+
+    def test_it_finds_artists_and_labels_by_name(self, service, world):
+        found = service.search("innervisions")
+        assert found["state"] == "ok"
+        assert [(r["kind"], r["beatport_id"], r["name"]) for r in found["results"]] == [
+            ("label", 900, "Innervisions")
+        ]
+        assert [(r["kind"], r["name"]) for r in service.search("Âme")["results"]] == [
+            ("artist", "Âme")
+        ]
+        assert len(world.paths("catalog/search")) == 2
+
+    def test_a_followed_name_is_marked_and_owned_tracks_are_counted(self, service, lib):
+        lib.add("a1", "Âme", beatport=[(100, "Âme")])
+        lib.add("a2", "Âme", beatport=[(100, "Âme")])
+        service.add("artist", 100, "Âme")
+        row = service.search("âme")["results"][0]
+        assert row["followed"] is True and row["track_count"] == 2
+        assert service.search("dixon")["results"][0]["track_count"] is None
+        assert service.search("dixon")["results"][0]["followed"] is False
+
+    def test_a_picture_sent_with_a_name_is_kept_and_never_sent_on(
+        self, db, service, world
+    ):
+        world.images[("artist", 8)] = self.URL
+        row = service.search("dixon")["results"][0]
+        assert row["has_art"] is True
+        assert self.URL not in str(row)
+        kept = BeatportCatalogRepository(db).entity_art([("artist", 8)])
+        assert kept[("artist", 8)].image_url == self.URL
+
+    def test_no_token_is_the_answers_state(self, service, world):
+        world.access_token = ""
+        found = service.search("dixon")
+        assert found["state"] == "no_token" and found["results"] == []
+        assert found["message"]
+
+    @pytest.mark.parametrize(
+        "query, limit", [("", 20), ("   ", 20), ("x" * 201, 20), ("a", 0), ("a", 51)]
+    )
+    def test_a_search_it_cannot_answer_is_refused(self, service, query, limit):
+        with pytest.raises(ValueError):
+            service.search(query, limit)

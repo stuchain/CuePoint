@@ -84,6 +84,7 @@ import {
   type FollowSeenChange,
   type FollowSuggestions,
   type FollowsList,
+  type FollowSearch,
   type WantlistChange,
   type WantlistPage,
   type DuplicateGroup,
@@ -1876,8 +1877,16 @@ export class EngineSupervisor {
     return (await this.readyClient()).startBeatportResolve();
   }
 
-  async getFollows(): Promise<DiscoverAnswer<FollowsList>> {
-    return (await this.readyClient()).getFollows();
+  async getFollows(
+    params?: Parameters<EngineClient["getFollows"]>[0],
+  ): Promise<DiscoverAnswer<FollowsList>> {
+    return (await this.readyClient()).getFollows(params);
+  }
+
+  async searchFollows(
+    params: Parameters<EngineClient["searchFollows"]>[0],
+  ): Promise<DiscoverAnswer<FollowSearch>> {
+    return (await this.readyClient()).searchFollows(params);
   }
 
   async getFollowSuggestions(

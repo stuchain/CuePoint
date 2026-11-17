@@ -1224,7 +1224,8 @@ describe("desktop contract", () => {
       getDiscoveryGroupSummary: "}/groups/summary${",
       getBeatportPlaylists: '"/api/v1/discover/playlists"',
       getWantlist: "`/api/v1/discover/wantlist${",
-      getFollows: '"/api/v1/discover/follows"',
+      getFollows: "`/api/v1/discover/follows${",
+      searchFollows: "`/api/v1/discover/follows/search${",
       getFollowSuggestions: "`/api/v1/discover/follows/suggestions${",
       getFollowFeed: "`/api/v1/discover/follows/feed${",
       getEntityPage: "`/api/v1/discover/entity${",
@@ -1255,8 +1256,8 @@ describe("desktop contract", () => {
       return engineClient.slice(start, next === -1 ? undefined : next);
     };
 
-    it("has twenty-eight of them", () => {
-      expect(new Set(methods).size).toBe(28);
+    it("has twenty-nine of them", () => {
+      expect(new Set(methods).size).toBe(29);
     });
 
     it("carries a card's picture as bytes the preload turns into an object URL, never a URL", () => {

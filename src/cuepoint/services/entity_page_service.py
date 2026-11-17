@@ -181,6 +181,10 @@ class EntitySource(Protocol):
         """A label's Beatport id by name, or None."""
         ...
 
+    def search_names(self, query: str, limit: int = 20) -> Tuple[List[Any], List[Any]]:
+        """Artists and labels whose names match, as two lists."""
+        ...
+
 
 def _count(n: int, one: str, many: str) -> str:
     return f"{n:,} {one if n == 1 else many}"
@@ -520,6 +524,37 @@ class EntityPageService(IEntityPageService):
             reason=reason,
             resolvable=resolvable,
         )
+
+    def search(self, query: str, limit: int = 20) -> Dict[str, Any]:
+        """Beatport artists and labels whose names match ``query``.
+
+        ``{state, message, results}``: ``results`` are ``{kind, beatport_id,
+        name}``, artists first, each in Beatport's order. A picture Beatport
+        sends with a name is kept (DEC-318), so it shows without another
+        request. A refusal is the answer's state, with no results, as a page's
+        Beatport half says it.
+        """
+        try:
+            self._beatport.require_token()
+            artists, labels = self._beatport.search_names(query, limit)
+        except BeatportAPIError as error:
+            state = classify_beatport_error(error)
+            _logger.info(
+                "[discover] name search: Beatport refused (%s): %s", state, error
+            )
+            return {"state": state, "message": _REFUSALS[state][0], "results": []}
+        read_at = self._clock().isoformat()
+        results: List[Dict[str, Any]] = []
+        for kind, found in ((ENTITY_ARTIST, artists), (ENTITY_LABEL, labels)):
+            for entity in found:
+                if entity.image_url:
+                    self._catalog.set_entity_art(
+                        kind, entity.id, entity.image_url, read_at
+                    )
+                results.append(
+                    {"kind": kind, "beatport_id": entity.id, "name": entity.name}
+                )
+        return {"state": STATE_OK, "message": "", "results": results}
 
     def _refused(
         self,

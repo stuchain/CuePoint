@@ -597,6 +597,48 @@ class TestTheBeatportCalls:
         assert api.search_artist_by_name("Mara") is None
         assert api.search_artist_by_name("  ") is None
 
+    @pytest.mark.parametrize(
+        "answer",
+        [
+            {
+                "artists": [{"id": 5, "name": "Five"}],
+                "labels": [{"id": 6, "name": "Six"}],
+            },
+            {
+                "artists": {"results": [{"id": 5, "name": "Five"}]},
+                "labels": {"results": [{"id": 6, "name": "Six"}]},
+            },
+            {
+                "results": [
+                    {"type": "artist", "id": 5, "name": "Five"},
+                    {"type": "label", "id": 6, "name": "Six"},
+                    {"type": "track", "id": 7, "name": "Seven"},
+                ]
+            },
+        ],
+    )
+    def test_names_are_searched_in_every_shape_beatport_may_answer(self, answer):
+        from cuepoint.services.beatport_api import BeatportApi
+
+        class Client:
+            def get(self, path, params=None):
+                assert path == "/catalog/search" and params == {"q": "x"}
+                return answer
+
+        artists, labels = BeatportApi(Client()).search_names(" x ")
+        assert [(a.id, a.name) for a in artists] == [(5, "Five")]
+        assert [(b.id, b.name) for b in labels] == [(6, "Six")]
+
+    def test_a_name_search_of_another_shape_is_no_names_never_a_guess(self):
+        from cuepoint.services.beatport_api import BeatportApi
+
+        class Client:
+            def get(self, path, params=None):
+                return {"artists": "nope", "labels": [{"id": "x", "name": ""}, 3]}
+
+        assert BeatportApi(Client()).search_names("x") == ([], [])
+        assert BeatportApi(Client()).search_names("  ") == ([], [])
+
     def test_my_playlists_lists_id_and_name(self):
         from cuepoint.services.beatport_api import BeatportApi
 

@@ -557,19 +557,26 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
         owned: str = OWNED_ALL,
         offset: int = 0,
         limit: int = 100,
+        *,
+        new_after: Optional[Sequence[str]] = None,
     ) -> FollowedTracks:
         """Cached tracks of several artists and labels, each track once.
 
         ``sources`` are ``(kind, beatport_id, since)``: a source's tracks are
-        those released from ``since`` to ``until`` that the follow's mark-seen
-        has not recorded as seen (``follow_seen_tracks``). Newest release first, then
-        the higher id (as :meth:`entity_tracks` orders), however many sources
-        there are and whatever the window: nothing is cut before the window is
-        taken. Ownership is read once for every track (DEC-092).
+        those released from ``since`` to ``until``. Without ``new_after`` only
+        the tracks the follow's mark-seen has not recorded as seen
+        (``follow_seen_tracks``) are read, and every one is new. With it (one
+        ISO date per source) every track of the window is read, and a track
+        is new for a source when it is released on or after that source's
+        date and is not recorded as seen for it; a track is new when it is new
+        for any source. Newest release first, then the higher id (as
+        :meth:`entity_tracks` orders), however many sources there are and
+        whatever the window: nothing is cut before the window is taken.
+        Ownership is read once for every track (DEC-092).
 
         Raises:
-            ValueError: If a kind, the filter or the window is not one this
-                answers.
+            ValueError: If a kind, the filter, the window or ``new_after`` is
+                not one this answers.
         """
         if owned not in OWNED_FILTERS:
             raise ValueError(f"owned must be one of {OWNED_FILTERS}, got {owned!r}")
@@ -577,29 +584,54 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
             raise ValueError(
                 f"A window is 1 to {MAX_ENTITY_WINDOW} tracks from offset 0 or later"
             )
+        if new_after is not None and len(new_after) != len(sources):
+            raise ValueError("new_after names one date for each source")
         conn = self._db.connect()
         by_track: Dict[int, Tuple[str, List[int]]] = {}
+        new_for: Dict[int, List[int]] = {}
+        unseen = (
+            " AND b.beatport_track_id NOT IN (SELECT track_id"
+            " FROM follow_seen_tracks WHERE kind = :kind AND beatport_id = :id)"
+        )
         for position, (kind, beatport_id, since) in enumerate(sources):
             if kind not in _ENTITY_TRACK_IDS:
                 raise ValueError(f"No entity of kind {kind!r}")
+            values = {
+                "kind": kind,
+                "id": int(beatport_id),
+                "since": str(since),
+                "until": str(until),
+            }
+            seen: Set[int] = set()
+            if new_after is not None:
+                seen = {
+                    int(r["track_id"])
+                    for r in conn.execute(
+                        "SELECT track_id FROM follow_seen_tracks"
+                        " WHERE kind = :kind AND beatport_id = :id",
+                        values,
+                    )
+                }
             for row in conn.execute(
                 "SELECT b.beatport_track_id AS id, b.release_date AS day"
                 " FROM beatport_tracks AS b WHERE b.beatport_track_id IN"
                 f" ({_ENTITY_TRACK_IDS[kind]})"
-                " AND b.beatport_track_id NOT IN (SELECT track_id"
-                " FROM follow_seen_tracks WHERE kind = :kind AND beatport_id = :id)",
-                {
-                    "kind": kind,
-                    "id": int(beatport_id),
-                    "since": str(since),
-                    "until": str(until),
-                },
+                + ("" if new_after is not None else unseen),
+                values,
             ):
-                found = by_track.setdefault(int(row["id"]), (row["day"] or "", []))
+                track_id = int(row["id"])
+                day = row["day"] or ""
+                found = by_track.setdefault(track_id, (day, []))
                 found[1].append(position)
+                if new_after is None or (
+                    day >= str(new_after[position]) and track_id not in seen
+                ):
+                    new_for.setdefault(track_id, []).append(position)
         owned_ids = self.owned_among(by_track)
         per_source = [0] * len(sources)
+        per_source_new = [0] * len(sources)
         kept: List[int] = []
+        new_total = 0
         for track_id, (_, positions) in by_track.items():
             is_owned = track_id in owned_ids
             if owned == OWNED_HIDE and is_owned or owned == OWNED_ONLY and not is_owned:
@@ -607,6 +639,10 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
             kept.append(track_id)
             for position in positions:
                 per_source[position] += 1
+            if track_id in new_for:
+                new_total += 1
+                for position in new_for[track_id]:
+                    per_source_new[position] += 1
         kept.sort(key=lambda i: (by_track[i][0], i), reverse=True)
         window_ids = kept[int(offset) : int(offset) + int(limit)]
         tracks = self.get_tracks(window_ids)
@@ -629,6 +665,9 @@ class BeatportCatalogRepository(IBeatportCatalogRepository):
             total=len(kept),
             owned=sum(1 for i in by_track if i in owned_ids),
             per_source=tuple(per_source),
+            new_ids=frozenset(i for i in window_ids if i in new_for),
+            new_total=new_total,
+            per_source_new=tuple(per_source_new),
         )
 
     def release_cover(self, track_id: int) -> Optional[Tuple[Optional[str], bool]]:

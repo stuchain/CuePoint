@@ -46,7 +46,9 @@ that changes something is a POST to an action path, as ``server.py`` speaks.
   the lists that carry ``has_art`` never do.
 - ``GET follows``, ``GET follows/suggestions`` and ``GET follows/feed`` — the
   followed artists and labels, the library's names worth following, and what
-  they released since the user last looked; all from the cache. ``POST
+  they released since the user last looked, or in a period (``since`` and
+  ``until``, dates); all from the cache. ``GET follows/search`` asks Beatport
+  once for artists and labels by name, to follow. ``POST
   follows/add``, ``/remove``, ``/seen`` and ``/check/start`` (a job that reads
   Beatport) change them. ``GET entity`` also says ``followable`` and
   ``followed``.
@@ -116,6 +118,7 @@ ENTITY_ART_PATH = PREFIX + "entity/art"
 FOLLOWS_PATH = PREFIX + "follows"
 FOLLOWS_SUGGESTIONS_PATH = PREFIX + "follows/suggestions"
 FOLLOWS_FEED_PATH = PREFIX + "follows/feed"
+FOLLOWS_SEARCH_PATH = PREFIX + "follows/search"
 FOLLOWS_ADD_PATH = PREFIX + "follows/add"
 FOLLOWS_REMOVE_PATH = PREFIX + "follows/remove"
 FOLLOWS_SEEN_PATH = PREFIX + "follows/seen"
@@ -211,14 +214,17 @@ ENTITY_BEATPORT_PARAMS: Tuple[str, ...] = (
     "offset",
     "limit",
 )
-FOLLOWS_PARAMS: Tuple[str, ...] = ()
+FOLLOWS_PARAMS: Tuple[str, ...] = ("since", "until")
 FOLLOWS_SUGGESTIONS_PARAMS: Tuple[str, ...] = ("limit",)
+FOLLOWS_SEARCH_PARAMS: Tuple[str, ...] = ("q", "limit")
 FOLLOWS_FEED_PARAMS: Tuple[str, ...] = (
     "kind",
     "beatport_id",
     "owned",
     "offset",
     "limit",
+    "since",
+    "until",
 )
 FOLLOWS_ADD_FIELDS: Tuple[str, ...] = ("kind", "beatport_id", "name")
 FOLLOWS_REMOVE_FIELDS: Tuple[str, ...] = ("kind", "beatport_id")
@@ -1303,9 +1309,22 @@ def entity_beatport(params: Dict[str, List[str]]) -> Dict[str, Any]:
 
 
 def follows(params: Dict[str, List[str]]) -> Dict[str, Any]:
-    """Every follow with its new-track count, from the cache only."""
-    _params(params, FOLLOWS_PARAMS)
-    result: Dict[str, Any] = _resolve("IFollowService").follows()
+    """Every follow with its new-track count (and a period's), from the cache only."""
+    query = _params(params, FOLLOWS_PARAMS)
+    result: Dict[str, Any] = _resolve("IFollowService").follows(
+        since=query.get("since") or None, until=query.get("until") or None
+    )
+    return result
+
+
+def follows_search(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Beatport artists and labels by name, to follow (one Beatport request)."""
+    from cuepoint.services.follow_service import MAX_SEARCH_RESULTS
+
+    query = _params(params, FOLLOWS_SEARCH_PARAMS)
+    result: Dict[str, Any] = _resolve("IFollowService").search(
+        query.get("q", ""), _query_int(query, "limit", 20, 1, MAX_SEARCH_RESULTS)
+    )
     return result
 
 
@@ -1336,6 +1355,8 @@ def follows_feed(params: Dict[str, List[str]]) -> Dict[str, Any]:
         owned=_query_choice(query, "owned", OWNED_FILTERS, OWNED_HIDE),
         offset=_query_int(query, "offset", 0, 0, 2**63 - 1),
         limit=_query_int(query, "limit", WINDOW_DEFAULT, 1, MAX_ENTITY_WINDOW),
+        since=query.get("since") or None,
+        until=query.get("until") or None,
     )
     return result
 
@@ -1445,6 +1466,7 @@ _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
     FOLLOWS_PATH: follows,
     FOLLOWS_SUGGESTIONS_PATH: follows_suggestions,
     FOLLOWS_FEED_PATH: follows_feed,
+    FOLLOWS_SEARCH_PATH: follows_search,
     SIMILAR_PATH: similar,
     PLAYLISTS_PATH: playlists,
 }

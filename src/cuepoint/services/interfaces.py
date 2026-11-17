@@ -1444,6 +1444,11 @@ class ITrackCreditRepository(ABC):
         ...
 
     @abstractmethod
+    def follow_counts(self, kind: str, ids: Iterable[int]) -> Dict[int, int]:
+        """Library tracks by each id a library name is linked to alone."""
+        ...
+
+    @abstractmethod
     def track_count(self) -> int:
         """How many tracks a rebuild will read."""
         ...
@@ -1592,8 +1597,14 @@ class IBeatportCatalogRepository(ABC):
         owned: str = "all",
         offset: int = 0,
         limit: int = 100,
+        *,
+        new_after: Optional[Sequence[str]] = None,
     ) -> "FollowedTracks":
-        """Cached tracks of several artists and labels, each track once."""
+        """Cached tracks of several artists and labels, each track once.
+
+        With ``new_after`` (one date per source) seen tracks are read too and
+        the answer says which are new.
+        """
         ...
 
 
@@ -2137,6 +2148,11 @@ class IEntityPageService(ABC):
         """A page's recent Beatport tracks, or the state that stands in for them."""
         ...
 
+    @abstractmethod
+    def search(self, query: str, limit: int = 20) -> Dict[str, Any]:
+        """Beatport artists and labels by name: ``{state, message, results}``."""
+        ...
+
 
 class IFollowRepository(ABC):
     """Interface for the followed artists and labels (migrations 0034, 0036)."""
@@ -2182,8 +2198,15 @@ class IFollowService(ABC):
     """Interface for following Beatport artists and labels (Discover)."""
 
     @abstractmethod
-    def follows(self) -> Dict[str, Any]:
-        """Every follow with its new-track count, from the cache only."""
+    def follows(
+        self, since: Optional[str] = None, until: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Every follow with its new-track count (and a period's), from the cache only."""
+        ...
+
+    @abstractmethod
+    def search(self, query: str, limit: int = 20) -> Dict[str, Any]:
+        """Beatport artists and labels by name, to follow."""
         ...
 
     @abstractmethod
@@ -2199,8 +2222,10 @@ class IFollowService(ABC):
         owned: str = "hide",
         offset: int = 0,
         limit: int = 100,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Cached tracks released since each follow was last seen, newest first."""
+        """Cached tracks released since each follow was last seen (or in a period), newest first."""
         ...
 
     @abstractmethod

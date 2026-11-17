@@ -152,6 +152,12 @@ function writeFixture(dir: string): string {
     { path: "catalog/artists/301001", body: { id: 301001, name: "Mara Veil", slug: "mara-veil", image: image(7001, MARA_IMAGE) } },
     { path: "catalog/labels/40211", body: { id: 40211, name: "Nightfall Audio", slug: "nightfall-audio", image: image(7002, NIGHTFALL_IMAGE) } },
     { path: "catalog/artists/301002", body: { id: 301002, name: "Kiko", slug: "kiko" } },
+    // Find more to follow: Beatport's name search for "Kiko".
+    {
+      path: "catalog/search",
+      params: { q: "Kiko" },
+      body: { artists: [{ id: 301002, name: "Kiko", slug: "kiko" }], labels: [] },
+    },
   );
   writeFileSync(file, JSON.stringify(fixture), "utf-8");
   return file;
@@ -177,6 +183,8 @@ async function ready(app: ElectronApplication): Promise<Page> {
   await window.evaluate(() => {
     localStorage.setItem("cuepoint-onboarding-complete", "1");
     localStorage.setItem("cuepoint-phase14-note-seen", "1");
+    // The steps below read "new since you last looked"; the period step picks Last 30 days itself.
+    localStorage.setItem("cuepoint-following-period", JSON.stringify({ kind: "new" }));
   });
   await window.reload();
   await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
@@ -461,6 +469,38 @@ test.describe("Plays well next and Following", () => {
         await idle(window);
         await expect(list.getByRole("button", { name: /^All/ })).toContainText("nothing new", { timeout: 30_000 });
         await expect(feedTable.getByText("Nothing new from the names you follow")).toBeVisible({ timeout: 30_000 });
+      });
+
+      await test.step("a period lists what was seen too, with nothing marked new", async () => {
+        const menu = following.getByRole("combobox", { name: "Show" });
+        await menu.selectOption("30");
+        await expect.poll(titles, { timeout: 30_000 }).toEqual(["Night Drive", "Salt Air", "Undertow", "Label Cut"]);
+        await expect(following.locator(".discover-following__status")).toContainText("4 tracks", { timeout: 15_000 });
+        await expect(feedTable.locator(".discover-track-title__new")).toHaveCount(0);
+        await expect(list.getByRole("button", { name: /^All/ })).toContainText("4");
+        await shoot(app, window, "following-period");
+        await menu.selectOption("custom");
+        const range = following.getByRole("group", { name: "Custom range" });
+        await expect(range).toBeVisible();
+        await shoot(app, window, "following-custom-range");
+        await range.getByRole("button", { name: "Cancel" }).click();
+        await expect(menu).toHaveValue("30");
+      });
+
+      await test.step("Find more to follow: search Beatport, follow from the results, and back", async () => {
+        await list.getByRole("button", { name: "Find more to follow" }).click();
+        await expect(following.getByRole("heading", { name: "Find more to follow" })).toBeVisible({ timeout: 15_000 });
+        await shoot(app, window, "following-find");
+        await following.getByRole("searchbox", { name: "Search Beatport artists and labels" }).fill("Kiko");
+        const found = following.getByRole("list", { name: "Artists and labels found on Beatport" });
+        await found.getByRole("button", { name: "Follow Kiko" }).click({ timeout: 30_000 });
+        await expect(found.getByRole("button", { name: "Following Kiko" })).toBeVisible({ timeout: 15_000 });
+        await shoot(app, window, "following-find-search");
+        await following.getByRole("button", { name: "What's new" }).click();
+        await expect(list.getByRole("button", { name: /^Kiko/ })).toBeVisible({ timeout: 30_000 });
+        await list.getByRole("button", { name: /^Kiko/ }).click();
+        await list.getByRole("button", { name: "Unfollow Kiko" }).click();
+        await expect(list.getByRole("button", { name: /^Kiko/ })).toHaveCount(0, { timeout: 15_000 });
       });
 
       await test.step("unfollow one", async () => {

@@ -39,6 +39,7 @@ import fixture from "./discoverPage.fixture.json";
 import { DISCOVER_SECTION_STORAGE_KEY } from "./discoverSections";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { HIDE_OWNED_STORAGE_KEY } from "./useHideOwned";
+import { FOLLOW_PERIOD_STORAGE_KEY } from "./followPeriod";
 import { foundLine } from "./discoverFormat";
 import { expectNoAxeViolations } from "../../test/axe";
 
@@ -1695,8 +1696,13 @@ describe("Discover accessibility (HARDEN-08)", () => {
 });
 
 describe("the Following tab", () => {
+  beforeEach(() => {
+    localStorage.setItem(FOLLOW_PERIOD_STORAGE_KEY, JSON.stringify({ kind: "new" }));
+  });
   const followsList = (count: number) =>
-    vi.fn(async () => value({ follows: [], new_count: count }));
+    vi.fn(async () =>
+      value({ follows: [], new_count: count, count, period: { since: null, until: null } }),
+    );
 
   it("shows a count of new tracks after the name when there are some", async () => {
     install({ getFollows: followsList(14) });
@@ -1780,6 +1786,7 @@ describe("the Following tab", () => {
         value({
           rows: [],
           total: 2,
+          new_total: 2,
           hidden_owned: 0,
           checked_at: null,
           unchecked: 0,
@@ -1828,6 +1835,7 @@ describe("the Following tab", () => {
         value({
           rows: [],
           total: 2,
+          new_total: 2,
           hidden_owned: 0,
           checked_at: null,
           unchecked: 0,

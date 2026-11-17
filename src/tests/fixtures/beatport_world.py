@@ -220,9 +220,12 @@ class BeatportWorld:
             return {
                 "labels": [label for label in self._labels() if _named(label, query)],
                 "artists": [
-                    {"id": i, "name": n, "slug": n.lower().replace(" ", "-")}
+                    {
+                        **self._entity_json("artist", (i, n)),
+                        "slug": n.lower().replace(" ", "-"),
+                    }
                     for i, n in sorted(self._artists().items())
-                    if n.lower() == query
+                    if query and (n.lower() == query or query in n.lower())
                 ],
             }
         if route == "catalog/labels":

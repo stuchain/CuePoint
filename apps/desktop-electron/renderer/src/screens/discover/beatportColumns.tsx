@@ -13,6 +13,7 @@
  * A column sorts by the engine's own sort names; one the engine cannot order
  * by has no `sortKey`. Each table keeps its own layout (DEC-042).
  */
+import { Badge } from "../../components/Badge";
 import type {
   FollowFeedRow,
   BeatportTrackRow,
@@ -280,6 +281,31 @@ export const FOLLOW_COLUMNS: readonly TrackColumnDef<FollowFeedRow>[] = [
   ownedColumn<FollowFeedRow>(),
   wantedColumn<FollowFeedRow>(),
 ];
+
+/**
+ * The feed over a period lists seen tracks too, so a new one says so: a small "New" chip before its
+ * name. Over "new since you last looked" every row is new and FOLLOW_COLUMNS has no chip.
+ */
+export const FOLLOW_PERIOD_COLUMNS: readonly TrackColumnDef<FollowFeedRow>[] = FOLLOW_COLUMNS.map((column) =>
+  column.id !== "title"
+    ? column
+    : {
+        ...column,
+        render: (row: FollowFeedRow) => (
+          <span className="discover-track-title">
+            <TrackCover trackId={row.beatport_track_id} hasArt={row.has_art === true} />
+            {row.new && (
+              <Badge variant="accent" className="discover-track-title__new">
+                New
+              </Badge>
+            )}
+            <span className="track-table__cell-text" data-cut-hint="">
+              {trackName(row)}
+            </span>
+          </span>
+        ),
+      },
+);
 
 export const WANTLIST_COLUMNS: readonly TrackColumnDef<WantlistRow>[] = [
   ...sharedColumns<WantlistRow>(),

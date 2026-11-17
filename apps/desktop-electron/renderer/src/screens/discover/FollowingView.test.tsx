@@ -21,6 +21,7 @@ import fixture from "./discoverPage.fixture.json";
 import { FollowingView } from "./FollowingView";
 import { RETRY } from "../../format/words";
 import { followStatusLine, checkedAgo, oldestSeenThrough } from "./followFormat";
+import { FOLLOW_PERIOD_STORAGE_KEY, daysBefore } from "./followPeriod";
 import type { DiscoverTools } from "./discoverTools";
 
 type Fn = ReturnType<typeof vi.fn>;
@@ -41,6 +42,7 @@ function follow(over: Partial<FollowRow>): FollowRow {
     followed_at: "2026-11-01T00:00:00Z",
     seen_through: "2026-11-06",
     new_count: 0,
+    count: 0,
     checked_at: null,
     state: null,
     has_art: true,
@@ -75,6 +77,7 @@ function trackRow(id: number, title: string, artist: string, source: FollowRow):
     title,
     url: `https://www.beatport.com/track/x/${id}`,
     follows: [{ kind: source.kind, beatport_id: source.beatport_id, name: source.name }],
+    new: id !== 102,
   } as unknown as FollowFeedRow;
 }
 
@@ -87,9 +90,12 @@ const ROWS = [
 function feedPage(params: Record<string, unknown> = {}): DiscoverAnswer<FollowFeed> {
   const id = params.beatport_id as number | undefined;
   const rows = id === undefined ? ROWS : ROWS.filter((row) => row.follows[0]!.beatport_id === id);
+  const inPeriod = typeof params.since === "string";
+  const shown = inPeriod ? rows : rows.map((row) => ({ ...row, new: true }));
   return value({
-    rows,
-    total: rows.length,
+    rows: shown,
+    total: shown.length,
+    new_total: shown.filter((row) => row.new).length,
     hidden_owned: 3,
     checked_at: new Date().toISOString(),
     unchecked: 0,
@@ -101,6 +107,8 @@ function feedPage(params: Record<string, unknown> = {}): DiscoverAnswer<FollowFe
       owned: (params.owned as "hide") ?? "hide",
       offset: Number(params.offset ?? 0),
       limit: Number(params.limit ?? 100),
+      since: (params.since as string | undefined) ?? null,
+      until: inPeriod ? ((params.until as string | undefined) ?? new Date().toISOString().slice(0, 10)) : null,
     },
   });
 }
@@ -112,8 +120,13 @@ const SUGGESTIONS: FollowSuggestion[] = [
 
 function install(overrides: Record<string, Fn> = {}) {
   bridge = {
-    getFollows: vi.fn(async () =>
-      value({ follows: FOLLOWS, new_count: FOLLOWS.reduce((sum, row) => sum + row.new_count, 0) }),
+    getFollows: vi.fn(async (params?: { since?: string; until?: string }) =>
+      value({
+        follows: FOLLOWS.map((row) => ({ ...row, count: params?.since ? row.new_count + 1 : row.new_count })),
+        new_count: FOLLOWS.reduce((sum, row) => sum + row.new_count, 0),
+        count: FOLLOWS.reduce((sum, row) => sum + row.new_count, 0) + (params?.since ? FOLLOWS.length : 0),
+        period: { since: params?.since ?? null, until: params?.until ?? null },
+      }),
     ),
     getFollowSuggestions: vi.fn(async () => value({ suggestions: SUGGESTIONS })),
     getFollowFeed: vi.fn(async (params: Record<string, unknown>) => feedPage(params ?? {})),
@@ -135,7 +148,7 @@ function install(overrides: Record<string, Fn> = {}) {
 
 function emptyFeedPage(params: Record<string, unknown> = {}): DiscoverAnswer<FollowFeed> {
   const page = feedPage(params);
-  return value({ ...page.value!, rows: [], total: 0, hidden_owned: 0 });
+  return value({ ...page.value!, rows: [], total: 0, new_total: 0, hidden_owned: 0 });
 }
 
 function emptyFollows() {
@@ -201,6 +214,8 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  // The tests below were written for "new since you last looked"; the period's own tests set theirs.
+  localStorage.setItem(FOLLOW_PERIOD_STORAGE_KEY, JSON.stringify({ kind: "new" }));
   resetCoversForTests();
   install();
 });
@@ -931,5 +946,142 @@ describe("the sentences", () => {
   it("takes the oldest day any follow was seen through", () => {
     expect(oldestSeenThrough([AMSEL, follow({ seen_through: "2026-11-01" })])).toBe("2026-11-01");
     expect(oldestSeenThrough([])).toBeNull();
+  });
+});
+
+describe("the period the feed shows", () => {
+  const feedCalls = () => bridge.getFollowFeed!.mock.calls.map((call) => call[0] as Record<string, unknown>);
+  const menu = () => screen.getByRole("combobox", { name: "Show" });
+
+  it("opens on Last 30 days the first time, with the new tracks marked", async () => {
+    localStorage.clear();
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    expect(menu()).toHaveValue("30");
+    expect(feedCalls().at(-1)).toMatchObject({ since: daysBefore(new Date(), 30) });
+    expect(bridge.getFollows).toHaveBeenCalledWith({ since: daysBefore(new Date(), 30) });
+    // 102 was seen: listed, but not marked.
+    expect(screen.getAllByText("New", { selector: ".discover-track-title__new" })).toHaveLength(2);
+    await waitFor(() => expect(statusLine()?.textContent).toMatch(/^3 tracks · 2 new · checked just now · 3 you own hidden$/), LOADED);
+  });
+
+  it("marks nothing over new since you last looked, where every row is new", async () => {
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    expect(menu()).toHaveValue("new");
+    expect(document.querySelector(".discover-track-title__new")).toBeNull();
+    expect(feedCalls().at(-1)?.since).toBeUndefined();
+  });
+
+  it("asks for the period picked, and opens on it next time", async () => {
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    fireEvent.change(menu(), { target: { value: "7" } });
+    await waitFor(() => expect(feedCalls().at(-1)).toMatchObject({ since: daysBefore(new Date(), 7) }), LOADED);
+    await waitFor(() => expect(bridge.getFollows).toHaveBeenCalledWith({ since: daysBefore(new Date(), 7) }), LOADED);
+    expect(JSON.parse(localStorage.getItem(FOLLOW_PERIOD_STORAGE_KEY)!)).toEqual({ kind: "days", days: 7 });
+  });
+
+  it("shows a custom range only once Show is pressed, and Cancel keeps the period", async () => {
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    fireEvent.change(menu(), { target: { value: "custom" } });
+    const range = screen.getByRole("group", { name: "Custom range" });
+    const calls = feedCalls().length;
+    fireEvent.click(within(range).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("group", { name: "Custom range" })).toBeNull();
+    expect(menu()).toHaveValue("new");
+
+    fireEvent.change(menu(), { target: { value: "custom" } });
+    const again = screen.getByRole("group", { name: "Custom range" });
+    fireEvent.change(within(again).getByLabelText("From"), { target: { value: "2026-10-01" } });
+    fireEvent.change(within(again).getByLabelText("To"), { target: { value: "2026-10-31" } });
+    expect(feedCalls()).toHaveLength(calls);
+    fireEvent.click(within(again).getByRole("button", { name: "Show" }));
+    await waitFor(() => expect(feedCalls().at(-1)).toMatchObject({ since: "2026-10-01", until: "2026-10-31" }), LOADED);
+    expect(JSON.parse(localStorage.getItem(FOLLOW_PERIOD_STORAGE_KEY)!)).toEqual({
+      kind: "custom",
+      since: "2026-10-01",
+      until: "2026-10-31",
+    });
+  });
+
+  it("will not show a range that ends before it starts", async () => {
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    fireEvent.change(menu(), { target: { value: "custom" } });
+    const range = screen.getByRole("group", { name: "Custom range" });
+    fireEvent.change(within(range).getByLabelText("From"), { target: { value: "2026-11-10" } });
+    fireEvent.change(within(range).getByLabelText("To"), { target: { value: "2026-11-01" } });
+    expect(within(range).getByRole("button", { name: "Show" })).toBeDisabled();
+  });
+});
+
+describe("finding more to follow", () => {
+  const FOUND = [
+    { kind: "artist" as const, beatport_id: 77, name: "Âme", track_count: null, followed: false, has_art: false },
+    { kind: "label" as const, beatport_id: 1, name: "Amsel", track_count: 42, followed: true, has_art: false },
+  ];
+
+  async function openFind() {
+    install({
+      getFollowSuggestions: vi.fn(async () =>
+        value({ suggestions: [{ ...SUGGESTIONS[0]!, followed: true }, SUGGESTIONS[1]!] }),
+      ),
+      searchFollows: vi.fn(async () => value({ state: "ok", message: null, results: FOUND })),
+    });
+    renderView();
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    fireEvent.click(screen.getByRole("button", { name: "Find more to follow" }));
+    await screen.findByRole("heading", { name: "Find more to follow" });
+  }
+
+  it("opens from under the names list and offers the names not followed yet", async () => {
+    await openFind();
+    const list = await screen.findByRole("list", { name: "Suggested artists and labels" });
+    expect(within(list).queryByRole("button", { name: "Following Amsel" })).toBeNull();
+    expect(within(list).getByRole("button", { name: "Follow Monochrome Hours" })).toBeInTheDocument();
+  });
+
+  it("searches Beatport after a pause, and follows from the results", async () => {
+    await openFind();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search Beatport artists and labels" }), {
+      target: { value: "Âme" },
+    });
+    expect(bridge.searchFollows).not.toHaveBeenCalled();
+    const found = await screen.findByRole("list", { name: "Artists and labels found on Beatport" }, LOADED);
+    expect(bridge.searchFollows).toHaveBeenCalledTimes(1);
+    expect(bridge.searchFollows).toHaveBeenCalledWith({ q: "Âme" });
+    // Followed names stay in the results, said as Following.
+    expect(within(found).getByRole("button", { name: "Following Amsel" })).toBeInTheDocument();
+    fireEvent.click(within(found).getByRole("button", { name: "Follow Âme" }));
+    await waitFor(() => expect(bridge.addFollow).toHaveBeenCalledWith({ kind: "artist", beatport_id: 77, name: "Âme" }), LOADED);
+    expect(await within(found).findByRole("button", { name: "Following Âme" })).toBeInTheDocument();
+  });
+
+  it("does not search for one letter", async () => {
+    await openFind();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search Beatport artists and labels" }), {
+      target: { value: "a" },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(bridge.searchFollows).not.toHaveBeenCalled();
+  });
+
+  it("says when Beatport finds nobody by that name", async () => {
+    await openFind();
+    bridge.searchFollows!.mockImplementation(async () => value({ state: "ok", message: null, results: [] }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search Beatport artists and labels" }), {
+      target: { value: "zzz" },
+    });
+    expect(await screen.findByText(/No artist or label named/, undefined, LOADED)).toBeInTheDocument();
+  });
+
+  it("goes back to what is new, and reads the list again", async () => {
+    await openFind();
+    const reads = bridge.getFollows!.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "What's new" }));
+    await waitFor(() => expect(rowsOf(FEED)).toHaveLength(3), LOADED);
+    expect(bridge.getFollows!.mock.calls.length).toBeGreaterThan(reads);
   });
 });

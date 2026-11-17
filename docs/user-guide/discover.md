@@ -241,6 +241,21 @@ the switch off, how many you own are shown). A name Beatport could not be read f
 says so in the list. Checking needs a Beatport sign-in. The tracks work like any Discover table:
 play a preview, add to the wantlist, add to a Beatport playlist, or open on Beatport.
 
+**Which tracks are listed.** The **Show** menu beside the status line chooses: **New since you last
+looked** lists only the new tracks, as described above; **Last 7 days**, **Last 30 days** and
+**Last 90 days** list every release in that time, seen or not, with a **New** chip before the title
+of each one that is new; **Custom range…** opens From and To days under the bar (up to a year back),
+and **Show** lists them. The tab opens on the choice you made last time, Last 30 days at first.
+Over a period the status line reads "42 tracks · 5 new · checked 2 min ago", and each name in the
+list shows its tracks in the period, with the new ones in a chip. A label's listing keeps its last
+90 days only (an artist's a year), and the tab says so when a range reaches further back.
+
+**Find more to follow.** The button under the list of names opens a page with a search box. Type at
+least two letters to search Beatport's artists and labels by name; each result has its own
+**Follow** button, and a name you already follow says **Following**. With the search empty, the
+page offers the names you own the most tracks by that you do not follow yet. **What's new** at the
+top goes back to the list. Searching needs a Beatport sign-in.
+
 ## What you can do with Beatport tracks
 
 Select tracks with a click, add to the selection with Ctrl-click (Cmd-click on

@@ -1186,7 +1186,8 @@ function registerIpcHandlers(): void {
   handle("engine:deleteDiscoverList", (_event, params) =>
     engine.deleteDiscoverList(params),
   );
-  handle("engine:getFollows", () => engine.getFollows());
+  handle("engine:getFollows", (_event, params) => engine.getFollows(params));
+  handle("engine:searchFollows", (_event, params) => engine.searchFollows(params));
   handle("engine:getFollowSuggestions", (_event, params) =>
     engine.getFollowSuggestions(params),
   );

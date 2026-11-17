@@ -2703,6 +2703,8 @@ export interface FollowRow {
   seen_through: string;
   /** New tracks in the cache that the library does not own. */
   new_count: number;
+  /** Tracks of the period asked for that the library does not own, seen or not; `new_count` without one. */
+  count: number;
   /** When its listing was last read from Beatport; null when never. */
   checked_at: string | null;
   /** Why its last check failed, when it did; held for the life of the engine. */
@@ -2721,6 +2723,15 @@ export interface FollowRefusal {
 export interface FollowsList {
   follows: FollowRow[];
   new_count: number;
+  /** The period's tracks the library does not own, each once; `new_count` without a period. */
+  count: number;
+  period: FollowPeriod;
+}
+
+/** A period of release dates (ISO); both null for "new since you last looked". */
+export interface FollowPeriod {
+  since: string | null;
+  until: string | null;
 }
 
 /** A library artist or label linked to exactly one Beatport id, offered to follow. */
@@ -2739,6 +2750,18 @@ export interface FollowSuggestions {
   suggestions: FollowSuggestion[];
 }
 
+/** A Beatport artist or label found by name; `track_count` is null when the library links none to it alone. */
+export interface FollowSearchResult extends Omit<FollowSuggestion, "track_count"> {
+  track_count: number | null;
+}
+
+/** `GET follows/search`: one Beatport request; a refusal is the state, with no results. */
+export interface FollowSearch {
+  state: EntityBeatportState;
+  message: string;
+  results: FollowSearchResult[];
+}
+
 /** Which follow a feed track came from. */
 export interface FollowSource {
   kind: EntityKind;
@@ -2749,6 +2772,8 @@ export interface FollowSource {
 /** A feed track: the shape every Beatport table sends, with the follows it came from. */
 export interface FollowFeedRow extends BeatportTrackRow {
   follows: FollowSource[];
+  /** Not seen yet: released after the follow was last looked at, and not among what it showed. */
+  new: boolean;
 }
 
 /** A follow whose last check Beatport refused. */
@@ -2765,13 +2790,17 @@ export interface FollowFeedWindow {
   owned: DiscoverOwnedFilter;
   offset: number;
   limit: number;
+  since: string | null;
+  until: string | null;
 }
 
-/** `GET follows/feed`: new tracks, newest release first, from the cache only. */
+/** `GET follows/feed`: new tracks (or a period's), newest release first, from the cache only. */
 export interface FollowFeed {
   rows: FollowFeedRow[];
   /** Rows after the owned filter, across every window. */
   total: number;
+  /** Of `total`, the new ones. */
+  new_total: number;
   /** Owned tracks the default filter hid; 0 unless owned is "hide". */
   hidden_owned: number;
   /** When the oldest listing was read; null when any follow has none yet. */
@@ -4475,7 +4504,9 @@ export interface CuePointBridge {
   /** Resolve the library's accepted matches on Beatport, only when asked. */
   startBeatportResolve?: () => Promise<DiscoverAnswer<DiscoverJobStarted>>;
   /** Followed artists and labels with their new-track counts; the cache only. */
-  getFollows?: () => Promise<DiscoverAnswer<FollowsList>>;
+  getFollows?: (params?: { since?: string; until?: string }) => Promise<DiscoverAnswer<FollowsList>>;
+  /** Beatport artists and labels by name, to follow: one Beatport request. */
+  searchFollows?: (params: { q: string; limit?: number }) => Promise<DiscoverAnswer<FollowSearch>>;
   getFollowSuggestions?: (params?: {
     limit?: number;
   }) => Promise<DiscoverAnswer<FollowSuggestions>>;
@@ -4485,6 +4516,8 @@ export interface CuePointBridge {
     owned?: DiscoverOwnedFilter;
     offset?: number;
     limit?: number;
+    since?: string;
+    until?: string;
   }) => Promise<DiscoverAnswer<FollowFeed>>;
   addFollow?: (params: {
     kind: EntityKind;

@@ -233,3 +233,45 @@
   margin: 0;
   font-size: var(--font-size-sm);
 }
+
+/* A name's line in the list: the period's track count, then a New chip when some are new. */
+.discover-following__counts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  white-space: nowrap;
+}
+
+/* Under the names list: the way back to finding more names. */
+.discover-following__find {
+  align-self: flex-start;
+  margin-top: var(--space-lg);
+}
+
+/* The custom range, under the bar while it is being picked: From, To, then its two buttons. */
+.discover-following__range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.discover-following__note {
+  margin: 0;
+}
+
+/* The search on the Find more page takes the panel's width, up to a readable line. */
+.discover-following__search {
+  max-width: calc(420px * var(--scale));
+}
+
+.discover-following__unfollow + .discover-following__find {
+  margin-top: 0;
+}
+
+/* The period menu: wide enough for "New since you last looked" and a custom range's dates, and no
+   wider, so the bar keeps to one line at 1024 wide where it can. */
+.discover-following__period {
+  max-width: calc(230px * var(--scale));
+  width: calc(230px * var(--scale));
+}

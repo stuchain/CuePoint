@@ -32,6 +32,15 @@ not recorded. A later mark that moves ``seen_through`` forward drops the ids
 dated on or before the new day, so the store stays small. A track by two
 follows appears once, naming both.
 
+A period
+--------
+The feed and the counts can also be read over a period of release dates
+(``since`` to ``until``, at most :data:`MAX_PERIOD_DAYS` back): then every
+cached track of the period is listed, seen or not, and each says whether it is
+new by the rule above. The listings a check keeps reach back a year for an
+artist and 90 days for a label (``RECENT_DAYS``), so a longer period finds
+nothing older for a label.
+
 What is not stored
 ------------------
 A follow's last refusal is held in memory for the life of the engine: it says
@@ -81,6 +90,13 @@ MAX_NAME = 300
 
 #: The most suggestions asked for at once.
 MAX_SUGGESTIONS = 100
+
+#: How far back a period may start, in days before today.
+MAX_PERIOD_DAYS = 366
+
+#: The most search answers asked for at once, and the longest search.
+MAX_SEARCH_RESULTS = 50
+MAX_SEARCH_TEXT = 200
 
 EVENT_ADDED = "discover.follow.added"
 EVENT_REMOVED = "discover.follow.removed"
@@ -132,6 +148,34 @@ def _check_which(
     return _check_kind(kind), _check_id(beatport_id)
 
 
+def _check_period(
+    since: Optional[str], until: Optional[str], today: date
+) -> Optional[Tuple[str, str]]:
+    """``(since, until)`` as ISO dates, or None for "new since last looked".
+
+    ``until`` defaults to today. A period starts at most
+    :data:`MAX_PERIOD_DAYS` back and ends no later than today.
+    """
+    if since is None:
+        if until is not None:
+            raise ValueError("A period needs since; until alone is not one")
+        return None
+    try:
+        start = date.fromisoformat(str(since))
+        end = today if until is None else date.fromisoformat(str(until))
+    except ValueError:
+        raise ValueError(
+            f"since and until are dates like 2026-11-17, got {since!r} and {until!r}"
+        ) from None
+    if start > end:
+        raise ValueError("since is on or before until")
+    if end > today:
+        raise ValueError("until is today or earlier")
+    if start < today - timedelta(days=MAX_PERIOD_DAYS):
+        raise ValueError(f"A period starts at most {MAX_PERIOD_DAYS} days back")
+    return start.isoformat(), end.isoformat()
+
+
 class FollowService(IFollowService):
     """Follows, their new tracks from the cache, and the check that fills it."""
 
@@ -162,15 +206,22 @@ class FollowService(IFollowService):
         """Whether an artist or label is followed."""
         return self._follows.get(_check_kind(kind), _check_id(beatport_id)) is not None
 
-    def follows(self) -> Dict[str, Any]:
+    def follows(
+        self, since: Optional[str] = None, until: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Every follow, with how many new tracks it has in the cache.
 
         A follow's ``new_count`` is tracks released after its ``seen_through``
         that the library does not own: what the feed shows by default. The
         top-level ``new_count`` counts each track once, so it is the feed's
         ``total`` for ``owned="hide"``. Ownership is read once for all follows.
+        With a period, each follow's ``count`` (and the top-level ``count``)
+        is the tracks of the period the library does not own, seen or not;
+        without one it is ``new_count``.
         """
-        today = local_date(self._clock()).isoformat()
+        today_day = local_date(self._clock())
+        period = _check_period(since, until, today_day)
+        today = today_day.isoformat()
         every = self._follows.list()
         listings = {
             (f.kind, f.beatport_id): self._catalog.listing(f.kind, f.beatport_id)
@@ -191,25 +242,54 @@ class FollowService(IFollowService):
             total = page.total
             for (f, _), count in zip(live, page.per_source):
                 counts[(f.kind, f.beatport_id)] = count
+        in_period: Dict[Tuple[str, int], int] = dict(counts)
+        period_total = total
+        if period is not None:
+            in_period = {}
+            period_total = 0
+            if every:
+                page = self._catalog.followed_tracks(
+                    [(f.kind, f.beatport_id, period[0]) for f in every],
+                    period[1],
+                    OWNED_HIDE,
+                    0,
+                    1,
+                    new_after=[_day_after(f.seen_through) for f in every],
+                )
+                period_total = page.total
+                for f, count in zip(every, page.per_source):
+                    in_period[(f.kind, f.beatport_id)] = count
         art = self._catalog.entity_art([(f.kind, f.beatport_id) for f in every])
         now = self._clock()
         rows = [
             self._row(
                 f,
                 counts.get((f.kind, f.beatport_id), 0),
+                in_period.get((f.kind, f.beatport_id), 0),
                 listings[(f.kind, f.beatport_id)],
                 entity_art_asks(art.get((f.kind, f.beatport_id)), now),
             )
             for f in every
         ]
-        return {"follows": rows, "new_count": total}
+        return {
+            "follows": rows,
+            "new_count": total,
+            "count": period_total,
+            "period": _period_dict(period),
+        }
 
     def _row(
-        self, follow: Follow, new_count: int, listing: Optional[Any], has_art: bool
+        self,
+        follow: Follow,
+        new_count: int,
+        count: int,
+        listing: Optional[Any],
+        has_art: bool,
     ) -> Dict[str, Any]:
         return {
             **follow.to_dict(),
             "new_count": new_count,
+            "count": count,
             "checked_at": None if listing is None else listing.fetched_at,
             "state": _state_of(follow.kind, follow.beatport_id),
             "has_art": has_art,
@@ -254,6 +334,55 @@ class FollowService(IFollowService):
             )
         return {"suggestions": kept}
 
+    def search(self, query: str, limit: int = 20) -> Dict[str, Any]:
+        """Beatport artists and labels by name, to follow.
+
+        ``{state, message, results}``, each result as a suggestion is
+        (``kind``, ``beatport_id``, ``name``, ``track_count``, ``followed``,
+        ``has_art``); ``track_count`` is None for a name the library does not
+        link to that id alone. Asks Beatport once; a refusal is the state.
+
+        Raises:
+            ValueError: If the text or the limit is not one this answers.
+        """
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("Type a name to search for")
+        if len(query.strip()) > MAX_SEARCH_TEXT:
+            raise ValueError(f"A search is at most {MAX_SEARCH_TEXT} characters")
+        if (
+            isinstance(limit, bool)
+            or not isinstance(limit, int)
+            or not 1 <= limit <= MAX_SEARCH_RESULTS
+        ):
+            raise ValueError(f"limit is 1 to {MAX_SEARCH_RESULTS}, got {limit!r}")
+        answer = self._pages.search(query.strip(), limit)
+        found = answer.get("results", [])
+        followed = {(f.kind, f.beatport_id) for f in self._follows.list()}
+        counts = {
+            kind: self._credits.follow_counts(
+                kind, [r["beatport_id"] for r in found if r["kind"] == kind]
+            )
+            for kind in ENTITY_KINDS
+        }
+        art = self._catalog.entity_art([(r["kind"], r["beatport_id"]) for r in found])
+        now = self._clock()
+        results = [
+            {
+                "kind": r["kind"],
+                "beatport_id": r["beatport_id"],
+                "name": r["name"],
+                "track_count": counts[r["kind"]].get(r["beatport_id"]),
+                "followed": (r["kind"], r["beatport_id"]) in followed,
+                "has_art": entity_art_asks(art.get((r["kind"], r["beatport_id"])), now),
+            }
+            for r in found
+        ]
+        return {
+            "state": answer.get("state", STATE_OK),
+            "message": answer.get("message", ""),
+            "results": results,
+        }
+
     def feed(
         self,
         kind: Optional[str] = None,
@@ -261,8 +390,14 @@ class FollowService(IFollowService):
         owned: str = OWNED_HIDE,
         offset: int = 0,
         limit: int = 100,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Cached tracks released after each follow's ``seen_through``.
+
+        With a period (``since``, ``until``), every cached track released in
+        it instead, seen or not. Each row says whether it is ``new``;
+        ``new_total`` counts the new ones under the owned filter.
 
         Merged across the follows (one, when named), newest release first and
         then by Beatport track id, the higher first. Each track is the shape the Beatport tables send, with
@@ -293,7 +428,9 @@ class FollowService(IFollowService):
             for f in self._follows.list()
             if which == (None, None) or (f.kind, f.beatport_id) == which
         ]
-        today = local_date(self._clock()).isoformat()
+        today_day = local_date(self._clock())
+        period = _check_period(since, until, today_day)
+        today = today_day.isoformat()
         fetched: List[str] = []
         unchecked = 0
         states: List[Dict[str, Any]] = []
@@ -309,21 +446,30 @@ class FollowService(IFollowService):
                 states.append(
                     {"kind": follow.kind, "beatport_id": follow.beatport_id, **failed}
                 )
-            since = _day_after(follow.seen_through)
-            if since <= today:
-                live.append((follow, since))
+            new_from = _day_after(follow.seen_through)
+            if period is not None:
+                live.append((follow, period[0]))
+            elif new_from <= today:
+                live.append((follow, new_from))
         rows: List[Dict[str, Any]] = []
         total = 0
+        new_total = 0
         hidden = 0
         if live:
             page = self._catalog.followed_tracks(
-                [(f.kind, f.beatport_id, since) for f, since in live],
-                today,
+                [(f.kind, f.beatport_id, start) for f, start in live],
+                today if period is None else period[1],
                 owned,
                 offset,
                 limit,
+                new_after=(
+                    None
+                    if period is None
+                    else [_day_after(f.seen_through) for f, _ in live]
+                ),
             )
             total = page.total
+            new_total = page.new_total
             hidden = page.owned
             listed = self._wantlist.entries(
                 [row.track.beatport_track_id for row, _ in page.rows]
@@ -334,6 +480,7 @@ class FollowService(IFollowService):
                         **replace(
                             row, on_wantlist=row.track.beatport_track_id in listed
                         ).to_dict(),
+                        "new": row.track.beatport_track_id in page.new_ids,
                         "follows": [
                             {
                                 "kind": live[p][0].kind,
@@ -347,6 +494,7 @@ class FollowService(IFollowService):
         return {
             "rows": rows,
             "total": total,
+            "new_total": new_total,
             "hidden_owned": hidden if owned == OWNED_HIDE else 0,
             "checked_at": min(fetched) if fetched and not unchecked else None,
             "unchecked": unchecked,
@@ -358,6 +506,7 @@ class FollowService(IFollowService):
                 "owned": owned,
                 "offset": offset,
                 "limit": limit,
+                **_period_dict(period),
             },
         }
 
@@ -549,6 +698,14 @@ class FollowService(IFollowService):
         }
 
 
+def _period_dict(period: Optional[Tuple[str, str]]) -> Dict[str, Optional[str]]:
+    """``{since, until}`` of a period, both None for "new since last looked"."""
+    return {
+        "since": None if period is None else period[0],
+        "until": None if period is None else period[1],
+    }
+
+
 def _day_after(day: str) -> str:
     """The ISO date after ``day``: releases from then on are new."""
     return (date.fromisoformat(day) + timedelta(days=1)).isoformat()
@@ -559,5 +716,8 @@ __all__: Sequence[str] = (
     "EVENT_REMOVED",
     "EVENT_SEEN",
     "FollowService",
+    "MAX_PERIOD_DAYS",
+    "MAX_SEARCH_RESULTS",
+    "MAX_SEARCH_TEXT",
     "forget_states",
 )

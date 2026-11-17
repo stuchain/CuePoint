@@ -680,6 +680,57 @@ class BeatportApi:
                 return artist.id
         return None
 
+    def search_names(
+        self, query: str, limit: int = 20
+    ) -> Tuple[List[CatalogArtist], List[CatalogLabel]]:
+        """Artists and labels whose names match ``query``, in Beatport's order.
+
+        One ``catalog/search`` request. Its answer is read defensively, as
+        :meth:`search_artist_by_name` and the label search read it: each of
+        ``artists`` and ``labels`` may be a list or ``{"results": [...]}``, or
+        both may come as ``{"results": [...]}`` items with a ``type``. An item
+        that is not a usable artist or label is left out, so an answer of
+        another shape is no names, never a guess. At most ``limit`` of each.
+        Raises as the client does (no token, a refusal).
+        """
+        text = (query or "").strip()
+        if not text:
+            return [], []
+        data = self._client.get("/catalog/search", params={"q": text})
+        if not isinstance(data, dict):
+            return [], []
+
+        def items(key: str, kind: str) -> List[Any]:
+            listed = data.get(key)
+            if isinstance(listed, dict):
+                listed = listed.get("results")
+            if isinstance(listed, list):
+                return listed
+            mixed = data.get("results")
+            if isinstance(mixed, list):
+                return [
+                    item
+                    for item in mixed
+                    if isinstance(item, dict) and item.get("type") == kind
+                ]
+            return []
+
+        artists: List[CatalogArtist] = []
+        labels: List[CatalogLabel] = []
+        seen_artists: set = set()
+        seen_labels: set = set()
+        for item in items("artists", "artist"):
+            artist = parse_catalog_artist(item)
+            if artist is not None and artist.id not in seen_artists:
+                seen_artists.add(artist.id)
+                artists.append(artist)
+        for item in items("labels", "label"):
+            label = parse_catalog_label(item)
+            if label is not None and label.id not in seen_labels:
+                seen_labels.add(label.id)
+                labels.append(label)
+        return artists[: max(0, int(limit))], labels[: max(0, int(limit))]
+
     def my_playlists(self, max_pages: int = MAX_LISTING_PAGES) -> List[Tuple[str, str]]:
         """The user's own Beatport playlists, as ``(id, name)``, in Beatport's order.
 

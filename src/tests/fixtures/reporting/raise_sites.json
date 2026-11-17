@@ -3677,5 +3677,27 @@
   "cuepoint/services/follow_service.py::_check_kind::kind must be one of {ENTITY_KINDS}, got {kind!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
+  },
+  "cuepoint/persistence/track_credit_repository.py::TrackCreditRepository.follow_counts::No candidates of kind {kind!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/follow_service.py::FollowService.search::A search is at most {MAX_SEARCH_TEXT} characters": {
+    "holds": "our own constant",
+    "reason": "our own constants",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/follow_service.py::FollowService.search::limit is 1 to {MAX_SEARCH_RESULTS}, got {limit!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
+  },
+  "cuepoint/services/follow_service.py::_check_period::A period starts at most {MAX_PERIOD_DAYS} days back": {
+    "holds": "our own constant",
+    "reason": "our own constants",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/follow_service.py::_check_period::since and until are dates like 2026-11-17, got {since!r} and {until!r}": {
+    "holds": "request or file text that failed validation: any user or library text",
+    "verdict": "corpus"
   }
 }

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, FrozenSet, Tuple
 
 from cuepoint.models.beatport_cache import ENTITY_KINDS, MAX_BEATPORT_ID
 from cuepoint.models.entity_page import EntityTrackRow
@@ -74,9 +74,16 @@ class FollowedTracks:
         owned: Distinct tracks the library owns, whatever the filter.
         per_source: Under the owned filter, how many tracks each source has
             (a track by two sources counts for both).
+        new_ids: The ids among ``rows`` that are new (not yet seen).
+        new_total: Distinct new tracks under the owned filter.
+        per_source_new: Under the owned filter, how many new tracks each
+            source has.
     """
 
     rows: Tuple[Tuple[EntityTrackRow, Tuple[int, ...]], ...]
     total: int
     owned: int
     per_source: Tuple[int, ...]
+    new_ids: FrozenSet[int] = frozenset()
+    new_total: int = 0
+    per_source_new: Tuple[int, ...] = ()

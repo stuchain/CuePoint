@@ -1,10 +1,14 @@
 /**
  * The Following tab: artists and labels you follow, and what is new from them (DEC-317).
  *
- * Two states. With nobody followed it offers the names the library owns the most tracks by, each
+ * Three states. With nobody followed it offers the names the library owns the most tracks by, each
  * with its own Follow button, and one main button to see what is new. With follows it is a list of
- * them at the left and the new tracks at the right, newest release first, in the same table every
- * Discover page has (preview, wantlist, push to a playlist, open on Beatport).
+ * them at the left and their releases at the right, newest first, in the same table every Discover
+ * page has (preview, wantlist, push to a playlist, open on Beatport). The period menu picks which
+ * releases: new since you last looked, the last 7, 30 or 90 days, or a range of days, remembered for
+ * next time (`followPeriod.ts`); over a period the new ones are marked. "Find more to follow" under
+ * the list opens the third state: a search of Beatport's artists and labels by name, and while the
+ * search is empty, the suggestions you do not follow yet.
  *
  * **Opening the tab reads the cache at once and asks Beatport after.** The follows and the feed come
  * from what the engine already holds; a check then reads each follow's releases, and when it ends
@@ -28,6 +32,7 @@ import type {
   FollowFeed,
   FollowFeedRow,
   FollowRow,
+  FollowSearchResult,
   FollowSuggestion,
   FollowsList,
 } from "../../api/cuepointBridge.types";
@@ -35,7 +40,10 @@ import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { EmptyState } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
+import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
+import { SearchField } from "../../components/SearchField";
+import { Select } from "../../components/Select";
 import { countNoun, formatCount } from "../../format/counts";
 import { quoted, RETRY } from "../../format/words";
 import { userMessage } from "../../api/userMessage";
@@ -45,11 +53,31 @@ import { EntityArt } from "./EntityArt";
 import { HideOwnedSwitch } from "./HideOwnedSwitch";
 import { PushDialog } from "./PushDialog";
 import { runActions, type BeatportActionId } from "./beatportActions";
-import { FOLLOW_COLUMNS, FOLLOW_TABLE_LAYOUT_KEY } from "./beatportColumns";
+import { FOLLOW_COLUMNS, FOLLOW_PERIOD_COLUMNS, FOLLOW_TABLE_LAYOUT_KEY } from "./beatportColumns";
 import { beatportUsable, refusalState, unusableReason } from "./beatportState";
+import { DateField } from "./DateField";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
-import { followKey, followStatusParts, newCountWords, oldestSeenThrough } from "./followFormat";
+import {
+  followKey,
+  followPeriodStatusParts,
+  followStatusParts,
+  newCountWords,
+  oldestSeenThrough,
+} from "./followFormat";
+import {
+  daysBefore,
+  isoDay,
+  loadPeriod,
+  MAX_PERIOD_DAYS,
+  periodKey,
+  periodOptions,
+  periodRange,
+  periodValue,
+  reachesPastLabels,
+  savePeriod,
+  type FollowPeriodChoice,
+} from "./followPeriod";
 import { openOnBeatport } from "./openOnBeatport";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
@@ -75,7 +103,14 @@ const SUGGESTION_MAX = 100;
 
 const idOf = (row: FollowFeedRow) => row.beatport_track_id;
 
-type Mode = "loading" | "suggest" | "feed";
+type Mode = "loading" | "suggest" | "feed" | "find";
+
+/** A name offered to follow: a suggestion, or a search answer whose track count may be unknown. */
+type NameRow = Omit<FollowSuggestion, "track_count"> & { track_count: number | null };
+
+/** How long the search waits after the last key before it asks Beatport, and the shortest search. */
+const SEARCH_WAIT_MS = 400;
+const SEARCH_MIN = 2;
 type Picked = { kind: EntityKind; beatport_id: number } | null;
 
 /** How many names a group shows before "+ N more". */
@@ -87,6 +122,18 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
   const { notify } = tools;
   const openPage = useOpenPage();
   const [owned, setHiding] = useHideOwned();
+  const [period, setPeriodState] = useState<FollowPeriodChoice>(loadPeriod);
+  const setPeriod = useCallback((next: FollowPeriodChoice) => {
+    setPeriodState(next);
+    savePeriod(next);
+  }, []);
+  // The days asked for: none for "new since you last looked". Read each render, so a tab left open
+  // past midnight asks for the new day's range.
+  const range = periodRange(period);
+  const rangeKey = periodKey(period);
+  const inPeriod = range.since !== undefined;
+  const [customOpen, setCustomOpen] = useState(false);
+  const [draft, setDraft] = useState({ since: "", until: "" });
   const [mode, setMode] = useState<Mode>("loading");
   const [follows, setFollows] = useState<FollowsList | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -125,6 +172,9 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
 
   // --- the follows: from the cache only
 
+  // The range the follows' counts are read over, for the read below (which keeps one identity).
+  const rangeRef = useRef(range);
+  rangeRef.current = range;
   const readFollows = useCallback(async (): Promise<FollowsList | null> => {
     const bridge = window.cuepoint?.getFollows;
     if (!bridge) {
@@ -135,7 +185,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
       // A mark still in flight changes what this read answers: let it land first.
       const marking = pendingMark.current;
       if (marking) await marking;
-      const answer = await bridge();
+      const answer = await bridge(rangeRef.current);
       if (answer.refusal) {
         setProblem(refusalText(answer.refusal));
         return null;
@@ -154,7 +204,9 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
   // --- the feed: the shared Beatport window over the follows' new tracks
 
   const picks = picked ? `${picked.kind}|${picked.beatport_id}` : "all";
-  const windowKey = `${picks}|${owned}`;
+  const windowKey = `${picks}|${owned}|${rangeKey}`;
+  const since = range.since;
+  const until = range.until;
   const fetchFeed = useCallback(
     (offset: number, limit: number) => {
       const bridge = window.cuepoint?.getFollowFeed;
@@ -164,16 +216,20 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
         owned,
         offset,
         limit,
+        ...(since ? { since } : {}),
+        ...(until ? { until } : {}),
       });
     },
-    [owned, picked],
+    [owned, picked, since, until],
   );
   const answersWindow = useCallback(
     (page: FollowFeed) =>
       page.window.owned === owned &&
       (page.window.kind ?? null) === (picked?.kind ?? null) &&
-      (page.window.beatport_id ?? null) === (picked?.beatport_id ?? null),
-    [owned, picked],
+      (page.window.beatport_id ?? null) === (picked?.beatport_id ?? null) &&
+      (page.window.since ?? null) === (since ?? null) &&
+      (until === undefined || page.window.until === until),
+    [owned, picked, since, until],
   );
   const feed = useBeatportWindow<FollowFeedRow, FollowFeed>({
     key: windowKey,
@@ -316,6 +372,14 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     void latest.current.startCheck(false);
   }, [active, mode, usable]);
 
+  // A new period counts the list's names over it.
+  const firstRange = useRef(rangeKey);
+  useEffect(() => {
+    if (firstRange.current === rangeKey) return;
+    firstRange.current = rangeKey;
+    if (activeRef.current && modeRef.current === "feed") void latest.current.readFollows();
+  }, [rangeKey]);
+
   // A selected follow that is gone (unfollowed, or the list read again without it) is All again.
   useEffect(() => {
     if (!picked || !follows) return;
@@ -337,7 +401,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
   const [suggestTry, setSuggestTry] = useState(0);
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
-    if (mode !== "suggest" || !active) return;
+    if ((mode !== "suggest" && mode !== "find") || !active) return;
     const bridge = window.cuepoint?.getFollowSuggestions;
     if (!bridge) {
       setSuggestProblem(NO_ENGINE);
@@ -362,7 +426,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     };
   }, [active, limit, mode, suggestTry]);
 
-  const toggleSuggestion = async (row: FollowSuggestion) => {
+  const toggleSuggestion = async (row: NameRow) => {
     const key = followKey(row);
     const add = window.cuepoint?.addFollow;
     const remove = window.cuepoint?.removeFollow;
@@ -374,9 +438,18 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
         : await add({ kind: row.kind, beatport_id: row.beatport_id, name: row.name });
       if (answer.refusal) return void notify(refusalText(answer.refusal), "warning");
       const followed = answer.value.followed;
+      toggledHere.current.add(key);
       setSuggestions((was) =>
         was
           ? was.map((entry) => (followKey(entry) === key ? { ...entry, followed } : entry))
+          : was,
+      );
+      setSearch((was) =>
+        was.results
+          ? {
+              ...was,
+              results: was.results.map((entry) => (followKey(entry) === key ? { ...entry, followed } : entry)),
+            }
           : was,
       );
     } catch (cause) {
@@ -389,6 +462,69 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
         return next;
       });
     }
+  };
+
+  // --- finding more to follow: the suggestions not followed yet, and a search of Beatport
+
+  // The names followed in this visit to Find more: they stay listed (as Following) when the
+  // suggestions are read again; a name followed before it opened is not offered.
+  const toggledHere = useRef<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState<{
+    text: string;
+    results: FollowSearchResult[] | null;
+    problem: string | null;
+  }>({ text: "", results: null, problem: null });
+  const searchText = query.trim();
+  useEffect(() => {
+    if (mode !== "find" || !active || searchText.length < SEARCH_MIN) return;
+    const bridge = window.cuepoint?.searchFollows;
+    if (!bridge) {
+      setSearch({ text: searchText, results: [], problem: NO_ENGINE });
+      return;
+    }
+    let live = true;
+    const timer = setTimeout(() => {
+      setSearch({ text: searchText, results: null, problem: null });
+      void bridge({ q: searchText })
+        .then((answer) => {
+          if (!live) return;
+          if (answer.refusal) {
+            setSearch({ text: searchText, results: [], problem: refusalText(answer.refusal) });
+          } else {
+            const value = answer.value;
+            setSearch({
+              text: searchText,
+              results: value.results,
+              problem: value.state === "ok" ? null : value.message,
+            });
+          }
+        })
+        .catch((cause: unknown) => {
+          reportUnexpected(cause);
+          if (live) setSearch({ text: searchText, results: [], problem: userMessage(cause) });
+        });
+    }, SEARCH_WAIT_MS);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [active, mode, searchText]);
+
+  const findMore = () => {
+    toggledHere.current = new Set();
+    setQuery("");
+    setSearch({ text: "", results: null, problem: null });
+    setLimit(SUGGESTION_STEP);
+    setSuggestions(null);
+    setSuggestProblem(null);
+    setMode("find");
+  };
+  const backToFeed = async () => {
+    const list = await readFollows();
+    if (!list) return;
+    setMode(list.follows.length === 0 ? "suggest" : "feed");
+    if (list.follows.length > 0) reloadFeed();
   };
 
   const followedCount = suggestions?.filter((row) => row.followed).length ?? 0;
@@ -480,11 +616,54 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     !feed.loading &&
     feedPage !== null &&
     answersWindow(feedPage);
-  // The rows the feed answered with, owned ones included when they are shown: with Hide owned off
-  // and only owned new tracks, the feed still showed something and leaving marks it seen.
-  shown.current = feedShown && feedPage ? { picked, count: feedPage.total } : null;
+  // The new rows the feed answered with, owned ones included when they are shown: with Hide owned
+  // off and only owned new tracks, the feed still showed something and leaving marks it seen. Over
+  // a period the seen rows listed beside them do not count: with none new there is nothing to mark.
+  shown.current = feedShown && feedPage ? { picked, count: feedPage.new_total } : null;
 
   // --- drawing
+
+  const nameRow = (row: NameRow) => {
+    const key = followKey(row);
+    return (
+      <li key={key} className="discover-following__suggestion">
+        <span className="discover-following__who">
+          {/* The suggestions ask at once: nothing is harvesting their pictures (DEC-318). */}
+          <EntityArt
+            kind={row.kind}
+            beatportId={row.beatport_id}
+            hasArt={row.has_art}
+            className="discover-following__avatar"
+          />
+          <span className="discover-following__name" data-cut-hint="">
+            {row.name}
+          </span>
+        </span>
+        <span className="discover-following__kind">{KIND_WORD[row.kind]}</span>
+        <span className="discover-following__tracks">
+          {row.track_count === null ? "" : `${formatCount(row.track_count)} of your tracks`}
+        </span>
+        <Button
+          variant="secondary"
+          icon={row.followed ? "check" : "plus"}
+          disabled={pending.has(key)}
+          aria-label={`${row.followed ? "Following" : "Follow"} ${row.name}`}
+          onClick={() => void toggleSuggestion(row)}
+        >
+          {/* Both words take up space, so Follow is as wide as Following and the
+              row's columns line up with the rows above and below it. */}
+          <span className="discover-following__follow-label">
+            <span aria-hidden data-shown={row.followed}>
+              Following
+            </span>
+            <span aria-hidden data-shown={!row.followed}>
+              Follow
+            </span>
+          </span>
+        </Button>
+      </li>
+    );
+  };
 
   if (problem && !follows) {
     return (
@@ -511,6 +690,94 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     return (
       <section className="discover-following" aria-label="Following">
         <Loading what="who you follow" centered />
+      </section>
+    );
+  }
+
+  if (mode === "find") {
+    const offered = (suggestions ?? []).filter((row) => !row.followed || toggledHere.current.has(followKey(row)));
+    const more = suggestions !== null && suggestions.length >= limit && limit < SUGGESTION_MAX;
+    const searching = searchText.length >= SEARCH_MIN;
+    const answered = search.text === searchText ? search : null;
+    return (
+      <section className="discover-following discover-following--first" aria-label="Following">
+        <nav className="discover-crumb" aria-label="Where this page was opened from">
+          <LinkButton go onClick={() => void backToFeed()}>
+            {"What's new"}
+          </LinkButton>
+          <span aria-current="page">Find more to follow</span>
+        </nav>
+        <h2 className="discover-section__title">Find more to follow</h2>
+        <p className="discover-note">
+          Search Beatport for any artist or label, or pick from the names you own the most tracks by.
+        </p>
+        <div className="discover-following__suggest">
+          <SearchField
+            thing="Beatport artists and labels"
+            value={query}
+            onValueChange={setQuery}
+            fitPlaceholder
+            className="discover-following__search"
+          />
+          {searching ? (
+            !answered || answered.results === null ? (
+              <Loading what={`Beatport for ${quoted(searchText)}`} />
+            ) : answered.problem && answered.results.length === 0 ? (
+              <EmptyState icon="discover" headline="Beatport could not be searched" description={answered.problem} />
+            ) : answered.results.length === 0 ? (
+              <EmptyState
+                icon="discover"
+                headline={`No artist or label named ${quoted(searchText)}`}
+                description="Check the spelling, or search for part of the name."
+              />
+            ) : (
+              <>
+                <h3 className="discover-following__heading">On Beatport</h3>
+                <ul className="discover-following__suggestions" aria-label="Artists and labels found on Beatport">
+                  {answered.results.map(nameRow)}
+                </ul>
+              </>
+            )
+          ) : suggestProblem ? (
+            <EmptyState
+              icon="discover"
+              headline="Suggestions could not be read"
+              description={suggestProblem}
+              action={
+                suggestProblem !== NO_ENGINE
+                  ? {
+                      label: RETRY,
+                      onClick: () => {
+                        setSuggestProblem(null);
+                        setSuggestTry((was) => was + 1);
+                      },
+                    }
+                  : undefined
+              }
+            />
+          ) : suggestions === null ? (
+            <Loading what="the names you own the most tracks by" />
+          ) : offered.length === 0 && !more ? (
+            <p className="discover-following__error">
+              You follow every name the library suggests. Search Beatport for more.
+            </p>
+          ) : (
+            <>
+              <h3 className="discover-following__heading">You own the most tracks by</h3>
+              <ul className="discover-following__suggestions" aria-label="Suggested artists and labels">
+                {offered.map(nameRow)}
+              </ul>
+              {more && (
+                <div className="discover-following__more">
+                  <Button variant="quiet" onClick={() => setLimit((was) => Math.min(SUGGESTION_MAX, was + SUGGESTION_STEP))}>
+                    Show {SUGGESTION_STEP} more
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+          {searching && <p className="discover-following__quiet">Clear the search to see your suggestions again.</p>}
+        </div>
       </section>
     );
   }
@@ -552,47 +819,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
         ) : (
           <div className="discover-following__suggest">
             <ul className="discover-following__suggestions" aria-label="Suggested artists and labels">
-              {suggestions.map((row) => {
-                const key = followKey(row);
-                return (
-                  <li key={key} className="discover-following__suggestion">
-                    <span className="discover-following__who">
-                      {/* The suggestions ask at once: nothing is harvesting their pictures (DEC-318). */}
-                      <EntityArt
-                        kind={row.kind}
-                        beatportId={row.beatport_id}
-                        hasArt={row.has_art}
-                        className="discover-following__avatar"
-                      />
-                      <span className="discover-following__name" data-cut-hint="">
-                        {row.name}
-                      </span>
-                    </span>
-                    <span className="discover-following__kind">{KIND_WORD[row.kind]}</span>
-                    <span className="discover-following__tracks">
-                      {formatCount(row.track_count)} of your tracks
-                    </span>
-                    <Button
-                      variant="secondary"
-                      icon={row.followed ? "check" : "plus"}
-                      disabled={pending.has(key)}
-                      aria-label={`${row.followed ? "Following" : "Follow"} ${row.name}`}
-                      onClick={() => void toggleSuggestion(row)}
-                    >
-                      {/* Both words take up space, so Follow is as wide as Following and the
-                          row's columns line up with the rows above and below it. */}
-                      <span className="discover-following__follow-label">
-                        <span aria-hidden data-shown={row.followed}>
-                          Following
-                        </span>
-                        <span aria-hidden data-shown={!row.followed}>
-                          Follow
-                        </span>
-                      </span>
-                    </Button>
-                  </li>
-                );
-              })}
+              {suggestions.map(nameRow)}
             </ul>
             {more && (
               <div className="discover-following__more">
@@ -625,16 +852,54 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
   const selectedFollow = picked
     ? rows.find((row) => row.kind === picked.kind && row.beatport_id === picked.beatport_id) ?? null
     : null;
-  const status = page
-    ? followStatusParts(
-        page,
-        {
+  const status = !page
+    ? null
+    : inPeriod
+      ? followPeriodStatusParts(page, owned === "hide")
+      : followStatusParts(page, {
           newCount: selectedFollow ? selectedFollow.new_count : (follows?.new_count ?? 0),
           seenThrough: selectedFollow ? selectedFollow.seen_through : oldestSeenThrough(rows),
           hiding: owned === "hide",
-        },
-      )
-    : null;
+        });
+
+  // A name's line in the list: over a period its releases there and how many are new; otherwise
+  // how many are new.
+  const counted = (count: number, newCount: number, refused: boolean) =>
+    inPeriod ? (
+      <span className="discover-following__counts">
+        <span className="discover-following__quiet">{formatCount(count)}</span>
+        {newCount > 0 && (
+          <Badge variant="accent">
+            {formatCount(newCount)}
+            <span className="cp-visually-hidden"> new</span>
+          </Badge>
+        )}
+      </span>
+    ) : newCount > 0 ? (
+      <Badge variant="accent">
+        {formatCount(newCount)}
+        <span className="cp-visually-hidden"> new</span>
+      </Badge>
+    ) : (
+      <span className="discover-following__quiet">{refused ? "not checked" : "nothing new"}</span>
+    );
+
+  const onPeriod = (value: string) => {
+    if (value === "custom") {
+      const was = period.kind === "custom" ? period : null;
+      setDraft({
+        since: was?.since ?? daysBefore(new Date(), 30),
+        until: was?.until ?? isoDay(new Date()),
+      });
+      setCustomOpen(true);
+      return;
+    }
+    setCustomOpen(false);
+    setPeriod(value === "new" ? { kind: "new" } : { kind: "days", days: Number(value) as 7 | 30 | 90 });
+  };
+  const todayIso = isoDay(new Date());
+  const earliest = daysBefore(new Date(), MAX_PERIOD_DAYS);
+  const draftOk = draft.since !== "" && draft.until !== "" && draft.since <= draft.until;
 
   const item = (row: FollowRow) => {
     const here = selectedFollow === row;
@@ -661,14 +926,7 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
               {row.name}
             </span>
           </span>
-          {row.new_count > 0 ? (
-            <Badge variant="accent">
-              {formatCount(row.new_count)}
-              <span className="cp-visually-hidden"> new</span>
-            </Badge>
-          ) : (
-            <span className="discover-following__quiet">{refused ? "not checked" : "nothing new"}</span>
-          )}
+          {counted(row.count, row.new_count, refused !== null)}
           {refused && <span className="discover-following__problem">{refused.message}</span>}
         </button>
       </li>
@@ -714,11 +972,18 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
     ) : (
       <EmptyState
         icon="discover"
-        headline={picked ? "Nothing new from this name" : "Nothing new from the names you follow"}
+        headline={
+          inPeriod
+            ? picked
+              ? "No releases from this name in this period"
+              : "No releases from the names you follow in this period"
+            : picked
+              ? "Nothing new from this name"
+              : "Nothing new from the names you follow"
+        }
         description={
-          owned === "hide"
-            ? "Tracks you already own are hidden. New releases appear here when Beatport lists them."
-            : "New releases appear here when Beatport lists them."
+          (owned === "hide" ? "Tracks you already own are hidden. " : "") +
+          (inPeriod ? "Pick a longer period to see more." : "New releases appear here when Beatport lists them.")
         }
       />
     );
@@ -734,7 +999,9 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
           onClick={() => setPicked(null)}
         >
           <span className="discover-following__name">All</span>
-          {(follows?.new_count ?? 0) > 0 ? (
+          {inPeriod ? (
+            counted(follows?.count ?? 0, follows?.new_count ?? 0, false)
+          ) : (follows?.new_count ?? 0) > 0 ? (
             <Badge variant="accent">{newCountWords(follows?.new_count ?? 0)}</Badge>
           ) : (
             <span className="discover-following__quiet">nothing new</span>
@@ -754,6 +1021,9 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
             {`Unfollow ${selectedFollow.name}`}
           </Button>
         )}
+        <Button variant="secondary" icon="plus" className="discover-following__find" onClick={findMore}>
+          Find more to follow
+        </Button>
       </nav>
 
       <div className="discover-following__feed">
@@ -773,6 +1043,15 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
               "Reading what is new…"
             )}
           </p>
+          <Select
+            label="Show"
+            hideLabel
+            width="short"
+            className="discover-following__period"
+            value={customOpen ? "custom" : periodValue(period)}
+            options={periodOptions(period)}
+            onChange={(event) => onPeriod(event.target.value)}
+          />
           <HideOwnedSwitch hiding={owned === "hide"} onChange={setHiding} />
           <Hint text={unusableReason(tools.beatportState) ?? undefined}>
             <Button
@@ -785,8 +1064,50 @@ export function FollowingView({ tools, active, onNewCount, onLeft }: FollowingVi
             </Button>
           </Hint>
         </div>
+        {customOpen && (
+          <div className="discover-following__range" role="group" aria-label="Custom range">
+            <span className="discover-following__quiet" aria-hidden="true">From</span>
+            <DateField
+              label="From"
+              value={draft.since}
+              min={earliest}
+              max={todayIso}
+              onChange={(value) => setDraft((was) => ({ ...was, since: value }))}
+            />
+            <span className="discover-following__quiet" aria-hidden="true">To</span>
+            <DateField
+              label="To"
+              value={draft.until}
+              min={earliest}
+              max={todayIso}
+              onChange={(value) => setDraft((was) => ({ ...was, until: value }))}
+            />
+            <Button
+              variant="primary"
+              disabled={!draftOk}
+              onClick={() => {
+                setPeriod({
+                  kind: "custom",
+                  since: draft.since,
+                  until: draft.until >= todayIso ? null : draft.until,
+                });
+                setCustomOpen(false);
+              }}
+            >
+              Show
+            </Button>
+            <Button variant="secondary" onClick={() => setCustomOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        )}
+        {reachesPastLabels(period) && (
+          <p className="discover-following__quiet discover-following__note">
+            Labels list their last 90 days only; artists go back a year.
+          </p>
+        )}
         <BeatportTable<FollowFeedRow>
-          columns={FOLLOW_COLUMNS}
+          columns={inPeriod ? FOLLOW_PERIOD_COLUMNS : FOLLOW_COLUMNS}
           onOpenPage={openPage}
           layoutKey={FOLLOW_TABLE_LAYOUT_KEY}
           source={feed.source}

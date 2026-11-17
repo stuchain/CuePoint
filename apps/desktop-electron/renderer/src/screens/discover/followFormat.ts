@@ -71,6 +71,23 @@ export function followStatusParts(
   return { count: countNoun(input.newCount, "new track"), rest: `${since} · ${parts.join(" · ")}` };
 }
 
+/**
+ * The status line over a period, as two parts: "12 tracks" and the rest (" · 3 new · checked just
+ * now · 2 you own hidden"). Every track of the period is listed, so the count is the list's own.
+ */
+export function followPeriodStatusParts(
+  feed: Pick<FollowFeed, "total" | "new_total" | "hidden_owned" | "checked_at">,
+  hiding: boolean,
+  now: Date = new Date(),
+): { count: string; rest: string } {
+  const ago = checkedAgo(feed.checked_at, now);
+  const parts: string[] = [];
+  if (feed.new_total > 0) parts.push(`${formatCount(feed.new_total)} new`);
+  parts.push(ago === "not checked yet" ? ago : `checked ${ago}`);
+  if (hiding && feed.hidden_owned > 0) parts.push(`${formatCount(feed.hidden_owned)} you own hidden`);
+  return { count: countNoun(feed.total, "track"), rest: ` · ${parts.join(" · ")}` };
+}
+
 /** "14 new tracks since Nov 7 · checked 2 min ago · 3 you own hidden". */
 export function followStatusLine(
   feed: Pick<FollowFeed, "total" | "hidden_owned" | "checked_at">,
