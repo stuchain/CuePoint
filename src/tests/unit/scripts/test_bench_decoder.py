@@ -122,3 +122,19 @@ def test_the_alternative_is_piped_where_there_is_a_dev_stdout(monkeypatch, tmp_p
     monkeypatch.setattr(bench.subprocess, "run", fake_run)
     answer = bench.engine_side(tmp_path / "mpv", tmp_path / "a.wav")
     assert seen["target"] == "/dev/stdout" and answer["via"] == ad.TRANSPORT_PIPE
+
+
+def test_an_over_budget_search_is_a_note_and_the_run_still_passes(
+    tmp_path, monkeypatch, capsys
+):
+    """The in-process search number is reported, not gated (the worker check gates it)."""
+    result = {
+        "platform": "Windows AMD64, 4 cores",
+        "responsiveness": {"idle_p95_ms": 28.3, "chosen_p95_ms": 183.4},
+    }
+    mpv = tmp_path / "mpv"
+    mpv.write_text("")
+    monkeypatch.setattr(bench, "run", lambda *_args: result)
+    monkeypatch.setattr(bench, "report", lambda _result: None)
+    assert bench.main(["--mpv", str(mpv)]) == 0
+    assert "NOTE, not gated" in capsys.readouterr().out

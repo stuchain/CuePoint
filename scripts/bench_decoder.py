@@ -19,9 +19,14 @@ Every number ADR-009 records, taken again rather than trusted:
 - **The engine's responsiveness.** An engine over a library of ``--tracks``
   tracks is started in this process. The p95 of the Library's search is
   measured idle, with four analyses running (the design chosen), and with
-  four of the alternative running. Budget: the chosen design keeps the p95
-  within ``RESPONSIVENESS_BUDGET`` times the idle p95, which is floored at
-  ``RESPONSIVENESS_FLOOR_MS`` (HARDEN-07). A plain ratio over idle failed on
+  four of the alternative running, and compared with ``RESPONSIVENESS_BUDGET``
+  times the idle p95, which is floored at ``RESPONSIVENESS_FLOOR_MS`` (HARDEN-07).
+  **Reported, not gated.** These analyses run in this process, the design
+  before ADR-013; the app analyses in a worker process, and that is what
+  ``bench_waveform_analysis.py`` holds to the same budget. In-process, Windows
+  read 140 to 183 ms in every scale run from 2 to 17 November 2026 (the other
+  systems 23 to 61 ms), so the run failed or passed by chance while the worker
+  read 38 ms there. An over-budget number is printed as a note. A plain ratio over idle failed on
   every leg of the first CI run (2.02, 3.58, 2.58 against 1.5) because idle
   was about 10 ms on Linux: a rise of 10 ms doubles a ratio over a near-zero
   base and is not something a person could feel. With the floor, anything
@@ -44,7 +49,7 @@ Usage::
     python scripts/bench_decoder.py --mpv /usr/bin/mpv    # a named one
     python scripts/bench_decoder.py --json report.json
 
-Exit status 1 when a budget is missed.
+Exit status 0 once it has measured: nothing here is gated (see above).
 """
 
 from __future__ import annotations
@@ -427,7 +432,11 @@ def report(result: Dict[str, Any]) -> None:
 
 
 def over_budget(result: Dict[str, Any]) -> List[str]:
-    """The chosen design's search p95 over the floored idle, against the budget."""
+    """The chosen design's search p95 over the floored idle, against the budget.
+
+    Printed as a note, never failing the run: this is the in-process design, and
+    the worker the app uses is gated by ``bench_waveform_analysis.py``.
+    """
     r = result["responsiveness"]
     idle, chosen = r.get("idle_p95_ms"), r.get("chosen_p95_ms")
     if not idle or chosen is None:
@@ -474,10 +483,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     report(result)
     if args.json:
         budget_check.write_json(args.json, result)
-    missed = over_budget(result)
-    for line in missed:
-        print(f"OVER BUDGET: {line}", file=sys.stderr)
-    return 1 if missed else 0
+    for line in over_budget(result):
+        print(
+            f"NOTE, not gated (analysed in this process, not the app's worker): {line}"
+        )
+    return 0
 
 
 if __name__ == "__main__":

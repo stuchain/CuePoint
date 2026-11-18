@@ -22,7 +22,8 @@ is. Nothing is a stand-in but the audio.
   one noisy minute cannot pass or fail the budget, which is
   ``RESPONSIVENESS_BUDGET`` times idle at p95, with idle floored at
   ``RESPONSIVENESS_FLOOR_MS`` as ``bench_decoder.py`` does: idle is about 20 ms,
-  where a 10 ms rise reads as 1.5 times.
+  where a 10 ms rise reads as 1.5 times. This is the scale job's gate on search
+  while analysing; ``bench_decoder.py`` only reports its in-process number.
 - **Playback** (``--play``). While the second run analyses, the player's
   ``mpv`` plays a three-track queue on the default audio device, and its log is
   read for underruns; the budget is none. Silent tracks, so nothing is heard.
