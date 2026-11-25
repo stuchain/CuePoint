@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs";
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { describe, expect, it } from "vitest";
 import { PRIMARY_ACTION } from "../data/site";
 import ogDefault from "../assets/og/default.png";
 import AppShot from "./AppShot.astro";
+import { STRIP_HEIGHT } from "../lib/crowd/strip";
+import CrowdStrip from "./CrowdStrip.astro";
 import HomeAction from "./HomeAction.astro";
 import SoundButton from "./SoundButton.astro";
 
@@ -63,5 +66,23 @@ describe("the home page's components", () => {
     expect(html).not.toContain("data-sound-toggle");
     expect(html).not.toContain("<button");
     expect(html).not.toContain("<audio");
+  });
+
+  it("CrowdStrip: the box reserves the strip's height (the canvas's logical height at the CSS scale), so nothing moves", () => {
+    const source = readFileSync(new URL("./CrowdStrip.astro", import.meta.url), "utf8");
+    expect(source).toContain(`--crowd-height: calc(${STRIP_HEIGHT}px * var(--crowd-scale))`);
+    expect(source).toMatch(/\n  \.crowd \{[^}]*\n\s*height: var\(--crowd-height\);/);
+    expect(source).toMatch(/\.crowd \{[^}]*position: absolute;/);
+    expect(source).toContain(`height="${STRIP_HEIGHT}"`);
+    // a whole-number scale at both sizes
+    expect([...source.matchAll(/--crowd-scale: (\S+);/g)].map((m) => m[1])).toEqual(["3", "4"]);
+  });
+
+  it("CrowdStrip: a decorative canvas with no words, in a box of a reserved height", async () => {
+    const html = await render(CrowdStrip);
+    expect(html).toContain("data-crowd-canvas");
+    expect(html).toMatch(/<div[^>]*data-crowd[^>]*aria-hidden="true"/);
+    // no visible text, so nothing to translate
+    expect(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, "").replace(/<[^>]*>/g, "").trim()).toBe("");
   });
 });

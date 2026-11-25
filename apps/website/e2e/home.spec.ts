@@ -19,6 +19,8 @@ const CHROME_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const SCENE = "[data-scene='opening']";
 const CANVAS = "[data-scene='opening'] canvas";
+/** Any 3D scene's canvas (the dancing strip's 2D canvas is not one). */
+const SCENE_CANVAS = "[data-scene] canvas";
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css",
@@ -401,7 +403,7 @@ test.describe("the scenes and their pictures", () => {
     await page.keyboard.press("Shift");
     await page.mouse.wheel(0, 600);
     await page.waitForTimeout(1500);
-    await expect(page.locator("canvas")).toHaveCount(0);
+    await expect(page.locator(SCENE_CANVAS)).toHaveCount(0);
     for (const scene of await page.locator("[data-scene]").all()) {
       const img = scene.locator(".still img:visible");
       await expect(img).toHaveCount(1);
@@ -467,7 +469,7 @@ test.describe("the scenes and their pictures", () => {
       await page.goto("");
       await page.keyboard.press("Shift");
       await page.waitForTimeout(1200);
-      await expect(page.locator("canvas")).toHaveCount(0);
+      await expect(page.locator(SCENE_CANVAS)).toHaveCount(0);
       await expect(page.locator(`${SCENE} .still img:visible`)).toHaveCount(1);
       await context.close();
     }
@@ -582,4 +584,102 @@ test.describe("the page as a document", () => {
       expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
     });
   }
+});
+
+/**
+ * The dancing strip along the hero's foot (src/components/CrowdStrip.astro): it never sits on the hero's copy,
+ * and with reduced motion it is one still frame. Where the copy would reach it, the strip hides itself.
+ */
+test.describe("the dancing strip", () => {
+  const STRIP = "[data-crowd]";
+  const settled = async (page: Page) => {
+    await page.waitForFunction((sel) => {
+      const state = document.querySelector(sel)?.getAttribute("data-state");
+      return state === "running" || state === "still" || state === "hidden";
+    }, STRIP, { timeout: 15_000 });
+  };
+
+  for (const path of ["", "de/"]) {
+    for (const [width, height] of [
+      [1024, 768],
+      [1280, 720],
+      [1366, 768],
+      [1440, 900],
+      [360, 780],
+    ] as const) {
+      test(`/${path} at ${width} x ${height}: the strip does not touch the hero's copy`, async ({ page }) => {
+        await page.setViewportSize({ width, height });
+        await page.goto(path);
+        await settled(page);
+        const copy = (await page.locator("[data-hero-copy]").boundingBox())!;
+        const state = await page.locator(STRIP).getAttribute("data-state");
+        if (state === "hidden") {
+          await expect(page.locator(STRIP)).toHaveCSS("visibility", "hidden");
+          return;
+        }
+        const strip = (await page.locator(STRIP).boundingBox())!;
+        expect(strip.y, "the strip starts below the copy").toBeGreaterThanOrEqual(copy.y + copy.height);
+        // and it is inside the first screen, whole
+        expect(strip.y + strip.height).toBeLessThanOrEqual(height);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      });
+    }
+  }
+
+  test("the strip is a decorative canvas of whole pixels, and takes no space from the page", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("");
+    await settled(page);
+    await expect(page.locator(STRIP)).toHaveAttribute("aria-hidden", "true");
+    const sizes = await page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>("[data-crowd-canvas]")!;
+      const r = c.getBoundingClientRect();
+      return { w: c.width, h: c.height, cssW: r.width, cssH: r.height };
+    });
+    expect(sizes.cssW / sizes.w).toBe(sizes.cssH / sizes.h);
+    expect(Number.isInteger(sizes.cssH / sizes.h)).toBe(true);
+  });
+
+  test("with reduced motion the strip is one still frame that never changes", async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: "reduce", viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto("");
+    await settled(page);
+    await expect(page.locator(STRIP)).toHaveAttribute("data-state", "still");
+    const frame = () => page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>("[data-crowd-canvas]")!;
+      return c.toDataURL();
+    });
+    const first = await frame();
+    // not blank: a canvas of nothing is the same data URL as a fresh one
+    const blank = await page.evaluate(() => {
+      const c = document.createElement("canvas");
+      const live = document.querySelector<HTMLCanvasElement>("[data-crowd-canvas]")!;
+      c.width = live.width;
+      c.height = live.height;
+      return c.toDataURL();
+    });
+    expect(first).not.toBe(blank);
+    await page.waitForTimeout(1500);
+    expect(await frame()).toBe(first);
+    await context.close();
+  });
+
+  test("the strip moves without reduced motion, and stops when reduced motion turns on", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("");
+    await settled(page);
+    const frame = () => page.evaluate(() => document.querySelector<HTMLCanvasElement>("[data-crowd-canvas]")!.toDataURL());
+    const seen = new Set<string>();
+    for (let i = 0; i < 6; i += 1) {
+      seen.add(await frame());
+      await page.waitForTimeout(250);
+    }
+    expect(seen.size).toBeGreaterThan(1);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(page.locator(STRIP)).toHaveAttribute("data-state", "still");
+    const still = await frame();
+    await page.waitForTimeout(800);
+    expect(await frame()).toBe(still);
+  });
 });

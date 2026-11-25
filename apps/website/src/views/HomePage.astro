@@ -44,6 +44,7 @@ import Scene from "../components/Scene.astro";
 import StoryFrame from "../components/StoryFrame.astro";
 import SoundButton from "../components/SoundButton.astro";
 import AppNote from "../components/AppNote.astro";
+import CrowdStrip from "../components/CrowdStrip.astro";
 import { homeFor } from "../i18n/content";
 import { DEFAULT_LOCALE, localeInfo, type LocaleCode } from "../i18n/locales";
 import { localePath } from "../i18n/paths";
@@ -164,6 +165,7 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
         {downloads && <p class="downloads" data-downloads>{downloads}</p>}
         </div>
       </div>
+      <CrowdStrip />
     </div>
 
     <div class="steps" id="story-track">
@@ -623,7 +625,11 @@ const WHEEL_CELLS = Array.from({ length: 24 }, (_, i) => ({ d: cellPath((i % 2) 
   }
   @media (min-width: 60rem) {
     .hero {
-      align-items: center;
+      /* centered in the screen above the dancing strip (src/components/CrowdStrip.astro), which has the foot of
+         the first screen to itself; where the copy is taller than that room it starts at the top and the strip
+         hides itself (src/lib/crowd/strip.ts), never the other way */
+      align-items: safe center;
+      padding-bottom: calc(var(--header-h) + var(--crowd-height));
     }
     .hero-inner {
       padding: 0 0 4svh;

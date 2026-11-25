@@ -1,0 +1,83 @@
+---
+// The dancing crowd along the foot of the home page's first screen: about 24 original pixel dancers
+// (the same art as the app's party view) on a dark floor band, to a steady 124 BPM pattern. The site plays
+// no music, so the pattern is its own: calm, build, drop (src/lib/crowd/pattern.ts).
+//
+// HTML first: the strip is a box of a fixed height (34 logical pixels at a whole-number scale, set here in
+// CSS), so it never moves anything, and the floor band is CSS, in the page's own tokens, so a visitor
+// without script sees a floor and nothing else. The canvas is drawn only once the page has loaded and is
+// idle (the script's chunk is fetched then, not before). Reduced motion and saveData get one still frame;
+// the loop stops while the tab is hidden or the strip is off screen, and the strip hides itself where it
+// would sit on the hero's copy (a short screen, a long language), and runs at 30 frames a second at most.
+// The canvas is decorative: aria-hidden, and the strip says nothing in words.
+---
+
+<div class="crowd" data-crowd aria-hidden="true">
+  <canvas data-crowd-canvas width="1" height="34"></canvas>
+</div>
+
+<script>
+  const canvas = document.querySelector<HTMLCanvasElement>("[data-crowd-canvas]");
+  if (canvas) {
+    const start = () => {
+      void import("../lib/crowd/strip").then((m) => m.mountStrip(canvas)).catch(() => undefined);
+    };
+    const idle = () => {
+      if (typeof requestIdleCallback === "function") requestIdleCallback(start, { timeout: 4000 });
+      else setTimeout(start, 400);
+    };
+    if (document.readyState === "complete") idle();
+    else addEventListener("load", idle, { once: true });
+  }
+</script>
+
+<style is:global>
+  /*
+   * The strip's size, shared with the page that holds it (the hero keeps a gap this tall below its copy,
+   * views/HomePage.astro): the canvas's logical height at a whole-number scale, so every dancer pixel is square.
+   */
+  :root {
+    --crowd-scale: 3;
+    --crowd-height: calc(34px * var(--crowd-scale));
+  }
+  @media (min-width: 40rem) {
+    :root {
+      --crowd-scale: 4;
+    }
+  }
+</style>
+
+<style>
+  .crowd {
+    position: absolute;
+    /* the hero is one screen tall and starts under the header, so its foot is the header's height above the screen's */
+    inset: auto 0 var(--header-h) 0;
+    height: var(--crowd-height);
+    pointer-events: none;
+    overflow: hidden;
+  }
+  /*
+   * Until the script has measured the strip against the hero's copy (it never stands on it: src/lib/crowd/
+   * strip.ts sets data-state to running, still or hidden) nothing of it shows; the box itself keeps its
+   * reserved size throughout, so nothing moves.
+   */
+  .crowd:not([data-state]),
+  .crowd[data-state="hidden"] {
+    visibility: hidden;
+  }
+  /* the floor: the page's background taken dark, leaned a little to the accent, with the accent along its edge */
+  .crowd::before {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: calc(14px * var(--crowd-scale));
+    background: color-mix(in srgb, color-mix(in srgb, var(--bg-app) 45%, black) 92%, var(--accent-primary));
+    border-top: calc(1px * var(--crowd-scale)) solid color-mix(in srgb, var(--accent-primary) 45%, var(--bg-app));
+  }
+  /* the script sets the canvas's size to a whole multiple of its pixels; the box crops what is over */
+  canvas {
+    position: relative;
+    display: block;
+    image-rendering: pixelated;
+  }
+</style>
