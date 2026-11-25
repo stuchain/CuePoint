@@ -684,5 +684,16 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
         void ipcRenderer.invoke("player:unsubscribeState");
       };
     },
+    // Readings only; whether the meter works is not exposed. No readings for over a second
+    // while playing means it does not.
+    subscribeLevels: (onLevels) => {
+      const handler = (_event, reading) => onLevels(reading);
+      ipcRenderer.on("player:levels", handler);
+      void ipcRenderer.invoke("player:subscribeLevels");
+      return () => {
+        ipcRenderer.removeListener("player:levels", handler);
+        void ipcRenderer.invoke("player:unsubscribeLevels");
+      };
+    },
   },
 }));

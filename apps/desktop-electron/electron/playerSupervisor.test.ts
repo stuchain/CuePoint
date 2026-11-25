@@ -11,6 +11,7 @@ import {
   exclusiveOutputSupported,
   isAudioOutputFailure,
 } from "./playerSupervisor";
+import { CROWD_METER_FILTERS } from "./mpvClient";
 import type { ProcessIncident, ProcessReporter } from "./processWatch";
 
 /**
@@ -109,8 +110,22 @@ class FakeClient extends EventEmitter {
     this.connected = false;
   }
 
+  /**
+   * Filters FFmpeg would refuse to build. Like mpv 0.37: at idle `af add` only stores the filter
+   * and always succeeds; the graph is built at `loadfile`, where a bad stored filter fails the
+   * file; while a file plays, a bad `af add` returns an error and is not kept.
+   */
+  rejectedFilters = new Set<string>();
+  storedFilters: string[] = [];
+  private filePlaying = false;
+
   async command(command: unknown[]): Promise<unknown> {
     this.commands.push(command);
+    if (command[0] === "af" && command[1] === "add") {
+      const filter = String(command[2]);
+      if (this.filePlaying && this.rejectedFilters.has(filter)) throw new Error("error running command");
+      this.storedFilters.push(filter);
+    }
     return null;
   }
 
@@ -134,6 +149,10 @@ class FakeClient extends EventEmitter {
   loadGates: Array<Promise<void>> = [];
   async loadFile(file: string, mode = "replace"): Promise<number | undefined> {
     this.commands.push(["loadfile", file, mode]);
+    if (this.storedFilters.some((f) => this.rejectedFilters.has(f))) {
+      throw new Error("no audio or video data played");
+    }
+    this.filePlaying = true;
     const gate = this.loadGates.shift();
     if (gate) await gate;
     return this.returnEntryIds ? this.nextEntryId++ : undefined;
@@ -206,6 +225,8 @@ function harness(
     exists?: (candidate: string) => boolean;
     spawnThrows?: Error;
     connectFailures?: number;
+    /** Indexes into CROWD_METER_FILTERS that FFmpeg would refuse (the loudness meter). */
+    rejectFilters?: number[];
     maxRestartAttempts?: number;
     stableUptimeMs?: number;
     reporter?: ProcessReporter;
@@ -251,6 +272,7 @@ function harness(
     createClient: ((socketPath: string) => {
       const client = new FakeClient(socketPath);
       client.connectFailures = overrides.connectFailures ?? 0;
+      for (const i of overrides.rejectFilters ?? []) client.rejectedFilters.add(CROWD_METER_FILTERS[i]);
       clients.push(client);
       return client;
     }) as never,
@@ -1973,5 +1995,199 @@ describe("the heartbeat (HARDEN-05)", () => {
     const reads = clients[0].idleActiveReads;
     await settle(60);
     expect(clients[0].idleActiveReads).toBe(reads);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Loudness meter (live levels)
+// ---------------------------------------------------------------------------
+
+describe("loudness meter", () => {
+  const reading = (rms: unknown, peak: unknown) => ({
+    "lavfi.astats.Overall.RMS_level": rms,
+    "lavfi.astats.Overall.Peak_level": peak,
+  });
+  const afAdds = (c: FakeClient) => c.commands.filter((x) => x[0] === "af");
+
+  /** Play a file, let mpv say it loaded, and let the supervisor finish adding the meter. */
+  async function metered(overrides: Parameters<typeof harness>[0] = {}) {
+    const h = track(harness(overrides));
+    await h.supervisor.play("/music/a.flac");
+    h.clients[0].emit("event", { event: "file-loaded" });
+    await settle(10);
+    return h;
+  }
+
+  it("never adds the filter at idle, so a filter FFmpeg rejects cannot fail the first track", async () => {
+    const { supervisor, clients } = track(harness({ rejectFilters: [0, 1] }));
+    await supervisor.play("/music/a.flac"); // rejects here if a bad filter was stored at idle
+    expect(afAdds(clients[0])).toHaveLength(0);
+    expect(clients[0].commands.some((c) => c[0] === "loadfile")).toBe(true);
+  });
+
+  it("adds the filter after the first file has loaded", async () => {
+    const { supervisor, clients } = await metered();
+    const names = clients[0].commands.map((c) => c[0]);
+    expect(afAdds(clients[0])).toEqual([["af", "add", CROWD_METER_FILTERS[0]]]);
+    expect(names.indexOf("af")).toBeGreaterThan(names.indexOf("loadfile"));
+    expect(clients[0].observed).toContain("af-metadata/crowd");
+    expect(supervisor.levelsAvailable).toBe(true);
+  });
+
+  it("does not add it again for the second file", async () => {
+    const { supervisor, clients } = await metered();
+    await supervisor.play("/music/b.flac");
+    clients[0].emit("event", { event: "file-loaded" });
+    await settle(10);
+    expect(afAdds(clients[0])).toHaveLength(1);
+    expect(clients[0].observed.filter((n) => n === "af-metadata/crowd")).toHaveLength(1);
+  });
+
+  it("adds it again on the new client after a crash restart", async () => {
+    const { supervisor, clients, children } = await metered();
+    children[0].exit(1);
+    await until(() => clients.length === 2);
+    await supervisor.play("/music/a.flac");
+    clients[1].emit("event", { event: "file-loaded" });
+    await settle(10);
+    expect(afAdds(clients[1])).toEqual([["af", "add", CROWD_METER_FILTERS[0]]]);
+    expect(supervisor.levelsAvailable).toBe(true);
+  });
+
+  it("falls back to the second candidate when the first is refused while playing", async () => {
+    const { supervisor, clients } = await metered({ rejectFilters: [0] });
+    expect(afAdds(clients[0])).toEqual([
+      ["af", "add", CROWD_METER_FILTERS[0]],
+      ["af", "add", CROWD_METER_FILTERS[1]],
+    ]);
+    expect(supervisor.levelsAvailable).toBe(true);
+  });
+
+  it("leaves playback working when both candidates are refused", async () => {
+    const { supervisor, clients } = await metered({ rejectFilters: [0, 1] });
+    expect(supervisor.levelsAvailable).toBe(false);
+    expect(clients[0].observed).not.toContain("af-metadata/crowd");
+    expect(supervisor.getStatus().running).toBe(true);
+    await supervisor.play("/music/b.flac"); // the refused filters were not kept
+    expect(clients[0].commands.filter((c) => c[0] === "loadfile")).toHaveLength(2);
+  });
+
+  it("notes a refusal once, as one line", async () => {
+    const { supervisor } = await metered({ rejectFilters: [0, 1] });
+    const lines = supervisor.recentOutput().filter((l: string) => l.includes("loudness meter"));
+    expect(lines).toHaveLength(1);
+  });
+
+  it("parses mpv's string values, treating -inf, blank and missing as silence and clamping", async () => {
+    const { supervisor, clients } = await metered();
+    vi.useFakeTimers();
+    try {
+      const got: unknown[] = [];
+      supervisor.onLevels((r) => got.push(r));
+      clients[0].emitProperty("time-pos", 12.5);
+      for (const r of [
+        reading("-18.25", "-3.5"),
+        reading("-inf", "-inf"),
+        {},
+        reading("-300", "4.2"),
+        reading("", "  "),
+        reading(null, undefined),
+      ]) {
+        clients[0].emitProperty("af-metadata/crowd", r);
+        vi.advanceTimersByTime(40);
+      }
+      expect(got).toEqual([
+        { rmsDb: -18.25, peakDb: -3.5, position: 12.5 },
+        { rmsDb: -120, peakDb: -120, position: 12.5 },
+        { rmsDb: -120, peakDb: -120, position: 12.5 },
+        { rmsDb: -120, peakDb: 0, position: 12.5 },
+        { rmsDb: -120, peakDb: -120, position: 12.5 },
+        { rmsDb: -120, peakDb: -120, position: 12.5 },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("caps emits at 30 a second and keeps the latest reading", async () => {
+    const { supervisor, clients } = await metered();
+    vi.useFakeTimers();
+    try {
+      const got: Array<{ rmsDb: number }> = [];
+      supervisor.onLevels((r) => got.push(r));
+      for (let i = 0; i < 200; i++) {
+        clients[0].emitProperty("af-metadata/crowd", reading(String(-60 + (i % 50)), "-1"));
+        vi.advanceTimersByTime(10);
+      }
+      expect(got.length).toBeLessThanOrEqual(62);
+      expect(got.length).toBeGreaterThan(40);
+      vi.advanceTimersByTime(100);
+      got.length = 0;
+      clients[0].emitProperty("af-metadata/crowd", reading("-50", "-1"));
+      clients[0].emitProperty("af-metadata/crowd", reading("-40", "-1"));
+      clients[0].emitProperty("af-metadata/crowd", reading("-30", "-1"));
+      vi.advanceTimersByTime(100);
+      expect(got.map((r) => r.rmsDb)).toEqual([-50, -30]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stores nothing and arms no timer when nobody listens", async () => {
+    const { supervisor, clients } = await metered();
+    vi.useFakeTimers();
+    try {
+      const before = vi.getTimerCount();
+      clients[0].emitProperty("af-metadata/crowd", reading("-20", "-2"));
+      clients[0].emitProperty("af-metadata/crowd", reading("-21", "-2"));
+      expect(vi.getTimerCount()).toBe(before);
+      expect((supervisor as unknown as { pendingLevels: unknown }).pendingLevels).toBeNull();
+      // A late listener gets nothing from readings that arrived before it.
+      const got: unknown[] = [];
+      supervisor.onLevels((r) => got.push(r));
+      vi.advanceTimersByTime(100);
+      expect(got).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops delivering after unsubscribe and clears the waiting timer", async () => {
+    const { supervisor, clients } = await metered();
+    vi.useFakeTimers();
+    try {
+      const got: unknown[] = [];
+      const off = supervisor.onLevels((r) => got.push(r));
+      const before = vi.getTimerCount();
+      clients[0].emitProperty("af-metadata/crowd", reading("-20", "-2"));
+      clients[0].emitProperty("af-metadata/crowd", reading("-21", "-2"));
+      expect(got).toHaveLength(1);
+      expect(vi.getTimerCount()).toBe(before + 1); // the throttle timer
+      off();
+      expect(vi.getTimerCount()).toBe(before);
+      vi.advanceTimersByTime(100);
+      expect(got).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops a waiting reading and the meter state on stop", async () => {
+    const { supervisor, clients } = await metered();
+    vi.useFakeTimers();
+    try {
+      const got: unknown[] = [];
+      supervisor.onLevels((r) => got.push(r));
+      clients[0].emitProperty("af-metadata/crowd", reading("-20", "-2"));
+      clients[0].emitProperty("af-metadata/crowd", reading("-21", "-2"));
+      expect(got).toHaveLength(1);
+      const stopping = supervisor.stop();
+      await vi.advanceTimersByTimeAsync(2000);
+      await stopping;
+      expect(got).toHaveLength(1);
+      expect(supervisor.levelsAvailable).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

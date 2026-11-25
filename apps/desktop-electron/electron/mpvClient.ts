@@ -169,6 +169,28 @@ export const MPV_BASE_ARGS: readonly string[] = [
 ];
 
 /**
+ * The loudness meter, as an mpv audio filter (`af`) with the label `crowd`.
+ *
+ * `astats` only measures: the sound passes through byte for byte, and with `metadata=1` it
+ * publishes its readings on the property `af-metadata/crowd`. It is deliberately not in
+ * `MPV_BASE_ARGS`: a filter mpv cannot build at launch would stop the player starting, and the
+ * user would lose their audio over a meter. The supervisor adds it with the `af add` command
+ * once a file is playing. At idle mpv's `af add` only stores the option and always answers
+ * success; the filter graph is built at the next `loadfile`, and a graph FFmpeg rejects fails
+ * that file and every later one. While a file plays, a bad `af add` returns an error and mpv
+ * reverts the chain, which is the only moment a failure is safe to try out.
+ *
+ * Two candidates, tried in order: older FFmpeg builds do not know the `measure_*` options (they
+ * arrived together with `measure_overall`), and without them `astats` reports the overall
+ * figures anyway, with more keys.
+ */
+export const CROWD_METER_LABEL = "crowd";
+export const CROWD_METER_FILTERS: readonly string[] = [
+  `@${CROWD_METER_LABEL}:lavfi=[astats=metadata=1:reset=1:measure_perchannel=none:measure_overall=RMS_level+Peak_level]`,
+  `@${CROWD_METER_LABEL}:lavfi=[astats=metadata=1:reset=1]`,
+];
+
+/**
  * Windows only: `--media-controls` arrived in mpv 0.40, and Linux runs a distribution mpv (Ubuntu
  * 24.04 ships 0.37), which refuses an unknown option and exits before it opens its socket.
  */

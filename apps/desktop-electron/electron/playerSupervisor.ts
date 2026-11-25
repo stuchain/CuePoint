@@ -2,6 +2,8 @@ import { spawn as nodeSpawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
 
 import {
+  CROWD_METER_FILTERS,
+  CROWD_METER_LABEL,
   MPV_OBSERVED_PROPERTIES,
   MpvClient,
   buildMpvArgs,
@@ -167,6 +169,29 @@ const PLAYER_STABLE_UPTIME_MS = 10_000;
  */
 const POSITION_PUSH_INTERVAL_MS = 250;
 
+/** At most 30 level readings a second go on to listeners; mpv produces about 18 a second. */
+const LEVELS_PUSH_INTERVAL_MS = 33;
+/** What silence, "-inf", a missing key or a reading that is not a number is reported as. */
+const LEVELS_FLOOR_DB = -120;
+
+/** One loudness reading of what is playing, in dB (0 is full scale). */
+export interface PlayerLevels {
+  rmsDb: number;
+  peakDb: number;
+  /** The playback position (seconds) the supervisor last knew when the reading went out. */
+  position: number | null;
+}
+
+/** mpv sends dB as strings, and "-inf" for silence. */
+function parseDb(value: unknown): number {
+  // Number(null), Number("") and Number(" ") are 0, which would read as full scale.
+  if (typeof value === "string" && value.trim() === "") return LEVELS_FLOOR_DB;
+  if (typeof value !== "string" && typeof value !== "number") return LEVELS_FLOOR_DB;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return LEVELS_FLOOR_DB;
+  return Math.min(0, Math.max(LEVELS_FLOOR_DB, n));
+}
+
 interface PlayerStatus {
   /** A player binary exists and could be started. */
   available: boolean;
@@ -286,6 +311,13 @@ export class PlayerSupervisor {
   private readonly endFileListeners = new Set<EndFileListener>();
   private readonly startFileListeners = new Set<StartFileListener>();
   private readonly idleListeners = new Set<IdleListener>();
+  private readonly levelsListeners = new Set<(reading: PlayerLevels) => void>();
+  private levelsOk = false;
+  /** Clients the meter has been tried on; one try per mpv process. */
+  private meteredClients = new WeakSet<MpvClient>();
+  private lastLevelsAt = 0;
+  private pendingLevels: { rmsDb: number; peakDb: number } | null = null;
+  private levelsTimer: NodeJS.Timeout | null = null;
   /** mpv's own `idle-active`: it has nothing loaded and is playing nothing. */
   private idleActive = false;
   /**
@@ -687,6 +719,7 @@ export class PlayerSupervisor {
       // it through raw), so it cannot be matched to an open the way `end-file`
       // is; it settles whatever is opening.
       this.settleOpening();
+      void this.meterOnLoad(client);
       // mpv's `end-file` for the file this one replaced (or for the track that
       // ended into a gapless successor) cleared `playing`, and `pause` does not
       // change across a switch, so nothing else would set it again. The
@@ -718,6 +751,9 @@ export class PlayerSupervisor {
     });
 
     await this.observeState(client);
+    // The meter is not added here: at idle mpv accepts any `af add` and a filter FFmpeg rejects
+    // then fails the first track. It is added on the first `file-loaded` (see `meterOnLoad`).
+    this.levelsOk = false;
     await this.restoreAudio(client);
     // It died while it was being set up: a failed start, for whoever is starting it to see.
     if (exited) {
@@ -809,6 +845,90 @@ export class PlayerSupervisor {
           // the transport simply will not update that field.
         });
     }
+  }
+
+  /**
+   * Add the loudness meter to this mpv, once, when its first file has loaded.
+   *
+   * Only while a file plays does a filter FFmpeg rejects come back as an error (mpv then reverts
+   * the chain and playback goes on); at idle `af add` always "succeeds" and the bad graph would
+   * fail the next track. Playback must never depend on the meter: every failure is swallowed and
+   * the meter is reported as not available (`levelsAvailable`).
+   */
+  private async meterOnLoad(client: MpvClient): Promise<void> {
+    if (this.meteredClients.has(client)) return;
+    this.meteredClients.add(client);
+    const failed: string[] = [];
+    for (const filter of CROWD_METER_FILTERS) {
+      try {
+        await client.command(["af", "add", filter]);
+        if (this.client !== client) return; // stopped or replaced meanwhile
+        this.levelsOk = true;
+        break;
+      } catch (error) {
+        failed.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+    if (!this.levelsOk) {
+      this.note(`loudness meter unavailable: ${failed.join("; ")}`);
+      return;
+    }
+    if (failed.length > 0) this.note(`loudness meter: first filter refused (${failed[0]}), second in use`);
+    try {
+      await client.observeProperty(`af-metadata/${CROWD_METER_LABEL}`, (value) => this.applyLevels(value));
+    } catch (error) {
+      this.levelsOk = false;
+      this.note(`loudness meter not observable: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /** Whether the loudness meter is running in the current mpv. */
+  get levelsAvailable(): boolean {
+    return this.levelsOk;
+  }
+
+  /** Listen for loudness readings (at most 30 a second); returns the unsubscribe. */
+  onLevels(listener: (reading: PlayerLevels) => void): () => void {
+    this.levelsListeners.add(listener);
+    return () => {
+      this.levelsListeners.delete(listener);
+      if (this.levelsListeners.size === 0) this.clearLevelsTimer();
+    };
+  }
+
+  private clearLevelsTimer(): void {
+    if (this.levelsTimer) clearTimeout(this.levelsTimer);
+    this.levelsTimer = null;
+    this.pendingLevels = null;
+  }
+
+  private applyLevels(value: unknown): void {
+    if (this.levelsListeners.size === 0) return;
+    const map = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+    this.pendingLevels = {
+      rmsDb: parseDb(map["lavfi.astats.Overall.RMS_level"]),
+      peakDb: parseDb(map["lavfi.astats.Overall.Peak_level"]),
+    };
+    if (this.levelsTimer) return; // the latest reading replaces the one waiting; nothing queues
+    const wait = LEVELS_PUSH_INTERVAL_MS - (Date.now() - this.lastLevelsAt);
+    if (wait <= 0) {
+      this.flushLevels();
+      return;
+    }
+    this.levelsTimer = setTimeout(() => {
+      this.levelsTimer = null;
+      this.flushLevels();
+    }, wait);
+    this.levelsTimer.unref?.();
+  }
+
+  private flushLevels(): void {
+    const pending = this.pendingLevels;
+    this.pendingLevels = null;
+    if (!pending || this.levelsListeners.size === 0) return;
+    this.lastLevelsAt = Date.now();
+    const reading: PlayerLevels = { ...pending, position: this.playback.positionSeconds };
+    for (const listener of this.levelsListeners) listener(reading);
   }
 
   /**
@@ -1151,6 +1271,8 @@ export class PlayerSupervisor {
       this.restartTimer = null;
     }
     this.reconnecting = false;
+    this.clearLevelsTimer();
+    this.levelsOk = false;
 
     const child = this.child;
     const client = this.client;
@@ -1210,6 +1332,8 @@ export class PlayerSupervisor {
     this.endFileListeners.clear();
     this.startFileListeners.clear();
     this.idleListeners.clear();
+    this.levelsListeners.clear();
+    this.clearLevelsTimer();
   }
 
   // -------------------------------------------------------------------------

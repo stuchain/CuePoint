@@ -96,6 +96,14 @@ export interface QueueItemInput {
   durationSeconds?: number | null;
 }
 
+/** One loudness reading in dB, -120 (silence) to 0 (full scale). */
+export interface PlayerLevels {
+  rmsDb: number;
+  peakDb: number;
+  /** Playback position in seconds when the reading was taken, or null. */
+  position: number | null;
+}
+
 export interface PlayerSnapshot {
   status: PlayerStatus;
   playback: PlaybackState;
@@ -238,6 +246,13 @@ export interface PlayerBridge {
   setAudioSettings: (settings: Partial<AudioSettings>) => Promise<PlayerPlayResult>;
   /** Subscribe to state pushes; returns an unsubscribe function. */
   subscribeState: (onState: (snapshot: PlayerSnapshot) => void) => () => void;
+  /**
+   * Subscribe to live loudness readings (at most 30 a second); returns an unsubscribe
+   * function. Where the meter could not be added to the player, no readings arrive, and the
+   * bridge does not say so: availability is not exposed here, so a consumer treats "no readings
+   * for more than a second while playing" as unavailable.
+   */
+  subscribeLevels: (onLevels: (reading: PlayerLevels) => void) => () => void;
   /**
    * Subscribe to one-off notices (PLAYER-10): a track that would not play, or
    * a player that is gone. Not replayed on subscribe — a notice is an event,

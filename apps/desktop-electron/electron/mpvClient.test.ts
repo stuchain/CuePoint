@@ -4,6 +4,8 @@ import net from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  CROWD_METER_FILTERS,
+  CROWD_METER_LABEL,
   MPV_BASE_ARGS,
   MPV_OBSERVED_PROPERTIES,
   MpvClient,
@@ -1078,5 +1080,21 @@ describe("errors from a dying connection", () => {
     socket.emit("data", "not json at all\n");
 
     expect(seen[0]).toContain("unparseable line from mpv");
+  });
+});
+
+describe("loudness meter filter", () => {
+  it("is labelled crowd and has two candidates, the newer FFmpeg syntax first", () => {
+    expect(CROWD_METER_LABEL).toBe("crowd");
+    expect(CROWD_METER_FILTERS).toHaveLength(2);
+    expect(CROWD_METER_FILTERS[0]).toContain("measure_overall=RMS_level+Peak_level");
+    expect(CROWD_METER_FILTERS[1]).not.toContain("measure_");
+    expect(CROWD_METER_FILTERS[1]).toBe("@crowd:lavfi=[astats=metadata=1:reset=1]");
+    for (const filter of CROWD_METER_FILTERS) expect(filter.startsWith("@crowd:lavfi=[astats=")).toBe(true);
+  });
+
+  it("is not part of the launch arguments, where a bad filter would cost the user their audio", () => {
+    expect(MPV_BASE_ARGS.join(" ")).not.toContain("astats");
+    expect(buildMpvArgs("/tmp/s").join(" ")).not.toContain("astats");
   });
 });

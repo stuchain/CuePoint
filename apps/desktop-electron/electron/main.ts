@@ -592,6 +592,31 @@ function pushPlayerState(snapshot: unknown): void {
 }
 
 /**
+ * Renderers watching the loudness meter, refcounted the same way. The supervisor measures and
+ * throttles; this only fans each reading out, and stops listening when nobody watches.
+ */
+const levelWatchers = new Map<number, { sender: Electron.WebContents; refs: number }>();
+let levelsUnsubscribe: (() => void) | null = null;
+
+function stopLevelsIfUnwatched(): void {
+  if (levelWatchers.size === 0 && levelsUnsubscribe) {
+    levelsUnsubscribe();
+    levelsUnsubscribe = null;
+  }
+}
+
+function pushPlayerLevels(reading: unknown): void {
+  for (const [id, watcher] of levelWatchers) {
+    if (watcher.sender.isDestroyed()) {
+      levelWatchers.delete(id);
+      continue;
+    }
+    watcher.sender.send("player:levels", reading);
+  }
+  stopLevelsIfUnwatched();
+}
+
+/**
  * Renderers watching for things to tell the user once (PLAYER-10).
  *
  * A separate subscription from the state stream rather than a field on the
@@ -1565,6 +1590,30 @@ function registerIpcHandlers(): void {
     playerUnsubscribe ??= playback.onSnapshot(pushPlayerState);
     // Answer immediately so a subscriber is not blind until the next change.
     event.sender.send("player:state", playback.snapshot());
+    return { ok: true };
+  });
+  handle("player:subscribeLevels", (event) => {
+    const id = event.sender.id;
+    const existing = levelWatchers.get(id);
+    if (existing) {
+      existing.refs += 1;
+    } else {
+      levelWatchers.set(id, { sender: event.sender, refs: 1 });
+      event.sender.once("destroyed", () => {
+        levelWatchers.delete(id);
+        stopLevelsIfUnwatched();
+      });
+    }
+    levelsUnsubscribe ??= player.onLevels(pushPlayerLevels);
+    return { ok: true, available: player.levelsAvailable };
+  });
+  handle("player:unsubscribeLevels", (event) => {
+    const id = event.sender.id;
+    const existing = levelWatchers.get(id);
+    if (!existing) return { ok: true };
+    existing.refs -= 1;
+    if (existing.refs <= 0) levelWatchers.delete(id);
+    stopLevelsIfUnwatched();
     return { ok: true };
   });
   handle("player:unsubscribeState", (event) => {
