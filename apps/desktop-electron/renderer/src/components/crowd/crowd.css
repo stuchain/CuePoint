@@ -1,0 +1,11 @@
+/*
+ * The crowd scene's canvas. Its own pixels are 232 x 130; the box scales them up whole and
+ * never smooths them, so the art stays square-edged at any size.
+ */
+.cp-crowd {
+  display: block;
+  width: 100%;
+  aspect-ratio: 232 / 130;
+  image-rendering: pixelated;
+  background: var(--bg-app);
+}
