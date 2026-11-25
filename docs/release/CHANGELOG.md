@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A dancing crowd.** The crowd button on the player bar opens the Party view: about two dozen pixel dancers and a DJ, in your theme's colours, dancing to the track that is playing. They sway when it is quiet, bob when the kick comes in and jump on the beat when it is loud, freeze at a sudden break and cheer at a new track; if the sound clips, the front row covers its ears and the booth shows "Clipping" for 2 seconds. The player measures the sound as it plays without changing it. Turn the crowd off in **Settings → Motion → Dancing crowd**; with motion off it is a still picture. The website's home page has a strip of the same dancers under its first screen.
+
 ## [1.0.4] - 2026-11-17
 
 **CuePoint 1.0.4 adds Following to Discover and fixes the problems people reported in 1.0.3.** Follow artists and labels and see what they released over a period you pick, with their pictures; Track details suggests three tracks that play well next; Clean finds missing files in a folder and deletes past matches; Save to files now writes M4A files with a full undo; and the first start after an update waits for the library instead of showing an error. "Database is locked" errors in Prepare and Clean, pages reloading every couple of seconds during a long job, and the old CuePoint 0.0 app's update check are fixed. Installed copies of 1.0.0 to 1.0.3 on Windows and Mac offer the update on their own.

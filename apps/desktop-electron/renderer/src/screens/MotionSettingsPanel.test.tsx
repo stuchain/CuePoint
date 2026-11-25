@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { ToastProvider } from "../components";
 import { MOTION_FOLLOW_SYSTEM_KEY, MOTION_KINDS, MOTION_STORAGE_KEY } from "../tokens/motion";
 import { MotionProvider } from "../tokens/MotionContext";
+import { CROWD_SETTING_KEY, resetCrowdSettingForTests } from "../components/player/crowdSetting";
 import { MotionSettingsPanel } from "./MotionSettingsPanel";
 
 function renderPanel() {
@@ -26,7 +27,8 @@ const mode = (name: "Follow system" | "On" | "Off" | "Custom") =>
   screen.getByRole("radio", { name: name === "Follow system" ? /^Follow system/ : name });
 // Custom is what shows the list of kinds.
 const openList = () => userEvent.click(mode("Custom"));
-const kindBoxes = () => screen.queryAllByRole("checkbox");
+// The ten kinds only: the Dancing crowd switch is its own row, not one of them.
+const kindBoxes = () => screen.queryAllByRole("checkbox").filter((box) => box.getAttribute("aria-describedby")?.startsWith("motion-hint-"));
 
 function reduceSystemMotion() {
   window.matchMedia = (() => ({
@@ -38,10 +40,12 @@ function reduceSystemMotion() {
 
 beforeEach(() => {
   localStorage.clear();
+  resetCrowdSettingForTests();
   Reflect.deleteProperty(window, "matchMedia");
 });
 afterEach(() => {
   localStorage.clear();
+  resetCrowdSettingForTests();
   for (const k of MOTION_KINDS) document.documentElement.removeAttribute(`data-motion-${k.id}`);
 });
 
@@ -332,5 +336,44 @@ describe("Reset to defaults", () => {
     expect(localStorage.getItem(MOTION_FOLLOW_SYSTEM_KEY)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(mode("On")).toBeChecked();
+  });
+});
+
+describe("the Dancing crowd switch", () => {
+  const crowdBox = () => screen.getByRole("checkbox", { name: "Dancing crowd" });
+
+  it("is its own row below the choice, on by default, with a one-line hint, and not one of the ten kinds", () => {
+    renderPanel();
+    expect(crowdBox()).toBeChecked();
+    expect(crowdBox()).toHaveAccessibleDescription(
+      "Pixel dancers that move to the playing track. Open them from the player bar.",
+    );
+    const modes = screen.getByRole("group", { name: "Animations" });
+    expect(modes.compareDocumentPosition(crowdBox()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The kinds' switches only show under Custom; this one shows whatever the choice is.
+    expect(screen.queryAllByRole("checkbox")).toEqual([crowdBox()]);
+    expect(Object.keys(stored())).not.toContain("crowd");
+  });
+
+  it("stores off and on as it is toggled", async () => {
+    renderPanel();
+    await userEvent.click(crowdBox());
+    expect(localStorage.getItem(CROWD_SETTING_KEY)).toBe("off");
+    expect(crowdBox()).not.toBeChecked();
+    await userEvent.click(crowdBox());
+    expect(localStorage.getItem(CROWD_SETTING_KEY)).toBe("on");
+  });
+
+  it("is turned back on by Reset to defaults, which also shows while only the crowd differs", async () => {
+    renderPanel();
+    expect(screen.queryByRole("button", { name: "Reset to defaults" })).toBeNull();
+    await userEvent.click(crowdBox());
+    await userEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    expect(crowdBox()).toBeChecked();
+    expect(localStorage.getItem(CROWD_SETTING_KEY)).toBe("on");
+    // Undo, in the toast, puts the crowd back to off.
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(crowdBox()).not.toBeChecked();
+    expect(localStorage.getItem(CROWD_SETTING_KEY)).toBe("off");
   });
 });

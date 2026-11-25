@@ -1,0 +1,46 @@
+/*
+ * The Party view: a layer in the page's own grid cell, above the page but under the floating side
+ * panels (queue, Track details: later in the DOM at the same level) and under menus, hints and dialogs. The stage letterboxes the crowd on the app
+ * background; the scene is sized in whole device pixels of its own art by PartyView, and never smoothed. Nothing moves or
+ * flashes here: all motion is the crowd's own, which stills with the motion setting.
+ */
+.cp-party {
+  grid-area: content;
+  position: relative;
+  z-index: calc(var(--z-banner) + 1);
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  background: var(--bg-app);
+}
+
+.cp-party__close {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 1;
+}
+
+.cp-party__stage {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: var(--space-lg);
+  box-sizing: border-box;
+}
+
+/*
+ * PartyView measures the stage and sets --party-w / --party-h: the largest whole multiple of the
+ * art's 232 x 130 pixels, in whole device pixels, that fits both ways. Until it has (and in a
+ * stage too small for 1x) the scene fits by width and by height without overflowing.
+ */
+.cp-party__scene {
+  width: var(--party-w, 100%);
+  height: var(--party-h, auto);
+  max-width: 100%;
+  flex: none;
+}

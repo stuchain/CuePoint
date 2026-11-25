@@ -46,6 +46,14 @@ describe("pixel icon artwork", () => {
     );
   });
 
+  it("draws the crowd for the Party view's button: three heads, hands up, symmetric", () => {
+    expect(PIXEL_ICON_NAMES).toContain("crowd");
+    const mirrored = PIXEL_ICONS.crowd.map((row) => [...row].reverse().join(""));
+    expect(PIXEL_ICONS.crowd).toEqual(mirrored);
+    // The raised hands are on row 1, apart from each other.
+    expect(PIXEL_ICONS.crowd[1]!.split("#").length - 1).toBe(6);
+  });
+
   it("draws a close mark for the queue's buttons (BAR-8)", () => {
     expect(PIXEL_ICON_NAMES).toContain("close");
   });

@@ -453,6 +453,33 @@ describe("keys that belong to something else", () => {
     expect(player.toggle).not.toHaveBeenCalled();
   });
 
+  it("keeps Space working under a dialog that says it is not modal (the Party view)", async () => {
+    const player = install();
+    render(
+      <Probe>
+        <div role="dialog" aria-modal="false" aria-label="Party view" />
+      </Probe>,
+    );
+
+    await userEvent.keyboard(" ");
+
+    expect(player.toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("still leaves Space alone when a modal dialog is open beside a non-modal one", async () => {
+    const player = install();
+    render(
+      <Probe>
+        <div role="dialog" aria-modal="false" aria-label="Party view" />
+        <div role="dialog" aria-modal="true" aria-label="Import" />
+      </Probe>,
+    );
+
+    await userEvent.keyboard(" ");
+
+    expect(player.toggle).not.toHaveBeenCalled();
+  });
+
   it("ignores Space with a modifier, which belongs to the OS or the app", async () => {
     const player = install();
     render(<Probe />);

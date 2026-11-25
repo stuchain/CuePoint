@@ -86,7 +86,8 @@ function isTextEntry(target: EventTarget | null): boolean {
  * hidden behind the current one does not count: it is not on screen.
  */
 function dialogOrMenuOpen(): boolean {
-  return queryShown('[role="dialog"], dialog[open], [role="menu"]') !== null;
+  // A dialog that says it is not modal (the Party view) leaves the player's keys working.
+  return queryShown('[role="dialog"]:not([aria-modal="false"]), dialog[open], [role="menu"]') !== null;
 }
 
 export function usePlayerShortcuts(): void {

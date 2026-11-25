@@ -359,6 +359,10 @@ what moves, and a small square beside it that moves once when you turn the
 switch on. **Reset to defaults** (which acts at once, and offers **Undo**) goes
 back to **Follow system** with them all on.
 
+Below the choice, **Dancing crowd** (on by default) shows the crowd button on
+the player bar, which opens the [Party view](player.md#the-party-view). Turning
+it off hides the button and closes the view. **Reset to defaults** turns it back on.
+
 The first line says whether your system is set to reduce animations. While it
 is and **Follow system** is chosen, nothing moves, and motion works again as soon
 as you turn the system setting off or choose **On**. **Custom** keeps whichever

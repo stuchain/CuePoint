@@ -151,6 +151,22 @@ const waveform = [
   "............",
 ];
 
+/** Crowd: three little dancers, arms raised, the middle one in front; rows 1-8 (Party view). */
+const crowd = [
+  "............",
+  "#.#.#..#.#.#",
+  ".#..####..#.",
+  ".#..####..#.",
+  "###..##..###",
+  ".#...##...#.",
+  ".#..####..#.",
+  ".#..#..#..#.",
+  ".#..#..#..#.",
+  "............",
+  "............",
+  "............",
+];
+
 /** Shuffle: two paths crossing, with tips on the right (PLAYER-07). */
 const shuffle = [
   "............",
@@ -982,6 +998,7 @@ export const PIXEL_ICONS = {
   "repeat-one": repeatOne,
   queue,
   waveform,
+  crowd,
   home,
   library,
   activity,

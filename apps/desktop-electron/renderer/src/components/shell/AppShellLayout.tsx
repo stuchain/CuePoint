@@ -28,6 +28,13 @@ interface AppShellLayoutProps {
   offline?: boolean;
   /** A click on the offline page was stopped; the banner is told to draw the eye. */
   onBlockedClick?: () => void;
+  /**
+   * A layer over the page, in the page's own grid cell (not over the sidebar, the player or the
+   * status strip): the Party view. Absent, nothing is rendered.
+   */
+  overlay?: ReactNode;
+  /** The overlay is shown: the page behind it is made inert, so focus and Tab stay with it and the player. */
+  overlayOpen?: boolean;
   /** The routed page. */
   children: ReactNode;
   /** Alternates a/b each time the page changes; CSS names a different step-in for each (PAGES-12). */
@@ -86,6 +93,8 @@ export function AppShellLayout({
   banner,
   offline,
   onBlockedClick,
+  overlay,
+  overlayOpen,
   children,
   pagePhase,
 }: AppShellLayoutProps) {
@@ -223,11 +232,13 @@ export function AppShellLayout({
         className="app-shell__content app-main"
         data-pane="page"
         data-offline={offline ? "" : undefined}
+        inert={overlayOpen ? true : undefined}
         ref={content}
       >
         {children}
       </main>
       {offline ? <div className="app-shell__veil" aria-hidden="true" /> : null}
+      {overlay}
       {inspector ? (
         <div className="app-shell__inspector" ref={inspectorRegion} data-pane="details">
           {inspector}

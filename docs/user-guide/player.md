@@ -58,10 +58,29 @@ Along the bottom: what is playing, how far through it is, and the controls.
 - **The waveform button** hides or shows the [zoomed
   waveform](waveforms.md#where-you-see-them) above the bar. It is lit while the
   strip shows, and CuePoint remembers your choice.
+- **The crowd button** opens the Party view: a small pixel club whose dancers
+  move to the track that is playing. Press it again, the cross, or **Esc** to
+  close it; going to another page closes it too. See [The Party view](#the-party-view).
 - **Volume** is CuePoint's own, separate from your system volume.
 
 Shuffle and repeat are remembered between sessions. What was playing, and where
 you had got to, is not — CuePoint starts each session silent, on purpose.
+
+## The Party view
+
+The Party view covers the page above the player bar (the sidebar and the bar stay
+usable) with about two dozen pixel dancers and a DJ at a booth, in your theme's
+colours. They follow what CuePoint hears while the track plays: they sway when it
+is quiet, bob once the kick comes in, and jump with their hands up when it is loud
+and full, on the beat of the track's Rekordbox beat grid. A sudden break makes them
+freeze for a beat and cheer when it comes back, and a new track gets a short cheer.
+Paused, they stand and chat. If the sound clips, the front row covers its ears for
+a beat and the booth shows "Clipping" for 2 seconds. Nothing flashes.
+
+The crowd only moves while the view is open. With **Settings → Motion** set to
+**Off**, or to **Follow system** when your system asks for less movement, it is a
+still picture. **Settings → Motion → Dancing crowd** (on by default) hides the
+crowd button and closes the view when you turn it off.
 
 ## The queue
 

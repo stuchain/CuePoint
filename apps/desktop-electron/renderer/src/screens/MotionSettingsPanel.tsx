@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 
 import { Panel } from "../components";
+import { CROWD_SETTING_DEFAULT, useCrowdSetting } from "../components/player/crowdSetting";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { MOTION_GROUPS, type MotionKindId, type MotionSwitches } from "../tokens/motion";
 import { useMotion } from "../tokens/MotionContext";
@@ -27,6 +28,7 @@ export function MotionSettingsPanel() {
   const { switches, setKind, setAll, setSwitches, reset, systemReduced, followSystem, setFollowSystem } =
     useMotion();
   const [saved, markSaved] = useSavedSignal();
+  const [crowdOn, setCrowdOn] = useCrowdSetting();
   // How many times each preview has been asked to play; a new count restarts it.
   const [plays, setPlays] = useState<Partial<Record<MotionKindId, number>>>({});
   // Custom picked on its own, while no kind differs yet; a change to a kind, On or Off clears it.
@@ -42,6 +44,7 @@ export function MotionSettingsPanel() {
   // Custom is the list: it shows while Custom is chosen and not otherwise.
   const listOpen = mode === "custom";
   const listId = useId();
+  const crowdHintId = useId();
 
   const play = (ids: MotionKindId[]) =>
     setPlays((prev) => {
@@ -83,12 +86,20 @@ export function MotionSettingsPanel() {
     turnAll(next !== "off");
   };
 
+  const chooseCrowd = (on: boolean) => {
+    setCrowdOn(on);
+    markSaved();
+  };
+
   const resetToDefaults = () => {
     const undo = reset();
+    const crowdBefore = crowdOn;
+    setCrowdOn(CROWD_SETTING_DEFAULT);
     setPickedCustom(false);
     markSaved();
     return () => {
       undo();
+      setCrowdOn(crowdBefore);
       markSaved();
     };
   };
@@ -106,7 +117,7 @@ export function MotionSettingsPanel() {
       badge={
         <PanelTools
           saved={<SavedTick signal={saved} />}
-          reset={<ResetToDefaults section="Motion" onReset={resetToDefaults} atDefaults={mode === "system"} />}
+          reset={<ResetToDefaults section="Motion" onReset={resetToDefaults} atDefaults={mode === "system" && crowdOn === CROWD_SETTING_DEFAULT} />}
         />
       }
     >
@@ -168,6 +179,22 @@ export function MotionSettingsPanel() {
               })}
             </fieldset>
           ))}
+        </div>
+
+        {/* Not one of the ten kinds: it has no motion rule of its own, and Off / reduced motion still it. */}
+        <div className="settings-option">
+          <label className="motion-settings__label settings-check">
+            <input
+              type="checkbox"
+              checked={crowdOn}
+              aria-describedby={crowdHintId}
+              onChange={(e) => chooseCrowd(e.target.checked)}
+            />
+            <span>Dancing crowd</span>
+          </label>
+          <SettingsHint id={crowdHintId}>
+            Pixel dancers that move to the playing track. Open them from the player bar.
+          </SettingsHint>
         </div>
       </div>
     </Panel>

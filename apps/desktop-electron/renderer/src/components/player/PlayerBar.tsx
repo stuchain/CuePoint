@@ -31,6 +31,8 @@ import {
   trackFacts,
 } from "./playerFormat";
 import { nextRepeatMode, repeatLabel, saveRepeat, saveShuffle } from "./playerOrderState";
+import { useCrowdSetting } from "./crowdSetting";
+import { PARTY_VIEW_ID, togglePartyView, usePartyViewOpen } from "./partyViewState";
 import { usePlayerValue } from "./playerStore";
 import "./PlayerBar.css";
 
@@ -419,6 +421,10 @@ export function PlayerBar({
   // keyboard focus: the slider is the one focusable piece.
   const seekReason = picture ? undefined : (waveformWords ?? undefined);
 
+  const partyOpen = usePartyViewOpen();
+  const [crowdOn] = useCrowdSetting();
+  const partyWords = partyOpen ? "Close party view" : "Party view";
+
   const queueWords = queueOpen
     ? "Hide the queue"
     : `Show the queue (${countNoun(queueLength, "track")})`;
@@ -453,6 +459,7 @@ export function PlayerBar({
     ...(onToggleQueue
       ? [{ id: "queue", label: `Queue (${countNoun(queueLength, "track")})`, checked: queueOpen, onSelect: onToggleQueue }]
       : []),
+    ...(crowdOn ? [{ id: "party", label: "Party view", checked: partyOpen, onSelect: togglePartyView }] : []),
     // The short window draws no zoomed strip, so it offers no switch for one.
     ...(compact ? [] : [{ id: "zoom", label: "Zoomed waveform", title: detailHint, checked: detailOn, onSelect: () => setDetailOn(!detailOn) }]),
   ];
@@ -592,7 +599,7 @@ export function PlayerBar({
         <Hint text="More player controls">
           <button
             type="button"
-            className={`cp-player-bar__button cp-player-bar__button--standard${shuffle || repeat !== "off" || queueOpen ? " cp-player-bar__button--on" : ""}`}
+            className={`cp-player-bar__button cp-player-bar__button--standard${shuffle || repeat !== "off" || queueOpen || (crowdOn && partyOpen) ? " cp-player-bar__button--on" : ""}`}
             aria-label="More player controls"
             {...moreMenu.buttonProps}
           >
@@ -666,6 +673,21 @@ export function PlayerBar({
                   {formatCount(queueLength)}
                 </span>
               )}
+            </button>
+          </Hint>
+        )}
+        {crowdOn && (
+          <Hint text={partyWords}>
+            <button
+              type="button"
+              className={`cp-player-bar__button cp-player-bar__button--standard${partyOpen ? " cp-player-bar__button--on" : ""}`}
+              onClick={togglePartyView}
+              aria-label={partyWords}
+              aria-pressed={partyOpen}
+              aria-expanded={partyOpen}
+              aria-controls={PARTY_VIEW_ID}
+            >
+              <PixelIcon name="crowd" />
             </button>
           </Hint>
         )}

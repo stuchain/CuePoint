@@ -8884,3 +8884,15 @@ A newer push cancels the run in progress everywhere except on `main` and tags. P
 **Reason**: CI runs the end-to-end suite against the packaged app on all four systems, and 1.0.1 to 1.0.3 shipped the same way. 1.0.4 carries fixes for problems users reported through Sentry (PYTHON-1M, PYTHON-1K, PYTHON-1N, PYTHON-1G, and the progress-save reloads behind ELECTRON-3) and the Following, Plays well next and Missing files features.
 
 **Decided with**: User (decision card, 17 Nov 2026, 12:06 Athens: "Ship now, defer to 1.0.5") · **Date**: 2026-11-17
+
+## DEC-321 — A Pixel Crowd That Dances to the Playing Track
+
+**Status**: Accepted · **Related**: ADR-009, DEC-298, DEC-315, `electron/playerSupervisor.ts`, `electron/mpvClient.ts`, `renderer/src/components/crowd/`, `renderer/src/components/player/PartyView.tsx`, `apps/website/src/components/CrowdStrip.astro`
+
+**Decision**: The player measures the loudness of what it plays with FFmpeg's `astats` filter added to mpv at runtime (`@crowd:lavfi=[astats=metadata=1:reset=1:…]`, two candidates for older FFmpeg), never in the launch arguments, and only after the first file has loaded, because a filter mpv cannot build at idle breaks the next `loadfile`. A failure is noted once and playback carries on without readings. Electron main forwards the readings (`{rmsDb, peakDb, position}`, at most 30 a second, nothing when nobody listens) on `player:levels` to windows that subscribe through `player.subscribeLevels`, refcounted per WebContents like `player:subscribeState`. The renderer's crowd turns them into energy against the track's own loudest level (held 30 s, then easing down), picks sway, bob or jump with the beat taken from the Rekordbox beat grid (the track's BPM, else 120, without one), freezes a beat after a sudden drop, cheers on a new track, and on a peak at or above -0.1 dB has the front row cover its ears for a beat with "Clipping" on the booth for 2 seconds (clips within 10 s keep the note up). With no readings for over a second it falls back to the waveform at the play position. The Party view opens from a player bar button over the page area, takes Escape through the layer stack, closes on a page change and makes the page behind it inert. **Settings → Motion → Dancing crowd** (on by default) hides the button. The app's motion settings and the system's reduced motion make it a still frame. Original pixel art only, theme colours, no strobes. The website's home page shows a strip of the same dancers under the hero, dancing to a fixed 124 BPM pattern, loaded after the page is idle and still under reduced motion or saveData.
+
+**Reason**: Readings from the player follow the real sound (passthrough, the sound byte-identical with and without the filter, about 0.5% of a core) where the waveform alone cannot see the volume or clipping. Overall loudness plus the beat grid stand in for a bass band, which mpv's filter chain cannot split off without changing the output.
+
+**Notes**: The measuring was checked on mpv 0.37 in the cloud; the Windows sidecar has not been checked by hand yet.
+
+**Decided with**: User (picks page, "build it") · **Date**: 2026-11-25

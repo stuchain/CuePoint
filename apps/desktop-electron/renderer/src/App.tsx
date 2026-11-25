@@ -33,6 +33,8 @@ import {
 } from "./components/shell";
 import { useEngineOffline } from "./api/engineOnline";
 import { WheelPopoverHost } from "./components/wheel";
+import { PartyView } from "./components/player/PartyView";
+import { usePartyViewShown } from "./components/player/partyViewState";
 import { PlayerSlot } from "./components/player/PlayerSlot";
 import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
@@ -125,6 +127,7 @@ function AppShell() {
   if (pageAt.path !== location.pathname) {
     setPageAt({ path: location.pathname, phase: pageAt.phase === "a" ? "b" : "a" });
   }
+  const partyShown = usePartyViewShown();
   // What the current page has put in the Inspector (LIBUI-10). The panel lives
   // here rather than in the page so it survives navigation (SHELL-05).
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -410,6 +413,8 @@ function AppShell() {
             </TrackInspector>
           </RightColumn>
         }
+        overlay={<PartyView />}
+        overlayOpen={partyShown}
         player={<PlayerSlot onOpenTrack={openPlayingTrack} onOpenArtist={openPlayingArtist} />}
         statusBar={<StatusStrip />}
       >

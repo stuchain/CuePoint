@@ -146,6 +146,27 @@ describe("AppShellLayout", () => {
       expect(screen.getByRole("main")).not.toContainElement(screen.getByTestId("banner"));
     });
 
+    it("makes the page inert only while an overlay is shown over it", () => {
+      const { rerender } = render(
+        <AppShellLayout overlay={<div data-pane="party" />}>
+          <p>page</p>
+        </AppShellLayout>,
+      );
+      expect(screen.getByRole("main")).not.toHaveAttribute("inert");
+      rerender(
+        <AppShellLayout overlay={<div data-pane="party" />} overlayOpen>
+          <p>page</p>
+        </AppShellLayout>,
+      );
+      expect(screen.getByRole("main")).toHaveAttribute("inert");
+      rerender(
+        <AppShellLayout overlay={<div data-pane="party" />}>
+          <p>page</p>
+        </AppShellLayout>,
+      );
+      expect(screen.getByRole("main")).not.toHaveAttribute("inert");
+    });
+
     it("marks the page offline only when told", () => {
       const { rerender } = render(
         <AppShellLayout>
