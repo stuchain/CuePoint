@@ -9,23 +9,35 @@
  */
 import type { CrowdMove } from "./crowdRules";
 
-/** The logical canvas, in pixels ("in between" size). */
+/** The logical canvas, in pixels ("in between" size): this big at least, and it grows with the window. */
 export const CROWD_WIDTH = 232;
 export const CROWD_HEIGHT = 130;
-export const CROWD_COUNT = 24;
+/** The biggest the logical club gets, so a huge window does not make the scene heavy. */
+export const CROWD_MAX_WIDTH = 640;
+export const CROWD_MAX_HEIGHT = 360;
+/** The crowd on the smallest club (232 x 130); a bigger floor holds proportionally more, up to the cap. */
+export const CROWD_COUNT = 36;
+export const CROWD_COUNT_MAX = 160;
+/** The depth of the smallest club's standing floor (feet from the back row to the front), in pixels. */
+const FLOOR_DEPTH = 58;
+/** The depth bands the dancers fall into; the nearest is the "front row" (it covers its ears). */
 export const CROWD_ROWS = 4;
 export const BOOTH_Y = 48;
 export const CROWD_SEED = 8;
 
-export type Pose = "down" | "up" | "out" | "pump" | "coverEars";
+export type Pose = "down" | "up" | "out" | "pump" | "coverEars" | "clap" | "decks" | "deckUp";
 export type DancerMove = "idle" | "sway" | "bob" | "step" | "jump";
+/** The one extra move a dancer leans on (seeded). */
+export type Favourite = "clap" | "step" | "hop" | "turn";
+const FAVOURITES: readonly Favourite[] = ["clap", "step", "hop", "turn"];
 
 export interface Dancer {
   x: number;
   /** Where the feet are. */
   y: number;
-  /** 0 at the back row, 1 at the front. */
+  /** 0 at the back, 1 at the front. */
   depth: number;
+  /** The depth band, 0 (back) to `CROWD_ROWS - 1` (front). */
   row: number;
   skin: string;
   hair: string;
@@ -38,6 +50,7 @@ export interface Dancer {
   /** Seconds behind the beat, so the crowd is not in lockstep. */
   lag: number;
   moodSeed: number;
+  fav: Favourite;
 }
 
 const SKIN = ["#f1c7a5", "#d9a27c", "#b97b53", "#8d5a3b", "#5e3a26", "#f5d6bf"];
@@ -53,28 +66,50 @@ function rng(seed: number): () => number {
   };
 }
 
+export interface ClubLayout {
+  boothY: number;
+  /** Where the floor starts (the booth's foot) and where the crowd's feet stand, back to front. */
+  floorY: number;
+  yTop: number;
+  yBottom: number;
+}
+
 /**
- * `count` dancers over `rows` depth rows between `yTop` and `yBottom` (feet), the same for a seed.
- * Rows are dealt out in turn so every row is filled; the list is back to front.
+ * Where things stand in a club `width` x `height` logical pixels: the booth sits 35% of the extra height
+ * lower than in the smallest club, the floor runs from the booth's foot to the bottom edge and the
+ * crowd stands between 22 px under the booth and 2 px above the edge.
  */
-export function makeCrowd(
-  count: number,
-  width: number,
-  rows: number,
-  seed: number,
-  yTop: number,
-  yBottom: number,
-): Dancer[] {
+export function clubLayout(_width: number, height: number): ClubLayout {
+  const boothY = BOOTH_Y + Math.round((height - CROWD_HEIGHT) * 0.35);
+  return { boothY, floorY: boothY + 10, yTop: boothY + 22, yBottom: height - 2 };
+}
+
+/** How many dancers a floor `width` wide and `floorDepth` deep holds: 36 on the smallest club, more when bigger. */
+export function crowdCountFor(width: number, floorDepth: number = FLOOR_DEPTH): number {
+  return Math.min(CROWD_COUNT_MAX, Math.max(1, Math.round(CROWD_COUNT * (width / CROWD_WIDTH) * (floorDepth / FLOOR_DEPTH))));
+}
+
+/**
+ * A packed crowd for a floor `width` wide, the same for a seed and a width: dancers bunched in front
+ * of the booth (the middle of the floor) and thinning out to the sides, more spread the nearer the
+ * front. Feet between `yTop` and `yBottom`; the list is back to front. A deeper floor holds more.
+ */
+export function makeCrowd(width: number, seed: number, yTop: number, yBottom: number): Dancer[] {
   const r = rng(seed);
   const list: Dancer[] = [];
+  const count = crowdCountFor(width, yBottom - yTop);
   for (let i = 0; i < count; i += 1) {
-    const row = i % rows;
-    const depth = rows === 1 ? 1 : row / (rows - 1);
+    const depth = Math.pow(r(), 0.8);
+    const spread = 0.22 + 0.32 * depth;
+    // Three dice: most of the crowd is near the middle.
+    const gx = (r() + r() + r() - 1.5) / 1.5;
+    // A dancer and his arms are 6 px plus one either side.
+    const x = Math.min(width - 9, Math.max(2, Math.round(width / 2 - 3 + gx * width * spread)));
     list.push({
-      x: Math.floor(r() * (width - 11)) + 2,
+      x,
       y: Math.round(yTop + depth * (yBottom - yTop)),
       depth,
-      row,
+      row: Math.min(CROWD_ROWS - 1, Math.floor(depth * CROWD_ROWS)),
       skin: SKIN[Math.floor(r() * SKIN.length)],
       hair: HAIR[Math.floor(r() * HAIR.length)],
       hairStyle: Math.floor(r() * 5),
@@ -84,9 +119,9 @@ export function makeCrowd(
       style: Math.floor(r() * 3),
       lag: r() * 0.12,
       moodSeed: r(),
+      fav: FAVOURITES[Math.floor(r() * FAVOURITES.length)],
     });
   }
-  // Stable: dancers of one row keep the order they were dealt in.
   return list.sort((a, b) => a.y - b.y);
 }
 
@@ -119,6 +154,12 @@ function mix(from: Rgb, to: Rgb, k: number): Rgb {
 function shade(colour: string, k: number): string {
   const rgb = parseColour(colour) ?? [128, 128, 128];
   return css([rgb[0] * k, rgb[1] * k, rgb[2] * k]);
+}
+
+/** `colour` with an alpha of 0, for the end of a fade (the colour is kept so the fade stays clean). */
+function clear(colour: string): string {
+  const rgb = parseColour(colour) ?? [128, 128, 128];
+  return `rgba(${Math.round(rgb[0])},${Math.round(rgb[1])},${Math.round(rgb[2])},0)`;
 }
 
 export interface ClubPalette {
@@ -204,8 +245,87 @@ export function moveFor(d: Dancer, move: CrowdMove): DancerMove {
   return move;
 }
 
+export interface FavouriteState {
+  energy: number;
+  /** What the crowd is doing now (after `moveFor`). */
+  move: CrowdMove | DancerMove;
+  cheer: boolean;
+  /** This dancer has their hands over their ears. */
+  ears: boolean;
+  /** Whole beat and how far through it, shifted for this dancer's lag. */
+  beat: number;
+  phase: number;
+}
+
+export interface FavouriteMove {
+  dx: number;
+  dy: number;
+  /** Back of the head to the room: hair over the face. */
+  turned: boolean;
+  clap: boolean;
+}
+
+const NO_FAVOURITE: FavouriteMove = { dx: 0, dy: 0, turned: false, clap: false };
+/** The extra moves start above this energy; the clap a little higher. */
+export const FAVOURITE_ENERGY = 0.3;
+export const CLAP_ENERGY = 0.45;
+
+/**
+ * The dancer's favourite extra move at this moment, or nothing. A step shifts 2 px on alternate beats,
+ * a hop is a small 2 px jump on every fourth beat, a turn shows the back of the head for 2 beats in
+ * every 8, a clap brings the forearms in front of the chest with the hands meeting on the beat.
+ * Nothing extra while the crowd is idle, cheering, or this dancer covers their ears.
+ */
+export function favouriteFor(d: Dancer, s: FavouriteState): FavouriteMove {
+  if (s.move === "idle" || s.cheer || s.ears || s.energy <= FAVOURITE_ENERGY) return NO_FAVOURITE;
+  switch (d.fav) {
+    case "step":
+      return { ...NO_FAVOURITE, dx: mod(s.beat + d.off, 2) ? 2 : 0 };
+    case "hop":
+      return mod(s.beat + d.off, 4) === 0 ? { ...NO_FAVOURITE, dy: -Math.round(2 * Math.sin(Math.PI * s.phase)) } : NO_FAVOURITE;
+    case "turn":
+      return mod(Math.floor(s.beat / 2) + d.off, 4) === 3 ? { ...NO_FAVOURITE, turned: true } : NO_FAVOURITE;
+    default:
+      return s.energy > CLAP_ENERGY ? { ...NO_FAVOURITE, clap: true } : NO_FAVOURITE;
+  }
+}
+
+export interface DjState {
+  move: CrowdMove;
+  /** The DJ stands still: paused, or caught still by silence or a still frame. */
+  still: boolean;
+  build: boolean;
+  drop: boolean;
+  beat: number;
+  phase: number;
+}
+
+export interface DjCue {
+  pose: Pose;
+  /** Pixels the head and body dip: 1 for the first 35% of each beat. */
+  nod: number;
+}
+
+const NOD_PHASE = 0.35;
+
+/**
+ * What the DJ does: hands on the decks and a nod on every beat; one hand up on alternate beats
+ * while the energy builds; both hands up when a drop lands. Paused (or still) the DJ stands still.
+ */
+export function djCue(s: DjState): DjCue {
+  if (s.move === "idle" || s.still) return { pose: "decks", nod: 0 };
+  const nod = s.phase < NOD_PHASE ? 1 : 0;
+  if (s.drop) return { pose: "up", nod };
+  if (s.build && mod(s.beat, 2) === 0) return { pose: "deckUp", nod };
+  return { pose: "decks", nod };
+}
+
 export interface DancerMotion {
   move?: DancerMove;
+  /** An extra move's offset, from `favouriteFor`. */
+  shift?: { dx: number; dy: number };
+  /** The back of the head shows (a turn). */
+  turned?: boolean;
   /** Whole beat and how far through it, already shifted for this dancer's lag. */
   beat?: number;
   phase?: number;
@@ -285,8 +405,8 @@ export function drawDancer(
 ): void {
   const { dx, dy, foot } = offsets(d, motion);
   const { sk, sh, shHi, pa, ha } = shadesOf(d, light);
-  const x = Math.round(d.x + dx);
-  const y = Math.round(d.y + dy);
+  const x = Math.round(d.x + dx + (motion.shift?.dx ?? 0));
+  const y = Math.round(d.y + dy + (motion.shift?.dy ?? 0));
 
   // legs
   const lL = foot === 0 ? 4 : 5;
@@ -320,6 +440,7 @@ export function drawDancer(
       px(ctx, x + 1, y - 15, 4, 1, ha);
       px(ctx, x + 1, y - 14, 5, 1, ha);
   }
+  if (motion.turned) px(ctx, x + 1, y - 14, 4, 4, ha);
   // arms
   const L = x - 1;
   const R = x + 6;
@@ -349,6 +470,36 @@ export function drawDancer(
       px(ctx, R, y - 12, 1, 3, sh);
       px(ctx, L + 1, y - 14, 1, 3, sk);
       px(ctx, R - 1, y - 14, 1, 3, sk);
+      break;
+    case "clap": {
+      // Forearms across the chest; the hands meet on the beat and open again.
+      const open = (motion.phase ?? 0) > 0.25;
+      px(ctx, L, y - 10, 1, 3, sh);
+      px(ctx, R, y - 10, 1, 3, sh);
+      px(ctx, x, y - 8, 1, 1, shHi);
+      px(ctx, x + 5, y - 8, 1, 1, shHi);
+      if (open) {
+        px(ctx, x + 1, y - 8, 1, 1, sk);
+        px(ctx, x + 4, y - 8, 1, 1, sk);
+      } else {
+        px(ctx, x + 1, y - 8, 1, 1, shHi);
+        px(ctx, x + 4, y - 8, 1, 1, shHi);
+        px(ctx, x + 2, y - 8, 2, 1, sk);
+      }
+      break;
+    }
+    case "decks":
+    case "deckUp":
+      // Forearms out over the decks; for a build the right hand goes up instead.
+      px(ctx, L - 2, y - 9, 3, 1, sh);
+      px(ctx, L - 3, y - 8, 1, 1, sk);
+      if (pose === "deckUp") {
+        px(ctx, R, y - 14, 1, 4, sh);
+        px(ctx, R, y - 15, 1, 1, sk);
+      } else {
+        px(ctx, R, y - 9, 3, 1, sh);
+        px(ctx, R + 2, y - 8, 1, 1, sk);
+      }
       break;
     default: {
       const up = (motion.phase ?? 0) < 0.5;
@@ -436,8 +587,18 @@ export interface ClubScene {
   freeze: boolean;
   clip: boolean;
   clipNote: boolean;
+  /** A drop has just landed (the DJ's hands go up) and the energy is building (one hand up). */
+  drop: boolean;
+  build: boolean;
+  /** A still frame (motion off): no pulse, no nod, no extra moves. */
+  still?: boolean;
+  /** Whole beat (already snapped to the bar by the beat clock, so `beat % 4` is the beat of the bar). */
   beat: number;
   phase: number;
+  /** The current tempo, for the booth screen; null with no track (no title, no tempo known): no tempo line. */
+  bpm: number | null;
+  /** Keeps the static backdrop between frames (see `createBackdropCache`); without one it is drawn each frame. */
+  backdrop?: BackdropCache;
   /** Seconds, for the slow beam sweep and the title's scroll. */
   time: number;
   /** The playing track's title for the booth screen; empty for none. */
@@ -446,37 +607,109 @@ export interface ClubScene {
 
 const DJ: Dancer = {
   x: 0, y: 0, depth: 1, row: 0, skin: "#d9a27c", hair: "#1b1410", hairStyle: 4,
-  shirt: "#2d2a3e", pants: "#14141c", off: 0, style: 2, lag: 0, moodSeed: 0,
+  shirt: "#2d2a3e", pants: "#14141c", off: 0, style: 2, lag: 0, moodSeed: 0, fav: "clap",
 };
 
 const RIG = "#2a2838";
 const LAMP = "#3a3750";
 const BEATS_PER_SWEEP = 8;
+/** The most a beam is ever lit, however loud: a beat brightens it softly, never past this. */
+export const BEAM_ALPHA_MAX = 0.45;
+const BEAM_PULSE = 0.16;
+
+/** How much the lights swell on the beat: 1 at the beat, fading out before the next; 0 while quiet or still. */
+export function beatPulse(energy: number, phase: number, still: boolean): number {
+  return !still && energy > 0.5 ? Math.pow(1 - phase, 2) : 0;
+}
+
+/** The sky and the rig's bar and lamps: nothing in them moves, so they are painted once per size and palette. */
+function paintSky(g: CanvasRenderingContext2D, W: number, H: number, pal: ClubPalette): void {
+  const grd = g.createLinearGradient(0, 0, 0, H);
+  grd.addColorStop(0, pal.sky[0]);
+  grd.addColorStop(1, pal.sky[1]);
+  g.fillStyle = grd;
+  g.fillRect(0, 0, W, H);
+  px(g, 0, 3, W, 2, RIG);
+  const lamps = lampCount(W);
+  for (let i = 0; i < lamps; i += 1) {
+    const lx = lampX(i, lamps, W);
+    px(g, lx - 2, 5, 4, 3, LAMP);
+    px(g, lx - 1, 7, 2, 1, i % 2 ? pal.beam : pal.beam2);
+  }
+}
+
+/** The floor and its tiles, which no longer blink. */
+function paintFloor(g: CanvasRenderingContext2D, W: number, H: number, pal: ClubPalette, floorY: number): void {
+  px(g, 0, floorY, W, H - floorY, pal.floor);
+  for (let yy = floorY + 2; yy < H; yy += 6) {
+    for (let xx = ((yy / 6) | 0) % 2 ? 0 : 6; xx < W; xx += 12) px(g, xx, yy, 10, 4, pal.floorTile);
+  }
+}
+
+const lampCount = (W: number) => Math.max(3, Math.round(W / 50));
+const lampX = (i: number, lamps: number, W: number) => Math.round(((i + 0.5) * W) / lamps);
+
+/** The static layers of a club, kept between frames; rebuilt when the size or the palette changes. */
+export interface BackdropCache {
+  palette: ClubPalette | null;
+  width: number;
+  height: number;
+  floorY: number;
+  sky: CanvasImageSource | null;
+  floor: CanvasImageSource | null;
+}
+
+export function createBackdropCache(): BackdropCache {
+  return { palette: null, width: 0, height: 0, floorY: 0, sky: null, floor: null };
+}
+
+function layer(W: number, H: number, paint: (g: CanvasRenderingContext2D) => void): CanvasImageSource | null {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  paint(g);
+  return canvas;
+}
+
+function backdropFor(cache: BackdropCache, W: number, H: number, pal: ClubPalette, floorY: number): BackdropCache {
+  if (cache.palette !== pal || cache.width !== W || cache.height !== H || cache.floorY !== floorY || !cache.sky || !cache.floor) {
+    cache.palette = pal;
+    cache.width = W;
+    cache.height = H;
+    cache.floorY = floorY;
+    cache.sky = layer(W, H, (g) => paintSky(g, W, H, pal));
+    cache.floor = layer(W, H, (g) => paintFloor(g, W, H, pal, floorY));
+  }
+  return cache;
+}
 
 export function drawClub(ctx: CanvasRenderingContext2D, scene: ClubScene): void {
   const { width: W, height: H, palette: pal, boothY } = scene;
   const e = scene.energy;
+  const still = scene.still === true;
   const bpos = scene.beat + scene.phase;
+  const pulse = beatPulse(e, scene.phase, still);
   ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha = 1;
 
-  // sky
-  const grd = ctx.createLinearGradient(0, 0, 0, H);
-  grd.addColorStop(0, pal.sky[0]);
-  grd.addColorStop(1, pal.sky[1]);
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, W, H);
+  const floorY = boothY + 10;
+  const cached = scene.backdrop ? backdropFor(scene.backdrop, W, H, pal, floorY) : null;
+  // sky and the rig's fixtures
+  if (cached?.sky) ctx.drawImage(cached.sky, 0, 0);
+  else paintSky(ctx, W, H, pal);
 
-  // light rig: beams sweep slowly and brighten with the energy, never flash
-  px(ctx, 0, 3, W, 2, RIG);
-  const lamps = Math.max(3, Math.round(W / 50));
+  // light rig: beams sweep slowly, brighten with the energy and swell softly on each beat
+  const lamps = lampCount(W);
   for (let i = 0; i < lamps; i += 1) {
-    const lx = Math.round(((i + 0.5) * W) / lamps);
-    px(ctx, lx - 2, 5, 4, 3, LAMP);
+    const lx = lampX(i, lamps, W);
     const ang = Math.sin((bpos / BEATS_PER_SWEEP) * Math.PI * 2 + i * 1.3) * 0.6;
     const len = H * 0.95;
     ctx.save();
-    ctx.globalAlpha = 0.08 + 0.22 * e;
+    ctx.globalAlpha = Math.min(BEAM_ALPHA_MAX, 0.08 + 0.22 * e + BEAM_PULSE * pulse);
     ctx.fillStyle = i % 2 ? pal.beam : pal.beam2;
     ctx.beginPath();
     ctx.moveTo(lx, 8);
@@ -485,58 +718,99 @@ export function drawClub(ctx: CanvasRenderingContext2D, scene: ClubScene): void 
     ctx.closePath();
     ctx.fill();
     ctx.restore();
-    px(ctx, lx - 1, 7, 2, 1, i % 2 ? pal.beam : pal.beam2);
   }
 
   // booth and DJ
   const bw = Math.min(90, Math.round(W * 0.34));
   const bx = Math.round(W / 2 - bw / 2);
   const dj = DJ;
-  const djMove: DancerMove = scene.move === "idle" ? "idle" : scene.move === "sway" ? "sway" : "bob";
-  const djMotion: DancerMotion = { move: djMove, beat: scene.beat, phase: scene.phase, still: scene.freeze };
-  dj.x = W / 2 - 3;
-  dj.y = boothY;
-  drawDancer(ctx, dj, scene.freeze ? "down" : poseFor(dj, { move: djMove, cheer: false, ears: false, beat: scene.beat }), 1, djMotion);
+  const cue = djCue({
+    move: scene.move,
+    still: still || scene.freeze,
+    build: scene.build,
+    drop: scene.drop,
+    beat: scene.beat,
+    phase: scene.phase,
+  });
+  dj.x = Math.round(W / 2 - 3);
+  dj.y = boothY + cue.nod;
+  drawDancer(ctx, dj, cue.pose, 1, { move: "idle", still: true });
   px(ctx, bx, boothY - 4, bw, 14, pal.booth);
   px(ctx, bx, boothY - 4, bw, 1, pal.boothHi);
   px(ctx, bx + 6, boothY - 6, 14, 2, LAMP);
   px(ctx, bx + bw - 20, boothY - 6, 14, 2, LAMP);
-  // screen: the playing title, or the clip note for two seconds
+  // screen: the title on the first line (or the clip note for two seconds), the tempo under it in a
+  // dimmer shade and four dots that step through the bar
   const screenW = bw - 8;
-  px(ctx, bx + 3, boothY - 1, bw - 6, 7, pal.screen);
+  px(ctx, bx + 3, boothY - 3, bw - 6, 12, pal.screen);
   ctx.globalAlpha = 0.9;
   if (scene.clipNote) {
-    drawPixelText(ctx, "CLIPPING", bx + 4, boothY, pal.warning, screenW);
+    drawPixelText(ctx, "CLIPPING", bx + 4, boothY - 2, pal.warning, screenW);
   } else if (scene.title) {
     const textW = pixelTextWidth(scene.title);
     const scroll = textW > screenW ? Math.floor(scene.time * 8) % (textW + 12) : 0;
-    drawPixelText(ctx, scene.title, bx + 4, boothY, pal.boothHi, screenW, scroll);
+    drawPixelText(ctx, scene.title, bx + 4, boothY - 2, pal.boothHi, screenW, scroll);
+  }
+  if (scene.bpm !== null) {
+    ctx.globalAlpha = 0.55;
+    drawPixelText(ctx, `${Math.round(scene.bpm)} BPM`, bx + 4, boothY + 4, pal.boothHi, screenW - 17);
+    const bar = mod(scene.beat, 4);
+    for (let i = 0; i < 4; i += 1) {
+      ctx.globalAlpha = i === bar ? 1 : 0.3;
+      px(ctx, bx + bw - 21 + i * 4, boothY + 5, 3, 3, i === bar ? pal.beam2 : pal.boothHi);
+    }
   }
   ctx.globalAlpha = 1;
 
-  // floor: tiles light up a few at a time and change every two beats
-  const floorY = boothY + 10;
-  px(ctx, 0, floorY, W, H - floorY, pal.floor);
-  const pulse = Math.floor(scene.beat / 2);
-  for (let yy = floorY + 2; yy < H; yy += 6) {
-    for (let xx = ((yy / 6) | 0) % 2 ? 0 : 6; xx < W; xx += 12) {
-      const lit = mod(pulse + xx / 12 + yy / 6, 5) === 0 && e > 0.5;
-      px(ctx, xx, yy, 10, 4, lit ? pal.floorHi : pal.floorTile);
-    }
+  // floor
+  if (cached?.floor) ctx.drawImage(cached.floor, 0, 0);
+  else paintFloor(ctx, W, H, pal, floorY);
+  // a soft pool of light under the crowd: swells with the energy and a little on the beat
+  {
+    const cx = W / 2;
+    const cy = floorY + (H - floorY) * 0.55;
+    const rx = W * 0.42;
+    const ry = (H - floorY) * 0.5;
+    const rg = ctx.createRadialGradient(cx, cy, 2, cx, cy, rx);
+    rg.addColorStop(0, pal.beam2);
+    rg.addColorStop(1, clear(pal.beam2));
+    ctx.save();
+    ctx.globalAlpha = 0.1 + 0.22 * e + 0.08 * pulse;
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+    ctx.translate(-cx, -cy);
+    ctx.fillStyle = rg;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
-  // crowd, back to front
+  // crowd, back to front: the back rows sit darker
   for (const d of scene.crowd) {
-    const light = 0.45 + 0.55 * d.depth;
+    const light = 0.35 + 0.65 * d.depth;
     const shifted = bpos - d.lag * 2;
     const b = Math.floor(shifted);
     const phase = shifted - b;
     let move = moveFor(d, scene.move);
     if (scene.cheer && move === "sway") move = "bob";
-    const motion: DancerMotion = { move, beat: b, phase, still: scene.freeze };
-    const pose: Pose = scene.freeze
+    const motion: DancerMotion = { move, beat: b, phase, still: scene.freeze || still };
+    let pose: Pose = scene.freeze
       ? "out"
       : poseFor(d, { move, cheer: scene.cheer, ears: scene.clip, beat: b });
+    if (!scene.freeze && !still) {
+      const extra = favouriteFor(d, {
+        energy: e,
+        move,
+        cheer: scene.cheer,
+        ears: pose === "coverEars",
+        beat: b,
+        phase,
+      });
+      motion.shift = { dx: extra.dx, dy: extra.dy };
+      motion.turned = extra.turned;
+      if (extra.clap) pose = "clap";
+    }
     drawDancer(ctx, d, pose, light, motion);
   }
 }

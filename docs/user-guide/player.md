@@ -69,13 +69,33 @@ you had got to, is not — CuePoint starts each session silent, on purpose.
 ## The Party view
 
 The Party view covers the page above the player bar (the sidebar and the bar stay
-usable) with about two dozen pixel dancers and a DJ at a booth, in your theme's
-colours. They follow what CuePoint hears while the track plays: they sway when it
-is quiet, bob once the kick comes in, and jump with their hands up when it is loud
-and full, on the beat of the track's Rekordbox beat grid. A sudden break makes them
-freeze for a beat and cheer when it comes back, and a new track gets a short cheer.
-Paused, they stand and chat. If the sound clips, the front row covers its ears for
-a beat and the booth shows "Clipping" for 2 seconds. Nothing flashes.
+usable) with a pixel club that fills the window: the floor grows to the shape of
+the window, with no empty bars around it, and the pixels stay sharp. A packed crowd
+of dancers stands in front of a DJ's booth, thick in the middle and thinner at the
+sides, with the back rows darker, in your theme's colours. The wider the window,
+the more people. They follow what CuePoint hears while the track plays: they sway
+when it is quiet, bob once the kick comes in, and jump with their hands up when it
+is loud and full, on the beat of the track's Rekordbox beat grid. Each dancer also
+has a favourite move (clapping, side steps, hops or turning their back for a
+moment), so the floor is not all in step. A sudden break makes them freeze for a
+beat and cheer when it comes back, and a new track gets a short cheer. Paused, they
+stand and chat. If the sound clips, the front row covers its ears for a beat and
+the booth shows "Clipping" for 2 seconds.
+
+The lights follow the music softly: on the beat of a loud part the beams brighten a
+little and fade before the next one, and a pool of light on the floor swells on the
+drop and dims in a breakdown. Nothing flashes.
+
+The DJ plays the set: hands on the decks and the head nodding on the beat, one hand
+up while the music builds and both hands up for a couple of seconds when the drop
+lands; paused, the DJ stands still. The booth's screen shows the track's title,
+its BPM under it, and four small dots that step through each bar.
+
+The **Full screen** button, beside the cross in the corner, fills the whole screen
+with the club (**Leave full screen** takes it back). The player keeps playing. **Esc** in
+full screen only leaves full screen; press it again to close the view. Closing the
+view or going to another page leaves full screen too. The button is not shown where
+your system does not allow full screen.
 
 The crowd only moves while the view is open. With **Settings → Motion** set to
 **Off**, or to **Follow system** when your system asks for less movement, it is a

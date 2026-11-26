@@ -173,6 +173,24 @@ describe("CrowdScene", () => {
     expect(screen.getByRole("img", { name: "Pixel crowd, waiting for a track" })).toBeTruthy();
   });
 
+  it("is as big as the club it is given, at least 232 x 130, and has more dancers on a bigger floor", () => {
+    install(item());
+    const { rerender } = render(scene(<CrowdScene width={232} height={130} />));
+    const canvas = screen.getByRole("img") as HTMLCanvasElement;
+    expect(canvas.width).toBe(232);
+    expect(canvas.height).toBe(130);
+    const small = h.fills.length;
+    h.fills.length = 0;
+    rerender(scene(<CrowdScene width={464} height={260} />));
+    expect(canvas.width).toBe(464);
+    expect(canvas.height).toBe(260);
+    // Four times the floor: well over twice the dancers, drawn at once.
+    expect(h.fills.length).toBeGreaterThan(small + 36 * 8);
+    rerender(scene(<CrowdScene width={100} height={50} />));
+    expect(canvas.width).toBe(232);
+    expect(canvas.height).toBe(130);
+  });
+
   it("takes className on the canvas", () => {
     install(item());
     render(scene(<CrowdScene className="mine" />));
@@ -187,12 +205,22 @@ describe("CrowdScene", () => {
       expect(h.fills.length).toBeGreaterThan(100);
     });
 
+    it("draws a frame at once when it mounts or its size changes, so a resize never shows blank", () => {
+      install(item());
+      const { rerender } = render(scene(<CrowdScene width={232} height={130} />));
+      expect(h.fills.length).toBeGreaterThan(100);
+      h.fills.length = 0;
+      rerender(scene(<CrowdScene width={400} height={200} />));
+      expect(h.fills.length).toBeGreaterThan(100);
+      expect(screen.getByRole("img")).toHaveProperty("height", 200);
+    });
+
     it("runs a loop when motion is on, and draws each frame", () => {
       install(item());
       render(scene());
       expect(h.frames.size).toBe(1);
       h.fills.length = 0;
-      act(() => runFrames(1000));
+      act(() => runFrames(1100));
       expect(h.fills.length).toBeGreaterThan(100);
       expect(h.frames.size).toBe(1);
     });
@@ -258,8 +286,7 @@ describe("CrowdScene", () => {
     it("draws a paused crowd once and stops asking for frames", () => {
       install(item(), false);
       render(scene());
-      h.fills.length = 0;
-      act(() => runFrames(1000));
+      // Drawn at once, before paint, and nothing more is asked for.
       expect(h.fills.length).toBeGreaterThan(100);
       expect(h.frames.size).toBe(0);
     });
@@ -269,7 +296,7 @@ describe("CrowdScene", () => {
       render(scene());
       act(() => {
         h.levels?.({ rmsDb: -3, peakDb: 0, position: 30 });
-        runFrames(1000);
+        runFrames(1100);
       });
       expect(screen.getByRole("status").textContent).toBe("Clipping");
       act(() => push(snapshot(item(), false)));
@@ -306,7 +333,7 @@ describe("CrowdScene", () => {
       const before = h.fills.length;
       act(() => {
         h.levels?.({ rmsDb: -3, peakDb: 0, position: 30 });
-        runFrames(1000);
+        runFrames(1100);
       });
       expect(h.fills.length).toBeGreaterThan(before);
       expect(h.fills.some((f) => f.colour === "#eab308")).toBe(true);
@@ -333,7 +360,6 @@ describe("CrowdScene", () => {
   it("takes its colours from the theme's tokens", () => {
     install(item());
     render(scene());
-    act(() => runFrames(1000));
     expect(h.fills.some((f) => f.colour === "#ff0000")).toBe(true);
   });
 });

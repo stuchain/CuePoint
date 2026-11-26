@@ -54,6 +54,14 @@ describe("pixel icon artwork", () => {
     expect(PIXEL_ICONS.crowd[1]!.split("#").length - 1).toBe(6);
   });
 
+  it("draws full screen for the Party view's button: four corner brackets, symmetric both ways", () => {
+    expect(PIXEL_ICON_NAMES).toContain("fullscreen");
+    const rows = PIXEL_ICONS.fullscreen;
+    expect(rows).toEqual(rows.map((row) => [...row].reverse().join("")));
+    expect(rows).toEqual([...rows].reverse());
+    expect(rows.join("").split("#").length - 1).toBe(20);
+  });
+
   it("draws a close mark for the queue's buttons (BAR-8)", () => {
     expect(PIXEL_ICON_NAMES).toContain("close");
   });

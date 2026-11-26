@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHEER_MS,
   CLIP_NOTE_MS,
+  WARMUP_MS,
   createCrowdState,
   stepCrowd,
   type CrowdInput,
@@ -163,6 +164,8 @@ describe("paused and stopped", () => {
       freeze: false,
       clip: false,
       clipNote: false,
+      drop: false,
+      build: false,
     });
   });
 
@@ -325,5 +328,101 @@ describe("pausing in a loud part", () => {
     const run = hold(loud(), null, 3000, { fallbackEnergy: 0 });
     // Readings stopped (no meter): the waveform alone never freezes the crowd.
     expect(run.out.freeze).toBe(false);
+  });
+});
+
+describe("the DJ's cues", () => {
+  it("calls a drop, for about two seconds, when the energy jumps from under half to over 85%", () => {
+    let run = hold(start(), -20, 4000);
+    run = hold(run, -45, 3000); // a breakdown: energy well under 0.5
+    expect(run.out.energy).toBeLessThan(0.5);
+    expect(run.out.drop).toBe(false);
+    run = hold(run, -20, 600);
+    expect(run.out.drop).toBe(true);
+    run = hold(run, -20, 1000);
+    expect(run.out.drop).toBe(true);
+    run = hold(run, -20, 1500);
+    expect(run.out.drop).toBe(false);
+  });
+
+  it("does not call a drop for a plain loud passage, nor for a slow climb", () => {
+    expect(hold(loud(), -20, 3000).out.drop).toBe(false);
+    let run = hold(start(), -20, 4000);
+    run = hold(run, -45, 3000);
+    // Climbs 1 dB every 100 ms steps of 500 ms: over 85% only long after it was under half.
+    let dropped = false;
+    for (let db = -45; db <= -20; db += 1) {
+      run = hold(run, db, 500);
+      dropped = dropped || run.out.drop;
+    }
+    expect(dropped).toBe(false);
+  });
+
+  it("calls a build while the energy is rising short of a drop, and not on a plateau", () => {
+    let run = hold(start(), -20, 4000);
+    run = hold(run, -45, 3000);
+    let built = false;
+    for (let db = -45; db <= -28; db += 1) {
+      run = hold(run, db, 500);
+      built = built || run.out.build;
+    }
+    expect(built).toBe(true);
+    expect(hold(loud(), -20, 6000).out.build).toBe(false);
+  });
+
+  it("calls no drop when playing begins on a loud part: a play, a resume or a new track", () => {
+    const seen = (run: Run, ms: number, rms: number, extra: Partial<CrowdInput> = {}) => {
+      let at = run;
+      let drop = false;
+      for (let t = 0; t < ms; t += STEP) {
+        at = step(at, rms, extra);
+        drop = drop || at.out.drop;
+      }
+      return { at, drop };
+    };
+    // A fresh start straight into a loud part.
+    expect(seen(start(), 6000, -20).drop).toBe(false);
+    // A resume after a pause.
+    const paused = hold(loud(), -20, 500, { isPlaying: false });
+    expect(seen(paused, 6000, -20).drop).toBe(false);
+    // A new track that starts loud.
+    expect(seen(loud(), 6000, -20, { trackChanged: true }).drop).toBe(false);
+  });
+
+  it("still calls a real drop after the warm-up: quiet, then loud", () => {
+    let run = hold(start(), -45, 4000);
+    run = hold(run, -20, 600);
+    expect(run.out.drop).toBe(true);
+  });
+
+  it("calls no drop or build during the 3 s after playing begins", () => {
+    let run = start();
+    let any = false;
+    for (let t = 0; t < WARMUP_MS - STEP; t += STEP) {
+      run = step(run, t < 1500 ? -45 : -20);
+      any = any || run.out.drop || run.out.build;
+    }
+    expect(any).toBe(false);
+  });
+
+  it("holds a steady kick plateau without a build flickering on and off", () => {
+    // A kick every 500 ms: loud for 100 ms, quieter between.
+    let run = hold(start(), -20, 5000);
+    let last = run.out.build;
+    let changes = 0;
+    for (let t = 0; t < 20_000; t += STEP) {
+      run = step(run, (t / STEP) % 5 === 0 ? -20 : -28);
+      if (run.out.build !== last) {
+        changes += 1;
+        last = run.out.build;
+      }
+    }
+    expect(changes).toBeLessThanOrEqual(2);
+  });
+
+  it("has no drop or build when paused", () => {
+    const run = hold(loud(), -20, 500, { isPlaying: false });
+    expect(run.out.drop).toBe(false);
+    expect(run.out.build).toBe(false);
   });
 });

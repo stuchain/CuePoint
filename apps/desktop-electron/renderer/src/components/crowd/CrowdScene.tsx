@@ -9,7 +9,7 @@
  * one image for assistive technology, named for the track, and a polite live region says
  * "Clipping" when the crowd notices the music clip.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useMotion } from "../../tokens/MotionContext";
 import { usePageActive } from "../shell/pageActive";
@@ -17,12 +17,13 @@ import { themeTokens, useThemeRevision } from "../waveform/waveformEnvironment";
 import { beatAt } from "./beatClock";
 import { createCrowdState, stepCrowd, type CrowdOutput, type CrowdState } from "./crowdRules";
 import {
-  BOOTH_Y,
-  CROWD_COUNT,
   CROWD_HEIGHT,
-  CROWD_ROWS,
+  CROWD_MAX_HEIGHT,
+  CROWD_MAX_WIDTH,
   CROWD_SEED,
   CROWD_WIDTH,
+  clubLayout,
+  createBackdropCache,
   drawClub,
   makeCrowd,
   paletteFrom,
@@ -44,9 +45,30 @@ function useDocumentVisible(): boolean {
   return visible;
 }
 
-const IDLE_OUTPUT: CrowdOutput = { energy: 0, move: "idle", cheer: false, freeze: false, clip: false, clipNote: false };
+const IDLE_OUTPUT: CrowdOutput = {
+  energy: 0,
+  move: "idle",
+  cheer: false,
+  freeze: false,
+  clip: false,
+  clipNote: false,
+  drop: false,
+  build: false,
+};
 
-export function CrowdScene({ className }: { className?: string }) {
+interface CrowdSceneProps {
+  className?: string;
+  /**
+   * The club's size in logical pixels (the Party view fills its stage with it). The crowd is made
+   * for this size, and again only when it changes. Default: the smallest club, 232 x 130.
+   */
+  width?: number;
+  height?: number;
+}
+
+export function CrowdScene({ className, width: wantedWidth = CROWD_WIDTH, height: wantedHeight = CROWD_HEIGHT }: CrowdSceneProps) {
+  const width = Math.min(CROWD_MAX_WIDTH, Math.max(CROWD_WIDTH, Math.round(wantedWidth)));
+  const height = Math.min(CROWD_MAX_HEIGHT, Math.max(CROWD_HEIGHT, Math.round(wantedHeight)));
   const canvas = useRef<HTMLCanvasElement>(null);
   const inputs = useCrowdInputs();
   const pageActive = usePageActive();
@@ -58,10 +80,13 @@ export function CrowdScene({ className }: { className?: string }) {
   const theme = useThemeRevision();
   const animate = pageActive && visible && motion;
 
+  const layout = useMemo(() => clubLayout(width, height), [width, height]);
   const crowd = useMemo(
-    () => makeCrowd(CROWD_COUNT, CROWD_WIDTH, CROWD_ROWS, CROWD_SEED, BOOTH_Y + 22, CROWD_HEIGHT - 2),
-    [],
+    () => makeCrowd(width, CROWD_SEED, layout.yTop, layout.yBottom),
+    [width, layout],
   );
+  // The sky, rig and floor do not move: painted once per size and palette.
+  const backdrop = useMemo(() => createBackdropCache(), []);
   // Read from the tokens at mount and whenever the theme changes.
   const palette = useMemo(
     () =>
@@ -75,7 +100,7 @@ export function CrowdScene({ className }: { className?: string }) {
     [theme],
   );
 
-  const { read, title, playing } = inputs;
+  const { read, title, playing, bpm: trackBpm } = inputs;
   const titleRef = useRef(title);
   titleRef.current = title;
   // Kept across a restart of the loop (the page was hidden, the theme changed), so the smoothing
@@ -83,14 +108,15 @@ export function CrowdScene({ className }: { className?: string }) {
   const crowdState = useRef<CrowdState>(createCrowdState());
 
   const base = useMemo(
-    () => ({ width: CROWD_WIDTH, height: CROWD_HEIGHT, boothY: BOOTH_Y, palette, crowd }),
-    [palette, crowd],
+    () => ({ width, height, boothY: layout.boothY, palette, crowd, backdrop }),
+    [width, height, layout, palette, crowd, backdrop],
   );
 
   const [clipping, setClipping] = useState(false);
 
-  // Still: one frame, drawn again when what it shows changes.
-  useEffect(() => {
+  // Still: one frame, drawn again when what it shows changes. A layout effect, so a resize (which
+  // clears the canvas) is drawn over before it is painted: no blank frame.
+  useLayoutEffect(() => {
     if (animate) return;
     setClipping(false);
     const ctx = canvas.current?.getContext("2d") ?? null;
@@ -102,14 +128,17 @@ export function CrowdScene({ className }: { className?: string }) {
       move: playing ? "sway" : "idle",
       beat: 0,
       phase: 0.25,
+      still: true,
+      bpm: title === "" && trackBpm === null ? null : Math.round(60_000 / beatAt(0, null, trackBpm).beatMs),
       time: 0,
       title,
     });
-  }, [animate, base, playing, title]);
+  }, [animate, base, playing, title, trackBpm]);
 
   // Moving: the loop runs only while the crowd is on screen and motion is on, and ends itself once
-  // the player is paused and nothing is left to show (it starts again when `playing` changes).
-  useEffect(() => {
+  // the player is paused and nothing is left to show (it starts again when `playing` changes). A layout
+  // effect that draws one frame at once, so a resize (which clears the canvas) never paints blank.
+  useLayoutEffect(() => {
     if (!animate) return undefined;
     const ctx = canvas.current?.getContext("2d") ?? null;
     if (!ctx) return undefined;
@@ -140,6 +169,7 @@ export function CrowdScene({ className }: { className?: string }) {
         ...output,
         beat: at.beat,
         phase: at.phase,
+        bpm: titleRef.current === "" && f.bpm === null && f.grid.length === 0 ? null : Math.round(60_000 / at.beatMs),
         time: now / 1000,
         title: titleRef.current,
       });
@@ -149,7 +179,7 @@ export function CrowdScene({ className }: { className?: string }) {
       }
       if (f.playing || output.clipNote) handle = requestAnimationFrame(frame);
     };
-    handle = requestAnimationFrame(frame);
+    frame(performance.now());
     return () => cancelAnimationFrame(handle);
   }, [animate, base, read, playing, title]);
 
@@ -164,8 +194,8 @@ export function CrowdScene({ className }: { className?: string }) {
       <canvas
         ref={canvas}
         className={className ? `cp-crowd ${className}` : "cp-crowd"}
-        width={CROWD_WIDTH}
-        height={CROWD_HEIGHT}
+        width={width}
+        height={height}
         role="img"
         aria-label={label}
       />

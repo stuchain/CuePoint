@@ -167,6 +167,22 @@ const crowd = [
   "............",
 ];
 
+/** Full screen: four corner brackets pointing outwards (the Party view's button). */
+const fullscreen = [
+  "............",
+  ".###....###.",
+  ".#........#.",
+  ".#........#.",
+  "............",
+  "............",
+  "............",
+  "............",
+  ".#........#.",
+  ".#........#.",
+  ".###....###.",
+  "............",
+];
+
 /** Shuffle: two paths crossing, with tips on the right (PLAYER-07). */
 const shuffle = [
   "............",
@@ -999,6 +1015,7 @@ export const PIXEL_ICONS = {
   queue,
   waveform,
   crowd,
+  fullscreen,
   home,
   library,
   activity,

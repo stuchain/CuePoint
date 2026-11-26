@@ -8,8 +8,16 @@ export interface FillRecord {
   alpha: number;
 }
 
+/** A filled path (a beam, the floor glow): what it was filled with and how opaque. */
+export interface PathRecord {
+  style: unknown;
+  alpha: number;
+}
+
 export function makeContextMock() {
   const fills: FillRecord[] = [];
+  const paths: PathRecord[] = [];
+  const saved: number[] = [];
   const state = { fillStyle: "" as unknown, globalAlpha: 1, imageSmoothingEnabled: true, font: "", textBaseline: "" };
   const gradient = { addColorStop: () => undefined };
   const ctx = Object.assign(state, {
@@ -17,14 +25,25 @@ export function makeContextMock() {
       fills.push({ colour: String(state.fillStyle), rect: [x, y, w, h], alpha: state.globalAlpha });
     },
     clearRect: () => undefined,
+    drawImage: () => undefined,
     createLinearGradient: () => gradient,
-    save: () => undefined,
-    restore: () => undefined,
+    createRadialGradient: () => gradient,
+    translate: () => undefined,
+    scale: () => undefined,
+    arc: () => undefined,
+    save() {
+      saved.push(state.globalAlpha);
+    },
+    restore() {
+      state.globalAlpha = saved.pop() ?? 1;
+    },
     beginPath: () => undefined,
     moveTo: () => undefined,
     lineTo: () => undefined,
     closePath: () => undefined,
-    fill: () => undefined,
+    fill() {
+      paths.push({ style: state.fillStyle, alpha: state.globalAlpha });
+    },
   }) as unknown as CanvasRenderingContext2D;
-  return { ctx, fills };
+  return { ctx, fills, paths };
 }

@@ -1,8 +1,9 @@
 /*
  * The Party view: a layer in the page's own grid cell, above the page but under the floating side
- * panels (queue, Track details: later in the DOM at the same level) and under menus, hints and dialogs. The stage letterboxes the crowd on the app
- * background; the scene is sized in whole device pixels of its own art by PartyView, and never smoothed. Nothing moves or
- * flashes here: all motion is the crowd's own, which stills with the motion setting.
+ * panels (queue, Track details: later in the DOM at the same level) and under menus, hints and dialogs. The club fills the stage:
+ * PartyView sizes the scene in whole device pixels of its own art (never smoothed) and makes the floor as wide as the stage,
+ * and the stage crops the odd pixel left over. Nothing moves or flashes here: all motion is the crowd's own, which stills with
+ * the motion setting.
  */
 .cp-party {
   grid-area: content;
@@ -14,11 +15,19 @@
   background: var(--bg-app);
 }
 
-.cp-party__close {
+/* Full screen is the one element the browser shows, so it has to fill the screen itself. */
+.cp-party:fullscreen {
+  width: 100%;
+  height: 100%;
+}
+
+.cp-party__corner {
   position: absolute;
   top: var(--space-md);
   right: var(--space-md);
   z-index: 1;
+  display: flex;
+  gap: var(--space-sm);
 }
 
 .cp-party__stage {
@@ -26,21 +35,20 @@
   min-width: 0;
   min-height: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  /* top left: the leftover is under one logical pixel, and the canvas then sits on whole device pixels */
+  align-items: flex-start;
+  justify-content: flex-start;
   overflow: hidden;
-  padding: var(--space-lg);
   box-sizing: border-box;
 }
 
 /*
- * PartyView measures the stage and sets --party-w / --party-h: the largest whole multiple of the
- * art's 232 x 130 pixels, in whole device pixels, that fits both ways. Until it has (and in a
- * stage too small for 1x) the scene fits by width and by height without overflowing.
+ * PartyView measures the stage and sets --party-w / --party-h: the canvas's logical size times a
+ * whole number of device pixels each, exactly (never squeezed off that
+ * size). Until it has measured, the scene fits the stage's width.
  */
 .cp-party__scene {
   width: var(--party-w, 100%);
   height: var(--party-h, auto);
-  max-width: 100%;
   flex: none;
 }

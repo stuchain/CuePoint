@@ -57,6 +57,8 @@ export interface CrowdFrameInputs {
 
 export interface CrowdInputs {
   title: string;
+  /** The track's own BPM (from the queue item), for a still frame's booth screen. */
+  bpm: number | null;
   playing: boolean;
   read: (nowMs: number) => CrowdFrameInputs;
 }
@@ -141,7 +143,7 @@ export function useCrowdInputs(): CrowdInputs {
   }, []);
 
   return useMemo(
-    () => ({ title: item?.title ?? "", playing, read }),
-    [item?.title, playing, read],
+    () => ({ title: item?.title ?? "", bpm: item?.bpm ?? null, playing, read }),
+    [item?.title, item?.bpm, playing, read],
   );
 }

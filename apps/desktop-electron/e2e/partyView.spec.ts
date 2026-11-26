@@ -91,9 +91,36 @@ test.describe("Party view", () => {
       const barBox = await bar.boundingBox();
       expect(box!.y + box!.height).toBeLessThanOrEqual(barBox!.y + 1);
       await expect(bar.getByRole("button", { name: "Close party view" })).toHaveAttribute("aria-pressed", "true");
+      // The club fills the stage: no bars either way (within one logical pixel of the stage).
+      const fit = await win.evaluate(() => {
+        const canvas = document.querySelector<HTMLCanvasElement>(".cp-party canvas")!;
+        const stage = document.querySelector<HTMLElement>(".cp-party__stage")!;
+        const c = canvas.getBoundingClientRect();
+        const st = stage.getBoundingClientRect();
+        const unit = c.width / canvas.width;
+        return { cw: c.width, ch: c.height, sw: st.width, sh: st.height, unit };
+      });
+      expect(fit.cw).toBeGreaterThanOrEqual(fit.sw - fit.unit - 0.01);
+      expect(fit.ch).toBeGreaterThanOrEqual(fit.sh - fit.unit - 0.01);
       // Let the crowd draw a few frames while the track plays.
       await win.waitForTimeout(1500);
       await shot(win, "2-party-view-open.png");
+      await win.waitForTimeout(1500);
+      await shot(win, "2b-party-view-playing.png");
+
+      // Full screen: the view's own element fills the screen, the first Esc leaves it and keeps the view, the next closes it.
+      const fullScreen = dialog.getByRole("button", { name: "Full screen" });
+      await fullScreen.click();
+      await expect
+        .poll(() => win.evaluate(() => document.fullscreenElement?.classList.contains("cp-party") ?? false))
+        .toBe(true);
+      await expect(dialog.getByRole("button", { name: "Full screen" })).toHaveAttribute("aria-pressed", "true");
+      await win.keyboard.press("Escape");
+      await expect.poll(() => win.evaluate(() => document.fullscreenElement === null)).toBe(true);
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "Full screen" })).toHaveAttribute("aria-pressed", "false");
+      // An Escape within 150 ms of leaving full screen counts as the same key (the view's own guard).
+      await win.waitForTimeout(300);
 
       await win.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);

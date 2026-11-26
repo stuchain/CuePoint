@@ -1,11 +1,12 @@
 /*
- * The crowd scene's canvas. Its own pixels are 232 x 130; the box scales them up whole and
- * never smooths them, so the art stays square-edged at any size.
+ * The crowd scene's canvas. Its own pixels are 130 tall and 232 or more wide (the width attribute
+ * says); the box scales them up whole and never smooths them, so the art stays square-edged at any
+ * size. The shape comes from the canvas's own width and height.
  */
 .cp-crowd {
   display: block;
   width: 100%;
-  aspect-ratio: 232 / 130;
+  height: auto;
   image-rendering: pixelated;
   background: var(--bg-app);
 }

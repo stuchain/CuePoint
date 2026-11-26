@@ -40,6 +40,21 @@ const NEAR_SILENCE = 0.05;
 const SILENCE_DB = -50;
 const LOUD_MEMORY_MS = 1500;
 const DEFAULT_BEAT_MS = 500;
+/** A drop lands when the energy goes from under `DROP_FROM` to over `DROP_TO` within `DROP_WINDOW_MS`. */
+export const DROP_FROM = 0.5;
+export const DROP_TO = 0.85;
+export const DROP_WINDOW_MS = 1500;
+/** The DJ keeps both hands up this long after a drop lands (ms). */
+export const DROP_MS = 2000;
+/** The slow average the energy is compared with to tell a build (rising) from a plateau (ms). */
+const TREND_MS = 2000;
+/** A build starts when the quick energy is this far over the trend, and ends under the lower margin. */
+const BUILD_ON = 0.05;
+const BUILD_OFF = 0.01;
+/** The quick energy a build is judged by: smooths the kick's own beat-by-beat movement (ms). */
+const QUICK_MS = 500;
+/** Drop and build are armed this long after playing begins (play, resume, a new track), so loud music already there is no drop (ms). */
+export const WARMUP_MS = 3000;
 
 export type CrowdMove = "idle" | "sway" | "bob" | "jump";
 
@@ -72,6 +87,10 @@ export interface CrowdOutput {
   freeze: boolean;
   clip: boolean;
   clipNote: boolean;
+  /** A drop has just landed (about two seconds): the DJ has both hands up. */
+  drop: boolean;
+  /** The energy is rising, short of the drop: the DJ puts a hand up on alternate beats. */
+  build: boolean;
 }
 
 export interface CrowdState {
@@ -92,6 +111,16 @@ export interface CrowdState {
   earsUntil: number;
   noteUntil: number;
   lastClipAt: number | null;
+  /** When the energy was last under `DROP_FROM`, and until when a drop holds. */
+  lowAt: number | null;
+  dropUntil: number;
+  /** The energy, slowly averaged. */
+  trend: number;
+  /** The energy smoothed over `QUICK_MS`, and whether a build is on (with hysteresis). */
+  quick: number;
+  building: boolean;
+  /** Drop and build wait until then (ms). */
+  armedAt: number;
 }
 
 export function createCrowdState(): CrowdState {
@@ -112,6 +141,12 @@ export function createCrowdState(): CrowdState {
     earsUntil: -Infinity,
     noteUntil: -Infinity,
     lastClipAt: null,
+    lowAt: null,
+    dropUntil: -Infinity,
+    trend: 0,
+    quick: 0,
+    building: false,
+    armedAt: Infinity,
   };
 }
 
@@ -188,11 +223,26 @@ export function stepCrowd(s: CrowdState, input: CrowdInput): { state: CrowdState
     s.lastLoudAt = null;
     s.lastReadingAt = null;
     s.dropped = false;
+    s.lowAt = null;
+    s.dropUntil = -Infinity;
+    s.trend = 0;
+    s.quick = 0;
+    s.building = false;
+    s.armedAt = Infinity;
     s.lastNow = now;
     s.lastPlaying = false;
     return {
       state: s,
-      output: { energy: 0, move: "idle", cheer: false, freeze: false, clip: false, clipNote: now < s.noteUntil },
+      output: {
+        energy: 0,
+        move: "idle",
+        cheer: false,
+        freeze: false,
+        clip: false,
+        clipNote: now < s.noteUntil,
+        drop: false,
+        build: false,
+      },
     };
   }
 
@@ -201,7 +251,26 @@ export function stepCrowd(s: CrowdState, input: CrowdInput): { state: CrowdState
   const tau = s.target > s.energy ? ATTACK_MS : RELEASE_MS;
   s.energy = clamp01(s.energy + (s.target - s.energy) * (1 - Math.exp(-dt / tau)));
   s.lastNow = now;
+  // Playing has just begun (a play, a resume, a new track): the cues wait for the warm-up.
+  if (!s.lastPlaying) s.armedAt = now + WARMUP_MS;
   s.lastPlaying = true;
+  const armed = now >= s.armedAt;
+
+  // The DJ's cues: a drop is a jump from under half to over 85% inside a moment, a build is the
+  // energy running ahead of its own slow average.
+  if (!armed) {
+    s.lowAt = null;
+    s.dropUntil = -Infinity;
+  } else if (s.energy < DROP_FROM) s.lowAt = now;
+  if (armed && s.energy > DROP_TO && s.lowAt !== null && now - s.lowAt <= DROP_WINDOW_MS && now >= s.dropUntil) {
+    s.dropUntil = now + DROP_MS;
+  }
+  s.trend += (s.energy - s.trend) * (1 - Math.exp(-dt / TREND_MS));
+  s.quick += (s.energy - s.quick) * (1 - Math.exp(-dt / QUICK_MS));
+  const drop = armed && now < s.dropUntil;
+  if (!armed || drop) s.building = false;
+  else if (!s.building && s.quick - s.trend > BUILD_ON) s.building = true;
+  else if (s.building && s.quick - s.trend < BUILD_OFF) s.building = false;
 
   if (s.energy > JUMP_ABOVE) s.lastLoudAt = now;
 
@@ -222,6 +291,8 @@ export function stepCrowd(s: CrowdState, input: CrowdInput): { state: CrowdState
       freeze: s.dropped && now < s.freezeUntil,
       clip: now < s.earsUntil,
       clipNote: now < s.noteUntil,
+      drop,
+      build: s.building && s.energy < DROP_TO,
     },
   };
 }
