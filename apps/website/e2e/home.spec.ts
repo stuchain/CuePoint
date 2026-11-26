@@ -626,6 +626,31 @@ test.describe("the dancing strip", () => {
     }
   }
 
+  test("short screens get the strip at 3x, tall wide ones at 4x, and the hero's gap follows", async ({ page }) => {
+    const read = () =>
+      page.evaluate(() => {
+        const c = document.querySelector<HTMLCanvasElement>("[data-crowd-canvas]")!;
+        const box = document.querySelector<HTMLElement>("[data-crowd]")!;
+        const hero = document.querySelector<HTMLElement>(".hero");
+        return {
+          scale: getComputedStyle(c).getPropertyValue("--crowd-scale").trim(),
+          height: box.getBoundingClientRect().height,
+          gap: hero ? parseFloat(getComputedStyle(hero).paddingBottom) : NaN,
+        };
+      });
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto("");
+    await settled(page);
+    const short = await read();
+    expect(short.scale).toBe("3");
+    expect(short.height).toBe(34 * 3);
+    expect(short.gap).not.toBeNaN();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect.poll(read).toMatchObject({ scale: "4", height: 34 * 4 });
+    // the hero's reserved gap follows the strip's height: 34 px more at 4x than at 3x
+    expect((await read()).gap - short.gap).toBe(34);
+  });
+
   test("the strip is a decorative canvas of whole pixels, and takes no space from the page", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("");

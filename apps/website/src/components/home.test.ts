@@ -76,6 +76,8 @@ describe("the home page's components", () => {
     expect(source).toContain(`height="${STRIP_HEIGHT}"`);
     // a whole-number scale at both sizes
     expect([...source.matchAll(/--crowd-scale: (\S+);/g)].map((m) => m[1])).toEqual(["3", "4"]);
+    // and 4x only on a wide screen that is at least 50rem tall: a short laptop screen keeps 3x
+    expect(source).toMatch(/@media \(min-width: 40rem\) and \(min-height: 50rem\) \{\s*:root \{\s*--crowd-scale: 4;/);
   });
 
   it("CrowdStrip: a decorative canvas with no words, in a box of a reserved height", async () => {
